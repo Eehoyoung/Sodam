@@ -1,6 +1,7 @@
 package com.rich.sodam.service;
 
 import com.rich.sodam.domain.*;
+import com.rich.sodam.dto.LocationUpdateDto;
 import com.rich.sodam.dto.StoreRegistrationDto;
 import com.rich.sodam.repository.*;
 import jakarta.persistence.EntityNotFoundException;
@@ -14,7 +15,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class StoreManagementServiceImpl implements StoreManagementService{
+public class StoreManagementServiceImpl implements StoreManagementService {
 
     private final UserRepository userRepository;
     private final MasterProfileRepository masterProfileRepository;
@@ -44,7 +45,6 @@ public class StoreManagementServiceImpl implements StoreManagementService{
             masterProfileRepository.save(masterProfile);
         }
 
-
         // 매장 생성
         Store store = new Store(
                 storeDto.getStoreName(),
@@ -52,6 +52,29 @@ public class StoreManagementServiceImpl implements StoreManagementService{
                 storeDto.getStorePhoneNumber(),
                 storeDto.getBusinessType()
         );
+
+        // 위치 정보 설정
+        if (storeDto.getLatitude() != null && storeDto.getLongitude() != null) {
+            store.setLatitude(storeDto.getLatitude());
+            store.setLongitude(storeDto.getLongitude());
+        }
+
+        if (storeDto.getFullAddress() != null) {
+            store.setFullAddress(storeDto.getFullAddress());
+        }
+
+        if (storeDto.getRoadAddress() != null) {
+            store.setRoadAddress(storeDto.getRoadAddress());
+        }
+
+        if (storeDto.getJibunAddress() != null) {
+            store.setJibunAddress(storeDto.getJibunAddress());
+        }
+
+        if (storeDto.getRadius() != null) {
+            store.setRadius(storeDto.getRadius());
+        }
+
         storeRepository.save(store);
 
         // 사장-매장 관계 생성
@@ -59,7 +82,6 @@ public class StoreManagementServiceImpl implements StoreManagementService{
         masterStoreRelationRepository.save(relation);
 
         return store;
-
     }
 
     @Override
@@ -85,12 +107,10 @@ public class StoreManagementServiceImpl implements StoreManagementService{
             employeeProfileRepository.save(employeeProfile);
         }
 
-
         // 사원-매장 관계 생성
         EmployeeStoreRelation relation = new EmployeeStoreRelation(employeeProfile, store);
         employeeStoreRelationRepository.save(relation);
     }
-
 
     @Override
     @Transactional(readOnly = true)
@@ -103,7 +123,6 @@ public class StoreManagementServiceImpl implements StoreManagementService{
                 .map(MasterStoreRelation::getStore)
                 .collect(Collectors.toList());
     }
-
 
     @Override
     @Transactional(readOnly = true)
@@ -129,4 +148,28 @@ public class StoreManagementServiceImpl implements StoreManagementService{
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional
+    public Store updateStoreLocation(Long storeId, LocationUpdateDto locationDto) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new EntityNotFoundException("매장을 찾을 수 없습니다."));
+
+        // 좌표 정보 업데이트
+        if (locationDto.getLatitude() != null && locationDto.getLongitude() != null) {
+            store.setLatitude(locationDto.getLatitude());
+            store.setLongitude(locationDto.getLongitude());
+        }
+
+        // 반경 정보 업데이트
+        if (locationDto.getRadius() != null) {
+            store.setRadius(locationDto.getRadius());
+        }
+
+        // 주소 정보 업데이트
+        if (locationDto.getFullAddress() != null) {
+            store.setFullAddress(locationDto.getFullAddress());
+        }
+
+        return storeRepository.save(store);
+    }
 }

@@ -2,6 +2,7 @@ package com.rich.sodam.service;
 
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.User;
+import com.rich.sodam.dto.LocationUpdateDto;
 import com.rich.sodam.dto.StoreRegistrationDto;
 
 import java.util.List;
@@ -19,5 +20,7 @@ public interface StoreManagementService {
 
     List<User> getEmployeesByStore(Long storeId);
 
+    Store updateStoreLocation(Long storeId, LocationUpdateDto locationDto);
 }
+
 
