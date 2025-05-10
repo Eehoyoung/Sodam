@@ -6,7 +6,6 @@ import com.rich.sodam.dto.GeocodingResult;
 import com.rich.sodam.dto.LocationUpdateDto;
 import com.rich.sodam.dto.StoreRegistrationDto;
 import com.rich.sodam.service.GeocodingService;
-import com.rich.sodam.service.StoreManagementService;
 import com.rich.sodam.service.StoreManagementServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -52,10 +51,12 @@ public class StoreController {
     @PostMapping("/{storeId}/employees")
     public ResponseEntity<Void> assignEmployeeToStore(
             @PathVariable Long storeId,
-            @RequestParam Long userId) {
-        storeManagementService.assignUserToStoreAsEmployee(userId, storeId);
+            @RequestParam Long userId,
+            @RequestParam(required = false) Integer customHourlyWage) {
+        storeManagementService.assignUserToStoreAsEmployee(userId, storeId, customHourlyWage);
         return ResponseEntity.ok().build();
     }
+
 
     // 사장이 관리하는 매장 목록 조회
     @GetMapping("/master/{userId}")

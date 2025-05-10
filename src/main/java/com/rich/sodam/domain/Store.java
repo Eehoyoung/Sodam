@@ -40,13 +40,16 @@ public class Store {
 
     private Integer radius;        // 출퇴근 인증 반경(미터)
 
-    public Store(String storeName, String businessNumber, String storePhoneNumber, String businessType) {
+    private Integer storeStandardHourWage; // 매장 기준 시급
+
+    public Store(String storeName, String businessNumber, String storePhoneNumber, String businessType, Integer storeStandardHourWage) {
         this.storeName = storeName;
         this.businessNumber = businessNumber;
         this.storePhoneNumber = storePhoneNumber;
         this.businessType = businessType;
         this.storeCode = generateStoreCode(); // 시스템에서 자동 생성
         this.radius = 100; // 기본 반경 설정
+        this.storeStandardHourWage = storeStandardHourWage;
     }
 
     // 매장 코드 생성 메서드
