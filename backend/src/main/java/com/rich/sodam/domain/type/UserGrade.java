@@ -6,18 +6,14 @@ import lombok.Getter;
 public enum UserGrade {
 
     NORMAL("ROLE_USER"),
-    EMP("ROLE_EMP"),
-    MAS("ROLE_MAS");
+    EMPLOYEE("ROLE_EMPLOYEE"),
+    MASTER("ROLE_MASTER"),
+    MANAGER("ROLE_MANAGER");
 
     private final String value;
 
     UserGrade(String value) {
         this.value = value;
     }
-
-    public String getValue() {
-        return value;
-    }
-
 
 }
