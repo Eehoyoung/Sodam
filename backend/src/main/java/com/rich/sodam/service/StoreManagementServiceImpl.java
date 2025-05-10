@@ -1,11 +1,13 @@
 package com.rich.sodam.service;
 
 import com.rich.sodam.domain.*;
+import com.rich.sodam.dto.EmployeeWageUpdateDto;
 import com.rich.sodam.dto.LocationUpdateDto;
 import com.rich.sodam.dto.StoreRegistrationDto;
 import com.rich.sodam.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,11 +48,25 @@ public class StoreManagementServiceImpl implements StoreManagementService {
         }
 
         // 매장 생성
+        Store store = getStore(storeDto);
+
+        storeRepository.save(store);
+
+        // 사장-매장 관계 생성
+        MasterStoreRelation relation = new MasterStoreRelation(masterProfile, store);
+        masterStoreRelationRepository.save(relation);
+
+        return store;
+    }
+
+    @NotNull
+    private static Store getStore(StoreRegistrationDto storeDto) {
         Store store = new Store(
                 storeDto.getStoreName(),
                 storeDto.getBusinessNumber(),
                 storeDto.getStorePhoneNumber(),
-                storeDto.getBusinessType()
+                storeDto.getBusinessType(),
+                storeDto.getStoreStandardHourWage()
         );
 
         // 위치 정보 설정
@@ -74,19 +90,17 @@ public class StoreManagementServiceImpl implements StoreManagementService {
         if (storeDto.getRadius() != null) {
             store.setRadius(storeDto.getRadius());
         }
-
-        storeRepository.save(store);
-
-        // 사장-매장 관계 생성
-        MasterStoreRelation relation = new MasterStoreRelation(masterProfile, store);
-        masterStoreRelationRepository.save(relation);
-
         return store;
     }
 
     @Override
     @Transactional
     public void assignUserToStoreAsEmployee(Long userId, Long storeId) {
+        this.assignUserToStoreAsEmployee(userId, storeId, null);
+    }
+
+    @Transactional
+    public void assignUserToStoreAsEmployee(Long userId, Long storeId, Integer customHourlyWage) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
 
@@ -107,10 +121,77 @@ public class StoreManagementServiceImpl implements StoreManagementService {
             employeeProfileRepository.save(employeeProfile);
         }
 
-        // 사원-매장 관계 생성
-        EmployeeStoreRelation relation = new EmployeeStoreRelation(employeeProfile, store);
+        // 이미 관계가 있는지 확인
+        Optional<EmployeeStoreRelation> existingRelation =
+                employeeStoreRelationRepository.findByEmployeeProfileAndStore(employeeProfile, store);
+
+        EmployeeStoreRelation relation;
+        if (existingRelation.isPresent()) {
+            // 이미 관계가 있으면 시급 정보만 업데이트
+            relation = existingRelation.get();
+            if (customHourlyWage != null) {
+                relation.setCustomHourlyWage(customHourlyWage);
+                relation.useCustomWage();
+            }
+        } else {
+            // 새 관계 생성
+            relation = new EmployeeStoreRelation(employeeProfile, store, customHourlyWage);
+        }
         employeeStoreRelationRepository.save(relation);
     }
+
+    @Override
+    @Transactional
+    public void updateEmployeeWage(EmployeeWageUpdateDto wageDto) {
+        EmployeeProfile employeeProfile = employeeProfileRepository.findById(wageDto.getEmployeeId())
+                .orElseThrow(() -> new EntityNotFoundException("사원 프로필을 찾을 수 없습니다."));
+
+        Store store = storeRepository.findById(wageDto.getStoreId())
+                .orElseThrow(() -> new EntityNotFoundException("매장을 찾을 수 없습니다."));
+
+        EmployeeStoreRelation relation = employeeStoreRelationRepository
+                .findByEmployeeProfileAndStore(employeeProfile, store)
+                .orElseThrow(() -> new EntityNotFoundException("사원-매장 관계를 찾을 수 없습니다."));
+
+        // 시급 정보 업데이트
+        relation.setCustomHourlyWage(wageDto.getCustomHourlyWage());
+
+        // 매장 기준 시급 사용 여부 설정
+        if (wageDto.getUseStoreStandardWage() != null && wageDto.getUseStoreStandardWage()) {
+            relation.useStoreStandardWage();
+        } else {
+            relation.useCustomWage();
+        }
+
+        employeeStoreRelationRepository.save(relation);
+    }
+
+    @Override
+    @Transactional
+    public void updateStoreStandardWage(Long storeId, Integer standardHourlyWage) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new EntityNotFoundException("매장을 찾을 수 없습니다."));
+
+        store.setStoreStandardHourWage(standardHourlyWage);
+        storeRepository.save(store);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Integer getEmployeeWageInStore(Long employeeId, Long storeId) {
+        EmployeeProfile employeeProfile = employeeProfileRepository.findById(employeeId)
+                .orElseThrow(() -> new EntityNotFoundException("사원 프로필을 찾을 수 없습니다."));
+
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new EntityNotFoundException("매장을 찾을 수 없습니다."));
+
+        EmployeeStoreRelation relation = employeeStoreRelationRepository
+                .findByEmployeeProfileAndStore(employeeProfile, store)
+                .orElseThrow(() -> new EntityNotFoundException("사원-매장 관계를 찾을 수 없습니다."));
+
+        return relation.getAppliedHourlyWage();
+    }
+
 
     @Override
     @Transactional(readOnly = true)

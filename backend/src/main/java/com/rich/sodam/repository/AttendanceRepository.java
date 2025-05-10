@@ -10,9 +10,12 @@ import java.util.List;
 
 public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
 
-    List<Attendance> findByEmployeeAndCheckInTimeBetween(
-            EmployeeProfile employee, LocalDateTime start, LocalDateTime end);
+    List<Attendance> findByEmployeeProfileAndCheckInTimeBetween(
+            EmployeeProfile employeeProfile, LocalDateTime startDate, LocalDateTime endDate);
 
     List<Attendance> findByStoreAndCheckInTimeBetween(
-            Store store, LocalDateTime start, LocalDateTime end);
+            Store store, LocalDateTime startDate, LocalDateTime endDate);
+
+    List<Attendance> findByEmployeeProfileAndStoreAndCheckInTimeBetween(
+            EmployeeProfile employeeProfile, Store store, LocalDateTime startDate, LocalDateTime endDate);
 }

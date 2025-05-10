@@ -2,6 +2,7 @@ package com.rich.sodam.service;
 
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.User;
+import com.rich.sodam.dto.EmployeeWageUpdateDto;
 import com.rich.sodam.dto.LocationUpdateDto;
 import com.rich.sodam.dto.StoreRegistrationDto;
 
@@ -21,6 +22,13 @@ public interface StoreManagementService {
     List<User> getEmployeesByStore(Long storeId);
 
     Store updateStoreLocation(Long storeId, LocationUpdateDto locationDto);
+
+    void updateEmployeeWage(EmployeeWageUpdateDto wageDto);
+
+    void updateStoreStandardWage(Long storeId, Integer standardHourlyWage);
+
+    Integer getEmployeeWageInStore(Long employeeId, Long storeId);
 }
+
 
 

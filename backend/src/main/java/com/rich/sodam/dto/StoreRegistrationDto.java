@@ -32,4 +32,6 @@ public class StoreRegistrationDto {
 
     private Integer radius;        // 출퇴근 인증 반경(미터)
 
+    private Integer storeStandardHourWage; // 매장 기준 시급
+
 }
