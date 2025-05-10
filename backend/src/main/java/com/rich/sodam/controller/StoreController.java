@@ -7,6 +7,7 @@ import com.rich.sodam.dto.LocationUpdateDto;
 import com.rich.sodam.dto.StoreRegistrationDto;
 import com.rich.sodam.service.GeocodingService;
 import com.rich.sodam.service.StoreManagementService;
+import com.rich.sodam.service.StoreManagementServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +19,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class StoreController {
 
-    private final StoreManagementService storeManagementService; // 인터페이스로 교체
+    private final StoreManagementServiceImpl storeManagementService; // 인터페이스로 교체
     private final GeocodingService geocodingService;
 
     // 매장 등록 (사용자를 사장으로 변환)
