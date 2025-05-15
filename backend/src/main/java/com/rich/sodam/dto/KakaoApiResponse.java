@@ -11,13 +11,17 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 public class KakaoApiResponse {
-    private List<Document> documents;
+
+    @JsonProperty("documents")
+    private List<Documents> documents;
+
+    @JsonProperty("meta")
     private Meta meta;
 
     @Getter
     @Setter
     @NoArgsConstructor
-    public static class Document {
+    public static class Documents {
         @JsonProperty("address_name")
         private String addressName;
 
@@ -26,6 +30,9 @@ public class KakaoApiResponse {
 
         @JsonProperty("x")
         private String longitude;
+
+        @JsonProperty("address_type")
+        private String addressType;
 
         @JsonProperty("address")
         private Address address;
@@ -50,6 +57,9 @@ public class KakaoApiResponse {
         @JsonProperty("region_3depth_name")
         private String region3depthName;
 
+        @JsonProperty("region_3depth_h_name")
+        private String region3depthHName;
+
         @JsonProperty("h_code")
         private String hCode;
 
@@ -64,6 +74,13 @@ public class KakaoApiResponse {
 
         @JsonProperty("sub_address_no")
         private String subAddressNo;
+
+        @JsonProperty("x")
+        private String longitude;
+
+        @JsonProperty("y")
+        private String latitude;
+
     }
 
     @Getter
@@ -99,6 +116,13 @@ public class KakaoApiResponse {
 
         @JsonProperty("zone_no")
         private String zoneNo;
+
+        @JsonProperty("x")
+        private String longitude;
+
+        @JsonProperty("y")
+        private String latitude;
+
     }
 
     @Getter
@@ -107,5 +131,11 @@ public class KakaoApiResponse {
     public static class Meta {
         @JsonProperty("total_count")
         private Integer totalCount;
+
+        @JsonProperty("pageable_count")
+        private Integer pageableCount;
+
+        @JsonProperty("is_end")
+        private boolean isEnd;
     }
 }

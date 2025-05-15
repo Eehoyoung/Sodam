@@ -20,7 +20,7 @@ public class StoreRegistrationDto {
     private String businessLicenseNumber;
 
     // 위치 정보 추가
-    private String fullAddress;    // 전체 주소
+    private String query;    // 전체 주소
 
     private String roadAddress;    // 도로명 주소
 
