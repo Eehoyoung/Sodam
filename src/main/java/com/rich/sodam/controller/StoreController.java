@@ -22,14 +22,14 @@ public class StoreController {
     private final GeocodingService geocodingService;
 
     // 매장 등록 (사용자를 사장으로 변환)
-    @PostMapping
+    @PostMapping("/change/master")
     public ResponseEntity<Store> registerStore(
             @RequestParam Long userId,
             @RequestBody StoreRegistrationDto storeDto) {
 
         // 주소 좌표 변환
-        if (storeDto.getFullAddress() != null) {
-            GeocodingResult geocoding = geocodingService.getCoordinates(storeDto.getFullAddress());
+        if (storeDto.getQuery() != null) {
+            GeocodingResult geocoding = geocodingService.getCoordinates(storeDto.getQuery());
 
             // DTO에 좌표 정보 설정
             storeDto.setLatitude(geocoding.getLatitude());

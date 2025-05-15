@@ -75,8 +75,8 @@ public class StoreManagementServiceImpl implements StoreManagementService {
             store.setLongitude(storeDto.getLongitude());
         }
 
-        if (storeDto.getFullAddress() != null) {
-            store.setFullAddress(storeDto.getFullAddress());
+        if (storeDto.getQuery() != null) {
+            store.setFullAddress(storeDto.getQuery());
         }
 
         if (storeDto.getRoadAddress() != null) {
