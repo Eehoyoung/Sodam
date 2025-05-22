@@ -10,6 +10,7 @@ build/
 .aiignore
 aiguidelines.md
 .junie
+.junie/
 
 ### STS ###
 .apt_generated
