@@ -1,6 +1,6 @@
-package com.rich.sodam.securicy.config;
+package com.rich.sodam.security.config;
 
-import com.rich.sodam.securicy.JwtTokenProvider;
+import com.rich.sodam.security.JwtTokenProvider;
 import lombok.Getter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,7 +38,7 @@ public class SecurityConfig {
         log.info("Spring Security 필터 체인 구성 중...");
 
         http
-                .authorizeHttpRequests(authz -> authz
+                .authorizeHttpRequests(auth -> auth
                         .anyRequest().permitAll()  // 모든 요청 허용
                 )
                 .csrf(AbstractHttpConfigurer::disable)

@@ -2,7 +2,7 @@ package com.rich.sodam.service;
 
 import com.rich.sodam.domain.User;
 import com.rich.sodam.repository.UserRepository;
-import com.rich.sodam.securicy.UserPrincipal;
+import com.rich.sodam.security.UserPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;

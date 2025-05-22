@@ -1,4 +1,4 @@
-package com.rich.sodam.securicy.kakaoAuth;
+package com.rich.sodam.security.kakaoAuth;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;

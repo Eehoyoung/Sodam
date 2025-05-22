@@ -1,4 +1,4 @@
-package com.rich.sodam.securicy.kakaoAuth;
+package com.rich.sodam.security.kakaoAuth;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;

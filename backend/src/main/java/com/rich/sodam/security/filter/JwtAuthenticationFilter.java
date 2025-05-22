@@ -1,6 +1,6 @@
-package com.rich.sodam.securicy.filter;
+package com.rich.sodam.security.filter;
 
-import com.rich.sodam.securicy.JwtTokenProvider;
+import com.rich.sodam.security.JwtTokenProvider;
 import com.rich.sodam.service.JwtProperties;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -42,13 +42,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         
         try {
             // 요청에서 토큰 추출
-            String token = jwtTokenProvider.getTokenFromRequest(request);
+            String token = jwtTokenProvider.resolveToken(request);
             
             // 토큰 유효성 검사
-            if (token != null && token.startsWith(JwtProperties.TOKEN_PREFIX)) {
+            if (token != null && token.startsWith(JwtProperties.TOKEN_PREFIX) && jwtTokenProvider.validateToken(token)) {
                 log.debug("JWT 토큰 발견: {}", maskToken(token));
-                
-                Long userId = jwtTokenProvider.getUserIdFromToken(token);
+
+                Long userId = jwtTokenProvider.getUserId(token);
                 
                 if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                     log.debug("유효한 JWT 토큰 - 사용자 ID: {}", userId);
