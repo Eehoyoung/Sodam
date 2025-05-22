@@ -1,7 +1,7 @@
 package com.rich.sodam.controller;
 
 import com.rich.sodam.domain.User;
-import com.rich.sodam.securicy.JwtTokenProvider;
+import com.rich.sodam.security.JwtTokenProvider;
 import com.rich.sodam.service.KakaoAuthService;
 import com.rich.sodam.service.TokenService;
 import jakarta.servlet.http.Cookie;

@@ -2,88 +2,116 @@ package com.rich.sodam.controller;
 
 import com.rich.sodam.domain.Attendance;
 import com.rich.sodam.dto.AttendanceRequestDto;
+import com.rich.sodam.dto.AttendanceResponseDto;
 import com.rich.sodam.service.AttendanceService;
-import com.rich.sodam.service.LocationVerificationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
+/**
+ * 직원 출퇴근 관리 컨트롤러
+ * 직원들의 출근/퇴근 기록을 관리하고 조회하는 API를 제공합니다.
+ */
 @RestController
 @RequestMapping("/api/attendance")
 @RequiredArgsConstructor
 public class AttendanceController {
 
     private final AttendanceService attendanceService;
-    private final LocationVerificationService locationService;
 
+    /**
+     * 직원 출근 처리 API
+     */
     @PostMapping("/check-in")
-    public ResponseEntity<?> checkIn(@RequestBody AttendanceRequestDto request) {
-        // 위치 검증
-        boolean locationVerified = locationService.verifyUserInStore(
-                request.getStoreId(), request.getLatitude(), request.getLongitude());
-
-        if (!locationVerified) {
-            return ResponseEntity.badRequest()
-                    .body("매장 위치를 벗어났습니다. 매장 내에서 출근해주세요.");
-        }
-
-        // 출근 처리
-        Attendance attendance = attendanceService.checkIn(
+    public ResponseEntity<AttendanceResponseDto> checkIn(@RequestBody @Validated AttendanceRequestDto request) {
+        Attendance attendance = attendanceService.checkInWithVerification(
                 request.getEmployeeId(),
                 request.getStoreId(),
                 request.getLatitude(),
                 request.getLongitude()
         );
 
-        return ResponseEntity.ok(attendance);
+        return ResponseEntity.ok(AttendanceResponseDto.from(attendance));
     }
 
+
+    /**
+     * 직원 퇴근 처리 API
+     */
     @PostMapping("/check-out")
-    public ResponseEntity<?> checkOut(@RequestBody AttendanceRequestDto request) {
-        // 위치 검증
-        boolean locationVerified = locationService.verifyUserInStore(
-                request.getStoreId(), request.getLatitude(), request.getLongitude());
-
-        if (!locationVerified) {
-            return ResponseEntity.badRequest()
-                    .body("매장 위치를 벗어났습니다. 매장 내에서 퇴근해주세요.");
-        }
-
-        // 퇴근 처리
-        Attendance attendance = attendanceService.checkOut(
+    public ResponseEntity<AttendanceResponseDto> checkOut(@RequestBody @Validated AttendanceRequestDto request) {
+        Attendance attendance = attendanceService.checkOutWithVerification(
                 request.getEmployeeId(),
                 request.getStoreId(),
                 request.getLatitude(),
                 request.getLongitude()
         );
 
-        return ResponseEntity.ok(attendance);
+        return ResponseEntity.ok(AttendanceResponseDto.from(attendance));
     }
 
+    /**
+     * 특정 직원의 출퇴근 기록 조회 API
+     */
     @GetMapping("/employee/{employeeId}")
-    public ResponseEntity<List<Attendance>> getAttendancesByEmployee(
+    public ResponseEntity<List<AttendanceResponseDto>> getAttendancesByEmployee(
             @PathVariable Long employeeId,
-            @RequestParam LocalDateTime startDate,
-            @RequestParam LocalDateTime endDate) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
 
         List<Attendance> attendances = attendanceService.getAttendancesByEmployeeAndPeriod(
                 employeeId, startDate, endDate);
 
-        return ResponseEntity.ok(attendances);
+        List<AttendanceResponseDto> responseDtos = attendances.stream()
+                .map(AttendanceResponseDto::from)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(responseDtos);
     }
 
+    /**
+     * 특정 매장의 출퇴근 기록 조회 API
+     */
     @GetMapping("/store/{storeId}")
-    public ResponseEntity<List<Attendance>> getAttendancesByStore(
+    public ResponseEntity<List<AttendanceResponseDto>> getAttendancesByStore(
             @PathVariable Long storeId,
-            @RequestParam LocalDateTime startDate,
-            @RequestParam LocalDateTime endDate) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
 
         List<Attendance> attendances = attendanceService.getAttendancesByStoreAndPeriod(
                 storeId, startDate, endDate);
 
-        return ResponseEntity.ok(attendances);
+        List<AttendanceResponseDto> responseDtos = attendances.stream()
+                .map(AttendanceResponseDto::from)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(responseDtos);
     }
+
+    /**
+     * 특정 직원의 월별 출퇴근 기록 조회 API
+     */
+    @GetMapping("/employee/{employeeId}/monthly")
+    public ResponseEntity<List<AttendanceResponseDto>> getMonthlyAttendancesByEmployee(
+            @PathVariable Long employeeId,
+            @RequestParam int year,
+            @RequestParam int month) {
+
+        List<Attendance> attendances = attendanceService.getMonthlyAttendancesByEmployee(
+                employeeId, year, month);
+
+        List<AttendanceResponseDto> responseDto = attendances.stream()
+                .map(AttendanceResponseDto::from)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(responseDto);
+    }
+
+
 }

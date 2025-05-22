@@ -1,10 +1,10 @@
 package com.rich.sodam.domain;
 
+import com.rich.sodam.domain.type.UserGrade;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import com.rich.sodam.domain.type.UserGrade;
 
 @Entity
 @Getter

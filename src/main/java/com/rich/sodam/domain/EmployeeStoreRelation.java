@@ -66,4 +66,14 @@ public class EmployeeStoreRelation {
             this.useStoreStandardWage = false;
         }
     }
+
+    public Integer calculateAppliedWage() {
+        return useStoreStandardWage ? store.getStoreStandardHourWage() : customHourlyWage;
+    }
+
+    public void updateWageSettings(Integer customWage, boolean useStoreStandard) {
+        this.customHourlyWage = customWage;
+        this.useStoreStandardWage = useStoreStandard;
+    }
+
 }

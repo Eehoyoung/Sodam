@@ -1,4 +1,4 @@
-package com.rich.sodam.securicy;
+package com.rich.sodam.security;
 
 import com.rich.sodam.domain.User;
 import lombok.Getter;
