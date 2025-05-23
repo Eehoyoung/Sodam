@@ -55,4 +55,11 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
      */
     List<Attendance> findByEmployeeProfile_IdAndCheckInTimeBetweenOrderByCheckInTimeDesc(
             Long employeeId, LocalDateTime startDate, LocalDateTime endDate);
+
+    @Query("SELECT a FROM Attendance a WHERE a.employeeProfile.id = :employeeId AND a.checkInTime BETWEEN :startDate AND :endDate")
+    List<Attendance> findByEmployeeIdAndCheckInTimeBetween(
+            @Param("employeeId") Long employeeId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
+
 }
