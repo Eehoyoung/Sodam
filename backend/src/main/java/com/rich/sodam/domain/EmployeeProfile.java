@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Random;
 
 @Entity
@@ -24,6 +26,13 @@ public class EmployeeProfile {
     // 사원 전용 필드
     private String employeeNumber;
 
+    // 주휴수당 계산을 위한 필드 추가
+    private LocalDate startWeeklyAllowance;
+
+    private LocalDate endWeeklyAllowance;
+
+    private BigDecimal incompleteWeekAllowance;
+
     public EmployeeProfile(User user) {
         this.user = user;
         this.employeeNumber = generateEmployeeNumber();
@@ -31,7 +40,6 @@ public class EmployeeProfile {
 
     // 사원번호 생성 메서드
     private String generateEmployeeNumber() {
-        return "EMP" + System.currentTimeMillis() +
-                (new Random().nextInt(900) + 100);
+        return "EMP" + System.currentTimeMillis() + (new Random().nextInt(900) + 100);
     }
 }

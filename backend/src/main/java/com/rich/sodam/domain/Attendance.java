@@ -7,6 +7,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -21,6 +22,7 @@ public class Attendance {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "attendance_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -46,6 +48,9 @@ public class Attendance {
     private Double checkOutLatitude;
 
     private Double checkOutLongitude;
+
+    private BigDecimal weeklyAllowance;
+
 
     // 시급 정보 (당시 적용된 시급)
     @Column(nullable = false)
@@ -133,4 +138,10 @@ public class Attendance {
         double hours = getWorkingTimeInHours();
         return (int) (hours * appliedHourlyWage);
     }
+
+    // Attendance.java에 추가할 메서드
+    public void setWeeklyAllowance(BigDecimal weeklyAllowance) {
+        this.weeklyAllowance = weeklyAllowance;
+    }
+
 }

@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Getter
 @Setter
@@ -23,6 +25,10 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     private UserGrade userGrade;
+
+    // 생성 시간 필드 추가
+    private LocalDateTime createdAt;
+
 
     public User(String email, String name) {
         this.email = email;
