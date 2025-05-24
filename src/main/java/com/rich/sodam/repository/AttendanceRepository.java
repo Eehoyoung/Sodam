@@ -62,4 +62,17 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
 
+    /**
+     * 주휴수당이 포함된 출근 기록 조회
+     */
+    @Query("SELECT a FROM Attendance a WHERE a.employeeProfile.id = :employeeId " +
+            "AND a.store.id = :storeId " +
+            "AND a.checkInTime BETWEEN :startDate AND :endDate " +
+            "AND a.weeklyAllowance IS NOT NULL")
+    List<Attendance> findWithWeeklyAllowanceByEmployeeAndStore(
+            @Param("employeeId") Long employeeId,
+            @Param("storeId") Long storeId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
+
 }

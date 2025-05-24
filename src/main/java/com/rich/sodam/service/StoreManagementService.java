@@ -2,9 +2,9 @@ package com.rich.sodam.service;
 
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.User;
-import com.rich.sodam.dto.EmployeeWageUpdateDto;
-import com.rich.sodam.dto.LocationUpdateDto;
-import com.rich.sodam.dto.StoreRegistrationDto;
+import com.rich.sodam.dto.request.EmployeeWageUpdateDto;
+import com.rich.sodam.dto.request.LocationUpdateDto;
+import com.rich.sodam.dto.request.StoreRegistrationDto;
 
 import java.util.List;
 

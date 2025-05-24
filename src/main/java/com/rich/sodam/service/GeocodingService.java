@@ -1,7 +1,7 @@
 package com.rich.sodam.service;
 
-import com.rich.sodam.dto.GeocodingResult;
-import com.rich.sodam.dto.KakaoApiResponse;
+import com.rich.sodam.dto.response.GeocodingResult;
+import com.rich.sodam.dto.response.KakaoApiResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

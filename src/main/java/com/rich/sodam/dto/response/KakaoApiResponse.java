@@ -1,4 +1,4 @@
-package com.rich.sodam.dto;
+package com.rich.sodam.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;

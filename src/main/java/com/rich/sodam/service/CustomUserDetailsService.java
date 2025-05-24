@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 public class CustomUserDetailsService implements UserDetailsService {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(CustomUserDetailsService.class);
-    
+
     private final UserRepository userRepository;
 
     public CustomUserDetailsService(UserRepository userRepository) {
@@ -32,13 +32,13 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         log.debug("이메일로 사용자 조회 시도: {}", email);
-        
+
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
                     log.warn("사용자를 찾을 수 없음: {}", email);
                     return new UsernameNotFoundException("유저 검색 실패: " + email);
                 });
-        
+
         log.debug("사용자 조회 성공: ID={}, 이메일={}", user.getId(), user.getEmail());
         return UserPrincipal.create(user);
     }

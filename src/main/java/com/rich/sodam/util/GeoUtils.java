@@ -1,4 +1,3 @@
-
 package com.rich.sodam.util;
 
 /**
