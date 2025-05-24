@@ -21,7 +21,7 @@ public class TokenService {
     /**
      * JWT 토큰을 저장하는 쿠키를 생성합니다.
      *
-     * @param user 사용자 엔티티
+     * @param user     사용자 엔티티
      * @param jwtToken JWT 토큰
      * @return 생성된 쿠키
      */

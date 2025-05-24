@@ -1,6 +1,6 @@
 package com.rich.sodam.controller;
 
-import com.rich.sodam.dto.EmployeeWageUpdateDto;
+import com.rich.sodam.dto.request.EmployeeWageUpdateDto;
 import com.rich.sodam.service.StoreManagementServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

@@ -1,6 +1,5 @@
-package com.rich.sodam.security.config;
+package com.rich.sodam.security;
 
-import com.rich.sodam.security.JwtTokenProvider;
 import lombok.Getter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,7 +18,7 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SecurityConfig.class);
-    
+
     private final JwtTokenProvider jwtTokenProvider;
 
     public SecurityConfig(JwtTokenProvider jwtTokenProvider) {
@@ -52,10 +51,10 @@ public class SecurityConfig {
     }
 
 
-    /**
-     * JWT 인증 필터 빈을 생성합니다.
-     *
-     * @return JwtAuthenticationFilter 인스턴스
+    /*
+      JWT 인증 필터 빈을 생성합니다.
+
+      @return JwtAuthenticationFilter 인스턴스
      */
 //    @Bean
 //    public JwtAuthenticationFilter jwtAuthenticationFilter() {

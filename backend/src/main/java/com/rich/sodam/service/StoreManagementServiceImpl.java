@@ -1,9 +1,9 @@
 package com.rich.sodam.service;
 
 import com.rich.sodam.domain.*;
-import com.rich.sodam.dto.EmployeeWageUpdateDto;
-import com.rich.sodam.dto.LocationUpdateDto;
-import com.rich.sodam.dto.StoreRegistrationDto;
+import com.rich.sodam.dto.request.EmployeeWageUpdateDto;
+import com.rich.sodam.dto.request.LocationUpdateDto;
+import com.rich.sodam.dto.request.StoreRegistrationDto;
 import com.rich.sodam.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -25,39 +25,6 @@ public class StoreManagementServiceImpl implements StoreManagementService {
     private final StoreRepository storeRepository;
     private final MasterStoreRelationRepository masterStoreRelationRepository;
     private final EmployeeStoreRelationRepository employeeStoreRelationRepository;
-
-
-    @Override
-    @Transactional
-    public Store registerStoreWithMaster(Long userId, StoreRegistrationDto storeDto) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
-
-        // 사용자를 MASTER로 변경
-        user.changeToMaster();
-
-        // MasterProfile 생성 또는 조회
-        MasterProfile masterProfile;
-        Optional<MasterProfile> masterProfileOptional = masterProfileRepository.findById(userId);
-
-        if (masterProfileOptional.isPresent()) {
-            masterProfile = masterProfileOptional.get();
-        } else {
-            masterProfile = new MasterProfile(user, storeDto.getBusinessLicenseNumber());
-            masterProfileRepository.save(masterProfile);
-        }
-
-        // 매장 생성
-        Store store = getStore(storeDto);
-
-        storeRepository.save(store);
-
-        // 사장-매장 관계 생성
-        MasterStoreRelation relation = new MasterStoreRelation(masterProfile, store);
-        masterStoreRelationRepository.save(relation);
-
-        return store;
-    }
 
     @NotNull
     private static Store getStore(StoreRegistrationDto storeDto) {
@@ -90,6 +57,38 @@ public class StoreManagementServiceImpl implements StoreManagementService {
         if (storeDto.getRadius() != null) {
             store.setRadius(storeDto.getRadius());
         }
+        return store;
+    }
+
+    @Override
+    @Transactional
+    public Store registerStoreWithMaster(Long userId, StoreRegistrationDto storeDto) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
+
+        // 사용자를 MASTER로 변경
+        user.changeToMaster();
+
+        // MasterProfile 생성 또는 조회
+        MasterProfile masterProfile;
+        Optional<MasterProfile> masterProfileOptional = masterProfileRepository.findById(userId);
+
+        if (masterProfileOptional.isPresent()) {
+            masterProfile = masterProfileOptional.get();
+        } else {
+            masterProfile = new MasterProfile(user, storeDto.getBusinessLicenseNumber());
+            masterProfileRepository.save(masterProfile);
+        }
+
+        // 매장 생성
+        Store store = getStore(storeDto);
+
+        storeRepository.save(store);
+
+        // 사장-매장 관계 생성
+        MasterStoreRelation relation = new MasterStoreRelation(masterProfile, store);
+        masterStoreRelationRepository.save(relation);
+
         return store;
     }
 

@@ -1,6 +1,5 @@
-package com.rich.sodam.security.filter;
+package com.rich.sodam.security;
 
-import com.rich.sodam.security.JwtTokenProvider;
 import com.rich.sodam.service.JwtProperties;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -19,7 +18,7 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(JwtAuthenticationFilter.class);
-    
+
     private final JwtTokenProvider jwtTokenProvider;
 
     public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
@@ -29,27 +28,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     /**
      * 요청에서 JWT 토큰을 추출하고 유효성을 검사하여 인증 처리를 수행합니다.
      *
-     * @param request 요청 객체
-     * @param response 응답 객체
+     * @param request     요청 객체
+     * @param response    응답 객체
      * @param filterChain 필터 체인
      * @throws ServletException 서블릿 처리 중 발생하는 예외
-     * @throws IOException 입출력 처리 중 발생하는 예외
+     * @throws IOException      입출력 처리 중 발생하는 예외
      */
     @Override
-    protected void doFilterInternal(@NotNull HttpServletRequest request, 
+    protected void doFilterInternal(@NotNull HttpServletRequest request,
                                     @NotNull HttpServletResponse response,
                                     @NotNull FilterChain filterChain) throws ServletException, IOException {
-        
+
         try {
             // 요청에서 토큰 추출
             String token = jwtTokenProvider.resolveToken(request);
-            
+
             // 토큰 유효성 검사
             if (token != null && token.startsWith(JwtProperties.TOKEN_PREFIX) && jwtTokenProvider.validateToken(token)) {
                 log.debug("JWT 토큰 발견: {}", maskToken(token));
 
                 Long userId = jwtTokenProvider.getUserId(token);
-                
+
                 if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                     log.debug("유효한 JWT 토큰 - 사용자 ID: {}", userId);
                     // 사용자 ID를 기반으로 사용자 정보 로드
@@ -63,10 +62,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (Exception e) {
             log.error("JWT 인증 처리 중 오류 발생: {}", e.getMessage());
         }
-        
+
         filterChain.doFilter(request, response);
     }
-    
+
     /**
      * 토큰 로깅 시 민감한 정보를 가립니다.
      *

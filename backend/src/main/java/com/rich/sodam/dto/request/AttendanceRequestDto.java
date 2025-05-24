@@ -1,4 +1,4 @@
-package com.rich.sodam.dto;
+package com.rich.sodam.dto.request;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;

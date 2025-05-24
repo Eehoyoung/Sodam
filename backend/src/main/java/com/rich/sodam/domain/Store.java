@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.Random;
@@ -16,6 +17,7 @@ import java.util.Random;
 @Entity
 @Table(name = "store")
 @Getter
+@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Store {
 
@@ -26,6 +28,7 @@ public class Store {
 
     @Column(nullable = false)
     private String storeName;
+
 
     @Column(nullable = false, unique = true)
     private String businessNumber; // 사업자등록번호

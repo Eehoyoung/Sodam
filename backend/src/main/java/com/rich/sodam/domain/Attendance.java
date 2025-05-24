@@ -1,4 +1,3 @@
-
 package com.rich.sodam.domain;
 
 import com.rich.sodam.util.DateTimeUtils;
@@ -89,7 +88,8 @@ public class Attendance {
     /**
      * 퇴근 처리
      * 현재 시간을 퇴근 시간으로 기록하고 위치 정보를 저장합니다.
-     * @param latitude 위도
+     *
+     * @param latitude  위도
      * @param longitude 경도
      * @throws IllegalStateException 출근 처리가 되지 않았거나 이미 퇴근 처리된 경우
      */
@@ -107,6 +107,7 @@ public class Attendance {
 
     /**
      * 근무 시간 계산 (분 단위)
+     *
      * @return 근무 시간 (분)
      */
     public long getWorkingTimeInMinutes() {

@@ -33,3 +33,26 @@
 
 3. 애플리케이션 실행
    mvn spring-boot:run
+
+    4. 파일 구조
+       com.rich.sodam
+       ├── config // 애플리케이션 설정
+       │ ├── security // 보안 관련 설정
+       │ └── aop // AOP 설정
+       ├── domain // 엔티티 및 값 객체
+       │ └── type // 열거형
+       ├── dto // DTO 클래스
+       │ ├── request // 요청 DTO
+       │ └── response // 응답 DTO
+       ├── repository // 리포지토리 인터페이스
+       ├── service // 서비스 클래스
+       │ ├── core // 핵심 비즈니스 로직
+       │ └── facade // 다중 서비스 통합 파사드
+       ├── controller // REST 컨트롤러
+       ├── exception // 예외 클래스
+       ├── aop // 관점 지향 모듈
+       │ ├── logging // 로깅 관련 AOP
+       │ └── performance // 성능 측정 AOP
+       ├── util // 유틸리티 클래스
+       └── common // 공통 코드
+

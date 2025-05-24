@@ -2,9 +2,9 @@ package com.rich.sodam.controller;
 
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.User;
-import com.rich.sodam.dto.GeocodingResult;
-import com.rich.sodam.dto.LocationUpdateDto;
-import com.rich.sodam.dto.StoreRegistrationDto;
+import com.rich.sodam.dto.request.LocationUpdateDto;
+import com.rich.sodam.dto.request.StoreRegistrationDto;
+import com.rich.sodam.dto.response.GeocodingResult;
 import com.rich.sodam.service.GeocodingService;
 import com.rich.sodam.service.StoreManagementServiceImpl;
 import lombok.RequiredArgsConstructor;

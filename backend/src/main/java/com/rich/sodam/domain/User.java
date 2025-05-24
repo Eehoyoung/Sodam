@@ -19,6 +19,7 @@ public class User {
     @Column(name = "user_id")
     private Long id;
 
+    @Column(nullable = false, unique = true) // 이메일은 유일해야 함
     private String email;
 
     private String name;

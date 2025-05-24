@@ -1,4 +1,4 @@
-package com.rich.sodam.security.config;
+package com.rich.sodam.config.app;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

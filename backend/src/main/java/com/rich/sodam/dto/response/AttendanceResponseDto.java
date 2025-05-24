@@ -1,4 +1,4 @@
-package com.rich.sodam.dto;
+package com.rich.sodam.dto.response;
 
 import com.rich.sodam.domain.Attendance;
 import lombok.Builder;

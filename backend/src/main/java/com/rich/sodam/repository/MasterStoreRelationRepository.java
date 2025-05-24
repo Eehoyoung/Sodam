@@ -9,5 +9,6 @@ import java.util.List;
 
 public interface MasterStoreRelationRepository extends JpaRepository<MasterStoreRelation, Long> {
     List<MasterStoreRelation> findByMasterProfile(MasterProfile masterProfile);
+
     List<MasterStoreRelation> findByStore(Store store);
 }

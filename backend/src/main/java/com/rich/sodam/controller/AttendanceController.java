@@ -1,8 +1,8 @@
 package com.rich.sodam.controller;
 
 import com.rich.sodam.domain.Attendance;
-import com.rich.sodam.dto.AttendanceRequestDto;
-import com.rich.sodam.dto.AttendanceResponseDto;
+import com.rich.sodam.dto.request.AttendanceRequestDto;
+import com.rich.sodam.dto.response.AttendanceResponseDto;
 import com.rich.sodam.service.AttendanceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
