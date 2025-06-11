@@ -156,8 +156,8 @@ public class KakaoAuthService {
             newUser.setEmail(email);
 
             // 닉네임 설정
-            if (kakaoProfile.getProperties() != null && kakaoProfile.getProperties().getNickname() != null) {
-                newUser.setName("kakao_" + kakaoProfile.getProperties().getNickname());
+            if (kakaoProfile.getKakaoAccount() != null && kakaoProfile.getKakaoAccount().getName() != null) {
+                newUser.setName("kakao_" + kakaoProfile.getKakaoAccount().getName());
             } else {
                 newUser.setName("kakao_user_" + UUID.randomUUID().toString().substring(0, 8));
             }

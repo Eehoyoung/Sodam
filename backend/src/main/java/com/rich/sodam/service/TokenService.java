@@ -28,7 +28,7 @@ public class TokenService {
     public Cookie createJwtCookie(User user, String jwtToken) {
         Cookie jwtCookie = new Cookie(jwtCookieName, jwtToken);
         jwtCookie.setHttpOnly(true);
-        jwtCookie.setSecure(true); // HTTPS에서만 전송
+//        jwtCookie.setSecure(true); // HTTPS 전송
         jwtCookie.setPath("/");
         jwtCookie.setMaxAge(cookieMaxAge);
         return jwtCookie;

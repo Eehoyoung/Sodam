@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -48,6 +49,8 @@ public class Attendance {
 
     private Double checkOutLongitude;
 
+    // Attendance.java에 추가할 메서드
+    @Setter
     private BigDecimal weeklyAllowance;
 
 
@@ -138,11 +141,6 @@ public class Attendance {
     public int calculateDailyWage() {
         double hours = getWorkingTimeInHours();
         return (int) (hours * appliedHourlyWage);
-    }
-
-    // Attendance.java에 추가할 메서드
-    public void setWeeklyAllowance(BigDecimal weeklyAllowance) {
-        this.weeklyAllowance = weeklyAllowance;
     }
 
 }

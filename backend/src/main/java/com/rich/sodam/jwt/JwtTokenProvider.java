@@ -1,4 +1,4 @@
-package com.rich.sodam.security;
+package com.rich.sodam.jwt;
 
 import com.rich.sodam.domain.User;
 import com.rich.sodam.exception.InvalidTokenException;

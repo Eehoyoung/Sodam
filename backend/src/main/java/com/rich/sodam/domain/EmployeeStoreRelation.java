@@ -38,6 +38,7 @@ public class EmployeeStoreRelation {
     // 매장 기준 시급 사용 여부 (기본값 true)
     private Boolean useStoreStandardWage = true;
 
+    // 입사일 설정 메서드 추가
     // 입사일 필드 추가
     private LocalDate hireDate;
 
@@ -53,11 +54,6 @@ public class EmployeeStoreRelation {
         this.customHourlyWage = customHourlyWage;
         this.useStoreStandardWage = (customHourlyWage == null);
         this.hireDate = LocalDate.now(); // 현재 날짜를 기본 입사일로 설정
-    }
-
-    // 입사일 설정 메서드 추가
-    public void setHireDate(LocalDate hireDate) {
-        this.hireDate = hireDate;
     }
 
     // 실제 적용되는 시급 계산

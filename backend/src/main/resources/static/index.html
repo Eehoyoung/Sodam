@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>소담 - 알바 출근부 및 급여 관리 앱</title>
+    <!-- React 및 ReactDOM 라이브러리 로드 -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Babel 로드 (JSX를 JavaScript로 변환) -->
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+
+        #root {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .app-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            margin-top: 0;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+<!-- React 애플리케이션이 마운트될 루트 요소 -->
+<div id="root"></div>
+
+<!-- React 컴포넌트 (JSX 사용) -->
+<script type="text/babel">
+    // App 컴포넌트 정의
+    function App() {
+        return (
+            <div className="app-container">
+                <div className="header">
+                    <h1>소담 - 알바 출근부 및 급여 관리 앱</h1>
+                    <p>파트타임 근무 출석 및 급여 관리를 위한 애플리케이션</p>
+                </div>
+                <div className="content">
+                    <p>이 애플리케이션은 파트타임 근무자의 출석과 급여를 효율적으로 관리하기 위해 설계되었습니다.</p>
+                    <p>주요 기능:</p>
+                    <ul>
+                        <li>출근/퇴근 기록 관리</li>
+                        <li>근무 시간 자동 계산</li>
+                        <li>급여 계산 및 보고서 생성</li>
+                        <li>직원 및 매장 관리</li>
+                    </ul>
+                    <a href="https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=28f9c414aad345b18a52dc62a3373603&redirect_uri=http://localhost:8080/kakao/auth/proc"
+                       className="button">카카오 로그인</a>
+                </div>
+            </div>
+        );
+    }
+
+    // React 애플리케이션 렌더링
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App/>);
+</script>
+</body>
+</html>

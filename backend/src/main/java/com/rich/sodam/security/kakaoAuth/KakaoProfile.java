@@ -43,6 +43,12 @@ public class KakaoProfile {
         @JsonProperty("profile_image_needs_agreement")
         public Boolean profileImageNeedsAgreement;
 
+        @JsonProperty("name_needs_agreement")
+        public Boolean nameNeedsAgreement;
+
+        @JsonProperty("name")
+        public String name;
+
         @JsonProperty("profile")
         public Profile profile;
 

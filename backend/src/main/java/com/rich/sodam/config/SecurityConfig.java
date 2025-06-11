@@ -1,5 +1,7 @@
-package com.rich.sodam.security;
+package com.rich.sodam.config;
 
+import com.rich.sodam.jwt.JwtAuthenticationFilter;
+import com.rich.sodam.jwt.JwtTokenProvider;
 import lombok.Getter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -7,7 +9,10 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
  * Spring Security 설정을 담당하는 구성 클래스
@@ -23,6 +28,16 @@ public class SecurityConfig {
 
     public SecurityConfig(JwtTokenProvider jwtTokenProvider) {
         this.jwtTokenProvider = jwtTokenProvider;
+    }
+
+    @Bean
+    public BCryptPasswordEncoder bCryptPasswordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
     /**
@@ -41,10 +56,9 @@ public class SecurityConfig {
                         .anyRequest().permitAll()  // 모든 요청 허용
                 )
                 .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-
-        // JWT 필터 비활성화
-        // .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+                .cors(cors -> cors.configure(http)) // Enable CORS using the corsFilter bean from WebConfig
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 
         log.info("Spring Security 필터 체인 구성 완료");
         return http.build();
@@ -56,9 +70,9 @@ public class SecurityConfig {
 
       @return JwtAuthenticationFilter 인스턴스
      */
-//    @Bean
-//    public JwtAuthenticationFilter jwtAuthenticationFilter() {
-//        log.debug("JWT 인증 필터 생성");
-//        return new JwtAuthenticationFilter(jwtTokenProvider);
-//    }
+    @Bean
+    public JwtAuthenticationFilter jwtAuthenticationFilter() {
+        log.debug("JWT 인증 필터 생성");
+        return new JwtAuthenticationFilter(jwtTokenProvider);
+    }
 }
