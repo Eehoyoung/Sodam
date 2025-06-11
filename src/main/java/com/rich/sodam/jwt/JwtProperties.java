@@ -1,4 +1,4 @@
-package com.rich.sodam.service;
+package com.rich.sodam.jwt;
 
 public interface JwtProperties {
 

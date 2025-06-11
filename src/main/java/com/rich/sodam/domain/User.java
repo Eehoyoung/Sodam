@@ -30,11 +30,16 @@ public class User {
     // 생성 시간 필드 추가
     private LocalDateTime createdAt;
 
+    private String password;
+
 
     public User(String email, String name) {
         this.email = email;
         this.name = name;
         this.userGrade = UserGrade.NORMAL;
+    }
+
+    public User(Long id, String email, String name, UserGrade userGrade, LocalDateTime createdAt, String password) {
     }
 
     // 역할 변경 메소드

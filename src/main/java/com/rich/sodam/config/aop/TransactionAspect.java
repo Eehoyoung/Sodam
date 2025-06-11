@@ -7,7 +7,6 @@ import org.springframework.aop.support.DefaultPointcutAdvisor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.TransactionManager;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.interceptor.MatchAlwaysTransactionAttributeSource;
 import org.springframework.transaction.interceptor.RollbackRuleAttribute;
 import org.springframework.transaction.interceptor.RuleBasedTransactionAttribute;
@@ -20,7 +19,7 @@ import java.util.Collections;
  */
 @Aspect
 @Configuration
-@EnableTransactionManagement
+// @EnableTransactionManagement 제거 - Spring Boot가 자동으로 설정하도록 함
 public class TransactionAspect {
 
     private static final String TRANSACTION_EXPRESSION =
@@ -35,17 +34,16 @@ public class TransactionAspect {
     @Bean
     public TransactionInterceptor transactionAdvice() {
         // 읽기 전용 메서드에 대한 트랜잭션 속성
-        RuleBasedTransactionAttribute readOnlyAttribute = new RuleBasedTransactionAttribute();
+        RuleBasedTransactionAttribute readOnlyAttribute;
+        readOnlyAttribute = new RuleBasedTransactionAttribute();
         readOnlyAttribute.setReadOnly(true);
 
         // 일반 메서드에 대한 트랜잭션 속성 (Exception 발생시 롤백)
         RuleBasedTransactionAttribute writeAttribute = new RuleBasedTransactionAttribute();
         writeAttribute.setRollbackRules(Collections.singletonList(new RollbackRuleAttribute(Exception.class)));
 
-        // 읽기 전용 메서드 패턴 설정
+        // 트랜잭션 속성 소스 설정
         MatchAlwaysTransactionAttributeSource source = new MatchAlwaysTransactionAttributeSource();
-
-        // 메서드 이름으로 읽기 전용 여부 결정
         source.setTransactionAttribute(writeAttribute);
 
         return new TransactionInterceptor(transactionManager, source);

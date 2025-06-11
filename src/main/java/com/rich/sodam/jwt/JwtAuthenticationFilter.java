@@ -1,6 +1,5 @@
-package com.rich.sodam.security;
+package com.rich.sodam.jwt;
 
-import com.rich.sodam.service.JwtProperties;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
