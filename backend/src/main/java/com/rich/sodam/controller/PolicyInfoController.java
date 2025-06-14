@@ -12,6 +12,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -61,7 +64,8 @@ public class PolicyInfoController {
         return ResponseEntity.ok(responseDto);
     }
 
-    @Operation(summary = "국가정책 정보 전체 조회", description = "모든 국가정책 정보를 조회합니다.")
+    @Operation(summary = "국가정책 정보 전체 조회 (페이지네이션 없음)",
+            description = "모든 국가정책 정보를 조회합니다. 데이터가 많을 경우 /api/policy-info/paged 엔드포인트 사용을 권장합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "국가정책 정보 전체 조회 성공",
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = PolicyInfoResponseDto.class)))),
@@ -70,6 +74,21 @@ public class PolicyInfoController {
     @GetMapping
     public ResponseEntity<List<PolicyInfoResponseDto>> getAllPolicyInfos() {
         List<PolicyInfoResponseDto> responseDtos = policyInfoService.getAllPolicyInfos();
+        return ResponseEntity.ok(responseDtos);
+    }
+
+    @Operation(summary = "국가정책 정보 페이지네이션 조회",
+            description = "페이지네이션을 적용하여 국가정책 정보를 조회합니다. 서버 리소스 최적화를 위해 권장되는 방식입니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "국가정책 정보 페이지네이션 조회 성공",
+                    content = @Content(schema = @Schema(implementation = Page.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @GetMapping("/paged")
+    public ResponseEntity<Page<PolicyInfoResponseDto>> getPolicyInfosWithPagination(
+            @Parameter(description = "페이지 정보 (페이지 번호, 페이지 크기, 정렬 정보 등)")
+            @PageableDefault(size = 10, sort = "id") Pageable pageable) {
+        Page<PolicyInfoResponseDto> responseDtos = policyInfoService.getPolicyInfosWithPagination(pageable);
         return ResponseEntity.ok(responseDtos);
     }
 

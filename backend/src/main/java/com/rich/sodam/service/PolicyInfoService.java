@@ -5,6 +5,11 @@ import com.rich.sodam.dto.request.PolicyInfoRequestDto;
 import com.rich.sodam.dto.response.PolicyInfoResponseDto;
 import com.rich.sodam.repository.PolicyInfoRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +36,10 @@ public class PolicyInfoService {
      * @throws IOException 파일 업로드 중 오류 발생 시
      */
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "policyInfo", key = "'all'"),
+            @CacheEvict(value = "policyInfo", key = "'recent'")
+    })
     public PolicyInfoResponseDto createPolicyInfo(PolicyInfoRequestDto requestDto) throws IOException {
         PolicyInfo policyInfo = new PolicyInfo();
         policyInfo.setTitle(requestDto.getTitle());
@@ -54,6 +63,7 @@ public class PolicyInfoService {
      * @throws IllegalArgumentException 해당 ID의 국가정책 정보가 없을 경우
      */
     @Transactional(readOnly = true)
+    @Cacheable(value = "policyInfo", key = "#id")
     public PolicyInfoResponseDto getPolicyInfo(Long id) {
         PolicyInfo policyInfo = policyInfoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 국가정책 정보가 없습니다. id=" + id));
@@ -61,15 +71,31 @@ public class PolicyInfoService {
     }
 
     /**
-     * 국가정책 정보 전체 조회
+     * 국가정책 정보 전체 조회 (페이지네이션 없음)
+     * 주의: 데이터가 많을 경우 성능 이슈가 발생할 수 있으므로 getPolicyInfosWithPagination 메소드 사용을 권장
      *
      * @return 국가정책 정보 응답 DTO 목록
      */
     @Transactional(readOnly = true)
+    @Cacheable(value = "policyInfo", key = "'all'")
     public List<PolicyInfoResponseDto> getAllPolicyInfos() {
         return policyInfoRepository.findAll().stream()
                 .map(PolicyInfoResponseDto::from)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 국가정책 정보 페이지네이션 조회
+     * 서버 리소스 최적화를 위해 페이지네이션을 적용한 조회 메소드
+     *
+     * @param pageable 페이지 정보 (페이지 번호, 페이지 크기, 정렬 정보 등)
+     * @return 페이지네이션이 적용된 국가정책 정보 응답 DTO 목록
+     */
+    @Transactional(readOnly = true)
+    @Cacheable(value = "policyInfo", key = "'page:' + #pageable.pageNumber + ':' + #pageable.pageSize")
+    public Page<PolicyInfoResponseDto> getPolicyInfosWithPagination(Pageable pageable) {
+        return policyInfoRepository.findAll(pageable)
+                .map(PolicyInfoResponseDto::from);
     }
 
     /**
@@ -78,6 +104,7 @@ public class PolicyInfoService {
      * @return 최근 국가정책 정보 응답 DTO 목록 (최대 5개)
      */
     @Transactional(readOnly = true)
+    @Cacheable(value = "policyInfo", key = "'recent'")
     public List<PolicyInfoResponseDto> getRecentPolicyInfos() {
         return policyInfoRepository.findTop5ByOrderByIdDesc().stream()
                 .map(PolicyInfoResponseDto::from)
@@ -94,6 +121,11 @@ public class PolicyInfoService {
      * @throws IOException              파일 업로드 중 오류 발생 시
      */
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "policyInfo", key = "#id"),
+            @CacheEvict(value = "policyInfo", key = "'all'"),
+            @CacheEvict(value = "policyInfo", key = "'recent'")
+    })
     public PolicyInfoResponseDto updatePolicyInfo(Long id, PolicyInfoRequestDto requestDto) throws IOException {
         PolicyInfo policyInfo = policyInfoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 국가정책 정보가 없습니다. id=" + id));
@@ -121,6 +153,11 @@ public class PolicyInfoService {
      * @throws IllegalArgumentException 해당 ID의 국가정책 정보가 없을 경우
      */
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "policyInfo", key = "#id"),
+            @CacheEvict(value = "policyInfo", key = "'all'"),
+            @CacheEvict(value = "policyInfo", key = "'recent'")
+    })
     public void deletePolicyInfo(Long id) {
         PolicyInfo policyInfo = policyInfoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 국가정책 정보가 없습니다. id=" + id));
