@@ -28,6 +28,7 @@ public interface StoreManagementService {
     void updateStoreStandardWage(Long storeId, Integer standardHourlyWage);
 
     Integer getEmployeeWageInStore(Long employeeId, Long storeId);
+
 }
 
 

@@ -25,6 +25,8 @@ public class StoreManagementServiceImpl implements StoreManagementService {
     private final StoreRepository storeRepository;
     private final MasterStoreRelationRepository masterStoreRelationRepository;
     private final EmployeeStoreRelationRepository employeeStoreRelationRepository;
+    private final ValidationService validateFormat;
+    private final ValidationService validationService;
 
     @NotNull
     private static Store getStore(StoreRegistrationDto storeDto) {
@@ -65,6 +67,18 @@ public class StoreManagementServiceImpl implements StoreManagementService {
     public Store registerStoreWithMaster(Long userId, StoreRegistrationDto storeDto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
+
+        if (!validationService.validateFormat(storeDto.getBusinessNumber())) {
+            throw new IllegalArgumentException("사업자 등록번호 형식이 올바르지 않습니다.");
+        }
+
+        if (!validationService.validateWithTaxOffice(storeDto.getBusinessNumber())) {
+            throw new IllegalArgumentException("유효하지 않은 사업자 등록번호입니다.");
+        }
+
+        if (validationService.isDuplicate(storeDto.getBusinessNumber())) {
+            throw new IllegalArgumentException("이미 등록된 사업자 등록번호입니다.");
+        }
 
         // 사용자를 MASTER로 변경
         user.changeToMaster();
