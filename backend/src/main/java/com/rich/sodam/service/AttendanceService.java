@@ -13,6 +13,9 @@ import com.rich.sodam.repository.EmployeeStoreRelationRepository;
 import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.util.DateTimeUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,6 +53,9 @@ public class AttendanceService {
      * 직원 출근 처리
      */
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "attendance", allEntries = true)
+    })
     public Attendance checkIn(Long employeeId, Long storeId, Double latitude, Double longitude) {
         // 직원과 매장 조회
         EmployeeStoreRelationContext context = getEmployeeStoreContext(employeeId, storeId);
@@ -91,12 +97,15 @@ public class AttendanceService {
      * 직원 퇴근 처리
      */
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "attendance", allEntries = true)
+    })
     public Attendance checkOut(Long employeeId, Long storeId, Double latitude, Double longitude) {
         // 직원과 매장 조회
         EmployeeStoreRelationContext context = getEmployeeStoreContext(employeeId, storeId);
         EmployeeProfile employeeProfile = context.employeeProfile();
 
-        // 오늘의 출퇴근 기록 조회 - DateTimeUtils 활용으로 개선 필요
+        // 오늘의 출퇴근 기록 조회
         List<Attendance> todayAttendances = getTodayAttendances(employeeProfile);
 
         // 출근 기록이 없는지 확인
@@ -117,6 +126,7 @@ public class AttendanceService {
      * 특정 직원의 특정 기간 출퇴근 기록 조회
      */
     @Transactional(readOnly = true)
+    @Cacheable(value = "attendance", key = "'employee:' + #employeeId + ':' + #startDate.toString() + ':' + #endDate.toString()")
     public List<Attendance> getAttendancesByEmployeeAndPeriod(
             Long employeeId, LocalDateTime startDate, LocalDateTime endDate) {
 
@@ -129,6 +139,7 @@ public class AttendanceService {
      * 특정 매장의 특정 기간 출퇴근 기록 조회
      */
     @Transactional(readOnly = true)
+    @Cacheable(value = "attendance", key = "'store:' + #storeId + ':' + #startDate.toString() + ':' + #endDate.toString()")
     public List<Attendance> getAttendancesByStoreAndPeriod(
             Long storeId, LocalDateTime startDate, LocalDateTime endDate) {
 
@@ -180,17 +191,18 @@ public class AttendanceService {
 
     /**
      * 직원, 매장, 그리고 그들의 관계 정보를 한 번에 조회합니다.
+     * Fetch Join을 사용하여 N+1 쿼리 문제를 해결합니다.
      */
     private EmployeeStoreRelationContext getEmployeeStoreContext(Long employeeId, Long storeId) {
-        EmployeeProfile employeeProfile = getEmployeeProfile(employeeId);
-        Store store = getStore(storeId);
-
         EmployeeStoreRelation relation = employeeStoreRelationRepository
-                .findByEmployeeProfileAndStore(employeeProfile, store)
+                .findByEmployeeIdAndStoreIdWithDetails(employeeId, storeId)
                 .orElseThrow(() -> new EntityNotFoundException(
                         String.format("사원(ID: %d)-매장(ID: %d) 관계를 찾을 수 없습니다.", employeeId, storeId)));
 
-        return new EmployeeStoreRelationContext(employeeProfile, store, relation);
+        return new EmployeeStoreRelationContext(
+                relation.getEmployeeProfile(),
+                relation.getStore(),
+                relation);
     }
 
     /**

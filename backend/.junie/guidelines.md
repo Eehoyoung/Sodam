@@ -5,7 +5,7 @@
 This document defines the development standards, procedures, and considerations necessary for the successful completion
 of the 'Part-time Work Attendance and Payroll Management Application' development project. The foundational requirements
 and detailed specifications for this project are outlined in the project proposal report located at
-`C:\Users\LeeHoYoung\IdeaProjects\sodam\ProjectDoc.pdf`.
+`C:\Users\LeeHoYoung\IdeaProjects\sodam\docs\project-management\project_planning_Document.md`.
 
 All participating developers must understand and adhere to these guidelines, referencing the detailed requirements in
 the linked PDF report, to improve code quality, enhance collaboration efficiency, and build a stable, maintainable, and
@@ -13,7 +13,8 @@ performant system.
 
 ## 2. Technology Stack and Environment Setup
 
-The technology stack specified in the project proposal report (`C:\Users\LeeHoYoung\IdeaProjects\sodam\ProjectDoc.pdf`)
+The technology stack specified in the project proposal report (
+`C:\Users\LeeHoYoung\IdeaProjects\sodam\docs\project-management\project_planning_Document.md`)
 is as follows. When setting up the development environment, use the standard development environment and recommended
 versions for the following technologies:
 
@@ -106,7 +107,8 @@ planning) will inevitably lead to significant project setbacks.**
 
 * **Guidelines for Effective Planning, Design, and Management:**
     * **Detailed Requirement Analysis:** Thoroughly analyze the requirements documented in the project proposal (
-      `C:\Users\LeeHoYoung\IdeaProjects\sodam\ProjectDoc.pdf`). Engage stakeholders to clarify ambiguities and define
+      `C:\Users\LeeHoYoung\IdeaProjects\sodam\docs\project-management\project_planning_Document.md`). Engage
+      stakeholders to clarify ambiguities and define
       acceptance criteria for each feature.
     * **Architectural Design:** Design the overall system architecture, considering scalability, reliability, security,
       and maintainability. Choose appropriate patterns (e.g., MVC, Layered Architecture, Microservices if applicable)

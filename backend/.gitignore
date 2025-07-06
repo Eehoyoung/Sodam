@@ -1,4 +1,3 @@
-HELP.md
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
@@ -8,10 +7,15 @@ build/
 **/src/main/resources/application.properties
 .gitignore
 .aiignore
-aiguidelines.md
 .junie
 .junie/
-Report/
+*.yml
+
+# Documentation files (except README.md)
+docs/
+*.md
+*.sql
+!README.md
 
 ### STS ###
 .apt_generated

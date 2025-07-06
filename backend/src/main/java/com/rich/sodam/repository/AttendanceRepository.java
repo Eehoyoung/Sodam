@@ -38,9 +38,12 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
 
     /**
      * 특정 매장의 특정 날짜의 모든 출퇴근 기록 조회
+     * 인덱스 활용을 위해 날짜 범위로 조회
      */
-    @Query("SELECT a FROM Attendance a WHERE a.store = :store AND FUNCTION('DATE', a.checkInTime) = FUNCTION('DATE', :date)")
-    List<Attendance> findByStoreAndDate(@Param("store") Store store, @Param("date") LocalDateTime date);
+    @Query("SELECT a FROM Attendance a WHERE a.store = :store AND a.checkInTime >= :startOfDay AND a.checkInTime < :endOfDay")
+    List<Attendance> findByStoreAndDate(@Param("store") Store store,
+                                        @Param("startOfDay") LocalDateTime startOfDay,
+                                        @Param("endOfDay") LocalDateTime endOfDay);
 
     /**
      * 직원 ID와 매장 ID로 특정 기간의 출퇴근 기록 조회
@@ -56,6 +59,9 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     List<Attendance> findByEmployeeProfile_IdAndCheckInTimeBetweenOrderByCheckInTimeDesc(
             Long employeeId, LocalDateTime startDate, LocalDateTime endDate);
 
+    /**
+     * 직원 ID로 특정 기간의 출퇴근 기록 조회 (PayrollService에서 사용)
+     */
     @Query("SELECT a FROM Attendance a WHERE a.employeeProfile.id = :employeeId AND a.checkInTime BETWEEN :startDate AND :endDate")
     List<Attendance> findByEmployeeIdAndCheckInTimeBetween(
             @Param("employeeId") Long employeeId,
