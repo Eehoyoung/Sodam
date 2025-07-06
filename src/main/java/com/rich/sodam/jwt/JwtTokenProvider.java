@@ -131,9 +131,17 @@ public class JwtTokenProvider {
         }
     }
 
+    /**
+     * HTTP 요청에서 JWT 토큰을 추출합니다.
+     * Authorization 헤더에서 "Bearer " 접두사를 제거하고 토큰만 반환합니다.
+     *
+     * @param req HTTP 요청 객체
+     * @return JWT 토큰 문자열 (Bearer 접두사 제거됨)
+     */
     public String resolveToken(HttpServletRequest req) {
-        if (req.getHeader("Authorization") != null) {
-            return req.getHeader("Authorization");
+        String bearerToken = req.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
         }
         return null;
     }

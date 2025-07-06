@@ -15,7 +15,14 @@ import java.time.LocalDateTime;
  * 직원들의 출근, 퇴근 시간 및 위치 정보를 저장합니다.
  */
 @Entity
-@Table(name = "attendance")
+@Table(name = "attendance", indexes = {
+        @Index(name = "idx_attendance_employee_id", columnList = "employee_id"),
+        @Index(name = "idx_attendance_store_id", columnList = "store_id"),
+        @Index(name = "idx_attendance_check_in_time", columnList = "checkInTime"),
+        @Index(name = "idx_attendance_check_out_time", columnList = "checkOutTime"),
+        @Index(name = "idx_attendance_employee_store", columnList = "employee_id, store_id"),
+        @Index(name = "idx_attendance_date_range", columnList = "checkInTime, checkOutTime")
+})
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Attendance {
@@ -49,7 +56,7 @@ public class Attendance {
 
     private Double checkOutLongitude;
 
-    // Attendance.java에 추가할 메서드
+    // 주휴수당 정보
     @Setter
     private BigDecimal weeklyAllowance;
 

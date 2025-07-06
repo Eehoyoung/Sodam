@@ -4,6 +4,8 @@ import com.rich.sodam.domain.User;
 import com.rich.sodam.domain.type.UserGrade;
 import com.rich.sodam.dto.request.JoinDto;
 import com.rich.sodam.repository.UserRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +26,6 @@ public class UserService {
 
     @Transactional
     public Optional<User> loadUserByLoginId(String email, String password) {
-        BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
         Optional<User> user = userRepository.findByEmail(email);
         if (user.isPresent() && bCryptPasswordEncoder.matches(password, user.get().getPassword())) {
             return user;
@@ -33,11 +34,13 @@ public class UserService {
     }
 
 
+    @Cacheable(value = "users", key = "#email")
     public Optional<User> findByEmail(String email) {
         return userRepository.findByEmail(email);
     }
 
     @jakarta.transaction.Transactional
+    @CacheEvict(value = "users", key = "#joinDto.email")
     public User joinUser(JoinDto joinDto) {
         User user = new User();
         String password = bCryptPasswordEncoder.encode(joinDto.getPassword());

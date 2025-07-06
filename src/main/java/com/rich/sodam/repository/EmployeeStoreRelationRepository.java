@@ -4,6 +4,8 @@ import com.rich.sodam.domain.EmployeeProfile;
 import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.Store;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -43,4 +45,15 @@ public interface EmployeeStoreRelationRepository extends JpaRepository<EmployeeS
      * 특정 매장의 모든 관계 조회 (ID 기반)
      */
     List<EmployeeStoreRelation> findByStore_Id(Long storeId);
+
+    /**
+     * 직원 ID와 매장 ID로 관계 조회 (Fetch Join 사용하여 N+1 문제 해결)
+     */
+    @Query("SELECT esr FROM EmployeeStoreRelation esr " +
+            "JOIN FETCH esr.employeeProfile " +
+            "JOIN FETCH esr.store " +
+            "WHERE esr.employeeProfile.id = :employeeId AND esr.store.id = :storeId")
+    Optional<EmployeeStoreRelation> findByEmployeeIdAndStoreIdWithDetails(
+            @Param("employeeId") Long employeeId,
+            @Param("storeId") Long storeId);
 }

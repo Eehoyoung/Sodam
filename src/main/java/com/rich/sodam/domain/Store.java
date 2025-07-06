@@ -5,7 +5,6 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.Random;
@@ -17,7 +16,6 @@ import java.util.Random;
 @Entity
 @Table(name = "store")
 @Getter
-@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Store {
 
@@ -182,21 +180,6 @@ public class Store {
         return "ST" + System.currentTimeMillis() + (new Random().nextInt(900) + 100);
     }
 
-    // 두 지점 간 거리 계산 (Haversine 공식)
-    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-        final int R = 6371; // 지구 반지름 (km)
-
-        double latDistance = Math.toRadians(lat2 - lat1);
-        double lonDistance = Math.toRadians(lon2 - lon1);
-
-        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
-
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-        return R * c * 1000; // 미터로 변환
-    }
 
     private void validateBusinessNumber(String businessNumber) {
         if (businessNumber == null || !businessNumber.matches("\\d{10}")) {
@@ -208,6 +191,46 @@ public class Store {
         if (wage == null || wage <= 0) {
             throw new IllegalArgumentException("시급은 양수여야 합니다.");
         }
+    }
+
+    // 필요한 setter 메서드들 (캡슐화를 위해 개별적으로 제공)
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void setFullAddress(String fullAddress) {
+        this.fullAddress = fullAddress;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void setRoadAddress(String roadAddress) {
+        this.roadAddress = roadAddress;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void setJibunAddress(String jibunAddress) {
+        this.jibunAddress = jibunAddress;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void setRadius(Integer radius) {
+        if (radius != null && radius <= 0) {
+            throw new IllegalArgumentException("반경은 양수여야 합니다.");
+        }
+        this.radius = radius;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void setStoreStandardHourWage(Integer storeStandardHourWage) {
+        validateStandardWage(storeStandardHourWage);
+        this.storeStandardHourWage = storeStandardHourWage;
+        this.updatedAt = LocalDateTime.now();
     }
 }
 
