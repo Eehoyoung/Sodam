@@ -39,27 +39,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     @NotNull FilterChain filterChain) throws ServletException, IOException {
 
         try {
-            // 요청에서 토큰 추출
+            // 요청에서 토큰 추출 (resolveToken에서 이미 "Bearer " 접두사 제거됨)
             String token = jwtTokenProvider.resolveToken(request);
 
-            // 토큰 유효성 검사
-            if (token != null && token.startsWith(JwtProperties.TOKEN_PREFIX) && jwtTokenProvider.validateToken(token)) {
-                log.debug("JWT 토큰 발견: {}", maskToken(token));
+            // 토큰 유효성 검사 및 인증 처리
+            if (token != null && jwtTokenProvider.validateToken(token)) {
+                log.debug("유효한 JWT 토큰 발견: {}", maskToken(token));
 
-                Long userId = jwtTokenProvider.getUserId(token);
+                // 현재 SecurityContext에 인증 정보가 없는 경우에만 처리
+                if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                    // JWT 토큰에서 인증 정보 추출 및 SecurityContext에 설정
+                    org.springframework.security.core.Authentication authentication =
+                            jwtTokenProvider.getAuthentication(token);
 
-                if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    log.debug("유효한 JWT 토큰 - 사용자 ID: {}", userId);
-                    // 사용자 ID를 기반으로 사용자 정보 로드
-                    // 인증 객체 생성 및 SecurityContext에 설정
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                    Long userId = jwtTokenProvider.getUserId(token);
+                    log.debug("JWT 인증 완료 - 사용자 ID: {}", userId);
                 } else {
-                    log.debug("유효하지 않은 JWT 토큰 또는 이미 인증된 사용자");
+                    log.debug("이미 인증된 사용자입니다.");
                 }
             } else {
-                log.debug("JWT 토큰이 없거나 Bearer 형식이 아님");
+                log.debug("JWT 토큰이 없거나 유효하지 않습니다.");
             }
         } catch (Exception e) {
             log.error("JWT 인증 처리 중 오류 발생: {}", e.getMessage());
+            // 인증 실패 시 SecurityContext 초기화
+            SecurityContextHolder.clearContext();
         }
 
         filterChain.doFilter(request, response);
