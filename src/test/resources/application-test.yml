@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: sodam-test
+  datasource:
+    driver-class-name: ${DB_DRIVER_CLASS_NAME:com.mysql.cj.jdbc.Driver}
+    url: ${DB_TEST_URL:jdbc:mysql://localhost:3306/sodam_test?serverTime=Asia/Seoul&createDatabaseIfNotExist=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:testPassword123}
+    hikari:
+      auto-commit: false
+      transaction-isolation: TRANSACTION_READ_COMMITTED
+      minimum-idle: 1
+      maximum-pool-size: 5
+      idle-timeout: 300000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      pool-name: SodamTestHikariPool
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        format_sql: true
+        order_inserts: true
+        order_updates: true
+        jdbc.batch_size: 30
+        jdbc.batch_versioned_data: true
+        query.in_clause_parameter_padding: true
+        query.plan_cache_max_size: 2048
+        generate_statistics: false
+    open-in-view: false
+    show-sql: true
+
+  sql:
+    init:
+      mode: always
+
+# JWT 테스트 설정
+jwt:
+  secret: ${JWT_SECRET:testSecretKeyForTestingPurposeOnly123456789}
+  token-validity-in-seconds: ${JWT_EXPIRATION:900}
+  refresh-token-validity-in-days: ${JWT_REFRESH_EXPIRATION:7}
+  cookie-name: ${JWT_COOKIE_NAME:sodam_jwt_test}
+  cookie-max-age: ${JWT_COOKIE_MAX_AGE:900}
+
+# 국세청 API 테스트 설정
+tax:
+  office:
+    api:
+      key: ${NTS_API_KEY:test_api_key}
