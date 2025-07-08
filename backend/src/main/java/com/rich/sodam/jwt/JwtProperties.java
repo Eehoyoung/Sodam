@@ -1,9 +1,11 @@
 package com.rich.sodam.jwt;
 
+/**
+ * JWT 관련 상수를 정의하는 인터페이스
+ * 민감한 정보는 환경변수로 관리하고, 여기서는 공통 상수만 정의
+ */
 public interface JwtProperties {
 
-    String SECRET = "2b$12$KIX2P6E/7N9yC6n6t1eO9uY5tC6k0e9h8f0K1hY4kz0e9f8f5eF1O";
-    int EXPIRATION_TIME = 864000000; //60000 1분 //864000000 10일
     String TOKEN_PREFIX = "Bearer ";
     String HEADER_STRING = "Authorization";
 }

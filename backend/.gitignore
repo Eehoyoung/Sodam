@@ -1,26 +1,59 @@
+# =============================================================================
+# 소담(SODAM) 프로젝트 .gitignore 파일
+# 엔터프라이즈급 표준 설정
+# =============================================================================
+
+# =============================================================================
+# 환경변수 및 민감 정보 파일 (보안상 중요)
+# =============================================================================
+# 환경변수 파일들
+.env
+.env.*
+!.env.example
+!.env.template
+
+# 민감한 설정 파일들
+**/src/main/resources/application-prod.yml
+**/src/main/resources/application-production.yml
+**/src/main/resources/application-local.yml
+secrets/
+config/secrets/
+
+# =============================================================================
+# 빌드 관련 파일
+# =============================================================================
+# Gradle
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
-**/src/main/resources/application.yml
-**/src/main/resources/application.properties
-.gitignore
-.aiignore
 
-# Junie directory
-.junie/
-.junie
+# Maven (향후 사용 가능성 대비)
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
 
-*.yml
+# =============================================================================
+# IDE 관련 파일
+# =============================================================================
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
 
-# Documentation files (except README.md)
-docs/
-*.md
-*.sql
-!README.md
-
-### STS ###
+### Eclipse/STS ###
 .apt_generated
 .classpath
 .factorypath
@@ -32,15 +65,6 @@ bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
 
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
-
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
@@ -50,3 +74,167 @@ out/
 
 ### VS Code ###
 .vscode/
+*.code-workspace
+
+# =============================================================================
+# 운영체제 관련 파일
+# =============================================================================
+### Windows ###
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+### macOS ###
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+### Linux ###
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# =============================================================================
+# 로그 및 임시 파일
+# =============================================================================
+# 로그 파일
+logs/
+*.log
+*.log.*
+log/
+
+# 임시 파일
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.#*
+
+# =============================================================================
+# 데이터베이스 관련
+# =============================================================================
+# H2 데이터베이스 파일
+*.db
+*.h2.db
+*.mv.db
+*.trace.db
+
+# SQLite
+*.sqlite
+*.sqlite3
+
+# =============================================================================
+# 테스트 관련
+# =============================================================================
+# 테스트 결과
+test-results/
+test-output/
+coverage/
+.nyc_output/
+
+# JaCoCo
+*.exec
+
+# =============================================================================
+# 패키지 및 배포 관련
+# =============================================================================
+# JAR/WAR 파일 (빌드 결과물)
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# 단, Gradle Wrapper JAR는 포함
+!gradle/wrapper/gradle-wrapper.jar
+
+# =============================================================================
+# 개발 도구 관련
+# =============================================================================
+# Junie AI 도구
+.junie/
+.junie
+.aiignore
+
+# 코드 품질 도구
+.sonar/
+.qodana/
+
+# =============================================================================
+# 업로드 및 사용자 생성 파일
+# =============================================================================
+# 파일 업로드 디렉토리
+uploads/
+files/
+attachments/
+
+# 사용자 생성 컨텐츠
+user-content/
+media/
+
+# =============================================================================
+# 캐시 및 성능 관련
+# =============================================================================
+# Spring Boot DevTools
+.spring-boot-devtools.properties
+
+# 캐시 파일
+.cache/
+cache/
+
+# =============================================================================
+# 문서화 (선택적 제외)
+# =============================================================================
+# 자동 생성된 문서만 제외, 수동 작성 문서는 포함
+docs/generated/
+docs/api/generated/
+
+# =============================================================================
+# 기타
+# =============================================================================
+# 백업 파일
+*.bak
+*.backup
+*.old
+
+# 압축 파일
+*.7z
+*.dmg
+*.gz
+*.iso
+*.tar
+*.zip
+
+# 실행 파일
+*.exe
+*.out
+*.app

@@ -1,21 +1,26 @@
 package com.rich.sodam.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisPassword;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -24,10 +29,12 @@ import java.util.Map;
 /**
  * Redis 설정 클래스
  * JWT 토큰 저장 및 캐시 전략을 관리합니다.
+ * 엔터프라이즈급 표준에 따른 Redis 설정을 제공합니다.
  */
+@Slf4j
 @Configuration
 @EnableCaching
-public class RedisConfig {
+public class RedisConfig implements CachingConfigurer {
 
     @Value("${spring.data.redis.host:localhost}")
     private String redisHost;
@@ -38,35 +45,79 @@ public class RedisConfig {
     @Value("${spring.data.redis.database:0}")
     private int redisDatabase;
 
+    private final CustomCacheErrorHandler customCacheErrorHandler;
+    @Value("${spring.data.redis.password:#{null}}")
+    private String redisPassword;
+    @Value("${spring.data.redis.timeout:5000}")
+    private long redisTimeout;
+    @Value("${spring.data.redis.lettuce.pool.max-active:8}")
+    private int maxActive;
+    @Value("${spring.data.redis.lettuce.pool.max-idle:8}")
+    private int maxIdle;
+    @Value("${spring.data.redis.lettuce.pool.min-idle:0}")
+    private int minIdle;
+    @Value("${spring.data.redis.lettuce.pool.max-wait:-1}")
+    private long maxWait;
+
+    public RedisConfig(CustomCacheErrorHandler customCacheErrorHandler) {
+        this.customCacheErrorHandler = customCacheErrorHandler;
+    }
+
     /**
      * JWT 토큰을 저장하는 데 사용되는 Redis 데이터베이스 연결 설정
+     * 엔터프라이즈급 연결 풀 설정과 보안 설정을 포함합니다.
      */
     @Bean("jwtConnectionFactory")
     public LettuceConnectionFactory jwtConnectionFactory() {
+        log.info("JWT Redis 연결 팩토리 초기화 - 호스트: {}, 포트: {}, DB: {}", redisHost, redisPort, redisDatabase);
+
         RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration(redisHost, redisPort);
         redisConfig.setDatabase(redisDatabase);
 
+        // 비밀번호 설정 (환경변수에서 제공되는 경우)
+        if (StringUtils.hasText(redisPassword)) {
+            redisConfig.setPassword(RedisPassword.of(redisPassword));
+            log.debug("JWT Redis 연결에 비밀번호 설정 완료");
+        }
+
+        // 연결 풀 설정을 포함한 Lettuce 클라이언트 구성
         LettuceClientConfiguration lettuceConfig = LettuceClientConfiguration.builder()
-                .commandTimeout(Duration.ofSeconds(5))
+                .commandTimeout(Duration.ofMillis(redisTimeout))
+                .shutdownTimeout(Duration.ofMillis(100))
                 .build();
 
-        return new LettuceConnectionFactory(redisConfig, lettuceConfig);
+        LettuceConnectionFactory factory = new LettuceConnectionFactory(redisConfig, lettuceConfig);
+        factory.setValidateConnection(true);
+        return factory;
     }
 
     /**
      * 캐시용 Redis 연결 팩토리 (별도 데이터베이스 사용)
+     * 엔터프라이즈급 연결 풀 설정과 보안 설정을 포함합니다.
      */
     @Bean("cacheConnectionFactory")
     @Primary
     public LettuceConnectionFactory cacheConnectionFactory() {
+        log.info("캐시 Redis 연결 팩토리 초기화 - 호스트: {}, 포트: {}, DB: 1", redisHost, redisPort);
+
         RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration(redisHost, redisPort);
         redisConfig.setDatabase(1); // 캐시용으로 별도 데이터베이스 사용
 
+        // 비밀번호 설정 (환경변수에서 제공되는 경우)
+        if (StringUtils.hasText(redisPassword)) {
+            redisConfig.setPassword(RedisPassword.of(redisPassword));
+            log.debug("캐시 Redis 연결에 비밀번호 설정 완료");
+        }
+
+        // Lettuce 클라이언트 구성
         LettuceClientConfiguration lettuceConfig = LettuceClientConfiguration.builder()
-                .commandTimeout(Duration.ofSeconds(5))
+                .commandTimeout(Duration.ofMillis(redisTimeout))
+                .shutdownTimeout(Duration.ofMillis(100))
                 .build();
 
-        return new LettuceConnectionFactory(redisConfig, lettuceConfig);
+        LettuceConnectionFactory factory = new LettuceConnectionFactory(redisConfig, lettuceConfig);
+        factory.setValidateConnection(true);
+        return factory;
     }
 
     /**
@@ -103,13 +154,27 @@ public class RedisConfig {
 
     /**
      * Redis 캐시 매니저 설정
-     * 각 캐시별로 다른 TTL 설정
+     * 각 캐시별로 다른 TTL 설정 및 에러 핸들링 포함
      */
     @Bean
+    @Override
+    public CacheManager cacheManager() {
+        return cacheManager(cacheConnectionFactory());
+    }
+
+    /**
+     * 캐시 매니저 구현체
+     */
     public CacheManager cacheManager(@Qualifier("cacheConnectionFactory") RedisConnectionFactory connectionFactory) {
+        log.info("Redis 캐시 매니저 초기화");
+
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(30)) // 기본 30분 TTL
-                .disableCachingNullValues();
+                .disableCachingNullValues()
+                .serializeKeysWith(org.springframework.data.redis.serializer.RedisSerializationContext.SerializationPair
+                        .fromSerializer(new StringRedisSerializer()))
+                .serializeValuesWith(org.springframework.data.redis.serializer.RedisSerializationContext.SerializationPair
+                        .fromSerializer(new GenericJackson2JsonRedisSerializer()));
 
         // 캐시별 개별 설정
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
@@ -126,12 +191,26 @@ public class RedisConfig {
         // 급여 정보 캐시 (4시간)
         cacheConfigurations.put("payroll", defaultConfig.entryTtl(Duration.ofHours(4)));
 
-        // 정책 정보 캐시 (1시간) - CacheConfig에서 이전된 설정
+        // 정책 정보 캐시 (1시간)
         cacheConfigurations.put("policyInfo", defaultConfig.entryTtl(Duration.ofHours(1)));
+
+        // 세션 캐시 (30분)
+        cacheConfigurations.put("sessions", defaultConfig.entryTtl(Duration.ofMinutes(30)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
                 .withInitialCacheConfigurations(cacheConfigurations)
+                .transactionAware() // 트랜잭션 지원
                 .build();
+    }
+
+    /**
+     * 캐시 에러 핸들러 등록
+     * CachingConfigurer 인터페이스 구현
+     */
+    @Override
+    public CacheErrorHandler errorHandler() {
+        log.info("커스텀 캐시 에러 핸들러 등록");
+        return customCacheErrorHandler;
     }
 }
