@@ -7,9 +7,14 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Random;
+import java.util.UUID;
 
 @Entity
+@Table(name = "employee_profile", indexes = {
+        @Index(name = "idx_employee_number", columnList = "employeeNumber"),
+        @Index(name = "idx_employee_user_id", columnList = "user_id"),
+        @Index(name = "idx_employee_weekly_allowance", columnList = "startWeeklyAllowance, endWeeklyAllowance")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -40,6 +45,6 @@ public class EmployeeProfile {
 
     // 사원번호 생성 메서드
     private String generateEmployeeNumber() {
-        return "EMP" + System.currentTimeMillis() + (new Random().nextInt(900) + 100);
+        return "EMP" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 }

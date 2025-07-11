@@ -1,5 +1,9 @@
 package com.rich.sodam.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.rich.sodam.config.app.AppProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,21 +50,21 @@ public class RedisConfig implements CachingConfigurer {
     private int redisDatabase;
 
     private final CustomCacheErrorHandler customCacheErrorHandler;
+    private final AppProperties appProperties;
     @Value("${spring.data.redis.password:#{null}}")
     private String redisPassword;
-    @Value("${spring.data.redis.timeout:5000}")
-    private long redisTimeout;
+    @Value("${spring.data.redis.timeout:5000ms}")
+    private Duration redisTimeout;
     @Value("${spring.data.redis.lettuce.pool.max-active:8}")
     private int maxActive;
     @Value("${spring.data.redis.lettuce.pool.max-idle:8}")
     private int maxIdle;
     @Value("${spring.data.redis.lettuce.pool.min-idle:0}")
     private int minIdle;
-    @Value("${spring.data.redis.lettuce.pool.max-wait:-1}")
-    private long maxWait;
 
-    public RedisConfig(CustomCacheErrorHandler customCacheErrorHandler) {
+    public RedisConfig(CustomCacheErrorHandler customCacheErrorHandler, AppProperties appProperties) {
         this.customCacheErrorHandler = customCacheErrorHandler;
+        this.appProperties = appProperties;
     }
 
     /**
@@ -82,7 +86,7 @@ public class RedisConfig implements CachingConfigurer {
 
         // 연결 풀 설정을 포함한 Lettuce 클라이언트 구성
         LettuceClientConfiguration lettuceConfig = LettuceClientConfiguration.builder()
-                .commandTimeout(Duration.ofMillis(redisTimeout))
+                .commandTimeout(redisTimeout)
                 .shutdownTimeout(Duration.ofMillis(100))
                 .build();
 
@@ -98,10 +102,11 @@ public class RedisConfig implements CachingConfigurer {
     @Bean("cacheConnectionFactory")
     @Primary
     public LettuceConnectionFactory cacheConnectionFactory() {
-        log.info("캐시 Redis 연결 팩토리 초기화 - 호스트: {}, 포트: {}, DB: 1", redisHost, redisPort);
+        int cacheDatabase = appProperties.getRedis().getCacheDatabase();
+        log.info("캐시 Redis 연결 팩토리 초기화 - 호스트: {}, 포트: {}, DB: {}", redisHost, redisPort, cacheDatabase);
 
         RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration(redisHost, redisPort);
-        redisConfig.setDatabase(1); // 캐시용으로 별도 데이터베이스 사용
+        redisConfig.setDatabase(cacheDatabase); // 캐시용으로 별도 데이터베이스 사용 (설정에서 가져옴)
 
         // 비밀번호 설정 (환경변수에서 제공되는 경우)
         if (StringUtils.hasText(redisPassword)) {
@@ -111,7 +116,7 @@ public class RedisConfig implements CachingConfigurer {
 
         // Lettuce 클라이언트 구성
         LettuceClientConfiguration lettuceConfig = LettuceClientConfiguration.builder()
-                .commandTimeout(Duration.ofMillis(redisTimeout))
+                .commandTimeout(redisTimeout)
                 .shutdownTimeout(Duration.ofMillis(100))
                 .build();
 
@@ -137,6 +142,24 @@ public class RedisConfig implements CachingConfigurer {
     }
 
     /**
+     * PageImpl 직렬화 문제를 해결하는 커스텀 ObjectMapper 생성
+     */
+    private ObjectMapper createCacheObjectMapper() {
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        // Java 8 시간 모듈 등록
+        objectMapper.registerModule(new JavaTimeModule());
+
+        // 타입 정보 포함하여 직렬화 (PageImpl 등 복잡한 객체 지원)
+        objectMapper.activateDefaultTyping(
+                LaissezFaireSubTypeValidator.instance,
+                ObjectMapper.DefaultTyping.NON_FINAL
+        );
+
+        return objectMapper;
+    }
+
+    /**
      * 캐시용 Redis 템플릿
      */
     @Bean("cacheRedisTemplate")
@@ -144,10 +167,15 @@ public class RedisConfig implements CachingConfigurer {
                                                             RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
+
+        // 커스텀 ObjectMapper를 사용하는 직렬화기 생성
+        GenericJackson2JsonRedisSerializer jsonSerializer =
+                new GenericJackson2JsonRedisSerializer(createCacheObjectMapper());
+
         template.setKeySerializer(new StringRedisSerializer());
-        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+        template.setValueSerializer(jsonSerializer);
         template.setHashKeySerializer(new StringRedisSerializer());
-        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
+        template.setHashValueSerializer(jsonSerializer);
         template.afterPropertiesSet();
         return template;
     }
@@ -159,14 +187,12 @@ public class RedisConfig implements CachingConfigurer {
     @Bean
     @Override
     public CacheManager cacheManager() {
-        return cacheManager(cacheConnectionFactory());
-    }
-
-    /**
-     * 캐시 매니저 구현체
-     */
-    public CacheManager cacheManager(@Qualifier("cacheConnectionFactory") RedisConnectionFactory connectionFactory) {
+        RedisConnectionFactory connectionFactory = cacheConnectionFactory();
         log.info("Redis 캐시 매니저 초기화");
+
+        // 커스텀 ObjectMapper를 사용하는 직렬화기 생성
+        GenericJackson2JsonRedisSerializer jsonSerializer =
+                new GenericJackson2JsonRedisSerializer(createCacheObjectMapper());
 
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(30)) // 기본 30분 TTL
@@ -174,7 +200,7 @@ public class RedisConfig implements CachingConfigurer {
                 .serializeKeysWith(org.springframework.data.redis.serializer.RedisSerializationContext.SerializationPair
                         .fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(org.springframework.data.redis.serializer.RedisSerializationContext.SerializationPair
-                        .fromSerializer(new GenericJackson2JsonRedisSerializer()));
+                        .fromSerializer(jsonSerializer));
 
         // 캐시별 개별 설정
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();

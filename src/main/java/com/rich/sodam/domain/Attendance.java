@@ -150,4 +150,8 @@ public class Attendance {
         return (int) (hours * appliedHourlyWage);
     }
 
+    @PostLoad
+    public void postLoad() {
+
+    }
 }

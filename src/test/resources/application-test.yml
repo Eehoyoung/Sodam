@@ -1,20 +1,18 @@
+# 애플리케이션 테스트 설정
+app:
+  store:
+    default-radius: 50  # 테스트용 작은 반경
+  redis:
+    cache-database: 2   # 테스트용 별도 데이터베이스
+
 spring:
   application:
     name: sodam-test
   datasource:
     driver-class-name: ${DB_DRIVER_CLASS_NAME:com.mysql.cj.jdbc.Driver}
-    url: ${DB_TEST_URL:jdbc:mysql://localhost:3306/sodam_test?serverTime=Asia/Seoul&createDatabaseIfNotExist=true}
+    url: ${DB_TEST_URL:jdbc:mysql://localhost:3306/sodam?serverTimezone=Asia/Seoul&createDatabaseIfNotExist=true}
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:testPassword123}
-    hikari:
-      auto-commit: false
-      transaction-isolation: TRANSACTION_READ_COMMITTED
-      minimum-idle: 1
-      maximum-pool-size: 5
-      idle-timeout: 300000
-      max-lifetime: 1800000
-      connection-timeout: 30000
-      pool-name: SodamTestHikariPool
+    password: ${DB_PASSWORD:#{null}}
 
   jpa:
     hibernate:
@@ -36,9 +34,23 @@ spring:
     init:
       mode: always
 
+  # Redis 테스트 설정
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 2
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 2
+          max-idle: 2
+          min-idle: 0
+          max-wait: -1ms
+
 # JWT 테스트 설정
 jwt:
-  secret: ${JWT_SECRET:testSecretKeyForTestingPurposeOnly123456789}
+  secret: ${JWT_SECRET:#{null}}
   token-validity-in-seconds: ${JWT_EXPIRATION:900}
   refresh-token-validity-in-days: ${JWT_REFRESH_EXPIRATION:7}
   cookie-name: ${JWT_COOKIE_NAME:sodam_jwt_test}

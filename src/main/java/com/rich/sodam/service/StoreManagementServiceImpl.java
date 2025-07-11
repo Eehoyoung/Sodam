@@ -4,10 +4,12 @@ import com.rich.sodam.domain.*;
 import com.rich.sodam.dto.request.EmployeeWageUpdateDto;
 import com.rich.sodam.dto.request.LocationUpdateDto;
 import com.rich.sodam.dto.request.StoreRegistrationDto;
+import com.rich.sodam.exception.EntityNotFoundException;
 import com.rich.sodam.repository.*;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -155,6 +157,7 @@ public class StoreManagementServiceImpl implements StoreManagementService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "stores", key = "'wage:' + #wageDto.employeeId + ':' + #wageDto.storeId")
     public void updateEmployeeWage(EmployeeWageUpdateDto wageDto) {
         EmployeeProfile employeeProfile = employeeProfileRepository.findById(wageDto.getEmployeeId())
                 .orElseThrow(() -> new EntityNotFoundException("사원 프로필을 찾을 수 없습니다."));
@@ -191,6 +194,7 @@ public class StoreManagementServiceImpl implements StoreManagementService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "stores", key = "'wage:' + #employeeId + ':' + #storeId")
     public Integer getEmployeeWageInStore(Long employeeId, Long storeId) {
         EmployeeProfile employeeProfile = employeeProfileRepository.findById(employeeId)
                 .orElseThrow(() -> new EntityNotFoundException("사원 프로필을 찾을 수 없습니다."));
@@ -208,6 +212,7 @@ public class StoreManagementServiceImpl implements StoreManagementService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "stores", key = "'master:' + #userId")
     public List<Store> getStoresByMaster(Long userId) {
         MasterProfile masterProfile = masterProfileRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사장 프로필을 찾을 수 없습니다."));

@@ -31,8 +31,13 @@ public class SecurityConfig {
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
+    public BCryptPasswordEncoder bCryptPasswordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return bCryptPasswordEncoder();
     }
 
     /**
@@ -60,7 +65,6 @@ public class SecurityConfig {
         log.info("Spring Security 필터 체인 구성 완료");
         return http.build();
     }
-
 
     /*
       JWT 인증 필터 빈을 생성합니다.

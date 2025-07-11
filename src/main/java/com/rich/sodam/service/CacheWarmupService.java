@@ -58,20 +58,31 @@ public class CacheWarmupService {
         try {
             log.info("정책 정보 캐시 워밍업 시작");
 
+            // 전체 정책 정보 개수 확인
+            List<PolicyInfo> allPolicies = policyInfoRepository.findAll();
+            int totalCount = allPolicies.size();
+
+            if (totalCount == 0) {
+                log.info("정책 정보 캐시 워밍업 완료 - 초기 데이터 없음 (관리자가 정책 정보를 추가하면 자동으로 캐시됩니다)");
+                return;
+            }
+
             // 최근 정책 정보 캐시
             policyInfoService.getRecentPolicyInfos();
 
             // 전체 정책 정보 캐시 (데이터가 많지 않은 경우에만)
-            List<PolicyInfo> allPolicies = policyInfoRepository.findAll();
-            if (allPolicies.size() <= 100) { // 100개 이하인 경우에만 전체 캐시
+            if (totalCount <= 100) { // 100개 이하인 경우에만 전체 캐시
                 policyInfoService.getAllPolicyInfos();
+                log.debug("전체 정책 정보 캐시 완료 - {} 개 항목", totalCount);
+            } else {
+                log.debug("정책 정보가 많아 전체 캐시 생략 - {} 개 항목", totalCount);
             }
 
             // 첫 번째 페이지 캐시
             Pageable firstPage = PageRequest.of(0, 20);
             policyInfoService.getPolicyInfosWithPagination(firstPage);
 
-            log.info("정책 정보 캐시 워밍업 완료 - {} 개 항목", allPolicies.size());
+            log.info("정책 정보 캐시 워밍업 완료 - {} 개 항목 처리", totalCount);
         } catch (Exception e) {
             log.error("정책 정보 캐시 워밍업 실패: {}", e.getMessage());
         }
@@ -87,16 +98,23 @@ public class CacheWarmupService {
             // 최근 생성된 사용자 20명의 이메일로 캐시 워밍업
             List<User> recentUsers = userRepository.findTop20ByOrderByCreatedAtDesc();
 
+            if (recentUsers.isEmpty()) {
+                log.info("사용자 정보 캐시 워밍업 완료 - 등록된 사용자 없음 (사용자가 가입하면 자동으로 캐시됩니다)");
+                return;
+            }
+
+            int successCount = 0;
             for (User user : recentUsers) {
                 try {
                     // 캐시에 직접 저장
                     cacheManager.getCache("users").put(user.getEmail(), java.util.Optional.of(user));
+                    successCount++;
                 } catch (Exception e) {
                     log.warn("사용자 캐시 워밍업 실패 - 사용자 ID: {}, 오류: {}", user.getId(), e.getMessage());
                 }
             }
 
-            log.info("사용자 정보 캐시 워밍업 완료 - {} 명", recentUsers.size());
+            log.info("사용자 정보 캐시 워밍업 완료 - 총 {} 명 중 {} 명 캐시 성공", recentUsers.size(), successCount);
         } catch (Exception e) {
             log.error("사용자 정보 캐시 워밍업 실패: {}", e.getMessage());
         }
