@@ -7,14 +7,21 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.Random;
+import java.util.UUID;
 
 /**
  * 매장 정보를 나타내는 엔티티 클래스
  * 매장의 기본 정보, 위치 정보, 시급 정보 등을 관리합니다.
  */
 @Entity
-@Table(name = "store")
+@Table(name = "store", indexes = {
+        @Index(name = "idx_store_business_number", columnList = "businessNumber"),
+        @Index(name = "idx_store_code", columnList = "storeCode"),
+        @Index(name = "idx_store_name", columnList = "storeName"),
+        @Index(name = "idx_store_location", columnList = "latitude, longitude"),
+        @Index(name = "idx_store_created_at", columnList = "createdAt"),
+        @Index(name = "idx_store_updated_at", columnList = "updatedAt")
+})
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Store {
@@ -48,7 +55,7 @@ public class Store {
     private Double longitude;      // 경도
 
     @Column(nullable = false)
-    private Integer radius = 100;  // 출퇴근 인증 반경(미터)
+    private Integer radius;  // 출퇴근 인증 반경(미터)
 
     @Column(nullable = false)
     private Integer storeStandardHourWage; // 매장 기준 시급
@@ -78,6 +85,7 @@ public class Store {
         this.businessType = businessType;
         this.storeCode = generateStoreCode();
         this.storeStandardHourWage = storeStandardHourWage;
+        this.radius = 100; // 기본값 설정 (AppProperties.Store.defaultRadius 설정값 사용)
         this.createdAt = LocalDateTime.now();
     }
 
@@ -93,17 +101,14 @@ public class Store {
         if (latitude == null || longitude == null) {
             throw new IllegalArgumentException("위도와 경도는 필수 입력값입니다.");
         }
-        if (radius != null && radius <= 0) {
-            throw new IllegalArgumentException("반경은 양수여야 합니다.");
-        }
 
-        this.latitude = latitude;
-        this.longitude = longitude;
-        this.fullAddress = fullAddress;
+        // 개별 setter 메서드들을 활용하여 일관성 있는 업데이트 처리
+        setLatitude(latitude);
+        setLongitude(longitude);
+        setFullAddress(fullAddress);
         if (radius != null) {
-            this.radius = radius;
+            setRadius(radius);
         }
-        this.updatedAt = LocalDateTime.now();
     }
 
     /**
@@ -113,9 +118,9 @@ public class Store {
      * @param jibunAddress 지번 주소
      */
     public void setAddressDetails(String roadAddress, String jibunAddress) {
-        this.roadAddress = roadAddress;
-        this.jibunAddress = jibunAddress;
-        this.updatedAt = LocalDateTime.now();
+        // 개별 setter 메서드들을 활용하여 일관성 있는 업데이트 처리
+        setRoadAddress(roadAddress);
+        setJibunAddress(jibunAddress);
     }
 
     /**
@@ -124,9 +129,8 @@ public class Store {
      * @param standardHourlyWage 기본 시급
      */
     public void updateStandardWage(Integer standardHourlyWage) {
-        validateStandardWage(standardHourlyWage);
-        this.storeStandardHourWage = standardHourlyWage;
-        this.updatedAt = LocalDateTime.now();
+        // 개별 setter 메서드를 활용하여 일관성 있는 업데이트 처리
+        setStoreStandardHourWage(standardHourlyWage);
     }
 
     /**
@@ -177,7 +181,7 @@ public class Store {
 
     // 매장 코드 생성 메서드
     private String generateStoreCode() {
-        return "ST" + System.currentTimeMillis() + (new Random().nextInt(900) + 100);
+        return "ST" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 
 

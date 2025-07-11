@@ -85,7 +85,7 @@ public class AttendanceService {
      */
     @Transactional
     public Attendance checkOutWithVerification(Long employeeId, Long storeId, Double latitude, Double longitude) {
-        // 위치 검증 - LocationVerificationService가 GeoUtils를 활용하도록 개선 필요
+        // 위치 검증
         if (!locationService.verifyUserInStore(storeId, latitude, longitude)) {
             throw LocationVerificationException.outOfRange();
         }

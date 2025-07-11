@@ -6,10 +6,10 @@ import com.rich.sodam.domain.type.TaxPolicyType;
 import com.rich.sodam.dto.request.PayrollCalculationRequestDto;
 import com.rich.sodam.dto.response.EmployeeWageInfoDto;
 import com.rich.sodam.exception.BusinessException;
+import com.rich.sodam.exception.EntityNotFoundException;
 import com.rich.sodam.exception.InvalidOperationException;
 import com.rich.sodam.repository.*;
 import com.rich.sodam.util.DateTimeUtils;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.ObjectNotFoundException;
@@ -45,9 +45,9 @@ public class PayrollService {
         // 직원-매장 관계 및 출근 기록 확인
         validateEmployeeStoreRelation(employeeId, storeId);
 
-        // 해당 기간의 근무 기록 조회
+        // 해당 기간의 근무 기록 조회 (Fetch Join으로 N+1 쿼리 방지)
         List<Attendance> attendances = attendanceRepository
-                .findByEmployeeProfile_IdAndStore_IdAndCheckInTimeBetweenOrderByCheckInTimeDesc(
+                .findByEmployeeIdAndStoreIdAndPeriodWithDetails(
                         employeeId, storeId, startDate, endDate);
 
         // 급여 계산
@@ -69,9 +69,9 @@ public class PayrollService {
         LocalDateTime startOfMonth = DateTimeUtils.getStartOfMonth(year, month);
         LocalDateTime endOfMonth = DateTimeUtils.getEndOfMonth(year, month);
 
-        // 해당 월의 근무 기록 조회
+        // 해당 월의 근무 기록 조회 (Fetch Join으로 N+1 쿼리 방지)
         List<Attendance> monthlyAttendances = attendanceRepository
-                .findByEmployeeProfile_IdAndCheckInTimeBetweenOrderByCheckInTimeDesc(
+                .findByEmployeeIdAndPeriodWithDetails(
                         employeeId, startOfMonth, endOfMonth);
 
         // 급여 계산
@@ -239,7 +239,7 @@ public class PayrollService {
         LocalDateTime startDateTime = DateTimeUtils.getStartOfDay(startDate);
         LocalDateTime endDateTime = DateTimeUtils.getEndOfDay(endDate);
 
-        return attendanceRepository.findByEmployeeIdAndCheckInTimeBetween(
+        return attendanceRepository.findByEmployeeIdAndPeriodWithDetails(
                 employee.getId(), startDateTime, endDateTime);
     }
 
@@ -294,8 +294,8 @@ public class PayrollService {
      * 주휴 수당 저장 및 기간 업데이트
      */
     private void saveWeeklyAllowanceAndUpdateDates(EmployeeProfile employee, LocalDate endDate, BigDecimal weeklyAllowance) throws ObjectNotFoundException {
-        // 마지막 출근기록 찾기
-        List<Attendance> recentAttendances = attendanceRepository.findByEmployeeProfile_IdAndCheckInTimeBetweenOrderByCheckInTimeDesc(
+        // 마지막 출근기록 찾기 (Fetch Join으로 N+1 쿼리 방지)
+        List<Attendance> recentAttendances = attendanceRepository.findByEmployeeIdAndPeriodWithDetails(
                 employee.getId(),
                 DateTimeUtils.getStartOfDay(endDate.minusDays(6)),
                 DateTimeUtils.getEndOfDay(endDate));
@@ -394,9 +394,9 @@ public class PayrollService {
         PayrollPolicy policy = payrollPolicyRepository.findByStore(store)
                 .orElseThrow(() -> new EntityNotFoundException("급여 정책을 찾을 수 없습니다."));
 
-        // 해당 기간의 출근 기록 조회
+        // 해당 기간의 출근 기록 조회 (Fetch Join으로 N+1 쿼리 방지)
         List<Attendance> attendances = attendanceRepository
-                .findByEmployeeProfile_IdAndStore_IdAndCheckInTimeBetweenOrderByCheckInTimeDesc(
+                .findByEmployeeIdAndStoreIdAndPeriodWithDetails(
                         employeeId, storeId,
                         startDate.atStartOfDay(),
                         endDate.atTime(23, 59, 59));
@@ -596,9 +596,9 @@ public class PayrollService {
      * 주휴수당을 급여에 통합
      */
     private int calculateTotalWeeklyAllowance(Long employeeId, Long storeId, LocalDate startDate, LocalDate endDate) {
-        // 해당 기간의 출근 기록 중 주휴수당이 설정된 기록 조회
+        // 해당 기간의 출근 기록 중 주휴수당이 설정된 기록 조회 (Fetch Join으로 N+1 쿼리 방지)
         List<Attendance> attendances = attendanceRepository
-                .findByEmployeeProfile_IdAndStore_IdAndCheckInTimeBetweenOrderByCheckInTimeDesc(
+                .findByEmployeeIdAndStoreIdAndPeriodWithDetails(
                         employeeId, storeId, startDate.atStartOfDay(), endDate.atTime(23, 59, 59));
 
         // 주휴수당 합계 계산

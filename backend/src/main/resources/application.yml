@@ -1,4 +1,15 @@
+# 애플리케이션 설정
+app:
+  store:
+    default-radius: ${STORE_DEFAULT_RADIUS:100}  # 출퇴근 인증 기본 반경(미터)
+  redis:
+    cache-database: ${REDIS_CACHE_DATABASE:1}    # 캐시용 Redis 데이터베이스 번호
+
 spring:
+  jmx:
+    enabled: false  # JMX 비활성
+  config:
+    import: optional:file:.env[.properties]
   application:
     name: sodam
   security:
@@ -6,8 +17,8 @@ spring:
       client:
         registration:
           kakao:
-            client-id: ${KAKAO_CLIENT_ID:28f9c414aad345b18a52dc62a3373603}
-            client-secret: ${KAKAO_CLIENT_SECRET:defaultSecret}
+            client-id: ${KAKAO_CLIENT_ID:#{null}}
+            client-secret: ${KAKAO_CLIENT_SECRET:#{null}}
             redirect-uri: http://localhost:8080/kakao/auth/proc
             authorization-grant-type: authorization_code
             client-authentication-method: POST
@@ -21,27 +32,14 @@ spring:
 
 
   datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/sodam?serverTimezone=Asia/Seoul}
     driver-class-name: ${DB_DRIVER_CLASS_NAME:com.mysql.cj.jdbc.Driver}
-    url: ${DB_URL:jdbc:mysql://localhost:3306/sodam?serverTime=Asia/Seoul}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:#{null}}
 
-
-    hikari:
-      auto-commit: false
-      transaction-isolation: TRANSACTION_READ_COMMITTED
-      # 서버 비용 최적화를 위한 커넥션 풀 설정
-      minimum-idle: 3                     # 유휴 상태로 유지할 최소 연결 수 (기존 5에서 감소)
-      maximum-pool-size: 10               # 최대 연결 수 (기존 20에서 감소)
-      idle-timeout: 300000                # 유휴 연결 제거 시간 (5분)
-      max-lifetime: 1800000               # 연결 최대 수명 (30분)
-      connection-timeout: 30000           # 연결 타임아웃 (30초)
-      pool-name: SodamHikariPool          # 커넥션 풀 이름 (모니터링 용이)
-
-
   jpa:
     hibernate:
-      ddl-auto: ${DDL_AUTO:validate}      # 운영 환경에서는 validate, 개발 환경에서는 create-drop 권장
+      ddl-auto: ${DDL_AUTO:create}      # 운영 환경에서는 validate, 개발 환경에서는 create-drop 권장
     properties:
       hibernate:
         # 서버 비용 최적화를 위한 Hibernate 설정
@@ -57,6 +55,9 @@ spring:
           use_second_level_cache: true    # 2차 캐시 활성화
           use_query_cache: true           # 쿼리 캐시 활성화
           region.factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+        javax:
+          cache:
+            missing_cache_strategy: create  # 누락된 캐시 영역 자동 생성
     open-in-view: false                   # OSIV 패턴 비활성화 (서버 리소스 최적화)
     show-sql: false                       # 운영 환경에서는 비활성화 권장 (로깅 비용 절감)
   aop:
@@ -64,10 +65,21 @@ spring:
     proxy-target-class: true
   transaction:
     default-timeout: 30s
+
   data:
-    web:
-      pageable:
-        default-page-size: 20
+    # Spring Data Web 설정 비활성화 (ProjectingArgumentResolverBeanPostProcessor 오류 방지)
+    # web:
+    #   pageable:
+    #     default-page-size: 20
+    #     max-page-size: 100
+    #     page-parameter: page
+    #     size-parameter: size
+    #     prefix: ""
+    #     qualifier-delimiter: _
+    #     one-indexed-parameters: false
+    #   sort:
+    #     sort-parameter: sort
+
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
@@ -87,6 +99,10 @@ spring:
       cache-null-values: false
       key-prefix: "sodam:"
       use-key-prefix: true
+  messages:
+    basename: messages_base
+    encoding: utf-8
+    cache-duration: -1
 springdoc:
   api-docs:
     path: /api-docs
@@ -116,8 +132,6 @@ management:
   endpoint:
     health:
       show-details: when-authorized
-  metrics:
-    enabled: false
 
 # 국세청 사업자등록번호 조회 API 설정
 tax:

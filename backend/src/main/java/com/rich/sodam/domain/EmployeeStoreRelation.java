@@ -15,6 +15,13 @@ import java.time.LocalDate;
  * 4. 유연성: 향후 매장별로 다른 급여 정책(예: 근속 기간에 따른 시급 인상)을 적용할 때 매장별 입사일이 필요할 수 있습니다.
  */
 @Entity
+@Table(name = "employee_store_relation", indexes = {
+        @Index(name = "idx_employee_store", columnList = "employee_id, store_id"),
+        @Index(name = "idx_employee_id", columnList = "employee_id"),
+        @Index(name = "idx_store_id", columnList = "store_id"),
+        @Index(name = "idx_hire_date", columnList = "hireDate"),
+        @Index(name = "idx_wage_settings", columnList = "useStoreStandardWage, customHourlyWage")
+})
 @Getter
 @Setter
 @NoArgsConstructor

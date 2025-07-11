@@ -31,6 +31,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.testng:testng:7.7.0'
     testImplementation 'org.springframework.security:spring-security-test'
     compileOnly 'org.projectlombok:lombok'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
@@ -44,6 +45,8 @@ dependencies {
     implementation group: 'com.google.code.gson', name: 'gson', version: '2.13.1'
     // https://mvnrepository.com/artifact/jakarta.validation/jakarta.validation-api
     implementation group: 'jakarta.validation', name: 'jakarta.validation-api', version: '3.1.1'
+    // Hibernate Validator - Bean Validation 구현체
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
     // JJWT 의존성 버전 통일 (모두 같은 버전 사용)
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
@@ -55,6 +58,10 @@ dependencies {
     implementation 'org.hibernate:hibernate-jcache:6.6.13.Final'
     implementation 'org.ehcache:ehcache:3.10.8'
     implementation 'javax.cache:cache-api:1.1.1'
+    // DotEnv 라이브러리 - .env 파일 지원
+    implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+    implementation 'io.micrometer:micrometer-tracing'
+    implementation 'io.micrometer:micrometer-tracing-bridge-brave'
 
 }
 

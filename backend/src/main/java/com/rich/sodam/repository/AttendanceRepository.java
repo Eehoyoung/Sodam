@@ -46,24 +46,33 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
                                         @Param("endOfDay") LocalDateTime endOfDay);
 
     /**
-     * 직원 ID와 매장 ID로 특정 기간의 출퇴근 기록 조회
-     * 최신 기록 순으로 정렬
+     * 직원 ID와 매장 ID로 특정 기간의 출퇴근 기록 조회 (Fetch Join 사용)
+     * 최신 기록 순으로 정렬하며, N+1 쿼리 문제를 방지합니다.
      */
-    List<Attendance> findByEmployeeProfile_IdAndStore_IdAndCheckInTimeBetweenOrderByCheckInTimeDesc(
-            Long employeeId, Long storeId, LocalDateTime startDate, LocalDateTime endDate);
+    @Query("SELECT a FROM Attendance a " +
+            "JOIN FETCH a.employeeProfile " +
+            "JOIN FETCH a.store " +
+            "WHERE a.employeeProfile.id = :employeeId " +
+            "AND (:storeId IS NULL OR a.store.id = :storeId) " +
+            "AND a.checkInTime BETWEEN :startDate AND :endDate " +
+            "ORDER BY a.checkInTime DESC")
+    List<Attendance> findByEmployeeIdAndStoreIdAndPeriodWithDetails(
+            @Param("employeeId") Long employeeId,
+            @Param("storeId") Long storeId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
 
     /**
-     * 직원 ID로 특정 기간의 출퇴근 기록 조회
-     * 최신 기록 순으로 정렬
+     * 직원 ID로 특정 기간의 출퇴근 기록 조회 (Fetch Join 사용)
+     * 최신 기록 순으로 정렬하며, N+1 쿼리 문제를 방지합니다.
      */
-    List<Attendance> findByEmployeeProfile_IdAndCheckInTimeBetweenOrderByCheckInTimeDesc(
-            Long employeeId, LocalDateTime startDate, LocalDateTime endDate);
-
-    /**
-     * 직원 ID로 특정 기간의 출퇴근 기록 조회 (PayrollService에서 사용)
-     */
-    @Query("SELECT a FROM Attendance a WHERE a.employeeProfile.id = :employeeId AND a.checkInTime BETWEEN :startDate AND :endDate")
-    List<Attendance> findByEmployeeIdAndCheckInTimeBetween(
+    @Query("SELECT a FROM Attendance a " +
+            "JOIN FETCH a.employeeProfile " +
+            "JOIN FETCH a.store " +
+            "WHERE a.employeeProfile.id = :employeeId " +
+            "AND a.checkInTime BETWEEN :startDate AND :endDate " +
+            "ORDER BY a.checkInTime DESC")
+    List<Attendance> findByEmployeeIdAndPeriodWithDetails(
             @Param("employeeId") Long employeeId,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
