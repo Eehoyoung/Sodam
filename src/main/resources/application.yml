@@ -32,7 +32,7 @@ spring:
 
 
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/sodam?serverTimezone=Asia/Seoul}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/sodam?serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true}
     driver-class-name: ${DB_DRIVER_CLASS_NAME:com.mysql.cj.jdbc.Driver}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:#{null}}
