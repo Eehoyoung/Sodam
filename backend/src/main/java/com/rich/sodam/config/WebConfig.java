@@ -14,7 +14,7 @@ public class WebConfig implements WebMvcConfigurer {
     public CorsFilter corsFilter() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
-
+        config.addAllowedOriginPattern("*");
         // 원하는 도메인 허용
         config.addAllowedOrigin("http://localhost:3000"); // React 웹 개발 서버
         config.addAllowedOrigin("http://localhost:8081"); // React Native 개발 서버
@@ -23,7 +23,10 @@ public class WebConfig implements WebMvcConfigurer {
         config.addAllowedOrigin("http://10.0.2.2:8081"); // Android 에뮬레이터에서 localhost 접근
         config.addAllowedOrigin("exp://localhost:19000"); // Expo 개발 서버
         config.addAllowedOrigin("exp://127.0.0.1:19000"); // Expo 개발 서버 (IP 주소)
-
+        // 개발 환경을 위한 추가 Origin 설정
+        config.addAllowedOrigin("http://10.0.2.2:3000");   // 웹 개발 서버
+        config.addAllowedOrigin("http://10.0.2.2:8081");   // RN 개발 서버
+        config.addAllowedOrigin("http://192.168.1.100:8081"); // 실제 IP 주소
         // 실제 배포 환경의 도메인도 추가 (필요시)
         // config.addAllowedOrigin("https://your-production-domain.com");
 
