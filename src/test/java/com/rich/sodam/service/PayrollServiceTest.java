@@ -67,7 +67,7 @@ class PayrollServiceTest {
         System.out.println("[DEBUG_LOG] 테스트 직원 프로필 생성 완료 - ID: " + testEmployee.getId());
 
         // 테스트 매장 생성
-        testStore = new Store("급여테스트매장", "9876543210", "02-9876-5432", "카페", 15000);
+        testStore = new Store("급여테스트매장", "9876543210", "02-9876-5432", "카페", 15000, 100);
         testStore.updateLocation(37.5665, 126.9780, "서울특별시 강남구 테스트로 456", 100);
         testStore = storeRepository.save(testStore);
         System.out.println("[DEBUG_LOG] 테스트 매장 생성 완료 - ID: " + testStore.getId());
@@ -208,7 +208,7 @@ class PayrollServiceTest {
         anotherEmployee = employeeProfileRepository.save(anotherEmployee);
 
         // 다른 매장 생성
-        Store anotherStore = new Store("다른매장", "1111111111", "02-1111-1111", "편의점", 12000);
+        Store anotherStore = new Store("다른매장", "1111111111", "02-1111-1111", "편의점", 12000, 100);
         anotherStore = storeRepository.save(anotherStore);
 
         // 다른 직원-매장 관계 생성

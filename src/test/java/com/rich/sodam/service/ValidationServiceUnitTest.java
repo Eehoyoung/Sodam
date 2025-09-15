@@ -36,7 +36,7 @@ class ValidationServiceUnitTest {
     void isDuplicate_DuplicateBusinessNumber() {
         // given
         String businessNumber = "1234567890";
-        Store store = new Store("테스트 매장", businessNumber, "02-1234-5678", "음식점", 10000);
+        Store store = new Store("테스트 매장", businessNumber, "02-1234-5678", "음식점", 10000, 100);
         when(storeRepository.findByBusinessNumber(businessNumber)).thenReturn(Optional.of(store));
 
         // when

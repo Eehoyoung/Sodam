@@ -38,7 +38,7 @@ class LocationVerificationServiceTest {
         System.out.println("[DEBUG_LOG] LocationVerificationServiceTest 테스트 데이터 초기화 시작");
 
         // 테스트 매장 생성 (서울 강남구 좌표, 반경 100미터)
-        testStore = new Store("위치검증테스트매장", "7777777777", "02-7777-7777", "카페", 20000);
+        testStore = new Store("위치검증테스트매장", "7777777777", "02-7777-7777", "카페", 20000, 100);
         testStore.updateLocation(37.5665, 126.9780, "서울특별시 강남구 테스트로 999", 100);
         testStore = storeRepository.save(testStore);
         System.out.println("[DEBUG_LOG] 테스트 매장 생성 완료 - ID: " + testStore.getId() +
@@ -166,7 +166,7 @@ class LocationVerificationServiceTest {
         System.out.println("[DEBUG_LOG] 매장 위치 정보가 없는 경우 테스트 시작");
 
         // Given - 위치 정보가 없는 매장 생성
-        Store storeWithoutLocation = new Store("위치없는매장", "8888888888", "02-8888-8888", "편의점", 15000);
+        Store storeWithoutLocation = new Store("위치없는매장", "8888888888", "02-8888-8888", "편의점", 15000, 100);
         storeWithoutLocation = storeRepository.save(storeWithoutLocation);
 
         Double userLatitude = 37.5665;
@@ -208,7 +208,7 @@ class LocationVerificationServiceTest {
         System.out.println("[DEBUG_LOG] 다양한 반경 설정 테스트 시작");
 
         // Given - 반경 50미터인 매장 생성
-        Store smallRadiusStore = new Store("작은반경매장", "9999999999", "02-9999-9999", "베이커리", 18000);
+        Store smallRadiusStore = new Store("작은반경매장", "9999999999", "02-9999-9999", "베이커리", 18000, 100);
         smallRadiusStore.updateLocation(37.5665, 126.9780, "서울특별시 강남구 테스트로 111", 50);
         smallRadiusStore = storeRepository.save(smallRadiusStore);
 

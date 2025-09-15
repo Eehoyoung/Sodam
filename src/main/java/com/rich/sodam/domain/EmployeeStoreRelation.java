@@ -49,6 +49,10 @@ public class EmployeeStoreRelation {
     // 입사일 필드 추가
     private LocalDate hireDate;
 
+    // 직원-매장 관계의 활성 상태 (퇴사/비활성화 처리 시 false)
+    @Column(nullable = false)
+    private Boolean isActive = true;
+
     public EmployeeStoreRelation(EmployeeProfile employeeProfile, Store store) {
         this.employeeProfile = employeeProfile;
         this.store = store;

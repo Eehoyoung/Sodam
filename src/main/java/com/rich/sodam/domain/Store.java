@@ -6,7 +6,9 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.UUID;
 
 /**
@@ -20,7 +22,9 @@ import java.util.UUID;
         @Index(name = "idx_store_name", columnList = "storeName"),
         @Index(name = "idx_store_location", columnList = "latitude, longitude"),
         @Index(name = "idx_store_created_at", columnList = "createdAt"),
-        @Index(name = "idx_store_updated_at", columnList = "updatedAt")
+        @Index(name = "idx_store_updated_at", columnList = "updatedAt"),
+        @Index(name = "idx_store_is_deleted", columnList = "is_deleted"),
+        @Index(name = "idx_store_deleted_at", columnList = "deleted_at")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -65,6 +69,17 @@ public class Store {
 
     private LocalDateTime updatedAt;
 
+    // 운영시간 정보
+    @Embedded
+    private OperatingHours operatingHours;
+
+    // Soft Delete 관련 필드
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @Column(name = "is_deleted")
+    private Boolean isDeleted = false;
+
     /**
      * 매장 생성자
      *
@@ -73,9 +88,10 @@ public class Store {
      * @param storePhoneNumber      매장 전화번호
      * @param businessType          사업 유형
      * @param storeStandardHourWage 기본 시급
+     * @param defaultRadius         기본 반경 (AppProperties에서 주입)
      */
     public Store(String storeName, String businessNumber, String storePhoneNumber,
-                 String businessType, Integer storeStandardHourWage) {
+                 String businessType, Integer storeStandardHourWage, Integer defaultRadius) {
         validateBusinessNumber(businessNumber);
         validateStandardWage(storeStandardHourWage);
 
@@ -85,7 +101,9 @@ public class Store {
         this.businessType = businessType;
         this.storeCode = generateStoreCode();
         this.storeStandardHourWage = storeStandardHourWage;
-        this.radius = 100; // 기본값 설정 (AppProperties.Store.defaultRadius 설정값 사용)
+        this.radius = defaultRadius != null ? defaultRadius : 100; // 설정값 사용, null이면 기본값
+        this.operatingHours = OperatingHours.createDefault(); // 기본 운영시간 설정
+        this.isDeleted = false;
         this.createdAt = LocalDateTime.now();
     }
 
@@ -235,6 +253,130 @@ public class Store {
         validateStandardWage(storeStandardHourWage);
         this.storeStandardHourWage = storeStandardHourWage;
         this.updatedAt = LocalDateTime.now();
+    }
+
+    // ==================== 운영시간 관련 메서드 ====================
+
+    /**
+     * 매장 운영시간 업데이트
+     *
+     * @param newOperatingHours 새로운 운영시간 정보
+     */
+    public void updateOperatingHours(OperatingHours newOperatingHours) {
+        if (newOperatingHours == null) {
+            throw new IllegalArgumentException("운영시간 정보는 필수입니다.");
+        }
+
+        newOperatingHours.validateOperatingHours();
+        this.operatingHours = newOperatingHours;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 현재 시점에 매장이 운영 중인지 확인
+     *
+     * @return 운영 중이면 true, 아니면 false
+     */
+    public boolean isOpenNow() {
+        if (isDeleted || operatingHours == null) {
+            return false;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        return isOpenAt(now);
+    }
+
+    /**
+     * 특정 시점에 매장이 운영 중인지 확인
+     *
+     * @param dateTime 확인할 시점
+     * @return 운영 중이면 true, 아니면 false
+     */
+    public boolean isOpenAt(LocalDateTime dateTime) {
+        if (isDeleted || operatingHours == null || dateTime == null) {
+            return false;
+        }
+
+        DayOfWeek dayOfWeek = dateTime.getDayOfWeek();
+        LocalTime time = dateTime.toLocalTime();
+
+        // 해당 요일이 휴무인지 확인
+        if (!operatingHours.isOpenOn(dayOfWeek)) {
+            return false;
+        }
+
+        LocalTime openTime = operatingHours.getOpenTime(dayOfWeek);
+        LocalTime closeTime = operatingHours.getCloseTime(dayOfWeek);
+
+        if (openTime == null || closeTime == null) {
+            return false;
+        }
+
+        // 시간 범위 내에 있는지 확인
+        return !time.isBefore(openTime) && !time.isAfter(closeTime);
+    }
+
+    // ==================== Soft Delete 관련 메서드 ====================
+
+    /**
+     * 매장을 논리적으로 삭제 (Soft Delete)
+     */
+    public void softDelete() {
+        this.isDeleted = true;
+        this.deletedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 삭제된 매장을 복구
+     */
+    public void restore() {
+        this.isDeleted = false;
+        this.deletedAt = null;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 매장이 활성 상태인지 확인
+     *
+     * @return 활성 상태면 true, 삭제된 상태면 false
+     */
+    public boolean isActive() {
+        return !Boolean.TRUE.equals(isDeleted);
+    }
+
+    /**
+     * 매장이 삭제된 상태인지 확인
+     *
+     * @return 삭제된 상태면 true, 활성 상태면 false
+     */
+    public boolean isDeleted() {
+        return Boolean.TRUE.equals(isDeleted);
+    }
+
+    // ==================== 유틸리티 메서드 ====================
+
+    /**
+     * 매장 정보가 완전히 설정되었는지 확인
+     *
+     * @return 필수 정보가 모두 설정되었으면 true
+     */
+    public boolean isFullyConfigured() {
+        return hasLocationSet() &&
+                operatingHours != null &&
+                storeStandardHourWage != null &&
+                storeStandardHourWage > 0;
+    }
+
+    /**
+     * 매장의 기본 정보를 문자열로 반환
+     *
+     * @return 매장 기본 정보 문자열
+     */
+    @Override
+    public String toString() {
+        return String.format("Store{id=%d, name='%s', code='%s', active=%s}",
+                id, storeName, storeCode, isActive());
     }
 }
 

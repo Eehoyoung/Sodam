@@ -1,5 +1,6 @@
 package com.rich.sodam.service;
 
+import com.rich.sodam.config.app.AppProperties;
 import com.rich.sodam.domain.*;
 import com.rich.sodam.dto.request.EmployeeWageUpdateDto;
 import com.rich.sodam.dto.request.LocationUpdateDto;
@@ -29,15 +30,17 @@ public class StoreManagementServiceImpl implements StoreManagementService {
     private final EmployeeStoreRelationRepository employeeStoreRelationRepository;
     private final ValidationService validateFormat;
     private final ValidationService validationService;
+    private final AppProperties appProperties;
 
     @NotNull
-    private static Store getStore(StoreRegistrationDto storeDto) {
+    private Store getStore(StoreRegistrationDto storeDto) {
         Store store = new Store(
                 storeDto.getStoreName(),
                 storeDto.getBusinessNumber(),
                 storeDto.getStorePhoneNumber(),
                 storeDto.getBusinessType(),
-                storeDto.getStoreStandardHourWage()
+                storeDto.getStoreStandardHourWage(),
+                appProperties.getStore().getDefaultRadius()
         );
 
         // 위치 정보 설정

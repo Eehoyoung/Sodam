@@ -4,6 +4,7 @@ import com.rich.sodam.domain.Attendance;
 import com.rich.sodam.domain.EmployeeProfile;
 import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.Store;
+import com.rich.sodam.dto.request.ManualAttendanceRequestDto;
 import com.rich.sodam.exception.EntityNotFoundException;
 import com.rich.sodam.exception.InvalidOperationException;
 import com.rich.sodam.exception.LocationVerificationException;
@@ -35,6 +36,7 @@ public class AttendanceService {
     private final StoreRepository storeRepository;
     private final EmployeeStoreRelationRepository employeeStoreRelationRepository;
     private final LocationVerificationService locationService;
+    private final UserService userService;
 
     /**
      * 직원 출근 처리 (위치 검증 포함)
@@ -158,6 +160,71 @@ public class AttendanceService {
         LocalDateTime endOfMonth = DateTimeUtils.getEndOfMonth(year, month);
 
         return getAttendancesByEmployeeAndPeriod(employeeId, startOfMonth, endOfMonth);
+    }
+
+    /**
+     * 수동 출퇴근 등록
+     * ATTEND-004: 사업주가 직원 대신 출퇴근 기록을 수동으로 등록
+     */
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "attendance", allEntries = true)
+    })
+    public Attendance registerManualAttendance(ManualAttendanceRequestDto request) {
+        // 1. 사업주 권한 검증
+        userService.validateMasterPermission(request.getRegisteredBy());
+
+        // 2. 직원과 매장 조회
+        EmployeeStoreRelationContext context = getEmployeeStoreContext(
+                request.getEmployeeId(), request.getStoreId());
+
+        // 3. 해당 날짜의 기존 출퇴근 기록 확인
+        validateNoDuplicateAttendance(context.employeeProfile(), request.getCheckInTime());
+
+        // 4. 출퇴근 기록 생성
+        Attendance attendance = createManualAttendance(context, request);
+
+        return attendanceRepository.save(attendance);
+    }
+
+    /**
+     * 해당 날짜에 중복된 출퇴근 기록이 있는지 검증
+     */
+    private void validateNoDuplicateAttendance(EmployeeProfile employeeProfile, LocalDateTime checkInTime) {
+        LocalDateTime startOfDay = checkInTime.toLocalDate().atStartOfDay();
+        LocalDateTime endOfDay = checkInTime.toLocalDate().atTime(23, 59, 59);
+
+        List<Attendance> existingAttendances = attendanceRepository
+                .findByEmployeeProfileAndCheckInTimeBetweenOrderByCheckInTimeDesc(
+                        employeeProfile, startOfDay, endOfDay);
+
+        if (!existingAttendances.isEmpty()) {
+            throw new InvalidOperationException(
+                    String.format("해당 날짜(%s)에 이미 출퇴근 기록이 존재합니다.",
+                            checkInTime.toLocalDate()));
+        }
+    }
+
+    /**
+     * 수동 출퇴근 기록 생성
+     */
+    private Attendance createManualAttendance(EmployeeStoreRelationContext context,
+                                              ManualAttendanceRequestDto request) {
+        // 시급 정보 가져오기
+        Integer hourlyWage = context.employeeStoreRelation().getAppliedHourlyWage();
+
+        // 새 출퇴근 기록 생성
+        Attendance attendance = new Attendance(context.employeeProfile(), context.store());
+
+        // 수동 출근 처리 (위치 정보는 null로 설정)
+        attendance.manualCheckIn(request.getCheckInTime(), null, null, hourlyWage);
+
+        // 퇴근 시간이 있는 경우 수동 퇴근 처리
+        if (request.getCheckOutTime() != null) {
+            attendance.manualCheckOut(request.getCheckOutTime(), null, null);
+        }
+
+        return attendance;
     }
 
     /**

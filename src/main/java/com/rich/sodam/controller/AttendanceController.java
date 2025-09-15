@@ -2,6 +2,7 @@ package com.rich.sodam.controller;
 
 import com.rich.sodam.domain.Attendance;
 import com.rich.sodam.dto.request.AttendanceRequestDto;
+import com.rich.sodam.dto.request.ManualAttendanceRequestDto;
 import com.rich.sodam.dto.response.AttendanceResponseDto;
 import com.rich.sodam.service.AttendanceService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -146,5 +147,23 @@ public class AttendanceController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(responseDto);
+    }
+
+    @Operation(summary = "수동 출퇴근 등록", description = "사업주가 직원 대신 출퇴근 기록을 수동으로 등록합니다. ATTEND-004 기능입니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "수동 등록 성공",
+                    content = @Content(schema = @Schema(implementation = AttendanceResponseDto.class))),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 (중복 기록, 잘못된 시간 등)"),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "403", description = "사업주 권한 필요"),
+            @ApiResponse(responseCode = "404", description = "직원 또는 매장 정보를 찾을 수 없음")
+    })
+    @PostMapping("/manual-register")
+    public ResponseEntity<AttendanceResponseDto> registerManualAttendance(
+            @RequestBody @Validated ManualAttendanceRequestDto request) {
+
+        Attendance attendance = attendanceService.registerManualAttendance(request);
+
+        return ResponseEntity.ok(AttendanceResponseDto.from(attendance));
     }
 }

@@ -31,13 +31,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public BCryptPasswordEncoder bCryptPasswordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    @Bean
     public PasswordEncoder passwordEncoder() {
-        return bCryptPasswordEncoder();
+        return new BCryptPasswordEncoder();
     }
 
     /**
@@ -54,7 +49,7 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/swagger-ui/**", "/api-docs/**", "/v3/api-docs/**",
-                                "/swagger-ui.html", "/webjars/**", "/actuator/health", "/actuator/info").permitAll()
+                                "/swagger-ui.html", "/webjars/**", "/actuator/health", "/actuator/info", "/api/join", "/api/login").permitAll()
                         .anyRequest().authenticated()
                 )
                 .csrf(AbstractHttpConfigurer::disable)

@@ -1,6 +1,8 @@
 package com.rich.sodam.service;
 
 import com.rich.sodam.domain.*;
+import com.rich.sodam.domain.type.UserGrade;
+import com.rich.sodam.dto.request.ManualAttendanceRequestDto;
 import com.rich.sodam.exception.EntityNotFoundException;
 import com.rich.sodam.exception.InvalidOperationException;
 import com.rich.sodam.exception.LocationVerificationException;
@@ -49,6 +51,7 @@ class AttendanceServiceTest {
     private AttendanceRepository attendanceRepository;
 
     private User testUser;
+    private User testMaster; // 사업주 권한 사용자
     private EmployeeProfile testEmployee;
     private Store testStore;
     private EmployeeStoreRelation testRelation;
@@ -62,13 +65,19 @@ class AttendanceServiceTest {
         testUser = userRepository.save(testUser);
         System.out.println("[DEBUG_LOG] 테스트 사용자 생성 완료 - ID: " + testUser.getId());
 
+        // 사업주 권한 테스트 사용자 생성
+        testMaster = new User("master@example.com", "테스트사업주");
+        testMaster.setUserGrade(UserGrade.MASTER);
+        testMaster = userRepository.save(testMaster);
+        System.out.println("[DEBUG_LOG] 테스트 사업주 생성 완료 - ID: " + testMaster.getId());
+
         // 테스트 직원 프로필 생성
         testEmployee = new EmployeeProfile(testUser);
         testEmployee = employeeProfileRepository.save(testEmployee);
         System.out.println("[DEBUG_LOG] 테스트 직원 프로필 생성 완료 - ID: " + testEmployee.getId());
 
         // 테스트 매장 생성 (서울 강남구 좌표)
-        testStore = new Store("테스트매장", "1234567890", "02-1234-5678", "음식점", 10000);
+        testStore = new Store("테스트매장", "1234567890", "02-1234-5678", "음식점", 10000, 100);
         testStore.updateLocation(37.5665, 126.9780, "서울특별시 강남구 테스트로 123", 100);
         testStore = storeRepository.save(testStore);
         System.out.println("[DEBUG_LOG] 테스트 매장 생성 완료 - ID: " + testStore.getId());
@@ -298,5 +307,139 @@ class AttendanceServiceTest {
         assertThat(result.get(0).getEmployeeProfile().getId()).isEqualTo(testEmployee.getId());
 
         System.out.println("[DEBUG_LOG] 월별 출퇴근 기록 조회 성공 - 기록 수: " + result.size());
+    }
+
+    @Test
+    @DisplayName("수동 출퇴근 등록 - 출근만 등록 성공")
+    void registerManualAttendance_CheckInOnly_Success() {
+        System.out.println("[DEBUG_LOG] 수동 출퇴근 등록 (출근만) 테스트 시작");
+
+        // Given
+        LocalDateTime checkInTime = LocalDateTime.now().minusHours(2);
+        ManualAttendanceRequestDto request = ManualAttendanceRequestDto.builder()
+                .employeeId(testEmployee.getId())
+                .storeId(testStore.getId())
+                .registeredBy(testMaster.getId())
+                .checkInTime(checkInTime)
+                .reason("수동 출근 등록 테스트")
+                .build();
+
+        // When
+        Attendance result = attendanceService.registerManualAttendance(request);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.getEmployeeProfile().getId()).isEqualTo(testEmployee.getId());
+        assertThat(result.getStore().getId()).isEqualTo(testStore.getId());
+        assertThat(result.getCheckInTime()).isEqualTo(checkInTime);
+        assertThat(result.getCheckOutTime()).isNull();
+        assertThat(result.getAppliedHourlyWage()).isEqualTo(12000);
+
+        System.out.println("[DEBUG_LOG] 수동 출근 등록 성공 - 출근 시간: " + result.getCheckInTime());
+    }
+
+    @Test
+    @DisplayName("수동 출퇴근 등록 - 출퇴근 모두 등록 성공")
+    void registerManualAttendance_FullAttendance_Success() {
+        System.out.println("[DEBUG_LOG] 수동 출퇴근 등록 (출퇴근 모두) 테스트 시작");
+
+        // Given
+        LocalDateTime checkInTime = LocalDateTime.now().minusHours(8);
+        LocalDateTime checkOutTime = LocalDateTime.now().minusHours(1);
+        ManualAttendanceRequestDto request = ManualAttendanceRequestDto.builder()
+                .employeeId(testEmployee.getId())
+                .storeId(testStore.getId())
+                .registeredBy(testMaster.getId())
+                .checkInTime(checkInTime)
+                .checkOutTime(checkOutTime)
+                .reason("수동 출퇴근 등록 테스트")
+                .build();
+
+        // When
+        Attendance result = attendanceService.registerManualAttendance(request);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.getEmployeeProfile().getId()).isEqualTo(testEmployee.getId());
+        assertThat(result.getStore().getId()).isEqualTo(testStore.getId());
+        assertThat(result.getCheckInTime()).isEqualTo(checkInTime);
+        assertThat(result.getCheckOutTime()).isEqualTo(checkOutTime);
+        assertThat(result.getAppliedHourlyWage()).isEqualTo(12000);
+        assertThat(result.getWorkingTimeInHours()).isGreaterThan(0);
+
+        System.out.println("[DEBUG_LOG] 수동 출퇴근 등록 성공 - 근무 시간: " + result.getWorkingTimeInHours() + "시간");
+    }
+
+    @Test
+    @DisplayName("수동 출퇴근 등록 - 사업주 권한 없음 실패")
+    void registerManualAttendance_NoMasterPermission_Failure() {
+        System.out.println("[DEBUG_LOG] 수동 출퇴근 등록 권한 없음 테스트 시작");
+
+        // Given
+        LocalDateTime checkInTime = LocalDateTime.now().minusHours(2);
+        ManualAttendanceRequestDto request = ManualAttendanceRequestDto.builder()
+                .employeeId(testEmployee.getId())
+                .storeId(testStore.getId())
+                .registeredBy(testUser.getId()) // 일반 사용자 ID 사용
+                .checkInTime(checkInTime)
+                .reason("권한 없음 테스트")
+                .build();
+
+        // When & Then
+        assertThatThrownBy(() -> attendanceService.registerManualAttendance(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("사업주 권한이 필요합니다");
+
+        System.out.println("[DEBUG_LOG] 사업주 권한 없음 실패 테스트 완료");
+    }
+
+    @Test
+    @DisplayName("수동 출퇴근 등록 - 중복 기록 존재 실패")
+    void registerManualAttendance_DuplicateRecord_Failure() {
+        System.out.println("[DEBUG_LOG] 수동 출퇴근 등록 중복 기록 테스트 시작");
+
+        // Given - 먼저 출근 기록 생성
+        attendanceService.checkIn(testEmployee.getId(), testStore.getId(), 37.5665, 126.9780);
+
+        LocalDateTime checkInTime = LocalDateTime.now().minusMinutes(30); // 같은 날짜
+        ManualAttendanceRequestDto request = ManualAttendanceRequestDto.builder()
+                .employeeId(testEmployee.getId())
+                .storeId(testStore.getId())
+                .registeredBy(testMaster.getId())
+                .checkInTime(checkInTime)
+                .reason("중복 기록 테스트")
+                .build();
+
+        // When & Then
+        assertThatThrownBy(() -> attendanceService.registerManualAttendance(request))
+                .isInstanceOf(InvalidOperationException.class)
+                .hasMessageContaining("이미 출퇴근 기록이 존재합니다");
+
+        System.out.println("[DEBUG_LOG] 중복 기록 존재 실패 테스트 완료");
+    }
+
+    @Test
+    @DisplayName("수동 출퇴근 등록 - 잘못된 시간 순서 실패")
+    void registerManualAttendance_InvalidTimeOrder_Failure() {
+        System.out.println("[DEBUG_LOG] 수동 출퇴근 등록 잘못된 시간 순서 테스트 시작");
+
+        // Given
+        LocalDateTime checkInTime = LocalDateTime.now().minusHours(1);
+        LocalDateTime checkOutTime = LocalDateTime.now().minusHours(2); // 출근 시간보다 빠른 퇴근 시간
+        ManualAttendanceRequestDto request = ManualAttendanceRequestDto.builder()
+                .employeeId(testEmployee.getId())
+                .storeId(testStore.getId())
+                .registeredBy(testMaster.getId())
+                .checkInTime(checkInTime)
+                .checkOutTime(checkOutTime)
+                .reason("잘못된 시간 순서 테스트")
+                .build();
+
+        // When & Then
+        assertThatThrownBy(() -> attendanceService.registerManualAttendance(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("퇴근 시간은 출근 시간보다 늦어야 합니다");
+
+        System.out.println("[DEBUG_LOG] 잘못된 시간 순서 실패 테스트 완료");
     }
 }

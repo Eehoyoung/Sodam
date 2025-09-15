@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-@Table(name = "users", indexes = {
+@Table(indexes = {
         @Index(name = "idx_user_email", columnList = "email"),
         @Index(name = "idx_user_grade", columnList = "userGrade"),
         @Index(name = "idx_user_created_at", columnList = "createdAt")
