@@ -116,6 +116,50 @@ public class Attendance {
     }
 
     /**
+     * 수동 출근 처리
+     * 지정된 시간으로 출근 시간을 기록하고 위치 정보와 시급을 저장합니다.
+     *
+     * @param checkInTime 출근 시간
+     * @param latitude    위도 (null 허용)
+     * @param longitude   경도 (null 허용)
+     * @param hourlyWage  적용 시급
+     * @throws IllegalStateException 이미 출근 처리된 경우
+     */
+    public void manualCheckIn(LocalDateTime checkInTime, Double latitude, Double longitude, Integer hourlyWage) {
+        if (this.checkInTime != null) {
+            throw new IllegalStateException("이미 출근 처리가 되었습니다.");
+        }
+        this.checkInTime = checkInTime;
+        this.checkInLatitude = latitude;
+        this.checkInLongitude = longitude;
+        this.appliedHourlyWage = hourlyWage;
+    }
+
+    /**
+     * 수동 퇴근 처리
+     * 지정된 시간으로 퇴근 시간을 기록하고 위치 정보를 저장합니다.
+     *
+     * @param checkOutTime 퇴근 시간
+     * @param latitude     위도 (null 허용)
+     * @param longitude    경도 (null 허용)
+     * @throws IllegalStateException 출근 처리가 되지 않았거나 이미 퇴근 처리된 경우
+     */
+    public void manualCheckOut(LocalDateTime checkOutTime, Double latitude, Double longitude) {
+        if (this.checkInTime == null) {
+            throw new IllegalStateException("출근 처리가 되어있지 않습니다.");
+        }
+        if (this.checkOutTime != null) {
+            throw new IllegalStateException("이미 퇴근 처리가 되었습니다.");
+        }
+        if (checkOutTime.isBefore(this.checkInTime)) {
+            throw new IllegalArgumentException("퇴근 시간은 출근 시간보다 늦어야 합니다.");
+        }
+        this.checkOutTime = checkOutTime;
+        this.checkOutLatitude = latitude;
+        this.checkOutLongitude = longitude;
+    }
+
+    /**
      * 근무 시간 계산 (분 단위)
      *
      * @return 근무 시간 (분)

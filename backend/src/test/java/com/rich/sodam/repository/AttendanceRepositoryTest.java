@@ -58,7 +58,7 @@ class AttendanceRepositoryTest {
         System.out.println("[DEBUG_LOG] 테스트 직원 프로필 생성 완료 - ID: " + testEmployee.getId());
 
         // 테스트 매장 생성
-        testStore = new Store("출퇴근테스트매장", "5555555555", "02-5555-5555", "레스토랑", 18000);
+        testStore = new Store("출퇴근테스트매장", "5555555555", "02-5555-5555", "레스토랑", 18000, 100);
         testStore.updateLocation(37.5665, 126.9780, "서울특별시 강남구 테스트로 789", 100);
         testStore = storeRepository.save(testStore);
         System.out.println("[DEBUG_LOG] 테스트 매장 생성 완료 - ID: " + testStore.getId());

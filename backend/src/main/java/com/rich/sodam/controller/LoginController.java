@@ -163,6 +163,13 @@ public class LoginController {
     public ResponseEntity<ApiResponse<Object>> join(@RequestBody JoinDto join, HttpServletResponse response, HttpServletRequest request) {
         Locale locale = localeResolver.resolveLocale(request);
 
+        // 선택적 역할/목적 헤더 로깅 (백엔드 미지원 시에도 안전)
+        String purposeHeader = request.getHeader("X-User-Purpose");
+        String gradeHeader = request.getHeader("X-User-Grade");
+        if (purposeHeader != null || gradeHeader != null) {
+            log.info("회원가입 요청 메타데이터 - X-User-Purpose: {}, X-User-Grade: {}", purposeHeader, gradeHeader);
+        }
+
         userService.joinUser(join);
         String successMessage = messageSource.getMessage("auth.join.success", null, locale);
         return ResponseEntity.ok(ApiResponse.success(successMessage));
