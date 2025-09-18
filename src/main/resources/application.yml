@@ -39,9 +39,10 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: ${DDL_AUTO:create}      # 운영 환경에서는 validate, 개발 환경에서는 create-drop 권장
+      ddl-auto: ${DDL_AUTO:create-drop}      # 운영 환경에서는 validate, 개발 환경에서는 create-drop 권장
     properties:
       hibernate:
+        globally_quoted_identifiers: true   # 예약어(예: user) 테이블/컬럼명 자동 인용
         # 서버 비용 최적화를 위한 Hibernate 설정
         format_sql: false                 # 운영 환경에서는 비활성화 권장 (SQL 포맷팅 비용 절감)
         order_inserts: true               # 일괄 삽입 최적화

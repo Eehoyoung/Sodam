@@ -24,10 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.LocaleResolver;
 
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * 로그인 관련 요청을 처리하는 컨트롤러
@@ -170,7 +167,7 @@ public class LoginController {
             log.info("회원가입 요청 메타데이터 - X-User-Purpose: {}, X-User-Grade: {}", purposeHeader, gradeHeader);
         }
 
-        userService.joinUser(join);
+        userService.joinUser(join, request.getHeader("X-User-Grade"));
         String successMessage = messageSource.getMessage("auth.join.success", null, locale);
         return ResponseEntity.ok(ApiResponse.success(successMessage));
     }
@@ -236,6 +233,37 @@ public class LoginController {
             String errorMessage = messageSource.getMessage("auth.refresh.error", new Object[]{e.getMessage()}, locale);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error(ErrorCode.INTERNAL_SERVER_ERROR.getCode(), errorMessage));
+        }
+    }
+
+    /**
+     * 현재 로그인한 사용자 정보 조회
+     * Authorization: Bearer <access>
+     * 응답: { id, email, name, roles: [ ... ] }
+     */
+    @Operation(summary = "내 정보", description = "현재 로그인한 사용자의 프로필을 반환합니다.")
+    @GetMapping({"/api/auth/me", "/api/me"})
+    public ResponseEntity<Map<String, Object>> getCurrentUser(HttpServletRequest httpRequest) {
+        try {
+            String token = jwtTokenProvider.resolveToken(httpRequest);
+            if (token == null || !jwtTokenProvider.validateToken(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            Long authUserId = jwtTokenProvider.getUserId(token);
+            Optional<User> userOpt = userService.findById(authUserId);
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+            User user = userOpt.get();
+            Map<String, Object> body = new HashMap<>();
+            body.put("id", user.getId());
+            body.put("email", user.getEmail());
+            body.put("name", user.getName());
+            body.put("roles", List.of(user.getUserGrade().getValue()));
+            return ResponseEntity.ok(body);
+        } catch (Exception e) {
+            log.error("현재 사용자 정보 조회 실패: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }

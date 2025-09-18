@@ -16,10 +16,10 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-@Table(indexes = {
+@Table(name = "user", indexes = {
         @Index(name = "idx_user_email", columnList = "email"),
-        @Index(name = "idx_user_grade", columnList = "userGrade"),
-        @Index(name = "idx_user_created_at", columnList = "createdAt")
+        @Index(name = "idx_user_grade", columnList = "user_grade"),
+        @Index(name = "idx_user_created_at", columnList = "created_at")
 })
 public class User {
 
@@ -68,7 +68,7 @@ public class User {
     public User(String email, String name) {
         this.email = email;
         this.name = name;
-        this.userGrade = UserGrade.NORMAL;
+        this.userGrade = UserGrade.Personal;
         this.createdAt = LocalDateTime.now();
     }
 

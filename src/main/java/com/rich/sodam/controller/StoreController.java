@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -38,31 +39,51 @@ public class StoreController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "404", description = "사용자 정보를 찾을 수 없음")
     })
-    @PostMapping("/change/master")
+
+    @PostMapping("/registration")
     public ResponseEntity<Store> registerStore(
             @Parameter(description = "사용자 ID", required = true) @RequestParam Long userId,
-            @Parameter(description = "매장 등록 정보", required = true) @RequestBody StoreRegistrationDto storeDto) {
+            @Parameter(description = "매장 등록 정보", required = true) @Valid @RequestBody StoreRegistrationDto storeDto) {
 
-        // 주소 좌표 변환
         if (storeDto.getQuery() != null) {
             GeocodingResult geocoding = geocodingService.getCoordinates(storeDto.getQuery());
-
-            // DTO에 좌표 정보 설정
             storeDto.setLatitude(geocoding.getLatitude());
             storeDto.setLongitude(geocoding.getLongitude());
             storeDto.setRoadAddress(geocoding.getRoadAddress());
             storeDto.setJibunAddress(geocoding.getJibunAddress());
         }
-
-        // 기본 반경 설정 (100m)
         if (storeDto.getRadius() == null) {
             storeDto.setRadius(100);
         }
-
         Store store = storeManagementService.registerStoreWithMaster(userId, storeDto);
         return ResponseEntity.ok(store);
     }
 
+    /*    @PostMapping("/change/master")
+        public ResponseEntity<Store> registerStore(
+                @Parameter(description = "사용자 ID", required = true) @RequestParam Long userId,
+                @Parameter(description = "매장 등록 정보", required = true) @RequestBody StoreRegistrationDto storeDto) {
+
+            // 주소 좌표 변환
+            if (storeDto.getQuery() != null) {
+                GeocodingResult geocoding = geocodingService.getCoordinates(storeDto.getQuery());
+
+                // DTO에 좌표 정보 설정
+                storeDto.setLatitude(geocoding.getLatitude());
+                storeDto.setLongitude(geocoding.getLongitude());
+                storeDto.setRoadAddress(geocoding.getRoadAddress());
+                storeDto.setJibunAddress(geocoding.getJibunAddress());
+            }
+
+            // 기본 반경 설정 (100m)
+            if (storeDto.getRadius() == null) {
+                storeDto.setRadius(100);
+            }
+
+            Store store = storeManagementService.registerStoreWithMaster(userId, storeDto);
+            return ResponseEntity.ok(store);
+        }
+    */
     @Operation(summary = "매장에 직원 할당", description = "사용자를 특정 매장의 직원으로 할당합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "직원 할당 성공"),
@@ -132,7 +153,7 @@ public class StoreController {
     @PutMapping("/{storeId}/location")
     public ResponseEntity<Store> updateStoreLocation(
             @Parameter(description = "매장 ID", required = true) @PathVariable Long storeId,
-            @Parameter(description = "위치 업데이트 정보", required = true) @RequestBody LocationUpdateDto locationDto) {
+            @Parameter(description = "위치 업데이트 정보", required = true) @Valid @RequestBody LocationUpdateDto locationDto) {
 
         // 주소가 변경된 경우 좌표 정보 갱신
         if (locationDto.getFullAddress() != null) {

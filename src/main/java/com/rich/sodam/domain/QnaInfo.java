@@ -25,7 +25,7 @@ public class QnaInfo {
     @Column(nullable = false)
     private String title;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(nullable = false)
     private String question;
 
     @Column(columnDefinition = "TEXT")
