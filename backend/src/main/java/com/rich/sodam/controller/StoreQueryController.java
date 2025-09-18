@@ -5,6 +5,7 @@ import com.rich.sodam.service.StoreQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -127,7 +128,7 @@ public class StoreQueryController {
 
     @Operation(summary = "매장명으로 활성 매장 검색")
     @GetMapping("/search/by-name")
-    public ResponseEntity<List<Store>> searchActiveByName(@RequestParam String storeName) {
+    public ResponseEntity<List<Store>> searchActiveByName(@RequestParam @Size(max = 100, message = "매장명은 최대 100자까지 허용됩니다.") String storeName) {
         return ResponseEntity.ok(storeQueryService.searchActiveByName(storeName));
     }
 

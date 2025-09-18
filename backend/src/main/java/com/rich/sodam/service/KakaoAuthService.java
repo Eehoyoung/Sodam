@@ -162,7 +162,7 @@ public class KakaoAuthService {
                 newUser.setName("kakao_user_" + UUID.randomUUID().toString().substring(0, 8));
             }
 
-            newUser.setUserGrade(UserGrade.NORMAL);
+            newUser.setUserGrade(UserGrade.Personal);
 
             User savedUser = userRepository.save(newUser);
             log.info("신규 사용자 등록 완료 - ID: {}", savedUser.getId());

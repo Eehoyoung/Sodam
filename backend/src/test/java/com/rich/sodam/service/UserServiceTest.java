@@ -44,7 +44,7 @@ class UserServiceTest {
     @DisplayName("사업주 전환 - 성공: 일반 사용자를 사업주로 전환")
     void convertToOwner_Success() {
         // Given
-        assertEquals(UserGrade.NORMAL, testUser.getUserGrade());
+        assertEquals(UserGrade.Personal, testUser.getUserGrade());
 
         // When
         User result = userService.convertToOwner(testUser.getId());
@@ -113,7 +113,7 @@ class UserServiceTest {
         assertTrue(result.isPresent());
         assertEquals("test@example.com", result.get().getEmail());
         assertEquals("테스트사용자", result.get().getName());
-        assertEquals(UserGrade.NORMAL, result.get().getUserGrade());
+        assertEquals(UserGrade.Personal, result.get().getUserGrade());
     }
 
     @Test
@@ -139,13 +139,13 @@ class UserServiceTest {
         joinDto.setPassword("password123");
 
         // When
-        User result = userService.joinUser(joinDto);
+        User result = userService.joinUser(joinDto, "Master");
 
         // Then
         assertNotNull(result);
         assertEquals("newuser@example.com", result.getEmail());
         assertEquals("신규사용자", result.getName());
-        assertEquals(UserGrade.NORMAL, result.getUserGrade());
+        assertEquals(UserGrade.Personal, result.getUserGrade());
         assertNotNull(result.getCreatedAt());
         // 비밀번호는 암호화되어 저장되므로 직접 비교하지 않음
         assertNotNull(result.getPassword());

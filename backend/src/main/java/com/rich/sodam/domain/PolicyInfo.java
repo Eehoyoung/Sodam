@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * 국가정책 정보 엔티티
  * 국가정책 관련 정보를 저장하는 엔티티입니다.
  */
-@Entity
+@Entity(name = "policy_info")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -25,7 +25,7 @@ public class PolicyInfo {
     @Column(nullable = false)
     private String title;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(nullable = false)
     private String content;
 
     @Column

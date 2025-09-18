@@ -5,8 +5,10 @@ import lombok.Getter;
 @Getter
 public enum UserGrade {
 
-    NORMAL("ROLE_USER"),
+    Personal("ROLE_USER"),
     EMPLOYEE("ROLE_EMPLOYEE"),
+    BOSSES("ROLE_BOSS"),
+
     MASTER("ROLE_MASTER"),
     MANAGER("ROLE_MANAGER");
 

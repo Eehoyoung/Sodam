@@ -85,9 +85,6 @@ public class StoreManagementServiceImpl implements StoreManagementService {
             throw new IllegalArgumentException("이미 등록된 사업자 등록번호입니다.");
         }
 
-        // 사용자를 MASTER로 변경
-        user.changeToMaster();
-
         // MasterProfile 생성 또는 조회
         MasterProfile masterProfile;
         Optional<MasterProfile> masterProfileOptional = masterProfileRepository.findById(userId);

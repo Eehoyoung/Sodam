@@ -12,9 +12,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -26,17 +27,25 @@ public class GeocodingService {
     @Value("${spring.security.oauth2.client.registration.kakao.client-id}")
     private String kakaoApiKey;
 
+    private static final String KAKAO_GEOCODING_ENDPOINT = "https://dapi.kakao.com/v2/local/search/address.json";
+    // 주소 필드는 URL/프로토콜/제어문자 포함 불가, 한글/영문/숫자/공백/쉼표/점/하이픈만 허용 (최대 200자)
+    private static final Pattern SAFE_ADDRESS_PATTERN = Pattern.compile("^[\\p{L}\\p{N}\\s,.-]{1,200}$");
+
     @Transactional
     public GeocodingResult getCoordinates(String address) {
         try {
-            String encodedAddress = URLEncoder.encode(address, StandardCharsets.UTF_8);
-            // analyze_type=similar 추가
-            String url = "https://dapi.kakao.com/v2/local/search/address.json?query=" + encodedAddress + "&analyze_type=similar";
+            String normalized = normalizeAndValidateAddress(address);
+
+            String url = UriComponentsBuilder.fromHttpUrl(KAKAO_GEOCODING_ENDPOINT)
+                    .queryParam("query", normalized)
+                    .queryParam("analyze_type", "similar")
+                    .encode(StandardCharsets.UTF_8)
+                    .toUriString();
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("Authorization", "KakaoAK " + kakaoApiKey);
 
-            log.info("카카오 주소 검색 API 요청: {}", url);
+            log.info("카카오 주소 검색 API 요청 시작");
             ResponseEntity<KakaoApiResponse> response = restTemplate.exchange(
                     url, HttpMethod.GET, new HttpEntity<>(headers), KakaoApiResponse.class);
 
@@ -44,8 +53,8 @@ public class GeocodingService {
             log.debug("카카오 API 응답: {}", body);
 
             if (body == null || body.getDocuments().isEmpty()) {
-                log.warn("주소 검색 결과 없음: {}", address);
-                throw new IllegalArgumentException("주소를 찾을 수 없습니다: " + address);
+                log.warn("주소 검색 결과 없음: {}", normalized);
+                throw new IllegalArgumentException("주소를 찾을 수 없습니다: " + normalized);
             }
 
             KakaoApiResponse.Documents document = body.getDocuments().get(0);
@@ -65,31 +74,39 @@ public class GeocodingService {
                 jibunAddress = document.getAddress().getAddressName();
             }
 
-            return new GeocodingResult(latitude, longitude, roadAddress, jibunAddress, address);
+            return new GeocodingResult(latitude, longitude, roadAddress, jibunAddress, normalized);
+        } catch (IllegalArgumentException e) {
+            // 유효성 예외는 그대로 전달
+            throw e;
         } catch (Exception e) {
             log.error("주소 변환 중 오류 발생: {}", e.getMessage(), e);
             throw new RuntimeException("주소 변환 중 오류가 발생했습니다: " + e.getMessage(), e);
         }
     }
+
+    /**
+     * SSRF/XSS 방지를 위한 주소 입력 정규화 및 검증
+     */
+    private String normalizeAndValidateAddress(String address) {
+        if (address == null) {
+            throw new IllegalArgumentException("주소가 비어 있습니다.");
+        }
+        String trimmed = address.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException("주소가 비어 있습니다.");
+        }
+        // 제어문자, 개행 제거
+        String cleaned = trimmed.replaceAll("[\\r\\n\\t]", " ");
+        if (!SAFE_ADDRESS_PATTERN.matcher(cleaned).matches()) {
+            throw new IllegalArgumentException("주소에 허용되지 않는 문자가 포함되어 있습니다.");
+        }
+        return cleaned;
+    }
 }
 
 
 /*
-1. API 키 발급:
-    - 카카오 개발자 사이트([https://developers.kakao.com](https://developers.kakao.com))에 회원가입 및 로그인
-    - 애플리케이션 추가를 통해 앱 생성
-    - "플랫폼" 설정에서 웹 플랫폼 등록 (localhost도 가능)
-    - "앱 키"에서 REST API 키 확인
-
-2. API 키 설정:
-    - application.yml 또는 properties 파일에 위에 제공된 형식으로 API 키 저장
-
-3. API 호출:
-    - GeocodingService 클래스를 통해 주소를 좌표로 변환
-    - Store 엔티티 등록/수정 시 위 서비스 호출하여 좌표 정보 저장
-
-4. 테스트:
-    - Postman 또는 curl을 사용해 API 엔드포인트 테스트
-    - 매장 등록 시 주소 필드를 추가하고, 컨트롤러에서 GeocodingService 호출
-
- */
+보안 메모:
+- 외부 호출 호스트는 고정된 카카오 도메인만 사용합니다.
+- 사용자 입력은 쿼리 파라미터로만 전달되며, 정규식 검증과 URI 인코딩을 거칩니다.
+*/

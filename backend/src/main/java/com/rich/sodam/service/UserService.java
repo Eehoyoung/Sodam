@@ -28,7 +28,7 @@ public class UserService {
 
     /**
      * 사용자 목적을 기반으로 등급을 설정/갱신합니다.
-     * - personal -> NORMAL (다운그레이드는 허용하지 않음)
+     * - personal -> Personal (다운그레이드는 허용하지 않음)
      * - employee -> EMPLOYEE (NORMAL에서만 승격 허용)
      * - boss -> MASTER (NORMAL에서만 승격 허용)
      * 동일 등급 요청은 그대로 반환합니다.
@@ -47,7 +47,7 @@ public class UserService {
         UserGrade target;
         switch (p) {
             case "personal":
-                target = UserGrade.NORMAL;
+                target = UserGrade.Personal;
                 break;
             case "employee":
                 target = UserGrade.EMPLOYEE;
@@ -69,19 +69,19 @@ public class UserService {
 
         // NORMAL에서만 승격 허용, 다운그레이드는 금지
         if (target == UserGrade.EMPLOYEE || target == UserGrade.MASTER) {
-            if (user.getUserGrade() != UserGrade.NORMAL) {
-                throw new IllegalStateException("권한 승격은 NORMAL 등급에서만 가능합니다. 현재 등급: " + user.getUserGrade());
+            if (user.getUserGrade() != UserGrade.Personal) {
+                throw new IllegalStateException("권한 승격은 Personal 등급에서만 가능합니다. 현재 등급: " + user.getUserGrade());
             }
             if (target == UserGrade.EMPLOYEE) {
                 user.changeToEmployee();
             } else {
                 user.changeToMaster();
             }
-        } else { // target == NORMAL
-            if (user.getUserGrade() != UserGrade.NORMAL) {
+        } else { // target == Personal
+            if (user.getUserGrade() != UserGrade.Personal) {
                 throw new IllegalStateException("권한을 낮출 수 없습니다. 현재 등급: " + user.getUserGrade());
             }
-            // 이미 NORMAL이 아니면 위에서 예외, 여기 도달 시 NORMAL 유지
+            // 이미 NORMAL이 아니면 위에서 예외, 여기 도달 시 Personal 유지
         }
 
         return userRepository.save(user);
@@ -104,13 +104,14 @@ public class UserService {
 
     @jakarta.transaction.Transactional
     @CacheEvict(value = "users", key = "#joinDto.email")
-    public User joinUser(JoinDto joinDto) {
+    public User joinUser(JoinDto joinDto, String grade) {
         User user = new User();
         String password = passwordEncoder.encode(joinDto.getPassword());
         user.setPassword(password);
         user.setEmail(joinDto.getEmail());
         user.setName(joinDto.getName());
-        user.setUserGrade(UserGrade.NORMAL);
+        user.setUserGrade(UserGrade.valueOf(grade));
+        System.out.println(user.getUserGrade());
         user.setCreatedAt(LocalDateTime.now());
         return userRepository.save(user);
     }
@@ -135,7 +136,7 @@ public class UserService {
         }
 
         // 일반 사용자만 사업주로 전환 가능
-        if (user.getUserGrade() != UserGrade.NORMAL) {
+        if (user.getUserGrade() != UserGrade.Personal) {
             throw new IllegalArgumentException("일반 사용자만 사업주로 전환할 수 있습니다. 현재 등급: " + user.getUserGrade());
         }
 

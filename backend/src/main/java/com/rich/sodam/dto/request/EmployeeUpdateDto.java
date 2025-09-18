@@ -35,7 +35,7 @@ public class EmployeeUpdateDto {
     private String email;
 
     /**
-     * 직원 직책 (EMPLOYEE, NORMAL 등)
+     * 직원 직책 (EMPLOYEE, Personal 등)
      */
     private UserGrade userGrade;
 
