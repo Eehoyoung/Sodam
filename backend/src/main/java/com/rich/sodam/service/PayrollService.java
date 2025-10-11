@@ -593,6 +593,71 @@ public class PayrollService {
     }
 
     /**
+     * 급여명세서 PDF 생성 (HIGH-BE-002)
+     * 기본 구현: 텍스트 기반 급여명세서를 바이트 배열로 반환
+     * <p>
+     * TODO: 추후 iText, Apache PDFBox 등의 PDF 라이브러리로 교체하여
+     *       실제 PDF 레이아웃, 폰트, 이미지 등을 포함한 전문적인 명세서 생성 가능
+     *
+     * @param payrollId 급여 ID
+     * @return PDF 바이트 배열 (현재는 UTF-8 텍스트)
+     * @throws EntityNotFoundException 급여 내역을 찾을 수 없을 경우
+     */
+    @Transactional(readOnly = true)
+    public byte[] generatePayrollPdf(Long payrollId) {
+        // 급여 정보 조회
+        Payroll payroll = payrollRepository.findById(payrollId)
+                .orElseThrow(() -> new EntityNotFoundException("급여 내역을 찾을 수 없습니다. ID: " + payrollId));
+
+        // 급여 상세 내역 조회
+        List<PayrollDetail> details = payrollDetailRepository.findByPayroll_IdOrderByWorkDateAsc(payrollId);
+
+        // 기본 구현: 텍스트 기반 급여명세서 생성
+        StringBuilder pdfContent = new StringBuilder();
+        pdfContent.append("===========================================\n");
+        pdfContent.append("           급여 명세서\n");
+        pdfContent.append("===========================================\n\n");
+        pdfContent.append("급여 ID: ").append(payroll.getId()).append("\n");
+        pdfContent.append("직원명: ").append(payroll.getEmployee().getUser().getName()).append("\n");
+        pdfContent.append("매장명: ").append(payroll.getStore().getStoreName()).append("\n");
+        pdfContent.append("급여 기간: ").append(payroll.getStartDate()).append(" ~ ").append(payroll.getEndDate()).append("\n");
+        pdfContent.append("-------------------------------------------\n");
+
+        // 총 근무시간 계산 (regularHours + overtimeHours + nightWorkHours)
+        double totalHours = (payroll.getRegularHours() != null ? payroll.getRegularHours() : 0.0)
+                + (payroll.getOvertimeHours() != null ? payroll.getOvertimeHours() : 0.0)
+                + (payroll.getNightWorkHours() != null ? payroll.getNightWorkHours() : 0.0);
+        pdfContent.append("총 근무시간: ").append(String.format("%.2f", totalHours)).append(" 시간\n");
+        pdfContent.append("기본급: ").append(String.format("%,d", payroll.getGrossWage())).append(" 원\n");
+        pdfContent.append("공제액: ").append(String.format("%,d", payroll.getTaxAmount())).append(" 원\n");
+        pdfContent.append("실수령액: ").append(String.format("%,d", payroll.getNetWage())).append(" 원\n");
+        pdfContent.append("-------------------------------------------\n");
+        pdfContent.append("상태: ").append(payroll.getStatus()).append("\n");
+        pdfContent.append("계산일: ").append(payroll.getCreatedAt()).append("\n");
+        pdfContent.append("\n");
+        pdfContent.append("===========================================\n");
+        pdfContent.append("상세 근무 내역 (").append(details.size()).append("건)\n");
+        pdfContent.append("===========================================\n");
+
+        for (PayrollDetail detail : details) {
+            // 상세 내역의 총 근무시간 계산
+            double detailTotalHours = (detail.getRegularHours() != null ? detail.getRegularHours() : 0.0)
+                    + (detail.getOvertimeHours() != null ? detail.getOvertimeHours() : 0.0)
+                    + (detail.getNightWorkHours() != null ? detail.getNightWorkHours() : 0.0);
+            pdfContent.append(detail.getWorkDate()).append(" | ");
+            pdfContent.append(String.format("%.2f", detailTotalHours)).append("시간 | ");
+            pdfContent.append(String.format("%,d", detail.getDailyWage())).append("원\n");
+        }
+
+        pdfContent.append("\n");
+        pdfContent.append("※ 본 명세서는 기본 텍스트 형식입니다.\n");
+        pdfContent.append("※ 추후 정식 PDF 레이아웃으로 업그레이드될 예정입니다.\n");
+
+        // UTF-8 바이트 배열로 반환 (추후 PDF 라이브러리로 교체 가능)
+        return pdfContent.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    /**
      * 주휴수당을 급여에 통합
      */
     private int calculateTotalWeeklyAllowance(Long employeeId, Long storeId, LocalDate startDate, LocalDate endDate) {

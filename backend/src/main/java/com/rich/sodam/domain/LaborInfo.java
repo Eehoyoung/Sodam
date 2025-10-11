@@ -31,6 +31,22 @@ public class LaborInfo {
     @Column
     private String imagePath;
 
+    /**
+     * 노무 기준값 필드들 (FE 요청사항: CRITICAL-BE-003)
+     * nullable로 설정하여 기존 데이터 호환성 유지 및 추후 변경 여지 보존
+     */
+    @Column
+    private Integer minimumWage; // 최저임금 (원 단위)
+
+    @Column
+    private Integer year; // 적용 연도
+
+    @Column
+    private Integer weeklyMaxHours; // 주당 최대 근무시간
+
+    @Column
+    private Double overtimeRate; // 초과근무 수당 배율 (예: 1.5)
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 

@@ -5,13 +5,13 @@ import com.rich.sodam.domain.User;
 import com.rich.sodam.dto.request.EmployeeWageUpdateDto;
 import com.rich.sodam.dto.request.LocationUpdateDto;
 import com.rich.sodam.dto.request.StoreRegistrationDto;
+import com.rich.sodam.dto.request.StoreUpdateDto;
 
 import java.util.List;
 
 public interface StoreManagementService {
 
-    Store registerStoreWithMaster(Long userId, StoreRegistrationDto storeDto
-    );
+    Store registerStoreWithMaster(Long userId, StoreRegistrationDto storeDto);
 
     void assignUserToStoreAsEmployee(Long userId, Long storeId);
 
@@ -29,6 +29,10 @@ public interface StoreManagementService {
 
     Integer getEmployeeWageInStore(Long employeeId, Long storeId);
 
+    // ===== RN 연동을 위한 일반 업데이트/삭제 =====
+    Store updateStore(Long storeId, StoreUpdateDto updateDto);
+
+    void deleteStore(Long storeId);
 }
 
 

@@ -5,6 +5,7 @@ import com.rich.sodam.domain.*;
 import com.rich.sodam.dto.request.EmployeeWageUpdateDto;
 import com.rich.sodam.dto.request.LocationUpdateDto;
 import com.rich.sodam.dto.request.StoreRegistrationDto;
+import com.rich.sodam.dto.request.StoreUpdateDto;
 import com.rich.sodam.exception.EntityNotFoundException;
 import com.rich.sodam.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -73,17 +74,17 @@ public class StoreManagementServiceImpl implements StoreManagementService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
 
-        if (!validationService.validateFormat(storeDto.getBusinessNumber())) {
-            throw new IllegalArgumentException("사업자 등록번호 형식이 올바르지 않습니다.");
-        }
-
-        if (!validationService.validateWithTaxOffice(storeDto.getBusinessNumber())) {
-            throw new IllegalArgumentException("유효하지 않은 사업자 등록번호입니다.");
-        }
-
-        if (validationService.isDuplicate(storeDto.getBusinessNumber())) {
-            throw new IllegalArgumentException("이미 등록된 사업자 등록번호입니다.");
-        }
+//        if (!validationService.validateFormat(storeDto.getBusinessNumber())) {
+//            throw new IllegalArgumentException("사업자 등록번호 형식이 올바르지 않습니다.");
+//        }
+//
+//        if (!validationService.validateWithTaxOffice(storeDto.getBusinessNumber())) {
+//            throw new IllegalArgumentException("유효하지 않은 사업자 등록번호입니다.");
+//        }
+//
+//        if (validationService.isDuplicate(storeDto.getBusinessNumber())) {
+//            throw new IllegalArgumentException("이미 등록된 사업자 등록번호입니다.");
+//        }
 
         // MasterProfile 생성 또는 조회
         MasterProfile masterProfile;
@@ -270,5 +271,44 @@ public class StoreManagementServiceImpl implements StoreManagementService {
         }
 
         return storeRepository.save(store);
+    }
+
+    @Override
+    @Transactional
+    public Store updateStore(Long storeId, StoreUpdateDto updateDto) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new EntityNotFoundException("매장을 찾을 수 없습니다."));
+
+        // 기본 정보 업데이트
+        if (updateDto.getStoreName() != null || updateDto.getStorePhoneNumber() != null || updateDto.getBusinessType() != null) {
+            store.updateStoreInfo(updateDto.getStoreName(), updateDto.getStorePhoneNumber(), updateDto.getBusinessType());
+        }
+
+        // 주소 정보 업데이트
+        if (updateDto.getRoadAddress() != null || updateDto.getJibunAddress() != null) {
+            store.setAddressDetails(updateDto.getRoadAddress(), updateDto.getJibunAddress());
+        }
+        if (updateDto.getFullAddress() != null) {
+            store.setFullAddress(updateDto.getFullAddress());
+        }
+
+        // 반경/시급 정보 업데이트
+        if (updateDto.getRadius() != null) {
+            store.setRadius(updateDto.getRadius());
+        }
+        if (updateDto.getStoreStandardHourWage() != null) {
+            store.setStoreStandardHourWage(updateDto.getStoreStandardHourWage());
+        }
+
+        return storeRepository.save(store);
+    }
+
+    @Override
+    @Transactional
+    public void deleteStore(Long storeId) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new EntityNotFoundException("매장을 찾을 수 없습니다."));
+        store.softDelete();
+        storeRepository.save(store);
     }
 }

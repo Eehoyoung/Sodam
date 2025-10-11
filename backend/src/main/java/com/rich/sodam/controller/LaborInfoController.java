@@ -85,6 +85,19 @@ public class LaborInfoController {
         return ResponseEntity.ok(responseDtos);
     }
 
+    @Operation(summary = "현재 적용 중인 노무 정보 조회", description = "현재 적용 중인 최신 노무 기준값(최저임금, 주당 최대 근무시간 등)을 조회합니다. (CRITICAL-BE-003)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "현재 노무 정보 조회 성공",
+                    content = @Content(schema = @Schema(implementation = LaborInfoResponseDto.class))),
+            @ApiResponse(responseCode = "404", description = "노무 정보가 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @GetMapping("/current")
+    public ResponseEntity<LaborInfoResponseDto> getCurrentLaborInfo() {
+        LaborInfoResponseDto responseDto = laborInfoService.getCurrentLaborInfo();
+        return ResponseEntity.ok(responseDto);
+    }
+
     @Operation(summary = "노무 정보 수정", description = "ID로 노무 정보를 수정합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "노무 정보 수정 성공",

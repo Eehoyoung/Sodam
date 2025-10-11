@@ -19,6 +19,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -188,5 +190,27 @@ public class PayrollController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(dtos);
+    }
+
+    @Operation(summary = "급여명세서 PDF 생성", description = "특정 급여의 PDF 명세서를 생성합니다. (HIGH-BE-002)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "PDF 생성 성공",
+                    content = @Content(mediaType = "application/pdf")),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "404", description = "급여 정보를 찾을 수 없음")
+    })
+    @GetMapping("/{payrollId}/pdf")
+    public ResponseEntity<byte[]> generatePayrollPdf(
+            @Parameter(description = "급여 ID", required = true) @PathVariable Long payrollId) {
+
+        byte[] pdfBytes = payrollService.generatePayrollPdf(payrollId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "payroll_" + payrollId + ".pdf");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
     }
 }

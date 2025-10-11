@@ -38,6 +38,16 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 위치 검증 실패 예외 처리 (403)
+     */
+    @ExceptionHandler(LocationVerificationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleLocationVerificationException(LocationVerificationException e) {
+        log.warn("LocationVerificationException: {}", e.getMessage(), e);
+        ApiResponse<Object> response = ApiResponse.error(e.getErrorCode(), e.getMessage());
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+    }
+
+    /**
      * 현재 요청의 로케일을 가져옵니다.
      *
      * @return 현재 로케일

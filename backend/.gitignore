@@ -219,6 +219,7 @@ cache/
 docs/generated/
 docs/api/generated/
 *.md
+!BE_Implementation_Status_Report_v1.0_2025-10-11.md
 !README.md
 
 # =============================================================================

@@ -85,6 +85,22 @@ public class LaborInfoService {
     }
 
     /**
+     * 현재 적용 중인 최신 노무 정보 조회 (CRITICAL-BE-003)
+     * FE 요청사항: 최저임금, 연도, 주당 최대 근무시간, 초과근무 수당 배율 등 노무 기준값 제공
+     *
+     * @return 최신 노무 정보 응답 DTO
+     * @throws IllegalArgumentException 노무 정보가 없을 경우
+     */
+    @Transactional(readOnly = true)
+    public LaborInfoResponseDto getCurrentLaborInfo() {
+        List<LaborInfo> recentInfos = laborInfoRepository.findTop5ByOrderByIdDesc();
+        if (recentInfos.isEmpty()) {
+            throw new IllegalArgumentException("현재 적용 가능한 노무 정보가 없습니다. 관리자에게 문의하세요.");
+        }
+        return LaborInfoResponseDto.from(recentInfos.get(0));
+    }
+
+    /**
      * 노무 정보 수정
      *
      * @param id         노무 정보 ID

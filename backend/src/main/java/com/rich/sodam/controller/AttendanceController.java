@@ -2,9 +2,15 @@ package com.rich.sodam.controller;
 
 import com.rich.sodam.domain.Attendance;
 import com.rich.sodam.dto.request.AttendanceRequestDto;
+import com.rich.sodam.dto.request.LocationVerifyRequest;
 import com.rich.sodam.dto.request.ManualAttendanceRequestDto;
+import com.rich.sodam.dto.request.NfcVerifyRequest;
 import com.rich.sodam.dto.response.AttendanceResponseDto;
+import com.rich.sodam.dto.response.LocationVerifyResponse;
+import com.rich.sodam.dto.response.NfcVerifyResponse;
 import com.rich.sodam.service.AttendanceService;
+import com.rich.sodam.service.LocationVerificationService;
+import com.rich.sodam.service.NfcVerificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -33,6 +39,8 @@ import java.util.stream.Collectors;
 public class AttendanceController {
 
     private final AttendanceService attendanceService;
+    private final LocationVerificationService locationVerificationService;
+    private final NfcVerificationService nfcVerificationService;
 
     @PostMapping("/check-in")
     @Operation(summary = "직원 출근 처리", description = "직원 출근 정보를 기록하고 위치 인증을 수행합니다.")
@@ -165,5 +173,44 @@ public class AttendanceController {
         Attendance attendance = attendanceService.registerManualAttendance(request);
 
         return ResponseEntity.ok(AttendanceResponseDto.from(attendance));
+    }
+
+    @PostMapping("/verify/location")
+    @Operation(summary = "위치 사전 검증", description = "사용자 위치가 매장 반경 내에 있는지 사전 검증합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "검증 결과 반환"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "404", description = "매장 정보를 찾을 수 없음")
+    })
+    public ResponseEntity<com.rich.sodam.dto.response.ApiResponse<LocationVerifyResponse>> verifyLocation(
+            @RequestBody @Validated LocationVerifyRequest request) {
+        var result = locationVerificationService.verifyWithDistance(
+                request.getStoreId(), request.getLatitude(), request.getLongitude());
+
+        LocationVerifyResponse body = LocationVerifyResponse.builder()
+                .success(result.isSuccess())
+                .reason(result.getReason())
+                .distance(result.getDistance())
+                .build();
+
+        return ResponseEntity.ok(com.rich.sodam.dto.response.ApiResponse.success(body));
+    }
+
+    @PostMapping("/verify/nfc")
+    @Operation(summary = "NFC 사전 검증", description = "NFC 태그의 기본 유효성을 사전 검증합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "검증 결과 반환"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청")
+    })
+    public ResponseEntity<com.rich.sodam.dto.response.ApiResponse<NfcVerifyResponse>> verifyNfc(
+            @RequestBody @Validated NfcVerifyRequest request) {
+        var result = nfcVerificationService.verifyTag(request.getStoreId(), request.getTagId());
+
+        NfcVerifyResponse body = NfcVerifyResponse.builder()
+                .success(result.isSuccess())
+                .reason(result.getReason())
+                .build();
+
+        return ResponseEntity.ok(com.rich.sodam.dto.response.ApiResponse.success(body));
     }
 }

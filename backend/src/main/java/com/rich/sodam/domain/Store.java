@@ -204,9 +204,9 @@ public class Store {
 
 
     private void validateBusinessNumber(String businessNumber) {
-        if (businessNumber == null || !businessNumber.matches("\\d{10}")) {
-            throw new IllegalArgumentException("사업자등록번호는 10자리 숫자여야 합니다.");
-        }
+//        if (businessNumber == null || !businessNumber.matches("\\d{10}")) {
+//            throw new IllegalArgumentException("사업자등록번호는 10자리 숫자여야 합니다.");
+//        }
     }
 
     private void validateStandardWage(Integer wage) {

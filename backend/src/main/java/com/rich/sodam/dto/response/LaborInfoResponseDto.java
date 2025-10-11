@@ -17,6 +17,13 @@ public class LaborInfoResponseDto {
     private String title;
     private String content;
     private String imagePath;
+
+    // 노무 기준값 필드들 (CRITICAL-BE-003)
+    private Integer minimumWage; // 최저임금
+    private Integer year; // 적용 연도
+    private Integer weeklyMaxHours; // 주당 최대 근무시간
+    private Double overtimeRate; // 초과근무 수당 배율
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -32,6 +39,10 @@ public class LaborInfoResponseDto {
                 .title(laborInfo.getTitle())
                 .content(laborInfo.getContent())
                 .imagePath(laborInfo.getImagePath())
+                .minimumWage(laborInfo.getMinimumWage())
+                .year(laborInfo.getYear())
+                .weeklyMaxHours(laborInfo.getWeeklyMaxHours())
+                .overtimeRate(laborInfo.getOvertimeRate())
                 .createdAt(laborInfo.getCreatedAt())
                 .updatedAt(laborInfo.getUpdatedAt())
                 .build();
