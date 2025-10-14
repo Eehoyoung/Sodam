@@ -53,7 +53,7 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6' // 버전 업데이트 및 runtimeOnly로 변경
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     // Swagger/OpenAPI 문서화
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
     // Hibernate JCache implementation
     implementation 'org.hibernate:hibernate-jcache:6.6.13.Final'
     implementation 'org.ehcache:ehcache:3.10.8'
@@ -62,7 +62,7 @@ dependencies {
     implementation 'io.github.cdimascio:dotenv-java:3.0.0'
     implementation 'io.micrometer:micrometer-tracing'
     implementation 'io.micrometer:micrometer-tracing-bridge-brave'
-
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
 }
 
 tasks.named('test') {

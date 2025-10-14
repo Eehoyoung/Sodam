@@ -15,7 +15,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
         ObservationAutoConfiguration.class,
         SpringDataWebAutoConfiguration.class,
         RedisRepositoriesAutoConfiguration.class
-})
+}, scanBasePackages = "com.rich.sodam")
 @EnableJpaRepositories(basePackages = "com.rich.sodam.repository")
 public class SodamApplication {
 
