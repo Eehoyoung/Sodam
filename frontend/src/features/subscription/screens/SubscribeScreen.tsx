@@ -1,0 +1,322 @@
+import React, {useEffect, useState} from 'react';
+import {Alert, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {useNavigation} from '@react-navigation/native';
+import {tokens} from '../../../theme/tokens';
+import {Button} from '../../../common/components';
+import Card from '../../../common/components/data-display/Card';
+import Badge from '../../../common/components/data-display/Badge';
+import subscriptionApi, {
+    PlanCatalogItem,
+    PlanType,
+    SubscriptionResponse,
+} from '../services/subscriptionApi';
+
+type Highlight = {text: string; included: boolean};
+
+const PLAN_VISUALS: Record<
+    PlanType,
+    {emoji: string; accent: string; recommended?: boolean; highlights: Highlight[]}
+> = {
+    FREE: {
+        emoji: '🌱',
+        accent: tokens.colors.textSecondary,
+        highlights: [
+            {text: '기본 근태 기록 + 급여 자동 계산', included: true},
+            {text: 'FAQ + 이메일 고객 지원', included: true},
+            {text: '광고 노출', included: true},
+            {text: '급여 명세서 발급', included: false},
+            {text: '세무 환급 연계', included: false},
+        ],
+    },
+    BUSINESS: {
+        emoji: '✨',
+        accent: tokens.colors.brandPrimary,
+        recommended: true,
+        highlights: [
+            {text: 'NFC + GPS 근태 + 급여 자동 산출', included: true},
+            {text: '급여 명세서 발급 + 직원 알림', included: true},
+            {text: '맞춤 대시보드', included: true},
+            {text: '채널톡 1:1 응대', included: true},
+            {text: '세무 환급 별도 신청', included: false},
+        ],
+    },
+    PREMIUM: {
+        emoji: '👑',
+        accent: tokens.colors.brandSecondary,
+        highlights: [
+            {text: '비즈니스 플랜 전부 포함', included: true},
+            {text: '세무사 1:1 상담 + 신고 대행', included: true},
+            {text: '다매장 통합 대시보드', included: true},
+            {text: '연 1회 무료 추가 세무 상담', included: true},
+        ],
+    },
+    COMMISSION: {
+        emoji: '💸',
+        accent: tokens.colors.success,
+        highlights: [
+            {text: '종합소득세 환급 신청 대행', included: true},
+            {text: '필요 서류 자동 발급', included: true},
+            {text: '세무사 상담 포함', included: true},
+            {text: '월정액 없음 · 환급금의 10~20% 수수료', included: true},
+        ],
+    },
+};
+
+const SubscribeScreen: React.FC = () => {
+    const navigation = useNavigation<any>();
+    const [plans, setPlans] = useState<PlanCatalogItem[]>([]);
+    const [current, setCurrent] = useState<SubscriptionResponse | null>(null);
+    const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [processing, setProcessing] = useState(false);
+
+    useEffect(() => {
+        let mounted = true;
+        (async () => {
+            try {
+                const [planList, mine] = await Promise.all([
+                    subscriptionApi.getPlans().catch(() => buildFallbackPlans()),
+                    subscriptionApi.getMyCurrent().catch(() => null),
+                ]);
+                if (!mounted) return;
+                setPlans(planList.length > 0 ? planList : buildFallbackPlans());
+                setCurrent(mine);
+                if (mine?.plan) setSelectedPlan(mine.plan);
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        })();
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    const handleSubscribe = async () => {
+        if (!selectedPlan) {
+            Alert.alert('알림', '플랜을 선택해 주세요.');
+            return;
+        }
+        setProcessing(true);
+        try {
+            if (selectedPlan === 'FREE') {
+                await subscriptionApi.subscribeFree();
+                Alert.alert('완료', '무료 플랜으로 시작합니다.', [
+                    {text: '확인', onPress: () => navigation.navigate('Home')},
+                ]);
+            } else if (selectedPlan === 'COMMISSION') {
+                Alert.alert(
+                    '환급형 안내',
+                    '환급형은 종합소득세 환급 금액의 10~20% 수수료로 운영됩니다.\n환급 신청서 작성을 시작할까요?',
+                    [
+                        {text: '나중에', style: 'cancel'},
+                        {text: '신청 시작', onPress: () => navigation.navigate('TaxRefundIntake')},
+                    ],
+                );
+            } else {
+                navigation.navigate('TossBillingAuth', {plan: selectedPlan});
+            }
+        } catch (e: any) {
+            Alert.alert(
+                '오류',
+                e?.response?.data?.message ??
+                    '구독 처리에 실패했어요. 잠시 후 다시 시도해 주세요.',
+            );
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const renderPlan = (plan: PlanCatalogItem) => {
+        const v = PLAN_VISUALS[plan.name];
+        const isSelected = selectedPlan === plan.name;
+        const isCurrent = current?.plan === plan.name && current.status === 'ACTIVE';
+
+        return (
+            <Card
+                key={plan.name}
+                onPress={() => setSelectedPlan(plan.name)}
+                bordered
+                style={[
+                    styles.planCard,
+                    isSelected && {borderColor: v.accent, borderWidth: 2},
+                ] as any}
+                elevation={isSelected ? 4 : 1}
+            >
+                <View style={styles.planHeader}>
+                    <View style={styles.planTitleRow}>
+                        <Text style={styles.planEmoji}>{v.emoji}</Text>
+                        <View>
+                            <Text style={[styles.planName, {color: v.accent}]}>
+                                {plan.displayName}
+                            </Text>
+                            <Text style={styles.planPrice}>{formatPrice(plan)}</Text>
+                        </View>
+                    </View>
+                    <View style={styles.planBadges}>
+                        {v.recommended ? <Badge text="추천" type="primary" /> : null}
+                        {isCurrent ? <Badge text="이용 중" type="success" /> : null}
+                    </View>
+                </View>
+
+                <Text style={styles.planDescription}>{plan.description}</Text>
+
+                <View style={styles.divider} />
+
+                {v.highlights.map((h, idx) => (
+                    <View key={idx} style={styles.highlightRow}>
+                        <Text style={[styles.checkIcon, !h.included && styles.checkIconDim]}>
+                            {h.included ? '✓' : '–'}
+                        </Text>
+                        <Text
+                            style={[
+                                styles.highlightText,
+                                !h.included && styles.highlightTextDim,
+                            ]}
+                        >
+                            {h.text}
+                        </Text>
+                    </View>
+                ))}
+            </Card>
+        );
+    };
+
+    return (
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
+                <Text style={styles.title}>소담과 함께 시작해요</Text>
+                <Text style={styles.subtitle}>
+                    매장 규모에 맞는 플랜을 선택해 주세요.{'\n'}언제든 해지·변경할 수 있어요.
+                </Text>
+
+                {loading ? (
+                    <Text style={styles.loadingText}>플랜 정보를 불러오는 중…</Text>
+                ) : (
+                    plans.map(renderPlan)
+                )}
+
+                <Button
+                    title={selectedPlan === 'FREE' ? '무료로 시작하기' : '결제 진행하기'}
+                    onPress={handleSubscribe}
+                    variant="primary"
+                    size="lg"
+                    loading={processing}
+                    disabled={!selectedPlan}
+                    fullWidth
+                    style={styles.subscribeButton}
+                />
+                <Text style={styles.legalText}>
+                    구독 시 이용약관·개인정보 처리방침에 동의하게 됩니다.
+                </Text>
+            </ScrollView>
+        </SafeAreaView>
+    );
+};
+
+function buildFallbackPlans(): PlanCatalogItem[] {
+    return [
+        {name: 'FREE', displayName: '기본', monthlyPriceKrw: 0, description: '기본 근태/급여 + 광고 노출'},
+        {name: 'BUSINESS', displayName: '비즈니스', monthlyPriceKrw: 15000, description: '근태+급여+명세서+대시보드+CS'},
+        {name: 'PREMIUM', displayName: '프리미엄', monthlyPriceKrw: 50000, description: '비즈니스 전부 + 세무사 1:1'},
+        {name: 'COMMISSION', displayName: '환급형', monthlyPriceKrw: 0, description: '종소세 환급 수수료 10~20%'},
+    ];
+}
+
+function formatPrice(p: PlanCatalogItem): string {
+    if (p.name === 'COMMISSION') return '환급금의 10~20%';
+    if (p.monthlyPriceKrw <= 0) return '무료';
+    return `월 ${p.monthlyPriceKrw.toLocaleString('ko-KR')}원`;
+}
+
+const styles = StyleSheet.create({
+    safeArea: {flex: 1, backgroundColor: tokens.colors.background},
+    scrollContent: {
+        padding: tokens.spacing.lg,
+        paddingBottom: tokens.spacing.huge,
+    },
+    title: {
+        fontSize: tokens.typography.sizes.xxl,
+        fontWeight: tokens.typography.weights.bold,
+        color: tokens.colors.textPrimary,
+        marginTop: tokens.spacing.lg,
+        marginBottom: tokens.spacing.xs,
+        letterSpacing: -0.5,
+    },
+    subtitle: {
+        fontSize: tokens.typography.sizes.md,
+        color: tokens.colors.textSecondary,
+        marginBottom: tokens.spacing.xl,
+        lineHeight: 22,
+    },
+    loadingText: {
+        textAlign: 'center',
+        color: tokens.colors.textTertiary,
+        marginVertical: tokens.spacing.xl,
+    },
+    planCard: {marginBottom: tokens.spacing.md},
+    planHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+    },
+    planTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: tokens.spacing.md,
+    },
+    planEmoji: {fontSize: 28},
+    planName: {
+        fontSize: tokens.typography.sizes.lg,
+        fontWeight: tokens.typography.weights.bold,
+        letterSpacing: -0.3,
+    },
+    planPrice: {
+        fontSize: tokens.typography.sizes.sm,
+        color: tokens.colors.textSecondary,
+        marginTop: 2,
+    },
+    planBadges: {flexDirection: 'row', gap: tokens.spacing.xs},
+    planDescription: {
+        marginTop: tokens.spacing.md,
+        fontSize: tokens.typography.sizes.sm,
+        color: tokens.colors.textSecondary,
+        lineHeight: 20,
+    },
+    divider: {
+        height: 1,
+        backgroundColor: tokens.colors.divider,
+        marginVertical: tokens.spacing.md,
+    },
+    highlightRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: tokens.spacing.xs,
+    },
+    checkIcon: {
+        width: 22,
+        fontSize: 16,
+        color: tokens.colors.success,
+        fontWeight: tokens.typography.weights.bold,
+    },
+    checkIconDim: {color: tokens.colors.textTertiary},
+    highlightText: {
+        flex: 1,
+        fontSize: tokens.typography.sizes.sm,
+        color: tokens.colors.textPrimary,
+        lineHeight: 20,
+    },
+    highlightTextDim: {color: tokens.colors.textTertiary},
+    subscribeButton: {marginTop: tokens.spacing.xl},
+    legalText: {
+        marginTop: tokens.spacing.md,
+        textAlign: 'center',
+        fontSize: tokens.typography.sizes.xs,
+        color: tokens.colors.textTertiary,
+    },
+});
+
+export default SubscribeScreen;

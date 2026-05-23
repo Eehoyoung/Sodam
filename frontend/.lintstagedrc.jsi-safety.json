@@ -1,0 +1,16 @@
+{
+  "*.{ts,tsx}": [
+    "eslint --config .eslintrc.jsi-safety.js --fix",
+    "prettier --write"
+  ],
+  "src/**/*{Animation,Animated,Worklet}*.{ts,tsx}": [
+    "eslint --config .eslintrc.jsi-safety.js --max-warnings 0",
+    "node scripts/jsi-safety-analyzer.js"
+  ],
+  "src/features/welcome/**/*.{ts,tsx}": [
+    "eslint --config .eslintrc.jsi-safety.js --max-warnings 0"
+  ],
+  "src/common/components/**/*.{ts,tsx}": [
+    "eslint --config .eslintrc.jsi-safety.js --max-warnings 0"
+  ]
+}

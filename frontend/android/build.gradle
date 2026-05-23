@@ -1,0 +1,62 @@
+// 플러그인 선언
+plugins {
+    id("com.android.application") version "8.11.1" apply false
+    id("org.jetbrains.kotlin.android") version "2.2.10" apply false
+    id("com.facebook.react") version "0.81.0" apply false
+}
+
+ext {
+    compileSdk = 36
+    targetSdkVersion = 36
+    minSdkVersion = 24
+    hermesEnabled = true
+    kotlinVersion = "2.2.10"
+    buildToolsVersion = "35.0.0"
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = "https://www.jitpack.io" }
+    }
+
+    configurations.configureEach {
+        resolutionStrategy {
+            force "com.facebook.react:react-native-gradle-plugin:0.81.0"
+            force "com.facebook.react:react-android:0.81.0"
+            dependencySubstitution {
+                substitute module("com.facebook.react:react-native") using module("com.facebook.react:react-android:0.81.0")
+            }
+        }
+    }
+}
+
+subprojects { subproject ->
+    afterEvaluate {
+        if (subproject.plugins.hasPlugin("com.android.library")
+                || subproject.plugins.hasPlugin("com.android.application")) {
+
+            subproject.android.compileSdkVersion rootProject.ext.compileSdk
+            subproject.android.defaultConfig {
+                minSdkVersion rootProject.ext.minSdkVersion
+                targetSdkVersion rootProject.ext.targetSdkVersion
+            }
+
+            subproject.android.compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+
+            if (subproject.plugins.hasPlugin("org.jetbrains.kotlin.android")) {
+                subproject.android.kotlinOptions {
+                    jvmTarget = "17"
+                }
+            }
+
+            subproject.dependencies {
+                add("compileOnly", "com.facebook.react:react-android:0.81.0")
+            }
+        }
+    }
+}

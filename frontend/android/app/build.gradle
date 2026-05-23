@@ -1,0 +1,89 @@
+    plugins {
+        id "com.android.application"
+        id "org.jetbrains.kotlin.android"
+        id "com.facebook.react"
+    }
+
+    android {
+        namespace "com.sodam_front_end"
+        compileSdkVersion 36
+        ndkVersion "27.1.12297006"
+
+        defaultConfig {
+            applicationId "com.sodam_front_end"
+            minSdkVersion 24
+            targetSdkVersion 36
+            versionCode 1
+            versionName "0.0.1"
+        }
+
+        compileOptions {
+            sourceCompatibility JavaVersion.VERSION_17
+            targetCompatibility JavaVersion.VERSION_17
+        }
+
+        kotlinOptions {
+            jvmTarget = "17"
+        }
+
+        buildTypes {
+            release {
+                minifyEnabled false
+                shrinkResources false
+                proguardFiles(
+                        getDefaultProguardFile("proguard-android.txt"),
+                        "proguard-rules.pro"
+                )
+            }
+        }
+
+        packagingOptions {
+            pickFirst "**/libc++_shared.so"
+        }
+    }
+
+    dependencies {
+        implementation "com.facebook.react:react-android"
+
+        if (rootProject.ext.hermesEnabled) {
+            implementation "com.facebook.react:hermes-android"
+        } else {
+            implementation "io.github.react-native-community:jsc-android:2026004.+"
+        }
+
+        def maybeImpl = { String path -> if (project.findProject(path) != null) { implementation project(path) } }
+        maybeImpl(":react-native-async-storage_async-storage")
+        maybeImpl(":react-native-geolocation-service")
+        maybeImpl(":react-native-nfc-manager")
+        maybeImpl(":react-native-permissions")
+        maybeImpl(":react-native-reanimated")
+        maybeImpl(":react-native-safe-area-context")
+        maybeImpl(":react-native-screens")
+        maybeImpl(":react-native-svg")
+        maybeImpl(":react-native-worklets")
+        maybeImpl(":react-native-gesture-handler")
+        maybeImpl(":react-native-vector-icons")
+        maybeImpl(":react-native-linear-gradient")
+        maybeImpl(":react-native-community_datetimepicker")
+    }
+
+    apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
+
+    // Codegen & Autolinking → CMake 순서 보장
+    afterEvaluate {
+        def genTasks = [] as LinkedHashSet
+        tasks.matching { it.name.startsWith("generateAutolinking") || it.name.startsWith("generateCodegenArtifactsFromSchema") }.all { t ->
+            genTasks.add(t)
+        }
+        rootProject.allprojects.each { proj ->
+            proj.tasks.matching { it.name.startsWith("generateCodegenArtifactsFromSchema") || it.name.startsWith("generateAutolinking") }.all { t ->
+                genTasks.add(t)
+            }
+        }
+        tasks.matching { it.name.startsWith("configureCMake") }.configureEach { cfg ->
+            genTasks.each { cfg.dependsOn(it) }
+        }
+        tasks.matching { it.name.startsWith("externalNativeBuildClean") }.configureEach { cln ->
+            genTasks.each { cln.dependsOn(it) }
+        }
+    }

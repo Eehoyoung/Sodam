@@ -1,0 +1,150 @@
+# =============================================================================
+# 소담 — 개발용 풀스택 docker compose
+#
+# 사용법:
+#   docker compose up -d              # 전체 기동
+#   docker compose logs -f sodam-be   # BE 로그 추적
+#   docker compose down               # 정지 (볼륨 유지)
+#   docker compose down -v            # 정지 + 볼륨 삭제 (DB 초기화)
+#
+# 포트 매핑:
+#   - BE      : 7070  (호스트) → 8080 (컨테이너)
+#   - MySQL   : 13306 (호스트) → 3306 (컨테이너)  — 다른 프로젝트 8080/8081/3306 충돌 회피
+#   - Redis   : 16379 (호스트) → 6379 (컨테이너)
+#   - Adminer : 18080 (호스트) → 8080 (컨테이너)
+# =============================================================================
+
+services:
+  # ---------- BE 백엔드 ----------
+  sodam-be:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sodam-be
+    restart: unless-stopped
+    depends_on:
+      sodam-mysql:
+        condition: service_healthy
+      sodam-redis:
+        condition: service_started
+    environment:
+      # Spring 프로필 — dev (H2 사용) 또는 prod (MySQL 사용)
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8080
+      # DB 연결 — MySQL 컨테이너 호스트
+      DB_URL: jdbc:mysql://sodam-mysql:3306/sodam?serverTimezone=Asia/Seoul&useSSL=false&allowPublicKeyRetrieval=true
+      DB_USERNAME: sodam
+      DB_PASSWORD: ${SODAM_DB_PASSWORD:-sodam_dev_pass}
+      DB_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+      # Redis
+      REDIS_HOST: sodam-redis
+      REDIS_PORT: 6379
+      # JWT — 컨테이너 운영용 32바이트+ 시크릿 (운영은 Secrets Manager)
+      JWT_SECRET: ${SODAM_JWT_SECRET:-Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1pcy0zMi1ieXRlcy1taW4=}
+      JWT_EXPIRATION: 3600000
+      JWT_REFRESH_EXPIRATION: 604800000
+      # 외부 통합 — 출시 직전까지 mock 모드 유지
+      SODAM_INTEGRATION_TOSS_MODE: ${SODAM_TOSS_MODE:-mock}
+      SODAM_INTEGRATION_FCM_MODE: ${SODAM_FCM_MODE:-mock}
+      SODAM_INTEGRATION_SENTRY_MODE: ${SODAM_SENTRY_MODE:-off}
+      SODAM_INTEGRATION_KAKAO_MODE: ${SODAM_KAKAO_MODE:-mock}
+      # 카카오 (실 키 받으면 env 로 주입)
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-dev-mock}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-dev-mock-secret}
+      # 타임존
+      TZ: Asia/Seoul
+      JAVA_OPTS: "-XX:+UseG1GC -XX:MaxRAMPercentage=75"
+    ports:
+      - "${SODAM_BE_PORT:-7070}:8080"
+    volumes:
+      - sodam_uploads:/app/uploads
+      - sodam_logs:/app/logs
+    networks:
+      - sodam-network
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  # ---------- MySQL ----------
+  sodam-mysql:
+    image: mysql:8.0.36
+    container_name: sodam-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${SODAM_DB_ROOT_PASSWORD:-root_dev_pass}
+      MYSQL_DATABASE: sodam
+      MYSQL_USER: sodam
+      MYSQL_PASSWORD: ${SODAM_DB_PASSWORD:-sodam_dev_pass}
+      TZ: Asia/Seoul
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+      - --max-connections=200
+      - --slow-query-log=1
+      - --long-query-time=2
+    ports:
+      - "${SODAM_DB_PORT:-13306}:3306"
+    volumes:
+      - sodam_mysql_data:/var/lib/mysql
+    networks:
+      - sodam-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${SODAM_DB_ROOT_PASSWORD:-root_dev_pass}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ---------- Redis ----------
+  sodam-redis:
+    image: redis:7-alpine
+    container_name: sodam-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "${SODAM_REDIS_PORT:-16379}:6379"
+    volumes:
+      - sodam_redis_data:/data
+    networks:
+      - sodam-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ---------- Adminer (DB GUI) ----------
+  sodam-adminer:
+    image: adminer:4.8.1
+    container_name: sodam-adminer
+    restart: unless-stopped
+    depends_on:
+      - sodam-mysql
+    environment:
+      ADMINER_DEFAULT_SERVER: sodam-mysql
+      ADMINER_DESIGN: pepa-linha
+    ports:
+      - "${SODAM_ADMINER_PORT:-18080}:8080"
+    networks:
+      - sodam-network
+
+# ---------- Volumes ----------
+volumes:
+  sodam_mysql_data:
+    driver: local
+  sodam_redis_data:
+    driver: local
+  sodam_uploads:
+    driver: local
+  sodam_logs:
+    driver: local
+
+# ---------- Network ----------
+networks:
+  sodam-network:
+    driver: bridge
+    name: sodam-network

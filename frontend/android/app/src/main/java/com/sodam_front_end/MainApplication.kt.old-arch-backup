@@ -1,0 +1,51 @@
+package com.anonymous.sodam_front_end
+
+import android.app.Application
+import android.content.res.Configuration
+import com.facebook.react.*
+import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
+import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
+import com.facebook.react.defaults.DefaultReactNativeHost
+
+// Manual linking - 필수 패키지만 수동 import
+import com.facebook.react.shell.MainReactPackage
+import community.revteltech.nfc.NfcManagerPackage
+import com.th3rdwave.safeareacontext.SafeAreaContextPackage
+import com.swmansion.rnscreens.RNScreensPackage
+import com.swmansion.reanimated.ReanimatedPackage // ✅ 추가
+
+class MainApplication : Application(), ReactApplication {
+
+  override val reactNativeHost: ReactNativeHost =
+      object : DefaultReactNativeHost(this) {
+        override fun getPackages(): List<ReactPackage> {
+            // Manual linking - 필수 패키지만 수동 등록
+            return listOf(
+                MainReactPackage(),
+                NfcManagerPackage(),
+                SafeAreaContextPackage(),
+                RNScreensPackage(),
+                ReanimatedPackage() // ✅ 추가
+            )
+        }
+
+        override fun getJSMainModuleName(): String = "index"
+
+        override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
+
+        override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
+        override val isHermesEnabled: Boolean = BuildConfig.IS_HERMES_ENABLED
+      }
+
+  override val reactHost: ReactHost
+    get() = getDefaultReactHost(applicationContext, reactNativeHost)
+
+  override fun onCreate() {
+    super.onCreate()
+    loadReactNative(this)
+  }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+    }
+}
