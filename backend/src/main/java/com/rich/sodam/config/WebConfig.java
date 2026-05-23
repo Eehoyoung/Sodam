@@ -27,6 +27,12 @@ public class WebConfig implements WebMvcConfigurer {
         config.addAllowedOrigin("http://10.0.2.2:3000");   // 웹 개발 서버
         config.addAllowedOrigin("http://10.0.2.2:8081");   // RN 개발 서버
         config.addAllowedOrigin("http://192.168.1.100:8081"); // 실제 IP 주소
+        // 개발용 추가 포트 (7070=BE dev, 8082=Metro 충돌 회피)
+        config.addAllowedOrigin("http://localhost:7070");
+        config.addAllowedOrigin("http://10.0.2.2:7070");
+        config.addAllowedOrigin("http://localhost:8082");
+        config.addAllowedOrigin("http://10.0.2.2:8082");
+
         // 실제 배포 환경의 도메인도 추가 (필요시)
         // config.addAllowedOrigin("https://your-production-domain.com");
 

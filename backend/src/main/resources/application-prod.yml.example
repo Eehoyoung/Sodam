@@ -1,0 +1,95 @@
+# =============================================================================
+# 소담 — 운영 프로필 템플릿
+# 사용: cp application-prod.yml.example application-prod.yml 후 실제 값 입력
+# application-prod.yml 은 .gitignore 에 포함됨
+# =============================================================================
+
+spring:
+  datasource:
+    url: ${DB_URL}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+    show-sql: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      timeout: 3000ms
+
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+            redirect-uri: https://sodam-api.com/kakao/auth/proc
+
+jwt:
+  secret: ${JWT_SECRET}
+  token-validity-in-seconds: 3600
+  refresh-token-validity-in-days: 7
+  cookie-name: sodam_jwt
+  cookie-max-age: 3600
+
+sodam:
+  integration:
+    toss:
+      mode: live
+      client-key: ${TOSS_CLIENT_KEY}
+      secret-key: ${TOSS_SECRET_KEY}
+      base-url: https://api.tosspayments.com
+      webhook-secret: ${TOSS_WEBHOOK_SECRET}
+    fcm:
+      mode: live
+      project-id: ${FCM_PROJECT_ID}
+      credentials-path: ${FCM_CREDENTIALS_PATH}
+    sentry:
+      mode: live
+      dsn: ${SENTRY_DSN}
+      environment: prod
+      traces-sample-rate: 0.1
+    kakao:
+      mode: live
+      base-url: https://dapi.kakao.com
+    channel-talk:
+      mode: live
+      plugin-key: ${CHANNEL_TALK_PLUGIN_KEY}
+
+logging:
+  level:
+    root: WARN
+    com.rich.sodam: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: never
+
+server:
+  forward-headers-strategy: native
+  tomcat:
+    max-http-form-post-size: 10MB

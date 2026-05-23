@@ -91,6 +91,38 @@ public class StoreController {
             return ResponseEntity.ok(store);
         }
     */
+
+    @Operation(summary = "직원 메모 조회/수정 (사장만)",
+            description = "사장이 특정 직원에 대해 작성하는 비공개 메모. 직원에게는 노출되지 않습니다.")
+    @PutMapping("/{storeId}/employees/{employeeId}/memo")
+    public ResponseEntity<java.util.Map<String, String>> updateEmployeeMemo(
+            @PathVariable Long storeId,
+            @PathVariable Long employeeId,
+            @RequestBody java.util.Map<String, String> body) {
+        String memo = body.getOrDefault("memo", "");
+        storeManagementService.updateOwnerMemo(storeId, employeeId, memo);
+        return ResponseEntity.ok(java.util.Map.of("memo", memo));
+    }
+
+    @GetMapping("/{storeId}/employees/{employeeId}/memo")
+    public ResponseEntity<java.util.Map<String, String>> getEmployeeMemo(
+            @PathVariable Long storeId,
+            @PathVariable Long employeeId) {
+        String memo = storeManagementService.getOwnerMemo(storeId, employeeId);
+        return ResponseEntity.ok(java.util.Map.of("memo", memo == null ? "" : memo));
+    }
+
+    @Operation(summary = "매장 코드로 가입 (직원 셀프)",
+            description = "사장이 공유한 매장 코드로 직원 본인이 매장에 가입. PRD_EMPLOYEE E-301.")
+    @PostMapping("/join-by-code")
+    public ResponseEntity<Store> joinByCode(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal
+                com.rich.sodam.security.UserPrincipal principal,
+            @Valid @RequestBody com.rich.sodam.dto.request.JoinStoreByCodeRequest req) {
+        Store store = storeManagementService.joinStoreByCode(principal.getId(), req.getStoreCode());
+        return ResponseEntity.ok(store);
+    }
+
     @Operation(summary = "매장에 직원 할당", description = "사용자를 특정 매장의 직원으로 할당합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "직원 할당 성공"),

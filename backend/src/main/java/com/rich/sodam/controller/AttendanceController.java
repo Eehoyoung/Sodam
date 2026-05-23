@@ -134,6 +134,23 @@ public class AttendanceController {
         return ResponseEntity.ok(responseDtos);
     }
 
+    @Operation(summary = "직원 오늘 출퇴근 단건 조회",
+            description = "직원의 오늘자 출퇴근 기록 1건 조회. 없으면 204. FE EmployeeAttendanceHome 진입 시 사용.")
+    @GetMapping("/employee/{employeeId}/today")
+    public ResponseEntity<AttendanceResponseDto> getTodayAttendance(
+            @PathVariable Long employeeId) {
+        LocalDateTime startOfDay = java.time.LocalDate.now().atStartOfDay();
+        LocalDateTime endOfDay = startOfDay.plusDays(1);
+
+        List<Attendance> all = attendanceService.getAttendancesByEmployeeAndPeriod(
+                employeeId, startOfDay, endOfDay);
+        return all.stream()
+                .findFirst()
+                .map(AttendanceResponseDto::from)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
     @Operation(summary = "직원별 월간 출퇴근 기록 조회", description = "특정 직원의 월간 출퇴근 기록을 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),

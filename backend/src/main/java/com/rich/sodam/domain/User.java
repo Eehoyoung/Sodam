@@ -60,6 +60,30 @@ public class User {
     private String password;
 
     /**
+     * 이용약관 동의 일시 (필수, 미동의 시 null = 가입 무효)
+     */
+    @Column(name = "terms_agreed_at")
+    private LocalDateTime termsAgreedAt;
+
+    /**
+     * 개인정보처리방침 동의 일시 (필수)
+     */
+    @Column(name = "privacy_agreed_at")
+    private LocalDateTime privacyAgreedAt;
+
+    /**
+     * 만 14세 이상 확인 일시 (필수)
+     */
+    @Column(name = "age_confirmed_at")
+    private LocalDateTime ageConfirmedAt;
+
+    /**
+     * 마케팅 정보 수신 동의 일시 (선택, 동의 철회 시 null 로 회수)
+     */
+    @Column(name = "marketing_agreed_at")
+    private LocalDateTime marketingAgreedAt;
+
+    /**
      * 기본 생성자 (이메일과 이름으로 사용자 생성)
      *
      * @param email 사용자 이메일

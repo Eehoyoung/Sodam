@@ -100,11 +100,27 @@ public class MasterController {
         return ResponseEntity.ok(stats);
     }
 
+    // [Compat] RN 경로 호환: GET /api/master/stats/store/{storeId}?month=YYYY-MM
+    @GetMapping("/stats/store/{storeId}")
+    public ResponseEntity<Map<String, Object>> getStoreStatsCompat(@PathVariable Long storeId,
+                                                                   @RequestParam(required = false) String month) {
+        String m = (month == null || month.isBlank()) ? java.time.YearMonth.now().toString() : month;
+        Map<String, Object> stats = masterProfileService.getStoreStats(storeId, m);
+        return ResponseEntity.ok(stats);
+    }
+
     /**
      * 사장이 소유한 모든 매장의 통합 통계 조회
      */
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getCombinedStats(@RequestParam Long masterId) {
+        Map<String, Object> stats = masterProfileService.getCombinedStats(masterId);
+        return ResponseEntity.ok(stats);
+    }
+
+    // [Compat] RN 경로 호환: GET /api/master/stats/overall?masterId=...
+    @GetMapping("/stats/overall")
+    public ResponseEntity<Map<String, Object>> getCombinedStatsCompat(@RequestParam Long masterId) {
         Map<String, Object> stats = masterProfileService.getCombinedStats(masterId);
         return ResponseEntity.ok(stats);
     }
@@ -132,6 +148,20 @@ public class MasterController {
      */
     @PutMapping("/timeoff/reject")
     public ResponseEntity<TimeOff> rejectTimeOff(@RequestParam Long timeOffId) {
+        TimeOff timeOff = timeOffService.rejectTimeOffRequest(timeOffId);
+        return ResponseEntity.ok(timeOff);
+    }
+
+    // [Compat] RN 경로 호환: PUT /api/master/timeoff/{timeOffId}/approve
+    @PutMapping("/timeoff/{timeOffId}/approve")
+    public ResponseEntity<TimeOff> approveTimeOffCompat(@PathVariable Long timeOffId) {
+        TimeOff timeOff = timeOffService.approveTimeOffRequest(timeOffId);
+        return ResponseEntity.ok(timeOff);
+    }
+
+    // [Compat] RN 경로 호환: PUT /api/master/timeoff/{timeOffId}/reject
+    @PutMapping("/timeoff/{timeOffId}/reject")
+    public ResponseEntity<TimeOff> rejectTimeOffCompat(@PathVariable Long timeOffId) {
         TimeOff timeOff = timeOffService.rejectTimeOffRequest(timeOffId);
         return ResponseEntity.ok(timeOff);
     }

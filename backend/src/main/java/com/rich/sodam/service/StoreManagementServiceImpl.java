@@ -32,6 +32,7 @@ public class StoreManagementServiceImpl implements StoreManagementService {
     private final ValidationService validateFormat;
     private final ValidationService validationService;
     private final AppProperties appProperties;
+    private final WageHistoryRepository wageHistoryRepository;
 
     @NotNull
     private Store getStore(StoreRegistrationDto storeDto) {
@@ -115,6 +116,56 @@ public class StoreManagementServiceImpl implements StoreManagementService {
         this.assignUserToStoreAsEmployee(userId, storeId, null);
     }
 
+    /**
+     * 매장 코드로 직원 본인이 가입 (PRD_EMPLOYEE E-301).
+     * - storeCode 가 활성 매장과 일치해야 함
+     * - 기존 동일 관계 비활성 상태면 재활성, 활성이면 그대로 반환
+     * - 시급은 매장 기본 시급 사용
+     */
+    @Override
+    @Transactional
+    public Store joinStoreByCode(Long userId, String storeCode) {
+        Store store = storeRepository.findActiveByStoreCode(storeCode)
+                .orElseThrow(() -> new EntityNotFoundException("매장 코드와 일치하는 매장을 찾을 수 없습니다."));
+        assignUserToStoreAsEmployee(userId, store.getId(), null);
+        // 비활성 → 활성 복구
+        EmployeeProfile profile = employeeProfileRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("직원 프로필이 없습니다."));
+        employeeStoreRelationRepository.findByEmployeeProfileAndStore(profile, store)
+                .ifPresent(rel -> { if (Boolean.FALSE.equals(rel.getIsActive())) rel.setIsActive(true); });
+        return store;
+    }
+
+    @Override
+    @Transactional
+    public void updateOwnerMemo(Long storeId, Long employeeId, String memo) {
+        if (storeId == null || employeeId == null) {
+            throw new IllegalArgumentException("storeId 와 employeeId 는 필수입니다.");
+        }
+        // 길이 검증을 사전에 수행 — 불필요한 DB I/O 방지
+        if (memo != null && memo.length() > 500) {
+            throw new IllegalArgumentException("메모는 500자 이내로 작성해 주세요.");
+        }
+        // ID 기반 직접 매핑 — @MapsId 사용 시 객체 기반 파생 쿼리에서 발생 가능한 매칭 오류 회피.
+        EmployeeStoreRelation relation = employeeStoreRelationRepository
+                .findRelation(employeeId, storeId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "직원-매장 관계를 찾을 수 없습니다. employeeId=" + employeeId + ", storeId=" + storeId));
+        relation.setOwnerMemo(memo == null ? "" : memo);
+        employeeStoreRelationRepository.save(relation);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String getOwnerMemo(Long storeId, Long employeeId) {
+        if (storeId == null || employeeId == null) {
+            return "";
+        }
+        return employeeStoreRelationRepository.findRelation(employeeId, storeId)
+                .map(EmployeeStoreRelation::getOwnerMemo)
+                .orElse("");
+    }
+
     @Transactional
     public void assignUserToStoreAsEmployee(Long userId, Long storeId, Integer customHourlyWage) {
         User user = userRepository.findById(userId)
@@ -171,6 +222,7 @@ public class StoreManagementServiceImpl implements StoreManagementService {
                 .orElseThrow(() -> new EntityNotFoundException("사원-매장 관계를 찾을 수 없습니다."));
 
         // 시급 정보 업데이트
+        Integer oldCustom = relation.getCustomHourlyWage();
         relation.setCustomHourlyWage(wageDto.getCustomHourlyWage());
 
         // 매장 기준 시급 사용 여부 설정
@@ -181,6 +233,14 @@ public class StoreManagementServiceImpl implements StoreManagementService {
         }
 
         employeeStoreRelationRepository.save(relation);
+
+        // 변경 이력 기록 (개별 시급)
+        if (wageDto.getCustomHourlyWage() != null
+                && !wageDto.getCustomHourlyWage().equals(oldCustom)) {
+            wageHistoryRepository.save(WageHistory.employeeOverride(
+                    store, employeeProfile, wageDto.getCustomHourlyWage(),
+                    null, "직원 개별 시급 변경"));
+        }
     }
 
     @Override
@@ -189,8 +249,15 @@ public class StoreManagementServiceImpl implements StoreManagementService {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new EntityNotFoundException("매장을 찾을 수 없습니다."));
 
+        Integer oldWage = store.getStoreStandardHourWage();
         store.setStoreStandardHourWage(standardHourlyWage);
         storeRepository.save(store);
+
+        // 변경 이력 기록 (매장 기본 시급)
+        if (standardHourlyWage != null && !standardHourlyWage.equals(oldWage)) {
+            wageHistoryRepository.save(WageHistory.storeDefault(
+                    store, standardHourlyWage, null, "매장 기본 시급 변경"));
+        }
     }
 
     @Override

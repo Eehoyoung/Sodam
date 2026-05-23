@@ -17,11 +17,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.LocaleResolver;
 
 import java.util.*;
@@ -29,7 +29,7 @@ import java.util.*;
 /**
  * 로그인 관련 요청을 처리하는 컨트롤러
  */
-@Controller
+@RestController
 @Tag(name = "인증", description = "사용자 인증 관련 API")
 public class LoginController {
 
@@ -39,7 +39,7 @@ public class LoginController {
     private final JwtTokenProvider jwtTokenProvider;
     private final TokenService tokenService;
     private final UserService userService;
-    private final RedisService redisService;
+    private final TokenStore redisService;
     private final RefreshTokenService refreshTokenService;
     private final MessageSource messageSource;
     private final LocaleResolver localeResolver;
@@ -50,7 +50,7 @@ public class LoginController {
     @Value("${spring.security.oauth2.client.registration.kakao.client-id}")
     private String clientId;
 
-    public LoginController(KakaoAuthService kakaoAuthService, JwtTokenProvider jwtTokenProvider, TokenService tokenService, UserService userService, RedisService redisService, RefreshTokenService refreshTokenService, MessageSource messageSource, LocaleResolver localeResolver) {
+    public LoginController(KakaoAuthService kakaoAuthService, JwtTokenProvider jwtTokenProvider, TokenService tokenService, UserService userService, TokenStore redisService, RefreshTokenService refreshTokenService, MessageSource messageSource, LocaleResolver localeResolver) {
         this.kakaoAuthService = kakaoAuthService;
         this.jwtTokenProvider = jwtTokenProvider;
         this.tokenService = tokenService;
@@ -259,7 +259,7 @@ public class LoginController {
             body.put("id", user.getId());
             body.put("email", user.getEmail());
             body.put("name", user.getName());
-            body.put("roles", List.of(user.getUserGrade().getValue()));
+            body.put("role", user.getUserGrade());
             return ResponseEntity.ok(body);
         } catch (Exception e) {
             log.error("현재 사용자 정보 조회 실패: {}", e.getMessage(), e);

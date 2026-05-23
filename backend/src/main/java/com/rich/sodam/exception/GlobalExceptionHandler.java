@@ -124,16 +124,111 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 기타 예외 처리 (폴백)
+     * 404 No Resource — Spring 6+ 정적 자원 미발견 (잘못된 URL)
      */
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Object>> handleException(Exception e) {
-        log.error("Unhandled exception: {}", e.getMessage(), e);
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Object>> handleNoResourceFound(
+            org.springframework.web.servlet.resource.NoResourceFoundException e) {
+        // 디버그 레벨로 로그 — 일반 클라이언트의 잘못된 URL 호출일 뿐 (스팸 방지)
+        log.debug("NoResourceFoundException: {}", e.getMessage());
+        ApiResponse<Object> response = ApiResponse.error(
+                ErrorCode.RESOURCE_NOT_FOUND.getCode(),
+                "요청하신 경로를 찾을 수 없어요.");
+        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+    }
 
-        Locale locale = getCurrentLocale();
-        String errorMessage = messageSource.getMessage("error.internal.server", null, locale);
-        ApiResponse<Object> response = ApiResponse.error(ErrorCode.INTERNAL_SERVER_ERROR.getCode(), errorMessage);
+    /**
+     * JSON 파싱 실패 / 잘못된 요청 본문 (400)
+     */
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Object>> handleMessageNotReadable(
+            org.springframework.http.converter.HttpMessageNotReadableException e) {
+        log.warn("HttpMessageNotReadable: {}", e.getMessage());
+        ApiResponse<Object> response = ApiResponse.error(
+                ErrorCode.INVALID_ARGUMENT.getCode(),
+                "요청 본문을 읽을 수 없어요. JSON 형식을 확인해 주세요.");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Bean Validation 위반 (PathVariable/RequestParam @Valid 검증 실패)
+     */
+    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleConstraintViolation(
+            jakarta.validation.ConstraintViolationException e) {
+        log.warn("ConstraintViolation: {}", e.getMessage());
+        ApiResponse<Object> response = ApiResponse.error(
+                ErrorCode.VALIDATION_ERROR.getCode(),
+                "입력값이 올바르지 않아요: " + e.getMessage());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * 인증/권한 — Spring Security 예외는 별도 처리하므로 여기선 IllegalState
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<Object>> handleIllegalState(IllegalStateException e) {
+        log.warn("IllegalStateException: {}", e.getMessage());
+        ApiResponse<Object> response = ApiResponse.error(
+                "ILLEGAL_STATE", e.getMessage());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * NullPointerException — 명시 핸들러 (디버그 메시지 노출)
+     */
+    @ExceptionHandler(NullPointerException.class)
+    public ResponseEntity<ApiResponse<Object>> handleNpe(NullPointerException e) {
+        log.error("NullPointerException at {}", topFrameOf(e), e);
+        // 운영에서는 메시지 가림. dev 에서는 디버깅 위해 노출.
+        boolean dev = isDevProfile();
+        String msg = dev
+                ? "NPE: " + (e.getMessage() == null ? "null" : e.getMessage()) + " @ " + topFrameOf(e)
+                : "예기치 못한 오류가 발생했어요.";
+        ApiResponse<Object> response = ApiResponse.error(
+                ErrorCode.INTERNAL_SERVER_ERROR.getCode(), msg);
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    /**
+     * 기타 예외 처리 (폴백) — dev 프로필에서는 root cause 노출, 운영에서는 마스킹
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Object>> handleException(Exception e) {
+        log.error("Unhandled exception [{}] at {}",
+                e.getClass().getSimpleName(), topFrameOf(e), e);
+
+        boolean dev = isDevProfile();
+        String errorMessage;
+        if (dev) {
+            errorMessage = e.getClass().getSimpleName() + ": "
+                    + (e.getMessage() == null ? "(no message)" : e.getMessage())
+                    + " @ " + topFrameOf(e);
+        } else {
+            Locale locale = getCurrentLocale();
+            errorMessage = messageSource.getMessage("error.internal.server", null, locale);
+        }
+        ApiResponse<Object> response = ApiResponse.error(
+                ErrorCode.INTERNAL_SERVER_ERROR.getCode(), errorMessage);
+        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    /** 활성 프로필이 dev 인지 확인 (env 변수 기반 — Spring 의존성 줄임). */
+    private boolean isDevProfile() {
+        String active = System.getProperty("spring.profiles.active",
+                System.getenv().getOrDefault("SPRING_PROFILES_ACTIVE", ""));
+        return active != null && active.contains("dev");
+    }
+
+    /** 스택트레이스 최상단 프레임 — 디버그용 (운영 컨텍스트 노출 X). */
+    private String topFrameOf(Throwable t) {
+        StackTraceElement[] st = t.getStackTrace();
+        if (st == null || st.length == 0) return "(no stack)";
+        for (StackTraceElement e : st) {
+            if (e.getClassName().startsWith("com.rich.sodam")) {
+                return e.getClassName() + "." + e.getMethodName() + ":" + e.getLineNumber();
+            }
+        }
+        return st[0].getClassName() + "." + st[0].getMethodName() + ":" + st[0].getLineNumber();
+    }
 }

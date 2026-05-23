@@ -19,6 +19,13 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
      */
     Optional<Store> findByBusinessNumber(String businessNumber);
 
+    /**
+     * 매장 코드(storeCode)로 활성 매장 조회 — 직원 코드 가입 시 사용.
+     */
+    @Query("SELECT s FROM Store s WHERE s.storeCode = :storeCode " +
+            "AND (s.isDeleted = false OR s.isDeleted IS NULL)")
+    Optional<Store> findActiveByStoreCode(@Param("storeCode") String storeCode);
+
     // ==================== Soft Delete 관련 메서드 ====================
 
     /**

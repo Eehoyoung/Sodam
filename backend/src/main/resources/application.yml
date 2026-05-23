@@ -5,6 +5,9 @@ app:
   redis:
     cache-database: ${REDIS_CACHE_DATABASE:1}    # 캐시용 Redis 데이터베이스 번호
 
+sentry:
+  enabled: false   # SentryConfig 에서 수동 초기화 — 자동 init 차단
+
 spring:
   jmx:
     enabled: false  # JMX 비활성

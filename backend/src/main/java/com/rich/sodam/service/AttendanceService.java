@@ -151,11 +151,22 @@ public class AttendanceService {
     }
 
     /**
-     * 특정 직원의 특정 월 출퇴근 기록 조회
+     * 특정 직원의 특정 월 출퇴근 기록 조회.
+     * 잘못된 month 값 또는 EmployeeProfile 미존재 시 빈 리스트 반환 (500 방지 — FE 호환).
      */
     @Transactional(readOnly = true)
     public List<Attendance> getMonthlyAttendancesByEmployee(Long employeeId, int year, int month) {
-        // DateTimeUtils 활용
+        if (employeeId == null) {
+            return java.util.Collections.emptyList();
+        }
+        if (month < 1 || month > 12) {
+            throw new IllegalArgumentException("month 는 1~12 사이여야 해요. 입력: " + month);
+        }
+        // EmployeeProfile 이 없으면 (Personal 회원이 직접 호출하는 등) 빈 리스트로 응답.
+        if (employeeProfileRepository.findById(employeeId).isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+
         LocalDateTime startOfMonth = DateTimeUtils.getStartOfMonth(year, month);
         LocalDateTime endOfMonth = DateTimeUtils.getEndOfMonth(year, month);
 

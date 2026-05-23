@@ -56,4 +56,19 @@ public interface EmployeeStoreRelationRepository extends JpaRepository<EmployeeS
     Optional<EmployeeStoreRelation> findByEmployeeIdAndStoreIdWithDetails(
             @Param("employeeId") Long employeeId,
             @Param("storeId") Long storeId);
+
+    /**
+     * 활성 상태(isActive=true) 직원 관계만 조회
+     */
+    List<EmployeeStoreRelation> findByStoreAndIsActiveTrue(Store store);
+
+    /**
+     * 명시적 JPQL — @MapsId 매핑에서 파생 쿼리가 실패할 때를 대비한 안전 메서드.
+     * employee_id / store_id 컬럼 기준 직접 매핑.
+     */
+    @Query("SELECT esr FROM EmployeeStoreRelation esr " +
+            "WHERE esr.employeeProfile.id = :employeeId AND esr.store.id = :storeId")
+    Optional<EmployeeStoreRelation> findRelation(
+            @Param("employeeId") Long employeeId,
+            @Param("storeId") Long storeId);
 }

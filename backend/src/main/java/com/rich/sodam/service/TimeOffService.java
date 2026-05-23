@@ -3,10 +3,12 @@ package com.rich.sodam.service;
 import com.rich.sodam.domain.EmployeeProfile;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.TimeOff;
+import com.rich.sodam.domain.User;
 import com.rich.sodam.domain.type.TimeOffStatus;
 import com.rich.sodam.repository.EmployeeProfileRepository;
 import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.repository.TimeOffRepository;
+import com.rich.sodam.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,24 +23,37 @@ public class TimeOffService {
     private final TimeOffRepository timeOffRepository;
     private final StoreRepository storeRepository;
     private final EmployeeProfileRepository employeeProfileRepository;
+    private final UserRepository userRepository;
 
     @Autowired
     public TimeOffService(TimeOffRepository timeOffRepository,
                           StoreRepository storeRepository,
-                          EmployeeProfileRepository employeeProfileRepository) {
+                          EmployeeProfileRepository employeeProfileRepository,
+                          UserRepository userRepository) {
         this.timeOffRepository = timeOffRepository;
         this.storeRepository = storeRepository;
         this.employeeProfileRepository = employeeProfileRepository;
+        this.userRepository = userRepository;
     }
 
     /**
-     * 휴가 신청 생성
+     * 휴가 신청 생성.
+     * EmployeeProfile 이 없으면 자동 생성 (셀프 신청 호환).
      */
     @Transactional
     public TimeOff createTimeOffRequest(Long employeeId, Long storeId, LocalDate startDate,
                                         LocalDate endDate, String reason) {
+        if (employeeId == null || storeId == null) {
+            throw new IllegalArgumentException("employeeId, storeId 는 필수입니다.");
+        }
         EmployeeProfile employee = employeeProfileRepository.findById(employeeId)
-                .orElseThrow(() -> new NoSuchElementException("직원을 찾을 수 없습니다."));
+                .orElseGet(() -> {
+                    // 셀프 신청 호환 — User 가 있으면 EmployeeProfile 자동 생성.
+                    User user = userRepository.findById(employeeId)
+                            .orElseThrow(() -> new NoSuchElementException("직원을 찾을 수 없습니다."));
+                    EmployeeProfile newProfile = new EmployeeProfile(user);
+                    return employeeProfileRepository.save(newProfile);
+                });
 
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new NoSuchElementException("매장을 찾을 수 없습니다."));

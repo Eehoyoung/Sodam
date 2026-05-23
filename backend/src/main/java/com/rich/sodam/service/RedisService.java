@@ -1,6 +1,7 @@
 package com.rich.sodam.service;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -9,8 +10,12 @@ import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.Base64;
 
+/**
+ * Redis 백엔드 토큰 저장소. dev 프로필에서는 {@link InMemoryTokenStore} 가 대신 등록된다.
+ */
 @Service
-public class RedisService {
+@Profile("!dev")
+public class RedisService implements TokenStore {
 
     private final RedisTemplate<String, Object> jwtRedisTemplate;
 
@@ -25,6 +30,7 @@ public class RedisService {
      * @param token 원본 토큰 문자열
      * @return Base64 인코딩된 해시값
      */
+    @Override
     public String hashToken(String token) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -42,6 +48,7 @@ public class RedisService {
      * @param token             원본 토큰 문자열
      * @param expirationSeconds 토큰의 만료 기간 (초)
      */
+    @Override
     public void saveToken(Long userId, String token, long expirationSeconds) {
         String key = "USER_TOKENS:" + userId;
         String tokenHash = hashToken(token);
@@ -58,6 +65,7 @@ public class RedisService {
      * @param token  클라이언트에서 전달된 원본 토큰 문자열
      * @return 저장된 해시와 일치하면 true, 그렇지 않으면 false
      */
+    @Override
     public boolean verifyToken(String userId, String token) {
         String key = "USER_TOKENS:" + userId;
         String tokenHash = hashToken(token);
@@ -71,6 +79,7 @@ public class RedisService {
      * @param userId 사용자 식별자
      * @param token  삭제할 원본 토큰 문자열
      */
+    @Override
     public void deleteToken(String userId, String token) {
         String key = "USER_TOKENS:" + userId;
         String tokenHash = hashToken(token);

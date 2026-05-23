@@ -28,7 +28,8 @@ public class QnaInfo {
     @Column(nullable = false)
     private String question;
 
-    @Column(columnDefinition = "TEXT")
+    @Lob
+    @Column(length = 4000)
     private String answer;
 
     @Column

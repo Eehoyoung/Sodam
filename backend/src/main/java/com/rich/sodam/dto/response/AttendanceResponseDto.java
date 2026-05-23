@@ -35,22 +35,33 @@ public class AttendanceResponseDto {
      * @return 변환된 응답 DTO
      */
     public static AttendanceResponseDto from(Attendance attendance) {
+        if (attendance == null) return null;
+
+        var employeeProfile = attendance.getEmployeeProfile();
+        var store = attendance.getStore();
+        var user = employeeProfile != null ? employeeProfile.getUser() : null;
+
+        Integer hourlyWage = attendance.getAppliedHourlyWage();
+        // 일급 계산은 시급/퇴근시간이 모두 있을 때만 수행 — null 시급 NPE 방지.
+        Integer dailyWage = (attendance.getCheckOutTime() != null && hourlyWage != null)
+                ? attendance.calculateDailyWage()
+                : null;
 
         return AttendanceResponseDto.builder()
                 .id(attendance.getId())
-                .employeeId(attendance.getEmployeeProfile().getId())
-                .employeeName(attendance.getEmployeeProfile().getUser().getName())
-                .storeId(attendance.getStore().getId())
-                .storeName(attendance.getStore().getStoreName())
+                .employeeId(employeeProfile != null ? employeeProfile.getId() : null)
+                .employeeName(user != null ? user.getName() : null)
+                .storeId(store != null ? store.getId() : null)
+                .storeName(store != null ? store.getStoreName() : null)
                 .checkInTime(attendance.getCheckInTime())
                 .checkOutTime(attendance.getCheckOutTime())
                 .checkInLatitude(attendance.getCheckInLatitude())
                 .checkInLongitude(attendance.getCheckInLongitude())
                 .checkOutLatitude(attendance.getCheckOutLatitude())
                 .checkOutLongitude(attendance.getCheckOutLongitude())
-                .appliedHourlyWage(attendance.getAppliedHourlyWage())
+                .appliedHourlyWage(hourlyWage)
                 .workingHours(attendance.getWorkingTimeInHours())
-                .dailyWage(attendance.getCheckOutTime() != null ? attendance.calculateDailyWage() : null)
+                .dailyWage(dailyWage)
                 .build();
     }
 }

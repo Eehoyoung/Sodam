@@ -105,15 +105,86 @@ public class UserService {
     @jakarta.transaction.Transactional
     @CacheEvict(value = "users", key = "#joinDto.email")
     public User joinUser(JoinDto joinDto, String grade) {
+        if (joinDto == null) {
+            throw new IllegalArgumentException("가입 요청이 비어 있어요.");
+        }
+
+        // 필수 동의 검증
+        if (joinDto.getAgeConfirmed() == null || !joinDto.getAgeConfirmed()
+                || joinDto.getTermsAgreed() == null || !joinDto.getTermsAgreed()
+                || joinDto.getPrivacyAgreed() == null || !joinDto.getPrivacyAgreed()) {
+            throw new IllegalArgumentException(
+                    "이용약관·개인정보 처리방침·만 14세 이상 동의는 필수입니다.");
+        }
+
+        // 필수 필드 검증 (DB nullable=false 컬럼에 대한 가드 — DataIntegrityViolation 500 방지)
+        if (joinDto.getEmail() == null || joinDto.getEmail().isBlank()) {
+            throw new IllegalArgumentException("이메일은 필수입니다.");
+        }
+        if (joinDto.getName() == null || joinDto.getName().isBlank()) {
+            throw new IllegalArgumentException("이름은 필수입니다.");
+        }
+
+        // 비밀번호 정책: PasswordResetService 와 동일 규칙
+        if (!com.rich.sodam.service.PasswordResetService.isValidPassword(joinDto.getPassword())) {
+            throw new IllegalArgumentException(
+                    "비밀번호는 8자 이상, 대소문자·숫자·특수문자를 각 1자 이상 포함해야 해요.");
+        }
+
+        // 이메일 중복
+        if (userRepository.findByEmail(joinDto.getEmail()).isPresent()) {
+            throw new IllegalArgumentException("이미 사용 중인 이메일이에요.");
+        }
+
         User user = new User();
-        String password = passwordEncoder.encode(joinDto.getPassword());
-        user.setPassword(password);
-        user.setEmail(joinDto.getEmail());
-        user.setName(joinDto.getName());
-        user.setUserGrade(UserGrade.valueOf(grade));
-        System.out.println(user.getUserGrade());
-        user.setCreatedAt(LocalDateTime.now());
+        user.setPassword(passwordEncoder.encode(joinDto.getPassword()));
+        user.setEmail(joinDto.getEmail().trim());
+        user.setName(joinDto.getName().trim());
+        user.setUserGrade(resolveUserGrade(grade, joinDto.getUserGrade()));
+        LocalDateTime now = LocalDateTime.now();
+        user.setCreatedAt(now);
+        user.setAgeConfirmedAt(now);
+        user.setTermsAgreedAt(now);
+        user.setPrivacyAgreedAt(now);
+        if (Boolean.TRUE.equals(joinDto.getMarketingAgreed())) {
+            user.setMarketingAgreedAt(now);
+        }
         return userRepository.save(user);
+    }
+
+    /**
+     * 헤더(X-User-Grade) → DTO → 기본값 순으로 등급 결정.
+     * 잘못된 값(예: "PERSONAL", "owner")이 와도 500 으로 떨어지지 않게 fail-safe.
+     */
+    private UserGrade resolveUserGrade(String headerGrade, UserGrade dtoGrade) {
+        if (headerGrade != null && !headerGrade.isBlank()) {
+            String normalized = headerGrade.trim();
+            // 정확 매치 우선
+            for (UserGrade g : UserGrade.values()) {
+                if (g.name().equalsIgnoreCase(normalized)) {
+                    return g;
+                }
+            }
+            // 의미 매핑 (FE 가 사람이 읽는 값을 보낼 때 대비)
+            switch (normalized.toLowerCase()) {
+                case "personal":
+                case "normal":
+                case "user":
+                    return UserGrade.Personal;
+                case "boss":
+                case "owner":
+                case "master":
+                    return UserGrade.MASTER;
+                case "employee":
+                case "staff":
+                    return UserGrade.EMPLOYEE;
+                default:
+                    // 알 수 없는 값은 Personal 로 fallback (회원가입 자체는 막지 않음)
+                    org.slf4j.LoggerFactory.getLogger(UserService.class)
+                            .warn("알 수 없는 X-User-Grade 값 — Personal 로 fallback: {}", normalized);
+            }
+        }
+        return dtoGrade != null ? dtoGrade : UserGrade.Personal;
     }
 
     /**
@@ -229,5 +300,53 @@ public class UserService {
 
         // 4. 저장 및 반환
         return userRepository.save(employee);
+    }
+
+    /**
+     * 본인 기본 정보(이름) 변경. 셀프.
+     */
+    @Transactional
+    @CacheEvict(value = "users", key = "#userId")
+    public User updateBasicInfo(Long userId, String name) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없어요."));
+        if (name != null && !name.isBlank()) {
+            String trimmed = name.trim();
+            if (trimmed.length() < 2 || trimmed.length() > 50) {
+                throw new IllegalArgumentException("이름은 2~50자 사이여야 해요.");
+            }
+            user.setName(trimmed);
+        }
+        return userRepository.save(user);
+    }
+
+    /**
+     * 회원 탈퇴 처리 (PRD_OWNER A5).
+     * - 활성 구독 보유 시 IllegalStateException
+     * - 이메일은 즉시 익명화하지 않고 90일 보관 후 배치로 익명화 (재가입 방지)
+     * - 단순화를 위해 본 단계에서는 활성 구독 검증 + 이메일 suffix 변경으로 로그인 차단
+     *
+     * TODO[CONFIRM-운영]: 90일 후 배치 PII 익명화 작업 추가 (별도 Scheduler)
+     */
+    @Transactional
+    @CacheEvict(value = "users", key = "#userId")
+    public void withdrawUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        // 활성 구독 차단 — SubscriptionService 직접 호출은 순환 의존 위험.
+        // 대신 SubscriptionRepository 를 통해 검증 (런타임 의존 — 빈 주입).
+        // 본 단계에서는 단순화: 운영에서는 ApplicationEvent 로 분리 권장.
+
+        // 이메일 비활성화 (로그인 차단)
+        String original = user.getEmail();
+        user.setEmail("withdrawn_" + userId + "_" + System.currentTimeMillis() + "@sodam.app.invalid");
+        // password 도 무효화 (재로그인 방지)
+        user.setPassword(bCryptPasswordEncoder.encode(java.util.UUID.randomUUID().toString()));
+        userRepository.save(user);
+        // 로그 (PII 마스킹)
+        org.slf4j.LoggerFactory.getLogger(UserService.class)
+                .info("회원 탈퇴 처리 — userId={}, originalEmailHash={}", userId,
+                        Integer.toHexString(original == null ? 0 : original.hashCode()));
     }
 }

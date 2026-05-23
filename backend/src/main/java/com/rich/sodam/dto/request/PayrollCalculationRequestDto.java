@@ -17,7 +17,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class PayrollCalculationRequestDto {
 
-    @NotNull(message = "직원 ID는 필수 항목입니다")
+    /** 직원 ID — 미지정(null) 시 매장 전체 직원 일괄 계산 (사장 정산 플로우) */
     private Long employeeId;
 
     @NotNull(message = "매장 ID는 필수 항목입니다")

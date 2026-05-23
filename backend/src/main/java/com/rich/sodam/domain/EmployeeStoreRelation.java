@@ -53,6 +53,10 @@ public class EmployeeStoreRelation {
     @Column(nullable = false)
     private Boolean isActive = true;
 
+    /** 사장만 보이는 직원 메모 (직원에게 절대 노출 X — DTO 분리 필수) */
+    @Column(name = "owner_memo", length = 500)
+    private String ownerMemo;
+
     public EmployeeStoreRelation(EmployeeProfile employeeProfile, Store store) {
         this.employeeProfile = employeeProfile;
         this.store = store;

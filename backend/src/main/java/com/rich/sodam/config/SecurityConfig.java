@@ -48,13 +48,31 @@ public class SecurityConfig {
 
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/swagger-ui/**", "/api-docs/**", "/v3/api-docs/**",
-                                "/swagger-ui.html", "/webjars/**", "/actuator/health", "/actuator/info",
-                                "/api/join", "/api/login", "/kakao/auth/proc", "/api/auth/refresh").permitAll()
+                        .requestMatchers(
+                                "/swagger-ui/**", "/api-docs/**", "/v3/api-docs/**",
+                                "/swagger-ui.html", "/webjars/**",
+                                "/actuator/health", "/actuator/info",
+                                "/api/join", "/api/login",
+                                "/kakao/auth/proc", "/api/auth/refresh",
+                                "/api/auth/password-reset/**",
+                                // 결제 웹훅: 자체 HMAC 서명 검증으로 보호 — 인증 헤더 없이 진입 허용
+                                "/api/billing/webhook/**",
+                                // 정적 콘텐츠 페이지: 비인증 조회 허용 (앱 첫 화면용)
+                                "/api/info/**",
+                                // H2 콘솔 (dev 프로필에서만 노출됨)
+                                "/h2-console/**",
+                                // 플랜 카탈로그: 비인증 조회 허용
+                                "/api/billing/plans"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.configure(http)) // Enable CORS using the corsFilter bean from WebConfig
+                .cors(cors -> cors.configure(http))
+                .headers(headers -> headers
+                        // H2 콘솔 iframe 허용 (dev)
+                        .frameOptions(frame -> frame.sameOrigin())
+                        .httpStrictTransportSecurity(hsts -> hsts.maxAgeInSeconds(31_536_000))
+                )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 

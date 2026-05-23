@@ -1,8 +1,8 @@
 package com.rich.sodam.service;
 
+import com.rich.sodam.config.integration.IntegrationProperties;
 import com.rich.sodam.dto.response.GeocodingResult;
 import com.rich.sodam.dto.response.KakaoApiResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -19,22 +19,50 @@ import java.util.regex.Pattern;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class GeocodingService {
 
     private final RestTemplate restTemplate;
+    private final IntegrationProperties integrationProperties;
 
-    @Value("${spring.security.oauth2.client.registration.kakao.client-id}")
+    @Value("${spring.security.oauth2.client.registration.kakao.client-id:}")
     private String kakaoApiKey;
 
     private static final String KAKAO_GEOCODING_ENDPOINT = "https://dapi.kakao.com/v2/local/search/address.json";
     // 주소 필드는 URL/프로토콜/제어문자 포함 불가, 한글/영문/숫자/공백/쉼표/점/하이픈만 허용 (최대 200자)
     private static final Pattern SAFE_ADDRESS_PATTERN = Pattern.compile("^[\\p{L}\\p{N}\\s,.-]{1,200}$");
 
+    public GeocodingService(RestTemplate restTemplate, IntegrationProperties integrationProperties) {
+        this.restTemplate = restTemplate;
+        this.integrationProperties = integrationProperties;
+    }
+
     @Transactional
     public GeocodingResult getCoordinates(String address) {
+        String normalized = normalizeAndValidateAddress(address);
+        IntegrationProperties.Mode mode = integrationProperties.getKakao().resolvedMode();
+        if (mode == IntegrationProperties.Mode.MOCK || mode == IntegrationProperties.Mode.OFF) {
+            return mockGeocode(normalized);
+        }
+        return liveGeocode(normalized);
+    }
+
+    /**
+     * 결정적 mock — 주소 해시 기반으로 서울 인근 좌표를 안정 생성.
+     * 같은 주소는 같은 좌표를 반환하므로 테스트 재현 가능.
+     */
+    private GeocodingResult mockGeocode(String address) {
+        int hash = address.hashCode();
+        double latBase = 37.5665;   // 서울 중구 좌표
+        double lonBase = 126.9780;
+        double lat = latBase + ((hash % 1000) / 50000.0);
+        double lon = lonBase + (((hash / 1000) % 1000) / 50000.0);
+        log.debug("[MOCK Geocoding] {} → ({}, {})", address, lat, lon);
+        return new GeocodingResult(lat, lon, address, address, address);
+    }
+
+    private GeocodingResult liveGeocode(String address) {
         try {
-            String normalized = normalizeAndValidateAddress(address);
+            String normalized = address;
 
             String url = UriComponentsBuilder.fromHttpUrl(KAKAO_GEOCODING_ENDPOINT)
                     .queryParam("query", normalized)

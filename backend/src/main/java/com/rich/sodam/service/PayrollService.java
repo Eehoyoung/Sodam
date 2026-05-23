@@ -357,6 +357,33 @@ public class PayrollService {
     }
 
     /**
+     * 매장 활성 직원 전체에 대한 일괄 급여 계산 (사장 정산 플로우 PRD_OWNER S-301).
+     * 직원 한 명이 실패해도 전체 트랜잭션 중단 없이 나머지는 진행.
+     */
+    @Transactional
+    public java.util.List<com.rich.sodam.dto.response.PayrollDto> calculatePayrollForStore(
+            Long storeId, LocalDate startDate, LocalDate endDate) {
+        var relations = employeeStoreRelationRepository
+                .findByStore_Id(storeId).stream()
+                .filter(r -> Boolean.TRUE.equals(r.getIsActive()))
+                .toList();
+
+        java.util.List<com.rich.sodam.dto.response.PayrollDto> result = new java.util.ArrayList<>();
+        for (var rel : relations) {
+            if (rel.getEmployeeProfile() == null) continue;
+            Long employeeId = rel.getEmployeeProfile().getId();
+            try {
+                Payroll p = calculatePayroll(employeeId, storeId, startDate, endDate, true);
+                result.add(com.rich.sodam.dto.response.PayrollDto.from(p));
+            } catch (Exception e) {
+                log.warn("매장 일괄 정산 실패 emp={} store={} reason={}",
+                        employeeId, storeId, e.getMessage());
+            }
+        }
+        return result;
+    }
+
+    /**
      * 급여 계산 메서드
      * 특정 직원, 매장, 기간에 대한 급여를 계산하고 저장
      */
@@ -605,14 +632,89 @@ public class PayrollService {
      */
     @Transactional(readOnly = true)
     public byte[] generatePayrollPdf(Long payrollId) {
-        // 급여 정보 조회
         Payroll payroll = payrollRepository.findById(payrollId)
                 .orElseThrow(() -> new EntityNotFoundException("급여 내역을 찾을 수 없습니다. ID: " + payrollId));
-
-        // 급여 상세 내역 조회
         List<PayrollDetail> details = payrollDetailRepository.findByPayroll_IdOrderByWorkDateAsc(payrollId);
 
-        // 기본 구현: 텍스트 기반 급여명세서 생성
+        try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream()) {
+            com.lowagie.text.Document document = new com.lowagie.text.Document(com.lowagie.text.PageSize.A4);
+            com.lowagie.text.pdf.PdfWriter.getInstance(document, baos);
+
+            // 한글 지원 폰트 — 시스템 폰트 fallback (운영에서는 NanumGothic.ttf 번들 권장)
+            com.lowagie.text.pdf.BaseFont bf;
+            try {
+                bf = com.lowagie.text.pdf.BaseFont.createFont(
+                        "HYSMyeongJoStd-Medium", "UniKS-UCS2-H",
+                        com.lowagie.text.pdf.BaseFont.NOT_EMBEDDED);
+            } catch (Exception ignored) {
+                bf = com.lowagie.text.pdf.BaseFont.createFont();
+            }
+            com.lowagie.text.Font fontTitle = new com.lowagie.text.Font(bf, 18, com.lowagie.text.Font.BOLD);
+            com.lowagie.text.Font fontH = new com.lowagie.text.Font(bf, 12, com.lowagie.text.Font.BOLD);
+            com.lowagie.text.Font fontN = new com.lowagie.text.Font(bf, 10);
+
+            document.open();
+            document.add(new com.lowagie.text.Paragraph("급여 명세서", fontTitle));
+            document.add(new com.lowagie.text.Paragraph(" ", fontN));
+
+            String emp = payroll.getEmployee() != null && payroll.getEmployee().getUser() != null
+                    ? payroll.getEmployee().getUser().getName() : "-";
+            String store = payroll.getStore() != null ? payroll.getStore().getStoreName() : "-";
+            document.add(new com.lowagie.text.Paragraph("직원: " + emp, fontN));
+            document.add(new com.lowagie.text.Paragraph("매장: " + store, fontN));
+            document.add(new com.lowagie.text.Paragraph(
+                    "기간: " + payroll.getStartDate() + " ~ " + payroll.getEndDate(), fontN));
+            document.add(new com.lowagie.text.Paragraph(" ", fontN));
+
+            com.lowagie.text.pdf.PdfPTable table = new com.lowagie.text.pdf.PdfPTable(2);
+            table.setWidthPercentage(100);
+            addKv(table, "기본 근무 시간",
+                    String.format("%.1fh", nz(payroll.getRegularHours())), fontH, fontN);
+            addKv(table, "연장 근무 시간",
+                    String.format("%.1fh", nz(payroll.getOvertimeHours())), fontH, fontN);
+            addKv(table, "야간 근무 시간",
+                    String.format("%.1fh", nz(payroll.getNightWorkHours())), fontH, fontN);
+            addKv(table, "주휴수당",
+                    String.format("%,d원", nz(payroll.getWeeklyAllowance())), fontH, fontN);
+            addKv(table, "총 급여 (세전)",
+                    String.format("%,d원", nz(payroll.getGrossWage())), fontH, fontN);
+            addKv(table, "세금",
+                    String.format("-%,d원", nz(payroll.getTaxAmount())), fontH, fontN);
+            addKv(table, "실수령액",
+                    String.format("%,d원", nz(payroll.getNetWage())), fontH, fontN);
+            addKv(table, "상태", payroll.getStatus() != null ? payroll.getStatus().name() : "-", fontH, fontN);
+            document.add(table);
+
+            document.add(new com.lowagie.text.Paragraph(" ", fontN));
+            document.add(new com.lowagie.text.Paragraph(
+                    "근무 상세 (" + details.size() + "건)", fontH));
+            for (PayrollDetail d : details) {
+                double dh = nz(d.getRegularHours()) + nz(d.getOvertimeHours()) + nz(d.getNightWorkHours());
+                document.add(new com.lowagie.text.Paragraph(
+                        String.format("%s · %.1fh · %,d원",
+                                d.getWorkDate(), dh, nz(d.getDailyWage())), fontN));
+            }
+            document.add(new com.lowagie.text.Paragraph(" ", fontN));
+            document.add(new com.lowagie.text.Paragraph(
+                    "발급: 소담(SODAM) — 본 명세서는 전자 문서로 유효합니다.", fontN));
+            document.close();
+            return baos.toByteArray();
+        } catch (Exception e) {
+            log.error("급여 PDF 생성 실패", e);
+            return generatePayrollTextFallback(payroll, details);
+        }
+    }
+
+    private static double nz(Double v) { return v == null ? 0 : v; }
+    private static int nz(Integer v) { return v == null ? 0 : v; }
+    private static void addKv(com.lowagie.text.pdf.PdfPTable t, String k, String v,
+                              com.lowagie.text.Font fh, com.lowagie.text.Font fn) {
+        t.addCell(new com.lowagie.text.Phrase(k, fh));
+        t.addCell(new com.lowagie.text.Phrase(v, fn));
+    }
+
+    /** PDF 생성 실패 시 텍스트 폴백 (구 동작 유지). */
+    private byte[] generatePayrollTextFallback(Payroll payroll, List<PayrollDetail> details) {
         StringBuilder pdfContent = new StringBuilder();
         pdfContent.append("===========================================\n");
         pdfContent.append("           급여 명세서\n");

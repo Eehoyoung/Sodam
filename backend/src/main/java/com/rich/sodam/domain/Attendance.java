@@ -198,4 +198,20 @@ public class Attendance {
     public void postLoad() {
 
     }
+
+    /**
+     * 정정 요청 승인 후 시간 갱신 (사장 권한).
+     * 도메인 가드를 우회하지 않고 명시적 메서드로 제공.
+     * @throws IllegalArgumentException 퇴근 시간이 출근보다 빠른 경우
+     */
+    public void adjustTimes(LocalDateTime newCheckIn, LocalDateTime newCheckOut) {
+        if (newCheckIn == null) {
+            throw new IllegalArgumentException("출근 시간은 필수입니다.");
+        }
+        if (newCheckOut != null && newCheckOut.isBefore(newCheckIn)) {
+            throw new IllegalArgumentException("퇴근 시간은 출근 시간보다 늦어야 합니다.");
+        }
+        this.checkInTime = newCheckIn;
+        this.checkOutTime = newCheckOut;
+    }
 }

@@ -101,9 +101,18 @@ public class PayrollController {
             @ApiResponse(responseCode = "404", description = "직원 또는 매장 정보를 찾을 수 없음")
     })
     @PostMapping("/calculate")
-    public ResponseEntity<PayrollDto> calculatePayroll(
+    public ResponseEntity<?> calculatePayroll(
             @Parameter(description = "급여 계산 요청 정보", required = true)
             @RequestBody @Valid PayrollCalculationRequestDto requestDto) {
+
+        // 매장 일괄 계산 모드: employeeId 미지정 → 매장 활성 직원 전체
+        if (requestDto.getEmployeeId() == null) {
+            java.util.List<PayrollDto> all = payrollService.calculatePayrollForStore(
+                    requestDto.getStoreId(),
+                    requestDto.getStartDate(),
+                    requestDto.getEndDate());
+            return ResponseEntity.ok(all);
+        }
 
         Payroll payroll = payrollService.calculatePayroll(
                 requestDto.getEmployeeId(),
@@ -125,8 +134,20 @@ public class PayrollController {
     @PutMapping("/{payrollId}/status")
     public ResponseEntity<PayrollDto> updatePayrollStatus(
             @Parameter(description = "급여 ID", required = true) @PathVariable Long payrollId,
-            @Parameter(description = "상태 업데이트 정보", required = true)
-            @RequestBody @Valid PayrollStatusUpdateDto updateDto) {
+            @Parameter(description = "상태 (query alt — FE 호환)")
+                @RequestParam(value = "status", required = false)
+                com.rich.sodam.domain.type.PayrollStatus statusQuery,
+            @Parameter(description = "상태 업데이트 정보 (body alt)")
+            @RequestBody(required = false) PayrollStatusUpdateDto updateDtoBody) {
+
+        // FE 호환: query 또는 body 둘 중 하나로 받을 수 있음
+        PayrollStatusUpdateDto updateDto = updateDtoBody;
+        if (updateDto == null || updateDto.getStatus() == null) {
+            if (statusQuery == null) {
+                return ResponseEntity.badRequest().build();
+            }
+            updateDto = PayrollStatusUpdateDto.builder().status(statusQuery).build();
+        }
 
         Payroll payroll = payrollService.updatePayrollStatus(payrollId, updateDto.getStatus());
         return ResponseEntity.ok(PayrollDto.from(payroll));

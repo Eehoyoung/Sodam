@@ -31,14 +31,30 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.testng:testng:7.7.0'
     testImplementation 'org.springframework.security:spring-security-test'
     compileOnly 'org.projectlombok:lombok'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     runtimeOnly 'com.mysql:mysql-connector-j'
+    // H2 in-memory DB for dev profile (emulator) and tests
+    runtimeOnly 'com.h2database:h2:2.2.224'
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Firebase Admin SDK (FCM 푸시)
+    implementation 'com.google.firebase:firebase-admin:9.3.0'
+
+    // Sentry (BE 에러 추적)
+    implementation 'io.sentry:sentry-spring-boot-starter-jakarta:7.18.0'
+    implementation 'io.sentry:sentry-logback:7.18.0'
+
+    // Bucket4j (API Rate Limit)
+    implementation 'com.bucket4j:bucket4j-core:8.10.1'
+
+    // OpenPDF (급여 명세서 PDF 생성) — iText 호환, AGPL 회피 위해 OpenPDF 사용
+    implementation 'com.github.librepdf:openpdf:2.0.3'
     // https://mvnrepository.com/artifact/com.auth0/auth0
     implementation group: 'com.auth0', name: 'auth0', version: '2.17.0'
     // https://mvnrepository.com/artifact/com.google.code.gson/gson

@@ -38,6 +38,7 @@ import java.util.Map;
 @Slf4j
 @Configuration
 @EnableCaching
+@org.springframework.context.annotation.Profile("!dev")
 public class RedisConfig implements CachingConfigurer {
 
     @Value("${spring.data.redis.host:localhost}")

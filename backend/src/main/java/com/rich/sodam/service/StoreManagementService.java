@@ -33,6 +33,18 @@ public interface StoreManagementService {
     Store updateStore(Long storeId, StoreUpdateDto updateDto);
 
     void deleteStore(Long storeId);
+
+    /**
+     * 직원 본인이 매장 코드로 가입 (PRD_EMPLOYEE E-301).
+     * 시급은 매장 기본 시급 사용.
+     */
+    Store joinStoreByCode(Long userId, String storeCode);
+
+    /** 사장 메모 갱신 (직원에게 노출 X). */
+    void updateOwnerMemo(Long storeId, Long employeeId, String memo);
+
+    /** 사장 메모 조회. */
+    String getOwnerMemo(Long storeId, Long employeeId);
 }
 
 
