@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.security.annotation.EmployeeOrMaster;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,6 +18,7 @@ import java.util.List;
 /**
  * StoreRepository의 조회/통계 기능을 API로 노출하는 전용 컨트롤러
  */
+@EmployeeOrMaster
 @RestController
 @RequestMapping("/api/store-queries")
 @RequiredArgsConstructor

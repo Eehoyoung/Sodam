@@ -12,7 +12,10 @@ spring:
   jmx:
     enabled: false  # JMX 비활성
   config:
-    import: optional:file:.env[.properties]
+    # .env 파일 우선순위: backend/.env → 루트/.env (monorepo 통합 후 권장)
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
   application:
     name: sodam
   security:

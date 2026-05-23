@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.security.annotation.AnyAuthenticated;
 
 import java.io.IOException;
 import java.util.List;
@@ -23,6 +24,7 @@ import java.util.List;
  * 소상공인 꿀팁 컨트롤러
  * 소상공인 꿀팁에 대한 CRUD API를 제공합니다.
  */
+@AnyAuthenticated
 @RestController
 @RequestMapping("/api/tip-info")
 @RequiredArgsConstructor

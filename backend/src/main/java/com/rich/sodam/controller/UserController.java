@@ -11,11 +11,13 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.security.annotation.AnyAuthenticated;
 
 /**
  * 사용자 관리 컨트롤러
  * 사용자 정보 조회, 역할 변경 등의 기능을 제공합니다.
  */
+@AnyAuthenticated
 @RestController
 @RequestMapping("/api/user")
 @Tag(name = "사용자 관리", description = "사용자 정보 조회 및 관리 API")
@@ -141,7 +143,7 @@ public class UserController {
     public ResponseEntity<ApiResponse<User>> updateMe(
             @org.springframework.security.core.annotation.AuthenticationPrincipal
                 com.rich.sodam.security.UserPrincipal principal,
-            @RequestBody(required = false) java.util.Map<String, String> body) {
+            @Valid @RequestBody(required = false) java.util.Map<String, String> body) {
         if (principal == null || principal.getId() == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("UNAUTHORIZED", "로그인이 필요해요."));

@@ -7,7 +7,11 @@ import com.rich.sodam.dto.request.PayrollStatusUpdateDto;
 import com.rich.sodam.dto.response.EmployeeWageInfoDto;
 import com.rich.sodam.dto.response.PayrollDetailDto;
 import com.rich.sodam.dto.response.PayrollDto;
+import com.rich.sodam.security.UserPrincipal;
+import com.rich.sodam.security.annotation.EmployeeOrMaster;
+import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.service.PayrollService;
+import com.rich.sodam.service.StoreAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -22,6 +26,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -29,6 +34,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@EmployeeOrMaster
 @RestController
 @RequestMapping("/api/payroll")
 @RequiredArgsConstructor
@@ -36,6 +42,15 @@ import java.util.stream.Collectors;
 public class PayrollController {
 
     private final PayrollService payrollService;
+    private final StoreAccessGuard guard;
+
+    private static boolean isMaster(UserPrincipal p) {
+        if (p == null || p.getAuthorities() == null) return false;
+        return p.getAuthorities().stream().anyMatch(a ->
+                "ROLE_MASTER".equals(a.getAuthority())
+                || "ROLE_MANAGER".equals(a.getAuthority())
+                || "ROLE_BOSS".equals(a.getAuthority()));
+    }
 
     @Operation(summary = "직원 기간별 급여 계산", description = "특정 기간 동안의 직원 급여를 계산합니다.")
     @ApiResponses(value = {
@@ -47,13 +62,15 @@ public class PayrollController {
     })
     @GetMapping("/employee/{employeeId}/store/{storeId}")
     public ResponseEntity<Integer> calculateEmployeeWage(
+            @AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "직원 ID", required = true) @PathVariable Long employeeId,
             @Parameter(description = "매장 ID", required = true) @PathVariable Long storeId,
             @Parameter(description = "계산 시작 일시 (ISO 형식)", required = true)
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @Parameter(description = "계산 종료 일시 (ISO 형식)", required = true)
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
-
+        guard.assertCanViewEmployee(principal.getId(), employeeId, isMaster(principal));
+        if (isMaster(principal)) guard.assertMasterOwnsStore(principal.getId(), storeId);
         int wage = payrollService.calculateWageForPeriod(employeeId, storeId, startDate, endDate);
         return ResponseEntity.ok(wage);
     }
@@ -67,8 +84,9 @@ public class PayrollController {
     })
     @GetMapping("/employee/{employeeId}/wages")
     public ResponseEntity<List<EmployeeWageInfoDto>> getEmployeeWageInfoInAllStores(
+            @AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "직원 ID", required = true) @PathVariable Long employeeId) {
-
+        guard.assertCanViewEmployee(principal.getId(), employeeId, isMaster(principal));
         List<EmployeeWageInfoDto> wageInfos = payrollService.getEmployeeWageInfoInAllStores(employeeId);
         return ResponseEntity.ok(wageInfos);
     }
@@ -83,11 +101,13 @@ public class PayrollController {
     })
     @GetMapping("/employee/{employeeId}/store/{storeId}/monthly")
     public ResponseEntity<Integer> calculateMonthlyEmployeeWage(
+            @AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "직원 ID", required = true) @PathVariable Long employeeId,
             @Parameter(description = "매장 ID", required = true) @PathVariable Long storeId,
             @Parameter(description = "연도", required = true, example = "2025") @RequestParam int year,
             @Parameter(description = "월 (1-12)", required = true, example = "5") @RequestParam int month) {
-
+        guard.assertCanViewEmployee(principal.getId(), employeeId, isMaster(principal));
+        if (isMaster(principal)) guard.assertMasterOwnsStore(principal.getId(), storeId);
         int wage = payrollService.calculateMonthlyWage(employeeId, storeId, year, month);
         return ResponseEntity.ok(wage);
     }
@@ -100,10 +120,13 @@ public class PayrollController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "404", description = "직원 또는 매장 정보를 찾을 수 없음")
     })
+    @MasterOnly
     @PostMapping("/calculate")
     public ResponseEntity<?> calculatePayroll(
+            @AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "급여 계산 요청 정보", required = true)
-            @RequestBody @Valid PayrollCalculationRequestDto requestDto) {
+            @Valid @RequestBody PayrollCalculationRequestDto requestDto) {
+        guard.assertMasterOwnsStore(principal.getId(), requestDto.getStoreId());
 
         // 매장 일괄 계산 모드: employeeId 미지정 → 매장 활성 직원 전체
         if (requestDto.getEmployeeId() == null) {
@@ -131,6 +154,7 @@ public class PayrollController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "404", description = "급여 정보를 찾을 수 없음")
     })
+    @MasterOnly
     @PutMapping("/{payrollId}/status")
     public ResponseEntity<PayrollDto> updatePayrollStatus(
             @Parameter(description = "급여 ID", required = true) @PathVariable Long payrollId,
@@ -138,7 +162,7 @@ public class PayrollController {
                 @RequestParam(value = "status", required = false)
                 com.rich.sodam.domain.type.PayrollStatus statusQuery,
             @Parameter(description = "상태 업데이트 정보 (body alt)")
-            @RequestBody(required = false) PayrollStatusUpdateDto updateDtoBody) {
+            @Valid @RequestBody(required = false) PayrollStatusUpdateDto updateDtoBody) {
 
         // FE 호환: query 또는 body 둘 중 하나로 받을 수 있음
         PayrollStatusUpdateDto updateDto = updateDtoBody;
@@ -162,10 +186,11 @@ public class PayrollController {
     })
     @GetMapping("/employee/{employeeId}")
     public ResponseEntity<List<PayrollDto>> getEmployeePayrolls(
+            @AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "직원 ID", required = true) @PathVariable Long employeeId,
             @Parameter(description = "조회 시작일 (YYYY-MM-DD)") @RequestParam(required = false) LocalDate from,
             @Parameter(description = "조회 종료일 (YYYY-MM-DD)") @RequestParam(required = false) LocalDate to) {
-
+        guard.assertCanViewEmployee(principal.getId(), employeeId, isMaster(principal));
         List<Payroll> payrolls = payrollService.getEmployeePayrolls(employeeId, from, to);
         List<PayrollDto> dtos = payrolls.stream()
                 .map(PayrollDto::from)
@@ -181,12 +206,14 @@ public class PayrollController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "404", description = "매장 정보를 찾을 수 없음")
     })
+    @MasterOnly
     @GetMapping("/store/{storeId}")
     public ResponseEntity<List<PayrollDto>> getStorePayrolls(
+            @AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "매장 ID", required = true) @PathVariable Long storeId,
             @Parameter(description = "조회 시작일 (YYYY-MM-DD)") @RequestParam(required = false) LocalDate from,
             @Parameter(description = "조회 종료일 (YYYY-MM-DD)") @RequestParam(required = false) LocalDate to) {
-
+        guard.assertMasterOwnsStore(principal.getId(), storeId);
         List<Payroll> payrolls = payrollService.getStorePayrolls(storeId, from, to);
         List<PayrollDto> dtos = payrolls.stream()
                 .map(PayrollDto::from)

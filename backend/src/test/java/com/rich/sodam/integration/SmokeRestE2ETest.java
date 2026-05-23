@@ -88,10 +88,11 @@ class SmokeRestE2ETest {
         EmployeeProfile profile = new EmployeeProfile(employeeUser);
         employeeProfileRepository.save(profile);
 
-        // 매장
+        // 매장 — DevSeed 의 '1234567890' 과 충돌 회피 위해 unique 번호 사용
+        String uniqueBizNo = String.valueOf(900_000_0000L + (System.nanoTime() % 100_000_0000L));
         store = new Store(
-                "스모크 매장",
-                "1234567890",
+                "스모크 매장 " + uniqueBizNo.substring(0, 4),
+                uniqueBizNo,
                 "02-1234-5678",
                 "음식점",
                 12_000,

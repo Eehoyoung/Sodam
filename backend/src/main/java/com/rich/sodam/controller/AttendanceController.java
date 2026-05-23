@@ -23,6 +23,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.security.annotation.EmployeeOrMaster;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,6 +33,7 @@ import java.util.stream.Collectors;
  * 직원 출퇴근 관리 컨트롤러
  * 직원들의 출근/퇴근 기록을 관리하고 조회하는 API를 제공합니다.
  */
+@EmployeeOrMaster
 @RestController
 @RequestMapping("/api/attendance")
 @RequiredArgsConstructor

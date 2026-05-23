@@ -13,12 +13,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.rich.sodam.security.annotation.MasterOnly;
 
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+@MasterOnly
 @RestController
 @RequestMapping("/api/stores/{storeId}/photos")
 @RequiredArgsConstructor

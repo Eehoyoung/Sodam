@@ -14,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.security.annotation.MasterOnly;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -25,6 +26,7 @@ import java.util.List;
  *
  * 한국어 CSV: UTF-8 BOM 포함 (Excel 호환).
  */
+@MasterOnly
 @RestController
 @RequestMapping("/api/export")
 @RequiredArgsConstructor

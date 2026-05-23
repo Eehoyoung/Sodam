@@ -9,6 +9,19 @@
 
 ---
 
+## 🆕 C-0. backend/.env → 루트 .env 마이그레이션 (2026-05-23 추가)
+.env 가 루트 하나로 통합됨. backend/.env 의 실제 시크릿을 루트로 옮기는 작업:
+
+- [ ] `backend/.env` 안의 JWT_SECRET / KAKAO_CLIENT_ID/SECRET / DB_PASSWORD 등 실제 값을 확인
+- [ ] 루트 `.env` 의 해당 변수로 복사 (이미 같은 값이면 skip)
+- [ ] `backend/.env` 삭제 (또는 빈 파일로 유지 — `application.yml` 의 import fallback 으로 양쪽 다 로드됨)
+- [ ] `docker compose up -d --build` 로 BE 가 루트 .env 만으로 정상 부팅하는지 확인
+- [ ] `curl http://localhost:7070/actuator/info` HTTP 200 확인
+
+이미 backend/.env 가 있으면 BE 부팅에 우선 사용됨 (backwards compat). 안 옮겨도 동작은 하지만 관리 단순화 위해 권장.
+
+---
+
 ## 🔴 P0 — 외부 서비스 가맹/계정 (출시 차단)
 
 ### C-1. 토스페이먼츠 정기결제 가맹 신청

@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.security.annotation.MasterOnly;
 
 /**
  * 구독·정기결제 API.
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
  *  2. FE → POST /api/billing/subscribe (authKey + plan) → 빌링키 교환 + 첫 청구
  *  3. 이후 매월 자동 청구는 BillingScheduler 가 처리
  */
+@MasterOnly
 @RestController
 @RequestMapping("/api/billing")
 @RequiredArgsConstructor

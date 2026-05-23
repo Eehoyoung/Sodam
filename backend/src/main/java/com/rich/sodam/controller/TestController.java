@@ -2,6 +2,7 @@ package com.rich.sodam.controller;
 
 import com.rich.sodam.dto.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Hidden;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -11,9 +12,11 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.NoSuchElementException;
 
 /**
- * API 응답 표준화 및 예외 처리 테스트용 컨트롤러
+ * API 응답 표준화 및 예외 처리 테스트용 컨트롤러.
+ * 보안: prod 프로필에서는 빈 등록 자체가 차단됨 (@Profile("dev")).
  */
 @Hidden
+@Profile("dev")
 @RestController
 @RequestMapping("/api/test")
 public class TestController {

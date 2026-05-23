@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.rich.sodam.security.annotation.EmployeeOrMaster;
 
 /**
  * 레거시 경로(/attendance) 임시 수용 프록시 컨트롤러
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
  * - 병행 운영 기간: 14일 (공지 기준)
  */
 @Slf4j
+@EmployeeOrMaster
 @RestController
 @RequestMapping("/attendance")
 @RequiredArgsConstructor

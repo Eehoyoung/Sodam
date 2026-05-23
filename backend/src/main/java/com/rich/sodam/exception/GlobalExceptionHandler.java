@@ -48,6 +48,31 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 권한 거부 — @PreAuthorize/Method Security/StoreAccessGuard 거부.
+     */
+    @ExceptionHandler({
+            org.springframework.security.access.AccessDeniedException.class,
+            org.springframework.security.authorization.AuthorizationDeniedException.class
+    })
+    public ResponseEntity<ApiResponse<Object>> handleAccessDenied(Exception e) {
+        log.warn("권한 거부: {}", e.getMessage());
+        ApiResponse<Object> response = ApiResponse.error("FORBIDDEN",
+                e.getMessage() != null && !e.getMessage().isBlank() ? e.getMessage() : "해당 작업에 대한 권한이 없어요.");
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+    }
+
+    /**
+     * 인증 실패 — JWT 없음/만료/잘못된 토큰.
+     */
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleAuthenticationException(
+            org.springframework.security.core.AuthenticationException e) {
+        log.warn("인증 실패: {}", e.getMessage());
+        ApiResponse<Object> response = ApiResponse.error("UNAUTHORIZED", "로그인이 필요해요.");
+        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+    }
+
+    /**
      * 현재 요청의 로케일을 가져옵니다.
      *
      * @return 현재 로케일

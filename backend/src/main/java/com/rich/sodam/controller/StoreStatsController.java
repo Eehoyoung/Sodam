@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.security.annotation.MasterOnly;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -25,6 +26,7 @@ import java.util.Map;
 /**
  * 사장님 대시보드용 매장 통계 API (PRD_OWNER S-001).
  */
+@MasterOnly
 @RestController
 @RequestMapping("/api/store-queries")
 @RequiredArgsConstructor

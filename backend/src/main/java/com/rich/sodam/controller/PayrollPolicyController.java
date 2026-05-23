@@ -15,7 +15,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.security.annotation.MasterOnly;
 
+@MasterOnly
 @RestController
 @RequestMapping("/api/payroll-policy")
 @RequiredArgsConstructor

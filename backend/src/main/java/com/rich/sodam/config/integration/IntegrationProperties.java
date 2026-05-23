@@ -44,10 +44,12 @@ public class IntegrationProperties {
     @Setter
     public static class Toss {
         private String mode = "mock";
+        // mock 모드 전용 샌드박스 키. live 모드 진입 시 TossBillingClient 가 빈 값 검증.
         private String clientKey = "test_ck_dev";
         private String secretKey = "test_sk_dev";
         private String baseUrl = "https://api.tosspayments.com";
-        private String webhookSecret = "dev-webhook";
+        // 보안: webhook 서명 검증용. 비어있으면 TossWebhookController 가 모든 webhook 거부.
+        private String webhookSecret = "";
 
         public Mode resolvedMode() {
             return Mode.parse(mode);

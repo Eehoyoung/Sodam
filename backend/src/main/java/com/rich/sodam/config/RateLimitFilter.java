@@ -21,8 +21,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * 단순 IP 기반 Rate Limit — Bucket4j 메모리 백엔드.
  *
  * 적용 범위:
- *  - POST /api/login, /api/join, /api/auth/refresh : 분당 20회
- *  - 그 외 /api/** : 분당 120회
+ *  - POST /api/login                     : IP+이메일별 5회/분 (brute-force 강화)
+ *  - POST /api/auth/password-reset/**    : IP별 3회/분 (이메일 폭주 차단)
+ *  - POST /api/join, /api/auth/refresh   : IP별 20회/분 (가입/refresh)
+ *  - 그 외 /api/**                       : IP별 120회/분
  *
  * 운영 다중 인스턴스 환경에서는 Redis 백엔드(Bucket4j Lettuce) 권장.
  */
@@ -31,8 +33,22 @@ import java.util.concurrent.ConcurrentHashMap;
 @Order(1) // 가장 앞 단에서 차단
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    private final Map<String, Bucket> authBuckets = new ConcurrentHashMap<>();
-    private final Map<String, Bucket> generalBuckets = new ConcurrentHashMap<>();
+    private final Map<String, Bucket> loginBuckets = new ConcurrentHashMap<>();   // 강화: 5/분
+    private final Map<String, Bucket> resetBuckets = new ConcurrentHashMap<>();   // 강화: 3/분
+    private final Map<String, Bucket> authBuckets = new ConcurrentHashMap<>();    // 20/분
+    private final Map<String, Bucket> generalBuckets = new ConcurrentHashMap<>(); // 120/분
+
+    private Bucket resolveLoginBucket(String key) {
+        return loginBuckets.computeIfAbsent(key, k -> Bucket.builder()
+                .addLimit(Bandwidth.classic(5, Refill.intervally(5, Duration.ofMinutes(1))))
+                .build());
+    }
+
+    private Bucket resolveResetBucket(String key) {
+        return resetBuckets.computeIfAbsent(key, k -> Bucket.builder()
+                .addLimit(Bandwidth.classic(3, Refill.intervally(3, Duration.ofMinutes(1))))
+                .build());
+    }
 
     private Bucket resolveAuthBucket(String key) {
         return authBuckets.computeIfAbsent(key, k -> Bucket.builder()
@@ -65,7 +81,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         String clientIp = resolveClientIp(request);
         Bucket bucket;
-        if (path.equals("/api/login") || path.equals("/api/join") || path.equals("/api/auth/refresh")) {
+        if (path.equals("/api/login")) {
+            // 보안: brute-force 방지 — IP + 이메일 조합 키로 5/분
+            String email = request.getParameter("email");
+            String key = clientIp + "|" + (email != null ? email.toLowerCase() : "_");
+            bucket = resolveLoginBucket(key);
+        } else if (path.startsWith("/api/auth/password-reset")) {
+            // 보안: 이메일 폭주 방지 — IP 단위 3/분
+            bucket = resolveResetBucket(clientIp);
+        } else if (path.equals("/api/join") || path.equals("/api/auth/refresh")) {
             bucket = resolveAuthBucket(clientIp);
         } else {
             bucket = resolveGeneralBucket(clientIp);

@@ -23,12 +23,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.LocaleResolver;
+import com.rich.sodam.security.annotation.PublicEndpoint;
+import jakarta.validation.Valid;
 
 import java.util.*;
 
 /**
  * 로그인 관련 요청을 처리하는 컨트롤러
  */
+@PublicEndpoint
 @RestController
 @Tag(name = "인증", description = "사용자 인증 관련 API")
 public class LoginController {
@@ -115,7 +118,7 @@ public class LoginController {
     }
 
     @PostMapping("/api/login")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> login(@RequestBody Login login, HttpServletResponse response, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> login(@Valid @RequestBody Login login, HttpServletResponse response, HttpServletRequest request) {
         Locale locale = localeResolver.resolveLocale(request);
 
         try {
@@ -157,7 +160,7 @@ public class LoginController {
     }
 
     @PostMapping("/api/join")
-    public ResponseEntity<ApiResponse<Object>> join(@RequestBody JoinDto join, HttpServletResponse response, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Object>> join(@Valid @RequestBody JoinDto join, HttpServletResponse response, HttpServletRequest request) {
         Locale locale = localeResolver.resolveLocale(request);
 
         // 선택적 역할/목적 헤더 로깅 (백엔드 미지원 시에도 안전)
@@ -180,7 +183,7 @@ public class LoginController {
      */
     @Operation(summary = "토큰 갱신", description = "리프레시 토큰을 사용하여 새로운 액세스 토큰을 발급합니다.")
     @PostMapping("/api/auth/refresh")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> refreshToken(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> refreshToken(@Valid @RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
         Locale locale = localeResolver.resolveLocale(httpRequest);
 
         try {

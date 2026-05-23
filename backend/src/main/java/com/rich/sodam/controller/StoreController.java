@@ -24,9 +24,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.security.annotation.MasterOnly;
 
 import java.util.List;
 
+@MasterOnly
 @RestController
 @RequestMapping("/api/stores")
 @RequiredArgsConstructor
@@ -69,7 +71,7 @@ public class StoreController {
     /*    @PostMapping("/change/master")
         public ResponseEntity<Store> registerStore(
                 @Parameter(description = "사용자 ID", required = true) @RequestParam Long userId,
-                @Parameter(description = "매장 등록 정보", required = true) @RequestBody StoreRegistrationDto storeDto) {
+                @Parameter(description = "매장 등록 정보", required = true) @Valid @RequestBody StoreRegistrationDto storeDto) {
 
             // 주소 좌표 변환
             if (storeDto.getQuery() != null) {
@@ -98,7 +100,7 @@ public class StoreController {
     public ResponseEntity<java.util.Map<String, String>> updateEmployeeMemo(
             @PathVariable Long storeId,
             @PathVariable Long employeeId,
-            @RequestBody java.util.Map<String, String> body) {
+            @Valid @RequestBody java.util.Map<String, String> body) {
         String memo = body.getOrDefault("memo", "");
         storeManagementService.updateOwnerMemo(storeId, employeeId, memo);
         return ResponseEntity.ok(java.util.Map.of("memo", memo));

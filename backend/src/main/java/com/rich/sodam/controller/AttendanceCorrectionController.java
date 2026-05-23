@@ -22,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.security.annotation.EmployeeOrMaster;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -31,6 +32,7 @@ import java.util.Map;
 /**
  * 출퇴근 정정 요청 워크플로 (직원 → 사장 승인).
  */
+@EmployeeOrMaster
 @RestController
 @RequestMapping("/api/attendance")
 @RequiredArgsConstructor

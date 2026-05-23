@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.security.annotation.PublicEndpoint;
 
 import java.util.Map;
 
@@ -19,6 +20,7 @@ import java.util.Map;
  *   2. POST /api/auth/password-reset/verify    { email, code } → { resetTicket }
  *   3. POST /api/auth/password-reset/confirm   { resetTicket, newPassword }
  */
+@PublicEndpoint
 @RestController
 @RequestMapping("/api/auth/password-reset")
 @RequiredArgsConstructor

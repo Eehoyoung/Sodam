@@ -71,4 +71,9 @@ public interface EmployeeStoreRelationRepository extends JpaRepository<EmployeeS
     Optional<EmployeeStoreRelation> findRelation(
             @Param("employeeId") Long employeeId,
             @Param("storeId") Long storeId);
+
+    /**
+     * 직원이 해당 매장에 소속되어 있는지 검증 (StoreAccessGuard 용).
+     */
+    boolean existsByEmployeeProfile_IdAndStore_Id(Long employeeId, Long storeId);
 }

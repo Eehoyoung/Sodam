@@ -17,6 +17,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.security.annotation.MasterOnly;
+import jakarta.validation.Valid;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,6 +28,7 @@ import java.util.UUID;
 /**
  * 친구 추천 (Phase 2 — 보상은 SubscriptionService 와 연동 시 적용).
  */
+@MasterOnly
 @RestController
 @RequestMapping("/api/referrals")
 @RequiredArgsConstructor
@@ -60,7 +63,7 @@ public class ReferralController {
     @Transactional
     public ResponseEntity<Map<String, String>> apply(
             @AuthenticationPrincipal UserPrincipal principal,
-            @RequestBody ApplyReq req) {
+            @Valid @RequestBody ApplyReq req) {
         Long refereeUserId = principal.getId();
         Long referrerUserId = parseCodeToUserId(req.getCode());
         if (referrerUserId == null) {

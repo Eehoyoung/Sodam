@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.security.annotation.AnyAuthenticated;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,6 +22,7 @@ import java.util.Map;
  * 사용자 목적 설정 컨트롤러
  * Kakao 최초 가입자의 목적(personal/employee/boss) 설정을 처리합니다.
  */
+@AnyAuthenticated
 @RestController
 @RequestMapping("/api/users")
 @Tag(name = "사용자 목적 설정", description = "Kakao 가입자의 목적 설정 API")

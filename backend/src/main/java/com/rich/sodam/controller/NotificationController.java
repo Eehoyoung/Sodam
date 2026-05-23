@@ -17,7 +17,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.security.annotation.AnyAuthenticated;
 
+@AnyAuthenticated
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
@@ -59,7 +61,7 @@ public class NotificationController {
     public ResponseEntity<java.util.Map<String, String>> pushToEmployee(
             @org.springframework.security.core.annotation.AuthenticationPrincipal
                 com.rich.sodam.security.UserPrincipal principal,
-            @RequestBody(required = false) java.util.Map<String, Object> body) {
+            @Valid @RequestBody(required = false) java.util.Map<String, Object> body) {
         if (body == null || body.isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(java.util.Map.of("message", "요청 본문이 비어 있어요."));

@@ -17,6 +17,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.security.annotation.AnyAuthenticated;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -27,6 +28,7 @@ import java.util.*;
  * PersonalUser 전용 컨트롤러 (네임스페이스: /api/personal-users/{userId})
  * - Phase A/B의 핵심 엔드포인트를 제공 (인메모리 구현 기반)
  */
+@AnyAuthenticated
 @RestController
 @RequestMapping("/api/personal-users/{userId}")
 public class PersonalUserController {
@@ -203,7 +205,7 @@ public class PersonalUserController {
     @PostMapping("/attendance/check-in")
     public ResponseEntity<ApiResponse<PersonalAttendanceRecordDto>> checkIn(@PathVariable Long userId,
                                                                             @RequestHeader(value = "Idempotency-Key", required = false) String idemKey,
-                                                                            @RequestBody(required = false) CheckInRequest body,
+                                                                            @Valid @RequestBody(required = false) CheckInRequest body,
                                                                             HttpServletRequest request) throws JsonProcessingException {
         ResponseEntity<ApiResponse<?>> denied = verifyAccess(userId, request);
         if (denied != null) return (ResponseEntity) denied;
@@ -248,7 +250,7 @@ public class PersonalUserController {
     @PostMapping("/attendance/check-out")
     public ResponseEntity<ApiResponse<PersonalAttendanceRecordDto>> checkOut(@PathVariable Long userId,
                                                                              @RequestHeader(value = "Idempotency-Key", required = false) String idemKey,
-                                                                             @RequestBody(required = false) CheckOutRequest body,
+                                                                             @Valid @RequestBody(required = false) CheckOutRequest body,
                                                                              HttpServletRequest request) throws JsonProcessingException {
         ResponseEntity<ApiResponse<?>> denied = verifyAccess(userId, request);
         if (denied != null) return (ResponseEntity) denied;
@@ -303,7 +305,7 @@ public class PersonalUserController {
     @PatchMapping("/attendance/{attendanceId}")
     public ResponseEntity<ApiResponse<PersonalAttendanceRecordDto>> patchAttendance(@PathVariable Long userId,
                                                                                     @PathVariable Long attendanceId,
-                                                                                    @RequestBody AttendancePatchRequest body,
+                                                                                    @Valid @RequestBody AttendancePatchRequest body,
                                                                                     HttpServletRequest request) {
         ResponseEntity<ApiResponse<?>> denied = verifyAccess(userId, request);
         if (denied != null) return (ResponseEntity) denied;

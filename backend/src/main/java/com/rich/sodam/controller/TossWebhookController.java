@@ -12,6 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.security.annotation.PublicEndpoint;
+import jakarta.validation.Valid;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -26,6 +28,7 @@ import java.util.Base64;
  * 키: webhookSecret
  */
 @Slf4j
+@PublicEndpoint
 @RestController
 @RequestMapping("/api/billing/webhook")
 @RequiredArgsConstructor
@@ -41,7 +44,7 @@ public class TossWebhookController {
     @Transactional
     public ResponseEntity<Void> tossWebhook(
             @RequestHeader(value = "X-TossPayments-Signature", required = false) String signature,
-            @RequestBody String rawBody) {
+            @Valid @RequestBody String rawBody) {
 
         if (!verifySignature(rawBody, signature)) {
             log.warn("토스 웹훅 서명 검증 실패 sig={}", signature);
@@ -74,9 +77,10 @@ public class TossWebhookController {
         if (signature == null) return false;
         String secret = props.getToss().getWebhookSecret();
         if (secret == null || secret.isBlank()) {
-            // dev 환경 fallback — 무조건 통과 (개발 편의)
-            log.debug("webhook secret 미설정 → dev 모드 통과");
-            return true;
+            // 보안: secret 미설정은 곧 검증 불가 — 항상 거부.
+            // 운영: SODAM_TOSS_WEBHOOK_SECRET 환경변수로 주입 필수.
+            log.warn("webhook secret 미설정 — 모든 webhook 거부");
+            return false;
         }
         try {
             Mac mac = Mac.getInstance("HmacSHA256");

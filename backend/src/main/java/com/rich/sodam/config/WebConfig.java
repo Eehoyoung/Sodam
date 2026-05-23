@@ -1,5 +1,6 @@
 package com.rich.sodam.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
@@ -7,34 +8,52 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * CORS 설정.
+ *
+ * 보안: AllowedOriginPattern("*") 제거 — credentials=true 와 wildcard 조합은 spec 위반 + CSRF 노출.
+ * 운영 도메인은 환경변수 SODAM_CORS_ALLOWED_ORIGINS (콤마 구분) 로 주입.
+ */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
+
+    /** 개발용 기본 origin (에뮬레이터/Metro/Expo). */
+    private static final List<String> DEV_ORIGINS = List.of(
+            "http://localhost:3000",
+            "http://localhost:7070",
+            "http://localhost:8081",
+            "http://localhost:8082",
+            "http://10.0.2.2:3000",
+            "http://10.0.2.2:7070",
+            "http://10.0.2.2:8081",
+            "http://10.0.2.2:8082",
+            "capacitor://localhost",
+            "ionic://localhost",
+            "exp://localhost:19000",
+            "exp://127.0.0.1:19000"
+    );
+
+    @Value("${sodam.cors.allowed-origins:}")
+    private String allowedOriginsCsv;
 
     @Bean
     public CorsFilter corsFilter() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
-        config.addAllowedOriginPattern("*");
-        // 원하는 도메인 허용
-        config.addAllowedOrigin("http://localhost:3000"); // React 웹 개발 서버
-        config.addAllowedOrigin("http://localhost:8081"); // React Native 개발 서버
-        config.addAllowedOrigin("capacitor://localhost"); // Capacitor (하이브리드 앱)
-        config.addAllowedOrigin("ionic://localhost"); // Ionic (하이브리드 앱)
-        config.addAllowedOrigin("http://10.0.2.2:8081"); // Android 에뮬레이터에서 localhost 접근
-        config.addAllowedOrigin("exp://localhost:19000"); // Expo 개발 서버
-        config.addAllowedOrigin("exp://127.0.0.1:19000"); // Expo 개발 서버 (IP 주소)
-        // 개발 환경을 위한 추가 Origin 설정
-        config.addAllowedOrigin("http://10.0.2.2:3000");   // 웹 개발 서버
-        config.addAllowedOrigin("http://10.0.2.2:8081");   // RN 개발 서버
-        config.addAllowedOrigin("http://192.168.1.100:8081"); // 실제 IP 주소
-        // 개발용 추가 포트 (7070=BE dev, 8082=Metro 충돌 회피)
-        config.addAllowedOrigin("http://localhost:7070");
-        config.addAllowedOrigin("http://10.0.2.2:7070");
-        config.addAllowedOrigin("http://localhost:8082");
-        config.addAllowedOrigin("http://10.0.2.2:8082");
 
-        // 실제 배포 환경의 도메인도 추가 (필요시)
-        // config.addAllowedOrigin("https://your-production-domain.com");
+        // 명시적 origin 만 허용 (wildcard pattern 제거)
+        DEV_ORIGINS.forEach(config::addAllowedOrigin);
+
+        // 운영 도메인은 환경변수로 추가 (e.g., SODAM_CORS_ALLOWED_ORIGINS=https://sodam.app,https://www.sodam.app)
+        if (allowedOriginsCsv != null && !allowedOriginsCsv.isBlank()) {
+            Arrays.stream(allowedOriginsCsv.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .forEach(config::addAllowedOrigin);
+        }
 
         config.addAllowedHeader("*");
         config.addAllowedMethod("*");
