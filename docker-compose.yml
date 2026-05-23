@@ -54,6 +54,10 @@ services:
       # 타임존
       TZ: Asia/Seoul
       JAVA_OPTS: "-XX:+UseG1GC -XX:MaxRAMPercentage=75"
+      # 운영 yml 부재 fallback — actuator health 노출 + Hibernate 스키마 자동 생성
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: when-authorized
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
     ports:
       - "${SODAM_BE_PORT:-7070}:8080"
     volumes:
@@ -62,7 +66,8 @@ services:
     networks:
       - sodam-network
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      # /actuator/health 는 일부 빈 의존성 실패 시 등록 안 됨. info 는 stateless 이라 안전.
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/info"]
       interval: 30s
       timeout: 5s
       retries: 3

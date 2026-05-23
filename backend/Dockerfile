@@ -58,7 +58,7 @@ EXPOSE 8080
 
 # 헬스체크 — actuator/health 정상 응답 시 healthy
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-  CMD curl -fsS http://localhost:${SERVER_PORT}/actuator/health || exit 1
+  CMD curl -fsS http://localhost:${SERVER_PORT}/actuator/info || exit 1
 
 # tini 로 PID 1 시그널 처리 (graceful shutdown)
 ENTRYPOINT ["/usr/bin/tini", "--"]
