@@ -1,15 +1,8 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {
-    FlatList,
-    Pressable,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    View,
-} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {FlatList, Pressable, RefreshControl, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
-import {tokens} from '../../../theme/tokens';
+import {AppHeader, AppText, EmptyState, ScreenContainer} from '../../../common/components/ds';
+import {colors, spacing, tokens} from '../../../theme/tokens';
 import api from '../../../common/utils/api';
 
 type Category = 'ALL' | 'ATTENDANCE' | 'PAYROLL' | 'BILLING' | 'NOTICE';
@@ -32,6 +25,10 @@ const FILTERS: Array<{key: Category; label: string}> = [
     {key: 'NOTICE', label: '공지'},
 ];
 
+/**
+ * 38 NotificationCenter — 확정 시안.
+ * 알림 인박스 + 카테고리 필터. load/open/읽음처리 로직 보존.
+ */
 const NotificationCenterScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const [items, setItems] = useState<InboxItem[]>([]);
@@ -80,10 +77,7 @@ const NotificationCenterScreen: React.FC = () => {
     const filtered = filter === 'ALL' ? items : items.filter(i => i.category === filter);
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <View style={styles.header}>
-                <Text style={styles.title}>알림</Text>
-            </View>
+        <ScreenContainer padded={false} header={<AppHeader title="알림" actions={[{label: '설정', onPress: () => {}}]} />}>
             <View style={styles.filters}>
                 {FILTERS.map(f => (
                     <Pressable
@@ -93,16 +87,13 @@ const NotificationCenterScreen: React.FC = () => {
                             styles.filterChip,
                             filter === f.key && styles.filterChipActive,
                             pressed && {opacity: 0.7},
-                        ]}
-                    >
-                        <Text
-                            style={[
-                                styles.filterText,
-                                filter === f.key && styles.filterTextActive,
-                            ]}
-                        >
+                        ]}>
+                        <AppText
+                            variant="caption"
+                            weight="800"
+                            tone={filter === f.key ? 'inverse' : 'secondary'}>
                             {f.label}
-                        </Text>
+                        </AppText>
                     </Pressable>
                 ))}
             </View>
@@ -111,94 +102,71 @@ const NotificationCenterScreen: React.FC = () => {
                 data={filtered}
                 keyExtractor={it => String(it.id)}
                 renderItem={({item}) => (
-                    <Pressable
-                        onPress={() => open(item)}
-                        style={({pressed}) => [styles.row, pressed && {opacity: 0.8}]}
-                    >
+                    <Pressable onPress={() => open(item)} style={({pressed}) => [styles.row, pressed && {opacity: 0.8}]}>
                         <View
                             style={[
                                 styles.unreadDot,
-                                {backgroundColor: item.isRead ? tokens.colors.surfaceMuted : tokens.colors.brandPrimary},
+                                {backgroundColor: item.isRead ? colors.surfaceMuted : colors.brandPrimary},
                             ]}
                         />
-                        <View style={{flex: 1}}>
-                            <Text style={[styles.rowTitle, !item.isRead && styles.rowTitleUnread]}>
-                                {item.title}
-                            </Text>
-                            <Text style={styles.rowBody} numberOfLines={2}>
-                                {item.body}
-                            </Text>
-                            <Text style={styles.rowDate}>{formatRel(item.createdAt)}</Text>
+                        <View style={styles.rowBody}>
+                            <AppText variant="bodyMd" weight={item.isRead ? '400' : '700'}>{item.title}</AppText>
+                            <AppText variant="caption" tone="secondary" numberOfLines={2} style={styles.body}>{item.body}</AppText>
+                            <AppText variant="caption" tone="tertiary" style={styles.date}>{formatRel(item.createdAt)}</AppText>
                         </View>
                     </Pressable>
                 )}
                 ItemSeparatorComponent={() => <View style={styles.separator} />}
                 ListEmptyComponent={
-                    <View style={styles.emptyBox}>
-                        <Text style={styles.emptyEmoji}>📭</Text>
-                        <Text style={styles.emptyText}>
-                            {loading ? '불러오는 중…' : '받은 알림이 없어요.'}
-                        </Text>
-                    </View>
+                    <EmptyState
+                        glyph="📭"
+                        markColor={colors.surfaceMuted}
+                        title={loading ? '불러오는 중…' : '받은 알림이 없어요'}
+                        description={loading ? undefined : '새 알림이 오면 여기에 표시돼요.'}
+                    />
                 }
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                contentContainerStyle={items.length === 0 ? styles.flexCenter : undefined}
+                contentContainerStyle={filtered.length === 0 ? styles.flexCenter : styles.listPad}
             />
-        </SafeAreaView>
+        </ScreenContainer>
     );
 };
 
 function formatRel(iso: string): string {
     const t = new Date(iso).getTime();
     const diff = Date.now() - t;
-    if (diff < 60_000) return '방금';
-    if (diff < 3600_000) return `${Math.floor(diff / 60_000)}분 전`;
-    if (diff < 86_400_000) return `${Math.floor(diff / 3600_000)}시간 전`;
-    if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)}일 전`;
+    if (diff < 60_000) {
+        return '방금';
+    }
+    if (diff < 3600_000) {
+        return `${Math.floor(diff / 60_000)}분 전`;
+    }
+    if (diff < 86_400_000) {
+        return `${Math.floor(diff / 3600_000)}시간 전`;
+    }
+    if (diff < 7 * 86_400_000) {
+        return `${Math.floor(diff / 86_400_000)}일 전`;
+    }
     const d = new Date(iso);
     return `${d.getMonth() + 1}월 ${d.getDate()}일`;
 }
 
 const styles = StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: tokens.colors.background},
-    header: {paddingHorizontal: tokens.spacing.lg, paddingVertical: tokens.spacing.md},
-    title: {
-        fontSize: tokens.typography.sizes.xxl,
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
-        letterSpacing: -0.5,
-    },
-    filters: {
-        flexDirection: 'row',
-        gap: tokens.spacing.sm,
-        paddingHorizontal: tokens.spacing.lg,
-        paddingBottom: tokens.spacing.md,
-    },
+    filters: {flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.md},
     filterChip: {
-        paddingHorizontal: tokens.spacing.md,
-        paddingVertical: tokens.spacing.xs,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.xs,
         borderRadius: tokens.radius.pill,
-        backgroundColor: tokens.colors.surfaceMuted,
+        backgroundColor: colors.surfaceMuted,
     },
-    filterChipActive: {backgroundColor: tokens.colors.brandPrimary},
-    filterText: {color: tokens.colors.textSecondary, fontSize: tokens.typography.sizes.sm, fontWeight: '500'},
-    filterTextActive: {color: tokens.colors.textInverse, fontWeight: '700'},
-    row: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        paddingHorizontal: tokens.spacing.lg,
-        paddingVertical: tokens.spacing.md,
-        gap: tokens.spacing.md,
-    },
+    filterChipActive: {backgroundColor: colors.brandPrimary},
+    listPad: {paddingBottom: spacing.xl},
+    row: {flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.md},
     unreadDot: {width: 8, height: 8, borderRadius: 4, marginTop: 8},
-    rowTitle: {fontSize: tokens.typography.sizes.md, color: tokens.colors.textPrimary},
-    rowTitleUnread: {fontWeight: tokens.typography.weights.bold},
-    rowBody: {fontSize: tokens.typography.sizes.sm, color: tokens.colors.textSecondary, marginTop: 2, lineHeight: 20},
-    rowDate: {fontSize: tokens.typography.sizes.xs, color: tokens.colors.textTertiary, marginTop: 4},
-    separator: {height: 1, backgroundColor: tokens.colors.divider, marginLeft: tokens.spacing.lg + 16},
-    emptyBox: {alignItems: 'center', justifyContent: 'center', padding: tokens.spacing.huge},
-    emptyEmoji: {fontSize: 64, marginBottom: tokens.spacing.lg},
-    emptyText: {color: tokens.colors.textTertiary, fontSize: tokens.typography.sizes.md},
+    rowBody: {flex: 1},
+    body: {marginTop: 2},
+    date: {marginTop: 4},
+    separator: {height: 1, backgroundColor: colors.divider, marginLeft: spacing.lg + 16},
     flexCenter: {flexGrow: 1, justifyContent: 'center'},
 });
 

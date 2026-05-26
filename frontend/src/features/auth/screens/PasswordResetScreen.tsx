@@ -1,25 +1,19 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
-} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {Alert, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {tokens} from '../../../theme/tokens';
-import Button from '../../../common/components/form/Button';
-import Input from '../../../common/components/form/Input';
+import {AppButton, AppHeader, AppInput, ScreenContainer} from '../../../common/components/ds';
 import {
     checkPassword,
     passwordResetApi,
     PasswordStrength,
 } from '../services/passwordResetApi';
+
+// 기존 다단계 본문을 유지하기 위한 경량 어댑터 (구식 Button/Input → DS)
+const Button: React.FC<any> = ({title, size, fullWidth, textStyle, ...rest}) => (
+    <AppButton label={title} {...rest} />
+);
+const Input: React.FC<any> = ({helperText, ...rest}) => <AppInput helper={helperText} {...rest} />;
 
 type Step = 'EMAIL' | 'OTP' | 'NEW_PWD' | 'DONE';
 
@@ -35,22 +29,16 @@ const PasswordResetScreen: React.FC = () => {
     const [step, setStep] = useState<Step>('EMAIL');
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={styles.flex}
-            >
-                <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-                    <ProgressBar step={step} />
-                    {step === 'EMAIL' && <StepEmail onNext={() => setStep('OTP')} />}
-                    {step === 'OTP' && <StepOtp onNext={() => setStep('NEW_PWD')} onBack={() => setStep('EMAIL')} />}
-                    {step === 'NEW_PWD' && <StepNewPassword onDone={() => setStep('DONE')} />}
-                    {step === 'DONE' && (
-                        <DoneCard onClose={() => navigation.navigate('Login' as never)} />
-                    )}
-                </ScrollView>
-            </KeyboardAvoidingView>
-        </SafeAreaView>
+        <ScreenContainer
+            scroll
+            backgroundColor={tokens.colors.background}
+            header={<AppHeader title="비밀번호 찾기" onBack={() => navigation.goBack()} />}>
+            <ProgressBar step={step} />
+            {step === 'EMAIL' && <StepEmail onNext={() => setStep('OTP')} />}
+            {step === 'OTP' && <StepOtp onNext={() => setStep('NEW_PWD')} onBack={() => setStep('EMAIL')} />}
+            {step === 'NEW_PWD' && <StepNewPassword onDone={() => setStep('DONE')} />}
+            {step === 'DONE' && <DoneCard onClose={() => navigation.navigate('Login' as never)} />}
+        </ScreenContainer>
     );
 };
 

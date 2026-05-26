@@ -111,7 +111,7 @@ const ServiceCards = () => {
         return (
             <View style={[styles.container, styles.loadingContainer]}>
                 <Text style={styles.sectionTitle}>소담의 주요 서비스</Text>
-                <ActivityIndicator size="large" color="#3498db"/>
+                <ActivityIndicator size="large" color="#FF6B35"/>
                 <Text style={styles.loadingText}>서비스 정보를 불러오는 중...</Text>
             </View>
         );
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     cardTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#3498db',
+        color: '#FF6B35',
         marginBottom: 10,
     },
     cardDescription: {
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     retryButton: {
-        backgroundColor: '#3498db',
+        backgroundColor: '#FF6B35',
         paddingVertical: 10,
         paddingHorizontal: 20,
         borderRadius: 5,

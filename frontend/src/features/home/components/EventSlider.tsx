@@ -146,7 +146,7 @@ const EventSlider = () => {
     if (loading) {
         return (
             <View style={[styles.container, styles.loadingContainer]}>
-                <ActivityIndicator size="large" color="#3498db"/>
+                <ActivityIndicator size="large" color="#FF6B35"/>
                 <Text style={styles.loadingText}>이벤트 정보를 불러오는 중...</Text>
             </View>
         );
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 5,
     },
     activeIndicator: {
-        backgroundColor: '#3498db',
+        backgroundColor: '#FF6B35',
     },
     loadingContainer: {
         justifyContent: 'center',
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
         marginBottom: 15,
     },
     retryButton: {
-        backgroundColor: '#3498db',
+        backgroundColor: '#FF6B35',
         paddingVertical: 10,
         paddingHorizontal: 20,
         borderRadius: 5,

@@ -1,30 +1,40 @@
+/**
+ * 레거시 COLORS 팔레트 — 확정 디자인 토큰(theme/tokens.ts)으로 리매핑됨.
+ *
+ * 신규 코드는 `theme/tokens.ts`를 직접 쓰고, 이 파일은 아직 마이그레이션되지 않은
+ * 레거시 화면들이 자동으로 확정 브랜드 색을 입도록 하는 호환 레이어다.
+ *   - SODAM_BLUE/GREEN → 확정 네이비(#243B4A) 로 통일 (기존 청록/마젠타 폐기)
+ *   - GRAY_* → 따뜻한 중성 톤 (confirmed text/border 팔레트)
+ *   - 그라디언트 → 브랜드 오렌지 / 네이비
+ */
 export const COLORS = {
-    // 브랜드 컬러
+    // 브랜드 컬러 (확정)
     SODAM_ORANGE: '#FF6B35',
-    SODAM_BLUE: '#2E86AB',
-    SODAM_GREEN: '#A23B72',
+    SODAM_BLUE: '#243B4A',   // 확정 네이비 (기존 #2E86AB 폐기)
+    SODAM_GREEN: '#243B4A',  // 마젠타 폐기 → 네이비로 통일
 
-    // 그라데이션
-    GRADIENT_PRIMARY: ['#FF6B35', '#2E86AB'],
-    GRADIENT_SECONDARY: ['#2E86AB', '#A23B72'],
+    // 그라데이션 (확정)
+    GRADIENT_PRIMARY: ['#FF6B35', '#FF9B63'],
+    GRADIENT_SECONDARY: ['#243B4A', '#172932'],
 
     // 시스템 컬러
     WHITE: '#FFFFFF',
     BLACK: '#000000',
-    GRAY_50: '#F9FAFB',
-    GRAY_100: '#F3F4F6',
-    GRAY_200: '#E5E7EB',
-    GRAY_300: '#D1D5DB',
-    GRAY_400: '#9CA3AF',
-    GRAY_500: '#6B7280',
-    GRAY_600: '#4B5563',
-    GRAY_700: '#374151',
-    GRAY_800: '#1F2937',
-    GRAY_900: '#111827',
+    // 따뜻한 중성 톤 (confirmed surface/text/border)
+    GRAY_50: '#FFFBF5',
+    GRAY_100: '#EFE7DF',
+    GRAY_200: '#E8E0D8',
+    GRAY_300: '#D8CDC3',
+    GRAY_400: '#C9C0B8',
+    GRAY_500: '#9A9189',
+    GRAY_600: '#625B55',
+    GRAY_700: '#4A433D',
+    GRAY_800: '#2E2823',
+    GRAY_900: '#201A17',
 
-    // 상태 컬러
-    SUCCESS: '#10B981',
+    // 상태 컬러 (확정)
+    SUCCESS: '#12A87B',
     WARNING: '#F59E0B',
-    ERROR: '#EF4444',
+    ERROR: '#E5484D',
     INFO: '#3B82F6',
 } as const;

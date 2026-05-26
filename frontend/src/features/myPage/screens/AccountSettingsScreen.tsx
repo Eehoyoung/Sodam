@@ -1,18 +1,21 @@
 import React, {useState} from 'react';
-import {Alert, ScrollView, StyleSheet, Text, View} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {Alert, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
-import {tokens} from '../../../theme/tokens';
-import Input from '../../../common/components/form/Input';
-import Button from '../../../common/components/form/Button';
-import Card from '../../../common/components/data-display/Card';
+import {
+    AppButton,
+    AppCard,
+    AppHeader,
+    AppInput,
+    AppText,
+    ScreenContainer,
+} from '../../../common/components/ds';
+import {spacing} from '../../../theme/tokens';
 import api from '../../../common/utils/api';
 import {useAuth} from '../../../contexts/AuthContext';
 
 /**
- * 계정 설정 — 본인 정보 변경(이름) + 회원 탈퇴.
- *
- * PRD_OWNER A4·A5, PRD_EMPLOYEE E-A?.
+ * 42 AccountSettings — 확정 시안.
+ * 이름 변경 + 회원 탈퇴. saveName/withdraw 로직 보존.
  */
 const AccountSettingsScreen: React.FC = () => {
     const {user, logout} = useAuth() as any;
@@ -37,7 +40,9 @@ const AccountSettingsScreen: React.FC = () => {
     };
 
     const withdraw = () => {
-        if (!user?.id) return;
+        if (!user?.id) {
+            return;
+        }
         Alert.alert(
             '회원 탈퇴',
             '정말 탈퇴하시겠어요?\n\n• 활성 구독이 있으면 차단됩니다.\n• 90일 후 개인정보가 자동 익명화됩니다.\n• 이 작업은 되돌릴 수 없어요.',
@@ -61,10 +66,9 @@ const AccountSettingsScreen: React.FC = () => {
                                 },
                             ]);
                         } catch (e: any) {
-                            const msg = e?.response?.data?.message
-                                ?? (e?.response?.status === 400
-                                    ? '활성 구독을 먼저 해지해 주세요.'
-                                    : '탈퇴 처리에 실패했어요.');
+                            const msg =
+                                e?.response?.data?.message ??
+                                (e?.response?.status === 400 ? '활성 구독을 먼저 해지해 주세요.' : '탈퇴 처리에 실패했어요.');
                             Alert.alert('실패', msg);
                         }
                     },
@@ -74,78 +78,38 @@ const AccountSettingsScreen: React.FC = () => {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                <Text style={styles.title}>계정 설정</Text>
+        <ScreenContainer scroll header={<AppHeader title="계정 설정" onBack={() => navigation.goBack()} />}>
+            <AppCard variant="flat">
+                <AppInput label="이름" value={name} onChangeText={setName} placeholder="실명 또는 닉네임" helper="2~50자" />
+                <AppButton label="이름 변경" size="md" loading={saving} onPress={saveName} style={styles.cta} />
+            </AppCard>
 
-                <Card bordered>
-                    <Input
-                        label="이름"
-                        value={name}
-                        onChangeText={setName}
-                        placeholder="실명 또는 닉네임"
-                        helperText="2~50자"
-                    />
-                    <Button
-                        title="이름 변경"
-                        onPress={saveName}
-                        variant="primary"
-                        size="md"
-                        fullWidth
-                        loading={saving}
-                        style={{marginTop: tokens.spacing.md}}
-                    />
-                </Card>
+            <AppText variant="caption" tone="secondary" style={styles.sectionTitle}>이메일</AppText>
+            <AppCard variant="flat">
+                <AppText variant="bodyMd">{user?.email ?? '-'}</AppText>
+                <AppText variant="caption" tone="tertiary" style={styles.helper}>
+                    이메일 변경은 별도 인증이 필요해요 (출시 후 지원).
+                </AppText>
+            </AppCard>
 
-                <Text style={styles.sectionTitle}>이메일</Text>
-                <Card bordered>
-                    <Text style={styles.kv}>
-                        {user?.email ?? '-'}
-                    </Text>
-                    <Text style={styles.helper}>이메일 변경은 별도 인증이 필요해요 (출시 후 지원).</Text>
-                </Card>
-
-                <Text style={styles.sectionTitle}>위험</Text>
-                <Card bordered>
-                    <Text style={styles.warnText}>
-                        탈퇴 후에는 출퇴근·급여 데이터를 다시 조회할 수 없어요.
-                    </Text>
-                    <Button
-                        title="회원 탈퇴"
-                        onPress={withdraw}
-                        variant="destructive"
-                        size="md"
-                        fullWidth
-                        style={{marginTop: tokens.spacing.md}}
-                    />
-                </Card>
-            </ScrollView>
-        </SafeAreaView>
+            <AppText variant="caption" tone="secondary" style={styles.sectionTitle}>위험</AppText>
+            <AppCard variant="danger">
+                <AppText variant="titleMd">계정 탈퇴 전 확인</AppText>
+                <AppText variant="caption" tone="secondary" style={styles.helper}>
+                    탈퇴 후에는 출퇴근·급여 데이터를 다시 조회할 수 없어요.
+                </AppText>
+                <AppButton label="회원 탈퇴" variant="destructive" size="md" onPress={withdraw} style={styles.cta} />
+            </AppCard>
+            <View style={styles.bottomGap} />
+        </ScreenContainer>
     );
 };
 
 const styles = StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: tokens.colors.background},
-    scrollContent: {padding: tokens.spacing.lg, paddingBottom: tokens.spacing.huge},
-    title: {
-        fontSize: tokens.typography.sizes.xxl,
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
-        marginTop: tokens.spacing.md,
-        marginBottom: tokens.spacing.lg,
-    },
-    sectionTitle: {
-        fontSize: tokens.typography.sizes.sm,
-        fontWeight: tokens.typography.weights.semibold,
-        color: tokens.colors.textSecondary,
-        marginTop: tokens.spacing.xl,
-        marginBottom: tokens.spacing.sm,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    kv: {fontSize: tokens.typography.sizes.md, color: tokens.colors.textPrimary},
-    helper: {fontSize: tokens.typography.sizes.xs, color: tokens.colors.textTertiary, marginTop: tokens.spacing.sm},
-    warnText: {color: tokens.colors.textSecondary, fontSize: tokens.typography.sizes.sm, lineHeight: 20},
+    cta: {marginTop: spacing.md},
+    sectionTitle: {marginTop: spacing.xl, marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.5},
+    helper: {marginTop: spacing.sm},
+    bottomGap: {height: spacing.xl},
 });
 
 export default AccountSettingsScreen;

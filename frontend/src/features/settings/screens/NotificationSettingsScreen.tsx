@@ -1,16 +1,8 @@
 import React, {useEffect, useState} from 'react';
-import {
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    View,
-} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {Platform, Pressable, StyleSheet, Switch, Text, View} from 'react-native';
 import DateTimePicker, {DateTimePickerEvent} from '@react-native-community/datetimepicker';
 import {tokens} from '../../../theme/tokens';
+import {AppHeader, AppText, ScreenContainer} from '../../../common/components/ds';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
 
 const STORAGE_KEY = 'notificationPrefs.v1';
@@ -79,13 +71,12 @@ const NotificationSettingsScreen: React.FC = () => {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                <Text style={styles.title}>알림 설정</Text>
-                <Text style={styles.subtitle}>
-                    받고 싶은 알림만 켜두세요. 방해받기 싫은 시간대도 정할 수 있어요.
-                </Text>
+        <ScreenContainer scroll header={<AppHeader title="알림 설정" />}>
+            <AppText variant="bodyMd" tone="secondary" style={styles.subtitle}>
+                받고 싶은 알림만 켜두세요. 방해받기 싫은 시간대도 정할 수 있어요.
+            </AppText>
 
+            <View>
                 <Section title="푸시 알림">
                     <Row
                         label="알림 받기"
@@ -166,8 +157,8 @@ const NotificationSettingsScreen: React.FC = () => {
                 <Section title="이메일 알림 (Phase 2)">
                     <Text style={styles.disabledText}>출시 후 도입 예정이에요.</Text>
                 </Section>
-            </ScrollView>
-        </SafeAreaView>
+            </View>
+        </ScreenContainer>
     );
 };
 

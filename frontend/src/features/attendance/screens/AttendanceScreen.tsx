@@ -20,11 +20,12 @@ import {PERMISSIONS, request, RESULTS} from 'react-native-permissions';
 import NfcManager from 'react-native-nfc-manager';
 import {Button, Card, MainLayout} from '../../../common/components';
 import attendanceService from '../services/attendanceService';
-import {AttendanceRecord, AttendanceStatus} from '../types';
+import {AttendanceRecord, AttendanceStatus, CheckInRequest, CheckOutRequest} from '../types';
 import {format} from 'date-fns';
 import {ko} from 'date-fns/locale';
 import { COLORS } from '../../../common/components/logo/Colors';
 import LinearGradient from 'react-native-linear-gradient';
+import { useAuth } from '../../../contexts/AuthContext';
 
 // 네비게이션 타입 정의
 type AttendanceStackParamList = {
@@ -38,6 +39,8 @@ type AttendanceScreenNavigationProp = NativeStackNavigationProp<AttendanceStackP
 
 const AttendanceScreen = () => {
     const navigation = useNavigation<AttendanceScreenNavigationProp>();
+    const { user } = useAuth();
+    const employeeIdNum = Number(user?.id);
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -269,6 +272,20 @@ const AttendanceScreen = () => {
         fetchAttendanceRecords();
     };
 
+    // BE AttendanceRequestDto: employeeId/storeId/latitude/longitude 모두 @NotNull — 기본 출근도 위치 필수
+    const requireAuthAndLocation = (): { ok: false } | { ok: true; loc: { latitude: number; longitude: number } } => {
+        if (!Number.isFinite(employeeIdNum)) {
+            Alert.alert('알림', '로그인이 필요합니다.');
+            return { ok: false };
+        }
+        if (!currentLocation) {
+            Alert.alert('알림', '위치 정보를 가져오는 중입니다. 잠시 후 다시 시도해주세요.');
+            getCurrentLocation();
+            return { ok: false };
+        }
+        return { ok: true, loc: currentLocation };
+    };
+
     // 기본 출근 처리
     const handleCheckIn = async () => {
         if (!selectedWorkplaceId) {
@@ -276,12 +293,17 @@ const AttendanceScreen = () => {
             return;
         }
 
+        const gate = requireAuthAndLocation();
+        if (!gate.ok) return;
+
         try {
-            const checkInData = {
-                workplaceId: selectedWorkplaceId
+            const checkInData: CheckInRequest = {
+                employeeId: employeeIdNum,
+                workplaceId: selectedWorkplaceId,
+                latitude: gate.loc.latitude,
+                longitude: gate.loc.longitude,
             };
 
-            // TODO(API): 출근 처리(checkIn) 엔드포인트 연동
             const response = await attendanceService.checkIn(checkInData);
             Alert.alert('성공', '출근 처리되었습니다.');
             setCurrentAttendance(response);
@@ -312,10 +334,15 @@ const AttendanceScreen = () => {
             return;
         }
 
+        if (!Number.isFinite(employeeIdNum)) {
+            Alert.alert('알림', '로그인이 필요합니다.');
+            return;
+        }
+
         try {
             // 위치 기반 인증 먼저 수행
             const verifyResult = await attendanceService.verifyLocationAttendance(
-                '1', // 임시 employeeId (실제 구현에서는 로그인한 사용자 ID 사용)
+                String(employeeIdNum),
                 selectedWorkplaceId,
                 currentLocation.latitude,
                 currentLocation.longitude
@@ -327,13 +354,13 @@ const AttendanceScreen = () => {
             }
 
             // 인증 성공 시 출근 처리
-            const checkInData = {
+            const checkInData: CheckInRequest = {
+                employeeId: employeeIdNum,
                 workplaceId: selectedWorkplaceId,
                 latitude: currentLocation.latitude,
-                longitude: currentLocation.longitude
+                longitude: currentLocation.longitude,
             };
 
-            // TODO(API): 출근 처리(checkIn) 엔드포인트 연동
             const response = await attendanceService.checkIn(checkInData);
             Alert.alert('성공', '위치 기반 출근 처리되었습니다.');
             setCurrentAttendance(response);
@@ -353,10 +380,13 @@ const AttendanceScreen = () => {
             return;
         }
 
+        const gate = requireAuthAndLocation();
+        if (!gate.ok) return;
+
         try {
             // NFC 태그 기반 인증 먼저 수행
             const verifyResult = await attendanceService.verifyNfcTagAttendance(
-                '1', // 임시 employeeId (실제 구현에서는 로그인한 사용자 ID 사용)
+                String(employeeIdNum),
                 selectedWorkplaceId,
                 scannedNFCTag
             );
@@ -366,12 +396,14 @@ const AttendanceScreen = () => {
                 return;
             }
 
-            // 인증 성공 시 출근 처리
-            const checkInData = {
-                workplaceId: selectedWorkplaceId
+            // 인증 성공 시 출근 처리 — NFC 모드도 BE 는 lat/lng 필수
+            const checkInData: CheckInRequest = {
+                employeeId: employeeIdNum,
+                workplaceId: selectedWorkplaceId,
+                latitude: gate.loc.latitude,
+                longitude: gate.loc.longitude,
             };
 
-            // TODO(API): 출근 처리(checkIn) 엔드포인트 연동
             const response = await attendanceService.checkIn(checkInData);
             Alert.alert('성공', 'NFC 태그 기반 출근 처리되었습니다.');
             setCurrentAttendance(response);
@@ -389,12 +421,17 @@ const AttendanceScreen = () => {
             return;
         }
 
+        const gate = requireAuthAndLocation();
+        if (!gate.ok) return;
+
         try {
-            const checkOutData = {
-                workplaceId: selectedWorkplaceId
+            const checkOutData: CheckOutRequest = {
+                employeeId: employeeIdNum,
+                workplaceId: selectedWorkplaceId,
+                latitude: gate.loc.latitude,
+                longitude: gate.loc.longitude,
             };
 
-            // TODO(API): 퇴근 처리(checkOut) 엔드포인트 연동
             await attendanceService.checkOut(currentAttendance.id, checkOutData);
             Alert.alert('성공', '퇴근 처리되었습니다.');
             setCurrentAttendance(null);
@@ -425,10 +462,15 @@ const AttendanceScreen = () => {
             return;
         }
 
+        if (!Number.isFinite(employeeIdNum)) {
+            Alert.alert('알림', '로그인이 필요합니다.');
+            return;
+        }
+
         try {
             // 위치 기반 인증 먼저 수행
             const verifyResult = await attendanceService.verifyLocationAttendance(
-                '1', // 임시 employeeId (실제 구현에서는 로그인한 사용자 ID 사용)
+                String(employeeIdNum),
                 selectedWorkplaceId,
                 currentLocation.latitude,
                 currentLocation.longitude
@@ -440,13 +482,13 @@ const AttendanceScreen = () => {
             }
 
             // 인증 성공 시 퇴근 처리
-            const checkOutData = {
+            const checkOutData: CheckOutRequest = {
+                employeeId: employeeIdNum,
                 workplaceId: selectedWorkplaceId,
                 latitude: currentLocation.latitude,
-                longitude: currentLocation.longitude
+                longitude: currentLocation.longitude,
             };
 
-            // TODO(API): 퇴근 처리(checkOut) 엔드포인트 연동
             await attendanceService.checkOut(currentAttendance.id, checkOutData);
             Alert.alert('성공', '위치 기반 퇴근 처리되었습니다.');
             setCurrentAttendance(null);
@@ -466,10 +508,13 @@ const AttendanceScreen = () => {
             return;
         }
 
+        const gate = requireAuthAndLocation();
+        if (!gate.ok) return;
+
         try {
             // NFC 태그 기반 인증 먼저 수행
             const verifyResult = await attendanceService.verifyNfcTagAttendance(
-                '1', // 임시 employeeId (실제 구현에서는 로그인한 사용자 ID 사용)
+                String(employeeIdNum),
                 selectedWorkplaceId,
                 scannedNFCTag
             );
@@ -479,12 +524,14 @@ const AttendanceScreen = () => {
                 return;
             }
 
-            // 인증 성공 시 퇴근 처리
-            const checkOutData = {
-                workplaceId: selectedWorkplaceId
+            // 인증 성공 시 퇴근 처리 — NFC 모드도 BE 는 lat/lng 필수
+            const checkOutData: CheckOutRequest = {
+                employeeId: employeeIdNum,
+                workplaceId: selectedWorkplaceId,
+                latitude: gate.loc.latitude,
+                longitude: gate.loc.longitude,
             };
 
-            // TODO(API): 퇴근 처리(checkOut) 엔드포인트 연동
             await attendanceService.checkOut(currentAttendance.id, checkOutData);
             Alert.alert('성공', 'NFC 태그 기반 퇴근 처리되었습니다.');
             setCurrentAttendance(null);

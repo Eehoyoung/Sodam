@@ -1,19 +1,19 @@
 import React, {useRef, useState} from 'react';
 import {
-    Dimensions,
     FlatList,
     NativeScrollEvent,
     NativeSyntheticEvent,
     Pressable,
     StyleSheet,
     Text,
+    useWindowDimensions,
     View,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import {useNavigation} from '@react-navigation/native';
 import {tokens} from '../../../theme/tokens';
-import Button from '../../../common/components/form/Button';
+import {AppButton} from '../../../common/components/ds';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
 
 interface Slide {
@@ -46,6 +46,7 @@ const SLIDES: Slide[] = [
 
 const OnboardingCarouselScreen: React.FC = () => {
     const navigation = useNavigation<any>();
+    const {width: WIDTH} = useWindowDimensions();
     const [index, setIndex] = useState(0);
     const listRef = useRef<FlatList<Slide>>(null);
 
@@ -92,7 +93,7 @@ const OnboardingCarouselScreen: React.FC = () => {
                 showsHorizontalScrollIndicator={false}
                 onMomentumScrollEnd={onMomentumEnd}
                 keyExtractor={(_, i) => String(i)}
-                renderItem={({item}) => <SlideCard slide={item} />}
+                renderItem={({item}) => <SlideCard slide={item} width={WIDTH} />}
             />
 
             <View style={styles.indicators}>
@@ -108,22 +109,17 @@ const OnboardingCarouselScreen: React.FC = () => {
             </View>
 
             <View style={styles.footer}>
-                <Button
-                    title={index === SLIDES.length - 1 ? '시작하기' : '다음 →'}
+                <AppButton
+                    label={index === SLIDES.length - 1 ? '시작하기' : '다음'}
                     onPress={handleNext}
-                    variant="primary"
-                    size="lg"
-                    fullWidth
                 />
             </View>
         </SafeAreaView>
     );
 };
 
-const {width: WIDTH} = Dimensions.get('window');
-
-const SlideCard: React.FC<{slide: Slide}> = ({slide}) => (
-    <View style={[styles.slide, {width: WIDTH}]}>
+const SlideCard: React.FC<{slide: Slide; width: number}> = ({slide, width}) => (
+    <View style={[styles.slide, {width}]}>
         <LinearGradient
             colors={slide.gradient}
             start={{x: 0, y: 0}}

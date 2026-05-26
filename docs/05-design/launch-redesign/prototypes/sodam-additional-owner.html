@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Sodam Additional Owner Screens</title>
+  <style>
+    :root{
+      --brand:#ff6b35;--brand2:#e85a2a;--soft:#fff0e8;--navy:#243b4a;--ink:#201a17;
+      --sub:#625b55;--muted:#9a9189;--bg:#f7f4ef;--card:#fff;--line:#e8e0d8;
+      --green:#12a87b;--greenbg:#dff6ed;--amber:#f59e0b;--amberbg:#fff4d8;
+      --blue:#3b82f6;--bluebg:#e8f1ff;--red:#e5484d;--redbg:#fee2e2;
+      --phone-w:clamp(300px,92vw,390px);
+      font-family:Inter,Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(135deg,#fffaf4,#eef4f2);color:var(--ink)}
+    .page{max-width:1880px;margin:auto;padding:clamp(16px,3vw,36px)}
+    .intro{display:grid;grid-template-columns:minmax(280px,1fr) auto;gap:20px;align-items:end;margin-bottom:22px}
+    h1{font-size:clamp(32px,5vw,60px);line-height:1.06;margin:0;letter-spacing:0}
+    .lead{max-width:840px;color:var(--sub);font-size:clamp(14px,1.4vw,18px);line-height:1.7;word-break:keep-all}
+    .meta{background:rgba(255,255,255,.72);border:1px solid var(--line);border-radius:999px;padding:12px 16px;font-size:13px;font-weight:900;color:var(--navy)}
+    .tools{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 24px}
+    .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:9px 12px;font-size:12px;font-weight:900;color:var(--sub)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--phone-w)),1fr));gap:clamp(18px,2vw,28px);align-items:start}
+    .tile-title{font-size:14px;font-weight:950;color:var(--navy);margin:0 0 9px;padding-left:4px}
+    .tile-desc{font-size:12px;font-weight:800;color:var(--sub);margin:0 0 9px;padding-left:4px;line-height:1.45;word-break:keep-all}
+    .phone{width:var(--phone-w);max-width:100%;margin:auto;background:#171412;border-radius:clamp(28px,8vw,40px);padding:clamp(8px,2vw,12px);box-shadow:0 22px 72px rgba(36,59,74,.16)}
+    .phone.wide{width:clamp(300px,96vw,720px)}
+    .screen{height:clamp(620px,176vw,760px);max-height:780px;border-radius:clamp(22px,6vw,30px);background:var(--bg);overflow:hidden;position:relative;display:flex;flex-direction:column}
+    .screen.dark{background:linear-gradient(160deg,#263f4f,#172932 55%,#2b2019);color:#fff}
+    .status{height:26px;flex:0 0 26px;padding:0 clamp(14px,4vw,20px);display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:950;opacity:.84}
+    .head{height:56px;flex:0 0 56px;padding:0 clamp(12px,4vw,18px);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(232,224,216,.76);background:rgba(255,255,255,.78);backdrop-filter:blur(18px);gap:8px}
+    .head.darkhead{background:transparent;border-bottom:0;color:#fff}
+    .title{font-size:clamp(16px,4.7vw,19px);font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .icon{min-width:36px;height:36px;border-radius:13px;background:#fff;border:1px solid var(--line);display:grid;place-items:center;color:var(--brand);font-size:11px;font-weight:950;padding:0 8px;white-space:nowrap}
+    .content{flex:1;overflow:hidden;padding:clamp(13px,4vw,18px);padding-bottom:calc(78px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px}
+    .scroll{overflow:auto;padding-bottom:calc(84px + env(safe-area-inset-bottom));scrollbar-width:none}
+    .scroll::-webkit-scrollbar{display:none}
+    .dark .content{padding:clamp(18px,5vw,24px)}
+    .mark{width:clamp(46px,13vw,58px);height:clamp(46px,13vw,58px);border-radius:18px;background:linear-gradient(145deg,var(--brand),#ff9b63);display:grid;place-items:center;color:#fff;font-weight:950;box-shadow:0 16px 34px rgba(255,107,53,.28);flex:0 0 auto}
+    .heroTitle{font-size:clamp(25px,7.8vw,35px);line-height:1.15;margin:8px 0 4px;font-weight:950;letter-spacing:0;word-break:keep-all}
+    .copy{color:var(--sub);font-size:clamp(12px,3.4vw,14px);line-height:1.55;word-break:keep-all;margin:0}
+    .dark .copy{color:rgba(255,255,255,.76)}
+    .card{background:var(--card);border:1px solid rgba(232,224,216,.78);border-radius:clamp(15px,4.4vw,21px);padding:clamp(12px,3.8vw,16px);min-width:0}
+    .warm{background:#fffbf5}.navy{background:var(--navy);color:#fff;border:0}.soft{background:var(--soft);border-color:#ffd7c7}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}.row>div{min-width:0}
+    .stack{display:grid;gap:8px}.cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.cols2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .label{font-size:11px;color:var(--sub);font-weight:900}.navy .label{color:#d8d0c8}
+    .mid{font-size:clamp(16px,4.8vw,20px);font-weight:950;line-height:1.22;word-break:keep-all}
+    .big{font-size:clamp(22px,7.2vw,31px);font-weight:950;color:var(--brand);letter-spacing:0;line-height:1.18;word-break:keep-all}
+    .small{font-size:clamp(11px,3.1vw,12px);line-height:1.45;color:var(--muted);margin:3px 0 0;word-break:keep-all}
+    .badge{display:inline-flex;align-items:center;justify-content:center;min-height:27px;padding:6px 9px;border-radius:999px;background:var(--greenbg);color:var(--green);font-size:11px;font-weight:950;white-space:nowrap}
+    .badge.warn{background:var(--amberbg);color:#b56d00}.badge.info{background:var(--bluebg);color:var(--blue)}.badge.err{background:var(--redbg);color:var(--red)}
+    .field{min-height:48px;border-radius:15px;background:#fff;border:1px solid var(--line);display:flex;align-items:center;padding:0 14px;color:var(--muted);font-size:13px;font-weight:800;min-width:0}
+    .btn{min-height:52px;border-radius:17px;background:var(--brand);color:#fff;display:grid;place-items:center;text-align:center;font-weight:950;font-size:14px;padding:0 14px;box-shadow:0 14px 32px rgba(255,107,53,.2);word-break:keep-all}
+    .btn.sub{background:#fff;color:var(--navy);border:1px solid var(--line);box-shadow:none}.btn.ghost{background:transparent;color:var(--brand);border:0;box-shadow:none}
+    .btn.danger{background:var(--red);box-shadow:0 14px 32px rgba(229,72,77,.2)}
+    .list{display:grid;gap:8px}
+    .item{background:#fff;border:1px solid rgba(232,224,216,.75);border-radius:16px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:58px}
+    .item b{font-size:clamp(13px,3.8vw,15px);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.item p{margin:3px 0 0;color:var(--sub);font-size:12px;line-height:1.35}
+    .seg{display:flex;background:#eee7df;border-radius:16px;padding:4px;gap:2px}.seg span{flex:1;text-align:center;padding:9px 4px;border-radius:13px;font-size:12px;font-weight:950;color:var(--sub);white-space:nowrap}.seg .on{background:#fff;color:var(--brand);box-shadow:0 6px 18px rgba(36,59,74,.08)}
+    .progress{height:8px;background:#eee3da;border-radius:999px;overflow:hidden;margin-top:8px}.progress i{display:block;height:100%;width:72%;background:linear-gradient(90deg,var(--brand),#ff9b63);border-radius:999px}
+    .quick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.quick div{background:#fff;border:1px solid var(--line);border-radius:15px;min-height:48px;display:grid;place-items:center;text-align:center;font-size:12px;font-weight:950;padding:6px;word-break:keep-all}
+    .step{display:flex;align-items:center;gap:6px}.dot{width:27px;height:27px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:950}.dot.off{background:#ddd;color:#777}.line{height:2px;background:var(--line);flex:1}.line.on{background:var(--brand)}
+    .bar{display:flex;align-items:flex-end;gap:6px;height:120px;margin-top:8px}.bar .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}.bar .col i{width:100%;border-radius:8px 8px 0 0;display:block}.bar .col span{font-size:10px;font-weight:900;color:var(--sub);white-space:nowrap}
+    .sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:26px 26px 0 0;padding:18px 18px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -18px 50px rgba(36,59,74,.14)}
+    .tabs{position:absolute;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));height:62px;border-radius:24px;background:rgba(255,255,255,.9);border:1px solid rgba(232,224,216,.8);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:center;box-shadow:0 12px 32px rgba(36,59,74,.1);backdrop-filter:blur(18px)}
+    .tabs span{text-align:center;font-size:10px;font-weight:950;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tabs .on{color:var(--brand)}
+    .center{height:100%;display:grid;place-items:center;text-align:center}.center>div{max-width:280px}
+    @media (max-width:360px){
+      :root{--phone-w:min(100%,320px)}
+      .content{gap:8px}.card{padding:12px}.cols{gap:6px}.quick{gap:6px}.tabs span{font-size:9px}.screen{height:650px}
+    }
+    @media (min-width:760px){.screen{height:740px}}
+    @media (max-width:760px){.intro{grid-template-columns:1fr}.meta{width:max-content}.page{padding:16px 10px 40px}}
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="intro">
+      <div>
+        <h1>소담 추가 화면 — 사장님 · 매장 · 급여/결제</h1>
+        <p class="lead">기존 82개 목업에 없던, 출시와 운영에 꼭 필요한 보조 화면 모음입니다. 결제 실패·재결제, 구독 변경 확인, 콜드스타트(매장/직원 0개), 정산 오류·일괄 발급 진행률, 다매장 통합 대시보드(태블릿 2열), 사장 권한 위임 시트를 포함합니다. 기준 디자인과 동일한 토큰·폰 프레임·반응형·safe-area 규칙을 그대로 사용했습니다.</p>
+      </div>
+      <div class="meta">11 screens · owner / store / billing</div>
+    </section>
+    <div class="tools">
+      <span class="chip">결제·구독 흐름</span>
+      <span class="chip">콜드스타트 빈 상태</span>
+      <span class="chip">정산 오류·진행률</span>
+      <span class="chip">다매장 태블릿 2열</span>
+      <span class="chip">권한 위임 시트</span>
+      <span class="chip">텍스트 overflow 방지</span>
+    </div>
+    <section id="grid" class="grid"></section>
+  </main>
+
+  <script>
+    const tabs = {
+      owner:['홈','매장','근태','급여','내정보'],
+      employee:['홈','출퇴근','급여','정보','내정보'],
+      personal:['홈','기록','급여','정보','내정보']
+    };
+    const status = '<div class="status"><span>9:41</span><span>100%</span></div>';
+    const tabbar = (type='owner', on=0) => `<div class="tabs">${tabs[type].map((t,i)=>`<span class="${i===on?'on':''}">${t}</span>`).join('')}</div>`;
+    const head = (title, action='') => `<div class="head"><div class="title">${title}</div>${action?`<div class="icon">${action}</div>`:''}</div>`;
+    const item = (a,b,c='') => `<div class="item"><div><b>${a}</b><p>${b}</p></div>${c}</div>`;
+    const badge = (t,k='') => `<span class="badge ${k}">${t}</span>`;
+    const field = t => `<div class="field">${t}</div>`;
+    const btn = (t,k='') => `<div class="btn ${k}">${t}</div>`;
+    const money = (label,value,sub='') => `<div class="card warm"><div class="label">${label}</div><div class="big">${value}</div>${sub?`<p class="small">${sub}</p>`:''}</div>`;
+
+    const screens = [
+      ['A01 결제 실패 안내','',
+        '카드 결제가 실패해 구독이 일시 중단된 상태. 어떤 기능이 멈추는지 명확히 안내하고 재결제를 유도한다.',
+        `${status}${head('결제 실패','도움')}<div class="content center"><div><div class="mark" style="margin:auto;background:var(--red)">!</div><div class="heroTitle" style="font-size:25px;color:var(--ink)">결제가<br>처리되지 않았어요</div><p class="copy">사장님, 5월 25일 비즈니스 플랜 결제(15,000원)가 실패했어요. 재결제 전까지 급여명세 발급과 직원 알림이 잠시 멈춰요.</p><div class="card warm" style="text-align:left;margin-top:16px"><div class="row"><div><b>실패 사유</b><p class="small">카드 한도 초과 또는 잔액 부족</p></div>${badge('재시도 1/3','warn')}</div></div>${btn('지금 다시 결제하기')}${btn('결제 수단 바꾸기','sub')}</div></div>`],
+
+      ['A02 카드 만료 임박','',
+        '등록된 카드 유효기간이 곧 끝나는 사전 경고. 다음 결제 실패를 미리 막는 능동적 알림 화면.',
+        `${status}${head('결제 수단','관리')}<div class="content scroll"><div class="card soft"><div class="row"><div><b>카드가 곧 만료돼요</b><p class="small">**** 4821 · 2026.06 만료 예정</p></div>${badge('만료 임박','warn')}</div></div><div class="card warm"><div class="label">다음 결제일</div><div class="mid">2026.06.25 · 15,000원</div><p class="small">만료된 카드로는 결제가 실패할 수 있어요. 미리 바꿔두면 안심돼요.</p></div><div class="list">${item('새 카드 등록','다음 결제부터 적용','›')}${item('기존 카드 유지','만료 후 결제 실패 위험',badge('주의','warn'))}</div>${btn('새 카드 등록하기')}</div>`],
+
+      ['A03 구독 해지 확인 시트','',
+        '구독 해지 직전, 무엇이 멈추는지 알려 만류하고 다운그레이드 대안을 함께 제시하는 바텀 시트.',
+        `${status}${head('구독 관리','')}<div class="content scroll"><div class="card navy"><div class="label">현재 플랜</div><div class="mid">비즈니스 · 월 15,000원</div><p class="copy">다음 결제일 2026.06.25</p></div></div><div class="sheet"><div class="mid">정말 해지하시겠어요?</div><p class="small">해지하면 06.25부터 급여명세 발급, 직원 알림, 다매장 관리를 쓸 수 없어요. 출퇴근 기록은 무료 플랜에서 계속 보관돼요.</p><div class="card warm" style="margin:12px 0"><div class="row"><div><b>무료 대신 이건 어때요?</b><p class="small">베이직 플랜 월 5,000원으로 낮추기</p></div>${badge('추천','info')}</div></div>${btn('베이직으로 다운그레이드')}${btn('해지 계속하기','sub')}</div>`],
+
+      ['A04 다운그레이드 확인','',
+        '플랜을 낮출 때 잃게 되는 기능과 적용 시점을 분명히 보여주는 확인 화면.',
+        `${status}${head('플랜 변경','닫기')}<div class="content scroll"><div class="card warm"><b>비즈니스 → 베이직으로 변경</b><p class="small">2026.06.25 결제일부터 적용돼요. 그 전까지는 비즈니스 기능을 그대로 쓸 수 있어요.</p></div><div class="list">${item('급여명세 발급','베이직에서는 제한',badge('빠짐','warn'))}${item('직원 알림 자동 발송','수동 안내로 전환',badge('빠짐','warn'))}${item('출퇴근·근태 관리','계속 사용 가능',badge('유지'))}${item('월 요금','15,000원 → 5,000원',badge('절약'))}</div>${btn('베이직으로 변경하기')}${btn('비즈니스 유지','sub')}</div>`],
+
+      ['A05 매장 0개 콜드스타트','',
+        '가입 직후 매장이 하나도 없는 사장님의 첫 화면. 첫 매장 등록 한 가지 행동에만 집중시킨다.',
+        `${status}${head('소담','알림')}<div class="content center"><div><div class="mark" style="margin:auto">🏠</div><div class="heroTitle" style="font-size:26px;color:var(--ink)">첫 매장을<br>등록해 볼까요?</div><p class="copy">사장님, 매장을 등록하면 출퇴근 위치와 기본 시급을 정하고 바로 직원을 초대할 수 있어요. 3단계, 2분이면 충분해요.</p><div class="card warm" style="text-align:left;margin-top:16px"><div class="step"><div class="dot">1</div><div class="line"></div><div class="dot off">2</div><div class="line"></div><div class="dot off">3</div></div><p class="small" style="margin-top:8px">매장 정보 → 출퇴근 반경 → 시급 설정</p></div>${btn('첫 매장 등록하기')}</div></div>${tabbar('owner',1)}`],
+
+      ['A06 직원 0명 첫 초대 가이드','',
+        '매장은 있지만 직원이 없는 상태. 초대 코드 공유 경로를 안내해 첫 직원 합류를 돕는다.',
+        `${status}${head('카페 소담 · 직원','추가')}<div class="content center"><div><div class="mark" style="margin:auto">+</div><div class="heroTitle" style="font-size:26px;color:var(--ink)">직원을<br>초대해 보세요</div><p class="copy">아래 코드를 직원에게 보내면, 직원이 직접 가입하고 오늘부터 출퇴근을 찍을 수 있어요. 사장님이 따로 등록할 필요 없어요.</p><div class="card warm" style="margin-top:16px"><div class="label">우리 매장 초대 코드</div><div class="big" style="color:var(--navy)">CAFE-4821</div><div class="cols2" style="margin-top:10px">${btn('복사','sub')}${btn('카카오로 공유')}</div></div></div></div>${tabbar('owner',1)}`],
+
+      ['A07 정산 불가 — 기록 누락','',
+        '누락된 출퇴근 기록 때문에 급여 명세를 발급할 수 없는 상태. 원인 직원을 짚고 정리 경로로 연결한다.',
+        `${status}${head('급여 정산','5월')}<div class="content scroll"><div class="card" style="background:var(--redbg);border-color:#f7c4c5"><div class="row"><div><b>아직 정산을 시작할 수 없어요</b><p class="small" style="color:var(--red)">누락된 출퇴근 기록 2건을 먼저 정리해 주세요.</p></div>${badge('발급 불가','err')}</div></div><div class="card warm"><div class="label">정산 준비율</div><div class="big" style="color:var(--amber)">83%</div><div class="progress"><i style="width:83%;background:linear-gradient(90deg,var(--amber),#ffba45)"></i></div></div><div class="list">${item('지아','05.23 퇴근 기록 없음',badge('누락','err'))}${item('민지','05.20 출근 누락 의심',badge('확인','warn'))}</div>${btn('누락 기록 정리하기')}${btn('정상 직원만 먼저 정산','sub')}</div>${tabbar('owner',3)}`],
+
+      ['A08 명세서 일괄 발급 진행률','',
+        '여러 직원의 급여명세를 한 번에 발급하는 동안 보여주는 진행 상태. 개별 항목 성공/대기를 함께 표시.',
+        `${status}${head('명세서 발급 중','')}<div class="content scroll"><div class="card navy"><div class="label">직원 3명 명세서 발급 중</div><div class="mid">2 / 3 완료</div><div class="progress"><i style="width:66%"></i></div><p class="copy" style="margin-top:8px">창을 닫아도 발급은 계속 진행돼요.</p></div><div class="list">${item('도윤','821,400원 · 알림 전송 완료',badge('완료'))}${item('지아','662,478원 · 알림 전송 완료',badge('완료'))}${item('민지','934,122원 · 발급 중',badge('진행','info'))}</div><div class="card warm"><b>발급 후</b><p class="small">직원에게 급여명세 알림이 전송되고, 24시간 안에는 취소할 수 있어요.</p></div></div>`],
+
+      ['A09 다매장 통합 대시보드 (태블릿 2열)','wide',
+        '여러 매장을 운영하는 사장님용 태블릿 2열 레이아웃. 매장별 출근·인건비를 나란히 비교한다.',
+        `${status}${head('통합 대시보드','5월')}<div class="content scroll"><div class="card navy"><div class="label">운영 중인 매장 3곳</div><div class="mid">오늘 출근 11/13명 · 누락 기록 3건</div><p class="copy">매장 매출은 다루지 않아요. 근태와 인건비만 명확하게 비교해 드려요.</p></div><div class="cols2"><div class="card warm"><div class="label">이번 달 총 인건비</div><div class="big">6,418,000원</div><p class="small">지난달 대비 +4.2%</p></div><div class="card warm"><div class="label">정산 준비율 평균</div><div class="big" style="color:var(--green)">91%</div><p class="small">디저트 소담만 78%</p></div></div><div class="card"><div class="label">매장별 인건비 비교</div><div class="bar"><div class="col"><i style="height:84px;background:var(--brand)"></i><span>카페</span></div><div class="col"><i style="height:52px;background:var(--brand)"></i><span>디저트</span></div><div class="col"><i style="height:108px;background:var(--brand)"></i><span>본점</span></div></div></div><div class="cols2"><div class="list">${item('카페 소담','출근 4/5 · 인건비 241만',badge('운영중'))}${item('디저트 소담','출근 3/4 · 누락 2건',badge('확인','warn'))}</div><div class="list">${item('소담 본점','출근 4/4 · 인건비 312만',badge('운영중'))}${item('전체 정산','5월 합계 641만원','›')}</div></div></div>${tabbar('owner',0)}`],
+
+      ['A10 사장 권한 위임 시트','',
+        '특정 직원을 매니저로 지정해 근태 확인·요청 처리 권한을 위임하는 바텀 시트. 결제·급여 권한은 제외됨을 명시.',
+        `${status}${head('직원 상세','메모')}<div class="content scroll"><div class="card navy"><div class="row"><div><div class="mid">김민지</div><p class="copy">카페 소담 · 오후 파트</p></div>${badge('근무중')}</div></div></div><div class="sheet"><div class="mid">매니저로 지정할까요?</div><p class="small">매니저는 사장님 대신 근태 확인과 정정·휴가 요청을 처리할 수 있어요.</p><div class="list" style="margin:12px 0">${item('근태 확인·승인','출퇴근, 정정 요청 처리',badge('위임'))}${item('급여 정산·발급','사장님만 가능',badge('제외','warn'))}${item('결제·구독 관리','사장님만 가능',badge('제외','warn'))}</div>${btn('매니저로 지정하기')}${btn('취소','sub')}</div>`],
+
+      ['A11 재결제 성공','',
+        '실패했던 결제가 복구된 직후의 안심 화면. 다시 켜진 기능과 다음 결제일을 알려준다.',
+        `${status}${head('결제 완료','닫기')}<div class="content center"><div><div class="mark" style="margin:auto;background:var(--green)">✓</div><div class="heroTitle" style="font-size:26px;color:var(--ink)">결제가<br>완료됐어요</div><p class="copy">사장님, 비즈니스 플랜이 다시 켜졌어요. 급여명세 발급과 직원 알림을 그대로 쓸 수 있어요.</p><div class="card warm" style="text-align:left;margin-top:16px"><div class="row"><div><b>비즈니스 플랜</b><p class="small">다음 결제일 2026.06.25 · 15,000원</p></div>${badge('정상')}</div></div>${btn('급여 정산으로 돌아가기')}</div></div>`]
+    ];
+
+    const grid = document.getElementById('grid');
+    grid.innerHTML = screens.map(([name, mode, desc, html]) => {
+      const wide = mode === 'wide';
+      const screenMode = (mode === 'dark') ? 'dark' : '';
+      return `
+      <article class="tile" ${wide?'style="grid-column:span 2"':''}>
+        <h2 class="tile-title">${name}</h2>
+        <p class="tile-desc">${desc}</p>
+        <div class="phone ${wide?'wide':''}"><div class="screen ${screenMode}">${html}</div></div>
+      </article>`;
+    }).join('');
+  </script>
+</body>
+</html>

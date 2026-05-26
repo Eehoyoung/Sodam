@@ -1,22 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect} from 'react';
+import {StyleSheet, View} from 'react-native';
+import {RouteProp, NavigationProp} from '@react-navigation/native';
+import {Alert} from 'react-native';
 import {
-    View,
-    Text,
-    ScrollView,
-    StyleSheet,
-    ActivityIndicator,
-    TouchableOpacity,
-    Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { RouteProp } from '@react-navigation/native';
-import { NavigationProp } from '@react-navigation/native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
-import LinearGradient from 'react-native-linear-gradient';
-import { COLORS } from '../../../common/components/logo/Colors';
-import storeService, { StoreDetailDto } from '../services/storeService';
+    AppCard,
+    AppHeader,
+    AppText,
+    ErrorState,
+    LoadingState,
+    ScreenContainer,
+} from '../../../common/components/ds';
+import {colors, spacing} from '../../../theme/tokens';
+import storeService, {StoreDetailDto} from '../services/storeService';
 
-type StoreDetailScreenRouteProp = RouteProp<{ StoreDetail: { storeId: number } }, 'StoreDetail'>;
+type StoreDetailScreenRouteProp = RouteProp<{StoreDetail: {storeId: number}}, 'StoreDetail'>;
 
 interface StoreDetailScreenProps {
     route: StoreDetailScreenRouteProp;
@@ -24,17 +21,18 @@ interface StoreDetailScreenProps {
 }
 
 /**
- * 매장 상세 화면
- * Backend API: GET /api/stores/{storeId}
+ * 13 StoreDetail — 확정 시안.
+ * 매장 상세. loadStoreDetail/storeService 로직 보존. (GET /api/stores/{storeId})
  */
-export default function StoreDetailScreen({ route, navigation }: StoreDetailScreenProps) {
-    const { storeId } = route.params;
+export default function StoreDetailScreen({route, navigation}: StoreDetailScreenProps) {
+    const {storeId} = route.params;
     const [store, setStore] = useState<StoreDetailDto | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         loadStoreDetail();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [storeId]);
 
     const loadStoreDetail = async () => {
@@ -44,7 +42,6 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailScre
             const data = await storeService.getStoreById(storeId);
             setStore(data);
         } catch (err: any) {
-            console.error('매장 상세 조회 실패:', err);
             setError(err?.message || '매장 정보를 불러오는데 실패했습니다.');
             Alert.alert('오류', '매장 정보를 불러오는데 실패했습니다.');
         } finally {
@@ -52,260 +49,85 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailScre
         }
     };
 
+    const header = <AppHeader title="매장 운영" onBack={() => navigation.goBack()} actions={[{label: '편집', onPress: () => (navigation as any).navigate('StoreEdit', {storeId})}]} />;
+
     if (loading) {
         return (
-            <SafeAreaView style={styles.container}>
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={COLORS.SODAM_BLUE} />
-                    <Text style={styles.loadingText}>매장 정보 로딩 중...</Text>
-                </View>
-            </SafeAreaView>
+            <ScreenContainer header={header}>
+                <LoadingState title="매장 정보 로딩 중" description="잠시만 기다려 주세요" />
+            </ScreenContainer>
         );
     }
-
     if (error || !store) {
         return (
-            <SafeAreaView style={styles.container}>
-                <View style={styles.errorContainer}>
-                    <Ionicons name="alert-circle-outline" size={60} color={COLORS.ERROR} />
-                    <Text style={styles.errorText}>{error || '매장 정보를 찾을 수 없습니다.'}</Text>
-                    <TouchableOpacity style={styles.retryButton} onPress={loadStoreDetail}>
-                        <Text style={styles.retryButtonText}>다시 시도</Text>
-                    </TouchableOpacity>
-                </View>
-            </SafeAreaView>
+            <ScreenContainer header={header}>
+                <ErrorState title="불러오지 못했어요" description={error || '매장 정보를 찾을 수 없습니다.'} primary={{label: '다시 시도', onPress: loadStoreDetail}} />
+            </ScreenContainer>
         );
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView style={styles.scrollView}>
-                {/* 헤더 카드 */}
-                <LinearGradient
-                    colors={[COLORS.SODAM_BLUE, COLORS.SODAM_GREEN]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.headerCard}
-                >
-                    <View style={styles.headerContent}>
-                        <Text style={styles.storeName}>{store.storeName}</Text>
-                        <Text style={styles.storeCode}>{store.storeCode}</Text>
-                        <Text style={styles.businessType}>{store.businessType}</Text>
-                    </View>
-                </LinearGradient>
+        <ScreenContainer scroll header={header}>
+            <AppCard variant="navy" hero>
+                <AppText variant="headingSm" tone="inverse">{store.storeName}</AppText>
+                <AppText variant="caption" tone="inverse" style={styles.heroSub}>{store.storeCode} · {store.businessType}</AppText>
+            </AppCard>
 
-                {/* 기본 정보 섹션 */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>기본 정보</Text>
-                    <View style={styles.infoCard}>
-                        <InfoRow icon="location-outline" label="주소" value={store.fullAddress} />
-                        {store.businessNumber && (
-                            <InfoRow icon="card-outline" label="사업자번호" value={store.businessNumber} />
-                        )}
-                        {store.storePhoneNumber && (
-                            <InfoRow icon="call-outline" label="전화번호" value={store.storePhoneNumber} />
-                        )}
-                    </View>
-                </View>
+            <Section title="기본 정보">
+                <InfoRow label="주소" value={store.fullAddress} />
+                {store.businessNumber ? <InfoRow label="사업자번호" value={store.businessNumber} /> : null}
+                {store.storePhoneNumber ? <InfoRow label="전화번호" value={store.storePhoneNumber} /> : null}
+            </Section>
 
-                {/* 근무 정보 섹션 */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>근무 정보</Text>
-                    <View style={styles.infoCard}>
-                        <InfoRow
-                            icon="cash-outline"
-                            label="기준 시급"
-                            value={`${store.storeStandardHourWage.toLocaleString()}원`}
-                        />
-                        {store.employeeCount !== undefined && (
-                            <InfoRow
-                                icon="people-outline"
-                                label="직원 수"
-                                value={`${store.employeeCount}명`}
-                            />
-                        )}
-                    </View>
-                </View>
+            <Section title="근무 정보">
+                <InfoRow label="기준 시급" value={`${store.storeStandardHourWage.toLocaleString()}원`} />
+                {store.employeeCount !== undefined ? <InfoRow label="직원 수" value={`${store.employeeCount}명`} /> : null}
+            </Section>
 
-                {/* 위치 정보 섹션 */}
-                {(store.latitude !== undefined && store.longitude !== undefined) && (
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>위치 설정</Text>
-                        <View style={styles.infoCard}>
-                            <InfoRow icon="navigate-outline" label="위도" value={store.latitude.toFixed(6)} />
-                            <InfoRow icon="navigate-outline" label="경도" value={store.longitude.toFixed(6)} />
-                            {store.radius && (
-                                <InfoRow
-                                    icon="radio-button-on-outline"
-                                    label="인증 반경"
-                                    value={`${store.radius}m`}
-                                />
-                            )}
-                        </View>
-                    </View>
-                )}
+            {store.latitude !== undefined && store.longitude !== undefined ? (
+                <Section title="위치 설정">
+                    <InfoRow label="위도" value={store.latitude.toFixed(6)} />
+                    <InfoRow label="경도" value={store.longitude.toFixed(6)} />
+                    {store.radius ? <InfoRow label="인증 반경" value={`${store.radius}m`} /> : null}
+                </Section>
+            ) : null}
 
-                {/* 시스템 정보 섹션 */}
-                {(store.createdAt || store.updatedAt) && (
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>시스템 정보</Text>
-                        <View style={styles.infoCard}>
-                            {store.createdAt && (
-                                <InfoRow
-                                    icon="calendar-outline"
-                                    label="등록일"
-                                    value={new Date(store.createdAt).toLocaleDateString('ko-KR')}
-                                />
-                            )}
-                            {store.updatedAt && (
-                                <InfoRow
-                                    icon="sync-outline"
-                                    label="수정일"
-                                    value={new Date(store.updatedAt).toLocaleDateString('ko-KR')}
-                                />
-                            )}
-                        </View>
-                    </View>
-                )}
-            </ScrollView>
-        </SafeAreaView>
+            {store.createdAt || store.updatedAt ? (
+                <Section title="시스템 정보">
+                    {store.createdAt ? <InfoRow label="등록일" value={new Date(store.createdAt).toLocaleDateString('ko-KR')} /> : null}
+                    {store.updatedAt ? <InfoRow label="수정일" value={new Date(store.updatedAt).toLocaleDateString('ko-KR')} /> : null}
+                </Section>
+            ) : null}
+        </ScreenContainer>
     );
 }
 
-interface InfoRowProps {
-    icon: string;
-    label: string;
-    value: string;
-}
+const Section: React.FC<{title: string; children: React.ReactNode}> = ({title, children}) => (
+    <View style={styles.section}>
+        <AppText variant="titleMd" style={styles.sectionTitle}>{title}</AppText>
+        <AppCard variant="flat">{children}</AppCard>
+    </View>
+);
 
-function InfoRow({ icon, label, value }: InfoRowProps) {
-    return (
-        <View style={styles.infoRow}>
-            <View style={styles.infoLabelContainer}>
-                <Ionicons name={icon} size={20} color={COLORS.SODAM_BLUE} />
-                <Text style={styles.infoLabel}>{label}</Text>
-            </View>
-            <Text style={styles.infoValue}>{value}</Text>
-        </View>
-    );
-}
+const InfoRow: React.FC<{label: string; value: string}> = ({label, value}) => (
+    <View style={styles.infoRow}>
+        <AppText variant="bodyMd" tone="secondary">{label}</AppText>
+        <AppText variant="bodyMd" weight="600" style={styles.infoValue}>{value}</AppText>
+    </View>
+);
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F8F9FA',
-    },
-    scrollView: {
-        flex: 1,
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    loadingText: {
-        marginTop: 12,
-        fontSize: 16,
-        color: COLORS.GRAY_600,
-    },
-    errorContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 24,
-    },
-    errorText: {
-        marginTop: 16,
-        fontSize: 16,
-        color: COLORS.GRAY_600,
-        textAlign: 'center',
-    },
-    retryButton: {
-        marginTop: 24,
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        backgroundColor: COLORS.SODAM_BLUE,
-        borderRadius: 8,
-    },
-    retryButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    headerCard: {
-        margin: 16,
-        padding: 24,
-        borderRadius: 16,
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-    },
-    headerContent: {
-        alignItems: 'center',
-    },
-    storeName: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#FFFFFF',
-        marginBottom: 8,
-    },
-    storeCode: {
-        fontSize: 14,
-        color: '#FFFFFF',
-        opacity: 0.9,
-        marginBottom: 4,
-    },
-    businessType: {
-        fontSize: 16,
-        color: '#FFFFFF',
-        opacity: 0.8,
-    },
-    section: {
-        marginHorizontal: 16,
-        marginBottom: 16,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: COLORS.GRAY_900,
-        marginBottom: 12,
-    },
-    infoCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 16,
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-    },
+    heroSub: {marginTop: 4, opacity: 0.82},
+    section: {marginTop: spacing.lg},
+    sectionTitle: {marginBottom: spacing.sm},
     infoRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 12,
+        paddingVertical: spacing.sm + 2,
         borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F0',
+        borderBottomColor: colors.divider,
+        gap: spacing.md,
     },
-    infoLabelContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    infoLabel: {
-        fontSize: 15,
-        color: COLORS.GRAY_600,
-        marginLeft: 8,
-    },
-    infoValue: {
-        fontSize: 15,
-        color: COLORS.GRAY_900,
-        fontWeight: '500',
-        marginLeft: 16,
-        textAlign: 'right',
-        flex: 1,
-    },
+    infoValue: {flex: 1, textAlign: 'right'},
 });

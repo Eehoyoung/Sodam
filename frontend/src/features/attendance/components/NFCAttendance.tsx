@@ -162,7 +162,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
             const result = await verifyFunction({
                 employeeId: employeeIdNum,
                 storeId: parsedData.storeId,
-                nfcTagId: nfcData
+                tagId: nfcData,
             });
 
             if (!isMountedRef.current) {

@@ -1,18 +1,18 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
-} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
+import {RefreshControl, ScrollView, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
-import {tokens} from '../../../theme/tokens';
-import Card from '../../../common/components/data-display/Card';
-import Badge from '../../../common/components/data-display/Badge';
-import Button from '../../../common/components/form/Button';
+import {
+    AppBadge,
+    AppButton,
+    AppCard,
+    AppHeader,
+    AppListItem,
+    AppText,
+    MoneyCard,
+    ScreenContainer,
+} from '../../../common/components/ds';
+import {colors, layout, spacing} from '../../../theme/tokens';
+import {formatMoney} from '../../../common/utils/format';
 import StoreSelector, {SelectableStore} from '../../../common/components/store/StoreSelector';
 import {useAuth} from '../../../contexts/AuthContext';
 import api from '../../../common/utils/api';
@@ -33,13 +33,8 @@ interface MonthPayroll {
 }
 
 /**
- * 사장님 홈 대시보드 (PRD_OWNER S-001).
- *
- * 데이터 소스:
- *  - GET /api/store-queries/{storeId}/stats/today
- *  - GET /api/store-queries/{storeId}/stats/payroll/month-to-date
- *
- * 백엔드 미구현 시 fallback 데이터로 표시 (앱 크래시 방지).
+ * 08/10 OwnerHome / Dashboard — 확정 시안.
+ * navy HeroCard(오늘 처리할 일) + 지표 + 급여 요약. load/StoreSelector/네비게이션 보존.
  */
 const OwnerDashboardScreen: React.FC = () => {
     const navigation = useNavigation<any>();
@@ -59,18 +54,16 @@ const OwnerDashboardScreen: React.FC = () => {
             }));
             setStores(storeList);
             const activeId = selectedStoreId ?? storeList[0]?.id ?? null;
-            if (selectedStoreId == null) setSelectedStoreId(activeId);
+            if (selectedStoreId == null) {
+                setSelectedStoreId(activeId);
+            }
             const firstStore = storeList.find(s => s.id === activeId);
             if (!firstStore?.id) {
                 setToday(null);
                 return;
             }
-            const todayRes = await api.get<TodayStats>(
-                `/api/store-queries/${firstStore.id}/stats/today`,
-            ).catch(() => null);
-            const monthlyRes = await api.get<MonthPayroll>(
-                `/api/store-queries/${firstStore.id}/stats/payroll/month-to-date`,
-            ).catch(() => null);
+            const todayRes = await api.get<TodayStats>(`/api/store-queries/${firstStore.id}/stats/today`).catch(() => null);
+            const monthlyRes = await api.get<MonthPayroll>(`/api/store-queries/${firstStore.id}/stats/payroll/month-to-date`).catch(() => null);
 
             setToday(
                 todayRes?.data ?? {
@@ -104,133 +97,82 @@ const OwnerDashboardScreen: React.FC = () => {
         setRefreshing(false);
     };
 
+    const pending = today?.pendingEmployees ?? [];
+    const allIn = today ? today.checkedInCount === today.totalActiveEmployees : false;
+
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ScreenContainer padded={false} header={<AppHeader title={today?.storeName ?? '카페 소담'} actions={[{label: '알림', onPress: () => navigation.navigate('NotificationCenter')}]} />}>
             <ScrollView
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={styles.content}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                showsVerticalScrollIndicator={false}
-            >
-                {/* 다매장 셀렉터 (매장 2개 이상일 때만 자동 표시) */}
-                <StoreSelector
-                    stores={stores}
-                    selectedId={selectedStoreId}
-                    onSelect={setSelectedStoreId}
-                />
+                showsVerticalScrollIndicator={false}>
+                <StoreSelector stores={stores} selectedId={selectedStoreId} onSelect={setSelectedStoreId} />
 
-                {/* Greeting */}
-                <LinearGradient
-                    colors={tokens.gradient.brand}
-                    start={{x: 0, y: 0}}
-                    end={{x: 1, y: 1}}
-                    style={styles.greetingBox}
-                >
-                    <Text style={styles.greetingHello}>안녕하세요</Text>
-                    <Text style={styles.greetingName}>
-                        {user?.name ?? '사장님'} 님 👋
-                    </Text>
-                    <Text style={styles.greetingStore}>
-                        {today?.storeName ?? '매장 정보 불러오는 중…'}
-                    </Text>
-                </LinearGradient>
+                <AppCard variant="navy" hero>
+                    <AppText variant="headingSm" tone="inverse">
+                        {pending.length > 0 ? `오늘 처리할 일 ${pending.length}건` : '오늘 처리할 일이 없어요'}
+                    </AppText>
+                    <AppText variant="bodyMd" tone="inverse" style={styles.heroSub}>
+                        {user?.name ?? '사장님'}님, 출근 {today?.checkedInCount ?? 0}/{today?.totalActiveEmployees ?? 0}명 · 정산까지 {monthly?.daysRemainingInMonth ?? 0}일
+                    </AppText>
+                    <AppButton label="이상 출퇴근 확인" variant="secondary" onPress={() => navigation.navigate('MissingAttendanceCenter')} style={styles.heroCta} />
+                </AppCard>
 
-                {/* 오늘 출근 카드 */}
-                <Card style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>오늘 출근 현황</Text>
-                        <Badge
-                            text={`${today?.checkedInCount ?? 0}/${today?.totalActiveEmployees ?? 0}명`}
-                            type={
-                                today && today.checkedInCount === today.totalActiveEmployees
-                                    ? 'success'
-                                    : 'warning'
-                            }
-                        />
-                    </View>
-                    {today && today.pendingEmployees.length > 0 ? (
-                        <View style={styles.pendingList}>
-                            {today.pendingEmployees.map(name => (
-                                <View key={name} style={styles.pendingRow}>
-                                    <View style={styles.pendingDot} />
-                                    <Text style={styles.pendingName}>{name}</Text>
-                                    <Text style={styles.pendingLabel}>미출근</Text>
-                                </View>
-                            ))}
-                        </View>
-                    ) : (
-                        <Text style={styles.allCheckedIn}>모든 직원이 출근했어요 ✅</Text>
-                    )}
-                </Card>
-
-                {/* 이번 달 급여 카드 */}
-                <Card style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>이번 달 누적 급여</Text>
-                        <Text style={styles.dayLeft}>
-                            {monthly?.daysRemainingInMonth ?? 0}일 남음
-                        </Text>
-                    </View>
-                    <Text style={styles.salaryAmount}>
-                        ₩{(monthly?.totalGross ?? 0).toLocaleString('ko-KR')}
-                    </Text>
-                    <Text style={styles.salarySub}>
-                        총 근무시간 {(monthly?.totalWorkingHours ?? 0).toFixed(1)}h ·
-                        실수령 예상 ₩{(monthly?.totalNet ?? 0).toLocaleString('ko-KR')}
-                    </Text>
-                </Card>
-
-                {/* 액션 퀵 그리드 */}
-                <View style={styles.actionGrid}>
-                    <ActionTile
-                        title="급여 정산하기"
-                        emoji="💰"
-                        onPress={() => navigation.navigate('SalaryList')}
-                    />
-                    <ActionTile
-                        title="직원 추가"
-                        emoji="🧑‍🤝‍🧑"
-                        onPress={() => navigation.navigate('StoreDetail')}
-                    />
-                    <ActionTile
-                        title="위치/반경 설정"
-                        emoji="📍"
-                        onPress={() => navigation.navigate('StoreRegistraion')}
-                    />
-                    <ActionTile
-                        title="노무·세무 팁"
-                        emoji="📘"
-                        onPress={() => navigation.navigate('InfoList')}
-                    />
+                <View style={styles.cols}>
+                    <Metric label="출근" value={`${today?.checkedInCount ?? 0}/${today?.totalActiveEmployees ?? 0}`} tone={allIn ? colors.success : colors.warning} />
+                    <Metric label="예상급여" value={shortMoney(monthly?.totalGross ?? 0)} tone={colors.brandPrimary} />
+                    <Metric label="남은일" value={`${monthly?.daysRemainingInMonth ?? 0}일`} tone={colors.info} />
                 </View>
 
-                {/* 인사이트 (Phase 2 prepared) */}
-                <Card style={styles.section} bordered>
-                    <Text style={styles.insightTitle}>💡 인사이트</Text>
-                    <Text style={styles.insightBody}>
-                        이번 달 야간 근무가 지난달 대비 늘었어요. 직원 컨디션 확인해 보세요.
-                    </Text>
-                </Card>
+                <AppCard variant="flat">
+                    <AppText variant="titleMd" style={styles.sectionTitle}>오늘 출근 현황</AppText>
+                    {pending.length > 0 ? (
+                        pending.map(name => (
+                            <AppListItem key={name} title={name} subtitle="아직 출근 기록 없음" right={<AppBadge label="알림" tone="warning" />} />
+                        ))
+                    ) : (
+                        <AppText variant="bodyMd" tone="success">모든 직원이 출근했어요 ✅</AppText>
+                    )}
+                </AppCard>
 
-                <Button
-                    title="더 보기"
-                    onPress={() => navigation.navigate('Settings')}
-                    variant="ghost"
-                    fullWidth
+                <MoneyCard
+                    label="이번 달 누적 급여"
+                    value={formatMoney(monthly?.totalGross ?? 0)}
+                    sub={`총 근무시간 ${(monthly?.totalWorkingHours ?? 0).toFixed(1)}h · 실수령 예상 ${formatMoney(monthly?.totalNet ?? 0)}`}
                 />
+
+                <View style={styles.grid}>
+                    <ActionTile title="급여 정산하기" emoji="💰" onPress={() => navigation.navigate('SalaryList')} />
+                    <ActionTile title="직원 추가" emoji="🧑‍🤝‍🧑" onPress={() => navigation.navigate('StoreDetail')} />
+                    <ActionTile title="위치/반경 설정" emoji="📍" onPress={() => navigation.navigate('StoreRegistraion')} />
+                    <ActionTile title="노무·세무 팁" emoji="📘" onPress={() => navigation.navigate('InfoList')} />
+                </View>
+
+                <AppCard variant="warm">
+                    <AppText variant="titleMd">💡 인사이트</AppText>
+                    <AppText variant="caption" tone="secondary" style={styles.insightBody}>
+                        이번 달 야간 근무가 지난달 대비 늘었어요. 정산 전 연장/야간 수당을 확인하세요.
+                    </AppText>
+                </AppCard>
+
+                <AppButton label="더 보기" variant="ghost" onPress={() => navigation.navigate('Settings')} />
             </ScrollView>
-        </SafeAreaView>
+        </ScreenContainer>
     );
 };
 
-const ActionTile: React.FC<{title: string; emoji: string; onPress: () => void}> = ({
-    title,
-    emoji,
-    onPress,
-}) => (
-    <Card onPress={onPress} style={styles.actionTile} elevation={2} bordered>
-        <Text style={styles.actionEmoji}>{emoji}</Text>
-        <Text style={styles.actionTitle}>{title}</Text>
-    </Card>
+const Metric: React.FC<{label: string; value: string; tone: string}> = ({label, value, tone}) => (
+    <AppCard variant="flat" style={styles.metric}>
+        <AppText variant="caption" tone="secondary">{label}</AppText>
+        <AppText variant="headingSm" style={{color: tone}}>{value}</AppText>
+    </AppCard>
+);
+
+const ActionTile: React.FC<{title: string; emoji: string; onPress: () => void}> = ({title, emoji, onPress}) => (
+    <AppCard variant="flat" onPress={onPress} style={styles.tile}>
+        <AppText style={styles.tileEmoji}>{emoji}</AppText>
+        <AppText variant="titleMd">{title}</AppText>
+    </AppCard>
 );
 
 function daysLeftInMonth(): number {
@@ -238,118 +180,24 @@ function daysLeftInMonth(): number {
     const last = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     return Math.max(0, last - now.getDate());
 }
+function shortMoney(won: number): string {
+    if (won >= 10000) {
+        return `${Math.floor(won / 10000)}만`;
+    }
+    return won.toLocaleString('ko-KR');
+}
 
 const styles = StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: tokens.colors.background},
-    scrollContent: {
-        padding: tokens.spacing.lg,
-        paddingBottom: tokens.spacing.huge,
-        gap: tokens.spacing.md,
-    },
-    greetingBox: {
-        borderRadius: tokens.radius.xl,
-        padding: tokens.spacing.xxl,
-        marginBottom: tokens.spacing.sm,
-    },
-    greetingHello: {
-        color: tokens.colors.textInverse,
-        opacity: 0.85,
-        fontSize: tokens.typography.sizes.md,
-    },
-    greetingName: {
-        color: tokens.colors.textInverse,
-        fontSize: tokens.typography.sizes.display,
-        fontWeight: tokens.typography.weights.bold,
-        letterSpacing: -1,
-        marginTop: 4,
-    },
-    greetingStore: {
-        color: tokens.colors.textInverse,
-        opacity: 0.9,
-        fontSize: tokens.typography.sizes.sm,
-        marginTop: tokens.spacing.sm,
-    },
-    section: {marginVertical: 0},
-    sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: tokens.spacing.md,
-    },
-    sectionTitle: {
-        fontSize: tokens.typography.sizes.lg,
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
-        letterSpacing: -0.3,
-    },
-    dayLeft: {
-        color: tokens.colors.textSecondary,
-        fontSize: tokens.typography.sizes.sm,
-    },
-    pendingList: {gap: tokens.spacing.sm},
-    pendingRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: tokens.spacing.sm,
-    },
-    pendingDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: tokens.colors.warning,
-    },
-    pendingName: {
-        flex: 1,
-        color: tokens.colors.textPrimary,
-        fontSize: tokens.typography.sizes.md,
-    },
-    pendingLabel: {
-        color: tokens.colors.warning,
-        fontSize: tokens.typography.sizes.sm,
-        fontWeight: tokens.typography.weights.semibold,
-    },
-    allCheckedIn: {
-        color: tokens.colors.success,
-        fontSize: tokens.typography.sizes.md,
-        fontWeight: tokens.typography.weights.semibold,
-    },
-    salaryAmount: {
-        fontSize: 36,
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.brandPrimary,
-        letterSpacing: -1,
-        marginVertical: tokens.spacing.xs,
-    },
-    salarySub: {
-        color: tokens.colors.textSecondary,
-        fontSize: tokens.typography.sizes.sm,
-    },
-    actionGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: tokens.spacing.sm,
-    },
-    actionTile: {
-        flexBasis: '48%',
-        alignItems: 'flex-start',
-    },
-    actionEmoji: {fontSize: 28, marginBottom: tokens.spacing.xs},
-    actionTitle: {
-        fontSize: tokens.typography.sizes.md,
-        fontWeight: tokens.typography.weights.semibold,
-        color: tokens.colors.textPrimary,
-    },
-    insightTitle: {
-        fontSize: tokens.typography.sizes.md,
-        fontWeight: tokens.typography.weights.semibold,
-        color: tokens.colors.textPrimary,
-        marginBottom: tokens.spacing.xs,
-    },
-    insightBody: {
-        color: tokens.colors.textSecondary,
-        fontSize: tokens.typography.sizes.sm,
-        lineHeight: 20,
-    },
+    content: {paddingHorizontal: layout.screenPaddingHorizontal, paddingTop: spacing.md, paddingBottom: spacing.xl, gap: spacing.md},
+    heroSub: {marginTop: spacing.xs, opacity: 0.85},
+    heroCta: {marginTop: spacing.md},
+    cols: {flexDirection: 'row', gap: spacing.sm},
+    metric: {flex: 1, alignItems: 'flex-start'},
+    sectionTitle: {marginBottom: spacing.sm},
+    grid: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm},
+    tile: {flexBasis: '47%', flexGrow: 1, alignItems: 'flex-start'},
+    tileEmoji: {fontSize: 28, marginBottom: spacing.xs},
+    insightBody: {marginTop: spacing.xs, lineHeight: 20},
 });
 
 export default OwnerDashboardScreen;

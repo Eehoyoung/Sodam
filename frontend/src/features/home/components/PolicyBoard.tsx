@@ -68,7 +68,7 @@ const PolicyBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
                 <View style={styles.headerRow}>
                     <Text style={styles.sectionTitle}>정부 주요 정책 소개</Text>
                 </View>
-                <ActivityIndicator size="large" color="#3498db"/>
+                <ActivityIndicator size="large" color="#FF6B35"/>
                 <Text style={styles.loadingText}>정책 정보를 불러오는 중...</Text>
             </View>
         );
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
         color: '#333',
     },
     moreButton: {
-        backgroundColor: '#3498db',
+        backgroundColor: '#FF6B35',
         paddingVertical: 6,
         paddingHorizontal: 15,
         borderRadius: 20,
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
         marginVertical: 10,
     },
     retryButton: {
-        backgroundColor: '#3498db',
+        backgroundColor: '#FF6B35',
         paddingVertical: 8,
         paddingHorizontal: 20,
         borderRadius: 20,

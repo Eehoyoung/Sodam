@@ -1,0 +1,88 @@
+{
+  "name": "sodam-launch-redesign",
+  "version": "2026.05.25",
+  "colors": {
+    "brand": {
+      "primary": "#FF6B35",
+      "primaryPressed": "#E85A2A",
+      "primarySoft": "#FFF0E8",
+      "primaryMuted": "#FFB48F",
+      "secondary": "#243B4A",
+      "accent": "#F4A261"
+    },
+    "surface": {
+      "background": "#FFFFFF",
+      "canvas": "#F7F4EF",
+      "warm": "#FFFBF5",
+      "muted": "#F1EEE9",
+      "mint": "#EEF8F4",
+      "sky": "#EEF5FF",
+      "inverse": "#201A17"
+    },
+    "text": {
+      "primary": "#201A17",
+      "secondary": "#625B55",
+      "tertiary": "#9A9189",
+      "inverse": "#FFFFFF",
+      "brand": "#FF6B35",
+      "disabled": "#C9C0B8"
+    },
+    "border": {
+      "default": "#E8E0D8",
+      "strong": "#D8CDC3",
+      "divider": "#EFE7DF",
+      "focus": "#FF6B35"
+    },
+    "status": {
+      "success": "#12A87B",
+      "successBg": "#DFF6ED",
+      "warning": "#F59E0B",
+      "warningBg": "#FEF3C7",
+      "error": "#E5484D",
+      "errorBg": "#FEE2E2",
+      "info": "#3B82F6",
+      "infoBg": "#DBEAFE"
+    }
+  },
+  "spacing": {
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 20,
+    "xxl": 24,
+    "xxxl": 32,
+    "huge": 48
+  },
+  "radius": {
+    "sm": 4,
+    "md": 8,
+    "lg": 12,
+    "xl": 16,
+    "xxl": 24,
+    "pill": 999
+  },
+  "typography": {
+    "display": { "fontSize": 32, "lineHeight": 38, "fontWeight": 700 },
+    "headingLg": { "fontSize": 26, "lineHeight": 34, "fontWeight": 700 },
+    "headingMd": { "fontSize": 22, "lineHeight": 30, "fontWeight": 700 },
+    "headingSm": { "fontSize": 18, "lineHeight": 26, "fontWeight": 700 },
+    "titleMd": { "fontSize": 15, "lineHeight": 22, "fontWeight": 600 },
+    "bodyLg": { "fontSize": 17, "lineHeight": 26, "fontWeight": 400 },
+    "bodyMd": { "fontSize": 15, "lineHeight": 23, "fontWeight": 400 },
+    "caption": { "fontSize": 12, "lineHeight": 16, "fontWeight": 400 },
+    "numericLg": { "fontSize": 28, "lineHeight": 34, "fontWeight": 700 }
+  },
+  "layout": {
+    "minTouchTarget": 44,
+    "headerHeight": 56,
+    "bottomTabHeight": 64,
+    "screenPadding": 16
+  },
+  "motion": {
+    "fast": 150,
+    "normal": 240,
+    "slow": 360,
+    "pressScale": 0.97
+  }
+}

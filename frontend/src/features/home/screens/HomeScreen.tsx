@@ -1,36 +1,34 @@
 import React from 'react';
-import {FlatList, SafeAreaView, StatusBar, StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
+import {AppCard, AppHeader, AppListItem, AppText, ScreenContainer} from '../../../common/components/ds';
+import {spacing} from '../../../theme/tokens';
 
-const MOCK_ITEMS = Array.from({length: 20}).map((_, i) => ({id: String(i + 1), name: `항목 ${i + 1}`}));
-
+/**
+ * 09 HomeScreen Replacement — 확정 시안.
+ * 역할에 맞는 홈으로 안내하는 라우팅 랜딩.
+ */
 const HomeScreen: React.FC = () => {
     return (
-        <SafeAreaView style={styles.safeArea}>
-            <StatusBar barStyle="dark-content"/>
-            <View style={styles.header}>
-                <Text style={styles.title}>홈 (모의 데이터)</Text>
+        <ScreenContainer scroll header={<AppHeader title="오늘의 소담" actions={[{label: '알림', onPress: () => {}}]} />}>
+            <AppCard variant="warm">
+                <AppText variant="titleMd">역할에 맞는 홈으로 이동해요</AppText>
+                <AppText variant="caption" tone="secondary" style={styles.sub}>
+                    사장님은 대시보드, 직원은 출근 버튼, 개인은 기록장으로 바로 진입합니다.
+                </AppText>
+            </AppCard>
+
+            <View style={styles.list}>
+                <AppListItem title="사장 홈" subtitle="매장 운영 현황 보기" right="›" />
+                <AppListItem title="직원 홈" subtitle="출근/퇴근 바로가기" right="›" />
+                <AppListItem title="개인 기록장" subtitle="내 근무 시간 직접 기록" right="›" />
             </View>
-            <FlatList
-                data={MOCK_ITEMS}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.listContent}
-                renderItem={({item}) => (
-                    <View style={styles.card}>
-                        <Text style={styles.cardText}>{item.name}</Text>
-                    </View>
-                )}
-            />
-        </SafeAreaView>
+        </ScreenContainer>
     );
 };
 
 const styles = StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: '#FFFFFF'},
-    header: {padding: 16, borderBottomColor: '#E5E7EB', borderBottomWidth: StyleSheet.hairlineWidth},
-    title: {fontSize: 20, fontWeight: '700'},
-    listContent: {padding: 16},
-    card: {backgroundColor: '#F3F4F6', padding: 12, borderRadius: 8, marginBottom: 8},
-    cardText: {color: '#111'},
+    sub: {marginTop: 4},
+    list: {marginTop: spacing.md, gap: spacing.sm},
 });
 
 export default HomeScreen;

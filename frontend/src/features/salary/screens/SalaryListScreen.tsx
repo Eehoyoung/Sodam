@@ -16,7 +16,9 @@ import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import {Button, Card, MainLayout} from '../../../common/components';
+import {Button, Card} from '../../../common/components';
+import {AppHeader, ScreenContainer} from '../../../common/components/ds';
+import {colors} from '../../../theme/tokens';
 
 import salaryService from '../services/salaryService';
 import {SalaryFilter, SalaryRecord, SalaryStatus} from '../types';
@@ -294,7 +296,7 @@ const SalaryListScreen = () => {
                 <Icon
                     name={selectedSalaries.includes(item.id) ? "check-box" : "check-box-outline-blank"}
                     size={24}
-                    color={selectedSalaries.includes(item.id) ? "#007AFF" : "#999"}
+                    color={selectedSalaries.includes(item.id) ? "#FF6B35" : "#999"}
                 />
             </TouchableOpacity>
 
@@ -565,16 +567,14 @@ const SalaryListScreen = () => {
     );
 
     return (
-        <MainLayout>
+        <ScreenContainer padded={false} header={<AppHeader title="급여" actions={[{label: '필터', onPress: () => setFilterModalVisible(true)}]} />}>
             <View style={styles.container}>
-                <Text style={styles.screenTitle}>급여 관리</Text>
-
                 {renderWorkplacePicker()}
                 {renderActionButtons()}
 
                 {loading ? (
                     <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color="#007AFF"/>
+                        <ActivityIndicator size="large" color={colors.brandPrimary}/>
                     </View>
                 ) : (
                     <FlatList
@@ -587,8 +587,8 @@ const SalaryListScreen = () => {
                         }
                         ListEmptyComponent={
                             <View style={styles.emptyContainer}>
-                                <Icon name="account-balance-wallet" size={48} color="#ccc"/>
-                                <Text style={styles.emptyText}>급여 정보가 없습니다.</Text>
+                                <Icon name="account-balance-wallet" size={48} color={colors.textTertiary}/>
+                                <Text style={styles.emptyText}>아직 급여 내역이 없어요. 첫 정산을 실행하면 여기에 쌓여요.</Text>
                             </View>
                         }
                     />
@@ -597,14 +597,14 @@ const SalaryListScreen = () => {
                 {renderFilterModal()}
                 {renderBatchActionModal()}
             </View>
-        </MainLayout>
+        </ScreenContainer>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8f9fa',
+        backgroundColor: colors.surfaceCanvas,
     },
     screenTitle: {
         fontSize: 24,
@@ -635,7 +635,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     selectedWorkplaceButton: {
-        backgroundColor: '#007AFF',
+        backgroundColor: '#FF6B35',
     },
     workplaceButtonText: {
         fontSize: 14,
@@ -748,7 +748,7 @@ const styles = StyleSheet.create({
     totalValue: {
         fontSize: 14,
         fontWeight: 'bold',
-        color: '#007AFF',
+        color: '#FF6B35',
     },
     paymentDate: {
         fontSize: 12,
@@ -841,7 +841,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     selectedStatusButton: {
-        backgroundColor: '#007AFF',
+        backgroundColor: '#FF6B35',
     },
     statusFilterText: {
         fontSize: 14,

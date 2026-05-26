@@ -18,7 +18,32 @@ import {logger} from '../../../utils/logger';
 
 // [API Mapping] Attendance verification standardized; legacy location-verify endpoint removed per Phase 0 AC (2025-10-02).
 
-// 출퇴�?관�??�비??객체
+/**
+ * BE AttendanceRequestDto 4필드(@NotNull) 매핑 헬퍼.
+ * employeeId/storeId 는 Long, latitude/longitude 는 Double. 누락 시 400 발생하므로 fail-fast.
+ */
+const toAttendancePayload = (data: CheckInRequest | CheckOutRequest) => {
+    const storeIdNum = Number(data.workplaceId);
+    const employeeIdNum = Number(data.employeeId);
+    if (!Number.isFinite(storeIdNum)) {
+        throw new Error('INVALID_STORE_ID');
+    }
+    if (!Number.isFinite(employeeIdNum)) {
+        throw new Error('INVALID_EMPLOYEE_ID');
+    }
+    if (typeof data.latitude !== 'number' || typeof data.longitude !== 'number') {
+        throw new Error('INVALID_LOCATION');
+    }
+    return {
+        employeeId: employeeIdNum,
+        storeId: storeIdNum,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        note: data.note,
+    };
+};
+
+// 출퇴근 관련 서비스 객체
 const attendanceService = {
     /**
      * 출퇴�?기록 목록 조회
@@ -51,21 +76,11 @@ const attendanceService = {
     },
 
     /**
-     * 출근 처리
-     * @param checkInData 출근 ?�이??
-     * @returns ?�성??출퇴�?기록
+     * 출근 처리 — BE AttendanceRequestDto 4필드 모두 @NotNull (employeeId/storeId/latitude/longitude)
      */
     checkIn: async (checkInData: CheckInRequest): Promise<AttendanceRecord> => {
         try {
-            const storeIdNum = Number(checkInData.workplaceId);
-            if (!Number.isFinite(storeIdNum)) {
-                throw new Error('INVALID_STORE_ID');
-            }
-            const payload: any = {
-                ...checkInData,
-                storeId: storeIdNum,
-            };
-            delete (payload as any).workplaceId;
+            const payload = toAttendancePayload(checkInData);
             const response = await api.post<AttendanceRecord>('/api/attendance/check-in', payload);
             return response.data;
         } catch (error) {
@@ -75,21 +90,11 @@ const attendanceService = {
     },
 
     /**
-     * 퇴근 처리(표준) - 경로 파라미터 제거, 본문 방식
-     * @param checkOutData 퇴근 데이터
-     * @returns 업데이트된 출퇴근기록
+     * 퇴근 처리(표준) — 경로 파라미터 제거, 본문 방식
      */
     checkOutStandard: async (checkOutData: CheckOutRequest): Promise<AttendanceRecord> => {
         try {
-            const storeIdNum = Number(checkOutData.workplaceId);
-            if (!Number.isFinite(storeIdNum)) {
-                throw new Error('INVALID_STORE_ID');
-            }
-            const payload: any = {
-                ...checkOutData,
-                storeId: storeIdNum,
-            };
-            delete (payload as any).workplaceId;
+            const payload = toAttendancePayload(checkOutData);
             const response = await api.post<AttendanceRecord>('/api/attendance/check-out', payload);
             return response.data;
         } catch (error) {
@@ -103,15 +108,7 @@ const attendanceService = {
      */
     checkOut: async (_attendanceId: string, checkOutData: CheckOutRequest): Promise<AttendanceRecord> => {
         try {
-            const storeIdNum = Number(checkOutData.workplaceId);
-            if (!Number.isFinite(storeIdNum)) {
-                throw new Error('INVALID_STORE_ID');
-            }
-            const payload: any = {
-                ...checkOutData,
-                storeId: storeIdNum,
-            };
-            delete (payload as any).workplaceId;
+            const payload = toAttendancePayload(checkOutData);
             const response = await api.post<AttendanceRecord>('/api/attendance/check-out', payload);
             return response.data;
         } catch (error) {
@@ -319,9 +316,9 @@ const attendanceService = {
         }
 
         if (isCheckOut) {
-            return await verifyCheckOutByNFC({employeeId: employeeIdNum, storeId: storeIdNum, nfcTagId});
+            return await verifyCheckOutByNFC({employeeId: employeeIdNum, storeId: storeIdNum, tagId: nfcTagId});
         }
-        return await verifyCheckInByNFC({employeeId: employeeIdNum, storeId: storeIdNum, nfcTagId});
+        return await verifyCheckInByNFC({employeeId: employeeIdNum, storeId: storeIdNum, tagId: nfcTagId});
     },
 };
 

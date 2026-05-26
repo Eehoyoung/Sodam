@@ -1,78 +1,66 @@
 import React from 'react';
-import {ActivityIndicator, FlatList, StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
-import {MainLayout} from '../../../common/components';
-import {WorkplaceCard} from '../components';
+import {
+    AppHeader,
+    AppListItem,
+    EmptyState,
+    ErrorState,
+    LoadingState,
+    ScreenContainer,
+} from '../../../common/components/ds';
 import {useWorkplaces} from '../hooks/useWorkplaces';
 import {Workplace} from '../types';
 import {WorkplaceListScreenNavigationProp} from '../../../navigation/types';
+import {spacing} from '../../../theme/tokens';
 
+/**
+ * 15 WorkplaceList — 확정 시안.
+ * 근무지 목록. useWorkplaces 훅 보존.
+ */
 export const WorkplaceListScreen: React.FC = () => {
     const navigation = useNavigation<WorkplaceListScreenNavigationProp>();
     const {workplaces, isLoading, error} = useWorkplaces();
 
-    const handleWorkplacePress = (workplace: Workplace) => {
-        navigation.navigate('WorkplaceDetail', {workplaceId: workplace.id});
-    };
+    const open = (workplace: Workplace) => navigation.navigate('WorkplaceDetail', {workplaceId: workplace.id});
+
+    const header = <AppHeader title="근무지" />;
 
     if (isLoading) {
         return (
-            <MainLayout>
-                <View style={styles.centerContainer}>
-                    <ActivityIndicator size="large" color="#0000ff"/>
-                </View>
-            </MainLayout>
+            <ScreenContainer header={header}>
+                <LoadingState title="불러오는 중" description="근무지를 불러오고 있어요" />
+            </ScreenContainer>
         );
     }
-
     if (error) {
         return (
-            <MainLayout>
-                <View style={styles.centerContainer}>
-                    <Text style={styles.errorText}>오류가 발생했습니다: {error.message}</Text>
-                </View>
-            </MainLayout>
+            <ScreenContainer header={header}>
+                <ErrorState title="불러오지 못했어요" description={error.message} />
+            </ScreenContainer>
         );
     }
 
     return (
-        <MainLayout title="직장 목록">
-            <FlatList
-                data={workplaces}
-                keyExtractor={(item) => item.id}
-                renderItem={({item}) => (
-                    <WorkplaceCard workplace={item} onPress={handleWorkplacePress}/>
-                )}
-                contentContainerStyle={styles.listContainer}
-                ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyText}>등록된 직장이 없습니다.</Text>
-                    </View>
-                }
-            />
-        </MainLayout>
+        <ScreenContainer scroll header={header}>
+            {!workplaces || workplaces.length === 0 ? (
+                <EmptyState
+                    title="아직 근무지가 없어요"
+                    description="내가 일하는 곳을 등록하고 시간을 기록하세요."
+                />
+            ) : (
+                <View style={styles.list}>
+                    {workplaces.map(w => (
+                        <AppListItem key={w.id} title={w.name} subtitle={w.address} right="›" onPress={() => open(w)} />
+                    ))}
+                </View>
+            )}
+        </ScreenContainer>
     );
 };
 
 const styles = StyleSheet.create({
-    listContainer: {
-        padding: 16,
-    },
-    centerContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    errorText: {
-        color: 'red',
-        textAlign: 'center',
-    },
-    emptyContainer: {
-        padding: 20,
-        alignItems: 'center',
-    },
-    emptyText: {
-        fontSize: 16,
-        color: '#666',
-    },
+    list: {gap: spacing.sm},
 });
+
+export default WorkplaceListScreen;

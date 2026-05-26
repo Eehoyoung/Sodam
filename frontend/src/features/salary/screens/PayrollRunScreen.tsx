@@ -1,22 +1,31 @@
 import React, {useState} from 'react';
-import {
-    Alert,
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
-} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {Alert, Modal, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {tokens} from '../../../theme/tokens';
-import Button from '../../../common/components/form/Button';
-import Card from '../../../common/components/data-display/Card';
-import Badge from '../../../common/components/data-display/Badge';
-import Input from '../../../common/components/form/Input';
+import {
+    AppBadge,
+    AppButton,
+    AppCard,
+    AppHeader,
+    AppInput,
+    ScreenContainer,
+} from '../../../common/components/ds';
 import api from '../../../common/utils/api';
+
+// 정산 계산 로직 보존을 위한 경량 어댑터 (구식 Button/Card/Badge/Input → DS)
+const Button: React.FC<any> = ({title, size, fullWidth, ...rest}) => (
+    <AppButton label={title} size={size === 'sm' ? 'sm' : 'lg'} {...rest} />
+);
+const Card: React.FC<any> = ({bordered, children, style}) => (
+    <AppCard variant="flat" style={style}>{children}</AppCard>
+);
+const Badge: React.FC<any> = ({text, type}) => (
+    <AppBadge
+        label={text}
+        tone={type === 'success' ? 'success' : type === 'warning' ? 'warning' : type === 'error' ? 'error' : 'info'}
+    />
+);
+const Input: React.FC<any> = ({helperText, ...rest}) => <AppInput helper={helperText} {...rest} />;
 
 type Step = 'PERIOD' | 'PREVIEW' | 'CONFIRM' | 'DONE';
 
@@ -131,9 +140,11 @@ const PayrollRunScreen: React.FC = () => {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ScreenContainer
+            scroll
+            header={<AppHeader title="급여 정산" onBack={() => navigation.goBack()} />}>
             <Stepper step={step} />
-            <ScrollView contentContainerStyle={styles.scrollContent}>
+            <View>
                 {step === 'PERIOD' && (
                     <PeriodForm
                         storeId={storeId}
@@ -177,8 +188,8 @@ const PayrollRunScreen: React.FC = () => {
                         onClose={() => navigation.goBack()}
                     />
                 )}
-            </ScrollView>
-        </SafeAreaView>
+            </View>
+        </ScreenContainer>
     );
 };
 
@@ -226,7 +237,7 @@ const PeriodForm: React.FC<any> = ({
         <Input
             label="매장 ID (1매장 사용 시 기본값)"
             value={storeId ? String(storeId) : ''}
-            onChangeText={v => setStoreId(parseInt(v, 10) || null)}
+            onChangeText={(v: string) => setStoreId(parseInt(v, 10) || null)}
             keyboardType="number-pad"
             placeholder="예: 1"
         />

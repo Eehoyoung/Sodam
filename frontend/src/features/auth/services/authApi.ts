@@ -8,12 +8,13 @@ const API_BASE_URL = sodamEnv.apiBaseUrl;
 if (sodamEnv.debug) console.log('API_BASE_URL:', API_BASE_URL);
 export interface LoginResponse {
   message: string;
-  result?: {
+  data?: {
     accessToken: string;
     refreshToken: string;
     userId: number;
     userGrade: string;
   };
+  result?: LoginResponse['data'];
   code?: string;
 }
 
@@ -26,6 +27,13 @@ export interface JoinRequest {
 export interface JoinOptions {
   purpose?: 'personal' | 'employee' | 'boss';
   userGrade?: 'PERSONAL' | 'EMPLOYEE' | 'MASTER';
+  /** 약관 동의 (필수 3종 + 선택 1종). BE JoinDto 매핑. */
+  consent?: {
+    age: boolean;
+    terms: boolean;
+    privacy: boolean;
+    marketing?: boolean;
+  };
 }
 
 const toPurposeSlug = (purpose: 'personal' | 'employee' | 'boss'): 'user' | 'employee' | 'master' => {
@@ -45,6 +53,13 @@ export const authApi = {
     if (options?.userGrade) { headers['X-User-Grade'] = options.userGrade; }
     const body: any = { ...payload };
     if (purposeSlug) { body.purpose = purposeSlug; }
+    // BE JoinDto 필수 필드 매핑 (G-A1~G-A4 약관 동의)
+    if (options?.consent) {
+      body.ageConfirmed = !!options.consent.age;
+      body.termsAgreed = !!options.consent.terms;
+      body.privacyAgreed = !!options.consent.privacy;
+      body.marketingAgreed = !!options.consent.marketing;
+    }
     const res = await api.post(`/api/join`, body, { headers });
     return res.data as any;
   },
@@ -74,9 +89,8 @@ export const authApi = {
   },
 
   async setPurpose(userId: number, purpose: 'personal' | 'employee' | 'boss'): Promise<{ message: string; userGrade?: string }> {
-    const slug = toPurposeSlug(purpose);
-    const grade = slug === 'master' ? 'MASTER' : slug === 'employee' ? 'EMPLOYEE' : 'PERSONAL';
-    const res = await api.post(`/api/users/${userId}/purpose`, { purpose: slug, userGrade: grade });
+    const grade = purpose === 'boss' ? 'MASTER' : purpose === 'employee' ? 'EMPLOYEE' : 'PERSONAL';
+    const res = await api.post(`/api/users/${userId}/purpose`, { purpose, userGrade: grade });
     return res.data as any;
   },
 };

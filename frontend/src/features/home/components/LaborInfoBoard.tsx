@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
         color: '#333',
     },
     moreButton: {
-        backgroundColor: '#3498db',
+        backgroundColor: '#FF6B35',
         paddingVertical: 6,
         paddingHorizontal: 15,
         borderRadius: 20,

@@ -608,7 +608,7 @@ const MultiStoreWorkScreen: React.FC = () => {
 
             {/* 헤더 */}
             <LinearGradient
-                colors={[currentStore.color, '#2E86AB']}
+                colors={[currentStore.color, '#243B4A']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.header}
@@ -1072,7 +1072,7 @@ const MultiStoreWorkScreen: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#F7F4EF',
     },
     header: {
         padding: 20,
@@ -1168,7 +1168,7 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         padding: 16,
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#F7F4EF',
         borderRadius: 12,
     },
     statLabel: {
@@ -1202,10 +1202,10 @@ const styles = StyleSheet.create({
         backgroundColor: '#FF6B35',
     },
     secondaryBtn: {
-        backgroundColor: '#2E86AB',
+        backgroundColor: '#243B4A',
     },
     successBtn: {
-        backgroundColor: '#66BB6A',
+        backgroundColor: '#12A87B',
     },
     outlineBtn: {
         backgroundColor: 'white',
@@ -1254,7 +1254,7 @@ const styles = StyleSheet.create({
     storeWorkTime: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#2E86AB',
+        color: '#243B4A',
     },
     recordList: {
         paddingHorizontal: 12,
@@ -1265,7 +1265,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 8,
         paddingHorizontal: 12,
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#F7F4EF',
         marginBottom: 4,
         borderRadius: 6,
     },
@@ -1286,7 +1286,7 @@ const styles = StyleSheet.create({
     earningsText: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#2E86AB',
+        color: '#243B4A',
     },
     noRecordsText: {
         textAlign: 'center',
@@ -1302,7 +1302,7 @@ const styles = StyleSheet.create({
     summaryItem: {
         flex: 1,
         minWidth: '45%',
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#F7F4EF',
         padding: 16,
         borderRadius: 12,
         alignItems: 'center',
@@ -1315,7 +1315,7 @@ const styles = StyleSheet.create({
     summaryValue: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#2E86AB',
+        color: '#243B4A',
     },
     modalOverlay: {
         flex: 1,
@@ -1357,12 +1357,12 @@ const styles = StyleSheet.create({
         padding: 16,
         borderRadius: 12,
         marginBottom: 8,
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#F7F4EF',
     },
     storeOptionSelected: {
         backgroundColor: '#E0F2FE',
         borderWidth: 2,
-        borderColor: '#2E86AB',
+        borderColor: '#243B4A',
     },
     storeOptionInfo: {
         flex: 1,
@@ -1380,7 +1380,7 @@ const styles = StyleSheet.create({
     },
     selectedIcon: {
         fontSize: 18,
-        color: '#2E86AB',
+        color: '#243B4A',
         fontWeight: 'bold',
     },
     inputGroup: {
@@ -1444,7 +1444,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#F3F4F6',
     },
     monthOptionSelected: {
-        backgroundColor: '#2E86AB',
+        backgroundColor: '#243B4A',
     },
     monthOptionText: {
         fontSize: 14,
@@ -1458,7 +1458,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     monthlyStatsCard: {
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#F7F4EF',
         borderRadius: 12,
         padding: 16,
         marginBottom: 16,
@@ -1491,7 +1491,7 @@ const styles = StyleSheet.create({
     monthlyStatValue: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#2E86AB',
+        color: '#243B4A',
     },
     storeBreakdownCard: {
         backgroundColor: 'white',
@@ -1507,7 +1507,7 @@ const styles = StyleSheet.create({
     storeBreakdownItem: {
         marginBottom: 16,
         padding: 12,
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#F7F4EF',
         borderRadius: 8,
     },
     storeBreakdownHeader: {
@@ -1535,7 +1535,7 @@ const styles = StyleSheet.create({
     storeBreakdownStatValue: {
         fontSize: 14,
         fontWeight: 'bold',
-        color: '#2E86AB',
+        color: '#243B4A',
     },
     noDataText: {
         textAlign: 'center',

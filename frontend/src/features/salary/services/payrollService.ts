@@ -8,8 +8,9 @@ import api from '../../../common/utils/api';
 // - GET /api/payroll/employee/{employeeId}?from&to
 // - GET /api/payroll/store/{storeId}?from&to
 
-export interface PayrollCalculatePayload { employeeId: number; storeId: number; from: string; to: string }
-export interface PayrollSummary { payrollId?: number; employeeId: number; storeId: number; totalHours?: number; totalPay?: number; period?: { from: string; to: string } }
+// BE PayrollCalculationRequestDto 와 매핑되는 키 (startDate/endDate). employeeId 는 선택 — 미지정 시 매장 전체 일괄 계산
+export interface PayrollCalculatePayload { employeeId?: number; storeId: number; startDate: string; endDate: string; recalculate?: boolean }
+export interface PayrollSummary { payrollId?: number; employeeId: number; storeId: number; totalHours?: number; totalPay?: number; period?: { startDate: string; endDate: string } }
 export interface PayrollDetails extends PayrollSummary { items?: Array<{ date: string; hours: number; pay: number }> }
 
 async function calculate(payload: PayrollCalculatePayload): Promise<PayrollSummary> {
@@ -32,13 +33,13 @@ async function updateStatus(payrollId: number, status: 'PENDING' | 'PAID' | 'CAN
   return (res.data as any)?.data || res.data || { success: true };
 }
 
-async function listByEmployee(employeeId: number, from?: string, to?: string): Promise<PayrollSummary[]> {
-  const res = await api.get<PayrollSummary[]>(`/api/payroll/employee/${employeeId}`, { from, to });
+async function listByEmployee(employeeId: number, startDate?: string, endDate?: string): Promise<PayrollSummary[]> {
+  const res = await api.get<PayrollSummary[]>(`/api/payroll/employee/${employeeId}`, { startDate, endDate });
   return (res.data as any)?.data || res.data;
 }
 
-async function listByStore(storeId: number, from?: string, to?: string): Promise<PayrollSummary[]> {
-  const res = await api.get<PayrollSummary[]>(`/api/payroll/store/${storeId}`, { from, to });
+async function listByStore(storeId: number, startDate?: string, endDate?: string): Promise<PayrollSummary[]> {
+  const res = await api.get<PayrollSummary[]>(`/api/payroll/store/${storeId}`, { startDate, endDate });
   return (res.data as any)?.data || res.data;
 }
 

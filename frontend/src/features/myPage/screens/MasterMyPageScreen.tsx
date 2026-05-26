@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import  LinearGradient  from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppHeader, ScreenContainer } from '../../../common/components/ds';
 import { NavigationProp } from '@react-navigation/native';
 import  Ionicons from 'react-native-vector-icons/Ionicons';
 import { COLORS } from '../../../common/components/logo/Colors';
@@ -261,7 +262,9 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
     );
 
     return (
-        <SafeAreaView style={styles.container}>
+        <ScreenContainer
+            padded={false}
+            header={<AppHeader title="내 정보" actions={[{label: '알림', onPress: () => navigation.navigate('NotificationCenter')}]} />}>
             <ScrollView
                 style={styles.scrollView}
                 refreshControl={
@@ -269,16 +272,12 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
                 }
                 showsVerticalScrollIndicator={false}
             >
-                {/* 헤더 */}
+                {/* 인사 */}
                 <View style={styles.header}>
                     <View style={styles.headerContent}>
                         <Text style={styles.greeting}>안녕하세요, {masterInfo.name}님</Text>
                         <Text style={styles.subGreeting}>오늘도 화이팅하세요! 💪</Text>
                     </View>
-
-                    <TouchableOpacity style={styles.notificationButton}>
-                        <Ionicons name="notifications-outline" size={24} color={COLORS.GRAY_600} />
-                    </TouchableOpacity>
                 </View>
 
                 {/* 전체 현황 카드 */}
@@ -338,28 +337,28 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
                     <Text style={styles.sectionTitle}>매장 관리</Text>
                     <View style={styles.quickMenuGrid}>
                         <TouchableOpacity style={styles.quickMenuItem}>
-                            <View style={[styles.quickMenuIcon, { backgroundColor: '#E3F2FD' }]}>
+                            <View style={[styles.quickMenuIcon, { backgroundColor: '#FFF0E8' }]}>
                                 <Ionicons name="people-outline" size={24} color={COLORS.SODAM_BLUE} />
                             </View>
                             <Text style={styles.quickMenuText}>직원 관리</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.quickMenuItem}>
-                            <View style={[styles.quickMenuIcon, { backgroundColor: '#E8F5E8' }]}>
+                            <View style={[styles.quickMenuIcon, { backgroundColor: '#DFF6ED' }]}>
                                 <Ionicons name="time-outline" size={24} color={COLORS.SODAM_GREEN} />
                             </View>
                             <Text style={styles.quickMenuText}>근태 관리</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.quickMenuItem}>
-                            <View style={[styles.quickMenuIcon, { backgroundColor: '#FFF3E0' }]}>
+                            <View style={[styles.quickMenuIcon, { backgroundColor: '#FEF3C7' }]}>
                                 <Ionicons name="card-outline" size={24} color={COLORS.SODAM_ORANGE} />
                             </View>
                             <Text style={styles.quickMenuText}>급여 관리</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.quickMenuItem}>
-                            <View style={[styles.quickMenuIcon, { backgroundColor: '#F3E5F5' }]}>
+                            <View style={[styles.quickMenuIcon, { backgroundColor: '#EFE7DF' }]}>
                                 <Ionicons name="bar-chart-outline" size={24} color="#9C27B0" />
                             </View>
                             <Text style={styles.quickMenuText}>매출 분석</Text>
@@ -418,7 +417,7 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
                 {/* 하단 여백 */}
                 <View style={styles.bottomSpacing} />
             </ScrollView>
-        </SafeAreaView>
+        </ScreenContainer>
     );
 }
 

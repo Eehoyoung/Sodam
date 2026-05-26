@@ -1,31 +1,28 @@
 import React, {useState} from 'react';
-import {Alert, Linking, Pressable, StyleSheet, Text, View} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {Alert, StyleSheet, View} from 'react-native';
+import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import {useNavigation} from '@react-navigation/native';
-import {tokens} from '../../../theme/tokens';
-import Button from '../../../common/components/form/Button';
+import {AppButton, AppText, Brandmark} from '../../../common/components/ds';
+import {gradient, spacing} from '../../../theme/tokens';
 import authApi from '../services/authApi';
 
 /**
- * 카카오 로그인 단독 화면 (PRD_GUEST G-008).
- *
- * 흐름:
- *  - 카카오 OAuth WebView 또는 시스템 브라우저 호출
- *  - 콜백은 BE `/kakao/auth/proc` 처리
+ * 07 KakaoLogin — 확정 시안.
+ * 다크 배경 + 카카오 마크 + 동의 계속 CTA. (PRD_GUEST G-008)
  *
  * TODO[CONFIRM-C-7]: 실 카카오 키 발급 후 SDK(@react-native-seoul/kakao-login) 도입으로 교체.
  */
 const KakaoLoginScreen: React.FC = () => {
     const navigation = useNavigation<any>();
+    const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(false);
 
     const startKakao = async () => {
         setLoading(true);
         try {
             await authApi.openKakaoLogin();
-            // openKakaoLogin 이 외부 브라우저를 열거나 WebView 를 띄움
-            // 콜백 후 AuthContext가 자동으로 user 를 설정하면 navigation reset 됨
+            // 콜백 후 AuthContext 가 user 설정 → navigation reset
         } catch (e: any) {
             Alert.alert('카카오 로그인 실패', '잠시 후 다시 시도해 주세요.');
         } finally {
@@ -34,70 +31,42 @@ const KakaoLoginScreen: React.FC = () => {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-            <LinearGradient
-                colors={tokens.gradient.brand}
-                start={{x: 0, y: 0}}
-                end={{x: 1, y: 1}}
-                style={styles.gradient}
-            >
+        <LinearGradient colors={gradient.darkScreen} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={styles.flex}>
+            <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
                 <View style={styles.center}>
-                    <Text style={styles.brand}>소담</Text>
-                    <Text style={styles.slogan}>1초만에 시작해요</Text>
+                    <Brandmark size={58} label="K" backgroundColor="#FEE500" textColor="#191600" />
+                    <AppText variant="headingLg" tone="inverse" center style={styles.title}>
+                        {'카카오로\n간편하게 계속'}
+                    </AppText>
+                    <AppText variant="bodyMd" tone="inverse" center style={styles.copy}>
+                        처음 한 번만 동의하면 다음부터 바로 들어올 수 있어요.
+                    </AppText>
                 </View>
 
-                <View style={styles.footer}>
-                    <Pressable
+                <View style={[styles.footer, {paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.sm}]}>
+                    <AppButton
+                        label="카카오 동의 계속하기"
+                        variant="secondary"
+                        loading={loading}
                         onPress={startKakao}
-                        style={({pressed}) => [styles.kakaoBtn, pressed && {opacity: 0.85}]}
-                    >
-                        <Text style={styles.kakaoEmoji}>💬</Text>
-                        <Text style={styles.kakaoText}>카카오로 시작하기</Text>
-                    </Pressable>
-
-                    <Button
-                        title="이메일로 로그인"
-                        onPress={() => navigation.navigate('Login')}
+                    />
+                    <AppButton
+                        label="이메일로 로그인"
                         variant="ghost"
-                        size="md"
-                        fullWidth
-                        textStyle={{color: tokens.colors.textInverse}}
+                        onPress={() => navigation.navigate('Login')}
                     />
                 </View>
-            </LinearGradient>
-        </SafeAreaView>
+            </SafeAreaView>
+        </LinearGradient>
     );
 };
 
 const styles = StyleSheet.create({
-    safeArea: {flex: 1},
-    gradient: {flex: 1, padding: tokens.spacing.lg, justifyContent: 'space-between'},
-    center: {flex: 1, alignItems: 'center', justifyContent: 'center'},
-    brand: {
-        fontSize: 56,
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textInverse,
-        letterSpacing: 4,
-    },
-    slogan: {
-        marginTop: tokens.spacing.md,
-        fontSize: tokens.typography.sizes.lg,
-        color: tokens.colors.textInverse,
-        opacity: 0.85,
-    },
-    footer: {paddingBottom: tokens.spacing.lg},
-    kakaoBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#FEE500',
-        paddingVertical: tokens.spacing.lg,
-        borderRadius: tokens.radius.lg,
-        gap: tokens.spacing.md,
-        marginBottom: tokens.spacing.md,
-    },
-    kakaoEmoji: {fontSize: 24},
-    kakaoText: {color: '#3C1E1E', fontSize: tokens.typography.sizes.md, fontWeight: '700'},
+    flex: {flex: 1},
+    center: {flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl},
+    title: {marginTop: spacing.lg},
+    copy: {marginTop: spacing.sm, opacity: 0.8, maxWidth: 300},
+    footer: {paddingHorizontal: spacing.lg, gap: spacing.sm},
 });
 
 export default KakaoLoginScreen;

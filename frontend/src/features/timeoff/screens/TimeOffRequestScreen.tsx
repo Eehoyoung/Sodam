@@ -1,15 +1,22 @@
 import React, {useState} from 'react';
-import {Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {Alert, StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
-import {tokens} from '../../../theme/tokens';
-import Card from '../../../common/components/data-display/Card';
-import Input from '../../../common/components/form/Input';
-import Button from '../../../common/components/form/Button';
+import {
+    AppButton,
+    AppCard,
+    AppHeader,
+    AppInput,
+    AppText,
+    CtaStack,
+    ScreenContainer,
+    SuccessState,
+} from '../../../common/components/ds';
+import {spacing} from '../../../theme/tokens';
 import api from '../../../common/utils/api';
 
 /**
- * 직원 휴가 셀프 신청 (PRD_EMPLOYEE).
+ * 26 TimeOffRequest — 확정 시안.
+ * 직원 휴가 셀프 신청. 검증/제출 로직 보존 (BE: storeId/startDate/endDate/reason).
  */
 const TimeOffRequestScreen: React.FC = () => {
     const route = useRoute<any>();
@@ -20,6 +27,7 @@ const TimeOffRequestScreen: React.FC = () => {
     const [endDate, setEndDate] = useState('');
     const [reason, setReason] = useState('');
     const [loading, setLoading] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
 
     const submit = async () => {
         if (!storeId) {
@@ -41,9 +49,7 @@ const TimeOffRequestScreen: React.FC = () => {
         setLoading(true);
         try {
             await api.post('/api/timeoff/self', {storeId, startDate, endDate, reason: reason.trim()});
-            Alert.alert('신청 완료', '사장님 승인 후 결과 알림을 드릴게요.', [
-                {text: '확인', onPress: () => navigation.goBack()},
-            ]);
+            setSubmitted(true);
         } catch (e: any) {
             Alert.alert('실패', e?.response?.data?.message ?? '신청에 실패했어요.');
         } finally {
@@ -51,55 +57,48 @@ const TimeOffRequestScreen: React.FC = () => {
         }
     };
 
+    if (submitted) {
+        return (
+            <ScreenContainer header={<AppHeader title="휴가 신청" onBack={() => navigation.goBack()} />}>
+                <SuccessState
+                    title="휴가 신청을 보냈어요"
+                    description="승인 결과는 알림으로 알려드릴게요."
+                    primary={{label: '내 정보로 돌아가기', onPress: () => navigation.goBack()}}
+                />
+            </ScreenContainer>
+        );
+    }
+
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={styles.flex}
-            >
-                <ScrollView contentContainerStyle={styles.scrollContent}>
-                    <Text style={styles.title}>휴가 신청</Text>
-                    <Text style={styles.subtitle}>
-                        시작·종료일과 사유를 입력해 주세요.{'\n'}사장님 승인 후 자동 반영돼요.
-                    </Text>
+        <ScreenContainer
+            scroll
+            header={<AppHeader title="휴가 신청" onBack={() => navigation.goBack()} actions={[{label: '내역', onPress: () => {}}]} />}
+            footer={
+                <CtaStack bordered>
+                    <AppButton label="휴가 신청하기" loading={loading} onPress={submit} />
+                </CtaStack>
+            }>
+            <AppCard variant="warm">
+                <AppText variant="titleMd">휴가를 신청해요</AppText>
+                <AppText variant="caption" tone="secondary" style={styles.sub}>
+                    시작·종료일과 사유를 입력하면 사장님 승인 후 자동 반영돼요.
+                </AppText>
+            </AppCard>
 
-                    <Card bordered>
-                        <Input
-                            label="시작일 (YYYY-MM-DD)"
-                            value={startDate}
-                            onChangeText={setStartDate}
-                            placeholder="2026-06-01"
-                        />
-                        <Input
-                            label="종료일 (YYYY-MM-DD)"
-                            value={endDate}
-                            onChangeText={setEndDate}
-                            placeholder="2026-06-03"
-                        />
-                        <Input
-                            label="사유"
-                            value={reason}
-                            onChangeText={setReason}
-                            multiline
-                            numberOfLines={3}
-                            placeholder="예: 가족 행사 / 병원 진료 등"
-                            helperText={`${reason.length} / 200자`}
-                            maxLength={200}
-                        />
-                    </Card>
-
-                    <Button
-                        title="휴가 신청하기"
-                        onPress={submit}
-                        variant="primary"
-                        size="lg"
-                        fullWidth
-                        loading={loading}
-                        style={{marginTop: tokens.spacing.xl}}
-                    />
-                </ScrollView>
-            </KeyboardAvoidingView>
-        </SafeAreaView>
+            <View style={styles.form}>
+                <AppInput label="시작일" placeholder="2026-06-01" value={startDate} onChangeText={setStartDate} />
+                <AppInput label="종료일" placeholder="2026-06-03" value={endDate} onChangeText={setEndDate} />
+                <AppInput
+                    label="사유"
+                    placeholder="예: 가족 행사 / 병원 진료 등"
+                    value={reason}
+                    onChangeText={setReason}
+                    multiline
+                    maxLength={200}
+                    helper={`${reason.length} / 200자`}
+                />
+            </View>
+        </ScreenContainer>
     );
 };
 
@@ -108,18 +107,8 @@ function isValidDate(s: string): boolean {
 }
 
 const styles = StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: tokens.colors.background},
-    flex: {flex: 1},
-    scrollContent: {padding: tokens.spacing.lg, paddingBottom: tokens.spacing.huge},
-    title: {
-        fontSize: tokens.typography.sizes.xxl,
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
-        marginTop: tokens.spacing.md,
-        marginBottom: tokens.spacing.sm,
-        letterSpacing: -0.3,
-    },
-    subtitle: {color: tokens.colors.textSecondary, fontSize: tokens.typography.sizes.md, lineHeight: 22, marginBottom: tokens.spacing.xl},
+    sub: {marginTop: 4},
+    form: {marginTop: spacing.md, gap: spacing.md},
 });
 
 export default TimeOffRequestScreen;

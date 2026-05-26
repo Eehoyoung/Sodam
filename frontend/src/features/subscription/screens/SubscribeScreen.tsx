@@ -1,11 +1,16 @@
 import React, {useEffect, useState} from 'react';
-import {Alert, ScrollView, StyleSheet, Text, View} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {Alert, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
-import {tokens} from '../../../theme/tokens';
-import {Button} from '../../../common/components';
-import Card from '../../../common/components/data-display/Card';
-import Badge from '../../../common/components/data-display/Badge';
+import {tokens, spacing, colors} from '../../../theme/tokens';
+import {
+    AppBadge,
+    AppButton,
+    AppCard,
+    AppHeader,
+    AppText,
+    CtaStack,
+    ScreenContainer,
+} from '../../../common/components/ds';
 import subscriptionApi, {
     PlanCatalogItem,
     PlanType,
@@ -14,10 +19,7 @@ import subscriptionApi, {
 
 type Highlight = {text: string; included: boolean};
 
-const PLAN_VISUALS: Record<
-    PlanType,
-    {emoji: string; accent: string; recommended?: boolean; highlights: Highlight[]}
-> = {
+const PLAN_VISUALS: Record<PlanType, {emoji: string; accent: string; recommended?: boolean; highlights: Highlight[]}> = {
     FREE: {
         emoji: '🌱',
         accent: tokens.colors.textSecondary,
@@ -63,6 +65,10 @@ const PLAN_VISUALS: Record<
     },
 };
 
+/**
+ * 31 Subscribe — 확정 시안.
+ * 플랜 선택. ⚠️ 결제 로직(subscribeFree/TossBillingAuth/COMMISSION)은 변경 없이 표현만 교체.
+ */
 const SubscribeScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const [plans, setPlans] = useState<PlanCatalogItem[]>([]);
@@ -79,12 +85,18 @@ const SubscribeScreen: React.FC = () => {
                     subscriptionApi.getPlans().catch(() => buildFallbackPlans()),
                     subscriptionApi.getMyCurrent().catch(() => null),
                 ]);
-                if (!mounted) return;
+                if (!mounted) {
+                    return;
+                }
                 setPlans(planList.length > 0 ? planList : buildFallbackPlans());
                 setCurrent(mine);
-                if (mine?.plan) setSelectedPlan(mine.plan);
+                if (mine?.plan) {
+                    setSelectedPlan(mine.plan);
+                }
             } finally {
-                if (mounted) setLoading(false);
+                if (mounted) {
+                    setLoading(false);
+                }
             }
         })();
         return () => {
@@ -101,27 +113,17 @@ const SubscribeScreen: React.FC = () => {
         try {
             if (selectedPlan === 'FREE') {
                 await subscriptionApi.subscribeFree();
-                Alert.alert('완료', '무료 플랜으로 시작합니다.', [
-                    {text: '확인', onPress: () => navigation.navigate('Home')},
-                ]);
+                Alert.alert('완료', '무료 플랜으로 시작합니다.', [{text: '확인', onPress: () => navigation.navigate('Home')}]);
             } else if (selectedPlan === 'COMMISSION') {
-                Alert.alert(
-                    '환급형 안내',
-                    '환급형은 종합소득세 환급 금액의 10~20% 수수료로 운영됩니다.\n환급 신청서 작성을 시작할까요?',
-                    [
-                        {text: '나중에', style: 'cancel'},
-                        {text: '신청 시작', onPress: () => navigation.navigate('TaxRefundIntake')},
-                    ],
-                );
+                Alert.alert('환급형 안내', '환급형은 종합소득세 환급 금액의 10~20% 수수료로 운영됩니다.\n환급 신청서 작성을 시작할까요?', [
+                    {text: '나중에', style: 'cancel'},
+                    {text: '신청 시작', onPress: () => navigation.navigate('TaxRefundIntake')},
+                ]);
             } else {
                 navigation.navigate('TossBillingAuth', {plan: selectedPlan});
             }
         } catch (e: any) {
-            Alert.alert(
-                '오류',
-                e?.response?.data?.message ??
-                    '구독 처리에 실패했어요. 잠시 후 다시 시도해 주세요.',
-            );
+            Alert.alert('오류', e?.response?.data?.message ?? '구독 처리에 실패했어요. 잠시 후 다시 시도해 주세요.');
         } finally {
             setProcessing(false);
         }
@@ -133,87 +135,61 @@ const SubscribeScreen: React.FC = () => {
         const isCurrent = current?.plan === plan.name && current.status === 'ACTIVE';
 
         return (
-            <Card
-                key={plan.name}
-                onPress={() => setSelectedPlan(plan.name)}
-                bordered
-                style={[
-                    styles.planCard,
-                    isSelected && {borderColor: v.accent, borderWidth: 2},
-                ] as any}
-                elevation={isSelected ? 4 : 1}
-            >
+            <AppCard key={plan.name} variant="flat" onPress={() => setSelectedPlan(plan.name)} selected={isSelected} style={styles.planCard}>
                 <View style={styles.planHeader}>
                     <View style={styles.planTitleRow}>
-                        <Text style={styles.planEmoji}>{v.emoji}</Text>
+                        <AppText style={styles.planEmoji}>{v.emoji}</AppText>
                         <View>
-                            <Text style={[styles.planName, {color: v.accent}]}>
-                                {plan.displayName}
-                            </Text>
-                            <Text style={styles.planPrice}>{formatPrice(plan)}</Text>
+                            <AppText variant="headingSm" style={{color: v.accent}}>{plan.displayName}</AppText>
+                            <AppText variant="caption" tone="secondary" style={styles.planPrice}>{formatPrice(plan)}</AppText>
                         </View>
                     </View>
                     <View style={styles.planBadges}>
-                        {v.recommended ? <Badge text="추천" type="primary" /> : null}
-                        {isCurrent ? <Badge text="이용 중" type="success" /> : null}
+                        {v.recommended ? <AppBadge label="추천" tone="warning" /> : null}
+                        {isCurrent ? <AppBadge label="이용 중" tone="success" /> : null}
                     </View>
                 </View>
 
-                <Text style={styles.planDescription}>{plan.description}</Text>
+                <AppText variant="caption" tone="secondary" style={styles.planDescription}>{plan.description}</AppText>
 
                 <View style={styles.divider} />
 
                 {v.highlights.map((h, idx) => (
                     <View key={idx} style={styles.highlightRow}>
-                        <Text style={[styles.checkIcon, !h.included && styles.checkIconDim]}>
-                            {h.included ? '✓' : '–'}
-                        </Text>
-                        <Text
-                            style={[
-                                styles.highlightText,
-                                !h.included && styles.highlightTextDim,
-                            ]}
-                        >
-                            {h.text}
-                        </Text>
+                        <AppText style={[styles.checkIcon, !h.included && styles.checkIconDim]}>{h.included ? '✓' : '–'}</AppText>
+                        <AppText variant="caption" tone={h.included ? 'primary' : 'tertiary'} style={styles.flex}>{h.text}</AppText>
                     </View>
                 ))}
-            </Card>
+            </AppCard>
         );
     };
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-            >
-                <Text style={styles.title}>소담과 함께 시작해요</Text>
-                <Text style={styles.subtitle}>
-                    매장 규모에 맞는 플랜을 선택해 주세요.{'\n'}언제든 해지·변경할 수 있어요.
-                </Text>
+        <ScreenContainer
+            scroll
+            header={<AppHeader title="구독" onBack={() => navigation.goBack()} />}
+            footer={
+                <CtaStack bordered>
+                    <AppButton
+                        label={selectedPlan === 'FREE' ? '무료로 시작하기' : '결제 진행하기'}
+                        loading={processing}
+                        disabled={!selectedPlan}
+                        onPress={handleSubscribe}
+                    />
+                    <AppText variant="caption" tone="tertiary" center>구독 시 이용약관·개인정보 처리방침에 동의하게 됩니다.</AppText>
+                </CtaStack>
+            }>
+            <AppText variant="headingMd" style={styles.title}>소담과 함께 시작해요</AppText>
+            <AppText variant="bodyMd" tone="secondary" style={styles.subtitle}>
+                매장 규모에 맞는 플랜을 선택해 주세요. 언제든 해지·변경할 수 있어요.
+            </AppText>
 
-                {loading ? (
-                    <Text style={styles.loadingText}>플랜 정보를 불러오는 중…</Text>
-                ) : (
-                    plans.map(renderPlan)
-                )}
-
-                <Button
-                    title={selectedPlan === 'FREE' ? '무료로 시작하기' : '결제 진행하기'}
-                    onPress={handleSubscribe}
-                    variant="primary"
-                    size="lg"
-                    loading={processing}
-                    disabled={!selectedPlan}
-                    fullWidth
-                    style={styles.subscribeButton}
-                />
-                <Text style={styles.legalText}>
-                    구독 시 이용약관·개인정보 처리방침에 동의하게 됩니다.
-                </Text>
-            </ScrollView>
-        </SafeAreaView>
+            {loading ? (
+                <AppText variant="bodyMd" tone="tertiary" center style={styles.loadingText}>플랜 정보를 불러오는 중…</AppText>
+            ) : (
+                <View style={styles.list}>{plans.map(renderPlan)}</View>
+            )}
+        </ScreenContainer>
     );
 };
 
@@ -227,96 +203,32 @@ function buildFallbackPlans(): PlanCatalogItem[] {
 }
 
 function formatPrice(p: PlanCatalogItem): string {
-    if (p.name === 'COMMISSION') return '환급금의 10~20%';
-    if (p.monthlyPriceKrw <= 0) return '무료';
+    if (p.name === 'COMMISSION') {
+        return '환급금의 10~20%';
+    }
+    if (p.monthlyPriceKrw <= 0) {
+        return '무료';
+    }
     return `월 ${p.monthlyPriceKrw.toLocaleString('ko-KR')}원`;
 }
 
 const styles = StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: tokens.colors.background},
-    scrollContent: {
-        padding: tokens.spacing.lg,
-        paddingBottom: tokens.spacing.huge,
-    },
-    title: {
-        fontSize: tokens.typography.sizes.xxl,
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
-        marginTop: tokens.spacing.lg,
-        marginBottom: tokens.spacing.xs,
-        letterSpacing: -0.5,
-    },
-    subtitle: {
-        fontSize: tokens.typography.sizes.md,
-        color: tokens.colors.textSecondary,
-        marginBottom: tokens.spacing.xl,
-        lineHeight: 22,
-    },
-    loadingText: {
-        textAlign: 'center',
-        color: tokens.colors.textTertiary,
-        marginVertical: tokens.spacing.xl,
-    },
-    planCard: {marginBottom: tokens.spacing.md},
-    planHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-    },
-    planTitleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: tokens.spacing.md,
-    },
+    title: {marginTop: spacing.sm},
+    subtitle: {marginTop: spacing.xs, marginBottom: spacing.lg},
+    loadingText: {marginVertical: spacing.xl},
+    list: {gap: spacing.md},
+    planCard: {},
+    planHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start'},
+    planTitleRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.md},
     planEmoji: {fontSize: 28},
-    planName: {
-        fontSize: tokens.typography.sizes.lg,
-        fontWeight: tokens.typography.weights.bold,
-        letterSpacing: -0.3,
-    },
-    planPrice: {
-        fontSize: tokens.typography.sizes.sm,
-        color: tokens.colors.textSecondary,
-        marginTop: 2,
-    },
-    planBadges: {flexDirection: 'row', gap: tokens.spacing.xs},
-    planDescription: {
-        marginTop: tokens.spacing.md,
-        fontSize: tokens.typography.sizes.sm,
-        color: tokens.colors.textSecondary,
-        lineHeight: 20,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: tokens.colors.divider,
-        marginVertical: tokens.spacing.md,
-    },
-    highlightRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        marginBottom: tokens.spacing.xs,
-    },
-    checkIcon: {
-        width: 22,
-        fontSize: 16,
-        color: tokens.colors.success,
-        fontWeight: tokens.typography.weights.bold,
-    },
-    checkIconDim: {color: tokens.colors.textTertiary},
-    highlightText: {
-        flex: 1,
-        fontSize: tokens.typography.sizes.sm,
-        color: tokens.colors.textPrimary,
-        lineHeight: 20,
-    },
-    highlightTextDim: {color: tokens.colors.textTertiary},
-    subscribeButton: {marginTop: tokens.spacing.xl},
-    legalText: {
-        marginTop: tokens.spacing.md,
-        textAlign: 'center',
-        fontSize: tokens.typography.sizes.xs,
-        color: tokens.colors.textTertiary,
-    },
+    planPrice: {marginTop: 2},
+    planBadges: {flexDirection: 'row', gap: spacing.xs},
+    planDescription: {marginTop: spacing.md},
+    divider: {height: 1, backgroundColor: colors.divider, marginVertical: spacing.md},
+    highlightRow: {flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing.xs},
+    checkIcon: {width: 22, fontSize: 16, color: colors.success, fontWeight: '700'},
+    checkIconDim: {color: colors.textTertiary},
+    flex: {flex: 1},
 });
 
 export default SubscribeScreen;

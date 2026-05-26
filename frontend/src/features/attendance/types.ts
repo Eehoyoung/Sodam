@@ -37,22 +37,26 @@ export enum AttendanceStatus {
 
 /**
  * 출근 요청 인터페이스
+ * BE AttendanceRequestDto 와 매핑: employeeId/storeId/latitude/longitude 모두 @NotNull.
+ * 위치는 매장 반경 검증에 사용되므로 호출 전 GPS 권한 + 좌표 확보 필수.
  */
 export interface CheckInRequest {
+    employeeId: number;
     workplaceId: string;
+    latitude: number;
+    longitude: number;
     note?: string;
-    latitude?: number;
-    longitude?: number;
 }
 
 /**
- * 퇴근 요청 인터페이스
+ * 퇴근 요청 인터페이스 (CheckInRequest 와 동일 필수 4필드)
  */
 export interface CheckOutRequest {
+    employeeId: number;
     workplaceId: string;
+    latitude: number;
+    longitude: number;
     note?: string;
-    latitude?: number;
-    longitude?: number;
 }
 
 /**

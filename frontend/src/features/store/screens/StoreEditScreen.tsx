@@ -1,24 +1,21 @@
 import React, {useEffect, useState} from 'react';
-import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {Alert, StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
-import {tokens} from '../../../theme/tokens';
-import Input from '../../../common/components/form/Input';
-import Button from '../../../common/components/form/Button';
-import Card from '../../../common/components/data-display/Card';
+import {
+    AppButton,
+    AppCard,
+    AppHeader,
+    AppInput,
+    AppText,
+    CtaStack,
+    ScreenContainer,
+} from '../../../common/components/ds';
+import {spacing} from '../../../theme/tokens';
 import api from '../../../common/utils/api';
 
 /**
- * 사장 매장 정보 편집 (PRD_OWNER S-501a).
- *
- * 매장명·전화·업종·기본시급·반경. 위치 변경은 별도 (위치 수정).
+ * 14 StoreEdit — 확정 시안.
+ * 매장명·전화·업종·기본시급·반경 편집. 조회/저장 로직 보존.
  */
 const StoreEditScreen: React.FC = () => {
     const route = useRoute<any>();
@@ -34,7 +31,9 @@ const StoreEditScreen: React.FC = () => {
 
     useEffect(() => {
         (async () => {
-            if (!storeId) return;
+            if (!storeId) {
+                return;
+            }
             try {
                 const res = await api.get<any>(`/api/stores/${storeId}`);
                 const s = res.data as any;
@@ -63,9 +62,7 @@ const StoreEditScreen: React.FC = () => {
                 storeStandardHourWage: wage,
                 radius: r,
             });
-            Alert.alert('완료', '매장 정보가 변경됐어요.', [
-                {text: '확인', onPress: () => navigation.goBack()},
-            ]);
+            Alert.alert('완료', '매장 정보가 변경됐어요.', [{text: '확인', onPress: () => navigation.goBack()}]);
         } catch (e: any) {
             Alert.alert('실패', e?.response?.data?.message ?? '변경에 실패했어요.');
         } finally {
@@ -74,47 +71,42 @@ const StoreEditScreen: React.FC = () => {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={styles.flex}
-            >
-                <ScrollView contentContainerStyle={styles.scrollContent}>
-                    <Text style={styles.title}>매장 정보 편집</Text>
-                    <Card bordered>
-                        <Input label="매장명" value={storeName} onChangeText={setStoreName} />
-                        <Input label="전화번호" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-                        <Input label="업종" value={businessType} onChangeText={setBusinessType} placeholder="예: 음식점" />
-                        <Input label="기본 시급 (원/시간)" value={standardWage} onChangeText={setStandardWage} keyboardType="number-pad" />
-                        <Input label="출퇴근 인증 반경 (m)" value={radius} onChangeText={setRadius} keyboardType="number-pad" helperText="50~1000m 권장" />
-                    </Card>
-                    <Button
-                        title="저장하기"
-                        onPress={submit}
-                        variant="primary"
-                        size="lg"
-                        fullWidth
-                        loading={loading}
-                        style={{marginTop: tokens.spacing.xl}}
-                    />
-                </ScrollView>
-            </KeyboardAvoidingView>
-        </SafeAreaView>
+        <ScreenContainer
+            scroll
+            header={<AppHeader title="매장 정보 수정" onBack={() => navigation.goBack()} />}
+            footer={
+                <CtaStack bordered>
+                    <AppButton label="변경사항 저장" loading={loading} onPress={submit} />
+                </CtaStack>
+            }>
+            <View style={styles.form}>
+                <AppInput label="매장명" value={storeName} onChangeText={setStoreName} />
+                <AppInput label="전화번호" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+                <AppInput label="업종" value={businessType} onChangeText={setBusinessType} placeholder="예: 음식점" />
+                <AppInput label="기본 시급 (원/시간)" value={standardWage} onChangeText={setStandardWage} keyboardType="number-pad" />
+                <AppInput
+                    label="출퇴근 인증 반경 (m)"
+                    value={radius}
+                    onChangeText={setRadius}
+                    keyboardType="number-pad"
+                    helper="50~1000m 권장"
+                />
+            </View>
+
+            <AppCard variant="warm" style={styles.note}>
+                <AppText variant="titleMd">위치를 바꾸면</AppText>
+                <AppText variant="caption" tone="secondary" style={styles.noteSub}>
+                    직원의 출퇴근 가능 반경도 함께 변경됩니다.
+                </AppText>
+            </AppCard>
+        </ScreenContainer>
     );
 };
 
 const styles = StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: tokens.colors.background},
-    flex: {flex: 1},
-    scrollContent: {padding: tokens.spacing.lg, paddingBottom: tokens.spacing.huge},
-    title: {
-        fontSize: tokens.typography.sizes.xxl,
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
-        marginTop: tokens.spacing.md,
-        marginBottom: tokens.spacing.lg,
-        letterSpacing: -0.3,
-    },
+    form: {gap: spacing.md},
+    note: {marginTop: spacing.lg},
+    noteSub: {marginTop: 4},
 });
 
 export default StoreEditScreen;

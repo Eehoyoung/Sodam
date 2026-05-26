@@ -10,48 +10,57 @@
  */
 
 export const colors = {
-    // === Brand ===
-    brandPrimary: '#FF6B35',       // 소담 시그니처 오렌지
-    brandPrimaryDark: '#E5552A',
-    brandPrimaryLight: '#FF8A5C',
-    brandSecondary: '#2A4759',     // 안정감 있는 다크 네이비 (텍스트/헤더 보조)
+    // === Brand === (launch-redesign/design-tokens.json 2026.05.25 확정)
+    brandPrimary: '#FF6B35',       // 소담 시그니처 오렌지 — 화면당 1차 행동에만
+    brandPrimaryDark: '#E85A2A',   // pressed
+    brandPrimaryLight: '#FF9B63',
+    brandPrimarySoft: '#FFF0E8',   // 연한 브랜드 배경
+    brandPrimaryMuted: '#FFB48F',
+    brandSecondary: '#243B4A',     // 네이비 — HeroCard/진한 헤더 텍스트
     brandAccent: '#F4A261',        // 보조 강조 (배지/포인트)
 
     // === Surface ===
-    background: '#FFFFFF',          // 메인 배경
-    surface: '#FFFCF7',             // 카드/시트 등 미묘한 따뜻한 톤
-    surfaceMuted: '#F5F5F4',
-    border: '#E7E5E4',
-    divider: '#F1EFEC',
+    background: '#FFFFFF',          // 기본 화면/카드
+    surface: '#FFFFFF',            // 기본 카드 (명시용 별칭)
+    surfaceCanvas: '#F7F4EF',       // 앱 배경 (스크린 캔버스)
+    surfaceWarm: '#FFFBF5',         // 따뜻한 카드 (추천/인사이트)
+    surfaceMuted: '#F1EEE9',        // 비활성/disabled 배경
+    surfaceMint: '#EEF8F4',         // 성공/출근 보조 배경
+    surfaceSky: '#EEF5FF',          // 정보 보조 배경
+    surfaceInverse: '#201A17',      // 다크 시트
+    border: '#E8E0D8',
+    borderStrong: '#D8CDC3',
+    borderFocus: '#FF6B35',
+    divider: '#EFE7DF',
 
     // === Text ===
-    textPrimary: '#1C1917',
-    textSecondary: '#57534E',
-    textTertiary: '#A8A29E',
+    textPrimary: '#201A17',
+    textSecondary: '#625B55',
+    textTertiary: '#9A9189',
     textInverse: '#FFFFFF',
     textBrand: '#FF6B35',
-    textDisabled: '#D6D3D1',
+    textDisabled: '#C9C0B8',
 
-    // === Status ===
-    success: '#10B981',
-    successBg: '#D1FAE5',
+    // === Status === (색 단독 의미전달 금지 — 텍스트 배지와 함께)
+    success: '#12A87B',
+    successBg: '#DFF6ED',
     warning: '#F59E0B',
     warningBg: '#FEF3C7',
-    error: '#EF4444',
+    error: '#E5484D',
     errorBg: '#FEE2E2',
     info: '#3B82F6',
     infoBg: '#DBEAFE',
 
     // === Domain colors (status badges 등) ===
-    attendanceCheckedIn: '#10B981',
-    attendanceCheckedOut: '#6366F1',
-    payrollPaid: '#10B981',
+    attendanceCheckedIn: '#12A87B',
+    attendanceCheckedOut: '#3B82F6',
+    payrollPaid: '#12A87B',
     payrollPending: '#F59E0B',
-    payrollCancelled: '#EF4444',
+    payrollCancelled: '#E5484D',
 
     // === Translucent ===
-    overlayDark: 'rgba(28, 25, 23, 0.55)',
-    shadowColor: '#1C1917',
+    overlayDark: 'rgba(32, 26, 23, 0.55)',
+    shadowColor: '#243B4A',
 } as const;
 
 export const spacing = {
@@ -71,6 +80,7 @@ export const radius = {
     md: 8,
     lg: 12,
     xl: 16,
+    xxl: 24,   // HeroCard / 바텀시트 상단
     pill: 999,
 } as const;
 
@@ -98,6 +108,22 @@ export const typography = {
     fontFamily: {
         // RN 기본 시스템 폰트 사용 (Android: Roboto, iOS: SF Pro)
         // 한국어는 시스템 폰트로 충분 — 별도 폰트 번들 X (앱 크기/부팅 시간 절감)
+    },
+    /**
+     * 명명형 텍스트 스케일 — 05-design-system.md 타이포 표 확정값.
+     * { fontSize, lineHeight(px), fontWeight } 형태로 Text style 에 펼쳐 쓴다.
+     * 반응형 글자 스케일은 useResponsive().font() 로 적용 (compact 에서 축소).
+     */
+    scale: {
+        display: {fontSize: 32, lineHeight: 38, fontWeight: '700' as const},
+        headingLg: {fontSize: 26, lineHeight: 34, fontWeight: '700' as const},
+        headingMd: {fontSize: 22, lineHeight: 30, fontWeight: '700' as const},
+        headingSm: {fontSize: 18, lineHeight: 26, fontWeight: '700' as const},
+        titleMd: {fontSize: 15, lineHeight: 22, fontWeight: '600' as const},
+        bodyLg: {fontSize: 17, lineHeight: 26, fontWeight: '400' as const},
+        bodyMd: {fontSize: 15, lineHeight: 23, fontWeight: '400' as const},
+        caption: {fontSize: 12, lineHeight: 16, fontWeight: '400' as const},
+        numericLg: {fontSize: 28, lineHeight: 34, fontWeight: '700' as const},
     },
 } as const;
 
@@ -140,24 +166,40 @@ export const shadow = {
  *   <LinearGradient colors={tokens.gradient.brand} ... />
  */
 export const gradient = {
-    brand: ['#FF7A1A', '#FF5722'] as [string, string],
-    brandSoft: ['#FFB48F', '#FF8A5C'] as [string, string],
-    success: ['#34D399', '#10B981'] as [string, string],
+    brand: ['#FF6B35', '#FF9B63'] as [string, string],       // 확정 시안 마크/펀치 버튼
+    brandStrong: ['#FF7A1A', '#FF5722'] as [string, string], // 진한 히어로 배경
+    brandSoft: ['#FFB48F', '#FF9B63'] as [string, string],
+    navy: ['#263F4F', '#172932'] as [string, string],        // 다크 스크린 배경
+    darkScreen: ['#263F4F', '#172932', '#2B2019'] as [string, string, string],
+    success: ['#34D399', '#12A87B'] as [string, string],
     warning: ['#FBBF24', '#F59E0B'] as [string, string],
-    surfaceWarm: ['#FFFCF7', '#FFF5EC'] as [string, string],
+    surfaceWarm: ['#FFFBF5', '#FFF5EC'] as [string, string],
 } as const;
 
 export const layout = {
     minTouchTarget: 44, // iOS HIG / Android: 최소 터치 영역
     headerHeight: 56,
-    bottomTabHeight: 60,
+    bottomTabHeight: 64,
     screenPaddingHorizontal: spacing.lg,
 } as const;
 
 export const motion = {
     durationFast: 150,
-    durationNormal: 250,
-    durationSlow: 400,
+    durationNormal: 240,
+    durationSlow: 360,
+    pressScale: 0.97,   // 버튼 press 시 축소 비율
+} as const;
+
+/**
+ * 반응형 브레이크포인트 — 06-responsive-accessibility-qa.md 확정.
+ * useResponsive 훅이 이 값을 사용한다. (모듈 레벨 Dimensions 호출 금지)
+ */
+export const breakpoints = {
+    compact: 360,   // < 360: 작은 Android, 긴 텍스트 압축
+    normal: 430,    // 360-430: 기본 모바일
+    wide: 767,      // 431-767: 큰 모바일/폴더블
+    // >= 768: tablet (2열 가능)
+    compactHeight: 700, // < 700: 큰 원형 CTA/hero 축소
 } as const;
 
 export const tokens = {
@@ -169,6 +211,7 @@ export const tokens = {
     gradient,
     layout,
     motion,
+    breakpoints,
 } as const;
 
 export type Tokens = typeof tokens;
