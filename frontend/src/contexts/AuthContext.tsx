@@ -1,9 +1,10 @@
-import React, {createContext, ReactNode, useContext, useEffect} from 'react';
+import React, {createContext, ReactNode, useContext, useEffect, useRef} from 'react';
 import {User} from '../features/auth/services/authService';
 import {useAuthState, useKakaoLogin, useLogin, useLogout} from '../features/auth/hooks/useAuthQueries';
 import {unifiedStorage} from '../common/utils/unifiedStorage';
 import {safeLogger} from '../utils/safeLogger';
 import { setOnUnauthorized } from '../common/utils/api';
+import {navigate} from '../navigation/navigationRef';
 
 /**
  * 인증 컨텍스트 타입 정의
@@ -118,10 +119,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
         initializeStorage();
     }, [refetchAuth]);
 
-    // 전역 401(리프레시 실패 등) 발생 시 인증 상태 재확인 및 UI 업데이트
+    // 직전 인증 여부 추적 — 세션 만료(A1) 안내를 "로그인 상태였다가 튕긴 경우"에만 노출
+    const wasAuthedRef = useRef(false);
+    useEffect(() => {
+        wasAuthedRef.current = isAuthenticated;
+    }, [isAuthenticated]);
+
+    // 전역 401(리프레시 실패 등) 발생 시 인증 상태 재확인 + 세션 만료 안내 (갭분석 A1)
     useEffect(() => {
         setOnUnauthorized(() => {
             refetchAuth();
+            if (wasAuthedRef.current) {
+                // 무음 로그아웃 대신 안내 화면으로 — 이유/재로그인 경로 제공
+                navigate('SessionExpired');
+            }
         });
         return () => setOnUnauthorized(null);
     }, [refetchAuth]);

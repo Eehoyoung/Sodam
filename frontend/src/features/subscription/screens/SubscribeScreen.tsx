@@ -123,7 +123,12 @@ const SubscribeScreen: React.FC = () => {
                 navigation.navigate('TossBillingAuth', {plan: selectedPlan});
             }
         } catch (e: any) {
-            Alert.alert('오류', e?.response?.data?.message ?? '구독 처리에 실패했어요. 잠시 후 다시 시도해 주세요.');
+            // 유료 전환 실패 → 결제 실패 안내 화면 (갭분석 A4). 무료/일반 오류는 알럿.
+            if (selectedPlan && selectedPlan !== 'FREE') {
+                navigation.navigate('PaymentFailed');
+            } else {
+                Alert.alert('오류', e?.response?.data?.message ?? '구독 처리에 실패했어요. 잠시 후 다시 시도해 주세요.');
+            }
         } finally {
             setProcessing(false);
         }

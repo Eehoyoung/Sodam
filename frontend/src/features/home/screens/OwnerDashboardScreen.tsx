@@ -8,6 +8,7 @@ import {
     AppHeader,
     AppListItem,
     AppText,
+    EmptyState,
     MoneyCard,
     ScreenContainer,
 } from '../../../common/components/ds';
@@ -44,6 +45,7 @@ const OwnerDashboardScreen: React.FC = () => {
     const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
     const [today, setToday] = useState<TodayStats | null>(null);
     const [monthly, setMonthly] = useState<MonthPayroll | null>(null);
+    const [loaded, setLoaded] = useState(false);
 
     const load = useCallback(async () => {
         try {
@@ -53,6 +55,7 @@ const OwnerDashboardScreen: React.FC = () => {
                 storeName: s.storeName,
             }));
             setStores(storeList);
+            setLoaded(true);
             const activeId = selectedStoreId ?? storeList[0]?.id ?? null;
             if (selectedStoreId == null) {
                 setSelectedStoreId(activeId);
@@ -99,6 +102,20 @@ const OwnerDashboardScreen: React.FC = () => {
 
     const pending = today?.pendingEmployees ?? [];
     const allIn = today ? today.checkedInCount === today.totalActiveEmployees : false;
+
+    // A6 콜드스타트 — 매장 0개 사장 첫 진입
+    if (loaded && stores.length === 0) {
+        return (
+            <ScreenContainer header={<AppHeader title="소담" />}>
+                <EmptyState
+                    glyph="🏪"
+                    title="첫 매장을 등록해 볼까요?"
+                    description="매장을 등록하면 직원 초대와 출퇴근, 급여 정산을 바로 시작할 수 있어요."
+                    primary={{label: '매장 등록하기', onPress: () => navigation.navigate('StoreRegistraion')}}
+                />
+            </ScreenContainer>
+        );
+    }
 
     return (
         <ScreenContainer padded={false} header={<AppHeader title={today?.storeName ?? '카페 소담'} actions={[{label: '알림', onPress: () => navigation.navigate('NotificationCenter')}]} />}>
