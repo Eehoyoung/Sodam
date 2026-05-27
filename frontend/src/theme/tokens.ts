@@ -63,6 +63,60 @@ export const colors = {
     shadowColor: '#243B4A',
 } as const;
 
+/**
+ * 다크 모드 팔레트 (A15) — `colors`와 동일 키 셰입.
+ * useThemeColors() 가 시스템 색상에 따라 light/dark 를 고른다.
+ * ⚠️ 전 컴포넌트가 useThemeColors() 로 전환되기 전까지는 부분 적용 금지
+ *   (반쪽 다크는 라이트 잔재와 섞여 깨져 보임). 활성화는 일괄 마이그레이션 후.
+ */
+export const darkColors: Record<keyof typeof colors, string> = {
+    brandPrimary: '#FF7A45',
+    brandPrimaryDark: '#E85A2A',
+    brandPrimaryLight: '#FF9B63',
+    brandPrimarySoft: '#3A2A22',
+    brandPrimaryMuted: '#7A4A33',
+    brandSecondary: '#9FB6C4',
+    brandAccent: '#F4A261',
+
+    background: '#1B1714',
+    surface: '#241F1B',
+    surfaceCanvas: '#161311',
+    surfaceWarm: '#241F1B',
+    surfaceMuted: '#2E2823',
+    surfaceMint: '#15302A',
+    surfaceSky: '#15263A',
+    surfaceInverse: '#F7F4EF',
+    border: '#3A332E',
+    borderStrong: '#4A433D',
+    borderFocus: '#FF7A45',
+    divider: '#2E2823',
+
+    textPrimary: '#F5EFE9',
+    textSecondary: '#C9C0B8',
+    textTertiary: '#9A9189',
+    textInverse: '#201A17',
+    textBrand: '#FF8A5C',
+    textDisabled: '#5A534D',
+
+    success: '#3FC79A',
+    successBg: '#15302A',
+    warning: '#F5B53D',
+    warningBg: '#3A2E14',
+    error: '#FF6B6F',
+    errorBg: '#3A1E1F',
+    info: '#5B9BFF',
+    infoBg: '#15263A',
+
+    attendanceCheckedIn: '#3FC79A',
+    attendanceCheckedOut: '#5B9BFF',
+    payrollPaid: '#3FC79A',
+    payrollPending: '#F5B53D',
+    payrollCancelled: '#FF6B6F',
+
+    overlayDark: 'rgba(0, 0, 0, 0.6)',
+    shadowColor: '#000000',
+};
+
 export const spacing = {
     xs: 4,
     sm: 8,

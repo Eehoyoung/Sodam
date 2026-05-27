@@ -9,3 +9,4 @@ export {default as SubscriptionGateScreen} from './SubscriptionGateScreen';
 export {default as AppUpdateScreen} from './AppUpdateScreen';
 export {default as MaintenanceScreen} from './MaintenanceScreen';
 export {default as PushPrimerSheet} from './PushPrimerSheet';
+export {default as PaymentSuccessScreen} from './PaymentSuccessScreen';

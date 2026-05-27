@@ -28,6 +28,7 @@ export {BottomSheet} from './BottomSheet';
 export {OfflineBanner} from './OfflineBanner';
 export type {SyncState} from './OfflineBanner';
 export {GlobalOfflineBanner} from './GlobalOfflineBanner';
+export {ImagePickerSheet} from './ImagePickerSheet';
 
 export {useResponsive} from '../../hooks/useResponsive';
 export type {Responsive, Breakpoint} from '../../hooks/useResponsive';
