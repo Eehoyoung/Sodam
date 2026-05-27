@@ -18,7 +18,8 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import Geolocation from 'react-native-geolocation-service';
 import {PERMISSIONS, request, RESULTS} from 'react-native-permissions';
 import NfcManager from 'react-native-nfc-manager';
-import {Button, Card, MainLayout} from '../../../common/components';
+import {Button, Card} from '../../../common/components';
+import {ScreenContainer} from '../../../common/components/ds';
 import attendanceService from '../services/attendanceService';
 import {AttendanceRecord, AttendanceStatus, CheckInRequest, CheckOutRequest} from '../types';
 import {format} from 'date-fns';
@@ -694,7 +695,7 @@ const AttendanceScreen = () => {
     );
 
     return (
-        <MainLayout>
+        <ScreenContainer scroll padded={false}>
             <View style={styles.container}>
                 {renderNFCReader()}
                 <LinearGradient
@@ -914,7 +915,7 @@ const AttendanceScreen = () => {
                     )}
                 </View>
             </View>
-        </MainLayout>
+        </ScreenContainer>
     );
 };
 
