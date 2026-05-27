@@ -385,7 +385,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
 
             {!isNFCEnabled && (
                 <View style={styles.warningContainer}>
-                    <Icon name="warning" size={20} color={c.warning?.main || '#FFC107'}/>
+                    <Icon name="warning" size={20} color={c.warning?.main || '#F59E0B'}/>
                     <Text style={styles.warningText}>
                         NFC가 비활성화되어 있습니다. 설정에서 NFC를 활성화해주세요.
                     </Text>
@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
         backgroundColor: c.success?.main || '#4CAF50',
     },
     checkOutMode: {
-        backgroundColor: c.warning?.main || '#FFC107',
+        backgroundColor: c.warning?.main || '#F59E0B',
     },
     modeText: {
         color: c.text?.inverse || '#fff',
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
         marginBottom: spacing.lg,
         padding: spacing.lg,
         borderRadius: 50,
-        backgroundColor: c.background?.secondary || '#F5F5F5',
+        backgroundColor: c.background?.secondary || '#F1EEE9',
     },
     instructionText: {
         fontSize: 16,
@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
         backgroundColor: c.success?.main || '#4CAF50',
     },
     checkOutButton: {
-        backgroundColor: c.warning?.main || '#FFC107',
+        backgroundColor: c.warning?.main || '#F59E0B',
     },
     warningContainer: {
         flexDirection: 'row',

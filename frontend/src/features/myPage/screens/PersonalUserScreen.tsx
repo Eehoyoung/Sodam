@@ -1157,7 +1157,7 @@ const styles = StyleSheet.create({
     cardTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#1F2937',
+        color: '#2E2823',
     },
     statsGrid: {
         flexDirection: 'row',
@@ -1173,13 +1173,13 @@ const styles = StyleSheet.create({
     },
     statLabel: {
         fontSize: 12,
-        color: '#6B7280',
+        color: '#625B55',
         marginBottom: 4,
     },
     statValue: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#1F2937',
+        color: '#2E2823',
     },
     highlight: {
         color: '#FF6B35',
@@ -1210,7 +1210,7 @@ const styles = StyleSheet.create({
     outlineBtn: {
         backgroundColor: 'white',
         borderWidth: 2,
-        borderColor: '#E5E7EB',
+        borderColor: '#E8E0D8',
     },
     disabledBtn: {
         opacity: 0.5,
@@ -1224,14 +1224,14 @@ const styles = StyleSheet.create({
         color: 'white',
     },
     outlineBtnText: {
-        color: '#374151',
+        color: '#4A433D',
     },
     storeWorkSection: {
         marginBottom: 20,
         borderRadius: 12,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: '#E8E0D8',
     },
     storeHeader: {
         flexDirection: 'row',
@@ -1249,7 +1249,7 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#1F2937',
+        color: '#2E2823',
     },
     storeWorkTime: {
         fontSize: 14,
@@ -1272,15 +1272,15 @@ const styles = StyleSheet.create({
     recordType: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#1F2937',
+        color: '#2E2823',
     },
     recordTime: {
         fontSize: 14,
-        color: '#6B7280',
+        color: '#625B55',
     },
     storeEarnings: {
         padding: 12,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: '#EFE7DF',
         alignItems: 'center',
     },
     earningsText: {
@@ -1290,7 +1290,7 @@ const styles = StyleSheet.create({
     },
     noRecordsText: {
         textAlign: 'center',
-        color: '#6B7280',
+        color: '#625B55',
         fontSize: 16,
         padding: 20,
     },
@@ -1309,7 +1309,7 @@ const styles = StyleSheet.create({
     },
     summaryLabel: {
         fontSize: 12,
-        color: '#6B7280',
+        color: '#625B55',
         marginBottom: 8,
     },
     summaryValue: {
@@ -1344,11 +1344,11 @@ const styles = StyleSheet.create({
     modalTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#1F2937',
+        color: '#2E2823',
     },
     modalClose: {
         fontSize: 18,
-        color: '#6B7280',
+        color: '#625B55',
         padding: 5,
     },
     storeOption: {
@@ -1371,12 +1371,12 @@ const styles = StyleSheet.create({
     storeOptionName: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#1F2937',
+        color: '#2E2823',
         marginBottom: 4,
     },
     storeOptionWage: {
         fontSize: 14,
-        color: '#6B7280',
+        color: '#625B55',
     },
     selectedIcon: {
         fontSize: 18,
@@ -1389,14 +1389,14 @@ const styles = StyleSheet.create({
     inputLabel: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#374151',
+        color: '#4A433D',
         marginBottom: 8,
     },
     inputField: {
         width: '100%',
         padding: 12,
         borderWidth: 2,
-        borderColor: '#E5E7EB',
+        borderColor: '#E8E0D8',
         borderRadius: 8,
         fontSize: 16,
         backgroundColor: 'white',
@@ -1411,7 +1411,7 @@ const styles = StyleSheet.create({
         minWidth: '45%',
         padding: 12,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: '#E8E0D8',
         borderRadius: 8,
         alignItems: 'center',
         flexDirection: 'row',
@@ -1423,7 +1423,7 @@ const styles = StyleSheet.create({
     },
     pickerText: {
         fontSize: 14,
-        color: '#374151',
+        color: '#4A433D',
     },
     pickerTextSelected: {
         color: 'white',
@@ -1441,14 +1441,14 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         marginRight: 8,
         borderRadius: 20,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: '#EFE7DF',
     },
     monthOptionSelected: {
         backgroundColor: '#243B4A',
     },
     monthOptionText: {
         fontSize: 14,
-        color: '#6B7280',
+        color: '#625B55',
     },
     monthOptionTextSelected: {
         color: 'white',
@@ -1466,7 +1466,7 @@ const styles = StyleSheet.create({
     monthlyStatsTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#1F2937',
+        color: '#2E2823',
         marginBottom: 16,
         textAlign: 'center',
     },
@@ -1485,7 +1485,7 @@ const styles = StyleSheet.create({
     },
     monthlyStatLabel: {
         fontSize: 12,
-        color: '#6B7280',
+        color: '#625B55',
         marginBottom: 4,
     },
     monthlyStatValue: {
@@ -1501,7 +1501,7 @@ const styles = StyleSheet.create({
     storeBreakdownTitle: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#1F2937',
+        color: '#2E2823',
         marginBottom: 16,
     },
     storeBreakdownItem: {
@@ -1518,7 +1518,7 @@ const styles = StyleSheet.create({
     storeBreakdownName: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#1F2937',
+        color: '#2E2823',
     },
     storeBreakdownStats: {
         flexDirection: 'row',
@@ -1529,7 +1529,7 @@ const styles = StyleSheet.create({
     },
     storeBreakdownStatLabel: {
         fontSize: 12,
-        color: '#6B7280',
+        color: '#625B55',
         marginBottom: 4,
     },
     storeBreakdownStatValue: {
@@ -1539,7 +1539,7 @@ const styles = StyleSheet.create({
     },
     noDataText: {
         textAlign: 'center',
-        color: '#6B7280',
+        color: '#625B55',
         fontSize: 16,
         padding: 20,
     },

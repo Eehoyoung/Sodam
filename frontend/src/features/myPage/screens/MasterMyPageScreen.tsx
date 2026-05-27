@@ -5,7 +5,7 @@ import {
     ScrollView,
     TouchableOpacity,
     StyleSheet,
-    Dimensions,
+    useWindowDimensions,
     FlatList,
     RefreshControl,
     Alert,
@@ -58,10 +58,10 @@ interface LaborInfo {
     overtimeRate: number;
 }
 
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = width * 0.85;
-
 export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenProps) {
+    // 반응형: 회전/폴더블 대응 (모듈레벨 Dimensions.get 금지 — useWindowDimensions)
+    const { width } = useWindowDimensions();
+    const CARD_WIDTH = width * 0.85;
     const [stores, setStores] = useState<StoreInfo[]>([]);
     const [policies, setPolicies] = useState<PolicyInfo[]>([]);
     const [laborInfo, setLaborInfo] = useState<LaborInfo | null>(null);
@@ -182,12 +182,12 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
 
     const renderStoreCard = ({ item: store }: { item: StoreInfo }) => (
         <TouchableOpacity
-            style={styles.storeCard}
+            style={[styles.storeCard, {width: CARD_WIDTH}]}
             onPress={() => handleStorePress(store)}
             activeOpacity={0.8}
         >
             <LinearGradient
-                colors={['#FF6B35', '#FF8A65']}
+                colors={['#FF6B35', '#FF9B63']}
                 style={styles.storeCardGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -528,7 +528,6 @@ const styles = StyleSheet.create({
         paddingLeft: 20,
     },
     storeCard: {
-        width: CARD_WIDTH,
         marginRight: 16,
         borderRadius: 16,
         overflow: 'hidden',

@@ -694,7 +694,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#4CAF50',
     },
     pendingBadge: {
-        backgroundColor: '#FFC107',
+        backgroundColor: '#F59E0B',
     },
     cancelledBadge: {
         backgroundColor: '#F44336',
@@ -716,7 +716,7 @@ const styles = StyleSheet.create({
         color: '#666',
     },
     salaryAmounts: {
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#F1EEE9',
         padding: 8,
         borderRadius: 8,
         marginBottom: 8,

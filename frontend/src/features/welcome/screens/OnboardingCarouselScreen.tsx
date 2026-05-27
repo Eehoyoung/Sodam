@@ -34,13 +34,13 @@ const SLIDES: Slide[] = [
         emoji: '💰',
         headline: '급여, 자동으로 정확하게',
         body: '주휴수당·연장·야간 시급 자동 계산.\n월말 30분이면 정산 끝나요.',
-        gradient: ['#FF8A5C', '#FF5722'],
+        gradient: ['#FF9B63', '#FF5722'],
     },
     {
         emoji: '🌿',
         headline: '종합소득세 환급도 한 앱에서',
         body: '세무사 부담 없이 환급 받으세요.\n환급 받은 만큼만 수수료 드립니다.',
-        gradient: ['#FFA67A', '#E5552A'],
+        gradient: ['#FF9B63', '#E5552A'],
     },
 ];
 
