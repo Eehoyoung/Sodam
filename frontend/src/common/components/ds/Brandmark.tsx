@@ -6,7 +6,7 @@
 import React from 'react';
 import {StyleProp, StyleSheet, Text, View, ViewStyle} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import {colors, gradient, radius} from '../../../theme/tokens';
+import {colors, gradient} from '../../../theme/tokens';
 
 interface BrandmarkProps {
     size?: number;

@@ -7,10 +7,16 @@ jest.mock('react-native', () => ({
     StyleSheet: {create: (s: any) => s},
     View: 'View',
     Text: 'Text',
+    ScrollView: 'ScrollView',
     Pressable: 'Pressable',
     ActivityIndicator: 'ActivityIndicator',
+    // DS v2: ScreenContainer→KeyboardAvoidingView/StatusBar, PunchButton→useWindowDimensions(useResponsive)
+    KeyboardAvoidingView: 'KeyboardAvoidingView',
+    StatusBar: 'StatusBar',
     Alert: {alert: mockAlert},
     Platform: {OS: 'ios', select: (o: any) => o.ios},
+    useWindowDimensions: () => ({width: 375, height: 812}),
+    useColorScheme: () => 'light',
 }));
 
 const mockNavigate = jest.fn();
@@ -21,6 +27,8 @@ jest.mock('@react-navigation/native', () => ({
 
 jest.mock('react-native-safe-area-context', () => ({
     SafeAreaView: ({children}: any) => children,
+    // PunchButton 의 useResponsive 가 useSafeAreaInsets 사용
+    useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
 }));
 
 jest.mock('react-native-linear-gradient', () => 'LinearGradient');
@@ -47,35 +55,8 @@ jest.mock('../../../src/common/utils/api', () => {
     return {__esModule: true, default: api, setOnUnauthorized: jest.fn()};
 });
 
-jest.mock('../../../src/theme/tokens', () => ({
-    tokens: {
-        colors: {
-            brandPrimary: '#FF6B35',
-            textPrimary: '#111',
-            textSecondary: '#374151',
-            textTertiary: '#9CA3AF',
-            textInverse: '#fff',
-            success: '#16A34A',
-            warning: '#CA8A04',
-            error: '#DC2626',
-            background: '#FFF',
-            surface: '#FFF',
-            divider: '#E5E7EB',
-        },
-        spacing: {xs: 2, sm: 4, md: 8, lg: 12, xl: 16, xxl: 20, xxxl: 24, huge: 40},
-        radius: {md: 6, lg: 10, xl: 14, pill: 999},
-        typography: {
-            sizes: {xs: 11, sm: 13, md: 15, lg: 17, xl: 19, xxl: 22},
-            weights: {semibold: '600', bold: '700'},
-        },
-        shadow: {brand: {}, sm: {}, md: {}, lg: {}},
-        gradient: {
-            brand: ['#FF6B35', '#FF8A65'],
-            warning: ['#F59E0B', '#FBBF24'],
-            success: ['#16A34A', '#22C55E'],
-        },
-    },
-}));
+// 실제 토큰 사용 — DS named export 전체 제공 (부분 모킹 시 import 크래시)
+jest.mock('../../../src/theme/tokens', () => jest.requireActual('../../../src/theme/tokens'));
 
 import EmployeeAttendanceHome from '../../../src/features/attendance/screens/EmployeeAttendanceHome';
 import api from '../../../src/common/utils/api';
@@ -173,7 +154,8 @@ describe('EmployeeAttendanceHome', () => {
         });
 
         const texts = renderer!.root.findAllByType('Text').map(t => t.props.children);
-        expect(texts).toContain('근무 중');
+        // DS v2: WORKING 상태는 PunchButton 의 subtitle 로 표현 (title 은 카운트업 타이머)
+        expect(texts).toContain('퇴근하려면 눌러주세요');
     });
 
     test('DONE 상태에서 "오늘 근무 완료" 표시', async () => {
@@ -245,10 +227,13 @@ describe('EmployeeAttendanceHome', () => {
                 await flush();
             });
 
-            // 큰 동그라미 Pressable: 가장 바깥쪽 Pressable 중 "출근하기" 자식 포함
+            // DS v2: PunchButton(원형 CTA)은 accessibilityLabel 이 "출근하기, ..." 로 시작
             const pressables = renderer!.root.findAllByType('Pressable');
-            // 첫 번째 = circle CTA. (QuickLink 3개가 그 뒤로 따라옴)
-            const circle = pressables[0];
+            const circle = pressables.find(p =>
+                typeof p.props.accessibilityLabel === 'string' &&
+                p.props.accessibilityLabel.startsWith('출근하기'),
+            )!;
+            expect(circle).toBeTruthy();
             await act(async () => {
                 circle.props.onPress();
                 await flush();

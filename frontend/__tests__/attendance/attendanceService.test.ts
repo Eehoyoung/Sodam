@@ -25,24 +25,29 @@ describe('attendanceService (standard endpoints)', () => {
     jest.clearAllMocks();
   });
 
+  // [contract] toAttendancePayload 는 BE AttendanceRequestDto 4필드(@NotNull)만 전송한다:
+  // employeeId/storeId(Long) + latitude/longitude(Double) + note(opt).
+  // workplaceId→storeId 매핑, timestamp/nfcTagId 등 비DTO 필드는 제거된다.
   test('checkIn calls POST /api/attendance/check-in with mapped storeId', async () => {
     const postMock = getPostMock();
     postMock.mockResolvedValueOnce({ data: { id: 'a1', status: 'CHECKED_IN' } });
 
     const payload = {
+      employeeId: 42,
       workplaceId: '123',
       latitude: 37.5,
       longitude: 127.0,
-      timestamp: '2025-10-02T00:00:00Z',
-      nfcTagId: 'TAG-1'
+      note: '정상 출근',
     } as any; // typing from project
 
     const resp = await attendanceService.checkIn(payload);
 
-    const { workplaceId: _w1, ...rest1 } = payload;
     expect(postMock).toHaveBeenCalledWith('/api/attendance/check-in', {
-      ...rest1,
+      employeeId: 42,
       storeId: 123,
+      latitude: 37.5,
+      longitude: 127.0,
+      note: '정상 출근',
     });
     expect(resp).toEqual({ id: 'a1', status: 'CHECKED_IN' });
   });
@@ -52,18 +57,20 @@ describe('attendanceService (standard endpoints)', () => {
     postMock.mockResolvedValueOnce({ data: { id: 'a1', status: 'CHECKED_OUT' } });
 
     const payload = {
+      employeeId: 7,
       workplaceId: '77',
       latitude: 37.1,
       longitude: 127.1,
-      timestamp: '2025-10-02T01:00:00Z',
     } as any;
 
     const resp = await attendanceService.checkOutStandard(payload);
 
-    const { workplaceId: _w2, ...rest2 } = payload;
     expect(postMock).toHaveBeenCalledWith('/api/attendance/check-out', {
-      ...rest2,
+      employeeId: 7,
       storeId: 77,
+      latitude: 37.1,
+      longitude: 127.1,
+      note: undefined,
     });
     expect(resp).toEqual({ id: 'a1', status: 'CHECKED_OUT' });
   });

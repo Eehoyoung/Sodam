@@ -46,10 +46,12 @@ public class Attendance {
     private LocalDateTime checkOutTime;
 
     // 위치 정보
-    @Column(nullable = false)
+    // 수동 출퇴근 등록(manualCheckIn)은 GPS 좌표 없이 등록 가능하므로 nullable 허용.
+    // (checkOut 좌표는 이미 nullable — 일관성 유지)
+    @Column
     private Double checkInLatitude;
 
-    @Column(nullable = false)
+    @Column
     private Double checkInLongitude;
 
     private Double checkOutLatitude;

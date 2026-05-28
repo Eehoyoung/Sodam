@@ -162,6 +162,53 @@ class SmokeRestE2ETest {
         assertThat(userRepository.findByEmail("newuser_smoke@example.com")).isPresent();
     }
 
+    @Test
+    @DisplayName("POST /api/login — 가입 사용자 로그인 200 + 토큰 응답")
+    void loginAfterJoin_ok() throws Exception {
+        Map<String, Object> joinBody = new HashMap<>();
+        joinBody.put("email", "login_smoke@example.com");
+        joinBody.put("password", "Sodam123!");
+        joinBody.put("name", "로그인 사용자");
+        joinBody.put("ageConfirmed", true);
+        joinBody.put("termsAgreed", true);
+        joinBody.put("privacyAgreed", true);
+        joinBody.put("marketingAgreed", false);
+
+        mockMvc.perform(post("/api/join")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(joinBody)))
+                .andExpect(status().isOk());
+
+        Map<String, Object> loginBody = new HashMap<>();
+        loginBody.put("email", "login_smoke@example.com");
+        loginBody.put("password", "Sodam123!");
+
+        mockMvc.perform(post("/api/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginBody)))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.accessToken").isString())
+                .andExpect(jsonPath("$.data.refreshToken").isString())
+                .andExpect(jsonPath("$.data.userId").isNumber())
+                .andExpect(jsonPath("$.data.userGrade").value("ROLE_PERSONAL"));
+    }
+
+    @Test
+    @DisplayName("POST /api/login — 잘못된 비밀번호 401")
+    void loginWithWrongPassword_unauthorized() throws Exception {
+        Map<String, Object> body = new HashMap<>();
+        body.put("email", "missing_smoke@example.com");
+        body.put("password", "Wrong123!");
+
+        mockMvc.perform(post("/api/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andDo(print())
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
     // =====================================================================
     // #3 — 휴가 셀프 신청 200
     // =====================================================================

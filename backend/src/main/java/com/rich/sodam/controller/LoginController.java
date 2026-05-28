@@ -122,9 +122,7 @@ public class LoginController {
         Locale locale = localeResolver.resolveLocale(request);
 
         try {
-            Optional<User> authenticationUser = Optional.ofNullable(userService.loadUserByLoginId(login.getEmail(), login.getPassword()).orElseThrow(
-                    () -> new RuntimeException(messageSource.getMessage("auth.user.not.found", null, locale))
-            ));
+            Optional<User> authenticationUser = userService.loadUserByLoginId(login.getEmail(), login.getPassword());
 
             if (authenticationUser.isPresent()) {
                 final String jwtToken = jwtTokenProvider.createToken(authenticationUser.get());
@@ -150,6 +148,10 @@ public class LoginController {
             }
             String failedMessage = messageSource.getMessage("auth.login.failed", null, locale);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error(ErrorCode.UNAUTHORIZED.getCode(), failedMessage));
+        } catch (IllegalArgumentException e) {
+            String failedMessage = messageSource.getMessage("auth.login.failed", null, locale);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error(ErrorCode.UNAUTHORIZED.getCode(), failedMessage));
         } catch (Exception e) {
             log.error("사용자 로그인 실패 {}", e.getMessage(), e);
 

@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @Slf4j
 @Service
-@org.springframework.context.annotation.Profile("!dev")
+@org.springframework.context.annotation.Profile("!dev & !test")
 public class CacheMetricsService {
 
     private final CacheManager cacheManager;

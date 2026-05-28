@@ -235,12 +235,13 @@ class PayrollServiceTest {
     private Attendance createAttendanceRecord(int workingHours) {
         Attendance attendance = new Attendance(testEmployee, testStore);
 
-        // 출근 처리
-        attendance.checkIn(37.5665, 126.9780, testRelation.getAppliedHourlyWage());
-        attendance = attendanceRepository.save(attendance);
+        // 실제 근무 시간 간격(workingHours)을 갖도록 명시적 시각 사용.
+        // checkIn()/checkOut() 은 now() 를 쓰므로 출퇴근 간격이 0 이 되어 급여가 0 으로 계산된다.
+        LocalDateTime checkOutTime = LocalDateTime.now();
+        LocalDateTime checkInTime = checkOutTime.minusHours(workingHours);
 
-        // 퇴근 처리
-        attendance.checkOut(37.5665, 126.9780);
+        attendance.manualCheckIn(checkInTime, 37.5665, 126.9780, testRelation.getAppliedHourlyWage());
+        attendance.manualCheckOut(checkOutTime, 37.5665, 126.9780);
 
         return attendanceRepository.save(attendance);
     }

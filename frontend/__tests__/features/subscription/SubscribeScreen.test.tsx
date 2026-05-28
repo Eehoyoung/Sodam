@@ -9,9 +9,14 @@ jest.mock('react-native', () => ({
     ScrollView: 'ScrollView',
     Pressable: 'Pressable',
     ActivityIndicator: 'ActivityIndicator',
+    // DS v2: ScreenContainer→KeyboardAvoidingView/StatusBar, CtaStack→useWindowDimensions(useResponsive)
+    KeyboardAvoidingView: 'KeyboardAvoidingView',
+    StatusBar: 'StatusBar',
     Alert: {alert: jest.fn()},
     Platform: {OS: 'ios', select: (o: any) => o.ios},
     Dimensions: {get: () => ({width: 375, height: 812})},
+    useWindowDimensions: () => ({width: 375, height: 812}),
+    useColorScheme: () => 'light',
 }));
 
 // 네비게이션 mock — 화면별 navigate 추적
@@ -27,6 +32,8 @@ jest.mock('@react-navigation/native', () => ({
 // SafeAreaView mock — 이미 jest.setup.js 에 있지만 명시
 jest.mock('react-native-safe-area-context', () => ({
     SafeAreaView: ({children}: any) => children,
+    // CtaStack 의 useResponsive 가 useSafeAreaInsets 사용
+    useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
 }));
 
 // subscriptionApi mock
@@ -48,40 +55,8 @@ jest.mock('../../../src/features/subscription/services/subscriptionApi', () => {
 });
 
 // 토큰 단순 모킹 — 깊이 있는 색상 객체 의존성 단순화
-jest.mock('../../../src/theme/tokens', () => ({
-    tokens: {
-        colors: {
-            brandPrimary: '#FF6B35',
-            brandPrimaryDark: '#C2410C',
-            brandSecondary: '#222',
-            textPrimary: '#111',
-            textSecondary: '#374151',
-            textTertiary: '#9CA3AF',
-            textInverse: '#fff',
-            success: '#16A34A',
-            successBg: '#DCFCE7',
-            warning: '#CA8A04',
-            warningBg: '#FEF9C3',
-            error: '#DC2626',
-            errorBg: '#FEE2E2',
-            info: '#2563EB',
-            infoBg: '#DBEAFE',
-            background: '#FFF',
-            surface: '#FFF',
-            surfaceMuted: '#F3F4F6',
-            divider: '#E5E7EB',
-            border: '#E5E7EB',
-        },
-        spacing: {xs: 2, sm: 4, md: 8, lg: 12, xl: 16, xxl: 20, xxxl: 24, huge: 40},
-        radius: {md: 6, lg: 10, xl: 14, pill: 999},
-        typography: {
-            sizes: {xs: 11, sm: 13, md: 15, lg: 17, xl: 19, xxl: 22, display: 28},
-            weights: {semibold: '600', bold: '700'},
-        },
-        shadow: {sm: {}, md: {}, lg: {}, brand: {}},
-        gradient: {brand: ['#FF6B35', '#FF8A65']},
-    },
-}));
+// 실제 토큰 사용 — DS named export 전체 제공 (부분 모킹 시 import 크래시)
+jest.mock('../../../src/theme/tokens', () => jest.requireActual('../../../src/theme/tokens'));
 
 import SubscribeScreen from '../../../src/features/subscription/screens/SubscribeScreen';
 import subscriptionApi from '../../../src/features/subscription/services/subscriptionApi';
@@ -128,12 +103,14 @@ describe('SubscribeScreen', () => {
             await flush();
         });
 
-        // 플랜 카드 = Pressable, accessibilityLabel/title 로 직접 찾기 어렵다.
-        // Card 의 onPress 는 setSelectedPlan(plan.name) — Pressable 중 FREE 가 첫 번째.
-        const pressables = renderer!.root.findAllByType('Pressable');
-        // 플랜 카드 4개 + 하단 버튼 1개 → 첫 번째 = FREE
+        // DS v2: 헤더 back(Pressable)·하단 AppButton 도 Pressable 이므로 인덱스로 찾으면 안 된다.
+        // 플랜 카드(AppCard)는 accessibilityState.selected 가 정의된 Pressable 이며 플랜 순서대로 렌더.
+        const planCards = renderer!.root
+            .findAllByType('Pressable')
+            .filter(p => p.props.accessibilityState && 'selected' in p.props.accessibilityState);
+        // 0=FREE, 1=BUSINESS, 2=PREMIUM, 3=COMMISSION
         await act(async () => {
-            pressables[0].props.onPress();
+            planCards[0].props.onPress();
             await flush();
         });
 
@@ -159,10 +136,12 @@ describe('SubscribeScreen', () => {
             await flush();
         });
 
-        const pressables = renderer!.root.findAllByType('Pressable');
-        // 두 번째 = BUSINESS
+        const planCards = renderer!.root
+            .findAllByType('Pressable')
+            .filter(p => p.props.accessibilityState && 'selected' in p.props.accessibilityState);
+        // 1 = BUSINESS
         await act(async () => {
-            pressables[1].props.onPress();
+            planCards[1].props.onPress();
             await flush();
         });
 

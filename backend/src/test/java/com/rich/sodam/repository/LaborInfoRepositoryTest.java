@@ -122,7 +122,8 @@ class LaborInfoRepositoryTest {
         // when
         savedLaborInfo.setTitle("수정된 노무 정보");
         savedLaborInfo.setContent("수정된 내용입니다.");
-        LaborInfo updatedLaborInfo = laborInfoRepository.save(savedLaborInfo);
+        // saveAndFlush 로 UPDATE 를 즉시 반영해 @PreUpdate(updatedAt) 가 실행되도록 보장
+        LaborInfo updatedLaborInfo = laborInfoRepository.saveAndFlush(savedLaborInfo);
 
         // then
         assertThat(updatedLaborInfo.getId()).isEqualTo(savedLaborInfo.getId());

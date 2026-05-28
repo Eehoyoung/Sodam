@@ -14,7 +14,7 @@ import java.util.Base64;
  * Redis 백엔드 토큰 저장소. dev 프로필에서는 {@link InMemoryTokenStore} 가 대신 등록된다.
  */
 @Service
-@Profile("!dev")
+@Profile("!dev & !test")
 public class RedisService implements TokenStore {
 
     private final RedisTemplate<String, Object> jwtRedisTemplate;

@@ -19,6 +19,17 @@ jest.mock('@react-navigation/native', () => ({
         goBack: jest.fn(),
         reset: jest.fn(),
     }),
+    // navigationRef.ts 가 모듈 로드 시점에 호출 → 미정의면 import 단계에서 크래시.
+    createNavigationContainerRef: () => ({
+        isReady: () => false,
+        navigate: jest.fn(),
+        reset: jest.fn(),
+        goBack: jest.fn(),
+        getRootState: jest.fn(),
+        current: null,
+    }),
+    useFocusEffect: jest.fn(),
+    useRoute: () => ({params: {}}),
 }));
 
 
