@@ -1,5 +1,5 @@
 import React from 'react';
-import {Alert, StyleSheet, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {useAuth} from '../../../contexts/AuthContext';
 import {useCurrentUser} from '../hooks/useAuthQueries';
 import {
@@ -8,6 +8,7 @@ import {
     AppHeader,
     AppListItem,
     AppText,
+    AppToast,
     Brandmark,
     LoadingState,
     ScreenContainer,
@@ -29,7 +30,7 @@ const ProfileScreen: React.FC = () => {
         try {
             await currentUserQuery.refetch();
         } catch (e: any) {
-            Alert.alert('오류', e?.response?.data?.message || '프로필을 새로고침하는 중 오류가 생겼어요.');
+            AppToast.error(e?.response?.data?.message || '프로필을 새로고침하는 중 오류가 생겼어요.');
         }
     };
 

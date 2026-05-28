@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Linking, Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
 import { PERMISSIONS, request, RESULTS } from 'react-native-permissions';
 import NfcManager from 'react-native-nfc-manager';
+import {AppToast, ConfirmSheet} from '../../../common/components/ds';
 import attendanceService from '../services/attendanceService';
 import { AttendanceRecord } from '../types';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -102,7 +103,7 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
           resolve({ latitude, longitude });
         },
         _err => {
-          Alert.alert('오류', '위치 정보를 가져오는 데 실패했습니다. 다시 시도해주세요.');
+          AppToast.error('위치 정보를 가져오지 못했어요. 다시 시도해 주세요.');
           resolve(null);
         },
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
@@ -114,15 +115,16 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
     try {
       const isSupported = await NfcManager.isSupported();
       if (!isSupported) {
-        Alert.alert('NFC 미지원', '이 기기는 NFC를 지원하지 않습니다. 다른 출퇴근 방법을 이용해주세요.');
+        AppToast.warn('이 기기는 NFC를 지원하지 않아요. 다른 출퇴근 방법을 이용해 주세요.');
         return false;
       }
       const isEnabled = await NfcManager.isEnabled();
       if (!isEnabled) {
-        Alert.alert('NFC 비활성화', 'NFC 출퇴근을 위해 NFC를 활성화해주세요.', [
-          { text: '취소', style: 'cancel' },
-          {
-            text: '설정으로 이동',
+        ConfirmSheet.confirm({
+          title: 'NFC가 꺼져 있어요',
+          description: 'NFC 출퇴근을 위해 설정에서 NFC를 켜 주세요.',
+          primary: {
+            label: '설정으로 이동',
             onPress: () => {
               if (Platform.OS === 'android') {
                 // @ts-ignore: react-native Linking may not have sendIntent types
@@ -130,14 +132,15 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
               } else {
                 Linking.openSettings();
               }
-            }
-          }
-        ]);
+            },
+          },
+          secondary: {label: '취소'},
+        });
         return false;
       }
       return true;
     } catch (e) {
-      Alert.alert('NFC 오류', 'NFC 상태를 확인할 수 없습니다.');
+      AppToast.error('NFC 상태를 확인할 수 없어요.');
       return false;
     }
   }, []);
@@ -152,30 +155,30 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
 
   const checkIn = useCallback(async () => {
     if (!workplaceId) {
-      Alert.alert('알림', '근무지를 선택해주세요.');
+      AppToast.warn('근무지를 선택해 주세요.');
       return;
     }
     if (!Number.isFinite(employeeIdNum)) {
-      Alert.alert('알림', '로그인이 필요합니다.');
+      AppToast.warn('로그인이 필요해요.');
       return;
     }
     try {
       setLoading(true);
       const loc = await ensureLocation();
       if (!loc) {
-        Alert.alert('알림', '위치 권한이 필요합니다.');
+        AppToast.warn('위치 권한이 필요해요.');
         return;
       }
       if (method === 'location') {
         const verify = await attendanceService.verifyLocationAttendance(String(employeeIdNum), workplaceId, loc.latitude, loc.longitude);
         if (!verify.success) {
-          Alert.alert('알림', verify.message ?? '위치 인증에 실패했습니다. 매장 반경 내에서 다시 시도해주세요.');
+          AppToast.warn(verify.message ?? '위치 인증에 실패했어요. 매장 반경 내에서 다시 시도해 주세요.');
           return;
         }
       } else if (method === 'nfc') {
         const ok = await ensureNFCAvailable();
         if (!ok) return;
-        Alert.alert('안내', 'NFC 스캔은 상세 화면에서 진행됩니다.');
+        AppToast.show('NFC 스캔은 상세 화면에서 진행돼요.');
         return;
       }
 
@@ -187,9 +190,9 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
       });
       setCurrentAttendance(resp);
       await loadRecentRecords();
-      Alert.alert('성공', method === 'location' ? '위치 기반 출근 처리되었습니다.' : '출근 처리되었습니다.');
+      AppToast.success(method === 'location' ? '위치 기반 출근이 기록됐어요.' : '출근이 기록됐어요.');
     } catch (e) {
-      Alert.alert('오류', '출근 처리에 실패했습니다. 다시 시도해주세요.');
+      AppToast.error('출근 처리에 실패했어요. 다시 시도해 주세요.');
     } finally {
       if (isMountedRef.current) setLoading(false);
     }
@@ -197,30 +200,30 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
 
   const checkOut = useCallback(async () => {
     if (!currentAttendance) {
-      Alert.alert('알림', '현재 출근 상태가 아닙니다.');
+      AppToast.warn('현재 출근 상태가 아니에요.');
       return;
     }
     if (!Number.isFinite(employeeIdNum)) {
-      Alert.alert('알림', '로그인이 필요합니다.');
+      AppToast.warn('로그인이 필요해요.');
       return;
     }
     try {
       setLoading(true);
       const loc = await ensureLocation();
       if (!loc) {
-        Alert.alert('알림', '위치 권한이 필요합니다.');
+        AppToast.warn('위치 권한이 필요해요.');
         return;
       }
       if (method === 'location') {
         const verify = await attendanceService.verifyLocationAttendance(String(employeeIdNum), workplaceId, loc.latitude, loc.longitude);
         if (!verify.success) {
-          Alert.alert('알림', verify.message ?? '위치 인증에 실패했습니다. 매장 반경 내에서 다시 시도해주세요.');
+          AppToast.warn(verify.message ?? '위치 인증에 실패했어요. 매장 반경 내에서 다시 시도해 주세요.');
           return;
         }
       } else if (method === 'nfc') {
         const ok = await ensureNFCAvailable();
         if (!ok) return;
-        Alert.alert('안내', 'NFC 스캔은 상세 화면에서 진행됩니다.');
+        AppToast.show('NFC 스캔은 상세 화면에서 진행돼요.');
         return;
       }
 
@@ -232,9 +235,9 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
       });
       setCurrentAttendance(null);
       await loadRecentRecords();
-      Alert.alert('성공', method === 'location' ? '위치 기반 퇴근 처리되었습니다.' : '퇴근 처리되었습니다.');
+      AppToast.success(method === 'location' ? '위치 기반 퇴근이 기록됐어요.' : '퇴근이 기록됐어요.');
     } catch (e) {
-      Alert.alert('오류', '퇴근 처리에 실패했습니다. 다시 시도해주세요.');
+      AppToast.error('퇴근 처리에 실패했어요. 다시 시도해 주세요.');
     } finally {
       if (isMountedRef.current) setLoading(false);
     }

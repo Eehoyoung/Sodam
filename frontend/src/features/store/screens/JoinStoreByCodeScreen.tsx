@@ -44,7 +44,7 @@ const JoinStoreByCodeScreen: React.FC = () => {
                 (e?.response?.status === 404
                     ? '매장 코드와 일치하는 매장을 찾을 수 없어요.'
                     : '잠시 후 다시 시도해 주세요.');
-            Alert.alert('가입 실패', msg);
+            AppToast.error(msg);
         } finally {
             setLoading(false);
         }
@@ -65,7 +65,7 @@ const JoinStoreByCodeScreen: React.FC = () => {
     return (
         <ScreenContainer
             scroll
-            header={<AppHeader title="매장 가입" onBack={() => navigation.goBack()} actions={[{label: 'QR', onPress: () => Alert.alert('QR 스캔', '정식 출시 직전 활성화돼요.')}]} />}
+            header={<AppHeader title="매장 가입" onBack={() => navigation.goBack()} actions={[{label: 'QR', onPress: () => AppToast.show('QR 스캔은 정식 출시 직전 활성화돼요.')}]} />}
             footer={
                 <CtaStack bordered>
                     <AppButton label="매장 가입하기" loading={loading} disabled={code.trim().length < 8} onPress={submit} />

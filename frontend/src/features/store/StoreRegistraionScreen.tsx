@@ -160,7 +160,7 @@ const StoreRegistrationScreen: React.FC = () => {
         ];
         for (const {field, name} of requiredFields) {
             if (!field) {
-                Alert.alert('알림', `${name}을(를) 입력해 주세요.`);
+                AppToast.warn(`${name}을(를) 입력해 주세요.`);
                 return;
             }
         }
@@ -174,7 +174,7 @@ const StoreRegistrationScreen: React.FC = () => {
             return;
         }
         if (storeData.storeStandardHourWage && storeData.storeStandardHourWage < minimumWage) {
-            Alert.alert('알림', `기준 시급은 최저시급(${minimumWage.toLocaleString()}원) 이상이어야 합니다.`);
+            AppToast.warn(`기준 시급은 최저시급(${minimumWage.toLocaleString()}원) 이상이어야 해요.`);
             return;
         }
         await submit({

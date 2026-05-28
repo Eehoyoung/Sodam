@@ -52,7 +52,7 @@ const TimeOffRequestScreen: React.FC = () => {
             await api.post('/api/timeoff/self', {storeId, startDate, endDate, reason: reason.trim()});
             setSubmitted(true);
         } catch (e: any) {
-            Alert.alert('실패', e?.response?.data?.message ?? '신청에 실패했어요.');
+            AppToast.error(e?.response?.data?.message ?? '신청에 실패했어요.');
         } finally {
             setLoading(false);
         }

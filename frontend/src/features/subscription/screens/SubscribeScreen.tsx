@@ -131,7 +131,7 @@ const SubscribeScreen: React.FC = () => {
             if (selectedPlan && selectedPlan !== 'FREE') {
                 navigation.navigate('PaymentFailed');
             } else {
-                Alert.alert('오류', e?.response?.data?.message ?? '구독 처리에 실패했어요. 잠시 후 다시 시도해 주세요.');
+                AppToast.error(e?.response?.data?.message ?? '구독 처리에 실패했어요. 잠시 후 다시 시도해 주세요.');
             }
         } finally {
             setProcessing(false);

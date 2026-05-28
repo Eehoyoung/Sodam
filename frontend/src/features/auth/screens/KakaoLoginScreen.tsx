@@ -1,9 +1,9 @@
 import React, {useState} from 'react';
-import {Alert, StyleSheet, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import {useNavigation} from '@react-navigation/native';
-import {AppButton, AppText, Brandmark} from '../../../common/components/ds';
+import {AppButton, AppText, AppToast, Brandmark} from '../../../common/components/ds';
 import {gradient, spacing} from '../../../theme/tokens';
 import authApi from '../services/authApi';
 
@@ -24,7 +24,7 @@ const KakaoLoginScreen: React.FC = () => {
             await authApi.openKakaoLogin();
             // 콜백 후 AuthContext 가 user 설정 → navigation reset
         } catch (e: any) {
-            Alert.alert('카카오 로그인 실패', '잠시 후 다시 시도해 주세요.');
+            AppToast.error('카카오 로그인에 실패했어요. 잠시 후 다시 시도해 주세요.');
         } finally {
             setLoading(false);
         }

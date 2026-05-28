@@ -1,6 +1,6 @@
-import {AppToast} from '../../../common/components/ds';
+import {AppToast, ConfirmSheet} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
-import {Alert, StyleSheet, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {useRoute} from '@react-navigation/native';
 import {
     AppButton,
@@ -53,10 +53,12 @@ const WageSettingsScreen: React.FC = () => {
             return;
         }
         if (n < 9860) {
-            Alert.alert('주의', `2026년 최저시급(가정 ₩9,860)보다 낮은 시급이에요.\n그래도 적용하시겠어요?`, [
-                {text: '취소', style: 'cancel'},
-                {text: '적용', onPress: () => applyWage(n)},
-            ]);
+            ConfirmSheet.confirm({
+                title: '최저시급보다 낮아요',
+                description: '2026년 최저시급(가정 ₩9,860)보다 낮은 시급이에요. 그래도 적용할까요?',
+                primary: {label: '그래도 적용', destructive: true, onPress: () => applyWage(n)},
+                secondary: {label: '취소'},
+            });
             return;
         }
         applyWage(n);
@@ -72,7 +74,7 @@ const WageSettingsScreen: React.FC = () => {
                 await api.put(`/api/wages/store/${storeId}/standard`, {standardHourlyWage: wage});
                 AppToast.success('매장 기본 시급이 변경됐어요.');
             } catch (e2: any) {
-                Alert.alert('실패', e2?.response?.data?.message ?? '시급 변경에 실패했어요.');
+                AppToast.error(e2?.response?.data?.message ?? '시급 변경에 실패했어요.');
             }
         } finally {
             setLoading(false);

@@ -2,7 +2,6 @@ import {AppToast} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
 import {
     ActivityIndicator,
-    Alert,
     FlatList,
     Modal,
     RefreshControl,
@@ -183,7 +182,8 @@ const SalaryListScreen = () => {
 
         try {
             const url = await salaryService.batchGenerateSalaryStatements(selectedSalaries);
-            Alert.alert('성공', '명세서가 생성됐어요. 다운로드 URL: ' + url);
+            AppToast.success('명세서가 생성됐어요. 알림으로 다운로드 링크를 전달했어요.');
+            console.log('[salary] batch generated:', url);
             setBatchActionModalVisible(false);
             setSelectedSalaries([]);
         } catch (error) {

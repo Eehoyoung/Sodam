@@ -34,7 +34,7 @@ const AccountSettingsScreen: React.FC = () => {
             await api.put('/api/user/me', {name: name.trim()});
             AppToast.success('이름이 변경됐어요.');
         } catch (e: any) {
-            Alert.alert('실패', e?.response?.data?.message ?? '변경에 실패했어요.');
+            AppToast.error(e?.response?.data?.message ?? '변경에 실패했어요.');
         } finally {
             setSaving(false);
         }

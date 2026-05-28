@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {Alert, Pressable, Share, StyleSheet, View} from 'react-native';
+import {Pressable, Share, StyleSheet, View} from 'react-native';
 import {
     AppBadge,
     AppButton,
@@ -7,6 +7,7 @@ import {
     AppHeader,
     AppListItem,
     AppText,
+    AppToast,
     ScreenContainer,
 } from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
@@ -54,7 +55,7 @@ const ReferralScreen: React.FC = () => {
         } catch (_) {/* ignore */}
     };
 
-    const copyCode = () => Alert.alert('추천 코드', code?.referralCode ?? '');
+    const copyCode = () => AppToast.show(`내 추천 코드: ${code?.referralCode ?? ''}`);
 
     return (
         <ScreenContainer scroll header={<AppHeader title="친구 추천" actions={[{label: '공유', onPress: share}]} />}>

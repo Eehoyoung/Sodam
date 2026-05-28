@@ -95,10 +95,7 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation}) => {
             setPassword('');
         } catch (e: any) {
             const beMsg = e?.response?.data?.message;
-            Alert.alert(
-                '회원가입 실패',
-                beMsg && typeof beMsg === 'string' ? beMsg : '회원가입에 실패했어요. 잠시 후 다시 시도해 주세요.',
-            );
+            AppToast.error(beMsg && typeof beMsg === 'string' ? beMsg : '회원가입에 실패했어요. 잠시 후 다시 시도해 주세요.');
         } finally {
             setIsLoading(false);
         }

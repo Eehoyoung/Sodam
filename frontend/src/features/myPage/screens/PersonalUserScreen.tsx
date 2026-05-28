@@ -7,7 +7,6 @@ import {
     ScrollView,
     TextInput,
     Modal,
-    Alert,
     StyleSheet,
     SafeAreaView,
     StatusBar,
@@ -443,7 +442,7 @@ const MultiStoreWorkScreen: React.FC = () => {
             const timeString = now.toTimeString().slice(0, 5);
             addRecord('출근', timeString, selectedStoreId);
 
-            Alert.alert('출근 완료', `${currentStore.name}에 출근이 기록됐어요! 💪`);
+            AppToast.success(`${currentStore.name}에 출근이 기록됐어요! 💪`);
         }
     };
 
@@ -474,7 +473,7 @@ const MultiStoreWorkScreen: React.FC = () => {
                 [selectedStoreId]: newSession,
             }));
 
-            Alert.alert('퇴근 완료', `${currentStore.name}에서 퇴근이 기록됐어요! 수고하셨어요! 🎉`);
+            AppToast.success(`${currentStore.name}에서 퇴근이 기록됐어요! 수고하셨어요! 🎉`);
         }
     };
 
@@ -504,7 +503,7 @@ const MultiStoreWorkScreen: React.FC = () => {
             const timeString = now.toTimeString().slice(0, 5);
             addRecord('휴게시작', timeString, selectedStoreId);
 
-            Alert.alert('휴게시간 시작', `${currentStore.name}에서 휴게시간이 시작됐어요! ☕`);
+            AppToast.success(`${currentStore.name}에서 휴게시간이 시작됐어요! ☕`);
         }
     };
 
@@ -535,7 +534,7 @@ const MultiStoreWorkScreen: React.FC = () => {
             const timeString = now.toTimeString().slice(0, 5);
             addRecord('휴게종료', timeString, selectedStoreId);
 
-            Alert.alert('휴게시간 종료', `${currentStore.name}에서 휴게시간이 종료됐어요! 화이팅! 💪`);
+            AppToast.success(`${currentStore.name}에서 휴게시간이 종료됐어요! 화이팅! 💪`);
         }
     };
 
@@ -566,9 +565,9 @@ const MultiStoreWorkScreen: React.FC = () => {
             setManualRecord({ type: '출근', hour: '', minute: '', storeId: stores[0].id });
 
             const store = stores.find(s => s.id === manualRecord.storeId);
-            Alert.alert('기록 추가', `${store?.name}에 ${manualRecord.type} 기록이 추가됐어요!`);
+            AppToast.success(`${store?.name}에 ${manualRecord.type} 기록이 추가됐어요!`);
         } else {
-            Alert.alert('입력 오류', '시간과 분을 모두 입력해 주세요.');
+            AppToast.warn('시간과 분을 모두 입력해 주세요.');
         }
     };
 

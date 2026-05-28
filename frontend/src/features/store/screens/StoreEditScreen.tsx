@@ -66,7 +66,7 @@ const StoreEditScreen: React.FC = () => {
             AppToast.success('매장 정보가 변경됐어요.');
             navigation.goBack();
         } catch (e: any) {
-            Alert.alert('실패', e?.response?.data?.message ?? '변경에 실패했어요.');
+            AppToast.error(e?.response?.data?.message ?? '변경에 실패했어요.');
         } finally {
             setLoading(false);
         }

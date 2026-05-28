@@ -2,7 +2,6 @@ import {AppToast, ConfirmSheet} from '../../../common/components/ds';
 import React, {useEffect, useRef, useState} from 'react';
 import {
     ActivityIndicator,
-    Alert,
     FlatList,
     Linking,
     Modal,
@@ -337,7 +336,7 @@ const AttendanceScreen = () => {
             );
 
             if (!verifyResult.success) {
-                Alert.alert('알림', verifyResult.message ?? '위치 인증에 실패했어요. 매장 반경 내에서 다시 시도해 주세요.');
+                AppToast.warn(verifyResult.message ?? '위치 인증에 실패했어요. 매장 반경 내에서 다시 시도해 주세요.');
                 return;
             }
 
@@ -380,7 +379,7 @@ const AttendanceScreen = () => {
             );
 
             if (!verifyResult.success) {
-                Alert.alert('알림', verifyResult.message ?? 'NFC 태그 인증에 실패했어요. 다시 시도해 주세요.');
+                AppToast.warn(verifyResult.message ?? 'NFC 태그 인증에 실패했어요. 다시 시도해 주세요.');
                 return;
             }
 
@@ -465,7 +464,7 @@ const AttendanceScreen = () => {
             );
 
             if (!verifyResult.success) {
-                Alert.alert('알림', verifyResult.message ?? '위치 인증에 실패했어요. 매장 반경 내에서 다시 시도해 주세요.');
+                AppToast.warn(verifyResult.message ?? '위치 인증에 실패했어요. 매장 반경 내에서 다시 시도해 주세요.');
                 return;
             }
 
@@ -508,7 +507,7 @@ const AttendanceScreen = () => {
             );
 
             if (!verifyResult.success) {
-                Alert.alert('알림', verifyResult.message ?? 'NFC 태그 인증에 실패했어요. 다시 시도해 주세요.');
+                AppToast.warn(verifyResult.message ?? 'NFC 태그 인증에 실패했어요. 다시 시도해 주세요.');
                 return;
             }
 

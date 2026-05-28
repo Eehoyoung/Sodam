@@ -1,7 +1,6 @@
-import {AppToast} from '../../../common/components/ds';
+import {AppToast, ConfirmSheet} from '../../../common/components/ds';
 import React, {useEffect, useMemo, useState} from 'react';
 import {
-    Alert,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -161,12 +160,7 @@ const EmployeeDetailScreen: React.FC = () => {
                 <View style={styles.actionsRow}>
                     <Button
                         title="시급 변경"
-                        onPress={() =>
-                            Alert.alert(
-                                '안내',
-                                '시급 변경 화면(S-501c)은 P1 단계에서 연결됩니다.\nBE 호출은 PUT /api/wages/employee.',
-                            )
-                        }
+                        onPress={() => AppToast.show('시급 변경 화면(S-501c)은 P1 단계에서 연결돼요.')}
                         variant="outline"
                         size="md"
                         style={styles.actionBtn}
@@ -174,12 +168,19 @@ const EmployeeDetailScreen: React.FC = () => {
                     <Button
                         title={emp.isActive === false ? '활성화' : '비활성화'}
                         onPress={() =>
-                            Alert.alert(
-                                '확인',
-                                emp.isActive === false
-                                    ? '직원을 활성화할까요?'
-                                    : '직원을 비활성화할까요? 출근/급여 기록은 보존돼요.',
-                            )
+                            ConfirmSheet.confirm({
+                                title: emp.isActive === false ? '직원을 활성화할까요?' : '직원을 비활성화할까요?',
+                                description:
+                                    emp.isActive === false
+                                        ? '활성화하면 출퇴근 기록과 급여 산정이 다시 시작돼요.'
+                                        : '비활성화해도 기존 출근·급여 기록은 그대로 보존돼요.',
+                                primary: {
+                                    label: emp.isActive === false ? '활성화' : '비활성화',
+                                    destructive: emp.isActive !== false,
+                                    onPress: () => {/* TODO: PUT /api/employees/{id}/active */},
+                                },
+                                secondary: {label: '취소'},
+                            })
                         }
                         variant="destructive"
                         size="md"

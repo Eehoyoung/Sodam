@@ -1,7 +1,8 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {Alert, Linking, Platform, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {Linking, Platform, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import NfcManager, {Ndef, NfcTech} from 'react-native-nfc-manager';
 import {Button, Card, Toast} from '../../../common/components';
+import {AppToast, ConfirmSheet} from '../../../common/components/ds';
 import {colors, spacing} from '../../../common/styles/theme';
 import {useAuth} from '../../../contexts/AuthContext';
 import {
@@ -91,23 +92,21 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
             setIsNFCEnabled(isEnabled);
 
             if (!isEnabled) {
-                Alert.alert(
-                    'NFC 비활성화',
-                    'NFC 출퇴근을 위해 NFC를 활성화해주세요. 설정에서 NFC를 켜주세요.',
-                    [
-                        {text: '취소', style: 'cancel'},
-                        {
-                            text: '설정으로 이동',
-                            onPress: () => {
-                                if (Platform.OS === 'android') {
-                                    Linking.sendIntent('android.settings.NFC_SETTINGS');
-                                } else {
-                                    Linking.openSettings();
-                                }
+                ConfirmSheet.confirm({
+                    title: 'NFC가 꺼져 있어요',
+                    description: 'NFC 출퇴근을 위해 설정에서 NFC를 켜 주세요.',
+                    primary: {
+                        label: '설정으로 이동',
+                        onPress: () => {
+                            if (Platform.OS === 'android') {
+                                Linking.sendIntent('android.settings.NFC_SETTINGS');
+                            } else {
+                                Linking.openSettings();
                             }
-                        }
-                    ]
-                );
+                        },
+                    },
+                    secondary: {label: '취소'},
+                });
             }
         } catch (error) {
             console.error('[DEBUG_LOG] NFCAttendance: NFC initialization failed:', error);
@@ -212,7 +211,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
     // NFC 태그 읽기 시작
     const startNFCReading = async () => {
         if (!isNFCSupported || !isNFCEnabled) {
-            Alert.alert('NFC 사용 불가', 'NFC가 지원되지 않거나 비활성화되어 있어요.');
+            AppToast.warn('NFC를 사용할 수 없어요. 지원 여부와 설정을 확인해 주세요.');
             return;
         }
 

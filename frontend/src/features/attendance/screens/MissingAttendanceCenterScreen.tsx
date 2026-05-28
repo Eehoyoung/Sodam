@@ -134,7 +134,7 @@ const MissingAttendanceCenterScreen: React.FC = () => {
                                             size="sm"
                                             variant="outline"
                                             fullWidth={false}
-                                            onPress={() => Alert.alert('안내', '수동 기록은 출퇴근 보드에서 가능해요.')}
+                                            onPress={() => AppToast.show('수동 기록은 출퇴근 보드에서 가능해요.')}
                                             style={styles.actionBtn}
                                         />
                                     </View>

@@ -95,7 +95,7 @@ const StepEmail: React.FC<{onNext: () => void}> = ({onNext}) => {
             globalEmailRef.current = email;
             onNext();
         } catch (e: any) {
-            Alert.alert('잠시 후 다시 시도해 주세요', '서버 응답이 없어요. 우리 잘못이에요.');
+            AppToast.error('서버 응답이 없어요. 잠시 후 다시 시도해 주세요.');
         } finally {
             setLoading(false);
         }
@@ -161,10 +161,7 @@ const StepOtp: React.FC<{onNext: () => void; onBack: () => void}> = ({onNext, on
             globalTicketRef.current = ticket;
             onNext();
         } catch (e: any) {
-            Alert.alert(
-                '인증 실패',
-                '인증번호가 일치하지 않거나 만료되었어요. 다시 확인해 주세요.',
-            );
+            AppToast.warn('인증번호가 일치하지 않거나 만료됐어요. 다시 확인해 주세요.');
             setCode('');
         } finally {
             setLoading(false);
