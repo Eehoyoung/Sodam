@@ -131,10 +131,12 @@ springdoc:
 
 jwt:
   secret: ${JWT_SECRET:#{null}}
-  token-validity-in-seconds: ${JWT_EXPIRATION:900}      # 15분 (액세스 토큰)
-  refresh-token-validity-in-days: ${JWT_REFRESH_EXPIRATION:7}   # 7일 (리프레시 토큰)
+  # ⚠️ 단위 주의: 아래 속성은 '초'/'일' 단위. ms 환경변수(JWT_EXPIRATION 등) 바인딩 금지
+  #   (과거 ms 를 초/일에 바인딩해 refresh 만료가 165만년→MySQL datetime 크래시 발생, 수정됨)
+  token-validity-in-seconds: ${JWT_TOKEN_VALIDITY_SECONDS:3600}        # 1시간 (액세스 토큰)
+  refresh-token-validity-in-days: ${JWT_REFRESH_VALIDITY_DAYS:7}       # 7일 (리프레시 토큰)
   cookie-name: ${JWT_COOKIE_NAME:sodam_jwt}
-  cookie-max-age: ${JWT_COOKIE_MAX_AGE:900}                 # 15분
+  cookie-max-age: ${JWT_COOKIE_MAX_AGE:3600}                           # 1시간
 
 management:
   endpoints:

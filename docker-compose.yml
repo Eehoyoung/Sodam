@@ -41,8 +41,9 @@ services:
       REDIS_PORT: 6379
       # JWT — 컨테이너 운영용 32바이트+ 시크릿 (운영은 Secrets Manager)
       JWT_SECRET: ${SODAM_JWT_SECRET:-Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1pcy0zMi1ieXRlcy1taW4=}
-      JWT_EXPIRATION: 3600000
-      JWT_REFRESH_EXPIRATION: 604800000
+      # 단위: 초/일 (yaml token-validity-in-seconds / refresh-token-validity-in-days 와 일치)
+      JWT_TOKEN_VALIDITY_SECONDS: 3600
+      JWT_REFRESH_VALIDITY_DAYS: 7
       # 외부 통합 — 출시 직전까지 mock 모드 유지
       SODAM_INTEGRATION_TOSS_MODE: ${SODAM_TOSS_MODE:-mock}
       SODAM_INTEGRATION_FCM_MODE: ${SODAM_FCM_MODE:-mock}
