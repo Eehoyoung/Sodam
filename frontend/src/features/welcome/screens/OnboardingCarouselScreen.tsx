@@ -17,29 +17,31 @@ import {AppButton} from '../../../common/components/ds';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
 
 interface Slide {
-    emoji: string;
+    glyph: string;
     headline: string;
     body: string;
     gradient: [string, string];
 }
 
+// 브랜드 글리프 사용 — 이모지(📲💰🌿) 대신 컨텍스트 의미를 담은 단일 문자.
+// (B2B 톤·픽셀 일관성·고대비 가독성 모두 우위)
 const SLIDES: Slide[] = [
     {
-        emoji: '📲',
+        glyph: 'N',
         headline: '출퇴근, NFC 한 번이면 끝',
         body: '카운터 위 스티커에 폰만 대면 자동 출근 인증.\n부정 출근 걱정 끝이에요.',
         gradient: ['#FFB48F', '#FF6B35'],
     },
     {
-        emoji: '💰',
+        glyph: '₩',
         headline: '급여, 자동으로 정확하게',
         body: '주휴수당·연장·야간 시급 자동 계산.\n월말 30분이면 정산 끝나요.',
         gradient: ['#FF9B63', '#FF5722'],
     },
     {
-        emoji: '🌿',
+        glyph: '환',
         headline: '종합소득세 환급도 한 앱에서',
-        body: '세무사 부담 없이 환급 받으세요.\n환급 받은 만큼만 수수료 드립니다.',
+        body: '세무사 부담 없이 환급 받으세요.\n환급 받은 만큼만 수수료 드릴게요.',
         gradient: ['#FF9B63', '#E5552A'],
     },
 ];
@@ -126,7 +128,7 @@ const SlideCard: React.FC<{slide: Slide; width: number}> = ({slide, width}) => (
             end={{x: 1, y: 1}}
             style={styles.illustrationBox}
         >
-            <Text style={styles.illustrationEmoji}>{slide.emoji}</Text>
+            <Text style={styles.illustrationGlyph}>{slide.glyph}</Text>
         </LinearGradient>
         <Text style={styles.headline}>{slide.headline}</Text>
         <Text style={styles.body}>{slide.body}</Text>
@@ -165,7 +167,15 @@ const styles = StyleSheet.create({
         marginTop: tokens.spacing.huge,
         ...tokens.shadow.brand,
     },
-    illustrationEmoji: {fontSize: 92},
+    illustrationGlyph: {
+        fontSize: 88,
+        fontWeight: '900',
+        color: tokens.colors.textInverse,
+        letterSpacing: -2,
+        textShadowColor: 'rgba(0,0,0,0.18)',
+        textShadowOffset: {width: 0, height: 4},
+        textShadowRadius: 12,
+    },
     headline: {
         marginTop: tokens.spacing.xxxl,
         fontSize: tokens.typography.sizes.display,

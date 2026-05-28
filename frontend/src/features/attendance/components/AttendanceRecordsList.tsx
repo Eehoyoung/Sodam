@@ -21,7 +21,7 @@ const statusLabel = (status: AttendanceStatus) => {
   }
 };
 
-export const AttendanceRecordsList: React.FC<Props> = ({ records, emptyText = '출퇴근 기록이 없습니다.' }) => {
+export const AttendanceRecordsList: React.FC<Props> = ({ records, emptyText = '출퇴근 기록이 없어요.' }) => {
   if (!records?.length) {
     return (
       <View style={styles.emptyBox}>

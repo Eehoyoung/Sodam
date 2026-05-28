@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useState} from 'react';
 import {Alert, StyleSheet, View} from 'react-native';
 import {useAuth} from '../../../contexts/AuthContext';
@@ -30,7 +31,7 @@ const SettingsScreen: React.FC = () => {
             await logout();
             navigation.reset({index: 0, routes: [{name: 'Welcome'}]});
         } catch (e) {
-            Alert.alert('오류', '로그아웃 중 오류가 발생했습니다.');
+            AppToast.error('로그아웃 중 오류가 생겼어요.');
         }
     };
 

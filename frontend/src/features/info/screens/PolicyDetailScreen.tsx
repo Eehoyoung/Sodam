@@ -61,13 +61,13 @@ const PolicyDetailScreen = () => {
                         department: '중소벤처기업부',
                         applicationPeriod: '2024년 6월 1일 ~ 2024년 7월 31일',
                         eligibility: '연 매출 3억원 이하의 소상공인 (사업자등록증 보유 필수)',
-                        benefits: '1. 디지털 전환 컨설팅 지원 (최대 100만원)\n2. 온라인 판로 구축 지원 (최대 300만원)\n3. 스마트 기기 도입 지원 (최대 200만원)\n4. 디지털 마케팅 교육 제공',
+                        benefits: '1. 디지털 전환 컨설팅 지원 (최대 100만원)\n2. 온라인 판로 구축 지원 (최대 300만원)\n3. 디지털 기기 도입 지원 (최대 200만원)\n4. 디지털 마케팅 교육 제공',
                         applicationLink: 'https://www.mss.go.kr/site/smba/main.do',
                     });
                     setLoading(false);
                 }, 1000);
             } catch (error) {
-                setToastMessage('정보를 불러오는 중 오류가 발생했습니다.');
+                setToastMessage('정보를 불러오는 중 오류가 생겼어요.');
                 setToastType('error');
                 setShowToast(true);
                 setLoading(false);
@@ -78,7 +78,7 @@ const PolicyDetailScreen = () => {
 
     const toggleBookmark = () => {
         setIsBookmarked(!isBookmarked);
-        setToastMessage(isBookmarked ? '북마크가 해제되었습니다.' : '나중에 볼 수 있게 저장했어요.');
+        setToastMessage(isBookmarked ? '북마크가 해제됐어요.' : '나중에 볼 수 있게 저장했어요.');
         setToastType('success');
         setShowToast(true);
     };
@@ -93,7 +93,7 @@ const PolicyDetailScreen = () => {
                 title: policy.title,
             });
         } catch (error) {
-            setToastMessage('공유 중 오류가 발생했습니다.');
+            setToastMessage('공유 중 오류가 생겼어요.');
             setToastType('error');
             setShowToast(true);
         }
@@ -108,12 +108,12 @@ const PolicyDetailScreen = () => {
             if (supported) {
                 await Linking.openURL(policy.applicationLink);
             } else {
-                setToastMessage('링크를 열 수 없습니다.');
+                setToastMessage('링크를 열 수 없어요.');
                 setToastType('error');
                 setShowToast(true);
             }
         } catch (error) {
-            setToastMessage('링크를 여는 중 오류가 발생했습니다.');
+            setToastMessage('링크를 여는 중 오류가 생겼어요.');
             setToastType('error');
             setShowToast(true);
         }

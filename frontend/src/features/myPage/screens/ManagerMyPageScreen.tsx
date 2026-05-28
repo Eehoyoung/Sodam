@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
 import {Alert, ScrollView, StyleSheet, View} from 'react-native';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
@@ -52,7 +53,7 @@ const ManagerMyPageScreen: React.FC = () => {
             ]);
             setPendingApprovals([{id: 1, employeeName: '최근무', type: 'check-in', timestamp: '2025-10-12T09:05:00'}]);
         } catch (error) {
-            Alert.alert('오류', '데이터를 불러오는데 실패했습니다.');
+            AppToast.error('데이터를 불러오는데 실패했어요.');
         }
     };
 
@@ -63,7 +64,7 @@ const ManagerMyPageScreen: React.FC = () => {
                 text: '승인',
                 onPress: () => {
                     setPendingApprovals(prev => prev.filter(item => item.id !== approvalId));
-                    Alert.alert('완료', '출퇴근 기록이 승인되었습니다.');
+                    AppToast.success('출퇴근 기록이 승인됐어요.');
                 },
             },
         ]);
@@ -136,7 +137,7 @@ const ManagerMyPageScreen: React.FC = () => {
                         <AppCard variant="warm">
                             <AppText variant="titleMd">관리자 안내</AppText>
                             <AppText variant="caption" tone="secondary" style={styles.infoText}>
-                                • 팀원의 출퇴근 기록을 승인하거나 수정할 수 있습니다.{'\n'}• 매장 운영 현황을 실시간으로 확인하세요.{'\n'}• 문제가 있을 경우 사장님께 보고해주세요.
+                                • 팀원의 출퇴근 기록을 승인하거나 수정할 수 있어요.{'\n'}• 매장 운영 현황을 실시간으로 확인하세요.{'\n'}• 문제가 있을 경우 사장님께 보고해주세요.
                             </AppText>
                         </AppCard>
                     </View>

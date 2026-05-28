@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
 import {
     ActivityIndicator,
@@ -65,8 +66,8 @@ const SalaryListScreen = () => {
 
             setSalaries(data);
         } catch (error) {
-            console.error('급여 목록을 가져오는 중 오류가 발생했습니다:', error);
-            Alert.alert('오류', '급여 목록을 불러오는 데 실패했습니다. 다시 시도해주세요.');
+            console.error('급여 목록을 가져오는 중 오류가 생겼어요:', error);
+            AppToast.error('급여 목록을 불러오는 데 실패했어요. 다시 시도해 주세요.');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -83,7 +84,7 @@ const SalaryListScreen = () => {
             ];
             setWorkplaces(data);
         } catch (error) {
-            console.error('근무지 목록을 가져오는 중 오류가 발생했습니다:', error);
+            console.error('근무지 목록을 가져오는 중 오류가 생겼어요:', error);
         }
     };
 
@@ -156,38 +157,38 @@ const SalaryListScreen = () => {
     // 일괄 지급 처리
     const handleBatchPay = async () => {
         if (selectedSalaries.length === 0) {
-            Alert.alert('알림', '지급할 급여를 선택해주세요.');
+            AppToast.show('지급할 급여를 선택해주세요.');
             return;
         }
 
         try {
             const formattedDate = format(paymentDate, 'yyyy-MM-dd');
             await salaryService.batchPaySalaries(selectedSalaries, formattedDate);
-            Alert.alert('성공', '선택한 급여가 일괄 지급되었습니다.');
+            AppToast.success('선택한 급여가 일괄 지급됐어요.');
             setBatchActionModalVisible(false);
             setSelectedSalaries([]);
             fetchSalaries();
         } catch (error) {
-            console.error('일괄 지급 중 오류가 발생했습니다:', error);
-            Alert.alert('오류', '일괄 지급에 실패했습니다. 다시 시도해주세요.');
+            console.error('일괄 지급 중 오류가 생겼어요:', error);
+            AppToast.error('일괄 지급에 실패했어요. 다시 시도해 주세요.');
         }
     };
 
     // 일괄 명세서 생성
     const handleBatchStatements = async () => {
         if (selectedSalaries.length === 0) {
-            Alert.alert('알림', '명세서를 생성할 급여를 선택해주세요.');
+            AppToast.show('명세서를 생성할 급여를 선택해주세요.');
             return;
         }
 
         try {
             const url = await salaryService.batchGenerateSalaryStatements(selectedSalaries);
-            Alert.alert('성공', '명세서가 생성되었습니다. 다운로드 URL: ' + url);
+            Alert.alert('성공', '명세서가 생성됐어요. 다운로드 URL: ' + url);
             setBatchActionModalVisible(false);
             setSelectedSalaries([]);
         } catch (error) {
-            console.error('일괄 명세서 생성 중 오류가 발생했습니다:', error);
-            Alert.alert('오류', '명세서 생성에 실패했습니다. 다시 시도해주세요.');
+            console.error('일괄 명세서 생성 중 오류가 생겼어요:', error);
+            AppToast.error('명세서 생성에 실패했어요. 다시 시도해 주세요.');
         }
     };
 
@@ -204,7 +205,7 @@ const SalaryListScreen = () => {
     // 급여 정책 화면으로 이동
     const navigateToSalaryPolicy = () => {
         if (!selectedWorkplaceId) {
-            Alert.alert('알림', '근무지를 선택해주세요.');
+            AppToast.show('근무지를 선택해주세요.');
             return;
         }
         navigation.navigate({name: 'SalaryPolicy', params: {workplaceId: selectedWorkplaceId}});
@@ -302,7 +303,7 @@ const SalaryListScreen = () => {
 
             <TouchableOpacity
                 style={styles.salaryContent}
-                onPress={() => { const pid = Number(item.id); if (Number.isNaN(pid) || pid <= 0) { Alert.alert('오류', '급여 ID가 유효하지 않습니다.'); return; } navigateToSalaryDetail(pid); }}
+                onPress={() => { const pid = Number(item.id); if (Number.isNaN(pid) || pid <= 0) { AppToast.error('급여 ID가 유효하지 않아요.'); return; } navigateToSalaryDetail(pid); }}
             >
                 <View style={styles.salaryHeader}>
                     <Text style={styles.employeeName}>{item.employeeName}</Text>

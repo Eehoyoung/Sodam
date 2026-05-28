@@ -72,7 +72,7 @@ const SalaryCalculatorDemo: React.FC<SalaryCalculatorDemoProps> = ({
                             setDemoStep('complete');
                             onDemoComplete({
                                 success: true,
-                                message: '급여 계산 체험이 완료되었습니다!',
+                                message: '급여 계산 체험이 완료됐어요!',
                                 timestamp: Date.now(),
                                 calculation: calculation!
                             });
@@ -119,7 +119,7 @@ const SalaryCalculatorDemo: React.FC<SalaryCalculatorDemoProps> = ({
     const closeDemo = () => {
         onDemoComplete({
             success: false,
-            message: '데모가 취소되었습니다.',
+            message: '데모가 취소됐어요.',
             timestamp: Date.now()
         });
     };

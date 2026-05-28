@@ -73,7 +73,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
             setIsNFCSupported(isSupported);
 
             if (!isSupported) {
-                if (onError) onError('이 기기는 NFC를 지원하지 않습니다.');
+                if (onError) onError('이 기기는 NFC를 지원하지 않아요.');
                 return;
             }
 
@@ -113,7 +113,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
             console.error('[DEBUG_LOG] NFCAttendance: NFC initialization failed:', error);
             if (!isMountedRef.current) return;
 
-            if (onError) onError('NFC 초기화에 실패했습니다.');
+            if (onError) onError('NFC 초기화에 실패했어요.');
         }
     };
 
@@ -150,7 +150,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
             }
 
             if (!user?.id) {
-                throw new Error('사용자 정보를 찾을 수 없습니다.');
+                throw new Error('사용자 정보를 찾을 수 없어요.');
             }
 
             // 출근/퇴근 API 호출
@@ -174,7 +174,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                 Toast.show({
                     type: 'success',
                     text1: isCheckingIn ? '출근 완료' : '퇴근 완료',
-                    text2: result.message || `${isCheckingIn ? '출근' : '퇴근'}이 성공적으로 처리되었습니다.`,
+                    text2: result.message || `${isCheckingIn ? '출근' : '퇴근'}이 성공적으로 처리됐어요.`,
                     visibilityTime: 3000,
                 });
 
@@ -182,14 +182,14 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                     onSuccess(isCheckingIn);
                 }
             } else {
-                throw new Error(result.message || 'NFC 출퇴근 처리에 실패했습니다.');
+                throw new Error(result.message || 'NFC 출퇴근 처리에 실패했어요.');
             }
         } catch (error) {
             console.error('[DEBUG_LOG] NFCAttendance: NFC tag processing failed:', error);
 
             if (!isMountedRef.current) return;
 
-            const errorMessage = error instanceof Error ? error.message : 'NFC 태그 처리 중 오류가 발생했습니다.';
+            const errorMessage = error instanceof Error ? error.message : 'NFC 태그 처리 중 오류가 생겼어요.';
 
             Toast.show({
                 type: 'error',
@@ -212,7 +212,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
     // NFC 태그 읽기 시작
     const startNFCReading = async () => {
         if (!isNFCSupported || !isNFCEnabled) {
-            Alert.alert('NFC 사용 불가', 'NFC가 지원되지 않거나 비활성화되어 있습니다.');
+            Alert.alert('NFC 사용 불가', 'NFC가 지원되지 않거나 비활성화되어 있어요.');
             return;
         }
 
@@ -246,7 +246,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                 if (tagId) {
                     await handleNFCTagScanned(tagId);
                 } else {
-                    throw new Error('NFC 태그에서 데이터를 읽을 수 없습니다.');
+                    throw new Error('NFC 태그에서 데이터를 읽을 수 없어요.');
                 }
             }
         } catch (error) {
@@ -254,7 +254,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
 
             if (!isMountedRef.current) return;
 
-            const errorMessage = error instanceof Error ? error.message : 'NFC 태그 읽기에 실패했습니다.';
+            const errorMessage = error instanceof Error ? error.message : 'NFC 태그 읽기에 실패했어요.';
 
             Toast.show({
                 type: 'error',
@@ -304,7 +304,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                     <Icon name="nfc-off" size={64} color={c.text?.secondary || '#666'}/>
                     <Text style={styles.unsupportedTitle}>NFC 미지원</Text>
                     <Text style={styles.unsupportedMessage}>
-                        이 기기는 NFC를 지원하지 않습니다.{'\n'}
+                        이 기기는 NFC를 지원하지 않아요.{'\n'}
                         다른 출퇴근 방법을 이용해주세요.
                     </Text>
                 </View>
@@ -387,7 +387,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                 <View style={styles.warningContainer}>
                     <Icon name="warning" size={20} color={c.warning?.main || '#F59E0B'}/>
                     <Text style={styles.warningText}>
-                        NFC가 비활성화되어 있습니다. 설정에서 NFC를 활성화해주세요.
+                        NFC가 비활성화되어 있어요. 설정에서 NFC를 활성화해주세요.
                     </Text>
                 </View>
             )}

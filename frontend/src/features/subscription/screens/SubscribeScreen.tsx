@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
 import {Alert, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
@@ -106,7 +107,7 @@ const SubscribeScreen: React.FC = () => {
 
     const handleSubscribe = async () => {
         if (!selectedPlan) {
-            Alert.alert('알림', '플랜을 선택해 주세요.');
+            AppToast.show('플랜을 선택해 주세요.');
             return;
         }
         setProcessing(true);

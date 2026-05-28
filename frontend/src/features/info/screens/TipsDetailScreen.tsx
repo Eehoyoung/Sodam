@@ -71,7 +71,7 @@ const TipsDetailScreen = () => {
                     setLoading(false);
                 }, 1000);
             } catch (error) {
-                setToastMessage('정보를 불러오는 중 오류가 발생했습니다.');
+                setToastMessage('정보를 불러오는 중 오류가 생겼어요.');
                 setToastType('error');
                 setShowToast(true);
                 setLoading(false);
@@ -82,7 +82,7 @@ const TipsDetailScreen = () => {
 
     const toggleBookmark = () => {
         setIsBookmarked(!isBookmarked);
-        setToastMessage(isBookmarked ? '북마크가 해제되었습니다.' : '나중에 볼 수 있게 저장했어요.');
+        setToastMessage(isBookmarked ? '북마크가 해제됐어요.' : '나중에 볼 수 있게 저장했어요.');
         setToastType('success');
         setShowToast(true);
     };
@@ -94,7 +94,7 @@ const TipsDetailScreen = () => {
             }
             await Share.share({message: `${tip.title}\n\n${tip.summary}\n\n소담 앱에서 더 보기`, title: tip.title});
         } catch (error) {
-            setToastMessage('공유 중 오류가 발생했습니다.');
+            setToastMessage('공유 중 오류가 생겼어요.');
             setToastType('error');
             setShowToast(true);
         }
@@ -106,12 +106,12 @@ const TipsDetailScreen = () => {
             if (supported) {
                 await Linking.openURL(url);
             } else {
-                setToastMessage('링크를 열 수 없습니다.');
+                setToastMessage('링크를 열 수 없어요.');
                 setToastType('error');
                 setShowToast(true);
             }
         } catch (error) {
-            setToastMessage('링크를 여는 중 오류가 발생했습니다.');
+            setToastMessage('링크를 여는 중 오류가 생겼어요.');
             setToastType('error');
             setShowToast(true);
         }

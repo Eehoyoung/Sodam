@@ -1,3 +1,4 @@
+import {AppToast} from '../../common/components/ds';
 import React, {useState} from 'react';
 import {Alert, Modal, Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
@@ -128,7 +129,7 @@ const StoreRegistrationScreen: React.FC = () => {
             ];
             setAddressResults(dummyResults);
         } catch (error) {
-            Alert.alert('오류', '주소 검색 중 오류가 발생했습니다.');
+            AppToast.error('주소 검색 중 오류가 생겼어요.');
         }
     };
 
@@ -159,17 +160,17 @@ const StoreRegistrationScreen: React.FC = () => {
         ];
         for (const {field, name} of requiredFields) {
             if (!field) {
-                Alert.alert('알림', `${name}을(를) 입력해주세요.`);
+                Alert.alert('알림', `${name}을(를) 입력해 주세요.`);
                 return;
             }
         }
         if (!validatePhoneNumbers()) {
-            Alert.alert('알림', '유선 전화번호 또는 휴대폰 번호 중 하나는 필수입니다.');
+            AppToast.show('유선 전화번호 또는 휴대폰 번호 중 하나는 필수입니다.');
             return;
         }
         const bizNoDigits = storeData.businessLicenseNumber.replace(/[^\d]/g, '');
         if (bizNoDigits.length !== 10) {
-            Alert.alert('알림', '사업자등록번호는 10자리여야 합니다.');
+            AppToast.show('사업자등록번호는 10자리여야 합니다.');
             return;
         }
         if (storeData.storeStandardHourWage && storeData.storeStandardHourWage < minimumWage) {
@@ -213,7 +214,7 @@ const StoreRegistrationScreen: React.FC = () => {
 
             <SectionLabel text="기본 정보" />
             <View style={styles.form}>
-                <AppInput label="매장명 *" placeholder="매장명을 입력해주세요" value={storeData.storeName} onChangeText={t => setStoreData(p => ({...p, storeName: t}))} />
+                <AppInput label="매장명 *" placeholder="매장명을 입력해 주세요" value={storeData.storeName} onChangeText={t => setStoreData(p => ({...p, storeName: t}))} />
                 <AppInput label="업종 *" placeholder="예: 카페, 음식점, 편의점 등" value={storeData.businessType} onChangeText={t => setStoreData(p => ({...p, businessType: t}))} />
                 <AppInput
                     label="사업자등록번호 *"
@@ -242,7 +243,7 @@ const StoreRegistrationScreen: React.FC = () => {
                     onChangeText={t => setStoreData(p => ({...p, storePhoneNumber: formatMobileNumber(t)}))}
                     keyboardType="phone-pad"
                     maxLength={13}
-                    helper={phoneOk ? '✓ 연락처가 입력되었습니다' : '유선 또는 휴대폰 번호 중 하나는 필수예요'}
+                    helper={phoneOk ? '✓ 연락처가 입력됐어요' : '유선 또는 휴대폰 번호 중 하나는 필수예요'}
                 />
             </View>
 
@@ -287,7 +288,7 @@ const StoreRegistrationScreen: React.FC = () => {
                     <View style={styles.searchRow}>
                         <AppInput
                             containerStyle={styles.flex}
-                            placeholder="주소를 입력해주세요"
+                            placeholder="주소를 입력해 주세요"
                             value={addressSearchQuery}
                             onChangeText={setAddressSearchQuery}
                             onSubmitEditing={() => searchAddress(addressSearchQuery)}

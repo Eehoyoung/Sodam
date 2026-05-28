@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useState} from 'react';
 import {Alert, StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
@@ -58,7 +59,7 @@ const AttendanceCorrectionRequestScreen: React.FC = () => {
             });
             setSubmitted(true);
         } catch (e: any) {
-            Alert.alert('실패', '요청 전송에 실패했어요. 잠시 후 다시 시도해 주세요.');
+            AppToast.error('요청 전송에 실패했어요. 잠시 후 다시 시도해 주세요.');
         } finally {
             setLoading(false);
         }

@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
 import {Alert, FlatList, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
@@ -72,7 +73,7 @@ const InfoListScreen = () => {
                 setSelectedCategory(data[0].id);
             }
         } catch (error) {
-            Alert.alert('오류', '카테고리 목록을 불러오는 데 실패했습니다. 다시 시도해주세요.');
+            AppToast.error('카테고리 목록을 불러오는 데 실패했어요. 다시 시도해 주세요.');
         }
     };
 
@@ -100,7 +101,7 @@ const InfoListScreen = () => {
             }
             setArticles(data);
         } catch (error) {
-            Alert.alert('오류', '정보 목록을 불러오는 데 실패했습니다. 다시 시도해주세요.');
+            AppToast.error('정보 목록을 불러오는 데 실패했어요. 다시 시도해 주세요.');
         } finally {
             setLoading(false);
         }

@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useState} from 'react';
 import {Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -36,7 +37,7 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
 
     const handleLogin = async () => {
         if (!email || !password) {
-            Alert.alert('오류', '이메일과 비밀번호를 입력해주세요.');
+            AppToast.error('이메일과 비밀번호를 입력해 주세요.');
             return;
         }
         if (!isValidEmail(email)) {
@@ -103,7 +104,7 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
                 },
             ]);
         } catch (error) {
-            Alert.alert('오류', '로그인에 실패했습니다. 다시 시도해주세요.');
+            AppToast.error('로그인에 실패했어요. 다시 시도해 주세요.');
         } finally {
             setIsLoading(false);
         }
@@ -113,7 +114,7 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
         try {
             await authApi.openKakaoLogin();
         } catch (e) {
-            Alert.alert('오류', '카카오 로그인 페이지를 여는 데 실패했습니다.');
+            AppToast.error('카카오 로그인 페이지를 여는 데 실패했어요.');
         }
     };
 
@@ -135,7 +136,7 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
                     ? 'EmployeeMyPageScreen'
                     : 'UserMyPageScreen';
         setPurposeModalVisible(false);
-        Alert.alert('완료', '사용 목적이 설정되었습니다.', [
+        Alert.alert('완료', '사용 목적이 설정됐어요.', [
             {
                 text: '확인',
                 onPress: () =>

@@ -186,7 +186,7 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
                         setDemoStep('complete');
                         onDemoComplete({
                             success: true,
-                            message: '매장 통합관리 체험이 완료되었습니다!',
+                            message: '매장 통합관리 체험이 완료됐어요!',
                             timestamp: Date.now(),
                             management: {
                                 success: true,
@@ -227,7 +227,7 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
                 runOnJS(() => {
                     onDemoComplete({
                         success: false,
-                        message: '데모가 취소되었습니다.',
+                        message: '데모가 취소됐어요.',
                         timestamp: Date.now()
                     });
                 })();

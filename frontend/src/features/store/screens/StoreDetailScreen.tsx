@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useState, useEffect} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {RouteProp, NavigationProp} from '@react-navigation/native';
@@ -42,8 +43,8 @@ export default function StoreDetailScreen({route, navigation}: StoreDetailScreen
             const data = await storeService.getStoreById(storeId);
             setStore(data);
         } catch (err: any) {
-            setError(err?.message || '매장 정보를 불러오는데 실패했습니다.');
-            Alert.alert('오류', '매장 정보를 불러오는데 실패했습니다.');
+            setError(err?.message || '매장 정보를 불러오는데 실패했어요.');
+            AppToast.error('매장 정보를 불러오는데 실패했어요.');
         } finally {
             setLoading(false);
         }
@@ -61,7 +62,7 @@ export default function StoreDetailScreen({route, navigation}: StoreDetailScreen
     if (error || !store) {
         return (
             <ScreenContainer header={header}>
-                <ErrorState title="불러오지 못했어요" description={error || '매장 정보를 찾을 수 없습니다.'} primary={{label: '다시 시도', onPress: loadStoreDetail}} />
+                <ErrorState title="불러오지 못했어요" description={error || '매장 정보를 찾을 수 없어요.'} primary={{label: '다시 시도', onPress: loadStoreDetail}} />
             </ScreenContainer>
         );
     }

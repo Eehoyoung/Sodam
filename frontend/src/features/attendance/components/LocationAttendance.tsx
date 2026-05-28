@@ -69,7 +69,7 @@ const LocationAttendance: React.FC<LocationAttendanceProps> = ({
                     getCurrentLocation();
                 } else {
                     setLocationStatus('denied');
-                    onError?.('위치 권한이 거부되었습니다.');
+                    onError?.('위치 권한이 거부됐어요.');
                 }
             } else {
                 // ✅ Android 전용 API 동적 import
@@ -89,13 +89,13 @@ const LocationAttendance: React.FC<LocationAttendanceProps> = ({
                     getCurrentLocation();
                 } else {
                     setLocationStatus('denied');
-                    onError?.('위치 권한이 거부되었습니다.');
+                    onError?.('위치 권한이 거부됐어요.');
                 }
             }
         } catch (err) {
             console.warn(err);
             setLocationStatus('denied');
-            onError?.('위치 권한 요청 중 오류가 발생했습니다.');
+            onError?.('위치 권한 요청 중 오류가 생겼어요.');
         }
     };
 
@@ -143,11 +143,11 @@ const LocationAttendance: React.FC<LocationAttendanceProps> = ({
 
                 console.error('LocationAttendance: Location error:', error);
                 setLoading(false);
-                if (onError) {onError('위치 정보를 가져오는데 실패했습니다.');}
+                if (onError) {onError('위치 정보를 가져오는데 실패했어요.');}
                 Toast.show({
                     type: 'error',
                     text1: '위치 오류',
-                    text2: '위치 정보를 가져오는데 실패했습니다.'
+                    text2: '위치 정보를 가져오는데 실패했어요.'
                 });
             },
             {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000}
@@ -174,25 +174,25 @@ const LocationAttendance: React.FC<LocationAttendanceProps> = ({
                 Toast.show({
                     type: 'success',
                     text1: '출근 인증 성공',
-                    text2: '성공적으로 출근 처리되었습니다.'
+                    text2: '성공적으로 출근 처리됐어요.'
                 });
                 if (onSuccess) {onSuccess(true);}
             } else {
                 Toast.show({
                     type: 'error',
                     text1: '출근 인증 실패',
-                    text2: response.message ?? '출근 인증에 실패했습니다.'
+                    text2: response.message ?? '출근 인증에 실패했어요.'
                 });
-                if (onError) {onError(response.message ?? '출근 인증에 실패했습니다.');}
+                if (onError) {onError(response.message ?? '출근 인증에 실패했어요.');}
             }
         } catch (error) {
             setLoading(false);
             Toast.show({
                 type: 'error',
                 text1: '출근 인증 오류',
-                text2: '서버 통신 중 오류가 발생했습니다.'
+                text2: '서버 통신 중 오류가 생겼어요.'
             });
-            if (onError) {onError('서버 통신 중 오류가 발생했습니다.');}
+            if (onError) {onError('서버 통신 중 오류가 생겼어요.');}
         }
     };
 
@@ -216,25 +216,25 @@ const LocationAttendance: React.FC<LocationAttendanceProps> = ({
                 Toast.show({
                     type: 'success',
                     text1: '퇴근 인증 성공',
-                    text2: '성공적으로 퇴근 처리되었습니다.'
+                    text2: '성공적으로 퇴근 처리됐어요.'
                 });
                 if (onSuccess) {onSuccess(false);}
             } else {
                 Toast.show({
                     type: 'error',
                     text1: '퇴근 인증 실패',
-                    text2: response.message ?? '퇴근 인증에 실패했습니다.'
+                    text2: response.message ?? '퇴근 인증에 실패했어요.'
                 });
-                if (onError) {onError(response.message ?? '퇴근 인증에 실패했습니다.');}
+                if (onError) {onError(response.message ?? '퇴근 인증에 실패했어요.');}
             }
         } catch (error) {
             setLoading(false);
             Toast.show({
                 type: 'error',
                 text1: '퇴근 인증 오류',
-                text2: '서버 통신 중 오류가 발생했습니다.'
+                text2: '서버 통신 중 오류가 생겼어요.'
             });
-            if (onError) {onError('서버 통신 중 오류가 발생했습니다.');}
+            if (onError) {onError('서버 통신 중 오류가 생겼어요.');}
         }
     };
 
@@ -282,7 +282,7 @@ const LocationAttendance: React.FC<LocationAttendanceProps> = ({
                             <Text style={styles.workplaceAddress}>{workplace.address}</Text>
                         </View>
                     ) : (
-                        <Text style={styles.errorText}>매장 정보를 찾을 수 없습니다</Text>
+                        <Text style={styles.errorText}>매장 정보를 찾을 수 없어요</Text>
                     )}
 
                     {/* 위치 정보 */}

@@ -6,7 +6,7 @@ const HybridMainScreen: React.FC = () => {
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Hybrid Main (dev placeholder)</Text>
-            <Text style={styles.body}>이 화면은 라우터에 연결되어 있지 않습니다.</Text>
+            <Text style={styles.body}>이 화면은 라우터에 연결되어 있지 않아요.</Text>
         </View>
     );
 };

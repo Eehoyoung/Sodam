@@ -43,7 +43,7 @@ const NFCDemo: React.FC<NFCDemoProps> = ({onDemoComplete, isVisible}) => {
                             setDemoStep('complete');
                             onDemoComplete({
                                 success: true,
-                                message: 'NFC 출퇴근 체험이 완료되었습니다!',
+                                message: 'NFC 출퇴근 체험이 완료됐어요!',
                                 timestamp: Date.now()
                             });
                         }, 1500);
@@ -67,7 +67,7 @@ const NFCDemo: React.FC<NFCDemoProps> = ({onDemoComplete, isVisible}) => {
     const closeDemo = () => {
         onDemoComplete({
             success: false,
-            message: '데모가 취소되었습니다.',
+            message: '데모가 취소됐어요.',
             timestamp: Date.now()
         });
     };
@@ -130,7 +130,7 @@ const NFCDemo: React.FC<NFCDemoProps> = ({onDemoComplete, isVisible}) => {
                     <View style={styles.instructionsContainer}>
                         <Text style={styles.instructionTitle}>NFC 태그 읽는 중...</Text>
                         <Text style={styles.instructionText}>
-                            태그 정보를 읽고 있습니다{'\n'}
+                            태그 정보를 읽고 있어요{'\n'}
                             기기를 움직이지 마세요
                         </Text>
                         {renderProgressBar()}
@@ -143,7 +143,7 @@ const NFCDemo: React.FC<NFCDemoProps> = ({onDemoComplete, isVisible}) => {
                         <Text style={styles.successTitle}>출근 완료!</Text>
                         <Text style={styles.successMessage}>
                             NFC 태그 인증이 성공했습니다{'\n'}
-                            출근 처리가 완료되었습니다
+                            출근 처리가 완료됐어요
                         </Text>
                     </View>
                 );

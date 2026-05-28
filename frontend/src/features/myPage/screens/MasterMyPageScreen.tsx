@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
@@ -153,7 +154,7 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
             }));
 
         } catch (error) {
-            Alert.alert('오류', '데이터를 불러오는데 실패했습니다.');
+            AppToast.error('데이터를 불러오는데 실패했어요.');
         }
     };
 
@@ -311,7 +312,7 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
                     {stores.length === 0 ? (
                         <View style={styles.emptyStateCard}>
                             <Ionicons name="storefront-outline" size={40} color={COLORS.GRAY_400} />
-                            <Text style={styles.emptyStateTitle}>등록된 매장이 없습니다</Text>
+                            <Text style={styles.emptyStateTitle}>등록된 매장이 없어요</Text>
                             <Text style={styles.emptyStateDesc}>매장을 추가하고 직원과 급여를 관리해보세요</Text>
                             <TouchableOpacity style={styles.addStoreButton} onPress={handleAddStore}>
                                 <Text style={styles.addStoreButtonText}>매장 추가하기</Text>

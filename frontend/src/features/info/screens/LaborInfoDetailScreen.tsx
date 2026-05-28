@@ -62,7 +62,7 @@ const LaborInfoDetailScreen = () => {
                     category: '노무 정보',
                 });
             } catch (error) {
-                setToastMessage('정보를 불러오는 중 오류가 발생했습니다.');
+                setToastMessage('정보를 불러오는 중 오류가 생겼어요.');
                 setToastType('error');
                 setShowToast(true);
             } finally {
@@ -70,7 +70,7 @@ const LaborInfoDetailScreen = () => {
             }
         };
         fetchLaborInfo().catch(() => {
-            setToastMessage('정보를 불러오는 중 오류가 발생했습니다.');
+            setToastMessage('정보를 불러오는 중 오류가 생겼어요.');
             setToastType('error');
             setShowToast(true);
             setLoading(false);
@@ -79,7 +79,7 @@ const LaborInfoDetailScreen = () => {
 
     const toggleBookmark = () => {
         setIsBookmarked(!isBookmarked);
-        setToastMessage(isBookmarked ? '북마크가 해제되었습니다.' : '나중에 볼 수 있게 저장했어요.');
+        setToastMessage(isBookmarked ? '북마크가 해제됐어요.' : '나중에 볼 수 있게 저장했어요.');
         setToastType('success');
         setShowToast(true);
     };
@@ -94,7 +94,7 @@ const LaborInfoDetailScreen = () => {
                 title: laborInfo.title,
             });
         } catch (error) {
-            setToastMessage('공유 중 오류가 발생했습니다.');
+            setToastMessage('공유 중 오류가 생겼어요.');
             setToastType('error');
             setShowToast(true);
         }

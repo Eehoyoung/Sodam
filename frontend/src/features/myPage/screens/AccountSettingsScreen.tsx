@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useState} from 'react';
 import {Alert, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
@@ -31,7 +32,7 @@ const AccountSettingsScreen: React.FC = () => {
         setSaving(true);
         try {
             await api.put('/api/user/me', {name: name.trim()});
-            Alert.alert('완료', '이름이 변경됐어요.');
+            AppToast.success('이름이 변경됐어요.');
         } catch (e: any) {
             Alert.alert('실패', e?.response?.data?.message ?? '변경에 실패했어요.');
         } finally {

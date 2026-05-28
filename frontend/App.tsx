@@ -12,6 +12,7 @@ import {InteractionManager, StyleSheet, View} from 'react-native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {GlobalOfflineBanner} from './src/common/components/ds/GlobalOfflineBanner';
+import {AppToastHost} from './src/common/components/ds/AppToast';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import InitializationErrorBoundary from './src/components/InitializationErrorBoundary';
 import ThemeProvider from './src/common/providers/ThemeProvider';
@@ -121,6 +122,7 @@ const App: React.FC = () => {
                 <View style={styles.container}>
                   {WithAuthMock}
                   <GlobalOfflineBanner />
+                  <AppToastHost />
                 </View>
               </ThemeProvider>
             </ErrorBoundary>

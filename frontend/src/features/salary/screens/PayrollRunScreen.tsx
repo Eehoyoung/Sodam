@@ -8,6 +8,7 @@ import {
     AppCard,
     AppHeader,
     AppInput,
+    Brandmark,
     ScreenContainer,
 } from '../../../common/components/ds';
 import api from '../../../common/utils/api';
@@ -385,7 +386,9 @@ const ConfirmCard: React.FC<any> = ({startDate, endDate, previews, totalNet, loa
     <View>
         <Text style={styles.title}>3단계: 확인</Text>
         <Card bordered style={styles.confirmCard}>
-            <Text style={styles.confirmEmoji}>✅</Text>
+            <View style={{marginBottom: tokens.spacing.md}}>
+                <Brandmark size={56} label="✓" backgroundColor={tokens.colors.success} />
+            </View>
             <Text style={styles.confirmTitle}>정산 준비 완료</Text>
             <KV label="기간" value={`${startDate} ~ ${endDate}`} />
             <KV label="직원" value={`${previews.length}명`} />
@@ -411,7 +414,9 @@ const ConfirmCard: React.FC<any> = ({startDate, endDate, previews, totalNet, loa
 
 const DoneCard: React.FC<any> = ({totalNet, onClose}) => (
     <View style={styles.doneBox}>
-        <Text style={styles.doneEmoji}>🎉</Text>
+        <View style={{marginBottom: tokens.spacing.lg}}>
+            <Brandmark size={72} label="₩" />
+        </View>
         <Text style={styles.title}>명세서 발급이 끝났어요</Text>
         <Text style={styles.subtitle}>
             총 ₩{totalNet.toLocaleString('ko-KR')} 정산.{'\n'}직원분들께 알림이 전송됐어요.

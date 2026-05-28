@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useMemo, useState} from 'react';
 import {Alert, StyleSheet, View} from 'react-native';
 import {NavigationProp} from '@react-navigation/native';
@@ -57,7 +58,7 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation}) => {
             return;
         }
         if (!name || !email || !password) {
-            Alert.alert('알림', '이름, 이메일, 비밀번호를 모두 입력해 주세요.');
+            AppToast.show('이름, 이메일, 비밀번호를 모두 입력해 주세요.');
             return;
         }
         if (!isValidEmail(email)) {
@@ -87,7 +88,7 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation}) => {
                 await unifiedStorage.setItem('pendingPurposeAfterSignup', purposeSlug);
             } catch (_) {/* no-op */}
 
-            Alert.alert('회원가입 완료', '가입이 완료되었습니다. 로그인해 주세요.', [
+            Alert.alert('회원가입 완료', '가입이 완료됐어요. 로그인해 주세요.', [
                 {text: '확인', onPress: () => navigation.navigate('Login')},
             ]);
             setName('');

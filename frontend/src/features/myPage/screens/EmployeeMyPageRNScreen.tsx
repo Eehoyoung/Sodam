@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
 import {Alert, ScrollView, StyleSheet, View} from 'react-native';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
@@ -73,7 +74,7 @@ const EmployeeMyPageRNScreen: React.FC = () => {
                     overtimeRate: laborData.overtimeRate,
                 });
             } catch (e) {
-                Alert.alert('오류', '정보를 불러오는 데 실패했습니다.');
+                AppToast.error('정보를 불러오는 데 실패했어요.');
             }
         };
         load();

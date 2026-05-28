@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useEffect, useRef, useState} from 'react';
 import {
     ActivityIndicator,
@@ -65,7 +66,7 @@ const AttendanceScreen = () => {
             if (!isSupported) {
                 Alert.alert(
                     'NFC 미지원',
-                    '이 기기는 NFC를 지원하지 않습니다. 다른 출퇴근 방법을 이용해주세요.',
+                    '이 기기는 NFC를 지원하지 않아요. 다른 출퇴근 방법을 이용해주세요.',
                     [{text: '확인'}]
                 );
                 return false;
@@ -98,7 +99,7 @@ const AttendanceScreen = () => {
             console.error('NFC 지원 확인 실패:', error);
             Alert.alert(
                 'NFC 오류',
-                'NFC 상태를 확인할 수 없습니다.',
+                'NFC 상태를 확인할 수 없어요.',
                 [{text: '확인'}]
             );
             return false;
@@ -138,8 +139,8 @@ const AttendanceScreen = () => {
                 setCurrentAttendance(currentData);
             }
         } catch (error) {
-            console.error('출퇴근 기록을 가져오는 중 오류가 발생했습니다:', error);
-            Alert.alert('오류', '출퇴근 기록을 불러오는 데 실패했습니다. 다시 시도해주세요.');
+            console.error('출퇴근 기록을 가져오는 중 오류가 생겼어요:', error);
+            AppToast.error('출퇴근 기록을 불러오는 데 실패했어요. 다시 시도해 주세요.');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -160,7 +161,7 @@ const AttendanceScreen = () => {
                 setSelectedWorkplaceId(data[0].id);
             }
         } catch (error) {
-            console.error('근무지 목록을 가져오는 중 오류가 발생했습니다:', error);
+            console.error('근무지 목록을 가져오는 중 오류가 생겼어요:', error);
         }
     };
 
@@ -185,7 +186,7 @@ const AttendanceScreen = () => {
                 );
             }
         } catch (error) {
-            console.error('위치 권한 요청 중 오류가 발생했습니다:', error);
+            console.error('위치 권한 요청 중 오류가 생겼어요:', error);
         }
     };
 
@@ -213,7 +214,7 @@ const AttendanceScreen = () => {
                     }
 
                     console.error('AttendanceScreen: Location error:', error);
-                    Alert.alert('오류', '위치 정보를 가져오는 데 실패했습니다. 다시 시도해주세요.');
+                    AppToast.error('위치 정보를 가져오는 데 실패했어요. 다시 시도해 주세요.');
                 },
                 {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000}
             );
@@ -276,11 +277,11 @@ const AttendanceScreen = () => {
     // BE AttendanceRequestDto: employeeId/storeId/latitude/longitude 모두 @NotNull — 기본 출근도 위치 필수
     const requireAuthAndLocation = (): { ok: false } | { ok: true; loc: { latitude: number; longitude: number } } => {
         if (!Number.isFinite(employeeIdNum)) {
-            Alert.alert('알림', '로그인이 필요합니다.');
+            AppToast.show('로그인이 필요합니다.');
             return { ok: false };
         }
         if (!currentLocation) {
-            Alert.alert('알림', '위치 정보를 가져오는 중입니다. 잠시 후 다시 시도해주세요.');
+            AppToast.show('위치 정보를 가져오는 중입니다. 잠시 후 다시 시도해 주세요.');
             getCurrentLocation();
             return { ok: false };
         }
@@ -290,7 +291,7 @@ const AttendanceScreen = () => {
     // 기본 출근 처리
     const handleCheckIn = async () => {
         if (!selectedWorkplaceId) {
-            Alert.alert('알림', '근무지를 선택해주세요.');
+            AppToast.show('근무지를 선택해주세요.');
             return;
         }
 
@@ -306,12 +307,12 @@ const AttendanceScreen = () => {
             };
 
             const response = await attendanceService.checkIn(checkInData);
-            Alert.alert('성공', '출근 처리되었습니다.');
+            AppToast.success('출근 처리됐어요.');
             setCurrentAttendance(response);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('출근 처리 중 오류가 발생했습니다:', error);
-            Alert.alert('오류', '출근 처리에 실패했습니다. 다시 시도해주세요.');
+            console.error('출근 처리 중 오류가 생겼어요:', error);
+            AppToast.error('출근 처리에 실패했어요. 다시 시도해 주세요.');
         }
     };
 
@@ -320,7 +321,7 @@ const AttendanceScreen = () => {
         // TODO(API): 위치 인증/출근 처리 API 연동
         // TODO(AUTH): 'employeeId' 임시값을 로그인 사용자 ID로 대체
         if (!selectedWorkplaceId) {
-            Alert.alert('알림', '근무지를 선택해주세요.');
+            AppToast.show('근무지를 선택해주세요.');
             return;
         }
 
@@ -330,13 +331,13 @@ const AttendanceScreen = () => {
         }
 
         if (!currentLocation) {
-            Alert.alert('알림', '위치 정보를 가져오는 중입니다. 잠시 후 다시 시도해주세요.');
+            AppToast.show('위치 정보를 가져오는 중입니다. 잠시 후 다시 시도해 주세요.');
             getCurrentLocation();
             return;
         }
 
         if (!Number.isFinite(employeeIdNum)) {
-            Alert.alert('알림', '로그인이 필요합니다.');
+            AppToast.show('로그인이 필요합니다.');
             return;
         }
 
@@ -350,7 +351,7 @@ const AttendanceScreen = () => {
             );
 
             if (!verifyResult.success) {
-                Alert.alert('알림', verifyResult.message ?? '위치 인증에 실패했습니다. 매장 반경 내에서 다시 시도해주세요.');
+                Alert.alert('알림', verifyResult.message ?? '위치 인증에 실패했어요. 매장 반경 내에서 다시 시도해 주세요.');
                 return;
             }
 
@@ -363,12 +364,12 @@ const AttendanceScreen = () => {
             };
 
             const response = await attendanceService.checkIn(checkInData);
-            Alert.alert('성공', '위치 기반 출근 처리되었습니다.');
+            AppToast.success('위치 기반 출근 처리됐어요.');
             setCurrentAttendance(response);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('위치 기반 출근 처리 중 오류가 발생했습니다:', error);
-            Alert.alert('오류', '위치 기반 출근 처리에 실패했습니다. 다시 시도해주세요.');
+            console.error('위치 기반 출근 처리 중 오류가 생겼어요:', error);
+            AppToast.error('위치 기반 출근 처리에 실패했어요. 다시 시도해 주세요.');
         }
     };
 
@@ -377,7 +378,7 @@ const AttendanceScreen = () => {
         // TODO(API): NFC 태그 인증/출근 처리 API 연동
         // TODO(NFC): 실제 태그값 파싱/검증 로직 연동
         if (!selectedWorkplaceId) {
-            Alert.alert('알림', '근무지를 선택해주세요.');
+            AppToast.show('근무지를 선택해주세요.');
             return;
         }
 
@@ -393,7 +394,7 @@ const AttendanceScreen = () => {
             );
 
             if (!verifyResult.success) {
-                Alert.alert('알림', verifyResult.message ?? 'NFC 태그 인증에 실패했습니다. 다시 시도해주세요.');
+                Alert.alert('알림', verifyResult.message ?? 'NFC 태그 인증에 실패했어요. 다시 시도해 주세요.');
                 return;
             }
 
@@ -406,19 +407,19 @@ const AttendanceScreen = () => {
             };
 
             const response = await attendanceService.checkIn(checkInData);
-            Alert.alert('성공', 'NFC 태그 기반 출근 처리되었습니다.');
+            AppToast.success('NFC 태그 기반 출근 처리됐어요.');
             setCurrentAttendance(response);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('NFC 태그 기반 출근 처리 중 오류가 발생했습니다:', error);
-            Alert.alert('오류', 'NFC 태그 기반 출근 처리에 실패했습니다. 다시 시도해주세요.');
+            console.error('NFC 태그 기반 출근 처리 중 오류가 생겼어요:', error);
+            AppToast.error('NFC 태그 기반 출근 처리에 실패했어요. 다시 시도해 주세요.');
         }
     };
 
     // 기본 퇴근 처리
     const handleCheckOut = async () => {
         if (!currentAttendance) {
-            Alert.alert('알림', '현재 출근 상태가 아닙니다.');
+            AppToast.show('현재 출근 상태가 아닙니다.');
             return;
         }
 
@@ -434,12 +435,12 @@ const AttendanceScreen = () => {
             };
 
             await attendanceService.checkOut(currentAttendance.id, checkOutData);
-            Alert.alert('성공', '퇴근 처리되었습니다.');
+            AppToast.success('퇴근 처리됐어요.');
             setCurrentAttendance(null);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('퇴근 처리 중 오류가 발생했습니다:', error);
-            Alert.alert('오류', '퇴근 처리에 실패했습니다. 다시 시도해주세요.');
+            console.error('퇴근 처리 중 오류가 생겼어요:', error);
+            AppToast.error('퇴근 처리에 실패했어요. 다시 시도해 주세요.');
         }
     };
 
@@ -448,7 +449,7 @@ const AttendanceScreen = () => {
         // TODO(API): 위치 인증/퇴근 처리 API 연동
         // TODO(AUTH): 'employeeId' 임시값을 로그인 사용자 ID로 대체
         if (!currentAttendance) {
-            Alert.alert('알림', '현재 출근 상태가 아닙니다.');
+            AppToast.show('현재 출근 상태가 아닙니다.');
             return;
         }
 
@@ -458,13 +459,13 @@ const AttendanceScreen = () => {
         }
 
         if (!currentLocation) {
-            Alert.alert('알림', '위치 정보를 가져오는 중입니다. 잠시 후 다시 시도해주세요.');
+            AppToast.show('위치 정보를 가져오는 중입니다. 잠시 후 다시 시도해 주세요.');
             getCurrentLocation();
             return;
         }
 
         if (!Number.isFinite(employeeIdNum)) {
-            Alert.alert('알림', '로그인이 필요합니다.');
+            AppToast.show('로그인이 필요합니다.');
             return;
         }
 
@@ -478,7 +479,7 @@ const AttendanceScreen = () => {
             );
 
             if (!verifyResult.success) {
-                Alert.alert('알림', verifyResult.message ?? '위치 인증에 실패했습니다. 매장 반경 내에서 다시 시도해주세요.');
+                Alert.alert('알림', verifyResult.message ?? '위치 인증에 실패했어요. 매장 반경 내에서 다시 시도해 주세요.');
                 return;
             }
 
@@ -491,12 +492,12 @@ const AttendanceScreen = () => {
             };
 
             await attendanceService.checkOut(currentAttendance.id, checkOutData);
-            Alert.alert('성공', '위치 기반 퇴근 처리되었습니다.');
+            AppToast.success('위치 기반 퇴근 처리됐어요.');
             setCurrentAttendance(null);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('위치 기반 퇴근 처리 중 오류가 발생했습니다:', error);
-            Alert.alert('오류', '위치 기반 퇴근 처리에 실패했습니다. 다시 시도해주세요.');
+            console.error('위치 기반 퇴근 처리 중 오류가 생겼어요:', error);
+            AppToast.error('위치 기반 퇴근 처리에 실패했어요. 다시 시도해 주세요.');
         }
     };
 
@@ -505,7 +506,7 @@ const AttendanceScreen = () => {
         // TODO(API): NFC 태그 인증/퇴근 처리 API 연동
         // TODO(NFC): 실제 태그값 파싱/검증 로직 연동
         if (!currentAttendance) {
-            Alert.alert('알림', '현재 출근 상태가 아닙니다.');
+            AppToast.show('현재 출근 상태가 아닙니다.');
             return;
         }
 
@@ -521,7 +522,7 @@ const AttendanceScreen = () => {
             );
 
             if (!verifyResult.success) {
-                Alert.alert('알림', verifyResult.message ?? 'NFC 태그 인증에 실패했습니다. 다시 시도해주세요.');
+                Alert.alert('알림', verifyResult.message ?? 'NFC 태그 인증에 실패했어요. 다시 시도해 주세요.');
                 return;
             }
 
@@ -534,12 +535,12 @@ const AttendanceScreen = () => {
             };
 
             await attendanceService.checkOut(currentAttendance.id, checkOutData);
-            Alert.alert('성공', 'NFC 태그 기반 퇴근 처리되었습니다.');
+            AppToast.success('NFC 태그 기반 퇴근 처리됐어요.');
             setCurrentAttendance(null);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('NFC 태그 기반 퇴근 처리 중 오류가 발생했습니다:', error);
-            Alert.alert('오류', 'NFC 태그 기반 퇴근 처리에 실패했습니다. 다시 시도해주세요.');
+            console.error('NFC 태그 기반 퇴근 처리 중 오류가 생겼어요:', error);
+            AppToast.error('NFC 태그 기반 퇴근 처리에 실패했어요. 다시 시도해 주세요.');
         }
     };
 
@@ -640,7 +641,7 @@ const AttendanceScreen = () => {
     const renderEmptyList = () => (
         <View style={styles.emptyContainer}>
             <Icon name="event-busy" size={64} color={COLORS.GRAY_300}/>
-            <Text style={styles.emptyText}>출퇴근 기록이 없습니다.</Text>
+            <Text style={styles.emptyText}>출퇴근 기록이 없어요.</Text>
             <Text style={styles.emptySubText}>출근 버튼을 눌러 근무를 시작해보세요.</Text>
         </View>
     );

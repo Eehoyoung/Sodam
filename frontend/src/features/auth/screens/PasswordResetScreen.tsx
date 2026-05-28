@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useEffect, useRef, useState} from 'react';
 import {Alert, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
@@ -149,7 +150,7 @@ const StepOtp: React.FC<{onNext: () => void; onBack: () => void}> = ({onNext, on
     const resend = async () => {
         setRemaining(OTP_VALID_SECONDS);
         await passwordResetApi.request(globalEmailRef.current);
-        Alert.alert('알림', '인증번호를 다시 보냈어요.');
+        AppToast.show('인증번호를 다시 보냈어요.');
     };
 
     const submit = async () => {
@@ -259,7 +260,7 @@ const StepNewPassword: React.FC<{onDone: () => void}> = ({onDone}) => {
             await passwordResetApi.confirm(globalTicketRef.current, pw);
             onDone();
         } catch (e: any) {
-            Alert.alert('실패', '비밀번호 변경에 실패했어요. 처음부터 다시 시도해 주세요.');
+            AppToast.error('비밀번호 변경에 실패했어요. 처음부터 다시 시도해 주세요.');
         } finally {
             setLoading(false);
         }

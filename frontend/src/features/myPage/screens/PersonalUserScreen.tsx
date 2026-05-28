@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, { useState, useEffect, useMemo, useContext } from 'react';
 import {
     View,
@@ -356,7 +357,7 @@ const MultiStoreWorkScreen: React.FC = () => {
                 }
             } catch (error) {
                 console.error('매장 로딩 실패:', error);
-                Alert.alert('오류', '매장 정보를 불러올 수 없습니다.');
+                AppToast.error('매장 정보를 불러올 수 없어요.');
             } finally {
                 setLoadingStores(false);
             }
@@ -442,7 +443,7 @@ const MultiStoreWorkScreen: React.FC = () => {
             const timeString = now.toTimeString().slice(0, 5);
             addRecord('출근', timeString, selectedStoreId);
 
-            Alert.alert('출근 완료', `${currentStore.name}에 출근이 기록되었습니다! 💪`);
+            Alert.alert('출근 완료', `${currentStore.name}에 출근이 기록됐어요! 💪`);
         }
     };
 
@@ -473,7 +474,7 @@ const MultiStoreWorkScreen: React.FC = () => {
                 [selectedStoreId]: newSession,
             }));
 
-            Alert.alert('퇴근 완료', `${currentStore.name}에서 퇴근이 기록되었습니다! 수고하셨어요! 🎉`);
+            Alert.alert('퇴근 완료', `${currentStore.name}에서 퇴근이 기록됐어요! 수고하셨어요! 🎉`);
         }
     };
 
@@ -503,7 +504,7 @@ const MultiStoreWorkScreen: React.FC = () => {
             const timeString = now.toTimeString().slice(0, 5);
             addRecord('휴게시작', timeString, selectedStoreId);
 
-            Alert.alert('휴게시간 시작', `${currentStore.name}에서 휴게시간이 시작되었습니다! ☕`);
+            Alert.alert('휴게시간 시작', `${currentStore.name}에서 휴게시간이 시작됐어요! ☕`);
         }
     };
 
@@ -534,7 +535,7 @@ const MultiStoreWorkScreen: React.FC = () => {
             const timeString = now.toTimeString().slice(0, 5);
             addRecord('휴게종료', timeString, selectedStoreId);
 
-            Alert.alert('휴게시간 종료', `${currentStore.name}에서 휴게시간이 종료되었습니다! 화이팅! 💪`);
+            Alert.alert('휴게시간 종료', `${currentStore.name}에서 휴게시간이 종료됐어요! 화이팅! 💪`);
         }
     };
 
@@ -565,9 +566,9 @@ const MultiStoreWorkScreen: React.FC = () => {
             setManualRecord({ type: '출근', hour: '', minute: '', storeId: stores[0].id });
 
             const store = stores.find(s => s.id === manualRecord.storeId);
-            Alert.alert('기록 추가', `${store?.name}에 ${manualRecord.type} 기록이 추가되었습니다!`);
+            Alert.alert('기록 추가', `${store?.name}에 ${manualRecord.type} 기록이 추가됐어요!`);
         } else {
-            Alert.alert('입력 오류', '시간과 분을 모두 입력해주세요.');
+            Alert.alert('입력 오류', '시간과 분을 모두 입력해 주세요.');
         }
     };
 
@@ -754,7 +755,7 @@ const MultiStoreWorkScreen: React.FC = () => {
                     })}
 
                     {Object.keys(todayWorkSummary.stores).length === 0 && (
-                        <Text style={styles.noRecordsText}>오늘 근무 기록이 없습니다.</Text>
+                        <Text style={styles.noRecordsText}>오늘 근무 기록이 없어요.</Text>
                     )}
                 </View>
 
@@ -1049,7 +1050,7 @@ const MultiStoreWorkScreen: React.FC = () => {
                                 })}
 
                                 {Object.keys(monthlyStats.storeBreakdown).length === 0 && (
-                                    <Text style={styles.noDataText}>해당 월에 근무 기록이 없습니다.</Text>
+                                    <Text style={styles.noDataText}>해당 월에 근무 기록이 없어요.</Text>
                                 )}
                             </View>
                         </ScrollView>

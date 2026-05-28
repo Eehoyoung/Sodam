@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
 import {Alert, StyleSheet, View} from 'react-native';
 import payrollService, {PayrollDetails} from '../services/payrollService';
@@ -35,7 +36,7 @@ const SalaryDetailScreen: React.FC<Props> = ({route}) => {
 
     useEffect(() => {
         if (!payrollId || typeof payrollId !== 'number' || payrollId <= 0) {
-            Alert.alert('오류', '잘못된 접근입니다. 급여 ID가 필요합니다.');
+            AppToast.error('잘못된 접근입니다. 급여 ID가 필요합니다.');
             setError('INVALID_PARAM');
             return;
         }
@@ -84,7 +85,7 @@ const SalaryDetailScreen: React.FC<Props> = ({route}) => {
     if (error === 'LOAD_ERROR') {
         return (
             <ScreenContainer header={header} testID="salary-detail-error">
-                <ErrorState title="불러오지 못했어요" description="급여 상세를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요." />
+                <ErrorState title="불러오지 못했어요" description="급여 상세를 불러오지 못했어요. 잠시 후 다시 시도해 주세요." />
             </ScreenContainer>
         );
     }
@@ -117,7 +118,7 @@ const SalaryDetailScreen: React.FC<Props> = ({route}) => {
 
             <AppText variant="titleMd" style={styles.subtitle}>상세 항목</AppText>
             {items.length === 0 ? (
-                <AppText variant="caption" tone="tertiary" center style={styles.empty}>상세 항목이 없습니다.</AppText>
+                <AppText variant="caption" tone="tertiary" center style={styles.empty}>상세 항목이 없어요.</AppText>
             ) : (
                 <View style={styles.list}>
                     {items.map((it, idx) => (

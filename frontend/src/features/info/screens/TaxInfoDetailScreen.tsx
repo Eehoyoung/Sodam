@@ -55,7 +55,7 @@ const TaxInfoDetailScreen = () => {
                         title: '2024년 세금신고 주요 변경사항 총정리',
                         date: '2024-05-14',
                         content:
-                            '2024년 세금신고 주요 변경사항\n\n1. 종합소득세 신고 기간 변경\n- 기존: 5월 1일 ~ 5월 31일\n- 변경: 5월 1일 ~ 6월 15일 (15일 연장)\n\n2. 간이과세자 기준금액 상향\n- 기존: 연 매출 4,800만원 미만\n- 변경: 연 매출 8,000만원 미만\n\n3. 소상공인 세액공제 확대\n4. 전자세금계산서 의무발급 대상 확대\n5. 신용카드 매출 세액공제율 조정\n\n자세한 내용은 국세청 홈페이지를 참조하시기 바랍니다.',
+                            '2024년 세금신고 주요 변경사항\n\n1. 종합소득세 신고 기간 변경\n- 기존: 5월 1일 ~ 5월 31일\n- 변경: 5월 1일 ~ 6월 15일 (15일 연장)\n\n2. 간이과세자 기준금액 상향\n- 기존: 연 매출 4,800만원 미만\n- 변경: 연 매출 8,000만원 미만\n\n3. 소상공인 세액공제 확대\n4. 전자세금계산서 의무발급 대상 확대\n5. 신용카드 매출 세액공제율 조정\n\n자세한 내용은 국세청 홈페이지를 참조주세요.',
                         author: '소담 세무팀',
                         views: 2345,
                         category: '세무 정보',
@@ -67,7 +67,7 @@ const TaxInfoDetailScreen = () => {
                     setLoading(false);
                 }, 1000);
             } catch (error) {
-                setToastMessage('정보를 불러오는 중 오류가 발생했습니다.');
+                setToastMessage('정보를 불러오는 중 오류가 생겼어요.');
                 setToastType('error');
                 setShowToast(true);
                 setLoading(false);
@@ -78,7 +78,7 @@ const TaxInfoDetailScreen = () => {
 
     const toggleBookmark = () => {
         setIsBookmarked(!isBookmarked);
-        setToastMessage(isBookmarked ? '북마크가 해제되었습니다.' : '나중에 볼 수 있게 저장했어요.');
+        setToastMessage(isBookmarked ? '북마크가 해제됐어요.' : '나중에 볼 수 있게 저장했어요.');
         setToastType('success');
         setShowToast(true);
     };
@@ -93,7 +93,7 @@ const TaxInfoDetailScreen = () => {
                 title: taxInfo.title,
             });
         } catch (error) {
-            setToastMessage('공유 중 오류가 발생했습니다.');
+            setToastMessage('공유 중 오류가 생겼어요.');
             setToastType('error');
             setShowToast(true);
         }
@@ -105,12 +105,12 @@ const TaxInfoDetailScreen = () => {
             if (supported) {
                 await Linking.openURL(url);
             } else {
-                setToastMessage('링크를 열 수 없습니다.');
+                setToastMessage('링크를 열 수 없어요.');
                 setToastType('error');
                 setShowToast(true);
             }
         } catch (error) {
-            setToastMessage('링크를 여는 중 오류가 발생했습니다.');
+            setToastMessage('링크를 여는 중 오류가 생겼어요.');
             setToastType('error');
             setShowToast(true);
         }

@@ -27,7 +27,7 @@ const PolicyBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
                 ]);
             }
         } catch (err) {
-            console.error('정책 데이터를 가져오는 중 오류가 발생했습니다:', err);
+            console.error('정책 데이터를 가져오는 중 오류가 생겼어요:', err);
             setError(true);
             // 백업 데이터 (API 호출 실패 시)
             setPolicies([
@@ -80,7 +80,7 @@ const PolicyBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
                 <View style={styles.headerRow}>
                     <Text style={styles.sectionTitle}>정부 주요 정책 소개</Text>
                 </View>
-                <Text style={styles.errorText}>정책 정보를 불러올 수 없습니다.</Text>
+                <Text style={styles.errorText}>정책 정보를 불러올 수 없어요.</Text>
                 <TouchableOpacity style={styles.retryButton} onPress={fetchPolicies}>
                     <Text style={styles.retryButtonText}>다시 시도</Text>
                 </TouchableOpacity>

@@ -35,7 +35,7 @@ export const WorkplaceDetailScreen: React.FC = () => {
                 if (data) {
                     setWorkplace(data);
                 } else {
-                    throw new Error('근무지 정보를 찾을 수 없습니다.');
+                    throw new Error('근무지 정보를 찾을 수 없어요.');
                 }
             } catch (err) {
                 setError(err instanceof Error ? err : new Error('Unknown error'));
@@ -58,7 +58,7 @@ export const WorkplaceDetailScreen: React.FC = () => {
     if (error || !workplace) {
         return (
             <ScreenContainer header={header}>
-                <ErrorState title="찾을 수 없어요" description={error?.message ?? '근무지 정보를 찾을 수 없습니다.'} />
+                <ErrorState title="찾을 수 없어요" description={error?.message ?? '근무지 정보를 찾을 수 없어요.'} />
             </ScreenContainer>
         );
     }

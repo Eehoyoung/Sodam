@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useEffect, useMemo, useState} from 'react';
 import {
     Alert,
@@ -220,9 +221,9 @@ const MemoEditor: React.FC<{storeId: number; employeeId: number}> = ({storeId, e
         setSaving(true);
         try {
             await api.put(`/api/stores/${storeId}/employees/${employeeId}/memo`, {memo});
-            Alert.alert('완료', '메모가 저장됐어요.');
+            AppToast.success('메모가 저장됐어요.');
         } catch (_) {
-            Alert.alert('실패', '저장에 실패했어요.');
+            AppToast.error('저장에 실패했어요.');
         } finally {
             setSaving(false);
         }

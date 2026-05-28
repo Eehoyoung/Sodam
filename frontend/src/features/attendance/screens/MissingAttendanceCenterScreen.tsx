@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useCallback, useEffect, useState} from 'react';
 import {Alert, RefreshControl, ScrollView, StyleSheet, View} from 'react-native';
 import {
@@ -74,7 +75,7 @@ const MissingAttendanceCenterScreen: React.FC = () => {
                         });
                         Alert.alert('전송 완료', '직원에게 알림을 보냈어요.');
                     } catch (e: any) {
-                        Alert.alert('실패', '알림 발송에 실패했어요.');
+                        AppToast.error('알림 발송에 실패했어요.');
                     }
                 },
             },

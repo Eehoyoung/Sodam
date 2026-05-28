@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
 import {Alert, StyleSheet, View} from 'react-native';
 import {useRoute} from '@react-navigation/native';
@@ -65,11 +66,11 @@ const WageSettingsScreen: React.FC = () => {
         setLoading(true);
         try {
             await api.put(`/api/wages/store/${storeId}/standard`, null, {params: {standardHourlyWage: wage}});
-            Alert.alert('완료', '매장 기본 시급이 변경됐어요.');
+            AppToast.success('매장 기본 시급이 변경됐어요.');
         } catch (e: any) {
             try {
                 await api.put(`/api/wages/store/${storeId}/standard`, {standardHourlyWage: wage});
-                Alert.alert('완료', '매장 기본 시급이 변경됐어요.');
+                AppToast.success('매장 기본 시급이 변경됐어요.');
             } catch (e2: any) {
                 Alert.alert('실패', e2?.response?.data?.message ?? '시급 변경에 실패했어요.');
             }

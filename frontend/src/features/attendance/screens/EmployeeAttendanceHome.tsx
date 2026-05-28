@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useEffect, useMemo, useState} from 'react';
 import {Alert, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
@@ -101,13 +102,13 @@ const EmployeeAttendanceHome: React.FC = () => {
         } else if (state === 'WORKING') {
             navigation.navigate('AttendanceCheckOut', {storeId, attendanceId: todayRecord?.id});
         } else if (state === 'DONE') {
-            Alert.alert('알림', '오늘은 이미 퇴근 완료했어요.');
+            AppToast.show('오늘은 이미 퇴근 완료했어요.');
         }
     };
 
     const handleAction = async () => {
         if (!selectedStore) {
-            Alert.alert('알림', '먼저 매장을 선택해 주세요.');
+            AppToast.show('먼저 매장을 선택해 주세요.');
             return;
         }
         const now = new Date();

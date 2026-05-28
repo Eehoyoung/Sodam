@@ -22,13 +22,13 @@ const LoginForm: React.FC<LoginFormProps> = ({onSubmit, isLoading = false}) => {
         const newErrors: { email?: string; password?: string } = {};
 
         if (!email) {
-            newErrors.email = '이메일을 입력해주세요';
+            newErrors.email = '이메일을 입력해 주세요';
         } else if (!/\S+@\S+\.\S+/.test(email)) {
-            newErrors.email = '유효한 이메일 주소를 입력해주세요';
+            newErrors.email = '유효한 이메일 주소를 입력해 주세요';
         }
 
         if (!password) {
-            newErrors.password = '비밀번호를 입력해주세요';
+            newErrors.password = '비밀번호를 입력해 주세요';
         } else if (password.length < 6) {
             newErrors.password = '비밀번호는 최소 6자 이상이어야 합니다';
         }

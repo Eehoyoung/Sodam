@@ -29,7 +29,7 @@ const ProfileScreen: React.FC = () => {
         try {
             await currentUserQuery.refetch();
         } catch (e: any) {
-            Alert.alert('오류', e?.response?.data?.message || '프로필을 새로고침하는 중 오류가 발생했습니다.');
+            Alert.alert('오류', e?.response?.data?.message || '프로필을 새로고침하는 중 오류가 생겼어요.');
         }
     };
 
