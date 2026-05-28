@@ -1,4 +1,4 @@
-import {AppToast} from '../../../common/components/ds';
+import {AppToast, ConfirmSheet} from '../../../common/components/ds';
 import React, {useEffect, useRef, useState} from 'react';
 import {
     ActivityIndicator,
@@ -64,44 +64,34 @@ const AttendanceScreen = () => {
         try {
             const isSupported = await NfcManager.isSupported();
             if (!isSupported) {
-                Alert.alert(
-                    'NFC 미지원',
-                    '이 기기는 NFC를 지원하지 않아요. 다른 출퇴근 방법을 이용해주세요.',
-                    [{text: '확인'}]
-                );
+                AppToast.warn('이 기기는 NFC를 지원하지 않아요. 다른 출퇴근 방법을 이용해 주세요.');
                 return false;
             }
 
             const isEnabled = await NfcManager.isEnabled();
             if (!isEnabled) {
-                Alert.alert(
-                    'NFC 비활성화',
-                    'NFC 출퇴근을 위해 NFC를 활성화해주세요.',
-                    [
-                        {text: '취소', style: 'cancel'},
-                        {
-                            text: '설정으로 이동',
-                            onPress: () => {
-                                if (Platform.OS === 'android') {
-                                    Linking.sendIntent('android.settings.NFC_SETTINGS');
-                                } else {
-                                    Linking.openSettings();
-                                }
+                ConfirmSheet.confirm({
+                    title: 'NFC를 켜 주세요',
+                    description: 'NFC 출퇴근을 쓰려면 시스템 설정에서 NFC를 켜야 해요.',
+                    primary: {
+                        label: '설정으로 이동',
+                        onPress: () => {
+                            if (Platform.OS === 'android') {
+                                Linking.sendIntent('android.settings.NFC_SETTINGS');
+                            } else {
+                                Linking.openSettings();
                             }
-                        }
-                    ]
-                );
+                        },
+                    },
+                    secondary: {label: '취소'},
+                });
                 return false;
             }
 
             return true;
         } catch (error) {
             console.error('NFC 지원 확인 실패:', error);
-            Alert.alert(
-                'NFC 오류',
-                'NFC 상태를 확인할 수 없어요.',
-                [{text: '확인'}]
-            );
+            AppToast.error('NFC 상태를 확인할 수 없어요.');
             return false;
         }
     };
@@ -179,11 +169,7 @@ const AttendanceScreen = () => {
                 getCurrentLocation();
             } else {
                 setLocationPermissionGranted(false);
-                Alert.alert(
-                    '위치 권한 필요',
-                    '위치 기반 출퇴근을 위해서는 위치 접근 권한이 필요합니다.',
-                    [{text: '확인'}]
-                );
+                AppToast.warn('위치 기반 출퇴근을 쓰려면 위치 권한이 필요해요.');
             }
         } catch (error) {
             console.error('위치 권한 요청 중 오류가 생겼어요:', error);

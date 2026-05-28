@@ -100,7 +100,7 @@ const JoinStoreByCodeScreen: React.FC = () => {
 
             <Pressable
                 onPress={() =>
-                    Alert.alert('매장 코드는 어디서 받나요?', '사장님 앱의 [매장 → 매장 코드] 에서 확인하거나, 카운터에 부착된 QR 을 스캔할 수 있어요.')
+                    AppToast.show('사장님 앱의 매장 코드 또는 카운터 QR 에서 확인할 수 있어요.')
                 }
                 style={({pressed}) => [styles.helpRow, pressed && {opacity: 0.5}]}>
                 <AppText variant="caption" tone="brand" weight="700">매장 코드는 어디서 받나요?</AppText>

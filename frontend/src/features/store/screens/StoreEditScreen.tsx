@@ -63,7 +63,8 @@ const StoreEditScreen: React.FC = () => {
                 storeStandardHourWage: wage,
                 radius: r,
             });
-            Alert.alert('완료', '매장 정보가 변경됐어요.', [{text: '확인', onPress: () => navigation.goBack()}]);
+            AppToast.success('매장 정보가 변경됐어요.');
+            navigation.goBack();
         } catch (e: any) {
             Alert.alert('실패', e?.response?.data?.message ?? '변경에 실패했어요.');
         } finally {

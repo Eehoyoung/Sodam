@@ -1,4 +1,4 @@
-import {AppToast} from '../../../common/components/ds';
+import {AppToast, ConfirmSheet} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
 import {Alert, ScrollView, StyleSheet, View} from 'react-native';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
@@ -58,16 +58,18 @@ const ManagerMyPageScreen: React.FC = () => {
     };
 
     const handleApproval = (approvalId: number) => {
-        Alert.alert('승인 확인', '이 출퇴근 기록을 승인하시겠습니까?', [
-            {text: '취소', style: 'cancel'},
-            {
-                text: '승인',
+        ConfirmSheet.confirm({
+            title: '이 출퇴근 기록을 승인할까요?',
+            description: '승인하면 정상 기록으로 반영되고 직원에게 알림이 가요.',
+            primary: {
+                label: '승인하기',
                 onPress: () => {
                     setPendingApprovals(prev => prev.filter(item => item.id !== approvalId));
                     AppToast.success('출퇴근 기록이 승인됐어요.');
                 },
             },
-        ]);
+            secondary: {label: '취소'},
+        });
     };
 
     const statusBadge = (status: TeamMember['todayStatus']): {label: string; tone: 'success' | 'neutral' | 'warning'} => {

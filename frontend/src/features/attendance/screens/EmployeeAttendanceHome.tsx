@@ -1,4 +1,4 @@
-import {AppToast} from '../../../common/components/ds';
+import {AppToast, ConfirmSheet} from '../../../common/components/ds';
 import React, {useEffect, useMemo, useState} from 'react';
 import {Alert, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
@@ -114,10 +114,12 @@ const EmployeeAttendanceHome: React.FC = () => {
         const now = new Date();
         const isLikelyOutside = now.getHours() < 5 || now.getHours() > 23;
         if (state === 'IDLE' && isLikelyOutside) {
-            Alert.alert('운영시간 외 출근', '지금은 운영시간이 아닐 수 있어요. 그래도 출근하시겠어요?', [
-                {text: '취소', style: 'cancel'},
-                {text: '출근하기', onPress: () => proceed(selectedStore.id)},
-            ]);
+            ConfirmSheet.confirm({
+                title: '운영시간 외 출근',
+                description: '지금은 운영시간이 아닐 수 있어요. 그래도 출근하시겠어요?',
+                primary: {label: '출근하기', onPress: () => proceed(selectedStore.id)},
+                secondary: {label: '취소'},
+            });
             return;
         }
         proceed(selectedStore.id);

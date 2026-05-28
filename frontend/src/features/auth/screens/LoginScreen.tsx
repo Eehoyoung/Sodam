@@ -78,31 +78,21 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
                                 ? 'EmployeeMyPageScreen'
                                 : 'UserMyPageScreen';
 
-                    Alert.alert('성공', '로그인 성공!', [
-                        {
-                            text: '확인',
-                            onPress: () =>
-                                navigation.reset({
-                                    index: 0,
-                                    routes: [{name: 'HomeRoot' as never, params: {screen: target} as never}] as any,
-                                }),
-                        },
-                    ]);
+                    AppToast.success('로그인 성공!');
+                    navigation.reset({
+                        index: 0,
+                        routes: [{name: 'HomeRoot' as never, params: {screen: target} as never}] as any,
+                    });
                     return;
                 }
             } catch (_) {/* ignore */}
 
             // 2) 이메일/비밀번호 로그인은 팝업 없이 항상 등급으로 라우팅
-            Alert.alert('성공', '로그인 성공!', [
-                {
-                    text: '확인',
-                    onPress: () =>
-                        navigation.reset({
-                            index: 0,
-                            routes: [{name: 'HomeRoot' as never, params: {screen: targetScreen} as never}] as any,
-                        }),
-                },
-            ]);
+            AppToast.success('로그인 성공!');
+            navigation.reset({
+                index: 0,
+                routes: [{name: 'HomeRoot' as never, params: {screen: targetScreen} as never}] as any,
+            });
         } catch (error) {
             AppToast.error('로그인에 실패했어요. 다시 시도해 주세요.');
         } finally {
@@ -136,16 +126,11 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
                     ? 'EmployeeMyPageScreen'
                     : 'UserMyPageScreen';
         setPurposeModalVisible(false);
-        Alert.alert('완료', '사용 목적이 설정됐어요.', [
-            {
-                text: '확인',
-                onPress: () =>
-                    navigation.reset({
-                        index: 0,
-                        routes: [{name: 'HomeRoot' as never, params: {screen: target} as never}] as any,
-                    }),
-            },
-        ]);
+        AppToast.success('사용 목적이 설정됐어요.');
+        navigation.reset({
+            index: 0,
+            routes: [{name: 'HomeRoot' as never, params: {screen: target} as never}] as any,
+        });
     };
 
     return (

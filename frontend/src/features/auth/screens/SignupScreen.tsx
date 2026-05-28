@@ -88,9 +88,8 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation}) => {
                 await unifiedStorage.setItem('pendingPurposeAfterSignup', purposeSlug);
             } catch (_) {/* no-op */}
 
-            Alert.alert('회원가입 완료', '가입이 완료됐어요. 로그인해 주세요.', [
-                {text: '확인', onPress: () => navigation.navigate('Login')},
-            ]);
+            AppToast.success('가입이 완료됐어요. 로그인해 주세요.');
+            navigation.navigate('Login');
             setName('');
             setEmail('');
             setPassword('');

@@ -1,4 +1,4 @@
-import {AppToast} from '../../../common/components/ds';
+import {AppToast, ConfirmSheet} from '../../../common/components/ds';
 import React, {useCallback, useEffect, useState} from 'react';
 import {Alert, RefreshControl, ScrollView, StyleSheet, View} from 'react-native';
 import {
@@ -62,10 +62,11 @@ const MissingAttendanceCenterScreen: React.FC = () => {
     }, [load]);
 
     const sendNudge = (item: PendingItem) => {
-        Alert.alert('푸시 알림 발송', `${item.employeeName} 님께 출근 확인 알림을 보내시겠어요?`, [
-            {text: '취소', style: 'cancel'},
-            {
-                text: '보내기',
+        ConfirmSheet.confirm({
+            title: `${item.employeeName} 님께 알림을 보낼까요?`,
+            description: '출근 확인 푸시 알림이 직원에게 즉시 발송돼요.',
+            primary: {
+                label: '보내기',
                 onPress: async () => {
                     try {
                         await api.post('/api/notifications/push-to-employee', {
@@ -79,7 +80,8 @@ const MissingAttendanceCenterScreen: React.FC = () => {
                     }
                 },
             },
-        ]);
+            secondary: {label: '취소'},
+        });
     };
 
     return (

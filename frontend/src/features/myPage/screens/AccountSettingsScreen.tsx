@@ -1,4 +1,4 @@
-import {AppToast} from '../../../common/components/ds';
+import {AppToast, ConfirmSheet} from '../../../common/components/ds';
 import React, {useState} from 'react';
 import {Alert, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
@@ -44,38 +44,30 @@ const AccountSettingsScreen: React.FC = () => {
         if (!user?.id) {
             return;
         }
-        Alert.alert(
-            '회원 탈퇴',
-            '정말 탈퇴하시겠어요?\n\n• 활성 구독이 있으면 차단됩니다.\n• 90일 후 개인정보가 자동 익명화됩니다.\n• 이 작업은 되돌릴 수 없어요.',
-            [
-                {text: '취소', style: 'cancel'},
-                {
-                    text: '탈퇴하기',
-                    style: 'destructive',
-                    onPress: async () => {
+        ConfirmSheet.confirm({
+            title: '정말 탈퇴하시겠어요?',
+            description: '활성 구독이 있으면 차단돼요. 90일 후 개인정보가 자동 익명화되며, 이 작업은 되돌릴 수 없어요.',
+            primary: {
+                label: '탈퇴하기',
+                destructive: true,
+                onPress: async () => {
+                    try {
+                        await api.delete(`/api/user/${user.id}`);
+                        AppToast.success('탈퇴가 완료됐어요. 이용해 주셔서 감사해요.');
                         try {
-                            await api.delete(`/api/user/${user.id}`);
-                            Alert.alert('탈퇴 완료', '이용해 주셔서 감사했어요.', [
-                                {
-                                    text: '확인',
-                                    onPress: async () => {
-                                        try {
-                                            await logout?.();
-                                        } catch (_) {/* ignore */}
-                                        navigation.reset({index: 0, routes: [{name: 'Auth' as never}]});
-                                    },
-                                },
-                            ]);
-                        } catch (e: any) {
-                            const msg =
-                                e?.response?.data?.message ??
-                                (e?.response?.status === 400 ? '활성 구독을 먼저 해지해 주세요.' : '탈퇴 처리에 실패했어요.');
-                            Alert.alert('실패', msg);
-                        }
-                    },
+                            await logout?.();
+                        } catch (_) {/* ignore */}
+                        navigation.reset({index: 0, routes: [{name: 'Auth' as never}]});
+                    } catch (e: any) {
+                        const msg =
+                            e?.response?.data?.message ??
+                            (e?.response?.status === 400 ? '활성 구독을 먼저 해지해 주세요.' : '탈퇴 처리에 실패했어요.');
+                        AppToast.error(msg);
+                    }
                 },
-            ],
-        );
+            },
+            secondary: {label: '취소'},
+        });
     };
 
     return (

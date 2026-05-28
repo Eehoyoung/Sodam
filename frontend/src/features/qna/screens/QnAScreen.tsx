@@ -37,19 +37,13 @@ const QnAScreen: React.FC = () => {
 
     const handleInquirySubmit = () => {
         if (!inquiryName.trim() || !inquiryEmail.trim() || !inquiryContent.trim()) {
-            Alert.alert('입력 오류', '모든 필드를 입력해 주세요.');
+            AppToast.warn('모든 필드를 입력해 주세요.');
             return;
         }
-        Alert.alert('문의가 접수됐어요', '빠른 시일 내에 답변 드릴게요.', [
-            {
-                text: '확인',
-                onPress: () => {
-                    setInquiryName('');
-                    setInquiryEmail('');
-                    setInquiryContent('');
-                },
-            },
-        ]);
+        AppToast.success('문의가 접수됐어요. 빠른 시일 내에 답변 드릴게요.');
+        setInquiryName('');
+        setInquiryEmail('');
+        setInquiryContent('');
     };
 
     const handleKakaoChat = () => {

@@ -1,4 +1,4 @@
-import {AppToast} from '../../../common/components/ds';
+import {AppToast, ConfirmSheet} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
 import {Alert, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
@@ -114,12 +114,15 @@ const SubscribeScreen: React.FC = () => {
         try {
             if (selectedPlan === 'FREE') {
                 await subscriptionApi.subscribeFree();
-                Alert.alert('완료', '무료 플랜으로 시작합니다.', [{text: '확인', onPress: () => navigation.navigate('Home')}]);
+                AppToast.success('무료 플랜으로 시작해요.');
+                navigation.navigate('Home');
             } else if (selectedPlan === 'COMMISSION') {
-                Alert.alert('환급형 안내', '환급형은 종합소득세 환급 금액의 10~20% 수수료로 운영됩니다.\n환급 신청서 작성을 시작할까요?', [
-                    {text: '나중에', style: 'cancel'},
-                    {text: '신청 시작', onPress: () => navigation.navigate('TaxRefundIntake')},
-                ]);
+                ConfirmSheet.confirm({
+                    title: '환급 신청을 시작할까요?',
+                    description: '환급형은 종합소득세 환급 금액의 10~20% 수수료로 운영돼요. 신청서 작성으로 이동해요.',
+                    primary: {label: '신청 시작', onPress: () => navigation.navigate('TaxRefundIntake')},
+                    secondary: {label: '나중에'},
+                });
             } else {
                 navigation.navigate('TossBillingAuth', {plan: selectedPlan});
             }
