@@ -7,8 +7,8 @@ import {env} from '../config/env';
  * API 클라이언트 설정 및 인터셉터 (Access/Refresh with single-flight queue)
  *
  * 베이스 URL은 `src/common/config/env.ts` 에서 단일 진실로 관리.
- *   - Android 에뮬레이터: http://10.0.2.2:8080
- *   - iOS 시뮬레이터:    http://localhost:8080
+ *   - Android 에뮬레이터: http://10.0.2.2:7070
+ *   - iOS 시뮬레이터:    http://localhost:7070
  *   - 운영:             https://sodam-api.com
  */
 

@@ -7,11 +7,11 @@
 #   docker compose down               # 정지 (볼륨 유지)
 #   docker compose down -v            # 정지 + 볼륨 삭제 (DB 초기화)
 #
-# 포트 매핑:
-#   - BE      : 7070  (호스트) → 8080 (컨테이너)
-#   - MySQL   : 13306 (호스트) → 3306 (컨테이너)  — 다른 프로젝트 8080/8081/3306 충돌 회피
+# 포트 매핑 (8080/8081/8082/5432/6379 등 타 프로젝트 점유 회피, BE 7070 일관):
+#   - BE      : 7070  (호스트) → 7070 (컨테이너)   — 전 구간 7070 통일
+#   - MySQL   : 13306 (호스트) → 3306 (컨테이너)
 #   - Redis   : 16379 (호스트) → 6379 (컨테이너)
-#   - Adminer : 18080 (호스트) → 8080 (컨테이너)
+#   - Adminer : 18080 (호스트) → 8080 (컨테이너, 이미지 기본)
 # =============================================================================
 
 services:
@@ -30,7 +30,7 @@ services:
     environment:
       # Spring 프로필 — dev (H2 사용) 또는 prod (MySQL 사용)
       SPRING_PROFILES_ACTIVE: prod
-      SERVER_PORT: 8080
+      SERVER_PORT: 7070
       # DB 연결 — MySQL 컨테이너 호스트
       DB_URL: jdbc:mysql://sodam-mysql:3306/sodam?serverTimezone=Asia/Seoul&useSSL=false&allowPublicKeyRetrieval=true
       DB_USERNAME: sodam
@@ -59,7 +59,7 @@ services:
       MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: when-authorized
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
     ports:
-      - "${SODAM_BE_PORT:-7070}:8080"
+      - "${SODAM_BE_PORT:-7070}:7070"
     volumes:
       - sodam_uploads:/app/uploads
       - sodam_logs:/app/logs
@@ -67,7 +67,7 @@ services:
       - sodam-network
     healthcheck:
       # /actuator/health 는 일부 빈 의존성 실패 시 등록 안 됨. info 는 stateless 이라 안전.
-      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/info"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:7070/actuator/info"]
       interval: 30s
       timeout: 5s
       retries: 3

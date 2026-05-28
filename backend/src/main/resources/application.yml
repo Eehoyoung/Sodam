@@ -1,3 +1,8 @@
+# 서버 포트 — 소담 일관 포트(7070). 8080 은 다른 프로젝트/Docker 점유 회피.
+#   docker / 로컬 / dev 프로필 전 구간 7070 통일. SERVER_PORT env 로 override 가능.
+server:
+  port: ${SERVER_PORT:7070}
+
 # 애플리케이션 설정
 app:
   store:
@@ -25,7 +30,7 @@ spring:
           kakao:
             client-id: ${KAKAO_CLIENT_ID:#{null}}
             client-secret: ${KAKAO_CLIENT_SECRET:#{null}}
-            redirect-uri: http://localhost:8080/kakao/auth/proc
+            redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:7070/kakao/auth/proc}
             authorization-grant-type: authorization_code
             client-authentication-method: POST
             client-name: Kakao
