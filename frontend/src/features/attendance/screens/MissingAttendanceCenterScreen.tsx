@@ -73,7 +73,7 @@ const MissingAttendanceCenterScreen: React.FC = () => {
                             title: '출근 확인 부탁드려요',
                             body: `${item.storeName} 매장 출근이 등록되지 않았어요. 확인해 주세요.`,
                         });
-                        Alert.alert('전송 완료', '직원에게 알림을 보냈어요.');
+                        AppToast.success('직원에게 알림을 보냈어요.');
                     } catch (e: any) {
                         AppToast.error('알림 발송에 실패했어요.');
                     }

@@ -49,7 +49,7 @@ const WageSettingsScreen: React.FC = () => {
     const submit = async () => {
         const n = parseInt(standardWage.replace(/[^0-9]/g, ''), 10);
         if (!n || n < 1) {
-            Alert.alert('확인 필요', '시급은 1원 이상이어야 해요.');
+            AppToast.warn('시급은 1원 이상이어야 해요.');
             return;
         }
         if (n < 9860) {

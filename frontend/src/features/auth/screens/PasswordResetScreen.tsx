@@ -85,7 +85,7 @@ const StepEmail: React.FC<{onNext: () => void}> = ({onNext}) => {
 
     const submit = async () => {
         if (!email || !email.includes('@')) {
-            Alert.alert('확인 필요', '올바른 이메일 형식을 입력해 주세요.');
+            AppToast.warn('올바른 이메일 형식을 입력해 주세요.');
             return;
         }
         setLoading(true);
@@ -248,11 +248,11 @@ const StepNewPassword: React.FC<{onDone: () => void}> = ({onDone}) => {
 
     const submit = async () => {
         if (!check.isValid) {
-            Alert.alert('확인 필요', '비밀번호 규칙을 모두 만족해야 해요.');
+            AppToast.warn('비밀번호 규칙을 모두 만족해야 해요.');
             return;
         }
         if (pw !== confirm) {
-            Alert.alert('확인 필요', '비밀번호가 일치하지 않아요.');
+            AppToast.warn('비밀번호가 일치하지 않아요.');
             return;
         }
         setLoading(true);

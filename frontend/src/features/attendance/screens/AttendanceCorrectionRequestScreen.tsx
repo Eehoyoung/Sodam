@@ -41,11 +41,11 @@ const AttendanceCorrectionRequestScreen: React.FC = () => {
 
     const submit = async () => {
         if (!reason.trim() || reason.trim().length < 5) {
-            Alert.alert('확인 필요', '정정 사유를 5자 이상 적어주세요.\n사장님이 더 빠르게 검토해 주실 수 있어요.');
+            AppToast.warn('정정 사유를 5자 이상 적어주세요.\n사장님이 더 빠르게 검토해 주실 수 있어요.');
             return;
         }
         if (!isValidTime(checkIn) || !isValidTime(checkOut)) {
-            Alert.alert('확인 필요', '시간을 HH:MM 형식으로 입력해 주세요.');
+            AppToast.warn('시간을 HH:MM 형식으로 입력해 주세요.');
             return;
         }
         setLoading(true);

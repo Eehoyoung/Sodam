@@ -26,7 +26,7 @@ const AccountSettingsScreen: React.FC = () => {
 
     const saveName = async () => {
         if (!name || name.trim().length < 2) {
-            Alert.alert('확인 필요', '이름은 2자 이상이어야 해요.');
+            AppToast.warn('이름은 2자 이상이어야 해요.');
             return;
         }
         setSaving(true);

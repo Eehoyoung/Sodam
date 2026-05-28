@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useState} from 'react';
 import {Alert, StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
@@ -31,19 +32,19 @@ const TimeOffRequestScreen: React.FC = () => {
 
     const submit = async () => {
         if (!storeId) {
-            Alert.alert('확인 필요', '매장 정보가 없어요.');
+            AppToast.warn('매장 정보가 없어요.');
             return;
         }
         if (!isValidDate(startDate) || !isValidDate(endDate)) {
-            Alert.alert('확인 필요', '날짜는 YYYY-MM-DD 형식으로 입력해 주세요.');
+            AppToast.warn('날짜는 YYYY-MM-DD 형식으로 입력해 주세요.');
             return;
         }
         if (new Date(endDate) < new Date(startDate)) {
-            Alert.alert('확인 필요', '종료일은 시작일 이후여야 해요.');
+            AppToast.warn('종료일은 시작일 이후여야 해요.');
             return;
         }
         if (!reason.trim() || reason.trim().length < 2) {
-            Alert.alert('확인 필요', '사유를 2자 이상 작성해 주세요.');
+            AppToast.warn('사유를 2자 이상 작성해 주세요.');
             return;
         }
         setLoading(true);

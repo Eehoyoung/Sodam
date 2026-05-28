@@ -70,7 +70,7 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation}) => {
             return;
         }
         if (!consent.age || !consent.terms || !consent.privacy) {
-            Alert.alert('약관 동의', '만 14세 이상·이용약관·개인정보 처리방침은 필수 동의 항목이에요.');
+            AppToast.warn('만 14세 이상·이용약관·개인정보 처리방침은 필수 동의 항목이에요.');
             return;
         }
 

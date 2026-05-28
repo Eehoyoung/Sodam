@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
 import {Alert, StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
@@ -48,7 +49,7 @@ const StoreEditScreen: React.FC = () => {
 
     const submit = async () => {
         if (!storeName || storeName.length < 2) {
-            Alert.alert('확인 필요', '매장명을 2자 이상 입력해 주세요.');
+            AppToast.warn('매장명을 2자 이상 입력해 주세요.');
             return;
         }
         const wage = parseInt(standardWage.replace(/[^0-9]/g, ''), 10) || 0;

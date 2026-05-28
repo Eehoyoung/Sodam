@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useState} from 'react';
 import {Alert, Pressable, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
@@ -27,7 +28,7 @@ const JoinStoreByCodeScreen: React.FC = () => {
     const submit = async () => {
         const normalized = code.trim().toUpperCase();
         if (normalized.length < 8) {
-            Alert.alert('확인 필요', '매장 코드는 보통 ST 로 시작하는 12자 이상이에요.');
+            AppToast.warn('매장 코드는 보통 ST 로 시작하는 12자 이상이에요.');
             return;
         }
         setLoading(true);

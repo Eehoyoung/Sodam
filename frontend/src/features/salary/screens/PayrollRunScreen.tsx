@@ -1,3 +1,4 @@
+import {AppToast} from '../../../common/components/ds';
 import React, {useState} from 'react';
 import {Alert, Modal, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
@@ -80,7 +81,7 @@ const PayrollRunScreen: React.FC = () => {
 
     const goPreview = async () => {
         if (!storeId) {
-            Alert.alert('확인 필요', '매장을 선택해 주세요.');
+            AppToast.warn('매장을 선택해 주세요.');
             return;
         }
         setLoading(true);
@@ -110,10 +111,7 @@ const PayrollRunScreen: React.FC = () => {
             );
             setStep('PREVIEW');
         } catch (e: any) {
-            Alert.alert(
-                '계산 실패',
-                e?.response?.data?.message ?? '급여 계산 중 오류가 났어요. 잠시 후 다시 시도해 주세요.',
-            );
+            AppToast.error(e?.response?.data?.message ?? '급여 계산 중 오류가 났어요. 잠시 후 다시 시도해 주세요.');
         } finally {
             setLoading(false);
         }
@@ -131,10 +129,7 @@ const PayrollRunScreen: React.FC = () => {
             }
             setStep('DONE');
         } catch (e: any) {
-            Alert.alert(
-                '발급 실패',
-                '일부 명세서 발급에 실패했어요. 잠시 후 다시 시도해 주세요.',
-            );
+            AppToast.error('일부 명세서 발급에 실패했어요. 잠시 후 다시 시도해 주세요.');
         } finally {
             setLoading(false);
         }
@@ -273,7 +268,7 @@ const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust, onNext}) => {
         const num = parseInt((adjustAmount || '0').replace(/[^0-9-]/g, ''), 10) || 0;
         const reason = adjustReason.trim();
         if (num !== 0 && reason.length < 2) {
-            Alert.alert('확인 필요', '사유를 2자 이상 입력해 주세요.');
+            AppToast.warn('사유를 2자 이상 입력해 주세요.');
             return;
         }
         onAdjust(adjustingIdx, num, reason);
@@ -489,7 +484,9 @@ const styles = StyleSheet.create({
     totalCard: {alignItems: 'center', paddingVertical: tokens.spacing.xl},
     totalLabel: {fontSize: tokens.typography.sizes.sm, color: tokens.colors.textSecondary},
     totalAmount: {
-        fontSize: 36,
+        // numericLg(28) — compact<360 에서 줄바꿈 회피, 토큰 스케일 정합
+        fontSize: tokens.typography.scale.numericLg.fontSize,
+        lineHeight: tokens.typography.scale.numericLg.lineHeight,
         fontWeight: tokens.typography.weights.bold,
         color: tokens.colors.brandPrimary,
         marginVertical: tokens.spacing.xs,
