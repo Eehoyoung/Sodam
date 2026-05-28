@@ -46,6 +46,11 @@ services:
       JWT_REFRESH_VALIDITY_DAYS: 7
       # 외부 통합 — 출시 직전까지 mock 모드 유지
       SODAM_INTEGRATION_TOSS_MODE: ${SODAM_TOSS_MODE:-mock}
+      # ⭐ 토스 실키 활성화: .env 에 SODAM_TOSS_MODE=live + 아래 3개 키 입력 → compose up --build 만 하면 됨
+      #    (mock 모드에선 test_ck_dev/test_sk_dev 디폴트로 동작, 실호출 없음)
+      TOSS_CLIENT_KEY: ${TOSS_CLIENT_KEY:-test_ck_dev}
+      TOSS_SECRET_KEY: ${TOSS_SECRET_KEY:-test_sk_dev}
+      TOSS_WEBHOOK_SECRET: ${TOSS_WEBHOOK_SECRET:-}
       SODAM_INTEGRATION_FCM_MODE: ${SODAM_FCM_MODE:-mock}
       SODAM_INTEGRATION_SENTRY_MODE: ${SODAM_SENTRY_MODE:-off}
       SODAM_INTEGRATION_KAKAO_MODE: ${SODAM_KAKAO_MODE:-mock}

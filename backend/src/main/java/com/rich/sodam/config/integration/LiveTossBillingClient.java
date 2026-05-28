@@ -2,6 +2,7 @@ package com.rich.sodam.config.integration;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.*;
@@ -35,6 +36,29 @@ public class LiveTossBillingClient implements TossBillingClient {
         factory.setConnectTimeout(3_000);
         factory.setReadTimeout(10_000);
         this.restTemplate = new RestTemplate(factory);
+    }
+
+    /**
+     * 라이브 모드 부팅 시 토스 키 존재 검증 — 빈 키로 운영 진입 차단(보안/장애 예방).
+     * mode=live 인데 secret/client 키가 비면 부팅 자체 실패시키고 명확한 메시지를 남긴다.
+     * webhook secret 은 권장이지만 비면 TossWebhookController 가 모든 webhook 을 거부하도록
+     * 이미 처리됨(IntegrationProperties.Toss.webhookSecret 주석 참조).
+     */
+    @PostConstruct
+    void validateKeys() {
+        IntegrationProperties.Toss t = props.getToss();
+        String sk = t.getSecretKey();
+        String ck = t.getClientKey();
+        if (sk == null || sk.isBlank() || "test_sk_dev".equals(sk)
+                || ck == null || ck.isBlank() || "test_ck_dev".equals(ck)) {
+            throw new IllegalStateException(
+                "[TOSS LIVE] 실키 미설정 — sodam.integration.toss.mode=live 인데 secret-key/client-key 가 비었거나 dev 기본값입니다. " +
+                ".env 에 TOSS_SECRET_KEY/TOSS_CLIENT_KEY 를 입력하거나 mode 를 mock 으로 되돌리세요.");
+        }
+        if (t.getWebhookSecret() == null || t.getWebhookSecret().isBlank()) {
+            log.warn("[TOSS LIVE] webhook-secret 미설정 — webhook 수신이 차단됩니다. 정기결제 결과 동기화 위해 TOSS_WEBHOOK_SECRET 권장.");
+        }
+        log.info("[TOSS LIVE] 클라이언트 준비 완료 — baseUrl={}, clientKey={}...", t.getBaseUrl(), ck.substring(0, Math.min(8, ck.length())));
     }
 
     @Override

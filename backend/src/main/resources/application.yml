@@ -152,3 +152,35 @@ tax:
   office:
     api:
       key: ${NTS_API_KEY:#{null}}  # 국세청 API 키
+
+# =============================================================================
+# 외부 통합 (Toss / FCM / Sentry / Kakao / Channel) — 모드별 동작 토글
+#
+# ⭐ 토스 실키 받았을 때 활성화 순서 (3단계만):
+#   1) .env 에 실키 입력
+#        SODAM_TOSS_MODE=live
+#        TOSS_CLIENT_KEY=live_ck_xxx          # 토스 대시보드 클라이언트 키
+#        TOSS_SECRET_KEY=live_sk_xxx          # 토스 대시보드 시크릿 키 (Bearer)
+#        TOSS_WEBHOOK_SECRET=<webhook_secret> # 토스 webhook 서명 검증
+#   2) docker compose up -d --build sodam-be  # 환경변수 반영
+#   3) 자동결제/취소가 LiveTossBillingClient 로 라우팅
+#      (@ConditionalOnProperty mode=live + @PostConstruct 키검증, 빈 키면 부팅 실패)
+# mock 으로 두면 LiveTossBillingClient 빈 생성 안되고 MockTossBillingClient 사용.
+# =============================================================================
+sodam:
+  integration:
+    toss:
+      mode: ${SODAM_INTEGRATION_TOSS_MODE:mock}
+      client-key: ${TOSS_CLIENT_KEY:test_ck_dev}
+      secret-key: ${TOSS_SECRET_KEY:test_sk_dev}
+      webhook-secret: ${TOSS_WEBHOOK_SECRET:}
+      base-url: ${TOSS_BASE_URL:https://api.tosspayments.com}
+    fcm:
+      mode: ${SODAM_INTEGRATION_FCM_MODE:mock}
+    sentry:
+      mode: ${SODAM_INTEGRATION_SENTRY_MODE:off}
+    kakao:
+      mode: ${SODAM_INTEGRATION_KAKAO_MODE:mock}
+      base-url: ${KAKAO_BASE_URL:https://dapi.kakao.com}
+    channel:
+      mode: ${SODAM_INTEGRATION_CHANNEL_MODE:off}
