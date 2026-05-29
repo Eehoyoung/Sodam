@@ -1,7 +1,8 @@
 import React from 'react';
 import {StyleSheet, View} from 'react-native';
 import {AppButton, AppCard, AppText, Brandmark, ScreenContainer} from '../../../common/components/ds';
-import {colors, spacing} from '../../../theme/tokens';
+import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 
 interface Props {
     /** 'gate' = 유료기능 진입 차단, 'expired' = 구독 만료 */
@@ -18,10 +19,11 @@ interface Props {
  */
 const SubscriptionGateScreen: React.FC<Props> = ({mode = 'gate', featureName = '명세서 발급', onPrimary, onSecondary}) => {
     const expired = mode === 'expired';
+    const c = useThemeColors();
     return (
         <ScreenContainer>
             <View style={styles.center}>
-                <Brandmark size={56} label={expired ? '!' : '✦'} backgroundColor={expired ? colors.warning : colors.brandPrimary} />
+                <Brandmark size={56} label={expired ? '!' : '✦'} backgroundColor={expired ? c.warning : c.brandPrimary} />
                 <AppText variant="headingMd" center style={styles.title}>
                     {expired ? '구독이 만료됐어요' : '비즈니스 플랜에서 쓸 수 있어요'}
                 </AppText>

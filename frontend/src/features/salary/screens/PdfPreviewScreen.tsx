@@ -2,7 +2,8 @@ import React from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {AppButton, AppCard, AppHeader, AppText, CtaStack, ScreenContainer} from '../../../common/components/ds';
-import {colors, spacing} from '../../../theme/tokens';
+import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 
 /**
  * 70 PDF Preview — 급여명세서 미리보기 (확정 시안).
@@ -11,6 +12,7 @@ import {colors, spacing} from '../../../theme/tokens';
 const PdfPreviewScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
+    const c = useThemeColors();
     const title = route.params?.title ?? '급여명세서.pdf';
     const sub = route.params?.sub ?? '';
 
@@ -24,7 +26,7 @@ const PdfPreviewScreen: React.FC = () => {
                     <AppButton label="공유하기" variant="secondary" onPress={() => route.params?.onShare?.()} />
                 </CtaStack>
             }>
-            <AppCard variant="flat" style={styles.page}>
+            <AppCard variant="flat" style={[styles.page, {backgroundColor: c.surfaceMuted}]}>
                 <View style={styles.doc}>
                     <AppText variant="titleMd">{title}</AppText>
                     {sub ? <AppText variant="caption" tone="tertiary" style={styles.sub}>{sub}</AppText> : null}
@@ -35,7 +37,7 @@ const PdfPreviewScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-    page: {height: 360, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceMuted},
+    page: {height: 360, alignItems: 'center', justifyContent: 'center'},
     doc: {alignItems: 'center'},
     sub: {marginTop: spacing.xs},
 });

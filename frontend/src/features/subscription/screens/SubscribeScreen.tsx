@@ -1,9 +1,10 @@
 import {AppToast, ConfirmSheet} from '../../../common/components/ds';
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
-import {tokens, spacing, colors} from '../../../theme/tokens';
+import {tokens, spacing} from '../../../theme/tokens';
 import {useResponsive} from '../../../common/hooks/useResponsive';
+import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import {
     AppBadge,
     AppButton,
@@ -21,10 +22,11 @@ import subscriptionApi, {
 
 type Highlight = {text: string; included: boolean};
 
-const PLAN_VISUALS: Record<PlanType, {emoji: string; accent: string; recommended?: boolean; highlights: Highlight[]}> = {
+// 다크 모드 대응을 위해 accent 색은 테마에서 받아 매번 생성한다.
+const buildPlanVisuals = (c: ThemeColors): Record<PlanType, {emoji: string; accent: string; recommended?: boolean; highlights: Highlight[]}> => ({
     FREE: {
         emoji: '🌱',
-        accent: tokens.colors.textSecondary,
+        accent: c.textSecondary,
         highlights: [
             {text: '기본 근태 기록 + 급여 자동 계산', included: true},
             {text: 'FAQ + 이메일 고객 지원', included: true},
@@ -35,7 +37,7 @@ const PLAN_VISUALS: Record<PlanType, {emoji: string; accent: string; recommended
     },
     BUSINESS: {
         emoji: '✨',
-        accent: tokens.colors.brandPrimary,
+        accent: c.brandPrimary,
         recommended: true,
         highlights: [
             {text: 'NFC + GPS 근태 + 급여 자동 산출', included: true},
@@ -47,7 +49,7 @@ const PLAN_VISUALS: Record<PlanType, {emoji: string; accent: string; recommended
     },
     PREMIUM: {
         emoji: '👑',
-        accent: tokens.colors.brandSecondary,
+        accent: c.brandSecondary,
         highlights: [
             {text: '비즈니스 플랜 전부 포함', included: true},
             {text: '세무사 1:1 상담 + 신고 대행', included: true},
@@ -57,7 +59,7 @@ const PLAN_VISUALS: Record<PlanType, {emoji: string; accent: string; recommended
     },
     COMMISSION: {
         emoji: '💸',
-        accent: tokens.colors.success,
+        accent: c.success,
         highlights: [
             {text: '종합소득세 환급 신청 대행', included: true},
             {text: '필요 서류 자동 발급', included: true},
@@ -65,7 +67,7 @@ const PLAN_VISUALS: Record<PlanType, {emoji: string; accent: string; recommended
             {text: '월정액 없음 · 환급금의 10~20% 수수료', included: true},
         ],
     },
-};
+});
 
 /**
  * 31 Subscribe — 확정 시안.
@@ -74,6 +76,8 @@ const PLAN_VISUALS: Record<PlanType, {emoji: string; accent: string; recommended
 const SubscribeScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const r = useResponsive();
+    const c = useThemeColors();
+    const planVisuals = useMemo(() => buildPlanVisuals(c), [c]);
     // compact(<360): 플랜 카드 4장이 세로로 길게 흐르므로 list gap·subtitle 여백·이모지 크기를 한 단계 축소해 1.5장 fold-above 보장.
     const listGap = r.pick({compact: spacing.sm, default: spacing.md});
     const subtitleMargin = r.pick({compact: spacing.md, default: spacing.lg});
@@ -145,7 +149,7 @@ const SubscribeScreen: React.FC = () => {
     };
 
     const renderPlan = (plan: PlanCatalogItem) => {
-        const v = PLAN_VISUALS[plan.name];
+        const v = planVisuals[plan.name];
         const isSelected = selectedPlan === plan.name;
         const isCurrent = current?.plan === plan.name && current.status === 'ACTIVE';
 
@@ -167,11 +171,11 @@ const SubscribeScreen: React.FC = () => {
 
                 <AppText variant="caption" tone="secondary" style={styles.planDescription}>{plan.description}</AppText>
 
-                <View style={styles.divider} />
+                <View style={[styles.divider, {backgroundColor: c.divider}]} />
 
                 {v.highlights.map((h, idx) => (
                     <View key={idx} style={styles.highlightRow}>
-                        <AppText style={[styles.checkIcon, !h.included && styles.checkIconDim]}>{h.included ? '✓' : '–'}</AppText>
+                        <AppText style={[styles.checkIcon, {color: h.included ? c.success : c.textTertiary}]}>{h.included ? '✓' : '–'}</AppText>
                         <AppText variant="caption" tone={h.included ? 'primary' : 'tertiary'} style={styles.flex}>{h.text}</AppText>
                     </View>
                 ))}
@@ -239,10 +243,9 @@ const styles = StyleSheet.create({
     planPrice: {marginTop: 2},
     planBadges: {flexDirection: 'row', gap: spacing.xs},
     planDescription: {marginTop: spacing.md},
-    divider: {height: 1, backgroundColor: colors.divider, marginVertical: spacing.md},
+    divider: {height: 1, marginVertical: spacing.md},
     highlightRow: {flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing.xs},
-    checkIcon: {width: 22, fontSize: 16, color: colors.success, fontWeight: '700'},
-    checkIconDim: {color: colors.textTertiary},
+    checkIcon: {width: 22, fontSize: 16, fontWeight: '700'},
     flex: {flex: 1},
 });
 

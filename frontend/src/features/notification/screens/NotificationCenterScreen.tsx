@@ -2,7 +2,8 @@ import React, {useCallback, useEffect, useState} from 'react';
 import {FlatList, Pressable, RefreshControl, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {AppHeader, AppText, EmptyState, ScreenContainer} from '../../../common/components/ds';
-import {colors, spacing, tokens} from '../../../theme/tokens';
+import {spacing, tokens} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
 
 type Category = 'ALL' | 'ATTENDANCE' | 'PAYROLL' | 'BILLING' | 'NOTICE';
@@ -31,6 +32,7 @@ const FILTERS: Array<{key: Category; label: string}> = [
  */
 const NotificationCenterScreen: React.FC = () => {
     const navigation = useNavigation<any>();
+    const c = useThemeColors();
     const [items, setItems] = useState<InboxItem[]>([]);
     const [filter, setFilter] = useState<Category>('ALL');
     const [refreshing, setRefreshing] = useState(false);
@@ -85,7 +87,7 @@ const NotificationCenterScreen: React.FC = () => {
                         onPress={() => setFilter(f.key)}
                         style={({pressed}) => [
                             styles.filterChip,
-                            filter === f.key && styles.filterChipActive,
+                            {backgroundColor: filter === f.key ? c.brandPrimary : c.surfaceMuted},
                             pressed && {opacity: 0.7},
                         ]}>
                         <AppText
@@ -106,7 +108,7 @@ const NotificationCenterScreen: React.FC = () => {
                         <View
                             style={[
                                 styles.unreadDot,
-                                {backgroundColor: item.isRead ? colors.surfaceMuted : colors.brandPrimary},
+                                {backgroundColor: item.isRead ? c.surfaceMuted : c.brandPrimary},
                             ]}
                         />
                         <View style={styles.rowBody}>
@@ -116,11 +118,11 @@ const NotificationCenterScreen: React.FC = () => {
                         </View>
                     </Pressable>
                 )}
-                ItemSeparatorComponent={() => <View style={styles.separator} />}
+                ItemSeparatorComponent={() => <View style={[styles.separator, {backgroundColor: c.divider}]} />}
                 ListEmptyComponent={
                     <EmptyState
                         glyph="📭"
-                        markColor={colors.surfaceMuted}
+                        markColor={c.surfaceMuted}
                         title={loading ? '불러오는 중…' : '받은 알림이 없어요'}
                         description={loading ? undefined : '새 알림이 오면 여기에 표시돼요.'}
                     />
@@ -157,16 +159,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.xs,
         borderRadius: tokens.radius.pill,
-        backgroundColor: colors.surfaceMuted,
     },
-    filterChipActive: {backgroundColor: colors.brandPrimary},
     listPad: {paddingBottom: spacing.xl},
     row: {flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.md},
     unreadDot: {width: 8, height: 8, borderRadius: 4, marginTop: 8},
     rowBody: {flex: 1},
     body: {marginTop: 2},
     date: {marginTop: 4},
-    separator: {height: 1, backgroundColor: colors.divider, marginLeft: spacing.lg + 16},
+    separator: {height: 1, marginLeft: spacing.lg + 16},
     flexCenter: {flexGrow: 1, justifyContent: 'center'},
 });
 

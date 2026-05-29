@@ -11,7 +11,7 @@ import {
     PunchButton,
     ScreenContainer,
 } from '../../../common/components/ds';
-import {colors, spacing} from '../../../theme/tokens';
+import {spacing} from '../../../theme/tokens';
 import {formatTimer, formatWage} from '../../../common/utils/format';
 import {useAuth} from '../../../contexts/AuthContext';
 import {useResponsive} from '../../../common/hooks/useResponsive';

@@ -13,7 +13,8 @@ import {
     ScreenContainer,
     SegmentedControl,
 } from '../../../common/components/ds';
-import {colors, radius, spacing} from '../../../theme/tokens';
+import {radius, spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import laborInfoService from '../services/laborInfoService';
 import taxInfoService from '../services/taxInfoService';
 import policyService from '../services/policyService';
@@ -136,6 +137,7 @@ const InfoListScreen = () => {
         }
     };
 
+    const c = useThemeColors();
     return (
         <ScreenContainer padded={false} header={<AppHeader title="노무 정보" actions={[{label: '검색', onPress: () => {}}]} />}>
             <View style={styles.controls}>
@@ -152,7 +154,7 @@ const InfoListScreen = () => {
                         return (
                             <Pressable
                                 onPress={() => setSelectedCategory(item.id)}
-                                style={[styles.chip, on && styles.chipOn]}>
+                                style={[styles.chip, {backgroundColor: on ? c.brandPrimary : c.surfaceMuted}]}>
                                 <AppText variant="caption" weight="800" tone={on ? 'inverse' : 'secondary'}>{item.name}</AppText>
                             </Pressable>
                         );
@@ -184,7 +186,7 @@ const InfoListScreen = () => {
                             </View>
                         </AppCard>
                     )}
-                    ListEmptyComponent={<EmptyState glyph="ⓘ" markColor={colors.surfaceMuted} title="정보가 없어요" description="다른 분류를 확인해 보세요." />}
+                    ListEmptyComponent={<EmptyState glyph="ⓘ" markColor={c.surfaceMuted} title="정보가 없어요" description="다른 분류를 확인해 보세요." />}
                 />
             )}
         </ScreenContainer>
@@ -195,8 +197,7 @@ const styles = StyleSheet.create({
     controls: {paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: spacing.md},
     categoryList: {marginBottom: spacing.sm},
     categoryContent: {gap: spacing.sm, paddingRight: spacing.lg},
-    chip: {paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill, backgroundColor: colors.surfaceMuted},
-    chipOn: {backgroundColor: colors.brandPrimary},
+    chip: {paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill},
     articleList: {paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: spacing.sm},
     flexCenter: {flexGrow: 1, justifyContent: 'center'},
     articleCard: {},

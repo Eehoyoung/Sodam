@@ -5,7 +5,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {NavigationProp} from '@react-navigation/native';
 import {AppButton, AppInput, AppText, Brandmark} from '../../../common/components/ds';
-import {colors, gradient, spacing} from '../../../theme/tokens';
+import {gradient, spacing} from '../../../theme/tokens';
 import {useResponsive} from '../../../common/hooks/useResponsive';
 import authApi from '../services/authApi';
 import {useAuth} from '../../../contexts/AuthContext';

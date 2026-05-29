@@ -18,7 +18,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {Button, Card} from '../../../common/components';
 import {AppHeader, ScreenContainer} from '../../../common/components/ds';
-import {colors} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 
 import salaryService from '../services/salaryService';
 import {SalaryFilter, SalaryRecord, SalaryStatus} from '../types';
@@ -36,6 +36,7 @@ type SalaryListScreenNavigationProp = NativeStackNavigationProp<SalaryStackParam
 
 const SalaryListScreen = () => {
     const navigation = useNavigation<SalaryListScreenNavigationProp>();
+    const c = useThemeColors();
     const [salaries, setSalaries] = useState<SalaryRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -569,13 +570,13 @@ const SalaryListScreen = () => {
 
     return (
         <ScreenContainer padded={false} header={<AppHeader title="급여" actions={[{label: '필터', onPress: () => setFilterModalVisible(true)}]} />}>
-            <View style={styles.container}>
+            <View style={[styles.container, {backgroundColor: c.surfaceCanvas}]}>
                 {renderWorkplacePicker()}
                 {renderActionButtons()}
 
                 {loading ? (
                     <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color={colors.brandPrimary}/>
+                        <ActivityIndicator size="large" color={c.brandPrimary}/>
                     </View>
                 ) : (
                     <FlatList
@@ -588,7 +589,7 @@ const SalaryListScreen = () => {
                         }
                         ListEmptyComponent={
                             <View style={styles.emptyContainer}>
-                                <Icon name="account-balance-wallet" size={48} color={colors.textTertiary}/>
+                                <Icon name="account-balance-wallet" size={48} color={c.textTertiary}/>
                                 <Text style={styles.emptyText}>아직 급여 내역이 없어요. 첫 정산을 실행하면 여기에 쌓여요.</Text>
                             </View>
                         }
@@ -605,7 +606,6 @@ const SalaryListScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.surfaceCanvas,
     },
     screenTitle: {
         fontSize: 24,

@@ -11,7 +11,8 @@ import {
     LoadingState,
     ScreenContainer,
 } from '../../../common/components/ds';
-import {colors, spacing} from '../../../theme/tokens';
+import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import storeService, {StoreDetailDto} from '../services/storeService';
 
 type StoreDetailScreenRouteProp = RouteProp<{StoreDetail: {storeId: number}}, 'StoreDetail'>;
@@ -110,12 +111,15 @@ const Section: React.FC<{title: string; children: React.ReactNode}> = ({title, c
     </View>
 );
 
-const InfoRow: React.FC<{label: string; value: string}> = ({label, value}) => (
-    <View style={styles.infoRow}>
-        <AppText variant="bodyMd" tone="secondary">{label}</AppText>
-        <AppText variant="bodyMd" weight="600" style={styles.infoValue}>{value}</AppText>
-    </View>
-);
+const InfoRow: React.FC<{label: string; value: string}> = ({label, value}) => {
+    const c = useThemeColors();
+    return (
+        <View style={[styles.infoRow, {borderBottomColor: c.divider}]}>
+            <AppText variant="bodyMd" tone="secondary">{label}</AppText>
+            <AppText variant="bodyMd" weight="600" style={styles.infoValue}>{value}</AppText>
+        </View>
+    );
+};
 
 const styles = StyleSheet.create({
     heroSub: {marginTop: 4, opacity: 0.82},
@@ -127,7 +131,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: spacing.sm + 2,
         borderBottomWidth: 1,
-        borderBottomColor: colors.divider,
         gap: spacing.md,
     },
     infoValue: {flex: 1, textAlign: 'right'},

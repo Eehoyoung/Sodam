@@ -12,7 +12,8 @@ import {
     MoneyCard,
     ScreenContainer,
 } from '../../../common/components/ds';
-import {colors, layout, spacing} from '../../../theme/tokens';
+import {layout, spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {formatMoney} from '../../../common/utils/format';
 import StoreSelector, {SelectableStore} from '../../../common/components/store/StoreSelector';
 import {useAuth} from '../../../contexts/AuthContext';
@@ -42,6 +43,7 @@ const OwnerDashboardScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const {user} = useAuth();
     const r = useResponsive();
+    const c = useThemeColors();
     // compact(<360): 화면 폭이 좁아 카드 사이 여백을 한 단계 줄여 hero·지표·MoneyCard 가 한 뷰에 안정적으로 들어오게 한다.
     const contentGap = r.pick({compact: spacing.sm, default: spacing.md});
     const heroSubMargin = r.pick({compact: 2, default: spacing.xs});
@@ -143,9 +145,9 @@ const OwnerDashboardScreen: React.FC = () => {
                 </AppCard>
 
                 <View style={styles.cols}>
-                    <Metric label="출근" value={`${today?.checkedInCount ?? 0}/${today?.totalActiveEmployees ?? 0}`} tone={allIn ? colors.success : colors.warning} />
-                    <Metric label="예상급여" value={shortMoney(monthly?.totalGross ?? 0)} tone={colors.brandPrimary} />
-                    <Metric label="남은일" value={`${monthly?.daysRemainingInMonth ?? 0}일`} tone={colors.info} />
+                    <Metric label="출근" value={`${today?.checkedInCount ?? 0}/${today?.totalActiveEmployees ?? 0}`} tone={allIn ? c.success : c.warning} />
+                    <Metric label="예상급여" value={shortMoney(monthly?.totalGross ?? 0)} tone={c.brandPrimary} />
+                    <Metric label="남은일" value={`${monthly?.daysRemainingInMonth ?? 0}일`} tone={c.info} />
                 </View>
 
                 <AppCard variant="flat">

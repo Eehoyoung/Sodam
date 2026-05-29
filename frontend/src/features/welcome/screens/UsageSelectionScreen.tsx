@@ -3,7 +3,8 @@ import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {AppBadge, AppButton, AppText, Brandmark} from '../../../common/components/ds';
-import {colors, gradient, radius, spacing} from '../../../theme/tokens';
+// 다크 그라디언트 배경 위 흰 카드 — 항상 #FFFFFF (테마 무관, 의도된 콘트라스트)
+import {gradient, radius, spacing} from '../../../theme/tokens';
 
 interface UsageSelectionScreenProps {
     navigation: any;
@@ -78,7 +79,7 @@ const styles = StyleSheet.create({
     copy: {marginTop: spacing.sm, opacity: 0.8},
     cards: {marginTop: spacing.xl, gap: spacing.sm + 2},
     whiteCard: {
-        backgroundColor: colors.background,
+        backgroundColor: '#FFFFFF',
         borderRadius: radius.xl,
         padding: spacing.lg,
     },

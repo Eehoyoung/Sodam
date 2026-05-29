@@ -3,7 +3,8 @@ import {Animated, StyleSheet, View} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {Brandmark} from '../../../common/components/ds';
-import {colors, spacing, tokens} from '../../../theme/tokens';
+// Splash 는 항상 다크 그라디언트 위 — 테마 무관 흰 텍스트.
+import {spacing, tokens} from '../../../theme/tokens';
 
 interface Props {
     /** 최소 노출 시간 (ms). 빠르게 부트되어도 브랜드 인상 확보. */
@@ -72,14 +73,14 @@ const styles = StyleSheet.create({
     brandName: {
         fontSize: 35,
         fontWeight: '900',
-        color: colors.textInverse,
+        color: '#FFFFFF',
         marginTop: spacing.lg,
         marginBottom: spacing.sm,
     },
     slogan: {
         fontSize: 14,
         lineHeight: 20,
-        color: colors.textInverse,
+        color: '#FFFFFF',
         opacity: 0.78,
         textAlign: 'center',
     },

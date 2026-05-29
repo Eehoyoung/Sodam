@@ -12,7 +12,8 @@ import {
     ScreenContainer,
     SuccessState,
 } from '../../../common/components/ds';
-import {colors, radius, spacing} from '../../../theme/tokens';
+import {radius, spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
 
 /**
@@ -21,6 +22,7 @@ import api from '../../../common/utils/api';
  */
 const JoinStoreByCodeScreen: React.FC = () => {
     const navigation = useNavigation<any>();
+    const c = useThemeColors();
     const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
     const [joinedStore, setJoinedStore] = useState<string | null>(null);
@@ -90,7 +92,7 @@ const JoinStoreByCodeScreen: React.FC = () => {
                 containerStyle={styles.codeWrap}
             />
 
-            <View style={styles.qrPlaceholder}>
+            <View style={[styles.qrPlaceholder, {borderColor: c.border, backgroundColor: c.background}]}>
                 <AppText style={styles.qrEmoji}>📷</AppText>
                 <AppText variant="titleMd">QR 스캔으로 가입하기</AppText>
                 <AppText variant="caption" tone="tertiary" center style={styles.qrBody}>
@@ -117,11 +119,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 2,
-        borderColor: colors.border,
         borderStyle: 'dashed',
         borderRadius: radius.xl,
         padding: spacing.xxl,
-        backgroundColor: colors.background,
         gap: spacing.sm,
         marginTop: spacing.lg,
     },

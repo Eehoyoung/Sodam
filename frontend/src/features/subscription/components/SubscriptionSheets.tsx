@@ -5,7 +5,8 @@
 import React from 'react';
 import {StyleSheet, View} from 'react-native';
 import {AppText, BottomSheet} from '../../../common/components/ds';
-import {colors, spacing} from '../../../theme/tokens';
+import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 
 interface CancelProps {
     visible: boolean;
@@ -22,24 +23,27 @@ export const CancelSubscriptionSheet: React.FC<CancelProps> = ({
     onConfirmCancel,
     onDowngradeInstead,
     losing = ['급여명세 발급', '직원 알림', '정산 준비율'],
-}) => (
-    <BottomSheet
-        visible={visible}
-        onClose={onClose}
-        title="정말 해지하시겠어요?"
-        description="해지하면 다음 기능을 더 이상 쓸 수 없어요. 결제는 이번 주기까지 유지돼요."
-        primary={{label: '해지하기', variant: 'destructive', onPress: onConfirmCancel}}
-        secondary={onDowngradeInstead ? {label: '베이직으로 낮추기', onPress: onDowngradeInstead} : {label: '계속 사용', onPress: onClose}}>
-        <View style={styles.list}>
-            {losing.map(f => (
-                <View key={f} style={styles.row}>
-                    <AppText style={styles.dash}>–</AppText>
-                    <AppText variant="bodyMd" tone="secondary">{f}</AppText>
-                </View>
-            ))}
-        </View>
-    </BottomSheet>
-);
+}) => {
+    const c = useThemeColors();
+    return (
+        <BottomSheet
+            visible={visible}
+            onClose={onClose}
+            title="정말 해지하시겠어요?"
+            description="해지하면 다음 기능을 더 이상 쓸 수 없어요. 결제는 이번 주기까지 유지돼요."
+            primary={{label: '해지하기', variant: 'destructive', onPress: onConfirmCancel}}
+            secondary={onDowngradeInstead ? {label: '베이직으로 낮추기', onPress: onDowngradeInstead} : {label: '계속 사용', onPress: onClose}}>
+            <View style={styles.list}>
+                {losing.map(f => (
+                    <View key={f} style={styles.row}>
+                        <AppText style={[styles.dash, {color: c.error}]}>–</AppText>
+                        <AppText variant="bodyMd" tone="secondary">{f}</AppText>
+                    </View>
+                ))}
+            </View>
+        </BottomSheet>
+    );
+};
 
 interface DowngradeProps {
     visible: boolean;
@@ -66,7 +70,7 @@ export const DowngradeConfirmSheet: React.FC<DowngradeProps> = ({visible, onClos
 const styles = StyleSheet.create({
     list: {gap: spacing.xs, marginTop: spacing.xs},
     row: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
-    dash: {color: colors.error, fontWeight: '900', width: 16},
+    dash: {fontWeight: '900', width: 16},
     keep: {marginTop: spacing.xs, gap: 2},
     lose: {},
 });

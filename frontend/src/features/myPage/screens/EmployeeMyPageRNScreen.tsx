@@ -15,7 +15,8 @@ import {
     AppText,
     ScreenContainer,
 } from '../../../common/components/ds';
-import {colors, layout, spacing} from '../../../theme/tokens';
+import {layout, spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {HeroSlot, SummarySlot, ActionsSlot, InfoSlot} from '../components/RoleSlots';
 
 interface PolicyItem {
@@ -136,19 +137,22 @@ const EmployeeMyPageRNScreen: React.FC = () => {
     );
 };
 
-const LaborRow: React.FC<{label: string; value: string; last?: boolean}> = ({label, value, last}) => (
-    <View style={[styles.laborRow, last && styles.laborRowLast]}>
-        <AppText variant="caption" tone="secondary">{label}</AppText>
-        <AppText variant="titleMd">{value}</AppText>
-    </View>
-);
+const LaborRow: React.FC<{label: string; value: string; last?: boolean}> = ({label, value, last}) => {
+    const c = useThemeColors();
+    return (
+        <View style={[styles.laborRow, {borderBottomColor: c.divider}, last && styles.laborRowLast]}>
+            <AppText variant="caption" tone="secondary">{label}</AppText>
+            <AppText variant="titleMd">{value}</AppText>
+        </View>
+    );
+};
 
 const styles = StyleSheet.create({
     content: {paddingHorizontal: layout.screenPaddingHorizontal, paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md},
     sub: {marginTop: 2},
     sectionTitle: {marginBottom: spacing.sm},
     list: {gap: spacing.sm},
-    laborRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider},
+    laborRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1},
     laborRowLast: {borderBottomWidth: 0},
 });
 

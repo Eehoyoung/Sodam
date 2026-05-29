@@ -5,7 +5,8 @@
 import React, {useState} from 'react';
 import {Pressable, StyleSheet, View} from 'react-native';
 import {AppBadge, AppInput, AppListItem, AppText, BottomSheet, SegmentedControl} from '../../../common/components/ds';
-import {colors, radius, spacing} from '../../../theme/tokens';
+import {radius, spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 
 /* 54 Radius Selector Sheet — 출퇴근 인증 반경 */
 const RADII = ['50m', '80m', '120m'];
@@ -17,6 +18,7 @@ export const RadiusSelectorSheet: React.FC<{
 }> = ({visible, onClose, value = 1, onApply}) => {
     const [idx, setIdx] = useState(value);
     const meters = [50, 80, 120][idx];
+    const c = useThemeColors();
     return (
         <BottomSheet
             visible={visible}
@@ -26,7 +28,7 @@ export const RadiusSelectorSheet: React.FC<{
             primary={{label: '반경 적용', onPress: () => onApply(meters)}}>
             <SegmentedControl options={RADII} value={idx} onChange={setIdx} />
             <View style={styles.radiusPreview}>
-                <View style={styles.radiusCircle}>
+                <View style={[styles.radiusCircle, {borderColor: c.brandPrimary}]}>
                     <AppText variant="titleMd" tone="brand">{meters}m</AppText>
                 </View>
             </View>
@@ -42,18 +44,21 @@ export const InviteShareSheet: React.FC<{
     onShareKakao: () => void;
     onShareSms: () => void;
     onCopy: () => void;
-}> = ({visible, onClose, code, onShareKakao, onShareSms, onCopy}) => (
-    <BottomSheet visible={visible} onClose={onClose} title="초대 코드 공유">
-        <View style={styles.codeBox}>
-            <AppText variant="numericLg" tone="brand" style={styles.code}>{code}</AppText>
-        </View>
-        <View style={styles.quick}>
-            <Pressable style={styles.quickItem} onPress={onShareSms}><AppText variant="caption" weight="800">문자</AppText></Pressable>
-            <Pressable style={styles.quickItem} onPress={onShareKakao}><AppText variant="caption" weight="800">카카오</AppText></Pressable>
-            <Pressable style={styles.quickItem} onPress={onCopy}><AppText variant="caption" weight="800">복사</AppText></Pressable>
-        </View>
-    </BottomSheet>
-);
+}> = ({visible, onClose, code, onShareKakao, onShareSms, onCopy}) => {
+    const c = useThemeColors();
+    return (
+        <BottomSheet visible={visible} onClose={onClose} title="초대 코드 공유">
+            <View style={[styles.codeBox, {backgroundColor: c.surfaceWarm}]}>
+                <AppText variant="numericLg" tone="brand" style={styles.code}>{code}</AppText>
+            </View>
+            <View style={styles.quick}>
+                <Pressable style={[styles.quickItem, {borderColor: c.border, backgroundColor: c.background}]} onPress={onShareSms}><AppText variant="caption" weight="800">문자</AppText></Pressable>
+                <Pressable style={[styles.quickItem, {borderColor: c.border, backgroundColor: c.background}]} onPress={onShareKakao}><AppText variant="caption" weight="800">카카오</AppText></Pressable>
+                <Pressable style={[styles.quickItem, {borderColor: c.border, backgroundColor: c.background}]} onPress={onCopy}><AppText variant="caption" weight="800">복사</AppText></Pressable>
+            </View>
+        </BottomSheet>
+    );
+};
 
 /* 56 Employee Action Sheet — 직원 작업 */
 export const EmployeeActionSheet: React.FC<{
@@ -102,11 +107,11 @@ export const WageEditSheet: React.FC<{
 
 const styles = StyleSheet.create({
     radiusPreview: {alignItems: 'center', marginTop: spacing.lg},
-    radiusCircle: {width: 150, height: 150, borderRadius: 75, backgroundColor: 'rgba(255,107,53,0.14)', borderWidth: 2, borderColor: colors.brandPrimary, alignItems: 'center', justifyContent: 'center'},
-    codeBox: {alignItems: 'center', backgroundColor: colors.surfaceWarm, borderRadius: radius.xl, paddingVertical: spacing.lg, marginTop: spacing.xs},
+    radiusCircle: {width: 150, height: 150, borderRadius: 75, backgroundColor: 'rgba(255,107,53,0.14)', borderWidth: 2, alignItems: 'center', justifyContent: 'center'},
+    codeBox: {alignItems: 'center', borderRadius: radius.xl, paddingVertical: spacing.lg, marginTop: spacing.xs},
     code: {letterSpacing: 4},
     quick: {flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md},
-    quickItem: {flex: 1, minHeight: 48, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center'},
+    quickItem: {flex: 1, minHeight: 48, borderRadius: radius.lg, borderWidth: 1, alignItems: 'center', justifyContent: 'center'},
     list: {gap: spacing.sm, marginTop: spacing.xs},
     form: {gap: spacing.md, marginTop: spacing.xs},
 });

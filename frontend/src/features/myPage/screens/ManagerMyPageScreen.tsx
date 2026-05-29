@@ -12,7 +12,7 @@ import {
     AppText,
     ScreenContainer,
 } from '../../../common/components/ds';
-import {colors, layout, spacing} from '../../../theme/tokens';
+import {layout, spacing} from '../../../theme/tokens';
 import {HeroSlot, SummarySlot, ActionsSlot, InfoSlot} from '../components/RoleSlots';
 
 interface TeamMember {

@@ -1,9 +1,10 @@
 import {AppToast} from '../../../common/components/ds';
-import React, {useState} from 'react';
+import React, {useMemo, useState} from 'react';
 import {Alert, Modal, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {tokens} from '../../../theme/tokens';
 import {useResponsive} from '../../../common/hooks/useResponsive';
+import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import {
     AppBadge,
     AppButton,
@@ -70,6 +71,8 @@ const PayrollRunScreen: React.FC = () => {
     const route = useRoute<any>();
     const navigation = useNavigation<any>();
     const r = useResponsive();
+    const styles = useStyles();
+    const c = useThemeColors();
     // 3 단계 정산 마법사 — compact(<360) 에서는 단계마다 카드/CTA 가 한 화면에 안 들어와 스크롤이 길어진다.
     // 본문 padding·서브타이틀 marginBottom·총액카드 padding·CTA marginTop 만 한 단계씩 축소해 fold-above 정보량 확보.
     const contentPad = r.pick({compact: tokens.spacing.md, default: tokens.spacing.lg});
@@ -203,6 +206,7 @@ const PayrollRunScreen: React.FC = () => {
 };
 
 const Stepper: React.FC<{step: Step; compact?: boolean}> = ({step, compact}) => {
+    const styles = useStyles();
     const idx = step === 'PERIOD' ? 0 : step === 'PREVIEW' ? 1 : step === 'CONFIRM' ? 2 : 3;
     const labels = ['기간', '미리보기', '확인'];
     return (
@@ -238,7 +242,9 @@ const PeriodForm: React.FC<any> = ({
     loading,
     subtitleMargin,
     ctaMargin,
-}) => (
+}) => {
+    const styles = useStyles();
+    return (
     <View>
         <Text style={styles.title}>1단계: 기간 설정</Text>
         <Text style={[styles.subtitle, subtitleMargin != null && {marginBottom: subtitleMargin}]}>
@@ -265,9 +271,12 @@ const PeriodForm: React.FC<any> = ({
             style={[styles.cta, ctaMargin != null && {marginTop: ctaMargin}]}
         />
     </View>
-);
+    );
+};
 
 const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust, onNext, totalCardPad, ctaMargin}) => {
+    const styles = useStyles();
+    const c = useThemeColors();
     const [adjustingIdx, setAdjustingIdx] = useState<number | null>(null);
     const [adjustAmount, setAdjustAmount] = useState('');
     const [adjustReason, setAdjustReason] = useState('');
@@ -360,7 +369,7 @@ const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust, onNext, total
                         onChangeText={setAdjustAmount}
                         keyboardType="numbers-and-punctuation"
                         placeholder="예: 50000 또는 -20000"
-                        placeholderTextColor={tokens.colors.textTertiary}
+                        placeholderTextColor={c.textTertiary}
                     />
                     <Text style={styles.modalLabel}>사유</Text>
                     <TextInput
@@ -369,7 +378,7 @@ const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust, onNext, total
                         onChangeText={setAdjustReason}
                         multiline
                         placeholder="예: 야간 보너스 / 식대 가불 등"
-                        placeholderTextColor={tokens.colors.textTertiary}
+                        placeholderTextColor={c.textTertiary}
                     />
                     <View style={styles.modalRow}>
                         <Pressable
@@ -392,12 +401,15 @@ const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust, onNext, total
     );
 };
 
-const ConfirmCard: React.FC<any> = ({startDate, endDate, previews, totalNet, loading, onIssue, ctaMargin}) => (
+const ConfirmCard: React.FC<any> = ({startDate, endDate, previews, totalNet, loading, onIssue, ctaMargin}) => {
+    const styles = useStyles();
+    const c = useThemeColors();
+    return (
     <View>
         <Text style={styles.title}>3단계: 확인</Text>
         <Card bordered style={styles.confirmCard}>
             <View style={{marginBottom: tokens.spacing.md}}>
-                <Brandmark size={56} label="✓" backgroundColor={tokens.colors.success} />
+                <Brandmark size={56} label="✓" backgroundColor={c.success} />
             </View>
             <Text style={styles.confirmTitle}>정산 준비 완료</Text>
             <KV label="기간" value={`${startDate} ~ ${endDate}`} />
@@ -420,9 +432,12 @@ const ConfirmCard: React.FC<any> = ({startDate, endDate, previews, totalNet, loa
             style={[styles.cta, ctaMargin != null && {marginTop: ctaMargin}]}
         />
     </View>
-);
+    );
+};
 
-const DoneCard: React.FC<any> = ({totalNet, onClose}) => (
+const DoneCard: React.FC<any> = ({totalNet, onClose}) => {
+    const styles = useStyles();
+    return (
     <View style={styles.doneBox}>
         <View style={{marginBottom: tokens.spacing.lg}}>
             <Brandmark size={72} label="₩" />
@@ -433,18 +448,22 @@ const DoneCard: React.FC<any> = ({totalNet, onClose}) => (
         </Text>
         <Button title="홈으로 돌아가기" onPress={onClose} variant="primary" size="lg" fullWidth />
     </View>
-);
+    );
+};
 
 const KV: React.FC<{label: string; value: string; highlight?: boolean}> = ({
     label,
     value,
     highlight,
-}) => (
-    <View style={styles.kvRow}>
-        <Text style={styles.kvLabel}>{label}</Text>
-        <Text style={[styles.kvValue, highlight && styles.kvValueHighlight]}>{value}</Text>
-    </View>
-);
+}) => {
+    const styles = useStyles();
+    return (
+        <View style={styles.kvRow}>
+            <Text style={styles.kvLabel}>{label}</Text>
+            <Text style={[styles.kvValue, highlight && styles.kvValueHighlight]}>{value}</Text>
+        </View>
+    );
+};
 
 function getDefaultStart(): string {
     const d = new Date();
@@ -459,8 +478,10 @@ function pad(n: number): string {
     return String(n).padStart(2, '0');
 }
 
-const styles = StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: tokens.colors.background},
+// 다크모드 대응: 모든 색상 토큰을 c(현재 테마 팔레트)로부터 받아 styles 를 매번 만들어 준다.
+// 각 sub-component 가 자체적으로 useThemeColors + useMemo(makeStyles(c)) 로 인스턴스를 가진다.
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
+    safeArea: {flex: 1, backgroundColor: c.background},
     scrollContent: {padding: tokens.spacing.lg, paddingBottom: tokens.spacing.huge},
     stepper: {
         flexDirection: 'row',
@@ -472,60 +493,59 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: tokens.colors.surfaceMuted,
+        backgroundColor: c.surfaceMuted,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    stepDotActive: {backgroundColor: tokens.colors.brandPrimary},
-    stepDotDone: {backgroundColor: tokens.colors.success},
-    stepText: {color: tokens.colors.textInverse, fontWeight: '700'},
-    stepLine: {flex: 1, height: 2, backgroundColor: tokens.colors.surfaceMuted, maxWidth: 60},
-    stepLineDone: {backgroundColor: tokens.colors.success},
+    stepDotActive: {backgroundColor: c.brandPrimary},
+    stepDotDone: {backgroundColor: c.success},
+    stepText: {color: c.textInverse, fontWeight: '700' as const},
+    stepLine: {flex: 1, height: 2, backgroundColor: c.surfaceMuted, maxWidth: 60},
+    stepLineDone: {backgroundColor: c.success},
 
     title: {
         fontSize: tokens.typography.sizes.xxl,
         fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
+        color: c.textPrimary,
         marginBottom: tokens.spacing.sm,
         letterSpacing: -0.3,
     },
     subtitle: {
         fontSize: tokens.typography.sizes.md,
-        color: tokens.colors.textSecondary,
+        color: c.textSecondary,
         marginBottom: tokens.spacing.xl,
         lineHeight: 22,
     },
 
     totalCard: {alignItems: 'center', paddingVertical: tokens.spacing.xl},
-    totalLabel: {fontSize: tokens.typography.sizes.sm, color: tokens.colors.textSecondary},
+    totalLabel: {fontSize: tokens.typography.sizes.sm, color: c.textSecondary},
     totalAmount: {
-        // numericLg(28) — compact<360 에서 줄바꿈 회피, 토큰 스케일 정합
         fontSize: tokens.typography.scale.numericLg.fontSize,
         lineHeight: tokens.typography.scale.numericLg.lineHeight,
         fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.brandPrimary,
+        color: c.brandPrimary,
         marginVertical: tokens.spacing.xs,
         letterSpacing: -1,
     },
-    totalSub: {fontSize: tokens.typography.sizes.xs, color: tokens.colors.textTertiary},
+    totalSub: {fontSize: tokens.typography.sizes.xs, color: c.textTertiary},
 
-    empty: {textAlign: 'center', padding: tokens.spacing.xl, color: tokens.colors.textTertiary},
+    empty: {textAlign: 'center' as const, padding: tokens.spacing.xl, color: c.textTertiary},
 
     empCard: {marginVertical: tokens.spacing.sm},
     empHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacing.sm},
-    empName: {fontSize: tokens.typography.sizes.lg, fontWeight: '700', color: tokens.colors.textPrimary},
+    empName: {fontSize: tokens.typography.sizes.lg, fontWeight: '700' as const, color: c.textPrimary},
     empDivider: {
         height: 1,
-        backgroundColor: tokens.colors.divider,
+        backgroundColor: c.divider,
         marginVertical: tokens.spacing.xs,
     },
 
     kvRow: {flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4},
-    kvLabel: {color: tokens.colors.textSecondary, fontSize: tokens.typography.sizes.sm},
-    kvValue: {color: tokens.colors.textPrimary, fontSize: tokens.typography.sizes.sm, fontWeight: '500', fontVariant: ['tabular-nums']},
+    kvLabel: {color: c.textSecondary, fontSize: tokens.typography.sizes.sm},
+    kvValue: {color: c.textPrimary, fontSize: tokens.typography.sizes.sm, fontWeight: '500' as const, fontVariant: ['tabular-nums' as const]},
     kvValueHighlight: {
-        color: tokens.colors.brandPrimary,
-        fontWeight: '700',
+        color: c.brandPrimary,
+        fontWeight: '700' as const,
         fontSize: tokens.typography.sizes.md,
     },
 
@@ -533,13 +553,13 @@ const styles = StyleSheet.create({
     confirmEmoji: {fontSize: 56, marginBottom: tokens.spacing.md},
     confirmTitle: {
         fontSize: tokens.typography.sizes.xl,
-        fontWeight: '700',
-        color: tokens.colors.success,
+        fontWeight: '700' as const,
+        color: c.success,
         marginBottom: tokens.spacing.md,
     },
     confirmNote: {
-        textAlign: 'center',
-        color: tokens.colors.textTertiary,
+        textAlign: 'center' as const,
+        color: c.textTertiary,
         fontSize: tokens.typography.sizes.xs,
         marginVertical: tokens.spacing.lg,
         lineHeight: 18,
@@ -550,9 +570,9 @@ const styles = StyleSheet.create({
 
     cta: {marginTop: tokens.spacing.xxl},
 
-    modalBackdrop: {flex: 1, backgroundColor: tokens.colors.overlayDark, justifyContent: 'flex-end'},
+    modalBackdrop: {flex: 1, backgroundColor: c.overlayDark, justifyContent: 'flex-end'},
     modalSheet: {
-        backgroundColor: tokens.colors.background,
+        backgroundColor: c.background,
         borderTopLeftRadius: tokens.radius.xl,
         borderTopRightRadius: tokens.radius.xl,
         padding: tokens.spacing.lg,
@@ -562,39 +582,45 @@ const styles = StyleSheet.create({
         width: 40,
         height: 4,
         borderRadius: 2,
-        backgroundColor: tokens.colors.border,
+        backgroundColor: c.border,
         alignSelf: 'center',
         marginBottom: tokens.spacing.md,
     },
     modalTitle: {
         fontSize: tokens.typography.sizes.lg,
         fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
+        color: c.textPrimary,
         marginBottom: tokens.spacing.md,
     },
     modalLabel: {
         fontSize: tokens.typography.sizes.sm,
-        color: tokens.colors.textSecondary,
+        color: c.textSecondary,
         marginTop: tokens.spacing.md,
         marginBottom: tokens.spacing.xs,
         fontWeight: tokens.typography.weights.semibold,
     },
     modalInput: {
         borderWidth: 1.5,
-        borderColor: tokens.colors.border,
+        borderColor: c.border,
         borderRadius: tokens.radius.lg,
         paddingHorizontal: tokens.spacing.lg,
         paddingVertical: tokens.spacing.sm,
         fontSize: tokens.typography.sizes.md,
-        color: tokens.colors.textPrimary,
-        backgroundColor: tokens.colors.surface,
+        color: c.textPrimary,
+        backgroundColor: c.surface,
     },
     modalRow: {flexDirection: 'row', gap: tokens.spacing.sm, marginTop: tokens.spacing.lg},
     modalBtn: {flex: 1, paddingVertical: tokens.spacing.md, borderRadius: tokens.radius.lg, alignItems: 'center'},
-    modalBtnCancel: {backgroundColor: tokens.colors.surfaceMuted},
-    modalBtnCancelText: {color: tokens.colors.textSecondary, fontWeight: tokens.typography.weights.semibold},
-    modalBtnConfirm: {backgroundColor: tokens.colors.brandPrimary},
-    modalBtnConfirmText: {color: tokens.colors.textInverse, fontWeight: tokens.typography.weights.bold},
+    modalBtnCancel: {backgroundColor: c.surfaceMuted},
+    modalBtnCancelText: {color: c.textSecondary, fontWeight: tokens.typography.weights.semibold},
+    modalBtnConfirm: {backgroundColor: c.brandPrimary},
+    modalBtnConfirmText: {color: c.textInverse, fontWeight: tokens.typography.weights.bold},
 });
+
+/** 컴포넌트 본문에서 styles 를 한 줄로 가져오는 헬퍼 */
+const useStyles = () => {
+    const c = useThemeColors();
+    return useMemo(() => makeStyles(c), [c]);
+};
 
 export default PayrollRunScreen;

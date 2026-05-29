@@ -1,8 +1,9 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
-import {colors, spacing, tokens} from '../../../theme/tokens';
+import {spacing, tokens} from '../../../theme/tokens';
 import {AppButton, AppCard, AppHeader, AppText, ScreenContainer} from '../../../common/components/ds';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
 import {useAuth} from '../../../contexts/AuthContext';
 
@@ -24,6 +25,7 @@ type DayStatus = 'CHECKED_IN' | 'WORKING';
 const AttendanceCalendarScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const {user} = useAuth();
+    const c = useThemeColors();
     const [year, setYear] = useState(() => new Date().getFullYear());
     const [month, setMonth] = useState(() => new Date().getMonth() + 1);
     const [items, setItems] = useState<AttendanceRecord[]>([]);
@@ -96,17 +98,17 @@ const AttendanceCalendarScreen: React.FC = () => {
         <ScreenContainer scroll header={<AppHeader title="근무 기록" rightText={`${month}월`} onBack={() => navigation.goBack()} />}>
             <View style={styles.headerRow}>
                 <Pressable onPress={prevMonth} hitSlop={12} style={styles.navBtn}>
-                    <Text style={styles.navArrow}>◀</Text>
+                    <Text style={[styles.navArrow, {color: c.brandPrimary}]}>◀</Text>
                 </Pressable>
                 <AppText variant="headingSm">{year}년 {month}월</AppText>
                 <Pressable onPress={nextMonth} hitSlop={12} style={styles.navBtn}>
-                    <Text style={styles.navArrow}>▶</Text>
+                    <Text style={[styles.navArrow, {color: c.brandPrimary}]}>▶</Text>
                 </Pressable>
             </View>
 
             <View style={styles.weekRow}>
                 {['일', '월', '화', '수', '목', '금', '토'].map(w => (
-                    <Text key={w} style={styles.weekDay}>{w}</Text>
+                    <Text key={w} style={[styles.weekDay, {color: c.textSecondary}]}>{w}</Text>
                 ))}
             </View>
 
@@ -123,9 +125,9 @@ const AttendanceCalendarScreen: React.FC = () => {
             </View>
 
             <View style={styles.legend}>
-                <LegendDot color={colors.attendanceCheckedIn} label="출근" />
-                <LegendDot color={colors.warning} label="근무중" />
-                <LegendDot color={colors.textTertiary} label="휴무" />
+                <LegendDot color={c.attendanceCheckedIn} label="출근" />
+                <LegendDot color={c.warning} label="근무중" />
+                <LegendDot color={c.textTertiary} label="휴무" />
             </View>
 
             {loading ? <AppText variant="caption" tone="tertiary" center style={styles.empty}>불러오는 중…</AppText> : null}
@@ -181,6 +183,7 @@ const DayCell: React.FC<{
     selected: boolean;
     onPress: () => void;
 }> = ({day, record, selected, onPress}) => {
+    const c = useThemeColors();
     const status: DayStatus | null = !day
         ? null
         : record?.checkOutTime
@@ -190,20 +193,23 @@ const DayCell: React.FC<{
                 : null;
 
     return (
-        <Pressable onPress={day ? onPress : undefined} style={[styles.dayCell, selected && styles.dayCellSelected]} disabled={!day}>
-            <Text style={[styles.dayNumber, selected && styles.dayNumberSelected, !day && styles.dayEmpty]}>{day ?? ''}</Text>
-            {!selected && status === 'CHECKED_IN' ? <View style={[styles.dot, {backgroundColor: colors.attendanceCheckedIn}]} /> : null}
-            {!selected && status === 'WORKING' ? <View style={[styles.dot, {backgroundColor: colors.warning}]} /> : null}
+        <Pressable onPress={day ? onPress : undefined} style={[styles.dayCell, selected && {backgroundColor: c.brandPrimary}]} disabled={!day}>
+            <Text style={[styles.dayNumber, {color: selected ? c.textInverse : c.textPrimary, fontWeight: selected ? '800' : '600'}, !day && styles.dayEmpty]}>{day ?? ''}</Text>
+            {!selected && status === 'CHECKED_IN' ? <View style={[styles.dot, {backgroundColor: c.attendanceCheckedIn}]} /> : null}
+            {!selected && status === 'WORKING' ? <View style={[styles.dot, {backgroundColor: c.warning}]} /> : null}
         </Pressable>
     );
 };
 
-const LegendDot: React.FC<{color: string; label: string}> = ({color, label}) => (
-    <View style={styles.legendItem}>
-        <View style={[styles.legendDotCircle, {backgroundColor: color}]} />
-        <Text style={styles.legendText}>{label}</Text>
-    </View>
-);
+const LegendDot: React.FC<{color: string; label: string}> = ({color, label}) => {
+    const c = useThemeColors();
+    return (
+        <View style={styles.legendItem}>
+            <View style={[styles.legendDotCircle, {backgroundColor: color}]} />
+            <Text style={[styles.legendText, {color: c.textTertiary}]}>{label}</Text>
+        </View>
+    );
+};
 
 const DetailRow: React.FC<{label: string; value: string}> = ({label, value}) => (
     <View style={styles.detailRow}>
@@ -241,20 +247,18 @@ function pad(n: number): string {
 const styles = StyleSheet.create({
     headerRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm},
     navBtn: {padding: spacing.sm, minWidth: 44, alignItems: 'center'},
-    navArrow: {color: colors.brandPrimary, fontSize: 20, fontWeight: '700'},
+    navArrow: {fontSize: 20, fontWeight: '700'},
     weekRow: {flexDirection: 'row', justifyContent: 'space-around', paddingVertical: spacing.sm},
-    weekDay: {flex: 1, textAlign: 'center', color: colors.textSecondary, fontSize: 12, fontWeight: '600'},
+    weekDay: {flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '600'},
     grid: {flexDirection: 'row', flexWrap: 'wrap'},
     dayCell: {width: `${100 / 7}%`, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: tokens.radius.md},
-    dayCellSelected: {backgroundColor: colors.brandPrimary},
-    dayNumber: {fontSize: 13, color: colors.textPrimary, fontWeight: '600'},
-    dayNumberSelected: {color: colors.textInverse, fontWeight: '800'},
+    dayNumber: {fontSize: 13},
     dayEmpty: {color: 'transparent'},
     dot: {width: 6, height: 6, borderRadius: 3, marginTop: 2},
     legend: {flexDirection: 'row', justifyContent: 'center', gap: spacing.md, paddingVertical: spacing.md},
     legendItem: {flexDirection: 'row', alignItems: 'center', gap: 4},
     legendDotCircle: {width: 8, height: 8, borderRadius: 4},
-    legendText: {color: colors.textTertiary, fontSize: 12},
+    legendText: {fontSize: 12},
     empty: {paddingVertical: spacing.md},
     detailCard: {marginTop: spacing.md},
     detailStore: {marginTop: 2, marginBottom: spacing.sm},

@@ -12,7 +12,8 @@ import {
     CtaStack,
     ScreenContainer,
 } from '../../common/components/ds';
-import {colors, spacing} from '../../theme/tokens';
+import {spacing} from '../../theme/tokens';
+import {useThemeColors} from '../../common/hooks/useThemeColors';
 import useStoreRegistration from './hooks/useStoreRegistration';
 
 interface AddressResult {
@@ -43,6 +44,7 @@ interface StoreData {
  * 사장 매장 등록. 모든 포맷터/검증/주소검색/submit 훅 로직 보존.
  */
 const StoreRegistrationScreen: React.FC = () => {
+    const c = useThemeColors();
     const [storeData, setStoreData] = useState<StoreData>({
         storeName: '',
         businessNumber: '',
@@ -251,7 +253,7 @@ const StoreRegistrationScreen: React.FC = () => {
             <View style={styles.form}>
                 <View>
                     <AppText variant="caption" tone="secondary" style={styles.fieldLabel}>매장 주소 *</AppText>
-                    <Pressable style={styles.addressBtn} onPress={() => setShowAddressModal(true)}>
+                    <Pressable style={[styles.addressBtn, {borderColor: c.border, backgroundColor: c.background}]} onPress={() => setShowAddressModal(true)}>
                         <AppText variant="bodyMd" tone={storeData.roadAddress ? 'primary' : 'tertiary'} style={styles.flex}>
                             {storeData.roadAddress || '주소를 검색해주세요'}
                         </AppText>
@@ -326,8 +328,6 @@ const styles = StyleSheet.create({
         minHeight: 48,
         borderRadius: 15,
         borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.background,
         paddingHorizontal: spacing.md + 2,
         gap: spacing.sm,
     },
