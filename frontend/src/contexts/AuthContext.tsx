@@ -99,25 +99,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
     const logoutMutation = useLogout();
     const kakaoLoginMutation = useKakaoLogin();
 
-    /**
-     * 통합 스토리지 초기화
-     */
+    // refetchAuth 를 ref 로 안정화 — useAuthState 가 매 렌더마다 새 함수를 반환해
+    // useEffect dep 에 두면 무한 재실행(addViewAt mount 폭발 진원) 이 일어남.
+    const refetchAuthRef = useRef(refetchAuth);
     useEffect(() => {
-        const initializeStorage = async () => {
+        refetchAuthRef.current = refetchAuth;
+    });
+
+    /**
+     * 통합 스토리지 초기화 — 1회만 실행 (initRef 가드).
+     */
+    const storageInitRef = useRef(false);
+    useEffect(() => {
+        if (storageInitRef.current) {
+            return;
+        }
+        storageInitRef.current = true;
+        (async () => {
             try {
                 await unifiedStorage.initialize();
                 console.log('[AuthProvider] 통합 스토리지 초기화 완료');
-
-                // 스토리지 초기화 후 인증 상태 재확인
-                refetchAuth();
+                refetchAuthRef.current();
             } catch (error) {
                 console.error('[AuthProvider] 통합 스토리지 초기화 실패:', error);
                 safeLogger.error('Storage initialization failed', error);
             }
-        };
-
-        initializeStorage();
-    }, [refetchAuth]);
+        })();
+    }, []);
 
     // 직전 인증 여부 추적 — 세션 만료(A1) 안내를 "로그인 상태였다가 튕긴 경우"에만 노출
     const wasAuthedRef = useRef(false);
@@ -126,16 +134,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
     }, [isAuthenticated]);
 
     // 전역 401(리프레시 실패 등) 발생 시 인증 상태 재확인 + 세션 만료 안내 (갭분석 A1)
+    // 1회 등록 — refetchAuthRef 통해 항상 최신 함수 호출.
     useEffect(() => {
         setOnUnauthorized(() => {
-            refetchAuth();
+            refetchAuthRef.current();
             if (wasAuthedRef.current) {
-                // 무음 로그아웃 대신 안내 화면으로 — 이유/재로그인 경로 제공
                 navigate('SessionExpired');
             }
         });
         return () => setOnUnauthorized(null);
-    }, [refetchAuth]);
+    }, []);
 
     /**
      * 로그인 함수

@@ -264,7 +264,15 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
     return (
         <ScreenContainer
             padded={false}
-            header={<AppHeader title="내 정보" actions={[{label: '알림', onPress: () => navigation.navigate('NotificationCenter')}]} />}>
+            header={
+                <AppHeader
+                    title="내 정보"
+                    actions={[
+                        {label: '알림', onPress: () => navigation.navigate('NotificationCenter')},
+                        {label: '설정', onPress: () => navigation.navigate('AccountSettings')},
+                    ]}
+                />
+            }>
             <ScrollView
                 style={styles.scrollView}
                 refreshControl={

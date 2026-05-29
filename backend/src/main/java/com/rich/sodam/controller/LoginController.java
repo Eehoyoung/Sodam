@@ -246,6 +246,29 @@ public class LoginController {
     }
 
     /**
+     * 로그아웃 — refresh token 무효화 + Redis access 토큰 삭제.
+     * JWT access 토큰 자체는 stateless 라 BE 가 강제 폐기 불가 (짧은 만료 1시간으로 완화).
+     * FE 는 호출 후 로컬 토큰 clear — BE 호출 실패해도 로컬은 무조건 정리.
+     */
+    @Operation(summary = "로그아웃", description = "refresh token 을 무효화하고 Redis access 토큰을 삭제합니다.")
+    @PostMapping({"/api/auth/logout", "/api/logout"})
+    public ResponseEntity<ApiResponse<Object>> logout(HttpServletRequest httpRequest) {
+        try {
+            String token = jwtTokenProvider.resolveToken(httpRequest);
+            if (token != null && jwtTokenProvider.validateToken(token)) {
+                Long userId = jwtTokenProvider.getUserId(token);
+                userService.findById(userId).ifPresent(refreshTokenService::invalidateUserTokens);
+                redisService.deleteToken(String.valueOf(userId), token);
+            }
+            return ResponseEntity.ok(ApiResponse.success("로그아웃됐어요."));
+        } catch (Exception e) {
+            log.warn("로그아웃 처리 중 예외 (로컬은 정리 권장): {}", e.getMessage());
+            // 200 반환 — 클라이언트가 로컬 세션을 끊을 수 있게 막지 않음.
+            return ResponseEntity.ok(ApiResponse.success("로그아웃됐어요."));
+        }
+    }
+
+    /**
      * 현재 로그인한 사용자 정보 조회
      * Authorization: Bearer <access>
      * 응답: { id, email, name, roles: [ ... ] }
@@ -269,6 +292,10 @@ public class LoginController {
             body.put("email", user.getEmail());
             body.put("name", user.getName());
             body.put("role", user.getUserGrade());
+            body.put("phone", user.getPhone());
+            body.put("birthDate", user.getBirthDate());
+            // FE 가 false 면 ProfileBasics 화면으로 강제 진입 (자동 로그인 후에도 일관 보장)
+            body.put("profileCompleted", user.isProfileCompleted());
             return ResponseEntity.ok(body);
         } catch (Exception e) {
             log.error("현재 사용자 정보 조회 실패: {}", e.getMessage(), e);

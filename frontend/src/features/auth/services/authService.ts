@@ -1,6 +1,19 @@
 import api from '../../../common/utils/api';
 import TokenManager from '../../../services/TokenManager';
+import {unifiedStorage} from '../../../common/utils/unifiedStorage';
 import {logger} from '../../../utils/logger';
+
+/**
+ * Base64URL → 일반 base64 → 디코딩.
+ * JWT payload(중간 세그먼트)는 base64url 인코딩 — atob 가 일반 base64만 다룸.
+ * RN 환경에서 atob 호환되며, padding 부족분(`==`)도 보정한다.
+ */
+const decodeBase64Url = (input: string): string => {
+    const normalized = input.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = normalized.length % 4 === 0 ? '' : '='.repeat(4 - (normalized.length % 4));
+    // global.atob 가 RN 0.71+ 에 내장
+    return (global as any).atob(normalized + pad);
+};
 
 export interface User {
     id: number;
@@ -162,17 +175,25 @@ const authService = {
     },
 
     logout: async (): Promise<void> => {
+        // 로그아웃 약속: BE 호출 실패해도 로컬은 반드시 깨끗하게.
+        // - access/refresh 토큰 (TokenManager 영역)
+        // - 레거시 'userToken' 키 (구버전 호환)
+        // - 가입 후 잔여 'pendingPurposeAfterSignup'
         try {
             const refreshToken = await TokenManager.getRefresh();
             if (refreshToken) {
                 try {
                     await postWithFallback<any>('/api/auth/logout', '/api/logout', {refreshToken});
                 } catch (_) {
-                    // ignore network errors
+                    // ignore network errors — 로컬 세션은 무조건 정리
                 }
             }
         } finally {
             await TokenManager.clear();
+            await Promise.all([
+                unifiedStorage.removeItem('userToken').catch(() => {/* ignore */}),
+                unifiedStorage.removeItem('pendingPurposeAfterSignup').catch(() => {/* ignore */}),
+            ]);
         }
     },
 
@@ -214,7 +235,24 @@ const authService = {
 
     isAuthenticated: async (): Promise<boolean> => {
         const token = await TokenManager.getAccess();
-        return !!token;
+        if (!token) {
+            return false;
+        }
+        // JWT 만료 시점 검증 — payload.exp(unix sec) 가 현재보다 작으면 false.
+        // 만료된 토큰을 살아있다고 잘못 판정하면 메인 진입 후 첫 API 호출에서 401 → refresh 흐름.
+        // 여기서 미리 false 반환하면 자동 로그인 흐름이 즉시 refresh 시도(또는 로그인 화면) 로 분기.
+        try {
+            const parts = token.split('.');
+            if (parts.length !== 3) return true; // 형식 깨졌으면 일단 사용 시도 (서버가 판정)
+            const payload = JSON.parse(
+                decodeBase64Url(parts[1]),
+            );
+            if (typeof payload?.exp !== 'number') return true;
+            const nowSec = Math.floor(Date.now() / 1000);
+            return payload.exp > nowSec;
+        } catch (_) {
+            return true; // 파싱 실패 → 서버 판정에 위임
+        }
     },
 };
 

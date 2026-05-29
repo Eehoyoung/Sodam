@@ -90,7 +90,17 @@ const EmployeeMyPageRNScreen: React.FC = () => {
     const formatCurrency = (amount: number) => new Intl.NumberFormat('ko-KR').format(amount);
 
     return (
-        <ScreenContainer padded={false} header={<AppHeader title="내 정보" actions={[{label: '내역', onPress: goToAttendance}]} />}>
+        <ScreenContainer
+            padded={false}
+            header={
+                <AppHeader
+                    title="내 정보"
+                    actions={[
+                        {label: '내역', onPress: goToAttendance},
+                        {label: '설정', onPress: () => navigation.navigate('AccountSettings' as never)},
+                    ]}
+                />
+            }>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 <HeroSlot testID="slotHero">
                     <AppText variant="headingMd">안녕하세요, 김알바님</AppText>

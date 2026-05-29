@@ -26,6 +26,31 @@ const AccountSettingsScreen: React.FC = () => {
     const c = useThemeColors();
     const [name, setName] = useState(user?.name ?? '');
     const [saving, setSaving] = useState(false);
+    const [loggingOut, setLoggingOut] = useState(false);
+
+    const handleLogout = () => {
+        ConfirmSheet.confirm({
+            title: '로그아웃할까요?',
+            description: '저장하지 않은 작업은 사라져요. 언제든 다시 로그인할 수 있어요.',
+            primary: {
+                label: '로그아웃',
+                onPress: async () => {
+                    setLoggingOut(true);
+                    try {
+                        await logout?.();
+                        // AuthProvider 가 isAuthenticated=false 로 바뀌면 AuthNavigator 가 자동으로
+                        // Auth 스택으로 reset 한다. 추가 navigation 호출 없음.
+                        AppToast.success('로그아웃됐어요.');
+                    } catch (e: any) {
+                        AppToast.error('로그아웃에 실패했어요. 잠시 후 다시 시도해 주세요.');
+                    } finally {
+                        setLoggingOut(false);
+                    }
+                },
+            },
+            secondary: {label: '취소'},
+        });
+    };
 
     const saveName = async () => {
         if (!name || name.trim().length < 2) {
@@ -114,6 +139,22 @@ const AccountSettingsScreen: React.FC = () => {
                 <AppText variant="caption" tone="tertiary" style={styles.helper}>
                     현재: {theme.resolved === 'dark' ? '다크' : '라이트'} (시스템 색상 자동 반영)
                 </AppText>
+            </AppCard>
+
+            <AppText variant="caption" tone="secondary" style={styles.sectionTitle}>세션</AppText>
+            <AppCard variant="flat">
+                <AppText variant="bodyMd">{user?.email ?? '계정'}으로 로그인됨</AppText>
+                <AppText variant="caption" tone="tertiary" style={styles.helper}>
+                    로그아웃하면 다음에 다시 이메일·비밀번호를 입력해 로그인해야 해요.
+                </AppText>
+                <AppButton
+                    label="로그아웃"
+                    variant="outline"
+                    size="md"
+                    loading={loggingOut}
+                    onPress={handleLogout}
+                    style={styles.cta}
+                />
             </AppCard>
 
             <AppText variant="caption" tone="secondary" style={styles.sectionTitle}>위험</AppText>

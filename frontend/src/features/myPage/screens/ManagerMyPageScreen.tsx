@@ -84,7 +84,17 @@ const ManagerMyPageScreen: React.FC = () => {
     };
 
     return (
-        <ScreenContainer padded={false} header={<AppHeader title="매니저 홈" actions={[{label: '알림', onPress: () => {}}]} />}>
+        <ScreenContainer
+            padded={false}
+            header={
+                <AppHeader
+                    title="매니저 홈"
+                    actions={[
+                        {label: '알림', onPress: () => navigation.navigate('NotificationCenter' as never)},
+                        {label: '설정', onPress: () => navigation.navigate('AccountSettings' as never)},
+                    ]}
+                />
+            }>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 <HeroSlot testID="slotHero">
                     <AppText variant="headingMd">안녕하세요, 김매니저님</AppText>
