@@ -83,11 +83,22 @@ async function refreshAccessToken(): Promise<string> {
 }
 
 // 응답 인터셉터: 401 처리 및 단일 비행(refresh queue)
+// ⚠️ 인증 엔드포인트(/login, /auth/refresh, /refresh, /join)의 401 은 "잘못된 자격증명" 의미.
+// refresh 시도하면 진짜 원인(비밀번호 불일치) 이 NO_REFRESH_TOKEN 으로 가려져 UX 가 망가짐.
+const AUTH_ENDPOINTS = ['/api/login', '/api/auth/refresh', '/api/refresh', '/api/join', '/api/kakao'];
+const isAuthEndpoint = (url?: string) =>
+    !!url && AUTH_ENDPOINTS.some(p => url.includes(p));
+
 apiClient.interceptors.response.use(
     (response: AxiosResponse) => response,
     async (error) => {
         const original: any = error?.config || {};
         const status = error?.response?.status;
+
+        // 인증 엔드포인트는 refresh 우회 — 원본 에러(401/메시지) 그대로 전파
+        if (status === 401 && isAuthEndpoint(original?.url)) {
+            return Promise.reject(error);
+        }
 
         if (status === 401 && !original._retry) {
             original._retry = true;
