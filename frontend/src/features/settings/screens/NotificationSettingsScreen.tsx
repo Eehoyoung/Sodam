@@ -1,8 +1,9 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {Platform, Pressable, StyleSheet, Switch, Text, View} from 'react-native';
 import DateTimePicker, {DateTimePickerEvent} from '@react-native-community/datetimepicker';
 import {tokens} from '../../../theme/tokens';
 import {AppHeader, AppText, ScreenContainer} from '../../../common/components/ds';
+import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
 
 const STORAGE_KEY = 'notificationPrefs.v1';
@@ -29,6 +30,11 @@ const DEFAULT_PREFS: NotificationPrefs = {
     quietEnd: '07:00',
 };
 
+const useStyles = () => {
+    const c = useThemeColors();
+    return useMemo(() => makeStyles(c), [c]);
+};
+
 /**
  * 알림 설정 (Settings · Notification).
  * AsyncStorage 에 즉시 저장. BE 동기화는 P1.
@@ -36,6 +42,7 @@ const DEFAULT_PREFS: NotificationPrefs = {
  * TODO[P1 BE]: PUT /api/notifications/prefs — 서버 동기화 + 디바이스 간 일관성.
  */
 const NotificationSettingsScreen: React.FC = () => {
+    const styles = useStyles();
     const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
     const [pickerOpenFor, setPickerOpenFor] = useState<null | 'start' | 'end'>(null);
 
@@ -171,109 +178,119 @@ interface RowProps {
     onChange: (v: boolean) => void;
 }
 
-const Row: React.FC<RowProps> = ({label, sub, bold, value, disabled, onChange}) => (
-    <View style={[styles.row, disabled && styles.rowDisabled]}>
-        <View style={{flex: 1}}>
-            <Text style={[styles.rowLabel, bold && styles.rowLabelBold]}>{label}</Text>
-            {sub ? <Text style={styles.rowSub}>{sub}</Text> : null}
+const Row: React.FC<RowProps> = ({label, sub, bold, value, disabled, onChange}) => {
+    const styles = useStyles();
+    const c = useThemeColors();
+    return (
+        <View style={[styles.row, disabled && styles.rowDisabled]}>
+            <View style={{flex: 1}}>
+                <Text style={[styles.rowLabel, bold && styles.rowLabelBold]}>{label}</Text>
+                {sub ? <Text style={styles.rowSub}>{sub}</Text> : null}
+            </View>
+            <Switch
+                value={value}
+                onValueChange={onChange}
+                disabled={disabled}
+                trackColor={{false: c.border, true: c.brandPrimary}}
+                thumbColor={c.background}
+            />
         </View>
-        <Switch
-            value={value}
-            onValueChange={onChange}
-            disabled={disabled}
-            trackColor={{false: tokens.colors.border, true: tokens.colors.brandPrimary}}
-            thumbColor={tokens.colors.background}
-        />
-    </View>
-);
+    );
+};
 
 const Section: React.FC<{
     title: string;
     children: React.ReactNode;
     disabled?: boolean;
-}> = ({title, children, disabled}) => (
-    <View style={[styles.section, disabled && {opacity: 0.5}]}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        {children}
-    </View>
-);
+}> = ({title, children, disabled}) => {
+    const styles = useStyles();
+    return (
+        <View style={[styles.section, disabled && {opacity: 0.5}]}>
+            <Text style={styles.sectionTitle}>{title}</Text>
+            {children}
+        </View>
+    );
+};
 
 const QuietTimePicker: React.FC<{
     label: string;
     value: string;
     onPress: () => void;
-}> = ({label, value, onPress}) => (
-    <View style={styles.timePicker}>
-        <Text style={styles.timePickerLabel}>{label}</Text>
-        <Pressable onPress={onPress} style={styles.timePickerValue}>
-            <Text style={styles.timePickerValueText}>{value}</Text>
-        </Pressable>
-    </View>
-);
+}> = ({label, value, onPress}) => {
+    const styles = useStyles();
+    return (
+        <View style={styles.timePicker}>
+            <Text style={styles.timePickerLabel}>{label}</Text>
+            <Pressable onPress={onPress} style={styles.timePickerValue}>
+                <Text style={styles.timePickerValueText}>{value}</Text>
+            </Pressable>
+        </View>
+    );
+};
 
-const styles = StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: tokens.colors.background},
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
+    safeArea: {flex: 1, backgroundColor: c.background},
     scrollContent: {padding: tokens.spacing.lg, paddingBottom: tokens.spacing.huge},
     title: {
         fontSize: tokens.typography.sizes.xxl,
         fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
+        color: c.textPrimary,
         letterSpacing: -0.5,
         marginTop: tokens.spacing.md,
         marginBottom: tokens.spacing.sm,
     },
     subtitle: {
         fontSize: tokens.typography.sizes.md,
-        color: tokens.colors.textSecondary,
+        color: c.textSecondary,
         lineHeight: 22,
         marginBottom: tokens.spacing.xl,
     },
     section: {marginTop: tokens.spacing.lg},
     sectionTitle: {
         fontSize: tokens.typography.sizes.sm,
-        color: tokens.colors.textSecondary,
+        color: c.textSecondary,
         fontWeight: tokens.typography.weights.semibold,
         marginBottom: tokens.spacing.sm,
-        textTransform: 'uppercase',
+        textTransform: 'uppercase' as const,
         letterSpacing: 0.5,
     },
     row: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        flexDirection: 'row' as const,
+        alignItems: 'center' as const,
+        justifyContent: 'space-between' as const,
         paddingVertical: tokens.spacing.md,
         borderBottomWidth: 1,
-        borderBottomColor: tokens.colors.divider,
+        borderBottomColor: c.divider,
     },
     rowDisabled: {opacity: 0.5},
-    rowLabel: {fontSize: tokens.typography.sizes.md, color: tokens.colors.textPrimary},
+    rowLabel: {fontSize: tokens.typography.sizes.md, color: c.textPrimary},
     rowLabelBold: {fontWeight: tokens.typography.weights.bold},
-    rowSub: {fontSize: tokens.typography.sizes.xs, color: tokens.colors.textTertiary, marginTop: 2},
-    quietRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingVertical: tokens.spacing.md},
-    quietTilde: {color: tokens.colors.textTertiary},
-    timePicker: {alignItems: 'center'},
-    timePickerLabel: {fontSize: tokens.typography.sizes.xs, color: tokens.colors.textTertiary, marginBottom: 4},
+    rowSub: {fontSize: tokens.typography.sizes.xs, color: c.textTertiary, marginTop: 2},
+    quietRow: {flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-around' as const, paddingVertical: tokens.spacing.md},
+    quietTilde: {color: c.textTertiary},
+    timePicker: {alignItems: 'center' as const},
+    timePickerLabel: {fontSize: tokens.typography.sizes.xs, color: c.textTertiary, marginBottom: 4},
     timePickerValue: {
         paddingHorizontal: tokens.spacing.lg,
         paddingVertical: tokens.spacing.sm,
         borderWidth: 1,
-        borderColor: tokens.colors.brandPrimary,
+        borderColor: c.brandPrimary,
         borderRadius: tokens.radius.md,
-        backgroundColor: tokens.colors.surface,
+        backgroundColor: c.surface,
     },
     timePickerValueText: {
         fontSize: tokens.typography.sizes.lg,
-        color: tokens.colors.brandPrimary,
+        color: c.brandPrimary,
         fontWeight: tokens.typography.weights.semibold,
-        fontVariant: ['tabular-nums'],
+        fontVariant: ['tabular-nums' as const],
     },
     note: {
         marginTop: tokens.spacing.md,
         fontSize: tokens.typography.sizes.xs,
-        color: tokens.colors.textTertiary,
+        color: c.textTertiary,
         lineHeight: 18,
     },
-    disabledText: {color: tokens.colors.textTertiary, fontSize: tokens.typography.sizes.sm, paddingVertical: tokens.spacing.md},
+    disabledText: {color: c.textTertiary, fontSize: tokens.typography.sizes.sm, paddingVertical: tokens.spacing.md},
 });
 
 export default NotificationSettingsScreen;

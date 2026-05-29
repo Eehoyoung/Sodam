@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import {
     ActivityIndicator,
     Pressable,
@@ -9,14 +9,15 @@ import {
     ViewStyle,
 } from 'react-native';
 import {tokens} from '../../../theme/tokens';
+import {useThemeColors, ThemeColors} from '../../hooks/useThemeColors';
 
 export type ButtonVariant =
-    | 'primary'      // 브랜드 솔리드 (메인 CTA)
-    | 'secondary'    // 다크 톤
-    | 'outline'      // 보더 + 투명 배경
-    | 'ghost'        // 텍스트만
-    | 'text'         // [legacy alias of ghost]
-    | 'destructive'; // 빨간 (해지·삭제)
+    | 'primary'
+    | 'secondary'
+    | 'outline'
+    | 'ghost'
+    | 'text'
+    | 'destructive';
 
 export type ButtonSize = 'sm' | 'md' | 'lg' | 'small' | 'medium' | 'large';
 
@@ -24,30 +25,22 @@ export interface ButtonProps {
     title: string;
     onPress: () => void;
     variant?: ButtonVariant;
-    /** @deprecated Use `variant` instead. Kept for backwards-compatibility with legacy screens. */
     type?: ButtonVariant;
     size?: ButtonSize;
     disabled?: boolean;
     loading?: boolean;
     fullWidth?: boolean;
-    /** @deprecated 사용 안 됨 (이전 디자인 호환) */
     icon?: React.ReactNode;
     leftIcon?: React.ReactNode;
     rightIcon?: React.ReactNode;
     style?: ViewStyle | ViewStyle[];
     textStyle?: TextStyle;
-    /** 접근성 라벨 — title 과 다르게 음성 안내하고 싶을 때 */
     accessibilityLabel?: string;
     testID?: string;
 }
 
 /**
- * 소담 디자인 시스템의 기본 버튼.
- *
- * 디자인 원칙:
- *  - 최소 터치 영역 44pt (HIG)
- *  - 브랜드 그림자(primary 만) — 가벼운 글로우
- *  - press 시 scale 0.97 (시각 피드백) — 단순 opacity 가 아닌 압력감
+ * 레거시 버튼 — EmployeeDetail 등에서 사용. 다크 테마 대응.
  */
 const Button: React.FC<ButtonProps> = ({
     title,
@@ -66,10 +59,11 @@ const Button: React.FC<ButtonProps> = ({
     accessibilityLabel,
     testID,
 }) => {
-    // legacy alias 호환: type prop 우선 사용, 둘 다 없으면 primary
-    const resolvedVariant: ButtonVariant = normalizeVariant(variant ?? type ?? 'primary');
+    const c = useThemeColors();
+    const variantMap = useMemo(() => buildVariantMap(c), [c]);
+    const resolvedVariant: Exclude<ButtonVariant, 'text'> = normalizeVariant(variant ?? type ?? 'primary');
     const resolvedSize = normalizeSize(size);
-    const variantStyles = VARIANT_MAP[resolvedVariant];
+    const variantStyles = variantMap[resolvedVariant];
     const sizeStyles = SIZE_MAP[resolvedSize];
     const leftAdorn = leftIcon ?? icon;
 
@@ -88,7 +82,7 @@ const Button: React.FC<ButtonProps> = ({
                 sizeStyles.container,
                 variantStyles.container,
                 fullWidth && styles.fullWidth,
-                isInactive && styles.disabled,
+                isInactive && {backgroundColor: c.surfaceMuted, borderColor: c.border, opacity: 0.7},
                 pressed && !isInactive && {transform: [{scale: 0.97}]},
                 resolvedVariant === 'primary' && !isInactive && tokens.shadow.brand,
                 style as ViewStyle,
@@ -97,7 +91,7 @@ const Button: React.FC<ButtonProps> = ({
             {loading ? (
                 <ActivityIndicator
                     size="small"
-                    color={variantStyles.text.color}
+                    color={variantStyles.text.color as string}
                 />
             ) : (
                 <View style={styles.inner}>
@@ -115,11 +109,9 @@ const Button: React.FC<ButtonProps> = ({
     );
 };
 
-/** legacy 'text' alias → 'ghost' 로 정규화. */
 function normalizeVariant(v: ButtonVariant): Exclude<ButtonVariant, 'text'> {
     return v === 'text' ? 'ghost' : v;
 }
-/** legacy 'small/medium/large' → 'sm/md/lg' 로 정규화. */
 function normalizeSize(s: ButtonSize): 'sm' | 'md' | 'lg' {
     if (s === 'small') return 'sm';
     if (s === 'medium') return 'md';
@@ -127,32 +119,32 @@ function normalizeSize(s: ButtonSize): 'sm' | 'md' | 'lg' {
     return s;
 }
 
-const VARIANT_MAP: Record<Exclude<ButtonVariant, 'text'>, {container: ViewStyle; text: TextStyle}> = {
+const buildVariantMap = (c: ThemeColors): Record<Exclude<ButtonVariant, 'text'>, {container: ViewStyle; text: TextStyle}> => ({
     primary: {
-        container: {backgroundColor: tokens.colors.brandPrimary},
-        text: {color: tokens.colors.textInverse},
+        container: {backgroundColor: c.brandPrimary},
+        text: {color: c.textInverse},
     },
     secondary: {
-        container: {backgroundColor: tokens.colors.brandSecondary},
-        text: {color: tokens.colors.textInverse},
+        container: {backgroundColor: c.brandSecondary},
+        text: {color: c.textInverse},
     },
     outline: {
         container: {
             backgroundColor: 'transparent',
             borderWidth: 1.5,
-            borderColor: tokens.colors.brandPrimary,
+            borderColor: c.brandPrimary,
         },
-        text: {color: tokens.colors.brandPrimary},
+        text: {color: c.brandPrimary},
     },
     ghost: {
         container: {backgroundColor: 'transparent'},
-        text: {color: tokens.colors.brandPrimary},
+        text: {color: c.brandPrimary},
     },
     destructive: {
-        container: {backgroundColor: tokens.colors.error},
-        text: {color: tokens.colors.textInverse},
+        container: {backgroundColor: c.error},
+        text: {color: c.textInverse},
     },
-};
+});
 
 const SIZE_MAP: Record<'sm' | 'md' | 'lg', {container: ViewStyle; text: TextStyle}> = {
     sm: {
@@ -193,11 +185,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     fullWidth: {width: '100%'},
-    disabled: {
-        backgroundColor: tokens.colors.surfaceMuted,
-        borderColor: tokens.colors.border,
-        opacity: 0.7,
-    },
     iconLeft: {marginRight: tokens.spacing.sm},
     iconRight: {marginLeft: tokens.spacing.sm},
     text: {

@@ -1,4 +1,4 @@
-import React, {useRef, useState} from 'react';
+import React, {useMemo, useRef, useState} from 'react';
 import {
     FlatList,
     NativeScrollEvent,
@@ -14,6 +14,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import {useNavigation} from '@react-navigation/native';
 import {tokens} from '../../../theme/tokens';
 import {AppButton} from '../../../common/components/ds';
+import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
 
 interface Slide {
@@ -49,6 +50,8 @@ const SLIDES: Slide[] = [
 const OnboardingCarouselScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const {width: WIDTH} = useWindowDimensions();
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
     const [index, setIndex] = useState(0);
     const listRef = useRef<FlatList<Slide>>(null);
 
@@ -95,7 +98,7 @@ const OnboardingCarouselScreen: React.FC = () => {
                 showsHorizontalScrollIndicator={false}
                 onMomentumScrollEnd={onMomentumEnd}
                 keyExtractor={(_, i) => String(i)}
-                renderItem={({item}) => <SlideCard slide={item} width={WIDTH} />}
+                renderItem={({item}) => <SlideCard slide={item} width={WIDTH} styles={styles} />}
             />
 
             <View style={styles.indicators}>
@@ -120,7 +123,7 @@ const OnboardingCarouselScreen: React.FC = () => {
     );
 };
 
-const SlideCard: React.FC<{slide: Slide; width: number}> = ({slide, width}) => (
+const SlideCard: React.FC<{slide: Slide; width: number; styles: ReturnType<typeof makeStyles>}> = ({slide, width, styles}) => (
     <View style={[styles.slide, {width}]}>
         <LinearGradient
             colors={slide.gradient}
@@ -135,11 +138,11 @@ const SlideCard: React.FC<{slide: Slide; width: number}> = ({slide, width}) => (
     </View>
 );
 
-const styles = StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: tokens.colors.background},
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
+    safeArea: {flex: 1, backgroundColor: c.background},
     skipRow: {
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
+        flexDirection: 'row' as const,
+        justifyContent: 'flex-end' as const,
         paddingHorizontal: tokens.spacing.lg,
         paddingVertical: tokens.spacing.md,
     },
@@ -148,29 +151,30 @@ const styles = StyleSheet.create({
         paddingVertical: tokens.spacing.sm,
     },
     skipText: {
-        color: tokens.colors.textSecondary,
+        color: c.textSecondary,
         fontSize: tokens.typography.sizes.md,
         fontWeight: tokens.typography.weights.medium,
     },
     slide: {
         flex: 1,
-        alignItems: 'center',
-        justifyContent: 'flex-start',
+        alignItems: 'center' as const,
+        justifyContent: 'flex-start' as const,
         paddingHorizontal: tokens.spacing.xl,
     },
     illustrationBox: {
         width: 220,
         height: 220,
         borderRadius: 110,
-        alignItems: 'center',
-        justifyContent: 'center',
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
         marginTop: tokens.spacing.huge,
         ...tokens.shadow.brand,
     },
+    // 글리프는 그라디언트(브랜드 오렌지) 위에 항상 흰 텍스트 — 테마 무관.
     illustrationGlyph: {
         fontSize: 88,
-        fontWeight: '900',
-        color: tokens.colors.textInverse,
+        fontWeight: '900' as const,
+        color: '#FFFFFF',
         letterSpacing: -2,
         textShadowColor: 'rgba(0,0,0,0.18)',
         textShadowOffset: {width: 0, height: 4},
@@ -180,20 +184,20 @@ const styles = StyleSheet.create({
         marginTop: tokens.spacing.xxxl,
         fontSize: tokens.typography.sizes.display,
         fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
-        textAlign: 'center',
+        color: c.textPrimary,
+        textAlign: 'center' as const,
         letterSpacing: -1,
     },
     body: {
         marginTop: tokens.spacing.lg,
         fontSize: tokens.typography.sizes.md,
-        color: tokens.colors.textSecondary,
-        textAlign: 'center',
+        color: c.textSecondary,
+        textAlign: 'center' as const,
         lineHeight: 24,
     },
     indicators: {
-        flexDirection: 'row',
-        justifyContent: 'center',
+        flexDirection: 'row' as const,
+        justifyContent: 'center' as const,
         gap: tokens.spacing.sm,
         paddingVertical: tokens.spacing.xl,
     },
@@ -202,8 +206,8 @@ const styles = StyleSheet.create({
         height: 8,
         borderRadius: 4,
     },
-    dotActive: {backgroundColor: tokens.colors.brandPrimary, width: 24},
-    dotInactive: {backgroundColor: tokens.colors.surfaceMuted},
+    dotActive: {backgroundColor: c.brandPrimary, width: 24},
+    dotInactive: {backgroundColor: c.surfaceMuted},
     footer: {
         paddingHorizontal: tokens.spacing.lg,
         paddingBottom: tokens.spacing.lg,

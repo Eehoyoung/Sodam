@@ -1,6 +1,6 @@
 import {AppToast, ConfirmSheet} from '../../../common/components/ds';
 import React, {useState} from 'react';
-import {Alert, StyleSheet, View} from 'react-native';
+import {Pressable, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {
     AppButton,
@@ -13,6 +13,7 @@ import {
 import {spacing} from '../../../theme/tokens';
 import api from '../../../common/utils/api';
 import {useAuth} from '../../../contexts/AuthContext';
+import {useTheme, useThemeColors, ThemeMode} from '../../../common/hooks/useThemeColors';
 
 /**
  * 42 AccountSettings — 확정 시안.
@@ -21,6 +22,8 @@ import {useAuth} from '../../../contexts/AuthContext';
 const AccountSettingsScreen: React.FC = () => {
     const {user, logout} = useAuth() as any;
     const navigation = useNavigation<any>();
+    const theme = useTheme();
+    const c = useThemeColors();
     const [name, setName] = useState(user?.name ?? '');
     const [saving, setSaving] = useState(false);
 
@@ -85,6 +88,34 @@ const AccountSettingsScreen: React.FC = () => {
                 </AppText>
             </AppCard>
 
+            <AppText variant="caption" tone="secondary" style={styles.sectionTitle}>화면 테마</AppText>
+            <AppCard variant="flat">
+                <AppText variant="bodyMd">밤 매장에서도 눈이 편하게 다크 모드를 켤 수 있어요.</AppText>
+                <View style={styles.themeRow}>
+                    {(['system', 'light', 'dark'] as ThemeMode[]).map(m => {
+                        const on = theme.mode === m;
+                        return (
+                            <Pressable
+                                key={m}
+                                onPress={() => theme.setMode(m)}
+                                accessibilityRole="radio"
+                                accessibilityState={{selected: on}}
+                                style={[
+                                    styles.themeChip,
+                                    {borderColor: on ? c.brandPrimary : c.border, backgroundColor: on ? c.brandPrimarySoft : 'transparent'},
+                                ]}>
+                                <AppText variant="caption" weight="800" tone={on ? 'brand' : 'secondary'}>
+                                    {m === 'system' ? '시스템' : m === 'light' ? '라이트' : '다크'}
+                                </AppText>
+                            </Pressable>
+                        );
+                    })}
+                </View>
+                <AppText variant="caption" tone="tertiary" style={styles.helper}>
+                    현재: {theme.resolved === 'dark' ? '다크' : '라이트'} (시스템 색상 자동 반영)
+                </AppText>
+            </AppCard>
+
             <AppText variant="caption" tone="secondary" style={styles.sectionTitle}>위험</AppText>
             <AppCard variant="danger">
                 <AppText variant="titleMd">계정 탈퇴 전 확인</AppText>
@@ -102,6 +133,16 @@ const styles = StyleSheet.create({
     cta: {marginTop: spacing.md},
     sectionTitle: {marginTop: spacing.xl, marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.5},
     helper: {marginTop: spacing.sm},
+    themeRow: {flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md},
+    themeChip: {
+        flex: 1,
+        minHeight: 44,
+        borderWidth: 1.5,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: spacing.sm,
+    },
     bottomGap: {height: spacing.xl},
 });
 

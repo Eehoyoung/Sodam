@@ -1,6 +1,7 @@
 import React, {useMemo, useState} from 'react';
 import {Modal, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {tokens} from '../../../theme/tokens';
+import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 
 export interface ConsentValue {
     age: boolean;
@@ -27,6 +28,8 @@ const REQUIRED: ItemKey[] = ['age', 'terms', 'privacy'];
  */
 const ConsentBlock: React.FC<ConsentBlockProps> = ({value, onChange, legalTexts}) => {
     const [openedDoc, setOpenedDoc] = useState<null | 'terms' | 'privacy' | 'marketing'>(null);
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
 
     const allRequiredChecked = REQUIRED.every(k => value[k]);
     const allChecked = allRequiredChecked && value.marketing;
@@ -55,6 +58,7 @@ const ConsentBlock: React.FC<ConsentBlockProps> = ({value, onChange, legalTexts}
             <Text style={styles.sectionTitle}>약관 동의</Text>
 
             <ConsentRow
+                styles={styles}
                 checked={allChecked}
                 label="전체 동의"
                 bold
@@ -63,12 +67,14 @@ const ConsentBlock: React.FC<ConsentBlockProps> = ({value, onChange, legalTexts}
             <View style={styles.thinDivider} />
 
             <ConsentRow
+                styles={styles}
                 checked={value.age}
                 label="만 14세 이상이에요"
                 required
                 onPress={() => toggle('age')}
             />
             <ConsentRow
+                styles={styles}
                 checked={value.terms}
                 label="이용약관 동의"
                 required
@@ -76,6 +82,7 @@ const ConsentBlock: React.FC<ConsentBlockProps> = ({value, onChange, legalTexts}
                 onPressView={() => setOpenedDoc('terms')}
             />
             <ConsentRow
+                styles={styles}
                 checked={value.privacy}
                 label="개인정보 처리방침 동의"
                 required
@@ -83,6 +90,7 @@ const ConsentBlock: React.FC<ConsentBlockProps> = ({value, onChange, legalTexts}
                 onPressView={() => setOpenedDoc('privacy')}
             />
             <ConsentRow
+                styles={styles}
                 checked={value.marketing}
                 label="마케팅 정보 수신 (선택)"
                 onPress={() => toggle('marketing')}
@@ -126,6 +134,7 @@ interface ConsentRowProps {
     bold?: boolean;
     onPress: () => void;
     onPressView?: () => void;
+    styles: ReturnType<typeof makeStyles>;
 }
 
 const ConsentRow: React.FC<ConsentRowProps> = ({
@@ -135,6 +144,7 @@ const ConsentRow: React.FC<ConsentRowProps> = ({
     bold,
     onPress,
     onPressView,
+    styles,
 }) => (
     <View style={styles.row}>
         <Pressable
@@ -167,24 +177,24 @@ const FALLBACK_PRIVACY =
 const FALLBACK_MARKETING =
     '신규 기능·이벤트·노무/세무 콘텐츠를 푸시 또는 이메일로 보내드려요.\n\n월 최대 4회, 언제든지 알림 설정에서 수신 거부 가능합니다.';
 
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
     sectionTitle: {
         fontSize: tokens.typography.sizes.md,
         fontWeight: tokens.typography.weights.semibold,
-        color: tokens.colors.textSecondary,
+        color: c.textSecondary,
         marginTop: tokens.spacing.lg,
         marginBottom: tokens.spacing.sm,
     },
     row: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        flexDirection: 'row' as const,
+        alignItems: 'center' as const,
+        justifyContent: 'space-between' as const,
         minHeight: 44,
         paddingVertical: tokens.spacing.xs,
     },
     checkTouchable: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        flexDirection: 'row' as const,
+        alignItems: 'center' as const,
         flex: 1,
         gap: tokens.spacing.md,
     },
@@ -193,72 +203,72 @@ const styles = StyleSheet.create({
         height: 24,
         borderRadius: tokens.radius.sm,
         borderWidth: 1.5,
-        borderColor: tokens.colors.border,
-        backgroundColor: tokens.colors.surface,
-        alignItems: 'center',
-        justifyContent: 'center',
+        borderColor: c.border,
+        backgroundColor: c.surface,
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
     },
     checkBoxOn: {
-        backgroundColor: tokens.colors.brandPrimary,
-        borderColor: tokens.colors.brandPrimary,
+        backgroundColor: c.brandPrimary,
+        borderColor: c.brandPrimary,
     },
-    checkMark: {color: tokens.colors.textInverse, fontWeight: '700', fontSize: 14},
+    checkMark: {color: c.textInverse, fontWeight: '700' as const, fontSize: 14},
     label: {
         fontSize: tokens.typography.sizes.md,
-        color: tokens.colors.textPrimary,
+        color: c.textPrimary,
         flexShrink: 1,
     },
     labelBold: {fontWeight: tokens.typography.weights.bold},
-    required: {color: tokens.colors.error, fontSize: tokens.typography.sizes.xs},
+    required: {color: c.error, fontSize: tokens.typography.sizes.xs},
     viewBtn: {
-        color: tokens.colors.brandPrimary,
+        color: c.brandPrimary,
         fontSize: tokens.typography.sizes.sm,
         fontWeight: tokens.typography.weights.semibold,
         paddingHorizontal: tokens.spacing.sm,
     },
-    thinDivider: {height: 1, backgroundColor: tokens.colors.divider, marginVertical: tokens.spacing.sm},
+    thinDivider: {height: 1, backgroundColor: c.divider, marginVertical: tokens.spacing.sm},
 
     modalBackdrop: {
         flex: 1,
-        backgroundColor: tokens.colors.overlayDark,
-        justifyContent: 'flex-end',
+        backgroundColor: c.overlayDark,
+        justifyContent: 'flex-end' as const,
     },
     modalSheet: {
-        backgroundColor: tokens.colors.background,
+        backgroundColor: c.background,
         borderTopLeftRadius: tokens.radius.xl,
         borderTopRightRadius: tokens.radius.xl,
-        maxHeight: '80%',
+        maxHeight: '80%' as const,
         padding: tokens.spacing.lg,
     },
     modalHandle: {
         width: 40,
         height: 4,
         borderRadius: 2,
-        backgroundColor: tokens.colors.border,
-        alignSelf: 'center',
+        backgroundColor: c.border,
+        alignSelf: 'center' as const,
         marginBottom: tokens.spacing.md,
     },
     modalTitle: {
         fontSize: tokens.typography.sizes.lg,
         fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
+        color: c.textPrimary,
         marginBottom: tokens.spacing.md,
     },
     modalScroll: {flexGrow: 0},
     modalText: {
         fontSize: tokens.typography.sizes.sm,
-        color: tokens.colors.textSecondary,
+        color: c.textSecondary,
         lineHeight: 22,
     },
     modalClose: {
         marginTop: tokens.spacing.lg,
-        backgroundColor: tokens.colors.brandPrimary,
+        backgroundColor: c.brandPrimary,
         borderRadius: tokens.radius.lg,
         paddingVertical: tokens.spacing.md,
-        alignItems: 'center',
+        alignItems: 'center' as const,
     },
     modalCloseText: {
-        color: tokens.colors.textInverse,
+        color: c.textInverse,
         fontWeight: tokens.typography.weights.semibold,
         fontSize: tokens.typography.sizes.md,
     },

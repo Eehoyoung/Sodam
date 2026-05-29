@@ -1,6 +1,7 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import {Pressable, StyleSheet, Text, TextStyle, View, ViewStyle} from 'react-native';
 import {tokens} from '../../../theme/tokens';
+import {useThemeColors, ThemeColors} from '../../hooks/useThemeColors';
 
 interface CardProps {
     title?: string;
@@ -18,8 +19,7 @@ interface CardProps {
 }
 
 /**
- * 소담 카드 컴포넌트.
- * 디자인은 tokens 기반으로 통일되며, 기존 API(title/subtitle/bordered/elevation/footer)는 유지된다.
+ * 레거시 카드 (EmployeeDetail 등에서 사용). 다크 테마 대응.
  */
 const Card: React.FC<CardProps> = ({
     title,
@@ -34,6 +34,8 @@ const Card: React.FC<CardProps> = ({
     bordered = false,
     footer,
 }) => {
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
     const elevationStyle =
         elevation >= 4 ? tokens.shadow.lg : elevation >= 2 ? tokens.shadow.md : tokens.shadow.sm;
 
@@ -72,16 +74,16 @@ const Card: React.FC<CardProps> = ({
     return <View style={baseStyle}>{cardContent}</View>;
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
     card: {
-        backgroundColor: tokens.colors.surface,
+        backgroundColor: c.surface,
         borderRadius: tokens.radius.lg,
         marginVertical: tokens.spacing.sm,
-        overflow: 'hidden',
+        overflow: 'hidden' as const,
     },
     bordered: {
         borderWidth: 1,
-        borderColor: tokens.colors.divider,
+        borderColor: c.divider,
     },
     header: {
         paddingHorizontal: tokens.spacing.lg,
@@ -91,13 +93,13 @@ const styles = StyleSheet.create({
     title: {
         fontSize: tokens.typography.sizes.lg,
         fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
+        color: c.textPrimary,
         marginBottom: 2,
         letterSpacing: -0.3,
     },
     subtitle: {
         fontSize: tokens.typography.sizes.sm,
-        color: tokens.colors.textSecondary,
+        color: c.textSecondary,
     },
     content: {
         padding: tokens.spacing.lg,
@@ -106,9 +108,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: tokens.spacing.lg,
         paddingVertical: tokens.spacing.md,
         borderTopWidth: 1,
-        borderTopColor: tokens.colors.divider,
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
+        borderTopColor: c.divider,
+        flexDirection: 'row' as const,
+        justifyContent: 'flex-end' as const,
         gap: tokens.spacing.sm,
     },
 });

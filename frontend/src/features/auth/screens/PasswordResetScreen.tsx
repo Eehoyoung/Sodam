@@ -1,9 +1,10 @@
 import {AppToast} from '../../../common/components/ds';
-import React, {useEffect, useRef, useState} from 'react';
-import {Alert, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
+import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {tokens} from '../../../theme/tokens';
 import {AppButton, AppHeader, AppInput, ScreenContainer} from '../../../common/components/ds';
+import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import {
     checkPassword,
     passwordResetApi,
@@ -25,14 +26,20 @@ const OTP_VALID_SECONDS = 300;
  * 비밀번호 재설정 (G-006) — 단일 화면 3 step.
  * 이메일 → OTP → 새 비번 → 완료.
  */
+const useStyles = () => {
+    const c = useThemeColors();
+    return useMemo(() => makeStyles(c), [c]);
+};
+
 const PasswordResetScreen: React.FC = () => {
     const navigation = useNavigation<any>();
+    const c = useThemeColors();
     const [step, setStep] = useState<Step>('EMAIL');
 
     return (
         <ScreenContainer
             scroll
-            backgroundColor={tokens.colors.background}
+            backgroundColor={c.background}
             header={<AppHeader title="비밀번호 찾기" onBack={() => navigation.goBack()} />}>
             <ProgressBar step={step} />
             {step === 'EMAIL' && <StepEmail onNext={() => setStep('OTP')} />}
@@ -44,6 +51,8 @@ const PasswordResetScreen: React.FC = () => {
 };
 
 const ProgressBar: React.FC<{step: Step}> = ({step}) => {
+    const styles = useStyles();
+    const c = useThemeColors();
     const idx = step === 'EMAIL' ? 0 : step === 'OTP' ? 1 : step === 'NEW_PWD' ? 2 : 3;
     return (
         <View style={styles.progressRow}>
@@ -67,7 +76,7 @@ const ProgressBar: React.FC<{step: Step}> = ({step}) => {
                     <Text
                         style={[
                             styles.progressLabel,
-                            i === idx && {color: tokens.colors.brandPrimary, fontWeight: '700'},
+                            i === idx && {color: c.brandPrimary, fontWeight: '700'},
                         ]}
                     >
                         {label}
@@ -80,6 +89,7 @@ const ProgressBar: React.FC<{step: Step}> = ({step}) => {
 
 // ───── Step 1: 이메일 입력 ─────
 const StepEmail: React.FC<{onNext: () => void}> = ({onNext}) => {
+    const styles = useStyles();
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -132,6 +142,7 @@ const globalEmailRef = {current: ''};
 
 // ───── Step 2: OTP 입력 ─────
 const StepOtp: React.FC<{onNext: () => void; onBack: () => void}> = ({onNext, onBack}) => {
+    const styles = useStyles();
     const [code, setCode] = useState('');
     const [remaining, setRemaining] = useState(OTP_VALID_SECONDS);
     const [loading, setLoading] = useState(false);
@@ -238,6 +249,7 @@ const globalTicketRef = {current: ''};
 
 // ───── Step 3: 새 비밀번호 ─────
 const StepNewPassword: React.FC<{onDone: () => void}> = ({onDone}) => {
+    const styles = useStyles();
     const [pw, setPw] = useState('');
     const [confirm, setConfirm] = useState('');
     const [loading, setLoading] = useState(false);
@@ -307,20 +319,25 @@ const StepNewPassword: React.FC<{onDone: () => void}> = ({onDone}) => {
     );
 };
 
-const DoneCard: React.FC<{onClose: () => void}> = ({onClose}) => (
-    <View style={styles.doneBox}>
-        <Text style={styles.doneEmoji}>🎉</Text>
-        <Text style={styles.title}>비밀번호가 변경되었어요</Text>
-        <Text style={styles.subtitle}>새 비밀번호로 다시 로그인해 주세요.</Text>
-        <Button title="로그인하러 가기" onPress={onClose} variant="primary" size="lg" fullWidth />
-    </View>
-);
+const DoneCard: React.FC<{onClose: () => void}> = ({onClose}) => {
+    const styles = useStyles();
+    return (
+        <View style={styles.doneBox}>
+            <Text style={styles.doneEmoji}>🎉</Text>
+            <Text style={styles.title}>비밀번호가 변경됐어요</Text>
+            <Text style={styles.subtitle}>새 비밀번호로 다시 로그인해 주세요.</Text>
+            <Button title="로그인하러 가기" onPress={onClose} variant="primary" size="lg" fullWidth />
+        </View>
+    );
+};
 
 const StrengthBar: React.FC<{strength: PasswordStrength}> = ({strength}) => {
+    const styles = useStyles();
+    const c = useThemeColors();
     const map: Record<PasswordStrength, {fill: `${number}%`; color: string}> = {
-        weak: {fill: '33%', color: tokens.colors.error},
-        medium: {fill: '66%', color: tokens.colors.warning},
-        strong: {fill: '100%', color: tokens.colors.success},
+        weak: {fill: '33%', color: c.error},
+        medium: {fill: '66%', color: c.warning},
+        strong: {fill: '100%', color: c.success},
     };
     return (
         <View style={styles.strengthTrack}>
@@ -334,12 +351,15 @@ const StrengthBar: React.FC<{strength: PasswordStrength}> = ({strength}) => {
     );
 };
 
-const CheckItem: React.FC<{ok: boolean; text: string}> = ({ok, text}) => (
-    <View style={styles.checkRow}>
-        <Text style={[styles.checkIcon, ok && styles.checkIconOk]}>{ok ? '✓' : '○'}</Text>
-        <Text style={[styles.checkText, ok && styles.checkTextOk]}>{text}</Text>
-    </View>
-);
+const CheckItem: React.FC<{ok: boolean; text: string}> = ({ok, text}) => {
+    const styles = useStyles();
+    return (
+        <View style={styles.checkRow}>
+            <Text style={[styles.checkIcon, ok && styles.checkIconOk]}>{ok ? '✓' : '○'}</Text>
+            <Text style={[styles.checkText, ok && styles.checkTextOk]}>{text}</Text>
+        </View>
+    );
+};
 
 function strengthLabel(s: PasswordStrength): string {
     return s === 'weak' ? '약함' : s === 'medium' ? '보통' : '강함';
@@ -352,107 +372,107 @@ function maskEmail(email: string): string {
     return email[0] + '***' + email.substring(at);
 }
 
-const styles = StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: tokens.colors.background},
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
+    safeArea: {flex: 1, backgroundColor: c.background},
     flex: {flex: 1},
     scrollContent: {
         padding: tokens.spacing.lg,
         paddingBottom: tokens.spacing.huge,
     },
     progressRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
+        flexDirection: 'row' as const,
+        justifyContent: 'space-around' as const,
         marginBottom: tokens.spacing.xxl,
         marginTop: tokens.spacing.md,
     },
-    progressItem: {alignItems: 'center', flex: 1},
+    progressItem: {alignItems: 'center' as const, flex: 1},
     progressDot: {
         width: 32,
         height: 32,
         borderRadius: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
         marginBottom: tokens.spacing.xs,
     },
-    progressDotIdle: {backgroundColor: tokens.colors.surfaceMuted},
-    progressDotActive: {backgroundColor: tokens.colors.brandPrimary},
-    progressDotDone: {backgroundColor: tokens.colors.success},
-    progressDotText: {fontSize: 14, fontWeight: '700'},
-    progressDotTextActive: {color: tokens.colors.textInverse},
-    progressDotTextIdle: {color: tokens.colors.textTertiary},
+    progressDotIdle: {backgroundColor: c.surfaceMuted},
+    progressDotActive: {backgroundColor: c.brandPrimary},
+    progressDotDone: {backgroundColor: c.success},
+    progressDotText: {fontSize: 14, fontWeight: '700' as const},
+    progressDotTextActive: {color: c.textInverse},
+    progressDotTextIdle: {color: c.textTertiary},
     progressLabel: {
         fontSize: tokens.typography.sizes.xs,
-        color: tokens.colors.textSecondary,
+        color: c.textSecondary,
     },
     title: {
         fontSize: tokens.typography.sizes.xxl,
         fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
+        color: c.textPrimary,
         letterSpacing: -0.5,
         marginBottom: tokens.spacing.sm,
     },
     subtitle: {
         fontSize: tokens.typography.sizes.md,
-        color: tokens.colors.textSecondary,
+        color: c.textSecondary,
         marginBottom: tokens.spacing.xl,
         lineHeight: 22,
     },
     otpRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+        flexDirection: 'row' as const,
+        justifyContent: 'space-between' as const,
         marginBottom: tokens.spacing.md,
     },
     otpBox: {
         width: 48,
         height: 56,
         borderWidth: 1.5,
-        borderColor: tokens.colors.border,
+        borderColor: c.border,
         borderRadius: tokens.radius.lg,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: tokens.colors.surface,
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
+        backgroundColor: c.surface,
     },
-    otpBoxActive: {borderColor: tokens.colors.brandPrimary, borderWidth: 2},
+    otpBoxActive: {borderColor: c.brandPrimary, borderWidth: 2},
     otpDigit: {
         fontSize: tokens.typography.sizes.xl,
         fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
+        color: c.textPrimary,
     },
     hiddenInput: {
-        position: 'absolute',
+        position: 'absolute' as const,
         opacity: 0,
         height: 1,
         width: 1,
     },
     timer: {
-        textAlign: 'center',
-        color: tokens.colors.warning,
-        fontVariant: ['tabular-nums'],
+        textAlign: 'center' as const,
+        color: c.warning,
+        fontVariant: ['tabular-nums' as const],
         marginBottom: tokens.spacing.lg,
     },
-    backRow: {alignItems: 'center', paddingVertical: tokens.spacing.md},
-    backText: {color: tokens.colors.textSecondary, fontSize: tokens.typography.sizes.sm},
+    backRow: {alignItems: 'center' as const, paddingVertical: tokens.spacing.md},
+    backText: {color: c.textSecondary, fontSize: tokens.typography.sizes.sm},
     strengthTrack: {
         height: 6,
-        backgroundColor: tokens.colors.surfaceMuted,
+        backgroundColor: c.surfaceMuted,
         borderRadius: tokens.radius.pill,
         marginTop: -tokens.spacing.sm,
         marginBottom: tokens.spacing.md,
-        overflow: 'hidden',
+        overflow: 'hidden' as const,
     },
-    strengthFill: {height: '100%', borderRadius: tokens.radius.pill},
+    strengthFill: {height: '100%' as const, borderRadius: tokens.radius.pill},
     checkList: {gap: tokens.spacing.xs, marginVertical: tokens.spacing.md},
-    checkRow: {flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm},
+    checkRow: {flexDirection: 'row' as const, alignItems: 'center' as const, gap: tokens.spacing.sm},
     checkIcon: {
         width: 18,
-        textAlign: 'center',
-        color: tokens.colors.textTertiary,
+        textAlign: 'center' as const,
+        color: c.textTertiary,
         fontSize: 14,
     },
-    checkIconOk: {color: tokens.colors.success},
-    checkText: {color: tokens.colors.textTertiary, fontSize: tokens.typography.sizes.sm},
-    checkTextOk: {color: tokens.colors.textPrimary},
-    doneBox: {alignItems: 'center', paddingTop: tokens.spacing.huge},
+    checkIconOk: {color: c.success},
+    checkText: {color: c.textTertiary, fontSize: tokens.typography.sizes.sm},
+    checkTextOk: {color: c.textPrimary},
+    doneBox: {alignItems: 'center' as const, paddingTop: tokens.spacing.huge},
     doneEmoji: {fontSize: 64, marginBottom: tokens.spacing.lg},
 });
 

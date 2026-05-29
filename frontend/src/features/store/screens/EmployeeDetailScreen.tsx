@@ -11,6 +11,7 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {tokens} from '../../../theme/tokens';
+import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import Card from '../../../common/components/data-display/Card';
 import Badge from '../../../common/components/data-display/Badge';
 import Button from '../../../common/components/form/Button';
@@ -41,18 +42,18 @@ const TABS: Array<{key: TabKey; label: string}> = [
     {key: 'TIMEOFF', label: '연차'},
 ];
 
+const useStyles = () => {
+    const c = useThemeColors();
+    return useMemo(() => makeStyles(c), [c]);
+};
+
 /**
  * 사장 직원 상세 (PRD_OWNER S-201).
- *
- * 한 직원의 모든 정보를 4 탭으로 표시.
- *   - 정보: 프로필 + 시급 + 메모
- *   - 출퇴근: 최근 기록 (월별 미니뷰는 P1)
- *   - 급여: 월별 명세서 리스트
- *   - 연차: 잔여 + 신청 이력 (Phase 2)
  */
 const EmployeeDetailScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
+    const styles = useStyles();
     const {employeeId, storeId}: RouteParams = route.params ?? {};
 
     const [tab, setTab] = useState<TabKey>('INFO');
@@ -192,15 +193,20 @@ const EmployeeDetailScreen: React.FC = () => {
     );
 };
 
-const QuickStat: React.FC<{icon: string; label: string; value: string}> = ({icon, label, value}) => (
-    <Card style={styles.quickStat} bordered>
-        <Text style={styles.quickStatIcon}>{icon}</Text>
-        <Text style={styles.quickStatLabel}>{label}</Text>
-        <Text style={styles.quickStatValue}>{value}</Text>
-    </Card>
-);
+const QuickStat: React.FC<{icon: string; label: string; value: string}> = ({icon, label, value}) => {
+    const styles = useStyles();
+    return (
+        <Card style={styles.quickStat} bordered>
+            <Text style={styles.quickStatIcon}>{icon}</Text>
+            <Text style={styles.quickStatLabel}>{label}</Text>
+            <Text style={styles.quickStatValue}>{value}</Text>
+        </Card>
+    );
+};
 
 const MemoEditor: React.FC<{storeId: number; employeeId: number}> = ({storeId, employeeId}) => {
+    const styles = useStyles();
+    const c = useThemeColors();
     const [memo, setMemo] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -239,7 +245,7 @@ const MemoEditor: React.FC<{storeId: number; employeeId: number}> = ({storeId, e
                 multiline
                 editable={!loading}
                 placeholder="예: 마감 잘 함 / 주말 가능 등"
-                placeholderTextColor={tokens.colors.textTertiary}
+                placeholderTextColor={c.textTertiary}
                 style={styles.memoInput}
                 maxLength={500}
             />
@@ -249,23 +255,27 @@ const MemoEditor: React.FC<{storeId: number; employeeId: number}> = ({storeId, e
     );
 };
 
-const InfoTab: React.FC<{emp: Employee}> = ({emp}) => (
-    <View style={styles.section}>
-        <KV label="이메일" value={emp.email || '-'} />
-        <KV label="역할" value={roleLabel(emp.role)} />
-        <KV
-            label="시급"
-            value={
-                emp.appliedHourlyWage
-                    ? `${emp.appliedHourlyWage.toLocaleString('ko-KR')}원/시간`
-                    : '매장 기본 시급 사용'
-            }
-        />
-        <KV label="입사일" value={emp.hireDate ?? '-'} />
-    </View>
-);
+const InfoTab: React.FC<{emp: Employee}> = ({emp}) => {
+    const styles = useStyles();
+    return (
+        <View style={styles.section}>
+            <KV label="이메일" value={emp.email || '-'} />
+            <KV label="역할" value={roleLabel(emp.role)} />
+            <KV
+                label="시급"
+                value={
+                    emp.appliedHourlyWage
+                        ? `${emp.appliedHourlyWage.toLocaleString('ko-KR')}원/시간`
+                        : '매장 기본 시급 사용'
+                }
+            />
+            <KV label="입사일" value={emp.hireDate ?? '-'} />
+        </View>
+    );
+};
 
 const AttendanceTab: React.FC<{employeeId: number; storeId: number}> = ({employeeId, storeId}) => {
+    const styles = useStyles();
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     useEffect(() => {
@@ -303,6 +313,7 @@ const AttendanceTab: React.FC<{employeeId: number; storeId: number}> = ({employe
 };
 
 const SalaryTab: React.FC<{employeeId: number; navigation: any}> = ({employeeId, navigation}) => {
+    const styles = useStyles();
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     useEffect(() => {
@@ -342,20 +353,26 @@ const SalaryTab: React.FC<{employeeId: number; navigation: any}> = ({employeeId,
     );
 };
 
-const TimeOffTab: React.FC = () => (
-    <View style={styles.section}>
-        <Text style={styles.empty}>
-            연차 관리는 Phase 2 에 도입돼요.{'\n'}현재는 BE TimeOff 도메인만 준비된 상태예요.
-        </Text>
-    </View>
-);
+const TimeOffTab: React.FC = () => {
+    const styles = useStyles();
+    return (
+        <View style={styles.section}>
+            <Text style={styles.empty}>
+                연차 관리는 Phase 2 에 도입돼요.{'\n'}현재는 BE TimeOff 도메인만 준비된 상태예요.
+            </Text>
+        </View>
+    );
+};
 
-const KV: React.FC<{label: string; value: string}> = ({label, value}) => (
-    <View style={styles.kvRow}>
-        <Text style={styles.kvLabel}>{label}</Text>
-        <Text style={styles.kvValue}>{value}</Text>
-    </View>
-);
+const KV: React.FC<{label: string; value: string}> = ({label, value}) => {
+    const styles = useStyles();
+    return (
+        <View style={styles.kvRow}>
+            <Text style={styles.kvLabel}>{label}</Text>
+            <Text style={styles.kvValue}>{value}</Text>
+        </View>
+    );
+};
 
 function roleLabel(role: string): string {
     if (role === 'MASTER') return '사장';
@@ -398,112 +415,112 @@ function payrollStatusTone(s: string): 'primary' | 'success' | 'warning' | 'dang
     return 'warning';
 }
 
-const styles = StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: tokens.colors.background},
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
+    safeArea: {flex: 1, backgroundColor: c.background},
     scrollContent: {padding: tokens.spacing.lg, paddingBottom: tokens.spacing.huge},
-    loading: {textAlign: 'center', padding: tokens.spacing.huge, color: tokens.colors.textSecondary},
-    header: {flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.lg, marginBottom: tokens.spacing.lg},
+    loading: {textAlign: 'center' as const, padding: tokens.spacing.huge, color: c.textSecondary},
+    header: {flexDirection: 'row' as const, alignItems: 'center' as const, gap: tokens.spacing.lg, marginBottom: tokens.spacing.lg},
     avatar: {
         width: 72,
         height: 72,
         borderRadius: 36,
-        backgroundColor: tokens.colors.surfaceMuted,
-        alignItems: 'center',
-        justifyContent: 'center',
+        backgroundColor: c.surfaceMuted,
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
     },
     avatarText: {
         fontSize: 28,
-        color: tokens.colors.brandPrimary,
+        color: c.brandPrimary,
         fontWeight: tokens.typography.weights.bold,
     },
     headerText: {flex: 1, gap: 2},
     name: {
         fontSize: tokens.typography.sizes.xl,
         fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
+        color: c.textPrimary,
         letterSpacing: -0.3,
     },
-    email: {fontSize: tokens.typography.sizes.sm, color: tokens.colors.textSecondary},
-    headerMeta: {flexDirection: 'row', gap: tokens.spacing.xs, marginTop: tokens.spacing.xs},
-    quickRow: {flexDirection: 'row', gap: tokens.spacing.md, marginBottom: tokens.spacing.lg},
-    quickStat: {flex: 1, alignItems: 'flex-start'},
+    email: {fontSize: tokens.typography.sizes.sm, color: c.textSecondary},
+    headerMeta: {flexDirection: 'row' as const, gap: tokens.spacing.xs, marginTop: tokens.spacing.xs},
+    quickRow: {flexDirection: 'row' as const, gap: tokens.spacing.md, marginBottom: tokens.spacing.lg},
+    quickStat: {flex: 1, alignItems: 'flex-start' as const},
     quickStatIcon: {fontSize: 22, marginBottom: tokens.spacing.xs},
-    quickStatLabel: {fontSize: tokens.typography.sizes.xs, color: tokens.colors.textTertiary},
+    quickStatLabel: {fontSize: tokens.typography.sizes.xs, color: c.textTertiary},
     quickStatValue: {
         fontSize: tokens.typography.sizes.md,
         fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
+        color: c.textPrimary,
         marginTop: 2,
     },
     tabBar: {
-        flexDirection: 'row',
-        backgroundColor: tokens.colors.surfaceMuted,
+        flexDirection: 'row' as const,
+        backgroundColor: c.surfaceMuted,
         borderRadius: tokens.radius.lg,
         padding: 4,
         marginBottom: tokens.spacing.md,
     },
-    tab: {flex: 1, alignItems: 'center', paddingVertical: tokens.spacing.sm, borderRadius: tokens.radius.md},
-    tabActive: {backgroundColor: tokens.colors.background, ...tokens.shadow.sm},
+    tab: {flex: 1, alignItems: 'center' as const, paddingVertical: tokens.spacing.sm, borderRadius: tokens.radius.md},
+    tabActive: {backgroundColor: c.background, ...tokens.shadow.sm},
     tabText: {
         fontSize: tokens.typography.sizes.sm,
-        color: tokens.colors.textSecondary,
+        color: c.textSecondary,
         fontWeight: tokens.typography.weights.medium,
     },
-    tabTextActive: {color: tokens.colors.brandPrimary, fontWeight: tokens.typography.weights.bold},
+    tabTextActive: {color: c.brandPrimary, fontWeight: tokens.typography.weights.bold},
     tabContent: {minHeight: 200},
     section: {paddingVertical: tokens.spacing.sm},
-    kvRow: {flexDirection: 'row', justifyContent: 'space-between', paddingVertical: tokens.spacing.sm},
-    kvLabel: {color: tokens.colors.textSecondary, fontSize: tokens.typography.sizes.sm},
-    kvValue: {color: tokens.colors.textPrimary, fontSize: tokens.typography.sizes.md, fontWeight: '500'},
+    kvRow: {flexDirection: 'row' as const, justifyContent: 'space-between' as const, paddingVertical: tokens.spacing.sm},
+    kvLabel: {color: c.textSecondary, fontSize: tokens.typography.sizes.sm},
+    kvValue: {color: c.textPrimary, fontSize: tokens.typography.sizes.md, fontWeight: '500' as const},
     attRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+        flexDirection: 'row' as const,
+        justifyContent: 'space-between' as const,
         paddingVertical: tokens.spacing.md,
         borderBottomWidth: 1,
-        borderBottomColor: tokens.colors.divider,
+        borderBottomColor: c.divider,
     },
-    attDate: {fontSize: tokens.typography.sizes.md, color: tokens.colors.textPrimary, fontWeight: '500'},
-    attTime: {fontSize: tokens.typography.sizes.sm, color: tokens.colors.textSecondary, fontVariant: ['tabular-nums']},
+    attDate: {fontSize: tokens.typography.sizes.md, color: c.textPrimary, fontWeight: '500' as const},
+    attTime: {fontSize: tokens.typography.sizes.sm, color: c.textSecondary, fontVariant: ['tabular-nums' as const]},
     salaryRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        flexDirection: 'row' as const,
+        justifyContent: 'space-between' as const,
+        alignItems: 'center' as const,
         paddingVertical: tokens.spacing.md,
         borderBottomWidth: 1,
-        borderBottomColor: tokens.colors.divider,
+        borderBottomColor: c.divider,
     },
-    salaryMonth: {fontSize: tokens.typography.sizes.sm, color: tokens.colors.textSecondary},
+    salaryMonth: {fontSize: tokens.typography.sizes.sm, color: c.textSecondary},
     salaryAmount: {
         fontSize: tokens.typography.sizes.lg,
         fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
+        color: c.textPrimary,
         marginTop: 2,
     },
     empty: {
-        textAlign: 'center',
-        color: tokens.colors.textTertiary,
+        textAlign: 'center' as const,
+        color: c.textTertiary,
         paddingVertical: tokens.spacing.xl,
         lineHeight: 22,
     },
-    memoCard: {marginTop: tokens.spacing.md, backgroundColor: tokens.colors.warningBg, borderColor: tokens.colors.warning},
-    memoTitle: {fontSize: tokens.typography.sizes.sm, fontWeight: '600', color: tokens.colors.textPrimary, marginBottom: tokens.spacing.sm},
+    memoCard: {marginTop: tokens.spacing.md, backgroundColor: c.warningBg, borderColor: c.warning},
+    memoTitle: {fontSize: tokens.typography.sizes.sm, fontWeight: '600' as const, color: c.textPrimary, marginBottom: tokens.spacing.sm},
     memoInput: {
-        backgroundColor: tokens.colors.background,
+        backgroundColor: c.background,
         borderRadius: tokens.radius.md,
         padding: tokens.spacing.md,
         minHeight: 80,
-        textAlignVertical: 'top',
+        textAlignVertical: 'top' as const,
         fontSize: tokens.typography.sizes.sm,
-        color: tokens.colors.textPrimary,
+        color: c.textPrimary,
     },
     memoCount: {
         fontSize: tokens.typography.sizes.xs,
-        color: tokens.colors.textTertiary,
-        textAlign: 'right',
+        color: c.textTertiary,
+        textAlign: 'right' as const,
         marginTop: 4,
         marginBottom: tokens.spacing.sm,
     },
-    actionsRow: {flexDirection: 'row', gap: tokens.spacing.md, marginTop: tokens.spacing.lg},
+    actionsRow: {flexDirection: 'row' as const, gap: tokens.spacing.md, marginTop: tokens.spacing.lg},
     actionBtn: {flex: 1},
 });
 
