@@ -14,7 +14,8 @@
  */
 import React, {ReactNode} from 'react';
 import {Pressable, StyleProp, StyleSheet, View, ViewStyle} from 'react-native';
-import {colors, radius, shadow, spacing} from '../../../theme/tokens';
+import {radius, shadow, spacing} from '../../../theme/tokens';
+import {useThemeColors, ThemeColors} from '../../hooks/useThemeColors';
 
 export type CardVariant = 'flat' | 'elevated' | 'outlined' | 'warm' | 'navy' | 'danger';
 
@@ -43,11 +44,12 @@ export const AppCard: React.FC<AppCardProps> = ({
     style,
     testID,
 }) => {
+    const c = useThemeColors();
     const base: ViewStyle[] = [
         styles.base,
         {borderRadius: hero ? radius.xxl : radius.xl},
-        variantStyle(variant),
-        selected ? styles.selected : null,
+        variantStyle(variant, c),
+        selected ? {borderWidth: 2, borderColor: c.brandPrimary} : null,
     ].filter(Boolean) as ViewStyle[];
 
     if (onPress) {
@@ -71,21 +73,21 @@ export const AppCard: React.FC<AppCardProps> = ({
     );
 };
 
-const variantStyle = (variant: CardVariant): ViewStyle => {
+const variantStyle = (variant: CardVariant, c: ThemeColors): ViewStyle => {
     switch (variant) {
         case 'elevated':
-            return {backgroundColor: colors.background, ...shadow.md};
+            return {backgroundColor: c.background, ...shadow.md};
         case 'outlined':
-            return {backgroundColor: colors.background, borderWidth: 1, borderColor: colors.borderStrong};
+            return {backgroundColor: c.background, borderWidth: 1, borderColor: c.borderStrong};
         case 'warm':
-            return {backgroundColor: colors.surfaceWarm, borderWidth: 1, borderColor: colors.brandPrimaryMuted};
+            return {backgroundColor: c.surfaceWarm, borderWidth: 1, borderColor: c.brandPrimaryMuted};
         case 'navy':
-            return {backgroundColor: colors.brandSecondary, borderWidth: 0};
+            return {backgroundColor: c.brandSecondary, borderWidth: 0};
         case 'danger':
-            return {backgroundColor: colors.warningBg, borderWidth: 1, borderColor: colors.warning};
+            return {backgroundColor: c.warningBg, borderWidth: 1, borderColor: c.warning};
         case 'flat':
         default:
-            return {backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border};
+            return {backgroundColor: c.background, borderWidth: 1, borderColor: c.border};
     }
 };
 
@@ -94,7 +96,6 @@ const styles = StyleSheet.create({
         padding: spacing.lg,
         minWidth: 0,
     },
-    selected: {borderWidth: 2, borderColor: colors.brandPrimary},
     pressed: {opacity: 0.95, transform: [{scale: 0.99}]},
 });
 

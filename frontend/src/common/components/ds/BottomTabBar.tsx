@@ -13,7 +13,8 @@
 import React, {ReactNode} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {colors, radius, shadow, spacing} from '../../../theme/tokens';
+import {radius, shadow, spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../hooks/useThemeColors';
 
 export type TabRole = 'owner' | 'manager' | 'employee' | 'personal';
 
@@ -42,11 +43,12 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
     icons,
 }) => {
     const insets = useSafeAreaInsets();
+    const c = useThemeColors();
     const items = labels ?? TAB_LABELS[role];
 
     return (
         <View style={[styles.wrap, {paddingBottom: Math.max(insets.bottom, spacing.sm)}]}>
-            <View style={styles.bar}>
+            <View style={[styles.bar, {backgroundColor: c.background, borderColor: c.border}]}>
                 {items.map((label, i) => {
                     const on = i === active;
                     return (
@@ -58,7 +60,7 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
                             accessibilityLabel={label}
                             style={styles.tab}>
                             {icons?.[i] ? <View style={styles.icon}>{icons[i]}</View> : null}
-                            <Text numberOfLines={1} style={[styles.label, on ? styles.labelOn : null]}>
+                            <Text numberOfLines={1} style={[styles.label, {color: on ? c.brandPrimary : c.textTertiary}]}>
                                 {label}
                             </Text>
                         </Pressable>
@@ -78,17 +80,14 @@ const styles = StyleSheet.create({
     bar: {
         height: 62,
         borderRadius: radius.xxl,
-        backgroundColor: colors.background,
         borderWidth: 1,
-        borderColor: colors.border,
         flexDirection: 'row',
         alignItems: 'center',
         ...shadow.lg,
     },
     tab: {flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2},
     icon: {height: 20, alignItems: 'center', justifyContent: 'center'},
-    label: {fontSize: 10, fontWeight: '800', color: colors.textTertiary},
-    labelOn: {color: colors.brandPrimary},
+    label: {fontSize: 10, fontWeight: '800'},
 });
 
 export default BottomTabBar;

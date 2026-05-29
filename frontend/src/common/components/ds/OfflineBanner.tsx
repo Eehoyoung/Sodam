@@ -8,7 +8,8 @@
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {colors, spacing} from '../../../theme/tokens';
+import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../hooks/useThemeColors';
 
 export type SyncState = 'offline' | 'syncing' | 'hidden';
 
@@ -20,6 +21,7 @@ interface OfflineBannerProps {
 
 export const OfflineBanner: React.FC<OfflineBannerProps> = ({state, pendingCount}) => {
     const insets = useSafeAreaInsets();
+    const c = useThemeColors();
     if (state === 'hidden') {
         return null;
     }
@@ -29,10 +31,10 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({state, pendingCount
             accessibilityRole="alert"
             style={[
                 styles.banner,
-                {paddingTop: insets.top + spacing.xs, backgroundColor: offline ? colors.brandSecondary : colors.success},
+                {paddingTop: insets.top + spacing.xs, backgroundColor: offline ? c.brandSecondary : c.success},
             ]}>
-            <Text style={styles.glyph}>{offline ? '⚡' : '↻'}</Text>
-            <Text numberOfLines={1} style={styles.text}>
+            <Text style={[styles.glyph, {color: c.textInverse}]}>{offline ? '⚡' : '↻'}</Text>
+            <Text numberOfLines={1} style={[styles.text, {color: c.textInverse}]}>
                 {offline
                     ? `지금 오프라인이에요. 기록은 안전하게 보관 중이에요.${pendingCount ? ` (대기 ${pendingCount}건)` : ''}`
                     : '다시 연결됐어요. 대기 중이던 기록을 처리하고 있어요.'}
@@ -49,8 +51,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.lg,
         paddingBottom: spacing.sm,
     },
-    glyph: {color: colors.textInverse, fontSize: 13, fontWeight: '900'},
-    text: {flex: 1, color: colors.textInverse, fontSize: 12, fontWeight: '800'},
+    glyph: {fontSize: 13, fontWeight: '900'},
+    text: {flex: 1, fontSize: 12, fontWeight: '800'},
 });
 
 export default OfflineBanner;

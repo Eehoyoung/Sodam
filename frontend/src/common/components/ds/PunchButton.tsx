@@ -8,8 +8,8 @@
 import React from 'react';
 import {Pressable, StyleProp, StyleSheet, Text, View, ViewStyle} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import {colors} from '../../../theme/tokens';
 import {useResponsive} from '../../hooks/useResponsive';
+import {useThemeColors} from '../../hooks/useThemeColors';
 
 interface PunchButtonProps {
     title: string;
@@ -21,11 +21,6 @@ interface PunchButtonProps {
     testID?: string;
 }
 
-const COLORS: Record<'idle' | 'working', [string, string]> = {
-    idle: [colors.brandPrimary, '#FF8954'],
-    working: [colors.warning, '#FFBA45'],
-};
-
 export const PunchButton: React.FC<PunchButtonProps> = ({
     title,
     subtitle,
@@ -36,8 +31,14 @@ export const PunchButton: React.FC<PunchButtonProps> = ({
     testID,
 }) => {
     const {clamp, isCompactHeight} = useResponsive();
+    const c = useThemeColors();
     // compact 높이에서 축소
     const size = isCompactHeight ? 176 : clamp(184, 220);
+    // 테마-반응형 그라디언트 (다크에서도 브랜드/Amber 톤은 동일 의미)
+    const gradients: Record<'idle' | 'working', [string, string]> = {
+        idle: [c.brandPrimary, '#FF8954'],
+        working: [c.warning, '#FFBA45'],
+    };
 
     return (
         <Pressable
@@ -49,12 +50,20 @@ export const PunchButton: React.FC<PunchButtonProps> = ({
             accessibilityState={{disabled}}
             style={({pressed}) => [styles.wrap, pressed && !disabled ? styles.pressed : null, style]}>
             <LinearGradient
-                colors={COLORS[state]}
+                colors={gradients[state]}
                 start={{x: 0.2, y: 0.1}}
                 end={{x: 1, y: 1}}
-                style={[styles.circle, {width: size, height: size, borderRadius: size / 2}]}>
+                style={[
+                    styles.circle,
+                    {
+                        width: size,
+                        height: size,
+                        borderRadius: size / 2,
+                        shadowColor: c.brandPrimary,
+                    },
+                ]}>
                 <View style={styles.inner}>
-                    <Text style={styles.title}>{title}</Text>
+                    <Text style={[styles.title, {color: c.textInverse}]}>{title}</Text>
                     {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
                 </View>
             </LinearGradient>
@@ -68,14 +77,13 @@ const styles = StyleSheet.create({
     circle: {
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: colors.brandPrimary,
         shadowOffset: {width: 0, height: 20},
         shadowOpacity: 0.32,
         shadowRadius: 40,
         elevation: 10,
     },
     inner: {alignItems: 'center', paddingHorizontal: 16},
-    title: {color: colors.textInverse, fontSize: 26, fontWeight: '900', textAlign: 'center'},
+    title: {fontSize: 26, fontWeight: '900', textAlign: 'center'},
     subtitle: {marginTop: 8, color: '#FFE3D7', fontSize: 12, fontWeight: '800', textAlign: 'center'},
 });
 

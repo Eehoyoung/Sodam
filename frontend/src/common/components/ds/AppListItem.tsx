@@ -7,7 +7,8 @@
  */
 import React, {ReactNode} from 'react';
 import {Pressable, StyleProp, StyleSheet, Text, View, ViewStyle} from 'react-native';
-import {colors, radius, spacing} from '../../../theme/tokens';
+import {radius, spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../hooks/useThemeColors';
 
 interface AppListItemProps {
     title: string;
@@ -29,6 +30,7 @@ export const AppListItem: React.FC<AppListItemProps> = ({
     style,
     testID,
 }) => {
+    const c = useThemeColors();
     const Wrapper: any = onPress ? Pressable : View;
     return (
         <Wrapper
@@ -38,22 +40,23 @@ export const AppListItem: React.FC<AppListItemProps> = ({
             accessibilityLabel={onPress ? `${title}${subtitle ? `, ${subtitle}` : ''}` : undefined}
             style={({pressed}: {pressed?: boolean}) => [
                 styles.item,
+                {backgroundColor: c.background, borderColor: c.border},
                 onPress && pressed ? styles.pressed : null,
                 style,
             ]}>
             {left ? <View style={styles.left}>{left}</View> : null}
             <View style={styles.body}>
-                <Text numberOfLines={1} style={styles.title}>
+                <Text numberOfLines={1} style={[styles.title, {color: c.textPrimary}]}>
                     {title}
                 </Text>
                 {subtitle ? (
-                    <Text numberOfLines={2} style={styles.subtitle}>
+                    <Text numberOfLines={2} style={[styles.subtitle, {color: c.textSecondary}]}>
                         {subtitle}
                     </Text>
                 ) : null}
             </View>
             {typeof right === 'string' ? (
-                <Text style={styles.chevron}>{right}</Text>
+                <Text style={[styles.chevron, {color: c.textTertiary}]}>{right}</Text>
             ) : right ? (
                 <View style={styles.right}>{right}</View>
             ) : null}
@@ -64,9 +67,7 @@ export const AppListItem: React.FC<AppListItemProps> = ({
 const styles = StyleSheet.create({
     item: {
         minHeight: 58,
-        backgroundColor: colors.background,
         borderWidth: 1,
-        borderColor: colors.border,
         borderRadius: radius.xl,
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.md,
@@ -77,10 +78,10 @@ const styles = StyleSheet.create({
     pressed: {opacity: 0.95, transform: [{scale: 0.995}]},
     left: {flexShrink: 0},
     body: {flex: 1, minWidth: 0},
-    title: {fontSize: 15, fontWeight: '700', color: colors.textPrimary},
-    subtitle: {marginTop: 3, fontSize: 12, lineHeight: 17, color: colors.textSecondary},
+    title: {fontSize: 15, fontWeight: '700'},
+    subtitle: {marginTop: 3, fontSize: 12, lineHeight: 17},
     right: {flexShrink: 0},
-    chevron: {fontSize: 22, color: colors.textTertiary, fontWeight: '400'},
+    chevron: {fontSize: 22, fontWeight: '400'},
 });
 
 export default AppListItem;

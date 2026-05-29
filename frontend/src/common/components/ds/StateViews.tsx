@@ -7,7 +7,8 @@
  */
 import React, {ReactNode} from 'react';
 import {ActivityIndicator, StyleSheet, Text, View} from 'react-native';
-import {colors, radius, spacing} from '../../../theme/tokens';
+import {radius, spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../hooks/useThemeColors';
 import {AppButton} from './AppButton';
 
 interface StateCta {
@@ -34,49 +35,56 @@ const StateLayout: React.FC<BaseStateProps & {defaultGlyph: string; defaultMark:
     markColor,
     defaultGlyph,
     defaultMark,
-}) => (
-    <View style={styles.center}>
-        <View style={styles.inner}>
-            <View style={[styles.mark, {backgroundColor: markColor ?? defaultMark}]}>
-                {typeof glyph === 'string' || glyph === undefined ? (
-                    <Text style={styles.markText}>{(glyph as string) ?? defaultGlyph}</Text>
-                ) : (
-                    glyph
-                )}
+}) => {
+    const c = useThemeColors();
+    return (
+        <View style={styles.center}>
+            <View style={styles.inner}>
+                <View style={[styles.mark, {backgroundColor: markColor ?? defaultMark}]}>
+                    {typeof glyph === 'string' || glyph === undefined ? (
+                        <Text style={[styles.markText, {color: c.textInverse}]}>{(glyph as string) ?? defaultGlyph}</Text>
+                    ) : (
+                        glyph
+                    )}
+                </View>
+                <Text style={[styles.title, {color: c.textPrimary}]}>{title}</Text>
+                {description ? <Text style={[styles.copy, {color: c.textSecondary}]}>{description}</Text> : null}
+                {primary ? (
+                    <AppButton label={primary.label} onPress={primary.onPress} style={styles.cta} />
+                ) : null}
+                {secondary ? (
+                    <AppButton
+                        label={secondary.label}
+                        onPress={secondary.onPress}
+                        variant="secondary"
+                        style={styles.ctaSub}
+                    />
+                ) : null}
             </View>
-            <Text style={styles.title}>{title}</Text>
-            {description ? <Text style={styles.copy}>{description}</Text> : null}
-            {primary ? (
-                <AppButton label={primary.label} onPress={primary.onPress} style={styles.cta} />
-            ) : null}
-            {secondary ? (
-                <AppButton
-                    label={secondary.label}
-                    onPress={secondary.onPress}
-                    variant="secondary"
-                    style={styles.ctaSub}
-                />
-            ) : null}
         </View>
-    </View>
-);
+    );
+};
 
-export const EmptyState: React.FC<BaseStateProps> = props => (
-    <StateLayout {...props} defaultGlyph="+" defaultMark={colors.brandPrimary} />
-);
+export const EmptyState: React.FC<BaseStateProps> = props => {
+    const c = useThemeColors();
+    return <StateLayout {...props} defaultGlyph="+" defaultMark={c.brandPrimary} />;
+};
 
-export const ErrorState: React.FC<BaseStateProps> = props => (
-    <StateLayout {...props} defaultGlyph="!" defaultMark={colors.error} />
-);
+export const ErrorState: React.FC<BaseStateProps> = props => {
+    const c = useThemeColors();
+    return <StateLayout {...props} defaultGlyph="!" defaultMark={c.error} />;
+};
 
-export const PermissionState: React.FC<BaseStateProps> = props => (
-    <StateLayout {...props} defaultGlyph="!" defaultMark={colors.warning} />
-);
+export const PermissionState: React.FC<BaseStateProps> = props => {
+    const c = useThemeColors();
+    return <StateLayout {...props} defaultGlyph="!" defaultMark={c.warning} />;
+};
 
 /** 성공 화면 (출근/정정/휴가/가입/발급 완료 등) — 초록 체크 마크 */
-export const SuccessState: React.FC<BaseStateProps> = props => (
-    <StateLayout {...props} defaultGlyph="✓" defaultMark={colors.success} />
-);
+export const SuccessState: React.FC<BaseStateProps> = props => {
+    const c = useThemeColors();
+    return <StateLayout {...props} defaultGlyph="✓" defaultMark={c.success} />;
+};
 
 interface LoadingStateProps {
     title?: string;
@@ -89,18 +97,21 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
     title = '불러오는 중',
     description = '매장 상태를 불러오고 있어요',
     children,
-}) => (
-    <View style={styles.center}>
-        <View style={styles.inner}>
-            <View style={[styles.mark, {backgroundColor: colors.brandPrimary}]}>
-                <ActivityIndicator color={colors.textInverse} />
+}) => {
+    const c = useThemeColors();
+    return (
+        <View style={styles.center}>
+            <View style={styles.inner}>
+                <View style={[styles.mark, {backgroundColor: c.brandPrimary}]}>
+                    <ActivityIndicator color={c.textInverse} />
+                </View>
+                <Text style={[styles.title, {color: c.textPrimary}]}>{title}</Text>
+                {description ? <Text style={[styles.copy, {color: c.textSecondary}]}>{description}</Text> : null}
+                {children}
             </View>
-            <Text style={styles.title}>{title}</Text>
-            {description ? <Text style={styles.copy}>{description}</Text> : null}
-            {children}
         </View>
-    </View>
-);
+    );
+};
 
 const styles = StyleSheet.create({
     center: {flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl},
@@ -113,19 +124,17 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginBottom: spacing.md,
     },
-    markText: {color: colors.textInverse, fontSize: 22, fontWeight: '900'},
+    markText: {fontSize: 22, fontWeight: '900'},
     title: {
         fontSize: 22,
         lineHeight: 30,
         fontWeight: '800',
-        color: colors.textPrimary,
         textAlign: 'center',
     },
     copy: {
         marginTop: spacing.sm,
         fontSize: 14,
         lineHeight: 21,
-        color: colors.textSecondary,
         textAlign: 'center',
     },
     cta: {marginTop: spacing.lg, alignSelf: 'stretch'},

@@ -9,7 +9,8 @@
 import React, {ReactNode} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {colors, spacing} from '../../../theme/tokens';
+import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../hooks/useThemeColors';
 
 interface CtaStackProps {
     children: ReactNode;
@@ -21,12 +22,13 @@ interface CtaStackProps {
 
 export const CtaStack: React.FC<CtaStackProps> = ({children, bordered = false, transparent = false}) => {
     const insets = useSafeAreaInsets();
+    const c = useThemeColors();
     return (
         <View
             style={[
                 styles.wrap,
-                bordered && styles.bordered,
-                !transparent && styles.solid,
+                bordered && {borderTopWidth: 1, borderTopColor: c.divider},
+                !transparent && {backgroundColor: c.surfaceCanvas},
                 {paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.xs},
             ]}>
             {children}
@@ -40,8 +42,6 @@ const styles = StyleSheet.create({
         paddingTop: spacing.md,
         gap: spacing.sm,
     },
-    solid: {backgroundColor: colors.surfaceCanvas},
-    bordered: {borderTopWidth: 1, borderTopColor: colors.divider},
 });
 
 export default CtaStack;

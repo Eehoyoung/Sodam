@@ -7,7 +7,8 @@
  */
 import React from 'react';
 import {StyleProp, StyleSheet, Text, View, ViewStyle} from 'react-native';
-import {colors, radius, spacing} from '../../../theme/tokens';
+import {radius, spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../hooks/useThemeColors';
 
 export type BadgeTone = 'success' | 'warning' | 'error' | 'info' | 'neutral';
 
@@ -17,22 +18,23 @@ interface AppBadgeProps {
     style?: StyleProp<ViewStyle>;
 }
 
-const TONES: Record<BadgeTone, {bg: string; fg: string}> = {
-    success: {bg: colors.successBg, fg: colors.success},
-    warning: {bg: colors.warningBg, fg: '#B56D00'},
-    error: {bg: colors.errorBg, fg: colors.error},
-    info: {bg: colors.infoBg, fg: colors.info},
-    neutral: {bg: colors.surfaceMuted, fg: colors.textSecondary},
-};
-
 export const AppBadge: React.FC<AppBadgeProps> = ({label, tone = 'success', style}) => {
-    const c = TONES[tone];
+    const c = useThemeColors();
+    // warning fg 는 라이트에서 어두운 amber(#B56D00)로 고대비 보장 — 다크에서는 토큰 warning 자체 사용
+    const tones: Record<BadgeTone, {bg: string; fg: string}> = {
+        success: {bg: c.successBg, fg: c.success},
+        warning: {bg: c.warningBg, fg: c.warning === '#F59E0B' ? '#B56D00' : c.warning},
+        error: {bg: c.errorBg, fg: c.error},
+        info: {bg: c.infoBg, fg: c.info},
+        neutral: {bg: c.surfaceMuted, fg: c.textSecondary},
+    };
+    const t = tones[tone];
     return (
         <View
             accessible
             accessibilityLabel={label}
-            style={[styles.badge, {backgroundColor: c.bg}, style]}>
-            <Text numberOfLines={1} style={[styles.text, {color: c.fg}]}>
+            style={[styles.badge, {backgroundColor: t.bg}, style]}>
+            <Text numberOfLines={1} style={[styles.text, {color: t.fg}]}>
                 {label}
             </Text>
         </View>

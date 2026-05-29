@@ -9,7 +9,8 @@
  */
 import React, {ReactNode} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {colors, layout, spacing} from '../../../theme/tokens';
+import {layout, spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../hooks/useThemeColors';
 
 export interface HeaderAction {
     label?: string;
@@ -30,11 +31,18 @@ interface AppHeaderProps {
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({title, onBack, actions = [], dark = false, rightText}) => {
-    const fg = dark ? colors.textInverse : colors.textPrimary;
+    const c = useThemeColors();
+    const fg = dark ? c.textInverse : c.textPrimary;
     const trimmed = actions.slice(0, 2);
 
     return (
-        <View style={[styles.header, dark ? styles.darkHeader : styles.lightHeader]}>
+        <View
+            style={[
+                styles.header,
+                dark
+                    ? {backgroundColor: 'transparent'}
+                    : {backgroundColor: c.background, borderBottomWidth: 1, borderBottomColor: c.divider},
+            ]}>
             <View style={styles.side}>
                 {onBack ? (
                     <Pressable
@@ -54,7 +62,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({title, onBack, actions = []
 
             <View style={[styles.side, styles.right]}>
                 {rightText ? (
-                    <Text style={[styles.rightText, {color: dark ? colors.textInverse : colors.textSecondary}]}>
+                    <Text style={[styles.rightText, {color: dark ? c.textInverse : c.textSecondary}]}>
                         {rightText}
                     </Text>
                 ) : null}
@@ -65,8 +73,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({title, onBack, actions = []
                         hitSlop={8}
                         accessibilityRole="button"
                         accessibilityLabel={a.accessibilityLabel ?? a.label}
-                        style={styles.action}>
-                        {a.icon ?? <Text style={styles.actionLabel}>{a.label}</Text>}
+                        style={[styles.action, {backgroundColor: c.background, borderColor: c.border}]}>
+                        {a.icon ?? <Text style={[styles.actionLabel, {color: c.brandPrimary}]}>{a.label}</Text>}
                     </Pressable>
                 ))}
             </View>
@@ -82,12 +90,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.md,
         gap: spacing.sm,
     },
-    lightHeader: {
-        backgroundColor: colors.background,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.divider,
-    },
-    darkHeader: {backgroundColor: 'transparent'},
     side: {minWidth: 40, flexDirection: 'row', alignItems: 'center'},
     right: {justifyContent: 'flex-end', flexShrink: 0, gap: spacing.xs},
     backBtn: {width: 40, height: 44, alignItems: 'flex-start', justifyContent: 'center'},
@@ -100,11 +102,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.sm,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: colors.background,
         borderWidth: 1,
-        borderColor: colors.border,
     },
-    actionLabel: {fontSize: 12, fontWeight: '800', color: colors.brandPrimary},
+    actionLabel: {fontSize: 12, fontWeight: '800'},
     rightText: {fontSize: 13, fontWeight: '800'},
 });
 

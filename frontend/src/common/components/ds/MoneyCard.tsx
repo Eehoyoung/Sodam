@@ -4,7 +4,8 @@
  */
 import React from 'react';
 import {StyleProp, StyleSheet, Text, View, ViewStyle} from 'react-native';
-import {colors, radius, spacing, typography} from '../../../theme/tokens';
+import {radius, spacing, typography} from '../../../theme/tokens';
+import {useThemeColors} from '../../hooks/useThemeColors';
 
 interface MoneyCardProps {
     label: string;
@@ -15,30 +16,32 @@ interface MoneyCardProps {
     style?: StyleProp<ViewStyle>;
 }
 
-export const MoneyCard: React.FC<MoneyCardProps> = ({label, value, sub, valueColor = colors.brandPrimary, style}) => (
-    <View style={[styles.card, style]}>
-        <Text style={styles.label}>{label}</Text>
-        <Text style={[styles.value, {color: valueColor}]}>{value}</Text>
-        {sub ? <Text style={styles.sub}>{sub}</Text> : null}
-    </View>
-);
+export const MoneyCard: React.FC<MoneyCardProps> = ({label, value, sub, valueColor, style}) => {
+    const c = useThemeColors();
+    const resolvedValueColor = valueColor ?? c.brandPrimary;
+    return (
+        <View style={[styles.card, {backgroundColor: c.surfaceWarm, borderColor: c.brandPrimaryMuted}, style]}>
+            <Text style={[styles.label, {color: c.textSecondary}]}>{label}</Text>
+            <Text style={[styles.value, {color: resolvedValueColor}]}>{value}</Text>
+            {sub ? <Text style={[styles.sub, {color: c.textTertiary}]}>{sub}</Text> : null}
+        </View>
+    );
+};
 
 const styles = StyleSheet.create({
     card: {
-        backgroundColor: colors.surfaceWarm,
         borderWidth: 1,
-        borderColor: colors.brandPrimaryMuted,
         borderRadius: radius.xl,
         padding: spacing.lg,
     },
-    label: {fontSize: 11, fontWeight: '800', color: colors.textSecondary},
+    label: {fontSize: 11, fontWeight: '800'},
     value: {
         marginTop: 2,
         fontSize: typography.scale.numericLg.fontSize,
         lineHeight: typography.scale.numericLg.lineHeight,
         fontWeight: '900',
     },
-    sub: {marginTop: 4, fontSize: 12, lineHeight: 17, color: colors.textTertiary},
+    sub: {marginTop: 4, fontSize: 12, lineHeight: 17},
 });
 
 export default MoneyCard;

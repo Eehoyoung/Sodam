@@ -17,7 +17,8 @@ import React, {useEffect, useRef, useState} from 'react';
 import {Animated, StyleSheet, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {AppText} from './AppText';
-import {colors, radius, shadow, spacing} from '../../../theme/tokens';
+import {radius, shadow, spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../hooks/useThemeColors';
 
 type Tone = 'default' | 'success' | 'error' | 'warning';
 interface ToastMsg {id: number; text: string; tone: Tone}
@@ -34,18 +35,20 @@ export const AppToast = {
     warn(text: string) { this.show(text, 'warning'); },
 };
 
-const TONE_BG: Record<Tone, string> = {
-    default: colors.brandSecondary,    // navy
-    success: colors.success,
-    error: colors.error,
-    warning: colors.warning,
-};
-
 export const AppToastHost: React.FC = () => {
     const insets = useSafeAreaInsets();
+    const c = useThemeColors();
     const [current, setCurrent] = useState<ToastMsg | null>(null);
     const opacity = useRef(new Animated.Value(0)).current;
     const translate = useRef(new Animated.Value(20)).current;
+
+    // 토스트 배경은 현재 테마 팔레트의 같은 의미 색을 사용.
+    const toneBg: Record<Tone, string> = {
+        default: c.brandSecondary,
+        success: c.success,
+        error: c.error,
+        warning: c.warning,
+    };
 
     useEffect(() => {
         const handler = (m: ToastMsg) => {
@@ -78,7 +81,7 @@ export const AppToastHost: React.FC = () => {
                 accessibilityRole="alert"
                 style={[
                     styles.toast,
-                    {backgroundColor: TONE_BG[current.tone]},
+                    {backgroundColor: toneBg[current.tone]},
                     {opacity, transform: [{translateY: translate}]},
                 ]}>
                 <AppText variant="bodyMd" tone="inverse" weight="800" numberOfLines={2}>

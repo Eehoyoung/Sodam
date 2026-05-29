@@ -5,7 +5,8 @@
  */
 import React from 'react';
 import {Pressable, StyleProp, StyleSheet, Text, View, ViewStyle} from 'react-native';
-import {colors, radius, shadow, spacing} from '../../../theme/tokens';
+import {radius, shadow, spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../hooks/useThemeColors';
 
 interface SegmentedControlProps {
     options: string[];
@@ -16,8 +17,9 @@ interface SegmentedControlProps {
 }
 
 export const SegmentedControl: React.FC<SegmentedControlProps> = ({options, value, onChange, style}) => {
+    const c = useThemeColors();
     return (
-        <View style={[styles.track, style]} accessibilityRole="tablist">
+        <View style={[styles.track, {backgroundColor: c.surfaceMuted}, style]} accessibilityRole="tablist">
             {options.map((opt, i) => {
                 const on = i === value;
                 return (
@@ -26,8 +28,8 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = ({options, valu
                         onPress={() => onChange(i)}
                         accessibilityRole="tab"
                         accessibilityState={{selected: on}}
-                        style={[styles.seg, on ? styles.segOn : null]}>
-                        <Text numberOfLines={1} style={[styles.text, on ? styles.textOn : null]}>
+                        style={[styles.seg, on && {backgroundColor: c.background, ...shadow.sm}]}>
+                        <Text numberOfLines={1} style={[styles.text, {color: c.textSecondary}, on && {color: c.brandPrimary}]}>
                             {opt}
                         </Text>
                     </Pressable>
@@ -40,7 +42,6 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = ({options, valu
 const styles = StyleSheet.create({
     track: {
         flexDirection: 'row',
-        backgroundColor: '#EEE7DF',
         borderRadius: radius.xl,
         padding: 4,
         gap: 2,
@@ -53,9 +54,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingHorizontal: spacing.xs,
     },
-    segOn: {backgroundColor: colors.background, ...shadow.sm},
-    text: {fontSize: 12, fontWeight: '800', color: colors.textSecondary},
-    textOn: {color: colors.brandPrimary},
+    text: {fontSize: 12, fontWeight: '800'},
 });
 
 export default SegmentedControl;

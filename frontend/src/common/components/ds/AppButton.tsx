@@ -24,7 +24,8 @@ import {
     View,
     ViewStyle,
 } from 'react-native';
-import {colors, radius, shadow, spacing} from '../../../theme/tokens';
+import {radius, shadow, spacing} from '../../../theme/tokens';
+import {useThemeColors, ThemeColors} from '../../hooks/useThemeColors';
 
 export type ButtonVariant =
     | 'primary'
@@ -65,8 +66,9 @@ export const AppButton: React.FC<AppButtonProps> = ({
     style,
     testID,
 }) => {
+    const c = useThemeColors();
     const isDisabled = disabled || loading;
-    const palette = getPalette(variant, isDisabled);
+    const palette = getPalette(variant, isDisabled, c);
 
     return (
         <Pressable
@@ -113,25 +115,26 @@ export const AppButton: React.FC<AppButtonProps> = ({
 const getPalette = (
     variant: ButtonVariant,
     disabled: boolean,
+    c: ThemeColors,
 ): {bg: string; fg: string; border?: string} => {
     if (disabled) {
-        return {bg: colors.surfaceMuted, fg: colors.textDisabled};
+        return {bg: c.surfaceMuted, fg: c.textDisabled};
     }
     switch (variant) {
         case 'primary':
-            return {bg: colors.brandPrimary, fg: colors.textInverse};
+            return {bg: c.brandPrimary, fg: c.textInverse};
         case 'secondary':
-            return {bg: colors.background, fg: colors.brandSecondary, border: colors.border};
+            return {bg: c.background, fg: c.brandSecondary, border: c.border};
         case 'outline':
-            return {bg: 'transparent', fg: colors.brandPrimary, border: colors.border};
+            return {bg: 'transparent', fg: c.brandPrimary, border: c.border};
         case 'ghost':
-            return {bg: 'transparent', fg: colors.brandPrimary};
+            return {bg: 'transparent', fg: c.brandPrimary};
         case 'destructive':
-            return {bg: colors.background, fg: colors.error, border: colors.border};
+            return {bg: c.background, fg: c.error, border: c.border};
         case 'invertedPrimary':
-            return {bg: colors.background, fg: colors.brandSecondary};
+            return {bg: c.background, fg: c.brandSecondary};
         default:
-            return {bg: colors.brandPrimary, fg: colors.textInverse};
+            return {bg: c.brandPrimary, fg: c.textInverse};
     }
 };
 

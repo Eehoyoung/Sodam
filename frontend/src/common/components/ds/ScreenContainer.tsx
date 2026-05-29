@@ -22,7 +22,8 @@ import {
     ViewStyle,
 } from 'react-native';
 import {Edge, SafeAreaView} from 'react-native-safe-area-context';
-import {colors, layout, spacing} from '../../../theme/tokens';
+import {layout, spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../hooks/useThemeColors';
 
 interface ScreenContainerProps {
     children: ReactNode;
@@ -30,7 +31,7 @@ interface ScreenContainerProps {
     scroll?: boolean;
     /** 좌우/상단 패딩 적용 (기본 true) */
     padded?: boolean;
-    /** 화면 배경색 (기본 surfaceCanvas). 다크/그라디언트 화면은 'transparent' */
+    /** 화면 배경색 (기본: 현재 테마의 surfaceCanvas). 다크/그라디언트 화면은 'transparent' */
     backgroundColor?: string;
     /** 하단 고정 영역 (CtaStack 등). flex 형제로 렌더 — absolute 아님 */
     footer?: ReactNode;
@@ -52,7 +53,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
     children,
     scroll = false,
     padded = true,
-    backgroundColor = colors.surfaceCanvas,
+    backgroundColor,
     footer,
     header,
     keyboardAvoiding,
@@ -62,6 +63,8 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
     bottomInset = 0,
     testID,
 }) => {
+    const themed = useThemeColors();
+    const bg = backgroundColor ?? themed.surfaceCanvas;
     const shouldAvoidKeyboard = keyboardAvoiding ?? scroll;
 
     const innerPadding: ViewStyle = padded
@@ -96,7 +99,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
     );
 
     return (
-        <SafeAreaView style={[styles.flex, {backgroundColor}]} edges={edges} testID={testID}>
+        <SafeAreaView style={[styles.flex, {backgroundColor: bg}]} edges={edges} testID={testID}>
             <StatusBar barStyle={statusBarStyle} translucent backgroundColor="transparent" />
             {shouldAvoidKeyboard ? (
                 <KeyboardAvoidingView

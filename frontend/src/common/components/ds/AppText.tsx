@@ -5,7 +5,8 @@
  */
 import React from 'react';
 import {StyleProp, Text, TextProps, TextStyle} from 'react-native';
-import {colors, typography} from '../../../theme/tokens';
+import {typography} from '../../../theme/tokens';
+import {useThemeColors} from '../../hooks/useThemeColors';
 
 type Variant = keyof typeof typography.scale;
 type Tone = 'primary' | 'secondary' | 'tertiary' | 'brand' | 'inverse' | 'success' | 'error' | 'warning';
@@ -18,17 +19,6 @@ interface AppTextProps extends TextProps {
     style?: StyleProp<TextStyle>;
 }
 
-const TONE_COLORS: Record<Tone, string> = {
-    primary: colors.textPrimary,
-    secondary: colors.textSecondary,
-    tertiary: colors.textTertiary,
-    brand: colors.brandPrimary,
-    inverse: colors.textInverse,
-    success: colors.success,
-    error: colors.error,
-    warning: colors.warning,
-};
-
 export const AppText: React.FC<AppTextProps> = ({
     variant = 'bodyMd',
     tone = 'primary',
@@ -38,7 +28,18 @@ export const AppText: React.FC<AppTextProps> = ({
     children,
     ...rest
 }) => {
+    const c = useThemeColors();
     const s = typography.scale[variant];
+    const toneColors: Record<Tone, string> = {
+        primary: c.textPrimary,
+        secondary: c.textSecondary,
+        tertiary: c.textTertiary,
+        brand: c.brandPrimary,
+        inverse: c.textInverse,
+        success: c.success,
+        error: c.error,
+        warning: c.warning,
+    };
     return (
         <Text
             style={[
@@ -46,7 +47,7 @@ export const AppText: React.FC<AppTextProps> = ({
                     fontSize: s.fontSize,
                     lineHeight: s.lineHeight,
                     fontWeight: weight ?? s.fontWeight,
-                    color: TONE_COLORS[tone],
+                    color: toneColors[tone],
                 },
                 center ? {textAlign: 'center'} : null,
                 style,

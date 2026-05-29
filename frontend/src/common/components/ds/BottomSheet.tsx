@@ -9,7 +9,8 @@
 import React, {ReactNode} from 'react';
 import {Modal, Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {colors, radius, spacing} from '../../../theme/tokens';
+import {radius, spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../hooks/useThemeColors';
 import {AppText} from './AppText';
 import {AppButton, ButtonVariant} from './AppButton';
 
@@ -43,10 +44,11 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     scrollable = false,
 }) => {
     const insets = useSafeAreaInsets();
+    const c = useThemeColors();
 
     const body = (
         <>
-            <View style={styles.handle} />
+            <View style={[styles.handle, {backgroundColor: c.border}]} />
             {title ? <AppText variant="headingSm" style={styles.title}>{title}</AppText> : null}
             {description ? (
                 <AppText variant="bodyMd" tone="secondary" style={styles.desc}>{description}</AppText>
@@ -63,9 +65,9 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
 
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-            <Pressable style={styles.backdrop} onPress={onClose}>
+            <Pressable style={[styles.backdrop, {backgroundColor: c.overlayDark}]} onPress={onClose}>
                 <Pressable
-                    style={[styles.sheet, {paddingBottom: Math.max(insets.bottom, spacing.lg) + spacing.sm}]}
+                    style={[styles.sheet, {backgroundColor: c.background, paddingBottom: Math.max(insets.bottom, spacing.lg) + spacing.sm}]}
                     onPress={e => e.stopPropagation()}>
                     {scrollable ? (
                         <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -81,16 +83,15 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
 };
 
 const styles = StyleSheet.create({
-    backdrop: {flex: 1, backgroundColor: colors.overlayDark, justifyContent: 'flex-end'},
+    backdrop: {flex: 1, justifyContent: 'flex-end'},
     sheet: {
-        backgroundColor: colors.background,
         borderTopLeftRadius: radius.xxl,
         borderTopRightRadius: radius.xxl,
         paddingHorizontal: spacing.lg,
         paddingTop: spacing.md,
         maxHeight: '86%',
     },
-    handle: {width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: spacing.md},
+    handle: {width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.md},
     title: {marginBottom: spacing.xs},
     desc: {marginBottom: spacing.md},
     cta: {marginTop: spacing.md},
