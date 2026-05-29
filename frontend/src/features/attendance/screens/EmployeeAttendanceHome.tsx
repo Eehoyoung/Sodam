@@ -1,6 +1,6 @@
 import {AppToast, ConfirmSheet} from '../../../common/components/ds';
 import React, {useEffect, useMemo, useState} from 'react';
-import {Alert, StyleSheet, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {
     AppCard,
@@ -14,6 +14,7 @@ import {
 import {colors, spacing} from '../../../theme/tokens';
 import {formatTimer, formatWage} from '../../../common/utils/format';
 import {useAuth} from '../../../contexts/AuthContext';
+import {useResponsive} from '../../../common/hooks/useResponsive';
 import api from '../../../common/utils/api';
 
 type AttendanceState = 'IDLE' | 'WORKING' | 'DONE' | 'LOADING';
@@ -41,6 +42,12 @@ interface TodayAttendance {
 const EmployeeAttendanceHome: React.FC = () => {
     const navigation = useNavigation<any>();
     const {user} = useAuth();
+    const r = useResponsive();
+    // PunchButton 은 이미 자체 반응형이므로 화면은 주변 여백·바깥 카드만 조절.
+    // compactHeight(<700, iPhone SE/Mini 풍): 원형 CTA 가 화면을 더 차지하므로 사이 gap·marginVertical 을 줄여 quickLinks 가 안 잘리도록.
+    const bodyGap = r.pick({compact: spacing.md, default: spacing.lg});
+    const punchMargin = r.isCompactHeight ? 0 : spacing.sm;
+    const quickLinksGap = r.pick({compact: spacing.xs, default: spacing.sm});
     const [state, setState] = useState<AttendanceState>('LOADING');
     const [, setStores] = useState<MyStore[]>([]);
     const [selectedStore, setSelectedStore] = useState<MyStore | null>(null);
@@ -163,7 +170,7 @@ const EmployeeAttendanceHome: React.FC = () => {
                     actions={[{label: '내역', onPress: () => navigation.navigate('AttendanceCalendar')}]}
                 />
             }>
-            <View style={styles.body}>
+            <View style={[styles.body, {gap: bodyGap}]}>
                 <AppText variant="caption" tone="secondary" center>{formatToday()}</AppText>
 
                 <PunchButton
@@ -172,7 +179,7 @@ const EmployeeAttendanceHome: React.FC = () => {
                     state={state === 'WORKING' ? 'working' : 'idle'}
                     disabled={state === 'DONE'}
                     onPress={handleAction}
-                    style={styles.punch}
+                    style={[styles.punch, {marginVertical: punchMargin}]}
                 />
 
                 <AppText variant="titleMd" tone="secondary" center>
@@ -192,7 +199,7 @@ const EmployeeAttendanceHome: React.FC = () => {
                     </AppCard>
                 ) : null}
 
-                <View style={styles.quickLinks}>
+                <View style={[styles.quickLinks, {gap: quickLinksGap}]}>
                     <AppListItem title="이번 달 급여" right="›" onPress={() => navigation.navigate('SalaryList')} />
                     <AppListItem title="출근 기록" right="›" onPress={() => navigation.navigate('AttendanceCalendar')} />
                     <AppListItem title="매장 코드 입력" right="›" onPress={() => navigation.navigate('JoinStoreByCode')} />
@@ -222,10 +229,10 @@ function formatToday(): string {
 }
 
 const styles = StyleSheet.create({
-    body: {flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.lg},
-    punch: {marginVertical: spacing.sm},
+    body: {flex: 1, alignItems: 'center', justifyContent: 'center'},
+    punch: {},
     todayCard: {alignSelf: 'stretch', alignItems: 'center'},
-    quickLinks: {alignSelf: 'stretch', gap: spacing.sm, marginTop: spacing.sm},
+    quickLinks: {alignSelf: 'stretch', marginTop: spacing.sm},
 });
 
 export default EmployeeAttendanceHome;

@@ -1,11 +1,12 @@
 import {AppToast} from '../../../common/components/ds';
 import React, {useState} from 'react';
-import {Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View} from 'react-native';
+import {KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {NavigationProp} from '@react-navigation/native';
 import {AppButton, AppInput, AppText, Brandmark} from '../../../common/components/ds';
 import {colors, gradient, spacing} from '../../../theme/tokens';
+import {useResponsive} from '../../../common/hooks/useResponsive';
 import authApi from '../services/authApi';
 import {useAuth} from '../../../contexts/AuthContext';
 import PurposeSelectModal, {Purpose} from '../components/PurposeSelectModal';
@@ -25,6 +26,14 @@ const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
  * 다크 배경 + 히어로 카피 + 이메일/비밀번호 + 카카오. 로그인 로직/라우팅은 보존.
  */
 export default function LoginScreen({navigation}: LoginScreenProps) {
+    const r = useResponsive();
+    // compact(<360) 또는 compactHeight(<700): 다크 히어로 화면이 키보드 올라오면 좁아진다.
+    // brandmark 한 단계 축소 + scroll paddingTop·title·form gap 을 줄여 키보드 뜬 상태에서도 CTA 가 보이게.
+    const brandSize = r.pick({compact: 48, default: 56});
+    const scrollPadTop = r.isCompactHeight ? spacing.lg : spacing.xxl;
+    const titleMargin = r.pick({compact: spacing.md, default: spacing.lg});
+    const formMargin = r.pick({compact: spacing.lg, default: spacing.xl});
+    const formGap = r.pick({compact: spacing.sm, default: spacing.md});
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -136,16 +145,16 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
     return (
         <LinearGradient colors={gradient.darkScreen} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={styles.flex}>
             <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
-                <ScrollGuard>
-                    <Brandmark size={56} />
-                    <AppText variant="headingLg" tone="inverse" style={styles.title}>
+                <ScrollGuard scrollPadTop={scrollPadTop}>
+                    <Brandmark size={brandSize} />
+                    <AppText variant="headingLg" tone="inverse" style={[styles.title, {marginTop: titleMargin}]}>
                         {'다시 오셨네요.\n바로 시작해요'}
                     </AppText>
                     <AppText variant="bodyMd" tone="inverse" style={styles.copy}>
                         매장 상태와 내 근무 기록을 이어서 확인합니다.
                     </AppText>
 
-                    <View style={styles.form}>
+                    <View style={[styles.form, {marginTop: formMargin, gap: formGap}]}>
                         <AppInput
                             placeholder="이메일"
                             value={email}
@@ -200,10 +209,10 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
 }
 
 /** 키보드 회피 + 스크롤 (다크 화면 전용 경량 래퍼) */
-const ScrollGuard: React.FC<{children: React.ReactNode}> = ({children}) => (
+const ScrollGuard: React.FC<{children: React.ReactNode; scrollPadTop?: number}> = ({children, scrollPadTop}) => (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
-            contentContainerStyle={styles.scroll}
+            contentContainerStyle={[styles.scroll, scrollPadTop != null && {paddingTop: scrollPadTop}]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
             {children}

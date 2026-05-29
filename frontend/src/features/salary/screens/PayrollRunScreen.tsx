@@ -3,6 +3,7 @@ import React, {useState} from 'react';
 import {Alert, Modal, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {tokens} from '../../../theme/tokens';
+import {useResponsive} from '../../../common/hooks/useResponsive';
 import {
     AppBadge,
     AppButton,
@@ -68,6 +69,13 @@ interface PayrollPreview {
 const PayrollRunScreen: React.FC = () => {
     const route = useRoute<any>();
     const navigation = useNavigation<any>();
+    const r = useResponsive();
+    // 3 단계 정산 마법사 — compact(<360) 에서는 단계마다 카드/CTA 가 한 화면에 안 들어와 스크롤이 길어진다.
+    // 본문 padding·서브타이틀 marginBottom·총액카드 padding·CTA marginTop 만 한 단계씩 축소해 fold-above 정보량 확보.
+    const contentPad = r.pick({compact: tokens.spacing.md, default: tokens.spacing.lg});
+    const subtitleMargin = r.pick({compact: tokens.spacing.md, default: tokens.spacing.xl});
+    const totalCardPad = r.pick({compact: tokens.spacing.lg, default: tokens.spacing.xl});
+    const ctaMargin = r.pick({compact: tokens.spacing.lg, default: tokens.spacing.xxl});
     const storeIdParam = route.params?.storeId as number | undefined;
 
     const [step, setStep] = useState<Step>('PERIOD');
@@ -139,8 +147,8 @@ const PayrollRunScreen: React.FC = () => {
         <ScreenContainer
             scroll
             header={<AppHeader title="급여 정산" onBack={() => navigation.goBack()} />}>
-            <Stepper step={step} />
-            <View>
+            <Stepper step={step} compact={r.isCompact} />
+            <View style={{paddingHorizontal: contentPad - tokens.spacing.lg}}>
                 {step === 'PERIOD' && (
                     <PeriodForm
                         storeId={storeId}
@@ -151,6 +159,8 @@ const PayrollRunScreen: React.FC = () => {
                         setEndDate={setEndDate}
                         onNext={goPreview}
                         loading={loading}
+                        subtitleMargin={subtitleMargin}
+                        ctaMargin={ctaMargin}
                     />
                 )}
 
@@ -164,6 +174,8 @@ const PayrollRunScreen: React.FC = () => {
                             setPreviews(next);
                         }}
                         onNext={goConfirm}
+                        totalCardPad={totalCardPad}
+                        ctaMargin={ctaMargin}
                     />
                 )}
 
@@ -175,6 +187,7 @@ const PayrollRunScreen: React.FC = () => {
                         totalNet={totalNet}
                         loading={loading}
                         onIssue={issuePayrolls}
+                        ctaMargin={ctaMargin}
                     />
                 )}
 
@@ -189,11 +202,11 @@ const PayrollRunScreen: React.FC = () => {
     );
 };
 
-const Stepper: React.FC<{step: Step}> = ({step}) => {
+const Stepper: React.FC<{step: Step; compact?: boolean}> = ({step, compact}) => {
     const idx = step === 'PERIOD' ? 0 : step === 'PREVIEW' ? 1 : step === 'CONFIRM' ? 2 : 3;
     const labels = ['기간', '미리보기', '확인'];
     return (
-        <View style={styles.stepper}>
+        <View style={[styles.stepper, compact && {paddingVertical: tokens.spacing.sm}]}>
             {labels.map((label, i) => (
                 <React.Fragment key={label}>
                     <View
@@ -223,10 +236,12 @@ const PeriodForm: React.FC<any> = ({
     setEndDate,
     onNext,
     loading,
+    subtitleMargin,
+    ctaMargin,
 }) => (
     <View>
         <Text style={styles.title}>1단계: 기간 설정</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.subtitle, subtitleMargin != null && {marginBottom: subtitleMargin}]}>
             정산할 매장과 기간을 선택해 주세요.{'\n'}기본은 이번 달 1일~말일이에요.
         </Text>
 
@@ -247,12 +262,12 @@ const PeriodForm: React.FC<any> = ({
             size="lg"
             fullWidth
             loading={loading}
-            style={styles.cta}
+            style={[styles.cta, ctaMargin != null && {marginTop: ctaMargin}]}
         />
     </View>
 );
 
-const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust, onNext}) => {
+const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust, onNext, totalCardPad, ctaMargin}) => {
     const [adjustingIdx, setAdjustingIdx] = useState<number | null>(null);
     const [adjustAmount, setAdjustAmount] = useState('');
     const [adjustReason, setAdjustReason] = useState('');
@@ -280,7 +295,7 @@ const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust, onNext}) => {
     return (
     <View>
         <Text style={styles.title}>2단계: 미리보기</Text>
-        <Card bordered style={styles.totalCard}>
+        <Card bordered style={[styles.totalCard, totalCardPad != null && {paddingVertical: totalCardPad}]}>
             <Text style={styles.totalLabel}>총 지급 예정</Text>
             <Text style={styles.totalAmount}>₩{totalNet.toLocaleString('ko-KR')}</Text>
             <Text style={styles.totalSub}>{previews.length}명 직원</Text>
@@ -325,7 +340,7 @@ const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust, onNext}) => {
             size="lg"
             fullWidth
             disabled={previews.length === 0}
-            style={styles.cta}
+            style={[styles.cta, ctaMargin != null && {marginTop: ctaMargin}]}
         />
 
         <Modal
@@ -377,7 +392,7 @@ const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust, onNext}) => {
     );
 };
 
-const ConfirmCard: React.FC<any> = ({startDate, endDate, previews, totalNet, loading, onIssue}) => (
+const ConfirmCard: React.FC<any> = ({startDate, endDate, previews, totalNet, loading, onIssue, ctaMargin}) => (
     <View>
         <Text style={styles.title}>3단계: 확인</Text>
         <Card bordered style={styles.confirmCard}>
@@ -402,7 +417,7 @@ const ConfirmCard: React.FC<any> = ({startDate, endDate, previews, totalNet, loa
             size="lg"
             fullWidth
             loading={loading}
-            style={styles.cta}
+            style={[styles.cta, ctaMargin != null && {marginTop: ctaMargin}]}
         />
     </View>
 );

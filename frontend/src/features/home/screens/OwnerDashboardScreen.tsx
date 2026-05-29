@@ -16,6 +16,7 @@ import {colors, layout, spacing} from '../../../theme/tokens';
 import {formatMoney} from '../../../common/utils/format';
 import StoreSelector, {SelectableStore} from '../../../common/components/store/StoreSelector';
 import {useAuth} from '../../../contexts/AuthContext';
+import {useResponsive} from '../../../common/hooks/useResponsive';
 import api from '../../../common/utils/api';
 
 interface TodayStats {
@@ -40,6 +41,12 @@ interface MonthPayroll {
 const OwnerDashboardScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const {user} = useAuth();
+    const r = useResponsive();
+    // compact(<360): 화면 폭이 좁아 카드 사이 여백을 한 단계 줄여 hero·지표·MoneyCard 가 한 뷰에 안정적으로 들어오게 한다.
+    const contentGap = r.pick({compact: spacing.sm, default: spacing.md});
+    const heroSubMargin = r.pick({compact: 2, default: spacing.xs});
+    const tileBasis = r.pick<'47%' | '100%'>({compact: '100%', default: '47%'});
+    const tileEmojiSize = r.pick({compact: 24, default: 28});
     const [refreshing, setRefreshing] = useState(false);
     const [stores, setStores] = useState<SelectableStore[]>([]);
     const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
@@ -120,7 +127,7 @@ const OwnerDashboardScreen: React.FC = () => {
     return (
         <ScreenContainer padded={false} header={<AppHeader title={today?.storeName ?? '카페 소담'} actions={[{label: '알림', onPress: () => navigation.navigate('NotificationCenter')}]} />}>
             <ScrollView
-                contentContainerStyle={styles.content}
+                contentContainerStyle={[styles.content, {gap: contentGap}]}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 showsVerticalScrollIndicator={false}>
                 <StoreSelector stores={stores} selectedId={selectedStoreId} onSelect={setSelectedStoreId} />
@@ -129,7 +136,7 @@ const OwnerDashboardScreen: React.FC = () => {
                     <AppText variant="headingSm" tone="inverse">
                         {pending.length > 0 ? `오늘 처리할 일 ${pending.length}건` : '오늘 처리할 일이 없어요'}
                     </AppText>
-                    <AppText variant="bodyMd" tone="inverse" style={styles.heroSub}>
+                    <AppText variant="bodyMd" tone="inverse" style={[styles.heroSub, {marginTop: heroSubMargin}]}>
                         {user?.name ?? '사장님'}님, 출근 {today?.checkedInCount ?? 0}/{today?.totalActiveEmployees ?? 0}명 · 정산까지 {monthly?.daysRemainingInMonth ?? 0}일
                     </AppText>
                     <AppButton label="이상 출퇴근 확인" variant="secondary" onPress={() => navigation.navigate('MissingAttendanceCenter')} style={styles.heroCta} />
@@ -159,10 +166,10 @@ const OwnerDashboardScreen: React.FC = () => {
                 />
 
                 <View style={styles.grid}>
-                    <ActionTile title="급여 정산하기" emoji="💰" onPress={() => navigation.navigate('SalaryList')} />
-                    <ActionTile title="직원 추가" emoji="🧑‍🤝‍🧑" onPress={() => navigation.navigate('StoreDetail')} />
-                    <ActionTile title="위치/반경 설정" emoji="📍" onPress={() => navigation.navigate('StoreRegistraion')} />
-                    <ActionTile title="노무·세무 팁" emoji="📘" onPress={() => navigation.navigate('InfoList')} />
+                    <ActionTile title="급여 정산하기" emoji="💰" basis={tileBasis} emojiSize={tileEmojiSize} onPress={() => navigation.navigate('SalaryList')} />
+                    <ActionTile title="직원 추가" emoji="🧑‍🤝‍🧑" basis={tileBasis} emojiSize={tileEmojiSize} onPress={() => navigation.navigate('StoreDetail')} />
+                    <ActionTile title="위치/반경 설정" emoji="📍" basis={tileBasis} emojiSize={tileEmojiSize} onPress={() => navigation.navigate('StoreRegistraion')} />
+                    <ActionTile title="노무·세무 팁" emoji="📘" basis={tileBasis} emojiSize={tileEmojiSize} onPress={() => navigation.navigate('InfoList')} />
                 </View>
 
                 <AppCard variant="warm">
@@ -185,9 +192,15 @@ const Metric: React.FC<{label: string; value: string; tone: string}> = ({label, 
     </AppCard>
 );
 
-const ActionTile: React.FC<{title: string; emoji: string; onPress: () => void}> = ({title, emoji, onPress}) => (
-    <AppCard variant="flat" onPress={onPress} style={styles.tile}>
-        <AppText style={styles.tileEmoji}>{emoji}</AppText>
+const ActionTile: React.FC<{title: string; emoji: string; onPress: () => void; basis?: '47%' | '100%'; emojiSize?: number}> = ({
+    title,
+    emoji,
+    onPress,
+    basis = '47%',
+    emojiSize = 28,
+}) => (
+    <AppCard variant="flat" onPress={onPress} style={[styles.tile, {flexBasis: basis}]}>
+        <AppText style={[styles.tileEmoji, {fontSize: emojiSize}]}>{emoji}</AppText>
         <AppText variant="titleMd">{title}</AppText>
     </AppCard>
 );
@@ -205,15 +218,15 @@ function shortMoney(won: number): string {
 }
 
 const styles = StyleSheet.create({
-    content: {paddingHorizontal: layout.screenPaddingHorizontal, paddingTop: spacing.md, paddingBottom: spacing.xl, gap: spacing.md},
+    content: {paddingHorizontal: layout.screenPaddingHorizontal, paddingTop: spacing.md, paddingBottom: spacing.xl},
     heroSub: {marginTop: spacing.xs, opacity: 0.85},
     heroCta: {marginTop: spacing.md},
     cols: {flexDirection: 'row', gap: spacing.sm},
     metric: {flex: 1, alignItems: 'flex-start'},
     sectionTitle: {marginBottom: spacing.sm},
     grid: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm},
-    tile: {flexBasis: '47%', flexGrow: 1, alignItems: 'flex-start'},
-    tileEmoji: {fontSize: 28, marginBottom: spacing.xs},
+    tile: {flexGrow: 1, alignItems: 'flex-start'},
+    tileEmoji: {marginBottom: spacing.xs},
     insightBody: {marginTop: spacing.xs, lineHeight: 20},
 });
 

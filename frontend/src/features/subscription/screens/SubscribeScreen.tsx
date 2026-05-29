@@ -1,8 +1,9 @@
 import {AppToast, ConfirmSheet} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
-import {Alert, StyleSheet, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {tokens, spacing, colors} from '../../../theme/tokens';
+import {useResponsive} from '../../../common/hooks/useResponsive';
 import {
     AppBadge,
     AppButton,
@@ -72,6 +73,11 @@ const PLAN_VISUALS: Record<PlanType, {emoji: string; accent: string; recommended
  */
 const SubscribeScreen: React.FC = () => {
     const navigation = useNavigation<any>();
+    const r = useResponsive();
+    // compact(<360): 플랜 카드 4장이 세로로 길게 흐르므로 list gap·subtitle 여백·이모지 크기를 한 단계 축소해 1.5장 fold-above 보장.
+    const listGap = r.pick({compact: spacing.sm, default: spacing.md});
+    const subtitleMargin = r.pick({compact: spacing.md, default: spacing.lg});
+    const planEmojiSize = r.pick({compact: 24, default: 28});
     const [plans, setPlans] = useState<PlanCatalogItem[]>([]);
     const [current, setCurrent] = useState<SubscriptionResponse | null>(null);
     const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
@@ -147,7 +153,7 @@ const SubscribeScreen: React.FC = () => {
             <AppCard key={plan.name} variant="flat" onPress={() => setSelectedPlan(plan.name)} selected={isSelected} style={styles.planCard}>
                 <View style={styles.planHeader}>
                     <View style={styles.planTitleRow}>
-                        <AppText style={styles.planEmoji}>{v.emoji}</AppText>
+                        <AppText style={[styles.planEmoji, {fontSize: planEmojiSize}]}>{v.emoji}</AppText>
                         <View>
                             <AppText variant="headingSm" style={{color: v.accent}}>{plan.displayName}</AppText>
                             <AppText variant="caption" tone="secondary" style={styles.planPrice}>{formatPrice(plan)}</AppText>
@@ -189,14 +195,14 @@ const SubscribeScreen: React.FC = () => {
                 </CtaStack>
             }>
             <AppText variant="headingMd" style={styles.title}>소담과 함께 시작해요</AppText>
-            <AppText variant="bodyMd" tone="secondary" style={styles.subtitle}>
+            <AppText variant="bodyMd" tone="secondary" style={[styles.subtitle, {marginBottom: subtitleMargin}]}>
                 매장 규모에 맞는 플랜을 선택해 주세요. 언제든 해지·변경할 수 있어요.
             </AppText>
 
             {loading ? (
                 <AppText variant="bodyMd" tone="tertiary" center style={styles.loadingText}>플랜 정보를 불러오는 중…</AppText>
             ) : (
-                <View style={styles.list}>{plans.map(renderPlan)}</View>
+                <View style={[styles.list, {gap: listGap}]}>{plans.map(renderPlan)}</View>
             )}
         </ScreenContainer>
     );

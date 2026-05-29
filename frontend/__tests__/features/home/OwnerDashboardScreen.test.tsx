@@ -26,6 +26,8 @@ jest.mock('@react-navigation/native', () => ({
 
 jest.mock('react-native-safe-area-context', () => ({
     SafeAreaView: ({children}: any) => children,
+    // useResponsive 가 useSafeAreaInsets 사용 (compact 분기 추가 후 OwnerDashboard 가 의존)
+    useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
 }));
 
 jest.mock('react-native-linear-gradient', () => 'LinearGradient');
