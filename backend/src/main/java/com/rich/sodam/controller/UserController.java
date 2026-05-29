@@ -2,6 +2,7 @@ package com.rich.sodam.controller;
 
 import com.rich.sodam.domain.User;
 import com.rich.sodam.dto.request.EmployeeUpdateDto;
+import com.rich.sodam.dto.request.ProfileBasicsUpdateDto;
 import com.rich.sodam.dto.response.ApiResponse;
 import com.rich.sodam.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -131,6 +132,42 @@ public class UserController {
             ApiResponse<User> response = ApiResponse.error("INTERNAL_ERROR", "직원 정보 수정 중 오류가 발생했습니다.");
 
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    /**
+     * 프로필 기본정보 보강 (회원가입 후 첫 로그인 직후).
+     * - 전화번호(필수) + 이름 확정 + 생년월일(선택) 한 번에 수집
+     * - 완료 시 profile_completed_at 마킹 → FE 가 다음부터 본 화면 우회
+     * - 응답에 profileCompleted=true 포함 (FE 분기용)
+     */
+    @PutMapping("/me/profile-basics")
+    @Operation(summary = "프로필 기본정보 보강",
+            description = "회원가입 후 전화번호·이름·생년월일을 한 번에 보강. profile_completed_at 마킹.")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> completeProfile(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal
+                com.rich.sodam.security.UserPrincipal principal,
+            @Valid @RequestBody ProfileBasicsUpdateDto body) {
+        if (principal == null || principal.getId() == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("UNAUTHORIZED", "로그인이 필요해요."));
+        }
+        try {
+            User updated = userService.completeProfileBasics(
+                    principal.getId(),
+                    body.getPhone(),
+                    body.getName(),
+                    body.getBirthDate()
+            );
+            java.util.Map<String, Object> result = new java.util.HashMap<>();
+            result.put("userId", updated.getId());
+            result.put("name", updated.getName());
+            result.put("phone", updated.getPhone());
+            result.put("birthDate", updated.getBirthDate());
+            result.put("profileCompleted", updated.isProfileCompleted());
+            return ResponseEntity.ok(ApiResponse.success("프로필이 저장됐어요.", result));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("INVALID", e.getMessage()));
         }
     }
 

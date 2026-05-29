@@ -43,7 +43,9 @@ describe('authService FE-BE contract', () => {
       id: 3,
       name: '',
       email: '',
+      phone: undefined,
       role: 'MASTER',
+      profileCompleted: false,
     });
     await expect(TokenManager.getTokens()).resolves.toEqual({
       accessToken: 'access-1',

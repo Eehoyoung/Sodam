@@ -142,6 +142,10 @@ public class LoginController {
                 result.put("refreshToken", refreshToken.getToken());
                 result.put("userId", authenticationUser.get().getId());
                 result.put("userGrade", authenticationUser.get().getUserGrade().getValue());
+                result.put("name", authenticationUser.get().getName());
+                result.put("phone", authenticationUser.get().getPhone());
+                // FE 가 false 면 ProfileBasics 화면으로 강제 진입 (회원가입 후 1회성 보강)
+                result.put("profileCompleted", authenticationUser.get().isProfileCompleted());
 
                 String successMessage = messageSource.getMessage("auth.login.success", null, locale);
                 return ResponseEntity.ok(ApiResponse.success(successMessage, result));

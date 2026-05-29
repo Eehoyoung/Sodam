@@ -8,6 +8,11 @@ export interface User {
     email: string;
     phone?: string;
     role?: 'EMPLOYEE' | 'MANAGER' | 'MASTER' | 'USER' | 'PERSONAL';
+    /**
+     * 회원가입 후 ProfileBasics 보강 여부.
+     * false 면 로그인 직후 ProfileBasicsScreen 으로 강제 진입.
+     */
+    profileCompleted?: boolean;
 }
 
 export interface LoginRequest {
@@ -71,7 +76,9 @@ const mapAuthResponse = async (data: any): Promise<AuthResponse> => {
         id: root?.userId,
         name: root?.name ?? '',
         email: root?.email ?? '',
+        phone: root?.phone ?? undefined,
         role: mapRole(root?.userGrade),
+        profileCompleted: root?.profileCompleted ?? root?.user?.profileCompleted ?? false,
     };
 
     if (!accessToken) {

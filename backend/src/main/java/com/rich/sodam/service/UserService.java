@@ -303,6 +303,27 @@ public class UserService {
     }
 
     /**
+     * 프로필 기본정보 보강 (회원가입 후 첫 로그인 직후 호출).
+     * - phone(필수, 숫자만 저장) + name 갱신(선택) + birthDate(선택)
+     * - 완료 시 profile_completed_at 마킹 → FE 가 본 화면 우회
+     * - phone 형식 검증은 DTO @Pattern 에서 1차, 도메인 메서드에서 2차.
+     */
+    @Transactional
+    @CacheEvict(value = "users", key = "#userId")
+    public User completeProfileBasics(Long userId, String phone, String name, java.time.LocalDate birthDate) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없어요."));
+        if (name != null && !name.isBlank()) {
+            String trimmed = name.trim();
+            if (trimmed.length() < 2 || trimmed.length() > 50) {
+                throw new IllegalArgumentException("이름은 2~50자 사이여야 해요.");
+            }
+        }
+        user.completeProfile(phone, name, birthDate);
+        return userRepository.save(user);
+    }
+
+    /**
      * 본인 기본 정보(이름) 변경. 셀프.
      */
     @Transactional

@@ -6,6 +6,7 @@ import SignupScreen from '../features/auth/screens/SignupScreen';
 import PasswordResetScreen from '../features/auth/screens/PasswordResetScreen';
 import OnboardingCarouselScreen from '../features/welcome/screens/OnboardingCarouselScreen';
 import KakaoLoginScreen from '../features/auth/screens/KakaoLoginScreen';
+import ProfileBasicsScreen from '../features/auth/screens/ProfileBasicsScreen';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import appHeaderOptions from './appHeaderOptions';
@@ -17,10 +18,19 @@ const AuthNavigator: React.FC = () => {
   const navigation = useNavigation<RootNavigationProp>();
 
   useEffect(() => {
-    if (user) {
-      // 이미 로그인된 사용자는 Auth 스택으로 돌아갈 수 없도록 루트 리셋
-      navigation.reset({ index: 0, routes: [{ name: 'HomeRoot' as never }] as any });
+    if (!user) {
+      return;
     }
+    // 프로필 미완성 (회원가입 직후) → ProfileBasics 로 강제 진입
+    if (user.profileCompleted === false) {
+      navigation.reset({
+        index: 0,
+        routes: [{name: 'Auth' as never, params: {screen: 'ProfileBasics'} as never}] as any,
+      });
+      return;
+    }
+    // 이미 로그인된 사용자는 Auth 스택으로 돌아갈 수 없도록 루트 리셋
+    navigation.reset({ index: 0, routes: [{ name: 'HomeRoot' as never }] as any });
   }, [user, navigation]);
 
   return (
@@ -30,6 +40,11 @@ const AuthNavigator: React.FC = () => {
       <Stack.Screen name="PasswordReset" component={PasswordResetScreen} options={{ title: '비밀번호 찾기' }} />
       <Stack.Screen name="OnboardingCarousel" component={OnboardingCarouselScreen} options={{ headerShown: false }} />
       <Stack.Screen name="KakaoLogin" component={KakaoLoginScreen} options={{ headerShown: false }} />
+      <Stack.Screen
+        name="ProfileBasics"
+        component={ProfileBasicsScreen}
+        options={{ title: '기본 정보', headerBackVisible: false, gestureEnabled: false }}
+      />
     </Stack.Navigator>
   );
 };

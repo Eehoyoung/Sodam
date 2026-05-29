@@ -16,6 +16,8 @@ export type AuthStackParamList = {
     PasswordReset: undefined;
     OnboardingCarousel: undefined;
     KakaoLogin: undefined;
+    /** 회원가입 후 1회성 프로필 보강 (휴대폰·이름·생년월일) */
+    ProfileBasics: undefined;
 };
 
 // 홈 스택 파라미터 목록

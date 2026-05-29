@@ -84,6 +84,26 @@ public class User {
     private LocalDateTime marketingAgreedAt;
 
     /**
+     * 휴대폰 번호 — 최초 가입 시 미입력, ProfileBasics 보강 단계에서 수집.
+     * 형식: 010XXXXXXXX (저장은 숫자만, 표시는 FE 에서 하이픈 삽입).
+     * NotificationService SMS 발송·고객지원 식별 등에 사용.
+     */
+    @Column(name = "phone", length = 20)
+    private String phone;
+
+    /**
+     * 생년월일 (선택) — 만 14세 검증·맞춤 콘텐츠에 사용.
+     */
+    @Column(name = "birth_date")
+    private java.time.LocalDate birthDate;
+
+    /**
+     * 프로필 기본정보 완성 시점 — null 이면 로그인 후 ProfileBasics 로 강제 진입.
+     */
+    @Column(name = "profile_completed_at")
+    private LocalDateTime profileCompletedAt;
+
+    /**
      * 기본 생성자 (이메일과 이름으로 사용자 생성)
      *
      * @param email 사용자 이메일
@@ -127,6 +147,33 @@ public class User {
      */
     public void changeToEmployee() {
         this.userGrade = UserGrade.EMPLOYEE;
+    }
+
+    /**
+     * 프로필 기본정보 완성 처리 — phone 필수 검증 + 완성 시점 마킹.
+     * FE 가 로그인 후 profileCompleted=false 면 ProfileBasics 로 강제 진입,
+     * 본 메서드 호출 후 응답 profileCompleted=true 로 정상 라우팅.
+     */
+    public void completeProfile(String phone, String name, java.time.LocalDate birthDate) {
+        if (phone == null || phone.isBlank()) {
+            throw new IllegalArgumentException("phone is required");
+        }
+        // 숫자만 저장 (FE 가 하이픈 표시 책임)
+        this.phone = phone.replaceAll("[^0-9]", "");
+        if (name != null && !name.isBlank()) {
+            this.name = name.trim();
+        }
+        if (birthDate != null) {
+            this.birthDate = birthDate;
+        }
+        this.profileCompletedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 프로필 완성 여부 (로그인 응답 + FE 분기 판정에 사용).
+     */
+    public boolean isProfileCompleted() {
+        return this.profileCompletedAt != null;
     }
 
     /**
