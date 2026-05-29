@@ -184,8 +184,12 @@ const authService = {
                 ...data,
                 role: mapRole(data?.role ?? data?.userGrade),
             };
-        } catch (error) {
-            logger.error('getCurrentUser failed', 'AUTH_SERVICE', error);
+        } catch (error: any) {
+            // 401/403/404 는 정상적인 미인증/엔드포인트 미존재 상태 — LogBox 도배 방지 위해 silent
+            const status = error?.response?.status;
+            if (status !== 401 && status !== 403 && status !== 404) {
+                logger.error('getCurrentUser failed', 'AUTH_SERVICE', error);
+            }
             throw error;
         }
     },

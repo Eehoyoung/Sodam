@@ -9,8 +9,12 @@ export const useCurrentUser = () => {
         queryFn: async (): Promise<User> => {
             try {
                 return await authService.getCurrentUser();
-            } catch (error) {
-                handleQueryError(error, 'getCurrentUser');
+            } catch (error: any) {
+                // 401/403/404 는 정상 미인증/엔드포인트 미존재 — handleQueryError(LogBox 노출) 호출 안 함
+                const status = error?.response?.status;
+                if (status !== 401 && status !== 403 && status !== 404) {
+                    handleQueryError(error, 'getCurrentUser');
+                }
                 throw error;
             }
         },
@@ -18,11 +22,16 @@ export const useCurrentUser = () => {
         gcTime: 30 * 60 * 1000,
         enabled: false,
         retry: (failureCount, error: any) => {
-            if (error?.response?.status === 401) {
+            const status = error?.response?.status;
+            // 인증·존재 에러는 재시도해도 같은 결과 — 즉시 중단 (LogBox 폴링 방지)
+            if (status === 401 || status === 403 || status === 404) {
                 return false;
             }
             return failureCount < 3;
         },
+        // 키보드 포커스 변경 등으로 자동 재호출 방지 (login 직후만 명시 refetch)
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
         meta: {
             errorMessage: '사용자 정보를 가져오지 못했습니다.',
         },
@@ -43,8 +52,11 @@ export const useAuthStatus = () => {
         staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
         refetchOnMount: true,
-        refetchOnWindowFocus: true,
-        retry: 1,
+        // 입력 포커스 변경/네트워크 재연결마다 폴링 → /api/auth/me 도배 → LogBox 도배.
+        // staleTime 5분 안에는 캐시 신뢰, 명시적 refetch 만 허용.
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        retry: 0,
         meta: {
             errorMessage: '인증 상태 확인에 실패했습니다.',
         },
