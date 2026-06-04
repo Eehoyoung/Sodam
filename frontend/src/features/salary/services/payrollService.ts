@@ -28,7 +28,9 @@ async function getDetails(payrollId: number): Promise<PayrollDetails> {
   return (res.data as any)?.data || res.data;
 }
 
-async function updateStatus(payrollId: number, status: 'PENDING' | 'PAID' | 'CANCELLED'): Promise<{ success: boolean }>{
+// BE PayrollStatus enum 과 정합: DRAFT/CONFIRMED/PAID/CANCELLED. (구 'PENDING' 은 BE 에 없어 400 유발 — 제거)
+export type PayrollStatusValue = 'DRAFT' | 'CONFIRMED' | 'PAID' | 'CANCELLED';
+async function updateStatus(payrollId: number, status: PayrollStatusValue): Promise<{ success: boolean }>{
   const res = await api.put<{ success: boolean }>(`/api/payroll/${payrollId}/status`, { status });
   return (res.data as any)?.data || res.data || { success: true };
 }
