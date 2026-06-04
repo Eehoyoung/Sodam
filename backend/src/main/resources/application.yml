@@ -42,6 +42,10 @@ spring:
             user-name-attribute: id
 
 
+  # Flyway: 안전 기본값=비활성(dev/test 는 ddl-auto 가 스키마 관리). 운영은 application-prod 에서 활성화.
+  flyway:
+    enabled: ${FLYWAY_ENABLED:false}
+
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/sodam?serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true}
     driver-class-name: ${DB_DRIVER_CLASS_NAME:com.mysql.cj.jdbc.Driver}
@@ -50,7 +54,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: ${DDL_AUTO:create-drop}      # 운영 환경에서는 validate, 개발 환경에서는 create-drop 권장
+      ddl-auto: ${DDL_AUTO:validate}      # 안전 기본값=validate. dev 프로필이 create-drop 로 override (application-dev.yml). 프로필/환경변수 누락 시 데이터 보존
     properties:
       hibernate:
         globally_quoted_identifiers: true   # 예약어(예: user) 테이블/컬럼명 자동 인용
@@ -168,6 +172,12 @@ tax:
 # mock 으로 두면 LiveTossBillingClient 빈 생성 안되고 MockTossBillingClient 사용.
 # =============================================================================
 sodam:
+  # 급여(주휴수당) 정책 — 노무·법률 검토 반영
+  #  week-start-policy: 1주(週) 기산 기준. MONDAY(권장 기본) / SUNDAY / HIRE_DATE_ANCHORED / STORE_DEFINED
+  #    - 노무 검토: 임금명세·근로감독 표준인 월요일(ISO) 고정 권장. 사업장 단위 변경 허용, 직원별 상이는 비권장.
+  #  ※ 월 경계 주의 귀속월 규칙(주 종료일이 속한 월에 전액 귀속, 분할 금지)은 시스템 고정값 — 설정으로 열지 않음.
+  payroll:
+    week-start-policy: ${SODAM_PAYROLL_WEEK_START_POLICY:MONDAY}
   integration:
     toss:
       mode: ${SODAM_INTEGRATION_TOSS_MODE:mock}

@@ -6,6 +6,7 @@ import SignupScreen from '../features/auth/screens/SignupScreen';
 import PasswordResetScreen from '../features/auth/screens/PasswordResetScreen';
 import OnboardingCarouselScreen from '../features/welcome/screens/OnboardingCarouselScreen';
 import KakaoLoginScreen from '../features/auth/screens/KakaoLoginScreen';
+import ConsentScreen from '../features/auth/screens/ConsentScreen';
 import ProfileBasicsScreen from '../features/auth/screens/ProfileBasicsScreen';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
@@ -19,6 +20,14 @@ const AuthNavigator: React.FC = () => {
 
   useEffect(() => {
     if (!user) {
+      return;
+    }
+    // 필수 약관 미동의 (소셜 가입 직후) → Consent 로 강제 진입 (PIPA §22, G-2)
+    if (user.consentCompleted === false) {
+      navigation.reset({
+        index: 0,
+        routes: [{name: 'Auth' as never, params: {screen: 'Consent'} as never}] as any,
+      });
       return;
     }
     // 프로필 미완성 (회원가입 직후) → ProfileBasics 로 강제 진입
@@ -40,6 +49,11 @@ const AuthNavigator: React.FC = () => {
       <Stack.Screen name="PasswordReset" component={PasswordResetScreen} options={{ title: '비밀번호 찾기' }} />
       <Stack.Screen name="OnboardingCarousel" component={OnboardingCarouselScreen} options={{ headerShown: false }} />
       <Stack.Screen name="KakaoLogin" component={KakaoLoginScreen} options={{ headerShown: false }} />
+      <Stack.Screen
+        name="Consent"
+        component={ConsentScreen}
+        options={{ title: '약관 동의', headerBackVisible: false, gestureEnabled: false }}
+      />
       <Stack.Screen
         name="ProfileBasics"
         component={ProfileBasicsScreen}

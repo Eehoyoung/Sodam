@@ -93,6 +93,31 @@ export const authApi = {
     const res = await api.post(`/api/users/${userId}/purpose`, { purpose, userGrade: grade });
     return res.data as any;
   },
+
+  /**
+   * 동의 수집 (PIPA §22 — 필수/선택 분리, G-2). 카카오 등 소셜 가입 후 동의 보강에 사용.
+   * BE: POST /api/auth/consents (ConsentRequestDto).
+   */
+  async recordConsents(consent: {
+    age: boolean;
+    terms: boolean;
+    privacy: boolean;
+    marketing?: boolean;
+    locationInfo?: boolean;
+  }): Promise<void> {
+    await api.post(`/api/auth/consents`, {
+      ageConfirmed: !!consent.age,
+      termsAgreed: !!consent.terms,
+      privacyAgreed: !!consent.privacy,
+      marketingAgreed: !!consent.marketing,
+      locationInfoAgreed: !!consent.locationInfo,
+    });
+  },
+
+  /** 위치정보 동의/철회 (위치정보법 §18, G-1). BE: PUT /api/auth/consents/location?agreed= */
+  async setLocationConsent(agreed: boolean): Promise<void> {
+    await api.put(`/api/auth/consents/location`, undefined, { params: { agreed } });
+  },
 };
 
 export default authApi;

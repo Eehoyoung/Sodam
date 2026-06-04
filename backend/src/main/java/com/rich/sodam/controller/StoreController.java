@@ -8,6 +8,7 @@ import com.rich.sodam.dto.request.StoreUpdateDto;
 import com.rich.sodam.dto.response.GeocodingResult;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.service.GeocodingService;
+import com.rich.sodam.service.StoreAccessGuard;
 import com.rich.sodam.service.StoreManagementServiceImpl;
 import com.rich.sodam.service.StoreQueryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,6 +39,7 @@ public class StoreController {
     private final StoreManagementServiceImpl storeManagementService;
     private final GeocodingService geocodingService;
     private final StoreQueryService storeQueryService;
+    private final StoreAccessGuard storeAccessGuard;
 
     @Operation(summary = "매장 등록", description = "새로운 매장을 등록하고 사용자를 해당 매장의 사장으로 지정합니다.")
     @ApiResponses(value = {
@@ -197,6 +199,8 @@ public class StoreController {
             @Parameter(description = "매장 ID", required = true) @PathVariable Long storeId,
             @Parameter(description = "위치 업데이트 정보", required = true) @Valid @RequestBody LocationUpdateDto locationDto) {
 
+        storeAccessGuard.assertMasterOwnsStore(getCurrentUserId(), storeId); // 자기 매장만 수정
+
         // 주소가 변경된 경우 좌표 정보 갱신
         if (locationDto.getFullAddress() != null) {
             GeocodingResult geocoding = geocodingService.getCoordinates(locationDto.getFullAddress());
@@ -208,9 +212,10 @@ public class StoreController {
         return ResponseEntity.ok(store);
     }
 
-    @Operation(summary = "매장 단건 조회", description = "ID로 활성 매장 정보를 조회합니다.")
+    @Operation(summary = "매장 단건 조회", description = "ID로 활성 매장 정보를 조회합니다. 자기 매장만 조회 가능합니다.")
     @GetMapping("/{id}")
     public ResponseEntity<Store> getStoreById(@PathVariable Long id) {
+        storeAccessGuard.assertMasterOwnsStore(getCurrentUserId(), id); // 타 매장 정보 조회 차단
         return storeQueryService.findActiveById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -221,6 +226,7 @@ public class StoreController {
     public ResponseEntity<Store> updateStore(
             @Parameter(description = "매장 ID", required = true) @PathVariable Long storeId,
             @Parameter(description = "업데이트 정보", required = true) @Valid @RequestBody StoreUpdateDto updateDto) {
+        storeAccessGuard.assertMasterOwnsStore(getCurrentUserId(), storeId); // 자기 매장만 수정
         Store updated = storeManagementService.updateStore(storeId, updateDto);
         return ResponseEntity.ok(updated);
     }
@@ -228,6 +234,7 @@ public class StoreController {
     @Operation(summary = "매장 삭제", description = "매장을 소프트 삭제합니다.")
     @DeleteMapping("/{storeId}")
     public ResponseEntity<Void> deleteStore(@PathVariable Long storeId) {
+        storeAccessGuard.assertMasterOwnsStore(getCurrentUserId(), storeId); // 자기 매장만 삭제
         storeManagementService.deleteStore(storeId);
         return ResponseEntity.noContent().build();
     }

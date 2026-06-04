@@ -40,19 +40,27 @@ public class Payroll {
     private Double regularHours;    // 기본 근무 시간
     private Double overtimeHours;   // 초과 근무 시간
     private Double nightWorkHours;  // 야간 근무 시간
+    private Double holidayWorkHours; // 휴일 근무 시간(§56②)
 
     // 급여 금액 관련
     private Integer baseHourlyWage;       // 기본 시급
     private Integer regularWage;          // 기본 근무 급여
     private Integer overtimeWage;         // 초과 근무 급여
     private Integer nightWorkWage;        // 야간 근무 급여
+    private Integer holidayWorkWage;      // 휴일 근무 급여(§56②)
     private Integer weeklyAllowance;      // 주휴수당
     private Integer grossWage;            // 총 급여 (세전)
 
     // 세금 및 공제
     private Double taxRate;               // 적용된 세율
-    private Integer taxAmount;            // 세금 금액
+    private Integer taxAmount;            // 세금/공제 총액 (3.3% 원천징수 또는 4대보험 합계)
     private Integer deductions;           // 기타 공제액
+
+    // 임금명세서(§48②) 항목별 공제내역 — 4대보험 정책일 때 채워짐. 3.3% 정책은 taxAmount(소득세)만 사용.
+    private Integer nationalPensionDeduction;  // 국민연금
+    private Integer healthInsuranceDeduction;  // 건강보험
+    private Integer longTermCareDeduction;     // 장기요양
+    private Integer employmentInsuranceDeduction; // 고용보험
 
     // 최종 급여
     private Integer netWage;              // 실수령액 (세후)
@@ -94,6 +102,7 @@ public class Payroll {
         if (this.regularWage != null) total += this.regularWage;
         if (this.overtimeWage != null) total += this.overtimeWage;
         if (this.nightWorkWage != null) total += this.nightWorkWage;
+        if (this.holidayWorkWage != null) total += this.holidayWorkWage;
         if (this.weeklyAllowance != null) total += this.weeklyAllowance;
 
         this.grossWage = total;

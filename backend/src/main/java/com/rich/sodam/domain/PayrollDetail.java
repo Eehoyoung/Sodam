@@ -39,6 +39,7 @@ public class PayrollDetail {
     private Double regularHours;    // 기본 근무 시간
     private Double overtimeHours;   // 초과 근무 시간
     private Double nightWorkHours;  // 야간 근무 시간
+    private Double holidayWorkHours; // 휴일 근무 시간(§56②)
 
     // 적용된 시급
     private Integer baseHourlyWage;
@@ -47,7 +48,11 @@ public class PayrollDetail {
     private Integer regularWage;    // 기본 급여
     private Integer overtimeWage;   // 초과 근무 수당
     private Integer nightWorkWage;  // 야간 근무 수당
+    private Integer holidayWorkWage; // 휴일 근무 수당(§56②)
     private Integer dailyWage;      // 일 총액
+
+    @Column(name = "holiday_work", nullable = false)
+    private boolean holidayWork = false;
 
     // 비고
     private String note;

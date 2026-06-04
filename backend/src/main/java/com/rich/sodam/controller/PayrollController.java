@@ -177,6 +177,25 @@ public class PayrollController {
         return ResponseEntity.ok(PayrollDto.from(payroll));
     }
 
+    @Operation(summary = "급여 발급", description = "급여를 확정→지급완료로 원자 처리합니다 (정산 마법사 '발급').")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "발급 성공",
+                    content = @Content(schema = @Schema(implementation = PayrollDto.class))),
+            @ApiResponse(responseCode = "400", description = "발급 불가 상태(취소 등)"),
+            @ApiResponse(responseCode = "404", description = "급여 정보를 찾을 수 없음")
+    })
+    @MasterOnly
+    @PutMapping("/{payrollId}/issue")
+    public ResponseEntity<PayrollDto> issuePayroll(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Parameter(description = "급여 ID", required = true) @PathVariable Long payrollId) {
+        // 자기 매장 급여만 발급 가능
+        Payroll target = payrollService.getPayrollById(payrollId);
+        guard.assertMasterOwnsStore(principal.getId(), target.getStore().getId());
+        Payroll payroll = payrollService.issuePayroll(payrollId);
+        return ResponseEntity.ok(PayrollDto.from(payroll));
+    }
+
     @Operation(summary = "직원 급여 내역 조회", description = "특정 직원의 급여 내역을 기간별로 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공",

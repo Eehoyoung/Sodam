@@ -1,6 +1,7 @@
 package com.rich.sodam.service;
 
 import com.rich.sodam.config.app.AppProperties;
+import com.rich.sodam.core.payroll.constant.MinimumWage;
 import com.rich.sodam.domain.*;
 import com.rich.sodam.dto.request.EmployeeWageUpdateDto;
 import com.rich.sodam.dto.request.LocationUpdateDto;
@@ -15,6 +16,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -166,8 +168,27 @@ public class StoreManagementServiceImpl implements StoreManagementService {
                 .orElse("");
     }
 
+    /**
+     * 설정하려는 시급이 당해 연도 최저임금 이상인지 검증한다(최저임금법 §6).
+     *
+     * <p>최저임금 미달 지급은 형사처벌(§28: 3년↓ 또는 2천만원↓) 대상이므로, 데이터 저장 시점에
+     * 차단하여 사장이 위반 임금을 설정하지 못하게 한다. null(미설정)은 매장 기준시급으로 폴백되므로 통과시킨다.</p>
+     */
+    private void assertAtLeastMinimumWage(Integer hourlyWage) {
+        if (hourlyWage == null) {
+            return;
+        }
+        int year = LocalDate.now().getYear();
+        if (!MinimumWage.isAtLeastMinimum(hourlyWage, year)) {
+            throw new IllegalArgumentException(String.format(
+                    "%d년 최저임금(%,d원) 미만으로는 시급을 설정할 수 없습니다. 입력값: %,d원",
+                    year, MinimumWage.hourlyFor(year).intValue(), hourlyWage));
+        }
+    }
+
     @Transactional
     public void assignUserToStoreAsEmployee(Long userId, Long storeId, Integer customHourlyWage) {
+        assertAtLeastMinimumWage(customHourlyWage);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
 
@@ -221,6 +242,8 @@ public class StoreManagementServiceImpl implements StoreManagementService {
                 .findByEmployeeProfileAndStore(employeeProfile, store)
                 .orElseThrow(() -> new EntityNotFoundException("사원-매장 관계를 찾을 수 없습니다."));
 
+        assertAtLeastMinimumWage(wageDto.getCustomHourlyWage());
+
         // 시급 정보 업데이트
         Integer oldCustom = relation.getCustomHourlyWage();
         relation.setCustomHourlyWage(wageDto.getCustomHourlyWage());
@@ -248,6 +271,8 @@ public class StoreManagementServiceImpl implements StoreManagementService {
     public void updateStoreStandardWage(Long storeId, Integer standardHourlyWage) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new EntityNotFoundException("매장을 찾을 수 없습니다."));
+
+        assertAtLeastMinimumWage(standardHourlyWage);
 
         Integer oldWage = store.getStoreStandardHourWage();
         store.setStoreStandardHourWage(standardHourlyWage);

@@ -16,6 +16,8 @@ export type AuthStackParamList = {
     PasswordReset: undefined;
     OnboardingCarousel: undefined;
     KakaoLogin: undefined;
+    /** 소셜 가입 후 약관 동의 보강 (PIPA §22, G-2) */
+    Consent: undefined;
     /** 회원가입 후 1회성 프로필 보강 (휴대폰·이름·생년월일) */
     ProfileBasics: undefined;
 };

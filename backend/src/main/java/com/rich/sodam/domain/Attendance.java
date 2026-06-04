@@ -62,6 +62,14 @@ public class Attendance {
     @Setter
     private BigDecimal weeklyAllowance;
 
+    /**
+     * 휴일근로 여부(§56②). 약정휴일·공휴일 등 휴일에 근로한 경우 true.
+     * 사장이 수동 지정하며, true 면 급여계산 시 휴일가산(8h이내 50%·초과 100%)을 적용한다.
+     */
+    @Setter
+    @Column(name = "holiday_work", nullable = false)
+    private boolean holidayWork = false;
+
 
     // 시급 정보 (당시 적용된 시급)
     @Column(nullable = false)

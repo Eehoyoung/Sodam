@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@WithMockUser
+@WithMockUser(roles = "MASTER") // 콘텐츠 생성·수정·삭제는 @MasterOnly — 관리자 권한으로 통합검증
 @Transactional
 class LaborInfoIntegrationTest {
 

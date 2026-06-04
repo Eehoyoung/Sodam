@@ -164,8 +164,11 @@ public class KakaoAuthService {
 
             newUser.setUserGrade(UserGrade.Personal);
 
+            // ⚠️ G-2: 소셜 가입은 동의 없이 계정만 생성된다. 필수 동의(이용약관·개인정보·만14세)는
+            // 로그인 후 동의 화면에서 ConsentController(/api/auth/consents)로 수집해야 한다.
+            // hasCompletedRequiredConsents()==false 인 상태이므로 FE 는 이를 확인해 동의 화면으로 라우팅한다.
             User savedUser = userRepository.save(newUser);
-            log.info("신규 사용자 등록 완료 - ID: {}", savedUser.getId());
+            log.info("신규 사용자 등록 완료(동의 미수집, 후속 수집 필요) - ID: {}", savedUser.getId());
 
             return savedUser;
         } catch (Exception e) {

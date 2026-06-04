@@ -12,6 +12,7 @@ import com.rich.sodam.repository.AttendanceRepository;
 import com.rich.sodam.repository.EmployeeProfileRepository;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
 import com.rich.sodam.repository.StoreRepository;
+import com.rich.sodam.repository.UserRepository;
 import com.rich.sodam.util.DateTimeUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -37,12 +38,30 @@ public class AttendanceService {
     private final EmployeeStoreRelationRepository employeeStoreRelationRepository;
     private final LocationVerificationService locationService;
     private final UserService userService;
+    private final UserRepository userRepository;
+
+    /**
+     * 위치정보 수집·이용 동의 여부를 강제한다(위치정보법 §18·§19, G-1).
+     * GPS 좌표를 수집·검증하기 전에 동의가 없으면 차단한다 — 무동의 위치수집은 형사처벌 대상.
+     */
+    private void assertLocationConsent(Long userId) {
+        boolean agreed = userRepository.findById(userId)
+                .map(com.rich.sodam.domain.User::hasAgreedLocationInfo)
+                .orElse(false);
+        if (!agreed) {
+            throw new InvalidOperationException(
+                    "위치정보 수집·이용 동의가 필요합니다. 위치 동의 후 GPS 출퇴근을 이용해 주세요.");
+        }
+    }
 
     /**
      * 직원 출근 처리 (위치 검증 포함)
      */
     @Transactional
     public Attendance checkInWithVerification(Long employeeId, Long storeId, Double latitude, Double longitude) {
+        // 위치정보 동의 강제 (위치정보법 §18·§19) — GPS 좌표 수집·검증 전에 확인
+        assertLocationConsent(employeeId);
+
         // 위치 검증
         if (!locationService.verifyUserInStore(storeId, latitude, longitude)) {
             throw LocationVerificationException.outOfRange();
@@ -87,6 +106,9 @@ public class AttendanceService {
      */
     @Transactional
     public Attendance checkOutWithVerification(Long employeeId, Long storeId, Double latitude, Double longitude) {
+        // 위치정보 동의 강제 (위치정보법 §18·§19)
+        assertLocationConsent(employeeId);
+
         // 위치 검증
         if (!locationService.verifyUserInStore(storeId, latitude, longitude)) {
             throw LocationVerificationException.outOfRange();

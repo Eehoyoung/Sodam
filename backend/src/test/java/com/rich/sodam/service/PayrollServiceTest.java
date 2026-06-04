@@ -106,8 +106,11 @@ class PayrollServiceTest {
         System.out.println("[DEBUG_LOG] 기간별 급여 계산 테스트 시작");
 
         // Given
+        // ⚠️ 경계 race 방지: createAttendanceRecord 의 checkOut 은 (이 줄 이후의) now() 라
+        // endDate=now() 로 잡으면 H2 밀리초 정밀도에서 부하 시 checkOut > endDate 로 윈도우 밖으로
+        // 밀려 0 이 나온다(전체 실행 시 간헐 실패 원인). 윈도우 끝에 여유를 둬 기록을 확실히 포함시킨다.
         LocalDateTime startDate = LocalDateTime.now().minusDays(7);
-        LocalDateTime endDate = LocalDateTime.now();
+        LocalDateTime endDate = LocalDateTime.now().plusDays(1);
 
         // 출퇴근 기록 생성
         createAttendanceRecord(8);

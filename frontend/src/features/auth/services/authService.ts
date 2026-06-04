@@ -26,6 +26,13 @@ export interface User {
      * false 면 로그인 직후 ProfileBasicsScreen 으로 강제 진입.
      */
     profileCompleted?: boolean;
+    /**
+     * 필수 약관(이용약관·개인정보·만14세) 동의 완료 여부.
+     * false 면(소셜 가입 등) 로그인 직후 ConsentScreen 으로 강제 진입 (PIPA §22, G-2).
+     */
+    consentCompleted?: boolean;
+    /** 위치정보 동의 여부 — GPS 출퇴근 진입 가능 판정 (위치정보법 §18, G-1). */
+    locationConsented?: boolean;
 }
 
 export interface LoginRequest {

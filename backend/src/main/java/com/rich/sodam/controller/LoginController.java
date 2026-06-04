@@ -73,11 +73,33 @@ public class LoginController {
      */
     @Operation(summary = "카카오 로그인 처리", description = "카카오 OAuth 인증 코드를 처리하여 사용자를 인증합니다.")
     @GetMapping("/kakao/auth/proc")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> kakaoLogin(@RequestParam String code, HttpServletResponse response, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> kakaoLogin(
+            @RequestParam String code,
+            @RequestParam(value = "state", required = false) String state,
+            HttpServletResponse response, HttpServletRequest request) {
         Locale locale = localeResolver.resolveLocale(request);
 
+        // W-3: CSRF 방어용 state 검증 (try 이전 — 입력 검증 실패는 400 으로 반환, 500 catch 우회).
+        // 카카오 인가 요청 시 발급한 state 를 콜백에서 대조해야 한다.
+        // TODO[보안]: 인가 시작 엔드포인트에서 state 를 세션/Redis 에 저장하고 여기서 1회성 대조·소비.
+        //   현재는 인가 시작 흐름이 FE(카카오 SDK) 측에 있어 BE 가 발급 state 를 보관하지 않으므로
+        //   존재성·형식 검증만 수행. 운영 강화 시 PKCE 또는 BE 주도 state 발급으로 전환 필요.
+        if (state == null || state.isBlank()) {
+            // state 부재는 (구 클라이언트 호환 위해) 경고 후 진행. 운영 강화 시 state 강제 권장.
+            log.warn("카카오 콜백 state 누락 — CSRF 검증 생략됨(현 흐름 한계). 운영에서 state 강제 권장.");
+        } else if (!isValidStateFormat(state)) {
+            // 정상 OAuth state 는 항상 잘 정의된 토큰이다. 형식이 비정상인 state 가 "존재"하면
+            // 위변조·주입 시도로 간주하고 차단한다(경고만 하던 것을 거부로 강화).
+            log.warn("카카오 콜백 state 형식 비정상 — 위변조 의심으로 차단. stateLen={}", state.length());
+            String invalidMessage = messageSource.getMessage("auth.kakao.failed",
+                    new Object[]{"invalid state"}, locale);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(ErrorCode.KAKAO_AUTH_ERROR.getCode(), invalidMessage));
+        }
+
         try {
-            log.info("카카오 인증 코드 수신: {}", code);
+            // W-3: 인증 코드는 PII/시크릿에 준해 평문 로깅 금지 — 앞 4자리만 노출하고 나머지 마스킹.
+            log.info("카카오 인증 코드 수신: {}", maskCode(code));
 
             // 액세스 토큰 획득
             String accessToken = kakaoAuthService.getAccessToken(code, redirectUrl, clientId);
@@ -301,5 +323,26 @@ public class LoginController {
             log.error("현재 사용자 정보 조회 실패: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    /**
+     * 카카오 인증 코드 로그 마스킹 — 앞 4자리만 노출하고 나머지는 '*'.
+     * 인증 코드는 짧은 시간 유효한 1회성 시크릿이므로 평문 로깅 금지.
+     */
+    private String maskCode(String code) {
+        if (code == null || code.isBlank()) {
+            return "(empty)";
+        }
+        int visible = Math.min(4, code.length());
+        return code.substring(0, visible) + "****";
+    }
+
+    /**
+     * state 형식 1차 검증 — 길이/문자셋 기본 가드.
+     * (완전한 CSRF 방어는 발급 state 와의 대조가 필요 — 위 TODO 참고.)
+     */
+    private boolean isValidStateFormat(String state) {
+        // 통상 state 는 영숫자/하이픈/언더스코어로 구성된 16~256자 토큰.
+        return state.matches("[A-Za-z0-9_\\-]{8,256}");
     }
 }
