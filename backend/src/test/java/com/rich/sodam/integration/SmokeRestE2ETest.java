@@ -292,4 +292,48 @@ class SmokeRestE2ETest {
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.length()").value(0));
     }
+
+    // =====================================================================
+    // #9 — 동의 수집 E2E (G-2): 소셜 가입(동의 미수집) → POST /api/auth/consents → consentCompleted
+    // =====================================================================
+    @Test
+    @DisplayName("POST /api/auth/consents — 필수 동의 수집 200 + consentCompleted 반영")
+    void recordConsents_completesRequiredConsents() throws Exception {
+        User social = new User("social_smoke@example.com", "소셜가입자");
+        social.setUserGrade(UserGrade.Personal);
+        social = userRepository.save(social);
+        assertThat(social.hasCompletedRequiredConsents()).isFalse();
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("termsAgreed", true);
+        body.put("privacyAgreed", true);
+        body.put("ageConfirmed", true);
+        body.put("locationInfoAgreed", true);
+        body.put("marketingAgreed", false);
+
+        mockMvc.perform(post("/api/auth/consents")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body))
+                        .with(asPrincipal(social)))
+                .andExpect(status().isOk());
+
+        User reloaded = userRepository.findById(social.getId()).orElseThrow();
+        assertThat(reloaded.hasCompletedRequiredConsents()).isTrue();
+        assertThat(reloaded.hasAgreedLocationInfo()).isTrue();
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/consents — 필수 동의 누락 시 400")
+    void recordConsents_rejectsMissingRequired() throws Exception {
+        Map<String, Object> body = new HashMap<>();
+        body.put("termsAgreed", true);
+        body.put("privacyAgreed", false); // 필수 누락
+        body.put("ageConfirmed", true);
+
+        mockMvc.perform(post("/api/auth/consents")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body))
+                        .with(asPrincipal(employeeUser)))
+                .andExpect(status().isBadRequest());
+    }
 }
