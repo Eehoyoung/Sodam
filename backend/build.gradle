@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'jacoco'  // 테스트 커버리지 측정 (출시 직전 5계층 검증)
     id 'org.springframework.boot' version '3.4.5'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'com.github.node-gradle.node' version '3.5.1'  // Node.js 플러그인 추가
@@ -86,4 +87,24 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+    // 측정 대상에서 DTO/설정/엔티티 단순 구조는 제외(로직 커버리지에 집중)
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                'com/rich/sodam/dto/**',
+                'com/rich/sodam/config/**',
+                'com/rich/sodam/**/*Dto*',
+                'com/rich/sodam/SodamApplication*'
+            ])
+        }))
+    }
 }
