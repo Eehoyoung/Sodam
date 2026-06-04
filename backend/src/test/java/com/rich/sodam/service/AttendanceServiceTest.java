@@ -15,6 +15,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -416,7 +417,9 @@ class AttendanceServiceTest {
         // Given - 먼저 출근 기록 생성
         attendanceService.checkIn(testEmployee.getId(), testStore.getId(), 37.5665, 126.9780);
 
-        LocalDateTime checkInTime = LocalDateTime.now().minusMinutes(30); // 같은 날짜
+        // 같은 날짜 보장 — now()-30분은 자정 직후(00:00~00:30) 전날로 롤오버해 중복검출 실패(플래키)였음.
+        // 당일 자정(00:00)은 항상 오늘이며 now() 이하라 결정론적.
+        LocalDateTime checkInTime = LocalDate.now().atStartOfDay();
         ManualAttendanceRequestDto request = ManualAttendanceRequestDto.builder()
                 .employeeId(testEmployee.getId())
                 .storeId(testStore.getId())

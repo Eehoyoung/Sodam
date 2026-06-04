@@ -12,9 +12,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.service.StoreAccessGuard;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -37,11 +40,14 @@ public class StoreStatsController {
     private final EmployeeStoreRelationRepository employeeStoreRelationRepository;
     private final AttendanceRepository attendanceRepository;
     private final PayrollRepository payrollRepository;
+    private final StoreAccessGuard guard;
 
     @Operation(summary = "오늘 출근 현황", description = "활성 직원 수 / 체크인 완료 / 미체크인 명단.")
     @GetMapping("/{storeId}/stats/today")
     @Transactional(readOnly = true)
-    public ResponseEntity<Map<String, Object>> today(@PathVariable Long storeId) {
+    public ResponseEntity<Map<String, Object>> today(@AuthenticationPrincipal UserPrincipal principal,
+                                                     @PathVariable Long storeId) {
+        guard.assertMasterOwnsStore(principal.getId(), storeId);
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("store not found"));
 
@@ -77,13 +83,15 @@ public class StoreStatsController {
     @Operation(summary = "이번 달 누적 급여", description = "이번 달 발급된 급여 명세서의 총합 + 근무시간 누계.")
     @GetMapping("/{storeId}/stats/payroll/month-to-date")
     @Transactional(readOnly = true)
-    public ResponseEntity<Map<String, Object>> monthToDate(@PathVariable Long storeId) {
+    public ResponseEntity<Map<String, Object>> monthToDate(@AuthenticationPrincipal UserPrincipal principal,
+                                                           @PathVariable Long storeId) {
+        guard.assertMasterOwnsStore(principal.getId(), storeId);
         YearMonth ym = YearMonth.now();
         LocalDate start = ym.atDay(1);
         LocalDate end = LocalDate.now();
 
-        List<Payroll> all = payrollRepository.findAll().stream()
-                .filter(p -> p.getStore() != null && p.getStore().getId().equals(storeId))
+        // 전테넌트 findAll() 대신 매장 스코프 쿼리로 조회(성능·격리). 기간 필터는 동일 의미 유지.
+        List<Payroll> all = payrollRepository.findByStore_IdOrderByEndDateDesc(storeId).stream()
                 .filter(p -> p.getStartDate() != null && !p.getStartDate().isBefore(start)
                         && !p.getStartDate().isAfter(end))
                 .toList();

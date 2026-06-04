@@ -59,10 +59,11 @@ export interface JSISafeDimensions {
  * ```
  */
 export const useJSISafeDimensions = (): JSISafeDimensions => {
-    try {
-        // Cache raw dimensions first to prevent JSI violations
-        const rawDimensions = useMemo(() => {
-            try {
+    // ⚠️ Hooks(useMemo)는 절대 try/catch 로 감싸지 않는다 — 중간 throw 시 hook 호출 수가 달라져
+    // "Rendered fewer hooks than expected" 크래시(rules-of-hooks). 오류 처리는 각 useMemo 내부 가드로 한다.
+    // Cache raw dimensions first to prevent JSI violations
+    const rawDimensions = useMemo(() => {
+        try {
                 // Check if Dimensions API is available and ready
                 if (typeof Dimensions === 'undefined') {
                     return {width: 375, height: 667};
@@ -151,41 +152,6 @@ export const useJSISafeDimensions = (): JSISafeDimensions => {
             safeAreas,
             animationValues,
         };
-    } catch (error) {
-        console.error('useJSISafeDimensions: Critical error occurred:', error);
-
-        // Return fallback values in case of error
-        const fallbackDimensions = {width: 375, height: 667}; // iPhone 6/7/8 dimensions as fallback
-
-        return {
-            dimensions: {
-                screenWidth: fallbackDimensions.width,
-                screenHeight: fallbackDimensions.height,
-                isLandscape: fallbackDimensions.width > fallbackDimensions.height,
-                aspectRatio: fallbackDimensions.width / fallbackDimensions.height,
-            },
-            breakpoints: {
-                isSmall: fallbackDimensions.width < 400,
-                isMedium: fallbackDimensions.width >= 400 && fallbackDimensions.width < 768,
-                isLarge: fallbackDimensions.width >= 768 && fallbackDimensions.width < 1024,
-                isTablet: fallbackDimensions.width >= 768,
-            },
-            safeAreas: {
-                top: fallbackDimensions.height * 0.1,
-                bottom: fallbackDimensions.height * 0.1,
-                content: fallbackDimensions.height * 0.8,
-                sidebar: fallbackDimensions.width * 0.25,
-            },
-            animationValues: {
-                halfWidth: fallbackDimensions.width * 0.5,
-                halfHeight: fallbackDimensions.height * 0.5,
-                quarterWidth: fallbackDimensions.width * 0.25,
-                quarterHeight: fallbackDimensions.height * 0.25,
-                threeQuarterWidth: fallbackDimensions.width * 0.75,
-                threeQuarterHeight: fallbackDimensions.height * 0.75,
-            },
-        };
-    }
 };
 
 /**
