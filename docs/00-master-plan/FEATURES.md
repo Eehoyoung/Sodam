@@ -182,9 +182,11 @@
 
 ## 출시 차단 (Blocker) 체크리스트
 
+> 📋 종합 진단: [출시 준비도 종합](../03-backlog/출시-준비도-종합.md) — **코드로 닫을 차단 0**, 잔여는 전부 외부·인간 액션.
+
 출시 전 무조건 끝나야 하는 항목:
 
-- [x] G-2 정기결제 연동 (토스페이먼츠) — BE Mock/Live 클라이언트 완성, FE SDK 통합만 남음 (CONFIRM_REQUIRED.md C-1)
+- [x] G-2 정기결제 연동 (토스페이먼츠) — BE Mock/Live + **단건결제·FE 결제창까지 key-ready**(실키 주입 시 작동, [런북](../02-runbook/결제-라이브-전환.md))
 - [x] H. FCM 푸시 (최소 출퇴근/결제) — BE 완료, FE firebase-messaging SDK 통합만 남음 (C-2)
 - [x] J. Sentry 연동 — BE SentryConfig 완료 (C-3)
 - [ ] J. 채널톡 CS 위젯 (C-4)
