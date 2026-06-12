@@ -4,7 +4,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rich.sodam.config.integration.IntegrationProperties;
 import com.rich.sodam.domain.PaymentHistory;
+import com.rich.sodam.domain.Subscription;
+import com.rich.sodam.domain.type.SubscriptionStatus;
 import com.rich.sodam.repository.PaymentHistoryRepository;
+
+import java.time.LocalDateTime;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -60,7 +64,10 @@ public class TossWebhookController {
 
             paymentHistoryRepository.findByPaymentKey(paymentKey).ifPresent(ph -> {
                 switch (status.toUpperCase()) {
-                    case "DONE" -> ph.markSuccess(paymentKey);
+                    case "DONE" -> {
+                        ph.markSuccess(paymentKey);
+                        activateSubscriptionIfNeeded(ph);
+                    }
                     case "CANCELED", "PARTIAL_CANCELED" -> ph.markRefunded();
                     case "ABORTED", "EXPIRED" -> ph.markFailed("webhook:" + status);
                     default -> log.debug("처리하지 않는 상태: {}", status);
@@ -71,6 +78,20 @@ public class TossWebhookController {
             log.error("토스 웹훅 처리 오류", e);
             return ResponseEntity.status(500).build();
         }
+    }
+
+    /**
+     * 웹훅 DONE 시 구독 기간을 활성화(동기 청구가 누락된 경우의 백업). 이미 ACTIVE면 멱등 스킵해
+     * 반복 웹훅에도 기간이 중복 연장되지 않는다.
+     */
+    private void activateSubscriptionIfNeeded(PaymentHistory ph) {
+        Subscription s = ph.getSubscription();
+        if (s == null || s.getStatus() == SubscriptionStatus.ACTIVE) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        s.activate(now, s.getBillingCycle().periodEndFrom(now));
+        log.info("웹훅으로 구독 활성화 sub={} 기간만료={}", s.getId(), s.getCurrentPeriodEndAt());
     }
 
     private boolean verifySignature(String body, String signature) {

@@ -4,14 +4,19 @@ import com.rich.sodam.domain.MasterProfile;
 import com.rich.sodam.domain.MasterStoreRelation;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.User;
+import com.rich.sodam.domain.EmployeeStoreRelation;
+import com.rich.sodam.repository.EmployeeStoreRelationRepository;
 import com.rich.sodam.repository.MasterProfileRepository;
 import com.rich.sodam.repository.MasterStoreRelationRepository;
+import com.rich.sodam.repository.PayrollRepository;
 import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,18 +31,38 @@ public class MasterProfileService {
     private final MasterStoreRelationRepository masterStoreRelationRepository;
     private final StoreRepository storeRepository;
     private final TimeOffService timeOffService;
+    private final EmployeeStoreRelationRepository employeeStoreRelationRepository;
+    private final PayrollRepository payrollRepository;
 
     @Autowired
     public MasterProfileService(MasterProfileRepository masterProfileRepository,
                                 UserRepository userRepository,
                                 MasterStoreRelationRepository masterStoreRelationRepository,
                                 StoreRepository storeRepository,
-                                TimeOffService timeOffService) {
+                                TimeOffService timeOffService,
+                                EmployeeStoreRelationRepository employeeStoreRelationRepository,
+                                PayrollRepository payrollRepository) {
         this.masterProfileRepository = masterProfileRepository;
         this.userRepository = userRepository;
         this.masterStoreRelationRepository = masterStoreRelationRepository;
         this.storeRepository = storeRepository;
         this.timeOffService = timeOffService;
+        this.employeeStoreRelationRepository = employeeStoreRelationRepository;
+        this.payrollRepository = payrollRepository;
+    }
+
+    /** 매장 해당 월 확정 인건비(급여 grossWage 합, 원). */
+    private long laborCostOf(Long storeId, YearMonth month) {
+        LocalDate from = month.atDay(1);
+        LocalDate to = month.atEndOfMonth();
+        return payrollRepository.findByStoreIdAndPeriod(storeId, from, to).stream()
+                .mapToLong(p -> p.getGrossWage() == null ? 0L : p.getGrossWage())
+                .sum();
+    }
+
+    /** 매장 활성 직원 수. */
+    private int activeEmployeeCountOf(Store store) {
+        return employeeStoreRelationRepository.findByStoreAndIsActiveTrue(store).size();
     }
 
     /**
@@ -76,21 +101,26 @@ public class MasterProfileService {
     /**
      * 사장이 소유한 매장 통계 조회
      */
+    @Transactional(readOnly = true)
     public Map<String, Object> getStoreStats(Long storeId, String month) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new NoSuchElementException("매장을 찾을 수 없습니다."));
 
-        // 실제 구현에서는 DB에서 통계 데이터를 조회
-        // 여기서는 예시 데이터 반환
-        int employeeCount = 8; // 예시 데이터, 실제로는 DB에서 조회
-        long laborCost = 8500000; // 예시 데이터, 실제로는 DB에서 조회
+        YearMonth ym = (month == null || month.isBlank()) ? YearMonth.now() : YearMonth.parse(month);
+        List<EmployeeStoreRelation> active = employeeStoreRelationRepository.findByStoreAndIsActiveTrue(store);
+        int employeeCount = active.size();
+        long laborCost = laborCostOf(storeId, ym);
+        int averageHourlyWage = active.isEmpty() ? 0
+                : (int) Math.round(active.stream()
+                        .mapToInt(EmployeeStoreRelation::getAppliedHourlyWage)
+                        .average().orElse(0));
 
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalEmployees", employeeCount);
         stats.put("totalLaborCost", laborCost);
-        stats.put("averageHourlyWage", Math.round(laborCost / (employeeCount * 160)));
-        stats.put("pendingTimeOffRequests", 3); // 실제로는 TimeOffService에서 조회
-        stats.put("month", month);
+        stats.put("averageHourlyWage", averageHourlyWage);
+        stats.put("pendingTimeOffRequests", 0); // 매장 단위 집계는 미지원 — 마스터 통합 통계에서 제공
+        stats.put("month", ym.toString());
 
         return stats;
     }
@@ -98,14 +128,15 @@ public class MasterProfileService {
     /**
      * 사장이 소유한 모든 매장의 통합 통계 조회
      */
+    @Transactional(readOnly = true)
     public Map<String, Object> getCombinedStats(Long masterId) {
         List<Store> stores = getStoresByMaster(masterId);
+        YearMonth thisMonth = YearMonth.now();
 
         int totalStores = stores.size();
-        // 실제 구현에서는 DB에서 통계 데이터를 조회
-        // 여기서는 예시 데이터 반환
-        int totalEmployees = 25; // 예시 데이터, 실제로는 DB에서 조회
-        long totalLaborCost = 25000000; // 예시 데이터, 실제로는 DB에서 조회
+        int totalEmployees = stores.stream().mapToInt(this::activeEmployeeCountOf).sum();
+        long totalLaborCost = stores.stream()
+                .mapToLong(s -> laborCostOf(s.getId(), thisMonth)).sum();
         int pendingTimeOffRequests = timeOffService.countPendingTimeOffsByMaster(masterId);
 
         Map<String, Object> stats = new HashMap<>();

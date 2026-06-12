@@ -62,6 +62,20 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 플랜 게이팅 거부 — 현재 구독 플랜으로 접근 불가한 기능 (402). FE 가 페이월/업그레이드 유도.
+     */
+    @ExceptionHandler(PlanRequiredException.class)
+    public ResponseEntity<ApiResponse<Object>> handlePlanRequired(PlanRequiredException e) {
+        log.info("플랜 게이팅: required={} current={} - {}",
+                e.getRequiredPlan(), e.getCurrentPlan(), e.getMessage());
+        Map<String, String> detail = new HashMap<>();
+        detail.put("requiredPlan", e.getRequiredPlan().name());
+        detail.put("currentPlan", e.getCurrentPlan().name());
+        ApiResponse<Object> response = ApiResponse.error("PLAN_REQUIRED", e.getMessage(), detail);
+        return new ResponseEntity<>(response, HttpStatus.PAYMENT_REQUIRED);
+    }
+
+    /**
      * 인증 실패 — JWT 없음/만료/잘못된 토큰.
      */
     @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)

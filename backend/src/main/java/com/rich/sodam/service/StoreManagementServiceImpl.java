@@ -159,6 +159,53 @@ public class StoreManagementServiceImpl implements StoreManagementService {
 
     @Override
     @Transactional(readOnly = true)
+    public com.rich.sodam.dto.response.OperatingHoursResponseDto getOperatingHours(Long storeId) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new EntityNotFoundException("매장을 찾을 수 없습니다. ID: " + storeId));
+        return com.rich.sodam.dto.response.OperatingHoursResponseDto.from(store);
+    }
+
+    @Override
+    @Transactional
+    public com.rich.sodam.dto.response.OperatingHoursResponseDto updateOperatingHours(
+            Long storeId, com.rich.sodam.dto.request.OperatingHoursUpdateDto dto) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new EntityNotFoundException("매장을 찾을 수 없습니다. ID: " + storeId));
+        com.rich.sodam.domain.OperatingHours oh = com.rich.sodam.domain.OperatingHours.createDefault();
+        if (dto.getOperatingHours() != null) {
+            for (com.rich.sodam.dto.request.OperatingHoursUpdateDto.DayOperatingHours d : dto.getOperatingHours()) {
+                boolean closed = Boolean.TRUE.equals(d.getIsClosed());
+                oh.setDayOperatingHours(d.getDayOfWeek(), d.getOpenTime(), d.getCloseTime(), closed);
+            }
+        }
+        store.updateOperatingHours(oh);
+        storeRepository.save(store);
+        return com.rich.sodam.dto.response.OperatingHoursResponseDto.from(store);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<com.rich.sodam.dto.response.WageHistoryDto> getStoreWageHistory(Long storeId) {
+        return wageHistoryRepository.findByStore_IdOrderByEffectiveFromDesc(storeId)
+                .stream().map(com.rich.sodam.dto.response.WageHistoryDto::from).toList();
+    }
+
+    @Override
+    @Transactional
+    public void setEmployeeActive(Long storeId, Long employeeId, boolean active) {
+        if (storeId == null || employeeId == null) {
+            throw new IllegalArgumentException("storeId 와 employeeId 는 필수입니다.");
+        }
+        EmployeeStoreRelation relation = employeeStoreRelationRepository
+                .findRelation(employeeId, storeId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "직원-매장 관계를 찾을 수 없습니다. employeeId=" + employeeId + ", storeId=" + storeId));
+        relation.setIsActive(active);
+        employeeStoreRelationRepository.save(relation);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public String getOwnerMemo(Long storeId, Long employeeId) {
         if (storeId == null || employeeId == null) {
             return "";

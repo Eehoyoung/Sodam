@@ -48,6 +48,10 @@ public class PayrollService {
     private final com.rich.sodam.core.payroll.wage.DailyWageCalculator dailyWageCalculator;
     private final com.rich.sodam.core.payroll.wage.WorkHoursCalculator workHoursCalculator;
     private final com.rich.sodam.core.payroll.deduction.SocialInsuranceCalculator socialInsuranceCalculator;
+    private final PlanAccessService planAccessService;
+
+    /** 미리보기 워터마크 문구(매장 사장 플랜이 명세서 PDF 발급 권한 미보유 시). */
+    private static final String PAYSLIP_WATERMARK = "소담 미리보기 · STARTER 플랜에서 정식 발급";
 
     /**
      * 임금명세서 투명성 고지 (사실 안내). 계산 근거·한계·최종 책임 주체를 명시해 사용자가
@@ -768,9 +772,15 @@ public class PayrollService {
                 .orElseThrow(() -> new EntityNotFoundException("급여 내역을 찾을 수 없습니다. ID: " + payrollId));
         List<PayrollDetail> details = payrollDetailRepository.findByPayroll_IdOrderByWorkDateAsc(payrollId);
 
+        // 게이팅: 매장 사장 플랜이 명세서 PDF 발급 권한(STARTER+)을 보유하지 않으면 워터마크(미리보기).
+        // 하드 차단(402)은 직원의 본인 명세서 조회까지 막으므로, 발급은 허용하되 워터마크로 "정식 발급 아님"을 표시.
+        boolean watermark = payroll.getStore() == null
+                || !planAccessService.storeOwnerHasFeature(
+                        payroll.getStore().getId(), com.rich.sodam.domain.type.PlanFeature.PAYSLIP_PDF);
+
         try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream()) {
             com.lowagie.text.Document document = new com.lowagie.text.Document(com.lowagie.text.PageSize.A4);
-            com.lowagie.text.pdf.PdfWriter.getInstance(document, baos);
+            com.lowagie.text.pdf.PdfWriter writer = com.lowagie.text.pdf.PdfWriter.getInstance(document, baos);
 
             // 한글 지원 폰트 — 시스템 폰트 fallback (운영에서는 NanumGothic.ttf 번들 권장)
             com.lowagie.text.pdf.BaseFont bf;
@@ -784,6 +794,10 @@ public class PayrollService {
             com.lowagie.text.Font fontTitle = new com.lowagie.text.Font(bf, 18, com.lowagie.text.Font.BOLD);
             com.lowagie.text.Font fontH = new com.lowagie.text.Font(bf, 12, com.lowagie.text.Font.BOLD);
             com.lowagie.text.Font fontN = new com.lowagie.text.Font(bf, 10);
+
+            if (watermark) {
+                writer.setPageEvent(new PayslipWatermarkEvent(bf, PAYSLIP_WATERMARK));
+            }
 
             document.open();
             document.add(new com.lowagie.text.Paragraph("급여 명세서", fontTitle));

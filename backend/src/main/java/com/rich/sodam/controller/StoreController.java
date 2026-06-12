@@ -143,6 +143,39 @@ public class StoreController {
         return ResponseEntity.ok().build();
     }
 
+    @Operation(summary = "직원 활성/비활성 토글 (사장만)",
+            description = "직원을 매장에서 비활성(퇴사) 또는 활성(복직) 처리합니다. 본인 소유 매장만.")
+    @PutMapping("/{storeId}/employees/{employeeId}/active")
+    public ResponseEntity<java.util.Map<String, Object>> setEmployeeActive(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal
+                com.rich.sodam.security.UserPrincipal principal,
+            @PathVariable Long storeId,
+            @PathVariable Long employeeId,
+            @RequestParam boolean active) {
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        storeManagementService.setEmployeeActive(storeId, employeeId, active);
+        return ResponseEntity.ok(java.util.Map.of("employeeId", employeeId, "active", active));
+    }
+
+    @Operation(summary = "매장 운영시간 조회", description = "요일별 영업 시작/종료/휴무를 반환합니다.")
+    @GetMapping("/{storeId}/operating-hours")
+    public ResponseEntity<com.rich.sodam.dto.response.OperatingHoursResponseDto> getOperatingHours(
+            @PathVariable Long storeId) {
+        return ResponseEntity.ok(storeManagementService.getOperatingHours(storeId));
+    }
+
+    @Operation(summary = "매장 운영시간 설정 (사장만)",
+            description = "요일별 영업시간을 저장합니다. 출퇴근 누락 알림·운영시간 외 경고의 기준값입니다.")
+    @PutMapping("/{storeId}/operating-hours")
+    public ResponseEntity<com.rich.sodam.dto.response.OperatingHoursResponseDto> updateOperatingHours(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal
+                com.rich.sodam.security.UserPrincipal principal,
+            @PathVariable Long storeId,
+            @Valid @RequestBody com.rich.sodam.dto.request.OperatingHoursUpdateDto dto) {
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        return ResponseEntity.ok(storeManagementService.updateOperatingHours(storeId, dto));
+    }
+
     @Operation(summary = "사장의 매장 목록 조회", description = "특정 사용자(사장)가 관리하는 모든 매장 목록을 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공",

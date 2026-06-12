@@ -37,7 +37,8 @@ public class SubscriptionController {
     public ResponseEntity<SubscriptionResponse> subscribe(
             @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody BillingKeyIssueRequest req) {
-        Subscription s = subscriptionService.subscribe(principal.getId(), req.getPlan(), req.getAuthKey());
+        Subscription s = subscriptionService.subscribe(
+                principal.getId(), req.getPlan(), req.getBillingCycle(), req.getAuthKey());
         return ResponseEntity.ok(SubscriptionResponse.from(s));
     }
 
@@ -71,6 +72,10 @@ public class SubscriptionController {
             m.put("monthlyPriceKrw", p.getMonthlyPriceKrw());
             m.put("description", p.getDescription());
             m.put("paid", p.isPaid());
+            m.put("employeeLimit", p.getEmployeeLimit()); // null = 무제한
+            java.util.List<String> features = new java.util.ArrayList<>();
+            p.getFeatures().forEach(f -> features.add(f.name()));
+            m.put("features", features);
             list.add(m);
         }
         return ResponseEntity.ok(list);
@@ -81,5 +86,19 @@ public class SubscriptionController {
     public ResponseEntity<Void> cancel(@AuthenticationPrincipal UserPrincipal principal) {
         subscriptionService.cancel(principal.getId());
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "구독 일시정지", description = "비수기 일시정지. 청구 보류, 남은 기간은 재개 시 보존.")
+    @PostMapping("/pause")
+    public ResponseEntity<SubscriptionResponse> pause(@AuthenticationPrincipal UserPrincipal principal) {
+        Subscription s = subscriptionService.pause(principal.getId());
+        return ResponseEntity.ok(SubscriptionResponse.from(s));
+    }
+
+    @Operation(summary = "구독 재개", description = "일시정지 해제. 정지 기간만큼 기간이 뒤로 밀립니다.")
+    @PostMapping("/resume")
+    public ResponseEntity<SubscriptionResponse> resume(@AuthenticationPrincipal UserPrincipal principal) {
+        Subscription s = subscriptionService.resume(principal.getId());
+        return ResponseEntity.ok(SubscriptionResponse.from(s));
     }
 }

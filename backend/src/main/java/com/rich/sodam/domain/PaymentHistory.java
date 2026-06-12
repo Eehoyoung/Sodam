@@ -42,6 +42,13 @@ public class PaymentHistory {
     @Column(name = "order_id", length = 80, nullable = false, unique = true)
     private String orderId;
 
+    /**
+     * 청구 대상 기간(yyyy-MM). 동일 구독·동일 기간에 SUCCESS 가 1건이면 재청구를 멱등 차단한다.
+     * (과거: orderId 가 매회 millis 라 웹훅/배치 재실행 시 이중청구 위험 → 기간 기준 멱등으로 수정)
+     */
+    @Column(name = "billing_period", length = 7)
+    private String billingPeriod;
+
     @Column(nullable = false)
     private Integer amount;
 
@@ -58,10 +65,15 @@ public class PaymentHistory {
     private LocalDateTime updatedAt;
 
     public static PaymentHistory pending(Subscription subscription, String orderId, int amount) {
+        return pending(subscription, orderId, amount, null);
+    }
+
+    public static PaymentHistory pending(Subscription subscription, String orderId, int amount, String billingPeriod) {
         PaymentHistory p = new PaymentHistory();
         p.subscription = subscription;
         p.orderId = orderId;
         p.amount = amount;
+        p.billingPeriod = billingPeriod;
         p.status = PaymentStatus.PENDING;
         p.billedAt = LocalDateTime.now();
         return p;

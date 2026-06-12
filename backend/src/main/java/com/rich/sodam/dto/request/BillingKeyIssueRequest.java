@@ -1,5 +1,6 @@
 package com.rich.sodam.dto.request;
 
+import com.rich.sodam.domain.type.BillingCycle;
 import com.rich.sodam.domain.type.PlanType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -20,4 +21,7 @@ public class BillingKeyIssueRequest {
 
     @NotNull(message = "구독 플랜이 필요합니다.")
     private PlanType plan;
+
+    /** 청구 주기(월/반년/연). 미지정 시 월납. */
+    private BillingCycle billingCycle = BillingCycle.MONTHLY;
 }

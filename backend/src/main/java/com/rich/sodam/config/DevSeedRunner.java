@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
  * dev 프로필 전용 시드 데이터.
  *
  * 에뮬레이터에서 즉시 로그인 가능하도록 다음 계정·매장을 생성한다:
- *   - 사장: owner@sodam.dev (MASTER, BUSINESS 구독)
+ *   - 사장: owner@sodam.dev (MASTER, PRO 구독)
  *   - 직원: staff@sodam.dev (EMPLOYEE)
  *   - 매장: 소담 데모 매장 (서울 중구 좌표, 반경 500m, 시급 12,000)
  *
@@ -104,12 +104,12 @@ public class DevSeedRunner implements CommandLineRunner {
         payrollPolicyRepository.save(policy);
         log.info("DevSeed: 급여 정책 시드 완료 (3.3% 원천징수, 야간/연장 1.5배)");
 
-        // 사장에게 비즈니스 플랜 구독 부여 (Mock Toss 클라이언트로 빌링키 발급 → 첫 결제 성공)
+        // 사장에게 PRO 플랜 구독 부여 (Mock Toss 클라이언트로 빌링키 발급 → 첫 결제 성공)
         try {
             subscriptionService.subscribe(owner.getId(),
-                    com.rich.sodam.domain.type.PlanType.BUSINESS,
+                    com.rich.sodam.domain.type.PlanType.PRO,
                     "MOCK_AUTH_KEY_DEV_001");
-            log.info("DevSeed: BUSINESS 구독 (Mock 결제) 생성 완료");
+            log.info("DevSeed: PRO 구독 (Mock 결제) 생성 완료");
         } catch (Exception e) {
             log.warn("DevSeed: 유료 구독 시드 실패 — 무료로 폴백: {}", e.getMessage());
             subscriptionService.subscribeFree(owner.getId());

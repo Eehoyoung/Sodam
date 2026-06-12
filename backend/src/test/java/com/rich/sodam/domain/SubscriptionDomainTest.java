@@ -15,7 +15,7 @@ class SubscriptionDomainTest {
 
     private Subscription pendingBusiness() {
         User u = new User("owner@x.com", "사장님");
-        return Subscription.pending(u, PlanType.BUSINESS, "cust_1_abc");
+        return Subscription.pending(u, PlanType.PRO, "cust_1_abc");
     }
 
     @Test
@@ -123,10 +123,53 @@ class SubscriptionDomainTest {
     }
 
     @Test
-    void planType_BUSINESS는유료() {
-        assertTrue(PlanType.BUSINESS.isPaid());
-        assertTrue(PlanType.PREMIUM.isPaid());
+    void planType_유료여부() {
         assertFalse(PlanType.FREE.isPaid());
-        assertFalse(PlanType.COMMISSION.isPaid()); // 월정액 0 (수수료 별도)
+        assertTrue(PlanType.STARTER.isPaid());
+        assertTrue(PlanType.PRO.isPaid());
+        assertTrue(PlanType.PREMIUM.isPaid());
+    }
+
+    @Test
+    void scheduleRetry_다음청구일을_미룬다() {
+        Subscription s = pendingBusiness();
+        s.activate(LocalDateTime.now(), LocalDateTime.now().plusMonths(1));
+        s.markPaymentFailed(); // PAST_DUE
+        s.scheduleRetry(3);
+
+        assertEquals(SubscriptionStatus.PAST_DUE, s.getStatus());
+        // 재시도 시각이 미래(약 3일 뒤)로 설정됨
+        assertTrue(s.getNextBillingAt().isAfter(LocalDateTime.now().plusDays(2)));
+    }
+
+    @Test
+    void pause_ACTIVE에서만_PAUSED로() {
+        Subscription s = pendingBusiness();
+        s.activate(LocalDateTime.now(), LocalDateTime.now().plusMonths(1));
+        s.pause();
+        assertEquals(SubscriptionStatus.PAUSED, s.getStatus());
+        assertNotNull(s.getPausedAt());
+    }
+
+    @Test
+    void pause_비활성상태면_예외() {
+        Subscription s = pendingBusiness(); // PENDING_PAYMENT
+        assertThrows(IllegalStateException.class, s::pause);
+    }
+
+    @Test
+    void resume_PAUSED에서_ACTIVE복귀() {
+        Subscription s = pendingBusiness();
+        s.activate(LocalDateTime.now(), LocalDateTime.now().plusMonths(1));
+        s.pause();
+        s.resume();
+        assertEquals(SubscriptionStatus.ACTIVE, s.getStatus());
+        assertNull(s.getPausedAt());
+    }
+
+    @Test
+    void 기본청구주기는_월납() {
+        Subscription s = pendingBusiness();
+        assertEquals(com.rich.sodam.domain.type.BillingCycle.MONTHLY, s.getBillingCycle());
     }
 }
