@@ -9,6 +9,7 @@ import {
     AppListItem,
     AppText,
     EmptyState,
+    ErrorState,
     MoneyCard,
     ScreenContainer,
 } from '../../../common/components/ds';
@@ -55,17 +56,20 @@ const OwnerDashboardScreen: React.FC = () => {
     const [today, setToday] = useState<TodayStats | null>(null);
     const [monthly, setMonthly] = useState<MonthPayroll | null>(null);
     const [loaded, setLoaded] = useState(false);
+    const [error, setError] = useState(false);
 
     const load = useCallback(async () => {
         try {
+            setError(false);
             const storesRes = await api.get<any[]>(`/api/stores/master/current`);
-            const storeList: SelectableStore[] = ((storesRes.data as any[]) ?? []).map(s => ({
+            const storeList: SelectableStore[] = ((storesRes.data) ?? []).map(s => ({
                 id: s.id,
                 storeName: s.storeName,
             }));
             setStores(storeList);
             setLoaded(true);
             const activeId = selectedStoreId ?? storeList[0]?.id ?? null;
+            // eslint-disable-next-line eqeqeq -- intentional == null: matches both null and undefined
             if (selectedStoreId == null) {
                 setSelectedStoreId(activeId);
             }
@@ -95,7 +99,10 @@ const OwnerDashboardScreen: React.FC = () => {
                 },
             );
         } catch (e) {
+            // 핵심 매장 조회 실패 — 조용히 삼키지 않고 에러/재시도 UI 로 노출
             console.warn('[OwnerDashboard] load failed', e);
+            setError(true);
+            setLoaded(true);
         }
     }, [selectedStoreId]);
 
@@ -112,6 +119,19 @@ const OwnerDashboardScreen: React.FC = () => {
     const pending = today?.pendingEmployees ?? [];
     const allIn = today ? today.checkedInCount === today.totalActiveEmployees : false;
 
+    // 핵심 데이터 로드 실패 — 에러/재시도 노출 (조용한 실패 금지)
+    if (error) {
+        return (
+            <ScreenContainer header={<AppHeader title="소담" />}>
+                <ErrorState
+                    title="대시보드를 불러오지 못했어요"
+                    description="네트워크 상태를 확인한 뒤 다시 시도해 주세요."
+                    primary={{label: '다시 시도', onPress: load}}
+                />
+            </ScreenContainer>
+        );
+    }
+
     // A6 콜드스타트 — 매장 0개 사장 첫 진입
     if (loaded && stores.length === 0) {
         return (
@@ -120,7 +140,7 @@ const OwnerDashboardScreen: React.FC = () => {
                     glyph="🏪"
                     title="첫 매장을 등록해 볼까요?"
                     description="매장을 등록하면 직원 초대와 출퇴근, 급여 정산을 바로 시작할 수 있어요."
-                    primary={{label: '매장 등록하기', onPress: () => navigation.navigate('StoreRegistraion')}}
+                    primary={{label: '매장 등록하기', onPress: () => navigation.navigate('StoreRegistration')}}
                 />
             </ScreenContainer>
         );
@@ -170,7 +190,7 @@ const OwnerDashboardScreen: React.FC = () => {
                 <View style={styles.grid}>
                     <ActionTile title="급여 정산하기" emoji="💰" basis={tileBasis} emojiSize={tileEmojiSize} onPress={() => navigation.navigate('SalaryList')} />
                     <ActionTile title="직원 추가" emoji="🧑‍🤝‍🧑" basis={tileBasis} emojiSize={tileEmojiSize} onPress={() => navigation.navigate('StoreDetail')} />
-                    <ActionTile title="위치/반경 설정" emoji="📍" basis={tileBasis} emojiSize={tileEmojiSize} onPress={() => navigation.navigate('StoreRegistraion')} />
+                    <ActionTile title="위치/반경 설정" emoji="📍" basis={tileBasis} emojiSize={tileEmojiSize} onPress={() => navigation.navigate('StoreRegistration')} />
                     <ActionTile title="노무·세무 팁" emoji="📘" basis={tileBasis} emojiSize={tileEmojiSize} onPress={() => navigation.navigate('InfoList')} />
                 </View>
 
@@ -190,7 +210,7 @@ const OwnerDashboardScreen: React.FC = () => {
 const Metric: React.FC<{label: string; value: string; tone: string}> = ({label, value, tone}) => (
     <AppCard variant="flat" style={styles.metric}>
         <AppText variant="caption" tone="secondary">{label}</AppText>
-        <AppText variant="headingSm" style={{color: tone}}>{value}</AppText>
+        <AppText variant="headingSm" numberOfLines={1} adjustsFontSizeToFit style={{color: tone}}>{value}</AppText>
     </AppCard>
 );
 

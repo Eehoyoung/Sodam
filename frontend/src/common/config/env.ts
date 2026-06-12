@@ -21,7 +21,8 @@ const FORCE_ENV: Env | undefined =
 
 /** Metro/빌드 시 주입 가능. .env.local → babel 변환으로 노출. */
 const ENV_BASE_URL: string | undefined =
-    (process.env.SODAM_API_BASE_URL as string | undefined) || undefined;
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty-string env var means "unset"; must fall through to default, so ?? would be wrong
+    (process.env.SODAM_API_BASE_URL) || undefined;
 
 function detectDefaultBaseUrl(): string {
     // 포트는 application-dev.yml 의 server.port 와 일치 — 8080 충돌 회피로 7070 사용
@@ -37,9 +38,8 @@ function detectDefaultBaseUrl(): string {
 }
 
 function detectEnv(): Env {
-    if (FORCE_ENV) return FORCE_ENV;
-    // @ts-ignore RN global
-    if (typeof __DEV__ !== 'undefined' && __DEV__) return 'dev';
+    if (FORCE_ENV) {return FORCE_ENV;}
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {return 'dev';}
     return 'prod';
 }
 
@@ -60,21 +60,26 @@ export const env = {
 
     /** 토스페이먼츠 클라이언트 키 (FE) — dev 는 토스 공개 테스트 키 */
     tossClientKey:
-        (process.env.SODAM_TOSS_CLIENT_KEY as string | undefined) ||
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty-string env var means "unset"; must fall through to default, so ?? would be wrong
+        (process.env.SODAM_TOSS_CLIENT_KEY) ||
         'test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq',
 
     /** Sentry DSN (FE) */
-    sentryDsn: (process.env.SODAM_SENTRY_DSN as string | undefined) || '',
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty-string env var means "unset"; must fall through to default, so ?? would be wrong
+    sentryDsn: (process.env.SODAM_SENTRY_DSN) || '',
 
     /** 채널톡 플러그인 키 */
-    channelTalkKey: (process.env.SODAM_CHANNEL_TALK_KEY as string | undefined) || '',
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty-string env var means "unset"; must fall through to default, so ?? would be wrong
+    channelTalkKey: (process.env.SODAM_CHANNEL_TALK_KEY) || '',
 
     /** 카카오 네이티브 앱 키 (소셜 로그인 SDK) */
-    kakaoNativeKey: (process.env.SODAM_KAKAO_NATIVE_KEY as string | undefined) || '',
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty-string env var means "unset"; must fall through to default, so ?? would be wrong
+    kakaoNativeKey: (process.env.SODAM_KAKAO_NATIVE_KEY) || '',
 
     /** 카카오 OAuth redirect URI */
     kakaoRedirectUri:
-        (process.env.SODAM_KAKAO_REDIRECT_URI as string | undefined) ||
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty-string env var means "unset"; must fall through to default, so ?? would be wrong
+        (process.env.SODAM_KAKAO_REDIRECT_URI) ||
         (Platform.OS === 'android'
             ? 'http://10.0.2.2:7070/kakao/auth/proc'
             : 'http://localhost:7070/kakao/auth/proc'),
@@ -98,6 +103,21 @@ if (env.debug) {
         tossClientKey: mask(env.tossClientKey),
         sentryDsn: mask(env.sentryDsn),
     });
+}
+
+/**
+ * 토스 결제가 "실키 모드"인지 판별.
+ *
+ * - 빈 값 또는 토스 샌드박스 테스트 키(`test_*`)면 false → FE 는 결제 창을 띄우지 않고
+ *   "유료 결제는 준비 중이에요" 안내만 한다 (키 주입 전 안전망).
+ * - 운영용 클라이언트 키(`live_*` 등)가 주입되면 true → 실제 빌링 인증 창을 띄운다.
+ */
+export function isTossLive(): boolean {
+    const key = env.tossClientKey?.trim() ?? '';
+    if (key.length === 0) {
+        return false;
+    }
+    return !key.startsWith('test_');
 }
 
 export default env;

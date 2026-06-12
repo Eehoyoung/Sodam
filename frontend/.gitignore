@@ -96,3 +96,6 @@ report
 .gradle/
 node_modules/
 .jest-cache/
+
+*storybook.log
+storybook-static

@@ -95,7 +95,7 @@ const Header: React.FC<HeaderProps> = ({title}) => {
         }
 
         // 사용자 역할에 따라 다른 마이페이지로 이동
-        if (user && user.role) {
+        if (user?.role) {
             switch (user.role) {
                 case 'EMPLOYEE':
                     navigation.navigate('EmployeeMyPageScreen');
@@ -220,11 +220,6 @@ const styles = StyleSheet.create({
     leftContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-    },
-    logo: {
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textInverse,
-        letterSpacing: 4,
     },
     title: {
         color: tokens.colors.textInverse,

@@ -1,39 +1,39 @@
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RouteProp} from '@react-navigation/native';
+import type {AuthPurpose, OnboardingRole} from './authFlow';
 
-// 루트 스택 파라미터 목록
 export type RootStackParamList = {
-    Welcome: undefined;  // 새로운 메인화면 (첫 방문자용)
-    Auth: { screen?: keyof AuthStackParamList; params?: any };
-    HomeRoot: { screen?: keyof HomeStackParamList; params?: any } | undefined;
-    // 기타 루트 레벨 화면...
+    Welcome: {selectedRole?: OnboardingRole; selectedPurpose?: AuthPurpose} | undefined;
+    WelcomeMain: {selectedRole?: OnboardingRole; selectedPurpose?: AuthPurpose} | undefined;
+    Auth: {screen?: keyof AuthStackParamList; params?: AuthStackParamList[keyof AuthStackParamList]};
+    HomeRoot: {screen?: keyof HomeStackParamList; params?: any} | undefined;
+    SessionExpired: undefined;
+    PermissionDenied: {kind?: string; secondaryLabel?: string} | undefined;
+    PaymentFailed: undefined;
+    SubscriptionGate: {mode?: string; featureName?: string} | undefined;
 };
 
-// 인증 스택 파라미터 목록
 export type AuthStackParamList = {
-    Login: undefined;
-    Signup: undefined;
+    Login: {selectedPurpose?: AuthPurpose; fromSignup?: boolean} | undefined;
+    Signup: {selectedPurpose?: AuthPurpose} | undefined;
     PasswordReset: undefined;
     OnboardingCarousel: undefined;
-    KakaoLogin: undefined;
-    /** 소셜 가입 후 약관 동의 보강 (PIPA §22, G-2) */
-    Consent: undefined;
-    /** 회원가입 후 1회성 프로필 보강 (휴대폰·이름·생년월일) */
-    ProfileBasics: undefined;
+    KakaoLogin: {selectedPurpose?: AuthPurpose} | undefined;
+    Consent: {selectedPurpose?: AuthPurpose} | undefined;
+    ProfileBasics: {selectedPurpose?: AuthPurpose} | undefined;
 };
 
-// 홈 스택 파라미터 목록
 export type HomeStackParamList = {
     Home: undefined;
     Attendance: undefined;
     WorkplaceList: undefined;
-    WorkplaceDetail: { workplaceId: string };
+    WorkplaceDetail: {workplaceId: string};
     SalaryList: undefined;
     InfoMain: undefined;
-    LaborInfoDetail: { laborInfoId: number };
-    TaxInfoDetail: { taxInfoId: number };
-    TipsDetail: { tipId: number };
-    PolicyDetail: { policyId: number };
+    LaborInfoDetail: {laborInfoId: number};
+    TaxInfoDetail: {taxInfoId: number};
+    TipsDetail: {tipId: number};
+    PolicyDetail: {policyId: number};
     QnA: undefined;
     EmployeeMyPageScreen: undefined;
     ManagerMyPageScreen: undefined;
@@ -57,10 +57,16 @@ export type HomeStackParamList = {
     NotificationSettings: undefined;
     NotificationCenter: undefined;
     AttendanceCalendar: undefined;
-    // 기타 홈 스택 화면...
+    WageSettings: {storeId: number};
+    StoreEdit: {storeId: number};
+    StoreOperatingHours: {storeId: number};
+    MissingAttendanceCenter: undefined;
+    AccountSettings: undefined;
+    TimeOffRequest: {storeId: number};
+    Referral: undefined;
+    TossBillingAuth: {plan: string; billingCycle: string};
 };
 
-// 네비게이션 프롭 타입 정의
 export type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 export type SignupScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Signup'>;
 export type HomeScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'Home'>;
@@ -68,5 +74,4 @@ export type WorkplaceListScreenNavigationProp = NativeStackNavigationProp<HomeSt
 export type WorkplaceDetailScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'WorkplaceDetail'>;
 export type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-// 라우트 프롭 타입 정의 (필요한 경우)
 export type WorkplaceDetailRouteProp = RouteProp<HomeStackParamList, 'WorkplaceDetail'>;

@@ -156,7 +156,7 @@ const attendanceService = {
             const storeIdNum = Number(workplaceId);
             const params: any = { storeId: storeIdNum };
             // compatibility during migration: include workplaceId too
-            (params as any).workplaceId = workplaceId;
+            (params).workplaceId = workplaceId;
             const response = await api.get<AttendanceRecord | null>('/api/attendance/current', params);
             return response.data;
         } catch (error) {
@@ -272,22 +272,18 @@ const attendanceService = {
                 return { success: false, message: '유효하지 않은 매장/직원 ID입니다.' };
             }
             const payload = { employeeId: employeeIdNum, storeId: storeIdNum, latitude, longitude };
-            try {
-                const response = await api.post<any>(
-                    '/api/attendance/verify/location',
-                    payload
-                );
-                const raw = response.data;
-                const data = raw?.data ?? raw;
-                return {
-                    success: !!data?.success,
-                    distance: data?.distance,
-                    message: data?.message ?? data?.reason,
-                };
-            } catch (err) {
-                // Legacy location-verify fallback removed per Phase 0 AC (2025-10-02)
-                throw err;
-            }
+            // Legacy location-verify fallback removed per Phase 0 AC (2025-10-02); errors propagate to the outer catch
+            const response = await api.post<any>(
+                '/api/attendance/verify/location',
+                payload
+            );
+            const raw = response.data;
+            const data = raw?.data ?? raw;
+            return {
+                success: !!data?.success,
+                distance: data?.distance,
+                message: data?.message ?? data?.reason,
+            };
         } catch (error) {
             logger.error('', 'ATTENDANCE_SERVICE', error);
             throw error;

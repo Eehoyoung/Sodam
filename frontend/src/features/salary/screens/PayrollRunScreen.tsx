@@ -1,26 +1,20 @@
-import {AppToast} from '../../../common/components/ds';
-import React, {useMemo, useState} from 'react';
-import {Alert, Modal, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import {AppToast, AppBadge, AppButton, AppCard, AppHeader, AppInput, Brandmark, ScreenContainer} from '../../../common/components/ds';
+import React, {useEffect, useMemo, useState} from 'react';
+import {Modal, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {tokens} from '../../../theme/tokens';
 import {useResponsive} from '../../../common/hooks/useResponsive';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
-import {
-    AppBadge,
-    AppButton,
-    AppCard,
-    AppHeader,
-    AppInput,
-    Brandmark,
-    ScreenContainer,
-} from '../../../common/components/ds';
+import {useAuth} from '../../../contexts/AuthContext';
 import api from '../../../common/utils/api';
+import storeService, {StoreSummaryDto} from '../../store/services/storeService';
 
 // 정산 계산 로직 보존을 위한 경량 어댑터 (구식 Button/Card/Badge/Input → DS)
-const Button: React.FC<any> = ({title, size, fullWidth, ...rest}) => (
+const Button: React.FC<any> = ({title, size, fullWidth: _fullWidth, ...rest}) => (
     <AppButton label={title} size={size === 'sm' ? 'sm' : 'lg'} {...rest} />
 );
-const Card: React.FC<any> = ({bordered, children, style}) => (
+const Card: React.FC<any> = ({children, style}) => (
     <AppCard variant="flat" style={style}>{children}</AppCard>
 );
 const Badge: React.FC<any> = ({text, type}) => (
@@ -71,8 +65,6 @@ const PayrollRunScreen: React.FC = () => {
     const route = useRoute<any>();
     const navigation = useNavigation<any>();
     const r = useResponsive();
-    const styles = useStyles();
-    const c = useThemeColors();
     // 3 단계 정산 마법사 — compact(<360) 에서는 단계마다 카드/CTA 가 한 화면에 안 들어와 스크롤이 길어진다.
     // 본문 padding·서브타이틀 marginBottom·총액카드 padding·CTA marginTop 만 한 단계씩 축소해 fold-above 정보량 확보.
     const contentPad = r.pick({compact: tokens.spacing.md, default: tokens.spacing.lg});
@@ -80,13 +72,30 @@ const PayrollRunScreen: React.FC = () => {
     const totalCardPad = r.pick({compact: tokens.spacing.lg, default: tokens.spacing.xl});
     const ctaMargin = r.pick({compact: tokens.spacing.lg, default: tokens.spacing.xxl});
     const storeIdParam = route.params?.storeId as number | undefined;
+    const {user} = useAuth();
 
     const [step, setStep] = useState<Step>('PERIOD');
     const [storeId, setStoreId] = useState<number | null>(storeIdParam ?? null);
+    const [stores, setStores] = useState<StoreSummaryDto[]>([]);
     const [startDate, setStartDate] = useState(getDefaultStart());
     const [endDate, setEndDate] = useState(getDefaultEnd());
     const [previews, setPreviews] = useState<PayrollPreview[]>([]);
     const [loading, setLoading] = useState(false);
+
+    // 사장 매장 목록 로드 → 손으로 매장 ID 입력하지 않도록 셀렉터 제공.
+    useEffect(() => {
+        if (user?.id === undefined) {
+            return;
+        }
+        (async () => {
+            try {
+                const list = await storeService.getMasterStores(user.id);
+                setStores(list);
+                // 파라미터로 매장이 안 넘어온 경우 첫 매장을 기본 선택.
+                setStoreId(prev => prev ?? list[0]?.id ?? null);
+            } catch (_) {/* 셀렉터 없이도 진행 가능 */}
+        })();
+    }, [user?.id]);
 
     const totalNet = previews.reduce((s, p) => s + (p.netWage ?? 0) + (p.adjustment ?? 0), 0);
 
@@ -132,17 +141,28 @@ const PayrollRunScreen: React.FC = () => {
 
     const issuePayrolls = async () => {
         setLoading(true);
-        try {
-            for (const p of previews) {
-                if (p.payrollId) {
-                    await api.put(`/api/payroll/${p.payrollId}/status?status=PAID`);
-                }
+        // BE /issue 가 확정→지급완료를 원자 처리(DRAFT→PAID 직접 전이 400 방지).
+        // 항목별 성공/실패를 집계해 부분 발급 상황을 사장에게 정확히 알린다.
+        const issuable = previews.filter(p => p.payrollId);
+        let success = 0;
+        const failed: string[] = [];
+        for (const p of issuable) {
+            try {
+                await api.put(`/api/payroll/${p.payrollId}/issue`);
+                success += 1;
+            } catch (_) {
+                failed.push(p.employeeName ?? `#${p.payrollId}`);
             }
+        }
+        setLoading(false);
+
+        if (failed.length === 0) {
             setStep('DONE');
-        } catch (e: any) {
-            AppToast.error('일부 명세서 발급에 실패했어요. 잠시 후 다시 시도해 주세요.');
-        } finally {
-            setLoading(false);
+        } else if (success === 0) {
+            AppToast.error('명세서 발급에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        } else {
+            AppToast.error(`${success}건 발급 완료, ${failed.length}건 실패(${failed.join(', ')}). 실패분만 다시 시도해 주세요.`);
+            setStep('DONE');
         }
     };
 
@@ -156,6 +176,7 @@ const PayrollRunScreen: React.FC = () => {
                     <PeriodForm
                         storeId={storeId}
                         setStoreId={setStoreId}
+                        stores={stores}
                         startDate={startDate}
                         setStartDate={setStartDate}
                         endDate={endDate}
@@ -231,9 +252,63 @@ const Stepper: React.FC<{step: Step; compact?: boolean}> = ({step, compact}) => 
     );
 };
 
+const StoreSelector: React.FC<{
+    stores: StoreSummaryDto[];
+    storeId: number | null;
+    setStoreId: (id: number | null) => void;
+}> = ({stores, storeId, setStoreId}) => {
+    const styles = useStyles();
+    const c = useThemeColors();
+
+    // 매장 목록을 못 불러온 경우(네트워크 등) 손입력 폴백 — 평소엔 노출되지 않는다.
+    if (stores.length === 0) {
+        return (
+            <Input
+                label="매장 ID"
+                value={storeId ? String(storeId) : ''}
+                onChangeText={(v: string) => setStoreId(parseInt(v, 10) || null)}
+                keyboardType="number-pad"
+                placeholder="예: 1"
+                helperText="매장 목록을 불러오지 못하면 ID를 직접 입력해 주세요."
+            />
+        );
+    }
+
+    return (
+        <View style={styles.selectorBlock}>
+            <Text style={styles.selectorLabel}>정산 매장</Text>
+            <View style={styles.chipRow}>
+                {stores.map(s => {
+                    const on = s.id === storeId;
+                    return (
+                        <Pressable
+                            key={s.id}
+                            onPress={() => setStoreId(s.id)}
+                            style={[
+                                styles.chip,
+                                {borderColor: on ? c.brandPrimary : c.border},
+                                on && {backgroundColor: c.surfaceWarm},
+                            ]}>
+                            <Text
+                                style={[
+                                    styles.chipText,
+                                    {color: on ? c.brandPrimary : c.textSecondary},
+                                ]}
+                                numberOfLines={1}>
+                                {s.storeName}
+                            </Text>
+                        </Pressable>
+                    );
+                })}
+            </View>
+        </View>
+    );
+};
+
 const PeriodForm: React.FC<any> = ({
     storeId,
     setStoreId,
+    stores,
     startDate,
     setStartDate,
     endDate,
@@ -244,20 +319,16 @@ const PeriodForm: React.FC<any> = ({
     ctaMargin,
 }) => {
     const styles = useStyles();
+    const storeList: StoreSummaryDto[] = stores ?? [];
     return (
     <View>
         <Text style={styles.title}>1단계: 기간 설정</Text>
+        {/* eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined */}
         <Text style={[styles.subtitle, subtitleMargin != null && {marginBottom: subtitleMargin}]}>
             정산할 매장과 기간을 선택해 주세요.{'\n'}기본은 이번 달 1일~말일이에요.
         </Text>
 
-        <Input
-            label="매장 ID (1매장 사용 시 기본값)"
-            value={storeId ? String(storeId) : ''}
-            onChangeText={(v: string) => setStoreId(parseInt(v, 10) || null)}
-            keyboardType="number-pad"
-            placeholder="예: 1"
-        />
+        <StoreSelector stores={storeList} storeId={storeId} setStoreId={setStoreId} />
         <Input label="시작일 (YYYY-MM-DD)" value={startDate} onChangeText={setStartDate} />
         <Input label="종료일 (YYYY-MM-DD)" value={endDate} onChangeText={setEndDate} />
 
@@ -268,6 +339,7 @@ const PeriodForm: React.FC<any> = ({
             size="lg"
             fullWidth
             loading={loading}
+            // eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined
             style={[styles.cta, ctaMargin != null && {marginTop: ctaMargin}]}
         />
     </View>
@@ -288,7 +360,8 @@ const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust, onNext, total
         setAdjustReason(cur.adjustmentReason ?? '');
     };
     const commitAdjust = () => {
-        if (adjustingIdx == null) return;
+        // eslint-disable-next-line eqeqeq -- intentional == null: matches both null and undefined
+        if (adjustingIdx == null) {return;}
         const num = parseInt((adjustAmount || '0').replace(/[^0-9-]/g, ''), 10) || 0;
         const reason = adjustReason.trim();
         if (num !== 0 && reason.length < 2) {
@@ -304,6 +377,7 @@ const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust, onNext, total
     return (
     <View>
         <Text style={styles.title}>2단계: 미리보기</Text>
+        {/* eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined */}
         <Card bordered style={[styles.totalCard, totalCardPad != null && {paddingVertical: totalCardPad}]}>
             <Text style={styles.totalLabel}>총 지급 예정</Text>
             <Text style={styles.totalAmount}>₩{totalNet.toLocaleString('ko-KR')}</Text>
@@ -349,10 +423,12 @@ const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust, onNext, total
             size="lg"
             fullWidth
             disabled={previews.length === 0}
+            // eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined
             style={[styles.cta, ctaMargin != null && {marginTop: ctaMargin}]}
         />
 
         <Modal
+            // eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined
             visible={adjustingIdx != null}
             transparent
             animationType="slide"
@@ -429,6 +505,7 @@ const ConfirmCard: React.FC<any> = ({startDate, endDate, previews, totalNet, loa
             size="lg"
             fullWidth
             loading={loading}
+            // eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined
             style={[styles.cta, ctaMargin != null && {marginTop: ctaMargin}]}
         />
     </View>
@@ -481,8 +558,6 @@ function pad(n: number): string {
 // 다크모드 대응: 모든 색상 토큰을 c(현재 테마 팔레트)로부터 받아 styles 를 매번 만들어 준다.
 // 각 sub-component 가 자체적으로 useThemeColors + useMemo(makeStyles(c)) 로 인스턴스를 가진다.
 const makeStyles = (c: ThemeColors) => StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: c.background},
-    scrollContent: {padding: tokens.spacing.lg, paddingBottom: tokens.spacing.huge},
     stepper: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -531,6 +606,23 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
 
     empty: {textAlign: 'center' as const, padding: tokens.spacing.xl, color: c.textTertiary},
 
+    selectorBlock: {marginBottom: tokens.spacing.md},
+    selectorLabel: {
+        fontSize: tokens.typography.sizes.sm,
+        color: c.textSecondary,
+        fontWeight: tokens.typography.weights.semibold,
+        marginBottom: tokens.spacing.sm,
+    },
+    chipRow: {flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing.sm},
+    chip: {
+        paddingHorizontal: tokens.spacing.lg,
+        paddingVertical: tokens.spacing.sm,
+        borderRadius: tokens.radius.lg,
+        borderWidth: 1.5,
+        maxWidth: 220,
+    },
+    chipText: {fontSize: tokens.typography.sizes.sm, fontWeight: tokens.typography.weights.semibold},
+
     empCard: {marginVertical: tokens.spacing.sm},
     empHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacing.sm},
     empName: {fontSize: tokens.typography.sizes.lg, fontWeight: '700' as const, color: c.textPrimary},
@@ -550,7 +642,6 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
     },
 
     confirmCard: {alignItems: 'center', paddingVertical: tokens.spacing.xxl},
-    confirmEmoji: {fontSize: 56, marginBottom: tokens.spacing.md},
     confirmTitle: {
         fontSize: tokens.typography.sizes.xl,
         fontWeight: '700' as const,
@@ -566,7 +657,6 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
     },
 
     doneBox: {alignItems: 'center', paddingTop: tokens.spacing.huge},
-    doneEmoji: {fontSize: 72, marginBottom: tokens.spacing.lg},
 
     cta: {marginTop: tokens.spacing.xxl},
 

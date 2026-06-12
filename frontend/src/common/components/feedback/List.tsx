@@ -63,7 +63,7 @@ function List<T extends ListItemData>({
     }, []);
 
     // 기본 아이템 렌더링 함수
-    const defaultRenderItem = React.useCallback((item: T, index: number): React.ReactElement => {
+    const defaultRenderItem = React.useCallback((item: T, _index: number): React.ReactElement => {
         return (
             <TouchableOpacity
                 style={[
@@ -92,7 +92,7 @@ function List<T extends ListItemData>({
 
     // 구분선 컴포넌트
     const Separator = React.useCallback(() => {
-        if (!showSeparator) return null;
+        if (!showSeparator) {return null;}
         if (ItemSeparatorComponent) {
             return typeof ItemSeparatorComponent === 'function'
                 ? React.createElement(ItemSeparatorComponent)
@@ -139,7 +139,7 @@ function List<T extends ListItemData>({
                 keyExtractor={safeKeyExtractor}
                 ListHeaderComponent={ListHeaderComponent}
                 ListFooterComponent={ListFooterComponent}
-                ListEmptyComponent={ListEmptyComponent || EmptyComponent}
+                ListEmptyComponent={ListEmptyComponent ?? EmptyComponent}
                 ItemSeparatorComponent={Separator}
                 contentContainerStyle={[
                     styles.contentContainer,

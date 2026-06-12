@@ -36,9 +36,7 @@ const LaborInfoBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
     };
 
     const handleViewMorePress = () => {
-        // 더 많은 노무 정보를 볼 수 있는 화면으로 이동
-        // 추후 구현 예정
-        console.log('더 많은 노무 정보 보기');
+        navigation.navigate('InfoList');
     };
 
     return (

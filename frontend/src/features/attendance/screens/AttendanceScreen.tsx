@@ -1,5 +1,6 @@
-import {AppToast, ConfirmSheet} from '../../../common/components/ds';
-import React, {useEffect, useRef, useState} from 'react';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import {AppToast, ConfirmSheet, AppButton, AppCard, ScreenContainer} from '../../../common/components/ds';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {
     ActivityIndicator,
     FlatList,
@@ -7,19 +8,16 @@ import {
     Modal,
     Platform,
     RefreshControl,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Geolocation from 'react-native-geolocation-service';
 import {PERMISSIONS, request, RESULTS} from 'react-native-permissions';
 import NfcManager from 'react-native-nfc-manager';
-import {Button, Card} from '../../../common/components';
-import {ScreenContainer} from '../../../common/components/ds';
 import attendanceService from '../services/attendanceService';
 import {AttendanceRecord, AttendanceStatus, CheckInRequest, CheckOutRequest} from '../types';
 import {format} from 'date-fns';
@@ -27,19 +25,13 @@ import {ko} from 'date-fns/locale';
 import { COLORS } from '../../../common/components/logo/Colors';
 import LinearGradient from 'react-native-linear-gradient';
 import { useAuth } from '../../../contexts/AuthContext';
-
-// 네비게이션 타입 정의
-type AttendanceStackParamList = {
-    Attendance: undefined;
-    AttendanceDetail: { attendanceId: string };
-    CheckIn: undefined;
-    NFCScan: undefined;
-};
-
-type AttendanceScreenNavigationProp = NativeStackNavigationProp<AttendanceStackParamList, 'Attendance'>;
+import { useNavigation } from '@react-navigation/native';
+import { useThemeColors, ThemeColors } from '../../../common/hooks/useThemeColors';
 
 const AttendanceScreen = () => {
-    const navigation = useNavigation<AttendanceScreenNavigationProp>();
+    const navigation = useNavigation<any>();
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
     const { user } = useAuth();
     const employeeIdNum = Number(user?.id);
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
@@ -51,7 +43,7 @@ const AttendanceScreen = () => {
     const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
     const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
     const [showNFCReader, setShowNFCReader] = useState(false);
-    const [nfcTagId, setNfcTagId] = useState<string>('');
+    const [, setNfcTagId] = useState<string>('');
     const [checkInMethod, setCheckInMethod] = useState<'standard' | 'location' | 'nfc'>('standard');
 
     // Refs to track location services and component mount status for proper cleanup
@@ -281,7 +273,7 @@ const AttendanceScreen = () => {
         }
 
         const gate = requireAuthAndLocation();
-        if (!gate.ok) return;
+        if (!gate.ok) {return;}
 
         try {
             const checkInData: CheckInRequest = {
@@ -368,7 +360,7 @@ const AttendanceScreen = () => {
         }
 
         const gate = requireAuthAndLocation();
-        if (!gate.ok) return;
+        if (!gate.ok) {return;}
 
         try {
             // NFC 태그 기반 인증 먼저 수행
@@ -409,7 +401,7 @@ const AttendanceScreen = () => {
         }
 
         const gate = requireAuthAndLocation();
-        if (!gate.ok) return;
+        if (!gate.ok) {return;}
 
         try {
             const checkOutData: CheckOutRequest = {
@@ -496,7 +488,7 @@ const AttendanceScreen = () => {
         }
 
         const gate = requireAuthAndLocation();
-        if (!gate.ok) return;
+        if (!gate.ok) {return;}
 
         try {
             // NFC 태그 기반 인증 먼저 수행
@@ -580,9 +572,10 @@ const AttendanceScreen = () => {
 
         return (
             <TouchableOpacity
-                onPress={() => navigation.navigate('AttendanceDetail', {attendanceId: item.id})}
+                // 일자별 상세는 근무 캘린더에서 확인
+                onPress={() => navigation.navigate('AttendanceCalendar')}
             >
-                <Card style={styles.attendanceCard}>
+                <AppCard variant="elevated" style={styles.attendanceCard}>
                     <View style={styles.attendanceHeader}>
                         <Text style={styles.attendanceDate}>{date}</Text>
                         <View style={[styles.statusBadge, {backgroundColor: getStatusColor(item.status)}]}>
@@ -617,7 +610,7 @@ const AttendanceScreen = () => {
                             <Text style={styles.workplaceName}>{item.workplaceName}</Text>
                         </View>
                     </View>
-                </Card>
+                </AppCard>
             </TouchableOpacity>
         );
     };
@@ -644,7 +637,7 @@ const AttendanceScreen = () => {
                         onPress={() => setShowNFCReader(false)}
                         style={styles.closeButton}
                     >
-                        <Icon name="close" size={24} color="#fff"/>
+                        <Icon name="close" size={24} color={c.textInverse}/>
                     </TouchableOpacity>
                     <Text style={styles.nfcTitle}>NFC 태그 읽기</Text>
                 </View>
@@ -693,7 +686,12 @@ const AttendanceScreen = () => {
                     <Text style={styles.headerTitle}>출퇴근 관리</Text>
                 </LinearGradient>
 
-                <View style={styles.workplaceSelector}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.workplaceSelector}
+                    contentContainerStyle={styles.workplaceSelectorContent}
+                >
                     {workplaces.map(workplace => (
                         <TouchableOpacity
                             key={workplace.id}
@@ -713,10 +711,10 @@ const AttendanceScreen = () => {
                             </Text>
                         </TouchableOpacity>
                     ))}
-                </View>
+                </ScrollView>
 
                 <View style={styles.currentStatusContainer}>
-                    <Card style={styles.currentStatusCard}>
+                    <AppCard variant="elevated" style={styles.currentStatusCard}>
                         <Text style={styles.currentStatusTitle}>현재 근무 상태</Text>
 
                         <View style={styles.statusInfo}>
@@ -750,7 +748,7 @@ const AttendanceScreen = () => {
                                 ]}
                                 onPress={() => setCheckInMethod('standard')}
                             >
-                                <Icon name="login" size={16} color={checkInMethod === 'standard' ? '#fff' : '#555'}/>
+                                <Icon name="login" size={16} color={checkInMethod === 'standard' ? c.textInverse : c.textSecondary}/>
                                 <Text
                                     style={[
                                         styles.methodOptionText,
@@ -776,7 +774,7 @@ const AttendanceScreen = () => {
                                 }}
                             >
                                 <Icon name="location-on" size={16}
-                                      color={checkInMethod === 'location' ? '#fff' : '#555'}/>
+                                      color={checkInMethod === 'location' ? c.textInverse : c.textSecondary}/>
                                 <Text
                                     style={[
                                         styles.methodOptionText,
@@ -795,7 +793,7 @@ const AttendanceScreen = () => {
                                 onPress={() => setCheckInMethod('nfc')}
                             >
                                 <Icon name="nfc" size={16}
-                                      color={checkInMethod === 'nfc' ? '#fff' : '#555'}/>
+                                      color={checkInMethod === 'nfc' ? c.textInverse : c.textSecondary}/>
                                 <Text
                                     style={[
                                         styles.methodOptionText,
@@ -811,29 +809,26 @@ const AttendanceScreen = () => {
                             {!currentAttendance ? (
                                 <>
                                     {checkInMethod === 'standard' && (
-                                        <Button
-                                            title="출근하기"
+                                        <AppButton
+                                            label="출근하기"
                                             onPress={handleCheckIn}
-                                            type="primary"
-                                            icon="login"
+                                            variant="primary"
                                             fullWidth
                                         />
                                     )}
                                     {checkInMethod === 'location' && (
-                                        <Button
-                                            title="위치 기반 출근하기"
+                                        <AppButton
+                                            label="위치 기반 출근하기"
                                             onPress={handleCheckInWithLocation}
-                                            type="primary"
-                                            icon="location-on"
+                                            variant="primary"
                                             fullWidth
                                         />
                                     )}
                                     {checkInMethod === 'nfc' && (
-                                        <Button
-                                            title="NFC 태그로 출근하기"
+                                        <AppButton
+                                            label="NFC 태그로 출근하기"
                                             onPress={openNFCReader}
-                                            type="primary"
-                                            icon="nfc"
+                                            variant="primary"
                                             fullWidth
                                         />
                                     )}
@@ -841,36 +836,33 @@ const AttendanceScreen = () => {
                             ) : (
                                 <>
                                     {checkInMethod === 'standard' && (
-                                        <Button
-                                            title="퇴근하기"
+                                        <AppButton
+                                            label="퇴근하기"
                                             onPress={handleCheckOut}
-                                            type="secondary"
-                                            icon="logout"
+                                            variant="secondary"
                                             fullWidth
                                         />
                                     )}
                                     {checkInMethod === 'location' && (
-                                        <Button
-                                            title="위치 기반 퇴근하기"
+                                        <AppButton
+                                            label="위치 기반 퇴근하기"
                                             onPress={handleCheckOutWithLocation}
-                                            type="secondary"
-                                            icon="location-on"
+                                            variant="secondary"
                                             fullWidth
                                         />
                                     )}
                                     {checkInMethod === 'nfc' && (
-                                        <Button
-                                            title="NFC 태그로 퇴근하기"
+                                        <AppButton
+                                            label="NFC 태그로 퇴근하기"
                                             onPress={openNFCReader}
-                                            type="secondary"
-                                            icon="nfc"
+                                            variant="secondary"
                                             fullWidth
                                         />
                                     )}
                                 </>
                             )}
                         </View>
-                    </Card>
+                    </AppCard>
                 </View>
 
                 <View style={styles.recordsContainer}>
@@ -905,10 +897,10 @@ const AttendanceScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.GRAY_50,
+        backgroundColor: c.surfaceCanvas,
     },
     headerGradient: {
         paddingTop: 20,
@@ -918,39 +910,37 @@ const styles = StyleSheet.create({
         borderBottomRightRadius: 0,
     },
     headerTitle: {
-        padding: 16,
-        backgroundColor: COLORS.WHITE,
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.GRAY_200,
-    },
-    header: {
+        // 그라디언트(브랜드 오렌지) 헤더 위 제목 — 흰 텍스트, 배경 박스/보더 없음.
+        color: c.textInverse,
         fontSize: 20,
         fontWeight: 'bold',
-        color: COLORS.WHITE,
     },
     workplaceSelector: {
-        flexDirection: 'row',
-        backgroundColor: COLORS.WHITE,
-        padding: 8,
+        backgroundColor: c.surface,
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.GRAY_200,
+        borderBottomColor: c.border,
+        flexGrow: 0,
+    },
+    workplaceSelectorContent: {
+        flexDirection: 'row',
+        padding: 8,
     },
     workplaceOption: {
         paddingVertical: 8,
         paddingHorizontal: 16,
         borderRadius: 20,
         marginRight: 8,
-        backgroundColor: COLORS.GRAY_100,
+        backgroundColor: c.surfaceMuted,
     },
     selectedWorkplace: {
-        backgroundColor: COLORS.SODAM_ORANGE,
+        backgroundColor: c.brandPrimary,
     },
     workplaceOptionText: {
-        color: COLORS.GRAY_600,
+        color: c.textSecondary,
         fontWeight: '500',
     },
     selectedWorkplaceText: {
-        color: COLORS.WHITE,
+        color: c.textInverse,
     },
     currentStatusContainer: {
         padding: 16,
@@ -961,7 +951,7 @@ const styles = StyleSheet.create({
     currentStatusTitle: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: COLORS.GRAY_800,
+        color: c.textPrimary,
         marginBottom: 12,
     },
     statusInfo: {
@@ -974,16 +964,16 @@ const styles = StyleSheet.create({
     statusLabel: {
         width: 80,
         fontSize: 14,
-        color: COLORS.GRAY_600,
+        color: c.textSecondary,
     },
     statusValue: {
         fontSize: 14,
         fontWeight: '500',
-        color: COLORS.GRAY_800,
+        color: c.textPrimary,
     },
     notWorkingText: {
         fontSize: 14,
-        color: COLORS.GRAY_600,
+        color: c.textSecondary,
         fontStyle: 'italic',
         textAlign: 'center',
         marginVertical: 8,
@@ -1002,18 +992,18 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         borderRadius: 20,
         marginHorizontal: 4,
-        backgroundColor: COLORS.GRAY_100,
+        backgroundColor: c.surfaceMuted,
     },
     selectedMethod: {
-        backgroundColor: COLORS.SODAM_ORANGE,
+        backgroundColor: c.brandPrimary,
     },
     methodOptionText: {
-        color: COLORS.GRAY_600,
+        color: c.textSecondary,
         fontWeight: '500',
         marginLeft: 4,
     },
     selectedMethodText: {
-        color: COLORS.WHITE,
+        color: c.textInverse,
     },
     actionButtons: {
         marginTop: 8,
@@ -1028,7 +1018,7 @@ const styles = StyleSheet.create({
     recordsTitle: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: COLORS.GRAY_800,
+        color: c.textPrimary,
     },
     listContainer: {
         padding: 16,
@@ -1047,7 +1037,7 @@ const styles = StyleSheet.create({
     attendanceDate: {
         fontSize: 14,
         fontWeight: 'bold',
-        color: COLORS.GRAY_800,
+        color: c.textPrimary,
     },
     statusBadge: {
         paddingHorizontal: 8,
@@ -1056,7 +1046,7 @@ const styles = StyleSheet.create({
     },
     statusText: {
         fontSize: 12,
-        color: '#fff',
+        color: c.textInverse,
         fontWeight: '500',
     },
     attendanceDetails: {
@@ -1073,17 +1063,17 @@ const styles = StyleSheet.create({
     },
     timeLabel: {
         fontSize: 12,
-        color: COLORS.GRAY_600,
+        color: c.textSecondary,
         marginBottom: 4,
     },
     timeValue: {
         fontSize: 14,
         fontWeight: '500',
-        color: COLORS.GRAY_800,
+        color: c.textPrimary,
     },
     timeSeparator: {
         width: 1,
-        backgroundColor: COLORS.GRAY_200,
+        backgroundColor: c.border,
         marginHorizontal: 8,
     },
     workplaceContainer: {
@@ -1092,7 +1082,7 @@ const styles = StyleSheet.create({
     },
     workplaceName: {
         fontSize: 12,
-        color: COLORS.GRAY_600,
+        color: c.textSecondary,
         marginLeft: 4,
     },
     loadingContainer: {
@@ -1104,7 +1094,7 @@ const styles = StyleSheet.create({
     loadingText: {
         marginTop: 12,
         fontSize: 14,
-        color: COLORS.GRAY_600,
+        color: c.textSecondary,
     },
     emptyContainer: {
         alignItems: 'center',
@@ -1114,19 +1104,19 @@ const styles = StyleSheet.create({
     emptyText: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: COLORS.GRAY_700,
+        color: c.textPrimary,
         marginTop: 16,
     },
     emptySubText: {
         fontSize: 14,
-        color: COLORS.GRAY_500,
+        color: c.textTertiary,
         marginTop: 8,
         textAlign: 'center',
     },
     // NFC 리더 관련 스타일
     nfcContainer: {
         flex: 1,
-        backgroundColor: COLORS.GRAY_50,
+        backgroundColor: c.surfaceCanvas,
     },
     nfcHeader: {
         flexDirection: 'row',
@@ -1134,14 +1124,14 @@ const styles = StyleSheet.create({
         paddingTop: 50,
         paddingHorizontal: 20,
         paddingBottom: 20,
-        backgroundColor: COLORS.SUCCESS,
+        backgroundColor: c.success,
     },
     closeButton: {
         padding: 10,
     },
     nfcTitle: {
         flex: 1,
-        color: COLORS.WHITE,
+        color: c.textInverse,
         fontSize: 18,
         fontWeight: 'bold',
         textAlign: 'center',
@@ -1157,7 +1147,7 @@ const styles = StyleSheet.create({
         marginBottom: 30,
         padding: 20,
         borderRadius: 50,
-        backgroundColor: COLORS.WHITE,
+        backgroundColor: c.surface,
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
@@ -1170,13 +1160,13 @@ const styles = StyleSheet.create({
     nfcInstructions: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: COLORS.GRAY_800,
+        color: c.textPrimary,
         textAlign: 'center',
         marginBottom: 10,
     },
     nfcSubInstructions: {
         fontSize: 14,
-        color: COLORS.GRAY_600,
+        color: c.textSecondary,
         textAlign: 'center',
         marginBottom: 30,
         lineHeight: 20,
@@ -1187,25 +1177,25 @@ const styles = StyleSheet.create({
     },
     nfcStatusText: {
         fontSize: 16,
-        color: COLORS.SUCCESS,
+        color: c.success,
         marginTop: 10,
         fontWeight: '500',
     },
     nfcFooter: {
         padding: 20,
-        backgroundColor: COLORS.WHITE,
+        backgroundColor: c.surface,
         borderTopWidth: 1,
-        borderTopColor: COLORS.GRAY_200,
+        borderTopColor: c.border,
     },
     cancelButton: {
-        backgroundColor: COLORS.ERROR,
+        backgroundColor: c.error,
         paddingVertical: 15,
         paddingHorizontal: 30,
         borderRadius: 8,
         alignItems: 'center',
     },
     cancelButtonText: {
-        color: COLORS.WHITE,
+        color: c.textInverse,
         fontSize: 16,
         fontWeight: 'bold',
     },

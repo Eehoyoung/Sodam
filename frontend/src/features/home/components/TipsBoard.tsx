@@ -1,5 +1,5 @@
 import React from 'react';
-import {FlatList, Image, ImageSourcePropType, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {FlatList, Image, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 
 // 꿀팁 데이터 타입 정의
 interface Tip {
@@ -55,7 +55,7 @@ const TipsBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
         <View style={styles.container}>
             <View style={styles.headerRow}>
                 <Text style={styles.sectionTitle}>소상공인 꿀팁</Text>
-                <TouchableOpacity style={styles.moreButton}>
+                <TouchableOpacity style={styles.moreButton} onPress={() => navigation?.navigate('InfoList')}>
                     <Text style={styles.moreButtonText}>더보기</Text>
                 </TouchableOpacity>
             </View>

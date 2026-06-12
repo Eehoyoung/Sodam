@@ -350,7 +350,7 @@ class AnalyticsService {
      * Flush events to remote analytics service
      */
     private async flushEvents(): Promise<void> {
-        if (this.eventQueue.length === 0) return;
+        if (this.eventQueue.length === 0) {return;}
 
         try {
             // In a real implementation, this would send to your analytics backend
@@ -374,7 +374,7 @@ class AnalyticsService {
      * Flush interactions to storage
      */
     private async flushInteractions(): Promise<void> {
-        if (this.interactionQueue.length === 0) return;
+        if (this.interactionQueue.length === 0) {return;}
 
         try {
             const existingInteractions = await unifiedStorage.getItem('user_interactions');

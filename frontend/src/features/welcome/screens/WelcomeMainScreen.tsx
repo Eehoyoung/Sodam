@@ -2,23 +2,24 @@ import React from 'react';
 import {Animated, StyleSheet, View} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
-import {NavigationProp} from '@react-navigation/native';
+import {NavigationProp, RouteProp} from '@react-navigation/native';
 import {AppButton, AppHeader, AppText, Brandmark, useResponsive} from '../../../common/components/ds';
 import {gradient, spacing} from '../../../theme/tokens';
+import {RootStackParamList} from '../../../navigation/types';
+import {AuthPurpose, purposeLabel} from '../../../navigation/authFlow';
 
 interface WelcomeMainScreenProps {
     navigation: NavigationProp<any>;
+    route: RouteProp<RootStackParamList, 'WelcomeMain'>;
 }
 
-/**
- * 02 WelcomeMain — 확정 시안.
- * 다크 네이비 배경, 중앙 브랜드 마크 + 히어로 카피, 하단 1차/2차 CTA.
- */
-export default function WelcomeMainScreen({navigation}: WelcomeMainScreenProps) {
+export default function WelcomeMainScreen({navigation, route}: WelcomeMainScreenProps) {
     const fadeAnim = React.useRef(new Animated.Value(0)).current;
     const slideAnim = React.useRef(new Animated.Value(40)).current;
     const insets = useSafeAreaInsets();
     const {isCompactHeight} = useResponsive();
+    const selectedPurpose: AuthPurpose = route.params?.selectedPurpose ?? 'boss';
+    const selectedLabel = purposeLabel(selectedPurpose);
 
     React.useEffect(() => {
         Animated.parallel([
@@ -27,8 +28,8 @@ export default function WelcomeMainScreen({navigation}: WelcomeMainScreenProps) 
         ]).start();
     }, [fadeAnim, slideAnim]);
 
-    const handleLogin = () => navigation.navigate('Auth', {screen: 'Login'});
-    const handleSignup = () => navigation.navigate('Auth', {screen: 'Signup'});
+    const handleLogin = () => navigation.navigate('Auth', {screen: 'Login', params: {selectedPurpose}});
+    const handleSignup = () => navigation.navigate('Auth', {screen: 'Signup', params: {selectedPurpose}});
 
     return (
         <LinearGradient colors={gradient.darkScreen} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={styles.flex}>
@@ -45,15 +46,15 @@ export default function WelcomeMainScreen({navigation}: WelcomeMainScreenProps) 
                     ]}>
                     <Brandmark size={isCompactHeight ? 52 : 58} />
                     <AppText variant="headingLg" tone="inverse" center style={styles.title}>
-                        {'월말 정산이\n30분 안에 끝나요'}
+                        {`${selectedLabel} 흐름으로\n가입을 준비했어요`}
                     </AppText>
                     <AppText variant="bodyMd" tone="inverse" center style={styles.copy}>
-                        NFC와 GPS 출퇴근, 자동 급여 계산, 직원 명세 확인을 한 번에.
+                        가입 후 로그인하면 서비스 이용에 필요한 약관 동의와 기본 정보를 이어서 설정합니다.
                     </AppText>
                 </Animated.View>
 
                 <View style={[styles.ctas, {paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.sm}]}>
-                    <AppButton label="무료로 시작하기" onPress={handleSignup} />
+                    <AppButton label={`${selectedLabel}으로 가입하기`} onPress={handleSignup} />
                     <AppButton label="이미 계정이 있어요" variant="secondary" onPress={handleLogin} />
                 </View>
             </SafeAreaView>

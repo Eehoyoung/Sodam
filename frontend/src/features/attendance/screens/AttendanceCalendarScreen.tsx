@@ -44,7 +44,7 @@ const AttendanceCalendarScreen: React.FC = () => {
                     `/api/attendance/employee/${user.id}/monthly?year=${year}&month=${month}`,
                 );
                 if (mounted) {
-                    setItems((res.data as any[]) ?? []);
+                    setItems((res.data) ?? []);
                 }
             } catch (_) {
                 if (mounted) {
@@ -142,6 +142,7 @@ const AttendanceCalendarScreen: React.FC = () => {
                         label="출근 / 퇴근"
                         value={`${shortTime(selectedRecord.checkInTime)} ~ ${selectedRecord.checkOutTime ? shortTime(selectedRecord.checkOutTime) : '근무중'}`}
                     />
+                    {/* eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined */}
                     {selectedRecord.workingMinutes != null ? (
                         <DetailRow
                             label="근무 시간"

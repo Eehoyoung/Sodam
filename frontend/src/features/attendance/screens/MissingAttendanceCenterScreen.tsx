@@ -1,16 +1,7 @@
-import {AppToast, ConfirmSheet} from '../../../common/components/ds';
+import {AppToast, ConfirmSheet, AppBadge, AppButton, AppCard, AppHeader, AppText, EmptyState, LoadingState, ScreenContainer} from '../../../common/components/ds';
 import React, {useCallback, useEffect, useState} from 'react';
-import {Alert, RefreshControl, ScrollView, StyleSheet, View} from 'react-native';
-import {
-    AppBadge,
-    AppButton,
-    AppCard,
-    AppHeader,
-    AppText,
-    EmptyState,
-    LoadingState,
-    ScreenContainer,
-} from '../../../common/components/ds';
+import {RefreshControl, ScrollView, StyleSheet, View} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
 import {layout, spacing} from '../../../theme/tokens';
 import api from '../../../common/utils/api';
 
@@ -27,6 +18,7 @@ interface PendingItem {
  * 사장 출퇴근 이상 알림 센터. load/sendNudge 로직 + 당겨서 새로고침 보존.
  */
 const MissingAttendanceCenterScreen: React.FC = () => {
+    const navigation = useNavigation<any>();
     const [items, setItems] = useState<PendingItem[]>([]);
     const [refreshing, setRefreshing] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -34,11 +26,11 @@ const MissingAttendanceCenterScreen: React.FC = () => {
     const load = useCallback(async () => {
         try {
             const storesRes = await api.get<any[]>('/api/stores/master/current');
-            const stores = (storesRes.data as any[]) ?? [];
+            const stores = (storesRes.data) ?? [];
             const collected: PendingItem[] = [];
             for (const s of stores) {
                 const statsRes = await api.get<any>(`/api/store-queries/${s.id}/stats/today`);
-                const data = statsRes.data as any;
+                const data = statsRes.data;
                 (data?.pendingEmployees ?? []).forEach((name: string, idx: number) => {
                     collected.push({
                         employeeId: idx,
@@ -134,7 +126,7 @@ const MissingAttendanceCenterScreen: React.FC = () => {
                                             size="sm"
                                             variant="outline"
                                             fullWidth={false}
-                                            onPress={() => AppToast.show('수동 기록은 출퇴근 보드에서 가능해요.')}
+                                            onPress={() => navigation.navigate('Attendance')}
                                             style={styles.actionBtn}
                                         />
                                     </View>

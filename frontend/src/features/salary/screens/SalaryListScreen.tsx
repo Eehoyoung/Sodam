@@ -1,897 +1,198 @@
-import {AppToast} from '../../../common/components/ds';
-import React, {useEffect, useState} from 'react';
-import {
-    ActivityIndicator,
-    FlatList,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
-} from 'react-native';
+import {AppToast, AppBadge, AppCard, AppHeader, AppText, EmptyState, ErrorState, LoadingState, ScreenContainer} from '../../../common/components/ds';
+import React, {useCallback, useEffect, useState} from 'react';
+import {FlatList, RefreshControl, StyleSheet, TouchableOpacity, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import {Button, Card} from '../../../common/components';
-import {AppHeader, ScreenContainer} from '../../../common/components/ds';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
+import {formatMoney} from '../../../common/utils/format';
+import {spacing} from '../../../theme/tokens';
 
-import salaryService from '../services/salaryService';
-import {SalaryFilter, SalaryRecord, SalaryStatus} from '../types';
-import {format} from 'date-fns';
+import payrollService, {PayrollSummary} from '../services/payrollService';
 
-// 네비게이션 타입 정의
+// 네비게이션 타입 — 같은 HomeStack 내 실제 등록된 라우트만 명시
 type SalaryStackParamList = {
     SalaryList: undefined;
     SalaryDetail: { payrollId: number };
-    SalaryForm: { salaryId?: string };
-    SalaryPolicy: { workplaceId: string };
+    PayrollRun: { storeId?: number } | undefined;
 };
 
 type SalaryListScreenNavigationProp = NativeStackNavigationProp<SalaryStackParamList, 'SalaryList'>;
 
+// BE PayrollStatus(enum) 한글 라벨 — payrollService.PayrollStatusValue 와 정합
+const STATUS_LABEL: Record<string, string> = {
+    DRAFT: '준비 중',
+    CONFIRMED: '확정',
+    PAID: '지급 완료',
+    CANCELLED: '취소됨',
+};
+
+interface SalaryRow extends PayrollSummary {
+    payrollId: number;
+    status?: string;
+    employeeName?: string;
+}
+
 const SalaryListScreen = () => {
     const navigation = useNavigation<SalaryListScreenNavigationProp>();
     const c = useThemeColors();
-    const [salaries, setSalaries] = useState<SalaryRecord[]>([]);
+    const [rows, setRows] = useState<SalaryRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [selectedWorkplaceId, setSelectedWorkplaceId] = useState<string>('');
-    const [workplaces, setWorkplaces] = useState<{ id: string; name: string }[]>([]);
-    const [filterModalVisible, setFilterModalVisible] = useState(false);
-    const [filter, setFilter] = useState<SalaryFilter>({});
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [datePickerMode, setDatePickerMode] = useState<'startDate' | 'endDate'>('startDate');
-    const [tempDate, setTempDate] = useState(new Date());
-    const [batchActionModalVisible, setBatchActionModalVisible] = useState(false);
-    const [selectedSalaries, setSelectedSalaries] = useState<string[]>([]);
-    const [paymentDate, setPaymentDate] = useState(new Date());
-    const [showPaymentDatePicker, setShowPaymentDatePicker] = useState(false);
+    const [error, setError] = useState(false);
+    const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
+    const [stores, setStores] = useState<{ id: number; name: string }[]>([]);
 
-    // 급여 목록 조회
-    const fetchSalaries = async () => {
+    // 매장 목록 — 실제 매장 선택 API 연동 전까지 보유 매장 placeholder.
+    // (정산 목록은 매장 단위 /api/payroll/store/{id} 로만 조회 가능하므로 매장 선택이 필요)
+    const fetchStores = useCallback(async () => {
+        // TODO(P1): /api/stores/master/current 연동 시 실제 매장으로 대체
+        const data = [
+            {id: 1, name: '카페 소담'},
+            {id: 2, name: '레스토랑 소담'},
+        ];
+        setStores(data);
+        setSelectedStoreId(prev => prev ?? data[0]?.id ?? null);
+    }, []);
+
+    const fetchPayrolls = useCallback(async (storeId: number | null) => {
+        if (!storeId) {
+            setRows([]);
+            setLoading(false);
+            setRefreshing(false);
+            return;
+        }
         try {
-            setLoading(true);
-            let data: SalaryRecord[] = [];
-
-            if (selectedWorkplaceId) {
-                data = await salaryService.getWorkplaceSalaries(selectedWorkplaceId, filter);
-            } else {
-                data = await salaryService.getSalaries(filter);
-            }
-
-            setSalaries(data);
-        } catch (error) {
-            console.error('급여 목록을 가져오는 중 오류가 생겼어요:', error);
+            setError(false);
+            const list = await payrollService.listByStore(storeId);
+            const mapped: SalaryRow[] = (Array.isArray(list) ? list : []).map(p => ({
+                ...p,
+                payrollId: p.payrollId ?? 0,
+                status: (p as PayrollSummary & {status?: string}).status,
+                employeeName: (p as PayrollSummary & {employeeName?: string}).employeeName,
+            }));
+            setRows(mapped);
+        } catch (e) {
+            console.error('급여 목록을 가져오는 중 오류가 생겼어요:', e);
+            setError(true);
             AppToast.error('급여 목록을 불러오는 데 실패했어요. 다시 시도해 주세요.');
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    };
-
-    // 근무지 목록 조회 (실제 구현에서는 API 호출)
-    const fetchWorkplaces = async () => {
-        try {
-            // 임시 데이터 (실제 구현에서는 API 호출)
-            const data = [
-                {id: '1', name: '카페 소담'},
-                {id: '2', name: '레스토랑 소담'}
-            ];
-            setWorkplaces(data);
-        } catch (error) {
-            console.error('근무지 목록을 가져오는 중 오류가 생겼어요:', error);
-        }
-    };
-
-    // 화면 로드 시 데이터 조회
-    useEffect(() => {
-        fetchWorkplaces();
-        fetchSalaries();
     }, []);
 
-    // 선택된 근무지가 변경되면 급여 목록 다시 조회
     useEffect(() => {
-        fetchSalaries();
-    }, [selectedWorkplaceId]);
+        fetchStores();
+    }, [fetchStores]);
 
-    // 새로고침 처리
+    useEffect(() => {
+        setLoading(true);
+        fetchPayrolls(selectedStoreId);
+    }, [selectedStoreId, fetchPayrolls]);
+
     const handleRefresh = () => {
         setRefreshing(true);
-        fetchSalaries();
+        fetchPayrolls(selectedStoreId);
     };
 
-    // 필터 적용
-    const applyFilter = () => {
-        setFilterModalVisible(false);
-        fetchSalaries();
-    };
-
-    // 필터 초기화
-    const resetFilter = () => {
-        setFilter({});
-        setFilterModalVisible(false);
-        fetchSalaries();
-    };
-
-    // 날짜 선택기 표시
-    const showDatePickerModal = (mode: 'startDate' | 'endDate') => {
-        setDatePickerMode(mode);
-        setTempDate(new Date());
-        setShowDatePicker(true);
-    };
-
-    // 날짜 선택 처리
-    const handleDateChange = (event: any, selectedDate?: Date) => {
-        setShowDatePicker(false);
-
-        if (selectedDate) {
-            const formattedDate = format(selectedDate, 'yyyy-MM-dd');
-
-            if (datePickerMode === 'startDate') {
-                setFilter({...filter, startDate: formattedDate});
-            } else {
-                setFilter({...filter, endDate: formattedDate});
-            }
-        }
-    };
-
-    // 급여 상태 변경
-    const handleStatusChange = (status: SalaryStatus) => {
-        setFilter({...filter, status});
-    };
-
-    // 급여 항목 선택/해제
-    const toggleSalarySelection = (salaryId: string) => {
-        if (selectedSalaries.includes(salaryId)) {
-            setSelectedSalaries(selectedSalaries.filter(id => id !== salaryId));
-        } else {
-            setSelectedSalaries([...selectedSalaries, salaryId]);
-        }
-    };
-
-    // 일괄 지급 처리
-    const handleBatchPay = async () => {
-        if (selectedSalaries.length === 0) {
-            AppToast.show('지급할 급여를 선택해주세요.');
+    const openDetail = (payrollId: number) => {
+        if (!payrollId || payrollId <= 0) {
+            AppToast.error('급여 ID가 유효하지 않아요.');
             return;
         }
-
-        try {
-            const formattedDate = format(paymentDate, 'yyyy-MM-dd');
-            await salaryService.batchPaySalaries(selectedSalaries, formattedDate);
-            AppToast.success('선택한 급여가 일괄 지급됐어요.');
-            setBatchActionModalVisible(false);
-            setSelectedSalaries([]);
-            fetchSalaries();
-        } catch (error) {
-            console.error('일괄 지급 중 오류가 생겼어요:', error);
-            AppToast.error('일괄 지급에 실패했어요. 다시 시도해 주세요.');
-        }
+        navigation.navigate({name: 'SalaryDetail', params: {payrollId}});
     };
 
-    // 일괄 명세서 생성
-    const handleBatchStatements = async () => {
-        if (selectedSalaries.length === 0) {
-            AppToast.show('명세서를 생성할 급여를 선택해주세요.');
-            return;
-        }
-
-        try {
-            const url = await salaryService.batchGenerateSalaryStatements(selectedSalaries);
-            AppToast.success('명세서가 생성됐어요. 알림으로 다운로드 링크를 전달했어요.');
-            console.log('[salary] batch generated:', url);
-            setBatchActionModalVisible(false);
-            setSelectedSalaries([]);
-        } catch (error) {
-            console.error('일괄 명세서 생성 중 오류가 생겼어요:', error);
-            AppToast.error('명세서 생성에 실패했어요. 다시 시도해 주세요.');
-        }
-    };
-
-    // 급여 생성 화면으로 이동
-    const navigateToCreateSalary = () => {
-        navigation.navigate({name: 'SalaryForm', params: {salaryId: undefined}});
-    };
-
-    // 급여 상세 화면으로 이동
-    const navigateToSalaryDetail = (payrollId: number) => {
-            navigation.navigate({name: 'SalaryDetail', params: {payrollId}});
-        };
-
-    // 급여 정책 화면으로 이동
-    const navigateToSalaryPolicy = () => {
-        if (!selectedWorkplaceId) {
-            AppToast.show('근무지를 선택해주세요.');
-            return;
-        }
-        navigation.navigate({name: 'SalaryPolicy', params: {workplaceId: selectedWorkplaceId}});
-    };
-
-    // 근무지 선택기 렌더링
-    const renderWorkplacePicker = () => (
-        <View style={styles.workplacePickerContainer}>
-            <Text style={styles.workplaceLabel}>근무지 선택:</Text>
-            <View style={styles.workplaceButtons}>
-                <TouchableOpacity
-                    style={[
-                        styles.workplaceButton,
-                        !selectedWorkplaceId && styles.selectedWorkplaceButton
-                    ]}
-                    onPress={() => setSelectedWorkplaceId('')}
-                >
-                    <Text
-                        style={[
-                            styles.workplaceButtonText,
-                            !selectedWorkplaceId && styles.selectedWorkplaceButtonText
-                        ]}
-                    >
-                        전체
-                    </Text>
-                </TouchableOpacity>
-
-                {workplaces.map(workplace => (
+    const renderStorePicker = () => (
+        <View style={styles.storePicker}>
+            {stores.map(s => {
+                const on = selectedStoreId === s.id;
+                return (
                     <TouchableOpacity
-                        key={workplace.id}
-                        style={[
-                            styles.workplaceButton,
-                            selectedWorkplaceId === workplace.id && styles.selectedWorkplaceButton
-                        ]}
-                        onPress={() => setSelectedWorkplaceId(workplace.id)}
-                    >
-                        <Text
-                            style={[
-                                styles.workplaceButtonText,
-                                selectedWorkplaceId === workplace.id && styles.selectedWorkplaceButtonText
-                            ]}
-                        >
-                            {workplace.name}
-                        </Text>
+                        key={s.id}
+                        onPress={() => setSelectedStoreId(s.id)}
+                        style={[styles.storeChip, {backgroundColor: on ? c.brandPrimary : c.surfaceMuted}]}>
+                        <AppText variant="caption" weight="800" tone={on ? 'inverse' : 'secondary'}>{s.name}</AppText>
                     </TouchableOpacity>
-                ))}
-            </View>
+                );
+            })}
         </View>
     );
 
-    // 액션 버튼 렌더링
-    const renderActionButtons = () => (
-        <View style={styles.actionButtonsContainer}>
-            <Button
-                title="급여 생성"
-                onPress={navigateToCreateSalary}
-                size="small"
-                icon="add"
-            />
-            <Button
-                title="일괄 작업"
-                onPress={() => setBatchActionModalVisible(true)}
-                size="small"
-                icon="playlist-add-check"
-                disabled={selectedSalaries.length === 0}
-            />
-            <Button
-                title="필터"
-                onPress={() => setFilterModalVisible(true)}
-                size="small"
-                icon="filter-list"
-            />
-            <Button
-                title="급여 정책"
-                onPress={navigateToSalaryPolicy}
-                size="small"
-                icon="policy"
-            />
-        </View>
-    );
-
-    // 급여 항목 렌더링
-    const renderSalaryItem = ({item}: { item: SalaryRecord }) => (
-        <Card style={styles.salaryCard}>
-            <TouchableOpacity
-                style={styles.selectCheckbox}
-                onPress={() => toggleSalarySelection(item.id)}
-            >
-                <Icon
-                    name={selectedSalaries.includes(item.id) ? "check-box" : "check-box-outline-blank"}
-                    size={24}
-                    color={selectedSalaries.includes(item.id) ? "#FF6B35" : "#999"}
-                />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-                style={styles.salaryContent}
-                onPress={() => { const pid = Number(item.id); if (Number.isNaN(pid) || pid <= 0) { AppToast.error('급여 ID가 유효하지 않아요.'); return; } navigateToSalaryDetail(pid); }}
-            >
-                <View style={styles.salaryHeader}>
-                    <Text style={styles.employeeName}>{item.employeeName}</Text>
-                    <View style={[
-                        styles.statusBadge,
-                        item.status === SalaryStatus.PAID ? styles.paidBadge :
-                            item.status === SalaryStatus.PENDING ? styles.pendingBadge :
-                                styles.cancelledBadge
-                    ]}>
-                        <Text style={styles.statusText}>
-                            {item.status === SalaryStatus.PAID ? '지급완료' :
-                                item.status === SalaryStatus.PENDING ? '지급대기' :
-                                    '취소됨'}
-                        </Text>
-                    </View>
-                </View>
-
-                <View style={styles.salaryDetails}>
-                    <Text style={styles.workplaceName}>{item.workplaceName}</Text>
-                    <Text
-                        style={styles.period}>{item.period} ({format(new Date(item.startDate), 'MM.dd')} ~ {format(new Date(item.endDate), 'MM.dd')})</Text>
-                </View>
-
-                <View style={styles.salaryAmounts}>
-                    <View style={styles.amountRow}>
-                        <Text style={styles.amountLabel}>기본급</Text>
-                        <Text style={styles.amountValue}>{item.baseAmount.toLocaleString()}원</Text>
-                    </View>
-                    {item.overtimeAmount > 0 && (
-                        <View style={styles.amountRow}>
-                            <Text style={styles.amountLabel}>초과근무수당</Text>
-                            <Text style={styles.amountValue}>{item.overtimeAmount.toLocaleString()}원</Text>
-                        </View>
-                    )}
-                    {item.bonusAmount > 0 && (
-                        <View style={styles.amountRow}>
-                            <Text style={styles.amountLabel}>보너스</Text>
-                            <Text style={styles.amountValue}>{item.bonusAmount.toLocaleString()}원</Text>
-                        </View>
-                    )}
-                    {item.deductionAmount > 0 && (
-                        <View style={styles.amountRow}>
-                            <Text style={styles.amountLabel}>공제액</Text>
-                            <Text style={styles.amountValue}>-{item.deductionAmount.toLocaleString()}원</Text>
-                        </View>
-                    )}
-                    <View style={[styles.amountRow, styles.totalRow]}>
-                        <Text style={styles.totalLabel}>총액</Text>
-                        <Text style={styles.totalValue}>{item.totalAmount.toLocaleString()}원</Text>
-                    </View>
-                </View>
-
-                {item.status === SalaryStatus.PAID && item.paymentDate && (
-                    <Text style={styles.paymentDate}>지급일: {format(new Date(item.paymentDate), 'yyyy.MM.dd')}</Text>
-                )}
-            </TouchableOpacity>
-        </Card>
-    );
-
-    // 필터 모달 렌더링
-    const renderFilterModal = () => (
-        <Modal
-            visible={filterModalVisible}
-            transparent={true}
-            animationType="slide"
-            onRequestClose={() => setFilterModalVisible(false)}
-        >
-            <View style={styles.modalOverlay}>
-                <View style={styles.modalContainer}>
-                    <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>급여 필터</Text>
-                        <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
-                            <Icon name="close" size={24} color="#000"/>
-                        </TouchableOpacity>
-                    </View>
-
-                    <ScrollView style={styles.modalContent}>
-                        <Text style={styles.filterSectionTitle}>기간</Text>
-                        <View style={styles.dateFilterContainer}>
-                            <TouchableOpacity
-                                style={styles.datePickerButton}
-                                onPress={() => showDatePickerModal('startDate')}
-                            >
-                                <Text style={styles.datePickerButtonText}>
-                                    {filter.startDate ?? '시작일 선택'}
-                                </Text>
-                                <Icon name="calendar-today" size={18} color="#666"/>
-                            </TouchableOpacity>
-
-                            <Text style={styles.dateRangeSeparator}>~</Text>
-
-                            <TouchableOpacity
-                                style={styles.datePickerButton}
-                                onPress={() => showDatePickerModal('endDate')}
-                            >
-                                <Text style={styles.datePickerButtonText}>
-                                    {filter.endDate ?? '종료일 선택'}
-                                </Text>
-                                <Icon name="calendar-today" size={18} color="#666"/>
-                            </TouchableOpacity>
-                        </View>
-
-                        <Text style={styles.filterSectionTitle}>지급 상태</Text>
-                        <View style={styles.statusFilterContainer}>
-                            <TouchableOpacity
-                                style={[
-                                    styles.statusFilterButton,
-                                    filter.status === SalaryStatus.PENDING && styles.selectedStatusButton
-                                ]}
-                                onPress={() => handleStatusChange(SalaryStatus.PENDING)}
-                            >
-                                <Text
-                                    style={[
-                                        styles.statusFilterText,
-                                        filter.status === SalaryStatus.PENDING && styles.selectedStatusText
-                                    ]}
-                                >
-                                    지급대기
-                                </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[
-                                    styles.statusFilterButton,
-                                    filter.status === SalaryStatus.PAID && styles.selectedStatusButton
-                                ]}
-                                onPress={() => handleStatusChange(SalaryStatus.PAID)}
-                            >
-                                <Text
-                                    style={[
-                                        styles.statusFilterText,
-                                        filter.status === SalaryStatus.PAID && styles.selectedStatusText
-                                    ]}
-                                >
-                                    지급완료
-                                </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[
-                                    styles.statusFilterButton,
-                                    filter.status === SalaryStatus.CANCELLED && styles.selectedStatusButton
-                                ]}
-                                onPress={() => handleStatusChange(SalaryStatus.CANCELLED)}
-                            >
-                                <Text
-                                    style={[
-                                        styles.statusFilterText,
-                                        filter.status === SalaryStatus.CANCELLED && styles.selectedStatusText
-                                    ]}
-                                >
-                                    취소됨
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        <Text style={styles.filterSectionTitle}>급여 기간</Text>
-                        <TextInput
-                            style={styles.periodInput}
-                            placeholder="YYYY-MM (예: 2023-06)"
-                            value={filter.period}
-                            onChangeText={(text) => setFilter({...filter, period: text})}
-                        />
-                    </ScrollView>
-
-                    <View style={styles.modalFooter}>
-                        <Button
-                            title="초기화"
-                            onPress={resetFilter}
-                            size="small"
-                            type="secondary"
-                        />
-                        <Button
-                            title="적용"
-                            onPress={applyFilter}
-                            size="small"
-                        />
-                    </View>
-                </View>
-            </View>
-
-            {showDatePicker && (
-                    <DateTimePicker
-                        value={tempDate}
-                        mode="date"
-                        display="default"
-                        onChange={handleDateChange}
+    const renderItem = ({item}: { item: SalaryRow }) => (
+        <AppCard variant="elevated" style={styles.card} onPress={() => openDetail(item.payrollId)}>
+            <View style={styles.cardHeader}>
+                <AppText variant="titleMd" numberOfLines={1} style={styles.empName}>{item.employeeName ?? `근로자 ${item.employeeId}`}</AppText>
+                {item.status ? (
+                    <AppBadge
+                        label={STATUS_LABEL[item.status] ?? item.status}
+                        tone={item.status === 'PAID' ? 'success' : item.status === 'CANCELLED' ? 'error' : 'warning'}
                     />
-            )}
-        </Modal>
-    );
-
-    // 일괄 작업 모달 렌더링
-    const renderBatchActionModal = () => (
-        <Modal
-            visible={batchActionModalVisible}
-            transparent={true}
-            animationType="slide"
-            onRequestClose={() => setBatchActionModalVisible(false)}
-        >
-            <View style={styles.modalOverlay}>
-                <View style={styles.modalContainer}>
-                    <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>일괄 작업</Text>
-                        <TouchableOpacity onPress={() => setBatchActionModalVisible(false)}>
-                            <Icon name="close" size={24} color="#000"/>
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.modalContent}>
-                        <Text style={styles.batchInfoText}>
-                            선택된 급여: {selectedSalaries.length}개
-                        </Text>
-
-                        <View style={styles.batchActionSection}>
-                            <Text style={styles.batchSectionTitle}>일괄 지급</Text>
-                            <View style={styles.paymentDateContainer}>
-                                <Text style={styles.paymentDateLabel}>지급일:</Text>
-                                <TouchableOpacity
-                                    style={styles.paymentDateButton}
-                                    onPress={() => setShowPaymentDatePicker(true)}
-                                >
-                                    <Text style={styles.paymentDateButtonText}>
-                                        {format(paymentDate, 'yyyy-MM-dd')}
-                                    </Text>
-                                    <Icon name="calendar-today" size={18} color="#666"/>
-                                </TouchableOpacity>
-                            </View>
-                            <Button
-                                title="일괄 지급 처리"
-                                onPress={handleBatchPay}
-                                icon="payments"
-                            />
-                        </View>
-
-                        <View style={styles.batchActionSection}>
-                            <Text style={styles.batchSectionTitle}>명세서 생성</Text>
-                            <Button
-                                title="일괄 명세서 생성"
-                                onPress={handleBatchStatements}
-                                icon="description"
-                            />
-                        </View>
-                    </View>
-                </View>
+                ) : null}
             </View>
-
-            {showPaymentDatePicker && (
-                    <DateTimePicker
-                        value={paymentDate}
-                        mode="date"
-                        display="default"
-                        onChange={(event: any, selectedDate: Date | undefined) => {
-                            setShowPaymentDatePicker(false);
-                            if (selectedDate) {
-                                setPaymentDate(selectedDate);
-                            }
-                        }}
-                    />
-            )}
-        </Modal>
+            {item.period ? (
+                <AppText variant="caption" tone="secondary">{item.period.startDate} ~ {item.period.endDate}</AppText>
+            ) : null}
+            <View style={styles.amounts}>
+                {/* eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined */}
+                {item.totalHours != null ? (
+                    <AppText variant="caption" tone="tertiary">총 근무 {item.totalHours}h</AppText>
+                ) : null}
+                {/* eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined */}
+                {item.totalPay != null ? (
+                    <AppText variant="titleMd" numberOfLines={1} adjustsFontSizeToFit style={{color: c.brandPrimary}}>{formatMoney(item.totalPay)}</AppText>
+                ) : null}
+            </View>
+        </AppCard>
     );
 
     return (
-        <ScreenContainer padded={false} header={<AppHeader title="급여" actions={[{label: '필터', onPress: () => setFilterModalVisible(true)}]} />}>
+        <ScreenContainer
+            padded={false}
+            header={<AppHeader title="급여" actions={[{label: '정산', onPress: () => navigation.navigate('PayrollRun', undefined)}]} />}>
             <View style={[styles.container, {backgroundColor: c.surfaceCanvas}]}>
-                {renderWorkplacePicker()}
-                {renderActionButtons()}
+                {renderStorePicker()}
 
                 {loading ? (
-                    <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color={c.brandPrimary}/>
-                    </View>
+                    <LoadingState title="불러오는 중" description="급여 내역을 불러오고 있어요" />
+                ) : error ? (
+                    <ErrorState
+                        title="불러오지 못했어요"
+                        description="급여 내역을 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
+                        primary={{label: '다시 시도', onPress: () => { setLoading(true); fetchPayrolls(selectedStoreId); }}}
+                    />
                 ) : (
                     <FlatList
-                        data={salaries}
-                        keyExtractor={(item) => item.id}
-                        renderItem={renderSalaryItem}
-                        contentContainerStyle={styles.salaryList}
-                        refreshControl={
-                            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh}/>
-                        }
+                        data={rows}
+                        keyExtractor={(item) => String(item.payrollId)}
+                        renderItem={renderItem}
+                        contentContainerStyle={rows.length === 0 ? styles.flexCenter : styles.list}
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
                         ListEmptyComponent={
-                            <View style={styles.emptyContainer}>
-                                <Icon name="account-balance-wallet" size={48} color={c.textTertiary}/>
-                                <Text style={styles.emptyText}>아직 급여 내역이 없어요. 첫 정산을 실행하면 여기에 쌓여요.</Text>
-                            </View>
+                            <EmptyState
+                                glyph="₩"
+                                title="아직 급여 내역이 없어요"
+                                description="첫 정산을 실행하면 여기에 쌓여요."
+                                primary={{label: '급여 정산하기', onPress: () => navigation.navigate('PayrollRun', undefined)}}
+                            />
                         }
                     />
                 )}
-
-                {renderFilterModal()}
-                {renderBatchActionModal()}
             </View>
         </ScreenContainer>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    screenTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginHorizontal: 16,
-        marginTop: 16,
-        marginBottom: 8,
-    },
-    workplacePickerContainer: {
-        marginHorizontal: 16,
-        marginBottom: 12,
-    },
-    workplaceLabel: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 8,
-    },
-    workplaceButtons: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-    },
-    workplaceButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 16,
-        backgroundColor: '#eee',
-        marginRight: 8,
-        marginBottom: 8,
-    },
-    selectedWorkplaceButton: {
-        backgroundColor: '#FF6B35',
-    },
-    workplaceButtonText: {
-        fontSize: 14,
-        color: '#666',
-    },
-    selectedWorkplaceButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-    },
-    actionButtonsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginHorizontal: 16,
-        marginBottom: 16,
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    salaryList: {
-        paddingHorizontal: 16,
-        paddingBottom: 16,
-    },
-    salaryCard: {
-        marginBottom: 12,
-        padding: 0,
-        flexDirection: 'row',
-    },
-    selectCheckbox: {
-        padding: 16,
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-    },
-    salaryContent: {
-        flex: 1,
-        padding: 16,
-        paddingLeft: 0,
-    },
-    salaryHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    employeeName: {
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    statusBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    paidBadge: {
-        backgroundColor: '#4CAF50',
-    },
-    pendingBadge: {
-        backgroundColor: '#F59E0B',
-    },
-    cancelledBadge: {
-        backgroundColor: '#F44336',
-    },
-    statusText: {
-        fontSize: 12,
-        color: '#fff',
-        fontWeight: 'bold',
-    },
-    salaryDetails: {
-        marginBottom: 8,
-    },
-    workplaceName: {
-        fontSize: 14,
-        color: '#666',
-    },
-    period: {
-        fontSize: 14,
-        color: '#666',
-    },
-    salaryAmounts: {
-        backgroundColor: '#F1EEE9',
-        padding: 8,
-        borderRadius: 8,
-        marginBottom: 8,
-    },
-    amountRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 4,
-    },
-    amountLabel: {
-        fontSize: 14,
-        color: '#666',
-    },
-    amountValue: {
-        fontSize: 14,
-        color: '#333',
-    },
-    totalRow: {
-        marginTop: 4,
-        paddingTop: 4,
-        borderTopWidth: 1,
-        borderTopColor: '#ddd',
-    },
-    totalLabel: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    totalValue: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#FF6B35',
-    },
-    paymentDate: {
-        fontSize: 12,
-        color: '#999',
-        textAlign: 'right',
-    },
-    emptyContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 32,
-    },
-    emptyText: {
-        marginTop: 8,
-        fontSize: 16,
-        color: '#999',
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContainer: {
-        width: '90%',
-        maxHeight: '80%',
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        overflow: 'hidden',
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    modalContent: {
-        padding: 16,
-    },
-    modalFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        padding: 16,
-        borderTopWidth: 1,
-        borderTopColor: '#eee',
-    },
-    filterSectionTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 8,
-        marginTop: 16,
-    },
-    dateFilterContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    datePickerButton: {
-        flex: 1,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 12,
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-    },
-    datePickerButtonText: {
-        color: '#666',
-    },
-    dateRangeSeparator: {
-        marginHorizontal: 8,
-        color: '#666',
-    },
-    statusFilterContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-    },
-    statusFilterButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 16,
-        backgroundColor: '#eee',
-        marginRight: 8,
-        marginBottom: 8,
-    },
-    selectedStatusButton: {
-        backgroundColor: '#FF6B35',
-    },
-    statusFilterText: {
-        fontSize: 14,
-        color: '#666',
-    },
-    selectedStatusText: {
-        color: '#fff',
-        fontWeight: 'bold',
-    },
-    periodInput: {
-        padding: 12,
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-    },
-    batchInfoText: {
-        fontSize: 16,
-        marginBottom: 16,
-    },
-    batchActionSection: {
-        marginBottom: 24,
-    },
-    batchSectionTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 12,
-    },
-    paymentDateContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    paymentDateLabel: {
-        fontSize: 14,
-        marginRight: 8,
-    },
-    paymentDateButton: {
-        flex: 1,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 12,
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-    },
-    paymentDateButtonText: {
-        color: '#666',
-    },
+    container: {flex: 1},
+    storePicker: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm},
+    storeChip: {paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: 999},
+    list: {paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: spacing.sm},
+    flexCenter: {flexGrow: 1, justifyContent: 'center'},
+    card: {gap: spacing.xs},
+    cardHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm},
+    empName: {flexShrink: 1},
+    amounts: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.xs},
 });
 
 export default SalaryListScreen;

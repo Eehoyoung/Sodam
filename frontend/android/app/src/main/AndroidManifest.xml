@@ -35,7 +35,8 @@ package="com.sodam_front_end">
     <!-- 하드웨어 기능 선언 -->
     <uses-feature android:name="android.hardware.location" android:required="false" />
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
-    <uses-feature android:name="android.hardware.nfc" android:required="true" />
+    <!-- NFC 미장착 단말(보급형 다수)도 GPS-only 모드로 폴백 가능해야 하므로 required=false (FEATURES C-1) -->
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
 
     <application android:name=".MainApplication"
                  android:label="@string/app_name"

@@ -75,6 +75,7 @@ async function createStore(payload: StoreRegistrationPayload): Promise<{ id: num
     const bePayload = {
         ...payload,
         businessNumber: payload.businessLicenseNumber,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- blank phone should fall back to businessNumber then '', so ?? would be wrong
         storePhoneNumber: payload.storePhoneNumber || payload.businessNumber || '',
     };
     // 표준 엔드포인트 시도
@@ -111,10 +112,14 @@ async function createStore(payload: StoreRegistrationPayload): Promise<{ id: num
 }
 
 // [API Mapping] PUT /api/stores/{storeId}/location — 매장 위치/반경 설정 업데이트
-async function putLocation(storeId: number, coords: { latitude: number; longitude: number; radius?: number }): Promise<{ success: boolean }>{
+// BE LocationUpdateDto: { radius, fullAddress, latitude, longitude }
+async function putLocation(
+  storeId: number,
+  payload: { latitude?: number; longitude?: number; radius?: number; fullAddress?: string },
+): Promise<{ success: boolean }>{
   const res = await api.put<{
       data: { success: boolean; }; success: boolean
-  }>(`/api/stores/${storeId}/location`, coords);
+  }>(`/api/stores/${storeId}/location`, payload);
   return res.data?.data || res.data || { success: true };
 }
 

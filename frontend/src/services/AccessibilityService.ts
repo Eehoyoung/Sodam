@@ -98,6 +98,7 @@ class AccessibilityService {
 
         // Track configuration change
         try {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires -- lazy require avoids a circular import with AnalyticsService
             const analyticsService = require('./AnalyticsService').analyticsService;
             analyticsService.trackEvent({
                 eventName: 'accessibility_config_changed',
@@ -116,7 +117,7 @@ class AccessibilityService {
      * Announce message to screen reader
      */
     announceToScreenReader(message: string, priority: AccessibilityAnnouncement['priority'] = 'medium', delay: number = 0): void {
-        if (!this.config.screenReaderSupport) return;
+        if (!this.config.screenReaderSupport) {return;}
 
         const announcement: AccessibilityAnnouncement = {
             message,
@@ -136,7 +137,7 @@ class AccessibilityService {
      * Setup keyboard navigation
      */
     setupKeyboardNavigation(): void {
-        if (!this.config.keyboardNavigation) return;
+        if (!this.config.keyboardNavigation) {return;}
 
         // Clear existing listeners
         this.keyboardListeners.clear();
@@ -351,7 +352,7 @@ class AccessibilityService {
      * Navigate to next item
      */
     private navigateToNext(): void {
-        if (this.keyboardNavigationItems.length === 0) return;
+        if (this.keyboardNavigationItems.length === 0) {return;}
 
         this.currentFocusIndex = (this.currentFocusIndex + 1) % this.keyboardNavigationItems.length;
         this.focusCurrentItem();
@@ -361,7 +362,7 @@ class AccessibilityService {
      * Navigate to previous item
      */
     private navigateToPrevious(): void {
-        if (this.keyboardNavigationItems.length === 0) return;
+        if (this.keyboardNavigationItems.length === 0) {return;}
 
         this.currentFocusIndex = this.currentFocusIndex <= 0
             ? this.keyboardNavigationItems.length - 1
@@ -373,13 +374,13 @@ class AccessibilityService {
      * Focus current item
      */
     private focusCurrentItem(): void {
-        if (this.currentFocusIndex < 0 || this.currentFocusIndex >= this.keyboardNavigationItems.length) return;
+        if (this.currentFocusIndex < 0 || this.currentFocusIndex >= this.keyboardNavigationItems.length) {return;}
 
         const currentItem = this.keyboardNavigationItems[this.currentFocusIndex];
 
         // Focus the element (platform-specific implementation)
         try {
-            if (currentItem.element && currentItem.element.focus) {
+            if (currentItem.element?.focus) {
                 currentItem.element.focus();
             }
 
@@ -397,13 +398,13 @@ class AccessibilityService {
      * Activate current item
      */
     private activateCurrentItem(): void {
-        if (this.currentFocusIndex < 0 || this.currentFocusIndex >= this.keyboardNavigationItems.length) return;
+        if (this.currentFocusIndex < 0 || this.currentFocusIndex >= this.keyboardNavigationItems.length) {return;}
 
         const currentItem = this.keyboardNavigationItems[this.currentFocusIndex];
 
         try {
             // Trigger click or activation (platform-specific implementation)
-            if (currentItem.element && currentItem.element.click) {
+            if (currentItem.element?.click) {
                 currentItem.element.click();
             }
 
@@ -524,7 +525,7 @@ class AccessibilityService {
      * Process announcement
      */
     private processAnnouncement(announcement: AccessibilityAnnouncement): void {
-        if (!this.config.screenReaderSupport) return;
+        if (!this.config.screenReaderSupport) {return;}
 
         try {
             // Platform-specific screen reader announcement
@@ -622,14 +623,14 @@ export const accessibilityUtils = {
     },
 
     // Check color contrast ratio
-    checkContrastRatio: (foreground: string, background: string): number => {
+    checkContrastRatio: (_foreground: string, _background: string): number => {
         // Simplified contrast ratio calculation
         // In a real implementation, you'd use a proper color contrast library
         return 4.5; // Placeholder value
     },
 
     // Validate WCAG compliance
-    validateWCAGCompliance: (element: any): boolean => {
+    validateWCAGCompliance: (_element: any): boolean => {
         // Simplified WCAG validation
         // In a real implementation, you'd check specific WCAG criteria
         return true; // Placeholder

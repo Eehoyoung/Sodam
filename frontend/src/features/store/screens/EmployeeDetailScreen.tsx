@@ -1,4 +1,5 @@
-import {AppToast, ConfirmSheet} from '../../../common/components/ds';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import {AppToast, ConfirmSheet, AppCard, AppBadge, AppButton, BadgeTone} from '../../../common/components/ds';
 import React, {useEffect, useMemo, useState} from 'react';
 import {
     Pressable,
@@ -12,10 +13,9 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {tokens} from '../../../theme/tokens';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
-import Card from '../../../common/components/data-display/Card';
-import Badge from '../../../common/components/data-display/Badge';
-import Button from '../../../common/components/form/Button';
 import api from '../../../common/utils/api';
+import {WageEditSheet} from '../components/StoreSheets';
+import wageService from '../../wage/services/wageService';
 
 type TabKey = 'INFO' | 'ATTENDANCE' | 'SALARY' | 'TIMEOFF';
 
@@ -58,6 +58,58 @@ const EmployeeDetailScreen: React.FC = () => {
 
     const [tab, setTab] = useState<TabKey>('INFO');
     const [emp, setEmp] = useState<Employee | null>(null);
+    const [togglingActive, setTogglingActive] = useState(false);
+    const [wageSheet, setWageSheet] = useState(false);
+    const [savingWage, setSavingWage] = useState(false);
+
+    // 직원별 시급 변경 — POST /api/wages/employee (customHourlyWage; 0/빈값이면 매장 기본 사용)
+    const saveWage = async (wage: number) => {
+        if (savingWage) {
+            return;
+        }
+        setSavingWage(true);
+        try {
+            const useStoreStandard = !wage || wage < 1;
+            const res = await wageService.upsertEmployeeWage({
+                employeeId,
+                storeId,
+                hourlyWage: useStoreStandard ? undefined : wage,
+                useStoreStandardWage: useStoreStandard,
+            });
+            setEmp(e => (e ? {...e, appliedHourlyWage: res.hourlyWage} : e));
+            setWageSheet(false);
+            AppToast.success(
+                useStoreStandard ? '매장 기본 시급을 사용하도록 변경했어요.' : '직원 시급이 변경됐어요.',
+            );
+        } catch (_) {
+            AppToast.error('시급 변경에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        } finally {
+            setSavingWage(false);
+        }
+    };
+
+    // 직원 활성/비활성 — PUT /api/stores/{storeId}/employees/{employeeId}/active?active=<bool>
+    const toggleActive = async () => {
+        if (!emp || togglingActive) {
+            return;
+        }
+        const next = emp.isActive === false; // 현재 비활성이면 활성화(true), 아니면 비활성화(false)
+        setTogglingActive(true);
+        try {
+            const res = await api.put<{employeeId: number; active: boolean}>(
+                `/api/stores/${storeId}/employees/${employeeId}/active`,
+                undefined,
+                {params: {active: next}},
+            );
+            const applied = (res.data as any)?.active ?? next;
+            setEmp(e => (e ? {...e, isActive: applied} : e));
+            AppToast.success(applied ? '직원을 활성화했어요.' : '직원을 비활성화했어요.');
+        } catch (_) {
+            AppToast.error('상태 변경에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        } finally {
+            setTogglingActive(false);
+        }
+    };
 
     useEffect(() => {
         (async () => {
@@ -77,7 +129,7 @@ const EmployeeDetailScreen: React.FC = () => {
                 );
                 const wage = (wageRes.data as any)?.appliedHourlyWage
                     ?? (wageRes.data as any)?.customHourlyWage;
-                if (wage) setEmp(e => (e ? {...e, appliedHourlyWage: wage} : e));
+                if (wage) {setEmp(e => (e ? {...e, appliedHourlyWage: wage} : e));}
             } catch (_) {/* ignore */}
         })();
     }, [employeeId, storeId]);
@@ -104,11 +156,11 @@ const EmployeeDetailScreen: React.FC = () => {
                         <Text style={styles.name}>{emp.name}</Text>
                         <Text style={styles.email}>{emp.email}</Text>
                         <View style={styles.headerMeta}>
-                            <Badge text={roleLabel(emp.role)} type="primary" />
+                            <AppBadge label={roleLabel(emp.role)} tone="info" />
                             {emp.isActive === false ? (
-                                <Badge text="비활성" type="neutral" />
+                                <AppBadge label="비활성" tone="neutral" />
                             ) : (
-                                <Badge text="활성" type="success" />
+                                <AppBadge label="활성" tone="success" />
                             )}
                         </View>
                     </View>
@@ -159,15 +211,16 @@ const EmployeeDetailScreen: React.FC = () => {
 
                 {/* Bottom actions */}
                 <View style={styles.actionsRow}>
-                    <Button
-                        title="시급 변경"
-                        onPress={() => AppToast.show('시급 변경 화면(S-501c)은 P1 단계에서 연결돼요.')}
+                    <AppButton
+                        label="시급 변경"
+                        onPress={() => setWageSheet(true)}
                         variant="outline"
                         size="md"
+                        loading={savingWage}
                         style={styles.actionBtn}
                     />
-                    <Button
-                        title={emp.isActive === false ? '활성화' : '비활성화'}
+                    <AppButton
+                        label={emp.isActive === false ? '활성화' : '비활성화'}
                         onPress={() =>
                             ConfirmSheet.confirm({
                                 title: emp.isActive === false ? '직원을 활성화할까요?' : '직원을 비활성화할까요?',
@@ -178,17 +231,25 @@ const EmployeeDetailScreen: React.FC = () => {
                                 primary: {
                                     label: emp.isActive === false ? '활성화' : '비활성화',
                                     destructive: emp.isActive !== false,
-                                    onPress: () => {/* TODO: PUT /api/employees/{id}/active */},
+                                    onPress: toggleActive,
                                 },
                                 secondary: {label: '취소'},
                             })
                         }
                         variant="destructive"
                         size="md"
+                        loading={togglingActive}
                         style={styles.actionBtn}
                     />
                 </View>
             </ScrollView>
+
+            <WageEditSheet
+                visible={wageSheet}
+                onClose={() => setWageSheet(false)}
+                employeeName={emp.name}
+                onSave={wage => saveWage(wage)}
+            />
         </SafeAreaView>
     );
 };
@@ -196,11 +257,11 @@ const EmployeeDetailScreen: React.FC = () => {
 const QuickStat: React.FC<{icon: string; label: string; value: string}> = ({icon, label, value}) => {
     const styles = useStyles();
     return (
-        <Card style={styles.quickStat} bordered>
+        <AppCard variant="outlined" style={styles.quickStat}>
             <Text style={styles.quickStatIcon}>{icon}</Text>
             <Text style={styles.quickStatLabel}>{label}</Text>
             <Text style={styles.quickStatValue}>{value}</Text>
-        </Card>
+        </AppCard>
     );
 };
 
@@ -237,7 +298,7 @@ const MemoEditor: React.FC<{storeId: number; employeeId: number}> = ({storeId, e
     };
 
     return (
-        <Card bordered style={styles.memoCard}>
+        <AppCard variant="outlined" style={styles.memoCard}>
             <Text style={styles.memoTitle}>📝 사장님 메모 (직원에게 보이지 않아요)</Text>
             <RNTextInput
                 value={memo}
@@ -250,8 +311,8 @@ const MemoEditor: React.FC<{storeId: number; employeeId: number}> = ({storeId, e
                 maxLength={500}
             />
             <Text style={styles.memoCount}>{memo.length} / 500자</Text>
-            <Button title="메모 저장" onPress={save} variant="primary" size="sm" loading={saving} />
-        </Card>
+            <AppButton label="메모 저장" onPress={save} variant="primary" size="sm" loading={saving} />
+        </AppCard>
     );
 };
 
@@ -285,7 +346,7 @@ const AttendanceTab: React.FC<{employeeId: number; storeId: number}> = ({employe
                 const res = await api.get<any[]>(
                     `/api/attendance/employee/${employeeId}/monthly?year=${now.getFullYear()}&month=${now.getMonth() + 1}`,
                 );
-                setItems((res.data as any[]) ?? []);
+                setItems((res.data) ?? []);
             } catch (_) {
                 setItems([]);
             } finally {
@@ -294,9 +355,9 @@ const AttendanceTab: React.FC<{employeeId: number; storeId: number}> = ({employe
         })();
     }, [employeeId, storeId]);
 
-    if (loading) return <Text style={styles.empty}>불러오는 중…</Text>;
+    if (loading) {return <Text style={styles.empty}>불러오는 중…</Text>;}
     if (items.length === 0)
-        return <Text style={styles.empty}>이번 달 출근 기록이 아직 없어요.</Text>;
+        {return <Text style={styles.empty}>이번 달 출근 기록이 아직 없어요.</Text>;}
 
     return (
         <View style={styles.section}>
@@ -320,7 +381,7 @@ const SalaryTab: React.FC<{employeeId: number; navigation: any}> = ({employeeId,
         (async () => {
             try {
                 const res = await api.get<any[]>(`/api/payroll/employee/${employeeId}`);
-                setItems((res.data as any[]) ?? []);
+                setItems((res.data) ?? []);
             } catch (_) {
                 setItems([]);
             } finally {
@@ -329,8 +390,8 @@ const SalaryTab: React.FC<{employeeId: number; navigation: any}> = ({employeeId,
         })();
     }, [employeeId]);
 
-    if (loading) return <Text style={styles.empty}>불러오는 중…</Text>;
-    if (items.length === 0) return <Text style={styles.empty}>발급된 급여 명세서가 없어요.</Text>;
+    if (loading) {return <Text style={styles.empty}>불러오는 중…</Text>;}
+    if (items.length === 0) {return <Text style={styles.empty}>발급된 급여 명세서가 없어요.</Text>;}
 
     return (
         <View style={styles.section}>
@@ -346,7 +407,7 @@ const SalaryTab: React.FC<{employeeId: number; navigation: any}> = ({employeeId,
                             {(p.netWage ?? 0).toLocaleString('ko-KR')}원
                         </Text>
                     </View>
-                    <Badge text={payrollStatusLabel(p.status)} type={payrollStatusTone(p.status)} />
+                    <AppBadge label={payrollStatusLabel(p.status)} tone={payrollStatusTone(p.status)} />
                 </Pressable>
             ))}
         </View>
@@ -375,23 +436,23 @@ const KV: React.FC<{label: string; value: string}> = ({label, value}) => {
 };
 
 function roleLabel(role: string): string {
-    if (role === 'MASTER') return '사장';
-    if (role === 'EMPLOYEE') return '직원';
-    if (role === 'MANAGER') return '매니저';
+    if (role === 'MASTER') {return '사장';}
+    if (role === 'EMPLOYEE') {return '직원';}
+    if (role === 'MANAGER') {return '매니저';}
     return '일반';
 }
 function formatDate(iso?: string): string {
-    if (!iso) return '-';
+    if (!iso) {return '-';}
     const d = new Date(iso);
     return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 function shortTime(iso?: string): string {
-    if (!iso) return '-';
+    if (!iso) {return '-';}
     const d = new Date(iso);
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 function formatMonth(iso?: string): string {
-    if (!iso) return '-';
+    if (!iso) {return '-';}
     const d = new Date(iso);
     return `${d.getFullYear()}년 ${d.getMonth() + 1}월`;
 }
@@ -408,10 +469,10 @@ function payrollStatusLabel(s: string): string {
             return '준비 중';
     }
 }
-function payrollStatusTone(s: string): 'primary' | 'success' | 'warning' | 'danger' | 'neutral' {
-    if (s === 'PAID') return 'success';
-    if (s === 'CANCELLED') return 'danger';
-    if (s === 'APPROVED') return 'primary';
+function payrollStatusTone(s: string): BadgeTone {
+    if (s === 'PAID') {return 'success';}
+    if (s === 'CANCELLED') {return 'error';}
+    if (s === 'APPROVED') {return 'info';}
     return 'warning';
 }
 

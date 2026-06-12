@@ -229,7 +229,7 @@ export const useAuthState = () => {
         isAuthenticated: authStatusQuery.data ?? false,
         user: currentUserQuery.data ?? null,
         isLoading: authStatusQuery.isLoading || currentUserQuery.isLoading,
-        error: authStatusQuery.error || currentUserQuery.error,
+        error: authStatusQuery.error ?? currentUserQuery.error,
         refetch: () => {
             authStatusQuery.refetch();
             if (authStatusQuery.data) {

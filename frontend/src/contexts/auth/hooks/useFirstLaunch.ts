@@ -32,7 +32,7 @@ export const useFirstLaunch = (): FirstLaunchHook => {
 
     // Auto-initialize on first use
     useEffect(() => {
-        if (hasInitialized.current) return;
+        if (hasInitialized.current) {return;}
         hasInitialized.current = true;
 
         let isMounted = true;

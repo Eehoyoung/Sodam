@@ -22,10 +22,10 @@ class MockFormData {
 // @ts-ignore
 (global as any).FormData = MockFormData;
 
-// [Test Mapping] QnA APIs
-// - GET /api/site-questions
-// - GET /api/site-questions/{id}
-// - POST /api/site-questions (multipart)
+// [Test Mapping] QnA APIs (BE: QnaInfoController @RequestMapping("/api/qna-info"))
+// - GET /api/qna-info
+// - GET /api/qna-info/{id}
+// - POST /api/qna-info (multipart)
 
 describe('qnaService', () => {
   beforeEach(() => {
@@ -37,7 +37,7 @@ describe('qnaService', () => {
 
     const result = await qnaService.list({ page: 1, size: 10, query: 'tax' });
 
-    expect(api.get).toHaveBeenCalledWith('/api/site-questions', { page: 1, size: 10, query: 'tax' });
+    expect(api.get).toHaveBeenCalledWith('/api/qna-info', { page: 1, size: 10, query: 'tax' });
     expect(Array.isArray(result)).toBe(true);
     expect(result[0].id).toBe(1);
   });
@@ -47,7 +47,7 @@ describe('qnaService', () => {
 
     const item = await qnaService.getById(22);
 
-    expect(api.get).toHaveBeenCalledWith('/api/site-questions/22');
+    expect(api.get).toHaveBeenCalledWith('/api/qna-info/22');
     expect(item.id).toBe(22);
   });
 
@@ -57,7 +57,7 @@ describe('qnaService', () => {
     const res = await qnaService.create({ title: 'hello', content: 'world', attachments: [{ name: 'a.txt', uri: 'file://a', type: 'text/plain' }] });
 
     // headers are passed via config, but we focus on endpoint correctness
-    expect((api.post as jest.Mock).mock.calls[0][0]).toBe('/api/site-questions');
+    expect((api.post as jest.Mock).mock.calls[0][0]).toBe('/api/qna-info');
     expect(res.id).toBe(333);
   });
 });

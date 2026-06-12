@@ -14,6 +14,7 @@ let withTiming: any;
 
 try {
   if (ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE)) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional native module, guarded require (loaded only when animations are enabled)
     const reanimated = require('react-native-reanimated');
     Animated = reanimated.default;
     Easing = reanimated.Easing;
@@ -448,7 +449,7 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
         }
     };
 
-    if (!isVisible) return null;
+    if (!isVisible) {return null;}
 
     return (
         <Animated.View style={[styles.overlay, containerStyle]}>
@@ -475,10 +476,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 1000,
-    },
-    demoModalBase: {
-        // Removed dimensions-dependent width - now handled by dynamicStyles
-        // backgroundColor, borderRadius, padding, maxWidth, alignItems, maxHeight moved to dynamicStyles
     },
     closeButton: {
         position: 'absolute',

@@ -1,6 +1,7 @@
 import React, {useMemo, useState} from 'react';
 import {Pressable, StyleSheet, View} from 'react-native';
-import {NavigationProp, useNavigation} from '@react-navigation/native';
+import {NavigationProp, RouteProp} from '@react-navigation/native';
+import {useQueryClient} from '@tanstack/react-query';
 import {
     AppButton,
     AppCard,
@@ -13,28 +14,18 @@ import {
 } from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 import {useResponsive} from '../../../common/hooks/useResponsive';
-import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {useAuth} from '../../../contexts/AuthContext';
 import userService from '../services/userService';
+import {AuthStackParamList} from '../../../navigation/types';
+import {resetToRootRoute, resolvePostAuthRoute} from '../../../navigation/authFlow';
+import {queryKeys} from '../../../common/utils/queryClient';
+import {User} from '../services/authService';
 
 interface Props {
     navigation: NavigationProp<any>;
+    route: RouteProp<AuthStackParamList, 'ProfileBasics'>;
 }
 
-/**
- * 05a ProfileBasics — 회원가입 직후 1회성 보강 화면.
- *
- * 흐름:
- *   회원가입 → 로그인 → (profileCompleted=false 면) 본 화면 강제 진입
- *   휴대폰(필수) + 이름 확정(prefilled) + 생년월일(선택) 한 번에 저장
- *   PUT /api/user/me/profile-basics → profileCompleted=true → 메인 라우팅.
- *
- * UX:
- *   - "마지막 단계예요" 톤 — 강제 진입이지만 압박감 최소화
- *   - 휴대폰 자동 하이픈 (010-XXXX-XXXX)
- *   - 생년월일은 YYYY-MM-DD 자유 입력 (DatePicker 는 P2)
- *   - 건너뛰기 없음 — 본 화면 통과 시점이 가입 완성 시점
- */
 const formatKoreanPhone = (raw: string): string => {
     const digits = raw.replace(/[^0-9]/g, '').slice(0, 11);
     if (digits.length < 4) {
@@ -52,16 +43,20 @@ const isValidPhone = (formatted: string): boolean => {
 };
 
 const isValidBirthDate = (raw: string): boolean => {
-    if (!raw) return true; // 선택
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return false;
+    if (!raw) {
+        return true;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+        return false;
+    }
     const d = new Date(raw);
     return !isNaN(d.getTime()) && d.getFullYear() >= 1900 && d.getFullYear() <= new Date().getFullYear();
 };
 
-export default function ProfileBasicsScreen({navigation}: Props) {
-    const {user, login: _login} = useAuth() as any;
+export default function ProfileBasicsScreen({navigation, route}: Props) {
+    const {user} = useAuth();
+    const queryClient = useQueryClient();
     const r = useResponsive();
-    const c = useThemeColors();
 
     const [name, setName] = useState<string>(user?.name ?? '');
     const [phone, setPhone] = useState<string>(formatKoreanPhone(user?.phone ?? ''));
@@ -93,7 +88,6 @@ export default function ProfileBasicsScreen({navigation}: Props) {
     };
 
     const onChangeBirth = (v: string) => {
-        // YYYY-MM-DD 형태 자동 하이픈
         const digits = v.replace(/[^0-9]/g, '').slice(0, 8);
         let formatted = digits;
         if (digits.length >= 5) {
@@ -113,11 +107,20 @@ export default function ProfileBasicsScreen({navigation}: Props) {
 
     const handleSubmit = async () => {
         if (!isReady) {
-            if (name.trim().length < 2) AppToast.warn('이름을 2자 이상 입력해 주세요.');
-            else if (!isValidPhone(phone)) {
+            if (name.trim().length < 2) {
+                AppToast.warn('이름을 2자 이상 입력해 주세요.');
+            } else if (!isValidPhone(phone)) {
                 setPhoneError('010으로 시작하는 휴대폰 번호를 입력해 주세요.');
                 AppToast.warn('휴대폰 번호를 확인해 주세요.');
             }
+            return;
+        }
+        if (!user) {
+            AppToast.error('로그인 정보가 필요합니다. 다시 로그인해 주세요.');
+            navigation.reset({
+                index: 0,
+                routes: [{name: 'Auth' as never, params: {screen: 'Login', params: route.params} as never}] as any,
+            });
             return;
         }
         setSubmitting(true);
@@ -127,21 +130,19 @@ export default function ProfileBasicsScreen({navigation}: Props) {
                 name: name.trim(),
                 birthDate: birthDate || undefined,
             });
-            AppToast.success('환영해요! 이제 시작해 볼까요?');
-            // role 기반 라우팅 — AuthNavigator 기존 패턴과 동일
-            const role = (user?.role as string) || 'PERSONAL';
-            const target =
-                role === 'MASTER'
-                    ? 'MasterMyPageScreen'
-                    : role === 'EMPLOYEE'
-                        ? 'EmployeeMyPageScreen'
-                        : 'UserMyPageScreen';
-            navigation.reset({
-                index: 0,
-                routes: [{name: 'HomeRoot' as never, params: {screen: target} as never}] as any,
-            });
+
+            const nextUser: User = {
+                ...user,
+                name: name.trim(),
+                phone,
+                profileCompleted: true,
+            };
+            queryClient.setQueryData<User | null>(queryKeys.auth.currentUser(), nextUser);
+
+            AppToast.success('기본 정보가 저장되었습니다. 이제 시작해 볼까요?');
+            resetToRootRoute(navigation, resolvePostAuthRoute(nextUser, route.params?.selectedPurpose));
         } catch (e: any) {
-            const msg = e?.response?.data?.message ?? '저장에 실패했어요. 잠시 후 다시 시도해 주세요.';
+            const msg = e?.response?.data?.message ?? '저장에 실패했습니다. 잠시 후 다시 시도해 주세요.';
             AppToast.error(msg);
         } finally {
             setSubmitting(false);
@@ -155,22 +156,21 @@ export default function ProfileBasicsScreen({navigation}: Props) {
             footer={
                 <CtaStack bordered>
                     <AppButton
-                        label="저장하고 시작하기"
+                        label="저장하고 시작"
                         loading={submitting}
                         loadingLabel="저장 중..."
                         disabled={!isReady}
                         onPress={handleSubmit}
                     />
                     <AppText variant="caption" tone="tertiary" center>
-                        입력하신 정보는 알림·고객지원에만 쓰여요. 광고 발송은 따로 동의받아요.
+                        입력한 정보는 알림과 고객지원에만 사용합니다.
                     </AppText>
                 </CtaStack>
             }>
             <AppCard variant="warm" hero>
-                <AppText variant="headingSm">마지막 단계예요</AppText>
+                <AppText variant="headingSm">마지막 필수 설정이에요</AppText>
                 <AppText variant="bodyMd" tone="secondary" style={[styles.heroSub, {marginTop: titleMargin / 2}]}>
-                    소담이 사장님·직원분께 도움 될 때 연락드릴 수 있게,{'\n'}
-                    기본 정보를 한 번만 알려주세요.
+                    소담을 안전하게 이용할 수 있도록 연락 가능한 기본 정보를 확인해 주세요.
                 </AppText>
             </AppCard>
 
@@ -181,7 +181,7 @@ export default function ProfileBasicsScreen({navigation}: Props) {
                     onChangeText={setName}
                     placeholder="실명 또는 닉네임"
                     autoCapitalize="words"
-                    helper="2~50자, 직원 매칭·급여명세에 표기돼요"
+                    helper="2자 이상 입력해 주세요."
                 />
                 <AppInput
                     label="휴대폰 번호 *"
@@ -192,7 +192,7 @@ export default function ProfileBasicsScreen({navigation}: Props) {
                     keyboardType="phone-pad"
                     maxLength={13}
                     error={phoneError}
-                    helper="알림·고객지원에만 사용해요"
+                    helper="알림과 고객지원에 사용해요."
                 />
                 <AppInput
                     label="생년월일 (선택)"
@@ -203,14 +203,14 @@ export default function ProfileBasicsScreen({navigation}: Props) {
                     keyboardType="number-pad"
                     maxLength={10}
                     error={birthError}
-                    helper="만 14세 이상 확인용. 입력 안 해도 괜찮아요."
+                    helper="만 14세 이상 확인용으로만 사용합니다."
                 />
             </View>
 
             <Pressable
                 onPress={() =>
                     AppToast.show(
-                        '소담은 휴대폰 번호로 광고·마케팅 메시지를 보내지 않아요. 마케팅 수신은 별도 화면에서 켤 수 있어요.',
+                        '소담은 휴대폰 번호로 광고 메시지를 보내지 않습니다. 마케팅 수신은 별도 화면에서 변경할 수 있어요.',
                     )
                 }
                 style={({pressed}) => [styles.privacyRow, pressed && {opacity: 0.5}]}>

@@ -13,7 +13,7 @@ import {env} from '../config/env';
  */
 
 const BASE_URL = env.apiBaseUrl;
-if (env.debug) console.log('[API] BASE_URL =', BASE_URL);
+if (env.debug) {console.log('[API] BASE_URL =', BASE_URL);}
 
 // API 클라이언트 인스턴스 생성
 const apiClient: AxiosInstance = axios.create({
@@ -56,6 +56,20 @@ export const setOnUnauthorized = (cb: (() => void) | null) => {
     onUnauthorized = cb;
 };
 
+// 402 처리: 플랜이 부족할 때 BE 가 PLAN_REQUIRED 로 거절 → FE 가 페이월을 띄움
+export interface PlanRequiredInfo {
+    requiredPlan?: string;
+    currentPlan?: string;
+    message?: string;
+}
+let onPlanRequired: ((info: PlanRequiredInfo) => void) | null = null;
+
+export const setOnPlanRequired = (
+    cb: ((info: PlanRequiredInfo) => void) | null,
+) => {
+    onPlanRequired = cb;
+};
+
 async function refreshAccessToken(): Promise<string> {
     const refreshToken = await TokenManager.getRefresh();
     if (!refreshToken) {throw new Error('NO_REFRESH_TOKEN');}
@@ -95,6 +109,19 @@ apiClient.interceptors.response.use(
         const original: any = error?.config || {};
         const status = error?.response?.status;
 
+        // 402 PLAN_REQUIRED: 플랜 부족 → 페이월 콜백 호출 후 원본 에러 전파(로직 흐름 유지)
+        if (status === 402 && error?.response?.data?.code === 'PLAN_REQUIRED') {
+            if (onPlanRequired) {
+                const data = error.response.data;
+                onPlanRequired({
+                    requiredPlan: data?.data?.requiredPlan,
+                    currentPlan: data?.data?.currentPlan,
+                    message: data?.message,
+                });
+            }
+            return Promise.reject(error);
+        }
+
         // 인증 엔드포인트는 refresh 우회 — 원본 에러(401/메시지) 그대로 전파
         if (status === 401 && isAuthEndpoint(original?.url)) {
             return Promise.reject(error);
@@ -111,7 +138,7 @@ apiClient.interceptors.response.use(
                     refreshQueue = [];
                     // 재시도 시 Authorization 갱신
                     original.headers = original.headers || {};
-                    original.headers['Authorization'] = `Bearer ${newAccess}`;
+                    original.headers.Authorization = `Bearer ${newAccess}`;
                     return apiClient(original);
                 } catch (e) {
                     refreshQueue.forEach(cb => cb(null));
@@ -129,7 +156,7 @@ apiClient.interceptors.response.use(
                 refreshQueue.push((token) => {
                     if (!token) {return reject(error);}
                     original.headers = original.headers || {};
-                    original.headers['Authorization'] = `Bearer ${token}`;
+                    original.headers.Authorization = `Bearer ${token}`;
                     resolve(apiClient(original));
                 });
             });

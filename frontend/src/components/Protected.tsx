@@ -1,35 +1,47 @@
-import React, { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
-import { useAuth } from '../contexts/AuthContext';
-import { useNavigation } from '@react-navigation/native';
-import { RootNavigationProp } from '../navigation/types';
+import React, {useEffect} from 'react';
+import {ActivityIndicator, View} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
+import {useAuth} from '../contexts/AuthContext';
+import {RootNavigationProp} from '../navigation/types';
+import {resolvePostAuthRoute, resetToRootRoute} from '../navigation/authFlow';
 
 interface Props {
-  children: React.ReactNode;
+    children: React.ReactNode;
 }
 
-const Protected: React.FC<Props> = ({ children }) => {
-  const { user, loading } = useAuth();
-  const navigation = useNavigation<RootNavigationProp>();
+const Protected: React.FC<Props> = ({children}) => {
+    const {user, loading} = useAuth();
+    const navigation = useNavigation<RootNavigationProp>();
 
-  useEffect(() => {
-    if (!loading && !user) {
-      // 인증이 없으면 Auth 스택으로 이동
-      navigation.navigate('Auth', { screen: 'Login' });
+    useEffect(() => {
+        if (loading) {
+            return;
+        }
+        if (!user) {
+            navigation.reset({
+                index: 0,
+                routes: [{name: 'Auth' as never, params: {screen: 'Login'} as never}] as any,
+            });
+            return;
+        }
+        if (user.consentCompleted === false || user.profileCompleted === false) {
+            resetToRootRoute(navigation, resolvePostAuthRoute(user));
+        }
+    }, [loading, user, navigation]);
+
+    if (loading) {
+        return (
+            <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
+                <ActivityIndicator />
+            </View>
+        );
     }
-  }, [loading, user, navigation]);
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
+    if (!user || user.consentCompleted === false || user.profileCompleted === false) {
+        return null;
+    }
 
-  if (!user) return null;
-
-  return <>{children}</>;
+    return <>{children}</>;
 };
 
 export default Protected;

@@ -1,18 +1,8 @@
-import {AppToast} from '../../../common/components/ds';
+import {AppToast, AppBadge, AppCard, AppHeader, AppInput, AppText, EmptyState, LoadingState, ScreenContainer, SegmentedControl} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
-import {Alert, FlatList, StyleSheet, View} from 'react-native';
+import {FlatList, StyleSheet, View, Pressable} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {
-    AppBadge,
-    AppCard,
-    AppHeader,
-    AppText,
-    EmptyState,
-    LoadingState,
-    ScreenContainer,
-    SegmentedControl,
-} from '../../../common/components/ds';
 import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import laborInfoService from '../services/laborInfoService';
@@ -20,7 +10,6 @@ import taxInfoService from '../services/taxInfoService';
 import policyService from '../services/policyService';
 import tipsService from '../services/tipsService';
 import {InfoArticle, InfoCategory} from '../types';
-import {Pressable} from 'react-native';
 
 type InfoStackParamList = {
     InfoList: undefined;
@@ -47,8 +36,18 @@ const InfoListScreen = () => {
     const [articles, setArticles] = useState<InfoArticle[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [query, setQuery] = useState('');
 
     const selectedType = TYPES[typeIndex];
+
+    // 현재 목록을 제목/요약 기준으로 화면 내 필터 (별도 검색 API 없이 클라이언트 필터)
+    const visibleArticles = query.trim()
+        ? articles.filter(a => {
+            const q = query.trim().toLowerCase();
+            return (a.title ?? '').toLowerCase().includes(q) || (a.summary ?? '').toLowerCase().includes(q);
+        })
+        : articles;
 
     const getServiceByType = (type: InfoType) => {
         switch (type) {
@@ -139,8 +138,16 @@ const InfoListScreen = () => {
 
     const c = useThemeColors();
     return (
-        <ScreenContainer padded={false} header={<AppHeader title="노무 정보" actions={[{label: '검색', onPress: () => {}}]} />}>
+        <ScreenContainer padded={false} header={<AppHeader title="노무 정보" actions={[{label: searchOpen ? '닫기' : '검색', onPress: () => setSearchOpen(o => { if (o) { setQuery(''); } return !o; })}]} />}>
             <View style={styles.controls}>
+                {searchOpen ? (
+                    <AppInput
+                        placeholder="제목·내용으로 검색"
+                        value={query}
+                        onChangeText={setQuery}
+                        autoFocus
+                    />
+                ) : null}
                 <SegmentedControl options={TYPE_LABELS} value={typeIndex} onChange={setTypeIndex} />
                 <FlatList
                     data={categories}
@@ -166,9 +173,9 @@ const InfoListScreen = () => {
                 <LoadingState title="불러오는 중" description="정보를 불러오고 있어요" />
             ) : (
                 <FlatList
-                    data={articles}
+                    data={visibleArticles}
                     keyExtractor={item => item.id}
-                    contentContainerStyle={articles.length === 0 ? styles.flexCenter : styles.articleList}
+                    contentContainerStyle={visibleArticles.length === 0 ? styles.flexCenter : styles.articleList}
                     renderItem={({item}) => (
                         <AppCard variant="flat" onPress={() => navigateToDetail(item)} style={styles.articleCard}>
                             <View style={styles.articleHeader}>
@@ -186,7 +193,11 @@ const InfoListScreen = () => {
                             </View>
                         </AppCard>
                     )}
-                    ListEmptyComponent={<EmptyState glyph="ⓘ" markColor={c.surfaceMuted} title="정보가 없어요" description="다른 분류를 확인해 보세요." />}
+                    ListEmptyComponent={
+                        query.trim()
+                            ? <EmptyState glyph="🔍" markColor={c.surfaceMuted} title="검색 결과가 없어요" description="다른 검색어를 입력해 보세요." />
+                            : <EmptyState glyph="ⓘ" markColor={c.surfaceMuted} title="정보가 없어요" description="다른 분류를 확인해 보세요." />
+                    }
                 />
             )}
         </ScreenContainer>

@@ -57,6 +57,7 @@ const LaborInfoDetailScreen = () => {
                     title: detail.title,
                     date: new Date(detail.publishDate).toISOString().slice(0, 10),
                     content: detail.content,
+                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty-string author should fall back to default, so ?? would be wrong
                     author: detail.author || '소담 노무팀',
                     views: 0,
                     category: '노무 정보',

@@ -18,11 +18,9 @@ const NFCDemo: React.FC<NFCDemoProps> = ({onDemoComplete, isVisible}) => {
     const [demoStep, setDemoStep] = useState<'idle' | 'reading' | 'success' | 'complete'>('idle');
     const [readProgress, setReadProgress] = useState(0);
 
-    // Use JSI-safe dimensions hook
-    let dimensions;
+    // Use JSI-safe dimensions hook (called for JSI-safety side effects; result is unused here)
     try {
-        const hookResult = useJSISafeDimensions();
-        dimensions = hookResult.dimensions;
+        useJSISafeDimensions();
     } catch (error) {
         console.error('NFCDemo: Failed to get dimensions:', error);
         throw error;

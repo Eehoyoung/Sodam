@@ -1,3 +1,4 @@
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
 import React, {useMemo, useRef, useState} from 'react';
 import {
     FlatList,
@@ -15,6 +16,7 @@ import {useNavigation} from '@react-navigation/native';
 import {tokens} from '../../../theme/tokens';
 import {AppButton} from '../../../common/components/ds';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
+import {useResponsive} from '../../../common/hooks/useResponsive';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
 
 interface Slide {
@@ -51,13 +53,20 @@ const OnboardingCarouselScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const {width: WIDTH} = useWindowDimensions();
     const c = useThemeColors();
-    const styles = useMemo(() => makeStyles(c), [c]);
+    const {pick, isCompactHeight} = useResponsive();
+    // 작은/짧은 화면(iPhone SE, 360×640)에서 글리프가 폴드 아래로 밀리거나 헤드라인과 겹치는 것 방지.
+    const illoSize = pick({compact: 160, default: 220});
+    const illoMarginTop = isCompactHeight ? tokens.spacing.lg : tokens.spacing.huge;
+    const styles = useMemo(
+        () => makeStyles(c, illoSize, illoMarginTop),
+        [c, illoSize, illoMarginTop],
+    );
     const [index, setIndex] = useState(0);
     const listRef = useRef<FlatList<Slide>>(null);
 
     const onMomentumEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
         const newIndex = Math.round(e.nativeEvent.contentOffset.x / WIDTH);
-        if (newIndex !== index) setIndex(newIndex);
+        if (newIndex !== index) {setIndex(newIndex);}
     };
 
     const handleNext = async () => {
@@ -138,7 +147,7 @@ const SlideCard: React.FC<{slide: Slide; width: number; styles: ReturnType<typeo
     </View>
 );
 
-const makeStyles = (c: ThemeColors) => StyleSheet.create({
+const makeStyles = (c: ThemeColors, illoSize: number, illoMarginTop: number) => StyleSheet.create({
     safeArea: {flex: 1, backgroundColor: c.background},
     skipRow: {
         flexDirection: 'row' as const,
@@ -162,12 +171,12 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         paddingHorizontal: tokens.spacing.xl,
     },
     illustrationBox: {
-        width: 220,
-        height: 220,
-        borderRadius: 110,
+        width: illoSize,
+        height: illoSize,
+        borderRadius: illoSize / 2,
         alignItems: 'center' as const,
         justifyContent: 'center' as const,
-        marginTop: tokens.spacing.huge,
+        marginTop: illoMarginTop,
         ...tokens.shadow.brand,
     },
     // 글리프는 그라디언트(브랜드 오렌지) 위에 항상 흰 텍스트 — 테마 무관.

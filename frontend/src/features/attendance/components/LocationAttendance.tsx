@@ -1,7 +1,8 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {Platform, StyleSheet, Text, TextStyle, View, ViewStyle} from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
-import {Button, Card, Toast} from '../../../common/components';
+import {Toast} from '../../../common/components';
+import {AppButton, AppCard} from '../../../common/components/ds';
 import {colors, spacing} from '../../../common/styles/theme';
 import {useAuth} from '../../../contexts/AuthContext';
 import {useWorkplaces} from '../../workplace/hooks/useWorkplaces';
@@ -253,7 +254,7 @@ const LocationAttendance: React.FC<LocationAttendanceProps> = ({
     }, []);
 
     return (
-        <Card style={styles.container}>
+        <AppCard variant="elevated" style={styles.container}>
             <Text style={styles.title}>위치 기반 출퇴근</Text>
 
             {/* 위치 상태 표시 */}
@@ -265,8 +266,8 @@ const LocationAttendance: React.FC<LocationAttendanceProps> = ({
                 <View style={styles.errorContainer}>
                     <Text style={styles.errorText}>위치 권한이 필요합니다</Text>
                     <Text style={styles.errorSubText}>앱 설정에서 위치 권한을 허용해주세요.</Text>
-                    <Button
-                        title="권한 다시 요청"
+                    <AppButton
+                        label="권한 다시 요청"
                         onPress={requestLocationPermission}
                         style={styles.button}
                     />
@@ -306,10 +307,10 @@ const LocationAttendance: React.FC<LocationAttendanceProps> = ({
                                 </View>
                             )}
 
-                            <Button
-                                title="위치 새로고침"
+                            <AppButton
+                                label="위치 새로고침"
                                 onPress={handleRefreshLocation}
-                                type="secondary"
+                                variant="secondary"
                                 style={styles.refreshButton}
                             />
                         </View>
@@ -320,26 +321,26 @@ const LocationAttendance: React.FC<LocationAttendanceProps> = ({
                     {/* 출퇴근 버튼 */}
                     {location && workplace && (
                         <View style={styles.buttonContainer}>
-                            <Button
-                                title="출근하기"
+                            <AppButton
+                                label="출근하기"
                                 onPress={handleCheckIn}
                                 loading={loading}
                                 disabled={distanceInfo ? !distanceInfo.isWithin : true}
                                 style={[styles.button, styles.checkInButton]}
                             />
-                            <Button
-                                title="퇴근하기"
+                            <AppButton
+                                label="퇴근하기"
                                 onPress={handleCheckOut}
                                 loading={loading}
                                 disabled={distanceInfo ? !distanceInfo.isWithin : true}
                                 style={[styles.button, styles.checkOutButton]}
-                                type="secondary"
+                                variant="secondary"
                             />
                         </View>
                     )}
                 </>
             )}
-        </Card>
+        </AppCard>
     );
 };
 

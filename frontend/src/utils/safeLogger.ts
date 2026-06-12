@@ -34,7 +34,7 @@ class SafeLogger {
      * LogBox 관련 에러는 무시하고, 일반 에러만 로깅
      */
     error = (...args: any[]) => {
-        if (!this.enableConsole) return;
+        if (!this.enableConsole) {return;}
 
         const errorMessage = args.join(' ');
 
@@ -62,7 +62,7 @@ class SafeLogger {
      * 안전한 경고 로깅
      */
     warn = (...args: any[]) => {
-        if (!this.enableConsole) return;
+        if (!this.enableConsole) {return;}
         this.originalConsoleWarn(...args);
     };
 
@@ -70,7 +70,7 @@ class SafeLogger {
      * 안전한 일반 로깅
      */
     log = (...args: any[]) => {
-        if (!this.enableConsole) return;
+        if (!this.enableConsole) {return;}
         this.originalConsoleLog(...args);
     };
 
@@ -78,7 +78,7 @@ class SafeLogger {
      * ErrorBoundary 전용 안전한 에러 로깅
      */
     errorBoundaryLog = (error: Error, errorInfo?: any) => {
-        if (!this.enableConsole) return;
+        if (!this.enableConsole) {return;}
 
         // ErrorBoundary 에러는 항상 로깅하되, LogBox 트리거를 피함
         const errorMessage = `[ErrorBoundary] ${error.message}`;
@@ -101,7 +101,7 @@ class SafeLogger {
      * null 반환은 정상 동작이므로 INFO 레벨로 처리
      */
     asyncStorageInfo = (...args: any[]) => {
-        if (!this.enableConsole) return;
+        if (!this.enableConsole) {return;}
 
         const message = args.join(' ');
 
@@ -120,7 +120,7 @@ class SafeLogger {
      * 실제 에러만 error 레벨로 처리
      */
     asyncStorageError = (...args: any[]) => {
-        if (!this.enableConsole) return;
+        if (!this.enableConsole) {return;}
 
         const message = args.join(' ');
 

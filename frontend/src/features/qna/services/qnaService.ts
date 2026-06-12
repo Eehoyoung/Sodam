@@ -23,7 +23,7 @@ async function create(payload: { title: string; content: string; attachments?: A
   const form = new FormData();
   form.append('title', payload.title);
   form.append('content', payload.content);
-  (payload.attachments || []).forEach((f, idx) => {
+  (payload.attachments ?? []).forEach((f, idx) => {
     // RN FormData accepts file descriptors but the TS lib types only allow string | Blob.
     (form as any).append('files', {
       uri: f.uri,

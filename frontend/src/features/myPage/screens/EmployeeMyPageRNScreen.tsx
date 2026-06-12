@@ -1,20 +1,11 @@
-import {AppToast} from '../../../common/components/ds';
+import {AppToast, AppBadge, AppButton, AppCard, AppHeader, AppListItem, AppText, ScreenContainer} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
-import {Alert, ScrollView, StyleSheet, View} from 'react-native';
+import {ScrollView, StyleSheet, View} from 'react-native';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
 import AttendanceSummaryPanel from '../../attendance/components/AttendanceSummaryPanel';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import policyService from '../../info/services/policyService';
 import laborInfoService from '../../../services/laborInfoService';
-import {
-    AppBadge,
-    AppButton,
-    AppCard,
-    AppHeader,
-    AppListItem,
-    AppText,
-    ScreenContainer,
-} from '../../../common/components/ds';
 import {layout, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {HeroSlot, SummarySlot, ActionsSlot, InfoSlot} from '../components/RoleSlots';
@@ -123,6 +114,7 @@ const EmployeeMyPageRNScreen: React.FC = () => {
                                 <AppListItem
                                     key={String(p.id)}
                                     title={p.title}
+                                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- blank description must become undefined (omit subtitle), so ?? would keep the empty string
                                     subtitle={p.description || undefined}
                                     right={p.isNew ? <AppBadge label="NEW" tone="info" /> : '›'}
                                     onPress={() => handlePolicyPress(p)}

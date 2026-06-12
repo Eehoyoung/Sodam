@@ -127,7 +127,7 @@ export const executeWhenReady = async <T>(
  */
 export const initializeAfterReady = (
     initFunction: () => void,
-    dependencies: any[] = []
+    _dependencies: any[] = []
 ): void => {
     const manager = ContextReadinessManager.getInstance();
 

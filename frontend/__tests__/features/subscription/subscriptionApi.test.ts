@@ -16,7 +16,9 @@ jest.mock('../../../src/common/utils/api', () => ({
 // - GET    /api/billing/plans
 // - GET    /api/billing/me           (204/404 → null)
 // - POST   /api/billing/subscribe/free
-// - POST   /api/billing/subscribe    {plan, authKey}
+// - POST   /api/billing/subscribe    {plan, authKey, billingCycle}
+// - POST   /api/billing/pause
+// - POST   /api/billing/resume
 // - DELETE /api/billing/cancel
 
 describe('subscriptionApi', () => {
@@ -28,8 +30,8 @@ describe('subscriptionApi', () => {
         it('PlanCatalogItem 배열로 매핑한다', async () => {
             (api.get as jest.Mock).mockResolvedValue({
                 data: [
-                    {name: 'FREE', displayName: '무료', monthlyPriceKrw: 0, description: '체험'},
-                    {name: 'BUSINESS', displayName: '비즈니스', monthlyPriceKrw: 29000, description: '권장'},
+                    {name: 'FREE', displayName: '무료', monthlyPriceKrw: 0, description: '체험', paid: false, employeeLimit: 2, features: []},
+                    {name: 'PRO', displayName: '프로', monthlyPriceKrw: 19900, description: '권장', paid: true, employeeLimit: null, features: ['연차']},
                 ],
             });
 
@@ -42,8 +44,12 @@ describe('subscriptionApi', () => {
                 displayName: '무료',
                 monthlyPriceKrw: 0,
                 description: '체험',
+                employeeLimit: 2,
+                features: [],
             });
-            expect(plans[1].name).toBe('BUSINESS');
+            expect(plans[1].name).toBe('PRO');
+            expect(plans[1].employeeLimit).toBeNull();
+            expect(plans[1].features).toEqual(['연차']);
         });
 
         it('응답 data 가 null 이면 빈 배열을 반환한다', async () => {
@@ -57,8 +63,9 @@ describe('subscriptionApi', () => {
         it('정상 응답을 그대로 반환한다', async () => {
             const payload = {
                 id: 1,
-                plan: 'BUSINESS',
+                plan: 'PRO',
                 status: 'ACTIVE',
+                billingCycle: 'YEARLY',
                 cardLabel: '신한 1234',
                 currentPeriodEndAt: '2026-06-19',
                 nextBillingAt: '2026-06-19',
@@ -94,7 +101,7 @@ describe('subscriptionApi', () => {
     });
 
     describe('subscribePaid', () => {
-        it('plan + authKey 를 body 로 POST 한다', async () => {
+        it('plan + authKey + 기본 billingCycle(MONTHLY) 을 body 로 POST 한다', async () => {
             const resp = {id: 10, plan: 'PREMIUM', status: 'ACTIVE'};
             (api.post as jest.Mock).mockResolvedValue({data: resp});
 
@@ -103,7 +110,40 @@ describe('subscriptionApi', () => {
             expect(api.post).toHaveBeenCalledWith('/api/billing/subscribe', {
                 plan: 'PREMIUM',
                 authKey: 'auth_key_xyz',
+                billingCycle: 'MONTHLY',
             });
+            expect(r).toEqual(resp);
+        });
+
+        it('전달된 billingCycle 을 body 에 반영한다', async () => {
+            (api.post as jest.Mock).mockResolvedValue({data: {id: 11, plan: 'PRO', status: 'PENDING_PAYMENT'}});
+
+            await subscriptionApi.subscribePaid('PRO', 'auth_key_abc', 'HALF_YEARLY');
+
+            expect(api.post).toHaveBeenCalledWith('/api/billing/subscribe', {
+                plan: 'PRO',
+                authKey: 'auth_key_abc',
+                billingCycle: 'HALF_YEARLY',
+            });
+        });
+    });
+
+    describe('pause', () => {
+        it('POST /api/billing/pause 후 ACTIVE→PAUSED 응답을 반환한다', async () => {
+            const resp = {id: 1, plan: 'PRO', status: 'PAUSED'};
+            (api.post as jest.Mock).mockResolvedValue({data: resp});
+            const r = await subscriptionApi.pause();
+            expect(api.post).toHaveBeenCalledWith('/api/billing/pause');
+            expect(r).toEqual(resp);
+        });
+    });
+
+    describe('resume', () => {
+        it('POST /api/billing/resume 후 PAUSED→ACTIVE 응답을 반환한다', async () => {
+            const resp = {id: 1, plan: 'PRO', status: 'ACTIVE'};
+            (api.post as jest.Mock).mockResolvedValue({data: resp});
+            const r = await subscriptionApi.resume();
+            expect(api.post).toHaveBeenCalledWith('/api/billing/resume');
             expect(r).toEqual(resp);
         });
     });

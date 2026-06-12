@@ -1,15 +1,6 @@
-import {AppToast} from '../../../common/components/ds';
+import {AppToast, AppBadge, AppButton, AppCard, AppHeader, AppInput, AppText, ScreenContainer} from '../../../common/components/ds';
 import React, {useState} from 'react';
-import {Alert, Linking, Pressable, StyleSheet, View} from 'react-native';
-import {
-    AppBadge,
-    AppButton,
-    AppCard,
-    AppHeader,
-    AppInput,
-    AppText,
-    ScreenContainer,
-} from '../../../common/components/ds';
+import {Linking, Pressable, StyleSheet, View} from 'react-native';
 import {spacing} from '../../../theme/tokens';
 
 const faqData = [

@@ -1,19 +1,9 @@
-import {AppToast} from '../../../common/components/ds';
+import {AppToast, AppBadge, AppButton, AppCard, AppHeader, AppListItem, AppText, BottomSheet, ScreenContainer} from '../../../common/components/ds';
 import React, {useState} from 'react';
-import {Alert, StyleSheet, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {useAuth} from '../../../contexts/AuthContext';
 import {useNavigation} from '@react-navigation/native';
 import {RootNavigationProp} from '../../../navigation/types';
-import {
-    AppBadge,
-    AppButton,
-    AppCard,
-    AppHeader,
-    AppListItem,
-    AppText,
-    BottomSheet,
-    ScreenContainer,
-} from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 
 /**
@@ -51,9 +41,9 @@ const SettingsScreen: React.FC = () => {
 
             <View style={styles.list}>
                 <AppListItem title="프로필 보기" subtitle="이름, 이메일, 역할" right="›" onPress={() => (navigation as any).navigate('Profile')} />
-                <AppListItem title="알림" subtitle="근태, 급여, 정정 요청" right="›" />
-                <AppListItem title="화면 표시" subtitle="큰 글자와 다크 모드 준비" right="›" />
-                <AppListItem title="고객지원" subtitle="문의와 공지" right="›" />
+                <AppListItem title="알림" subtitle="근태, 급여, 정정 요청" right="›" onPress={() => (navigation as any).navigate('NotificationSettings')} />
+                <AppListItem title="화면 표시" subtitle="큰 글자와 다크 모드 준비" right="›" onPress={() => (navigation as any).navigate('AccountSettings')} />
+                <AppListItem title="고객지원" subtitle="문의와 공지" right="›" onPress={() => (navigation as any).navigate('QnA')} />
             </View>
 
             <AppButton label="로그아웃" variant="secondary" onPress={() => setLogoutSheet(true)} style={styles.logout} />

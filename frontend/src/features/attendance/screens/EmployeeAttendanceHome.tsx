@@ -1,16 +1,7 @@
-import {AppToast, ConfirmSheet} from '../../../common/components/ds';
+import {AppToast, ConfirmSheet, AppCard, AppHeader, AppListItem, AppText, LoadingState, PunchButton, ScreenContainer} from '../../../common/components/ds';
 import React, {useEffect, useMemo, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
-import {
-    AppCard,
-    AppHeader,
-    AppListItem,
-    AppText,
-    LoadingState,
-    PunchButton,
-    ScreenContainer,
-} from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 import {formatTimer, formatWage} from '../../../common/utils/format';
 import {useAuth} from '../../../contexts/AuthContext';
@@ -103,11 +94,11 @@ const EmployeeAttendanceHome: React.FC = () => {
         }
     };
 
-    const proceed = (storeId: number) => {
-        if (state === 'IDLE') {
-            navigation.navigate('AttendanceCheckIn', {storeId});
-        } else if (state === 'WORKING') {
-            navigation.navigate('AttendanceCheckOut', {storeId, attendanceId: todayRecord?.id});
+    const proceed = (_storeId: number) => {
+        // 출근/퇴근 모두 AttendanceScreen 이 NFC/GPS 검증과 함께 처리한다.
+        // (구 코드의 AttendanceCheckIn/AttendanceCheckOut 라우트는 미구현 — 진입 시 크래시였음)
+        if (state === 'IDLE' || state === 'WORKING') {
+            navigation.navigate('Attendance');
         } else if (state === 'DONE') {
             AppToast.show('오늘은 이미 퇴근 완료했어요.');
         }

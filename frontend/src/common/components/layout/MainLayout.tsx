@@ -15,6 +15,7 @@ let Extrapolate: any;
 
 try {
   if (ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE)) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional native module, guarded require (loaded only when animations are enabled)
     const reanimated = require('react-native-reanimated');
     Animated = reanimated.default;
     useAnimatedScrollHandler = reanimated.useAnimatedScrollHandler;
@@ -37,6 +38,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({children, title}) => {
     const shouldUseAnimations = ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE);
 
     // Only use animated values when animations are enabled
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: reanimated hook gated on native module availability
     const scrollY = shouldUseAnimations ? useSharedValue(0) : null;
     const scrollViewRef = useRef<any>(null);
 
@@ -44,6 +46,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({children, title}) => {
     const windowHeight = useMemo(() => Dimensions.get('window').height, []);
 
     // 스크롤 위치에 따라 Footer의 투명도 계산 (애니메이션 활성화 시에만)
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: reanimated hook gated on native module availability
     const footerAnimatedStyle = shouldUseAnimations && scrollY ? useAnimatedStyle(() => ({
         opacity: interpolate(
             scrollY.value,
@@ -54,6 +57,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({children, title}) => {
     })) : null;
 
     // 스크롤 이벤트 핸들러 (애니메이션 활성화 시에만)
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: reanimated hook gated on native module availability
     const scrollHandler = shouldUseAnimations && scrollY ? useAnimatedScrollHandler({
         onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
             scrollY.value = event.nativeEvent.contentOffset.y;

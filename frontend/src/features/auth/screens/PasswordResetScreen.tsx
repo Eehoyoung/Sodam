@@ -1,9 +1,9 @@
-import {AppToast} from '../../../common/components/ds';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import {AppToast, AppButton, AppHeader, AppInput, ScreenContainer} from '../../../common/components/ds';
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {tokens} from '../../../theme/tokens';
-import {AppButton, AppHeader, AppInput, ScreenContainer} from '../../../common/components/ds';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import {
     checkPassword,
@@ -12,7 +12,7 @@ import {
 } from '../services/passwordResetApi';
 
 // 기존 다단계 본문을 유지하기 위한 경량 어댑터 (구식 Button/Input → DS)
-const Button: React.FC<any> = ({title, size, fullWidth, textStyle, ...rest}) => (
+const Button: React.FC<any> = ({title, size: _size, fullWidth: _fullWidth, textStyle: _textStyle, ...rest}) => (
     <AppButton label={title} {...rest} />
 );
 const Input: React.FC<any> = ({helperText, ...rest}) => <AppInput helper={helperText} {...rest} />;
@@ -94,7 +94,7 @@ const StepEmail: React.FC<{onNext: () => void}> = ({onNext}) => {
     const [loading, setLoading] = useState(false);
 
     const submit = async () => {
-        if (!email || !email.includes('@')) {
+        if (!email?.includes('@')) {
             AppToast.warn('올바른 이메일 형식을 입력해 주세요.');
             return;
         }
@@ -165,7 +165,7 @@ const StepOtp: React.FC<{onNext: () => void; onBack: () => void}> = ({onNext, on
     };
 
     const submit = async () => {
-        if (code.length !== OTP_LENGTH) return;
+        if (code.length !== OTP_LENGTH) {return;}
         setLoading(true);
         try {
             const ticket = await passwordResetApi.verify(globalEmailRef.current, code);
@@ -366,19 +366,13 @@ function strengthLabel(s: PasswordStrength): string {
 }
 
 function maskEmail(email: string): string {
-    if (!email) return '';
+    if (!email) {return '';}
     const at = email.indexOf('@');
-    if (at <= 1) return '***';
+    if (at <= 1) {return '***';}
     return email[0] + '***' + email.substring(at);
 }
 
 const makeStyles = (c: ThemeColors) => StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: c.background},
-    flex: {flex: 1},
-    scrollContent: {
-        padding: tokens.spacing.lg,
-        paddingBottom: tokens.spacing.huge,
-    },
     progressRow: {
         flexDirection: 'row' as const,
         justifyContent: 'space-around' as const,

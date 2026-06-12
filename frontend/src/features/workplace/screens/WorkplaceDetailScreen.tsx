@@ -55,6 +55,7 @@ export const WorkplaceDetailScreen: React.FC = () => {
             </ScreenContainer>
         );
     }
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- boolean condition (logical OR), not value coalescing
     if (error || !workplace) {
         return (
             <ScreenContainer header={header}>

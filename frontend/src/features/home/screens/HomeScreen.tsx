@@ -1,5 +1,6 @@
 import React from 'react';
 import {StyleSheet, View} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
 import {AppCard, AppHeader, AppListItem, AppText, ScreenContainer} from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 
@@ -8,8 +9,9 @@ import {spacing} from '../../../theme/tokens';
  * 역할에 맞는 홈으로 안내하는 라우팅 랜딩.
  */
 const HomeScreen: React.FC = () => {
+    const navigation = useNavigation<any>();
     return (
-        <ScreenContainer scroll header={<AppHeader title="오늘의 소담" actions={[{label: '알림', onPress: () => {}}]} />}>
+        <ScreenContainer scroll header={<AppHeader title="오늘의 소담" actions={[{label: '알림', onPress: () => navigation.navigate('NotificationCenter')}]} />}>
             <AppCard variant="warm">
                 <AppText variant="titleMd">역할에 맞는 홈으로 이동해요</AppText>
                 <AppText variant="caption" tone="secondary" style={styles.sub}>

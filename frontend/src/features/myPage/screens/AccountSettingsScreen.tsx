@@ -1,15 +1,7 @@
-import {AppToast, ConfirmSheet} from '../../../common/components/ds';
+import {AppToast, ConfirmSheet, AppButton, AppCard, AppHeader, AppInput, AppText, ScreenContainer} from '../../../common/components/ds';
 import React, {useState} from 'react';
 import {Pressable, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
-import {
-    AppButton,
-    AppCard,
-    AppHeader,
-    AppInput,
-    AppText,
-    ScreenContainer,
-} from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 import api from '../../../common/utils/api';
 import {useAuth} from '../../../contexts/AuthContext';

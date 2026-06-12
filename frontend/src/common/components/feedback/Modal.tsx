@@ -20,6 +20,7 @@ let withTiming: any;
 
 try {
   if (ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE)) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional native module, guarded require (loaded only when animations are enabled)
     const reanimated = require('react-native-reanimated');
     Animated = reanimated.default;
     useAnimatedStyle = reanimated.useAnimatedStyle;
@@ -60,7 +61,6 @@ const Modal: React.FC<ModalProps> = ({
                                          title,
                                          children,
                                          footer,
-                                         animationType = 'fade',
                                          closeOnBackdropPress = true,
                                          backdropOpacity = 0.5,
                                          style,
@@ -73,9 +73,11 @@ const Modal: React.FC<ModalProps> = ({
     const shouldUseAnimations = ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE);
 
     // Only use animated values when animations are enabled
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: reanimated hook gated on native module availability
     const fadeAnim = shouldUseAnimations && useSharedValue ? useSharedValue(0) : null;
 
     // Conditionally create animated styles only when animations are enabled
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: reanimated hook gated on native module availability
     const animatedStyle = shouldUseAnimations && useAnimatedStyle && fadeAnim ? useAnimatedStyle(() => ({
         opacity: fadeAnim.value,
     })) : null;

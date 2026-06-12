@@ -51,7 +51,7 @@ export const JSIPerformanceDashboard: React.FC<DashboardProps> = ({
 
     // Auto-refresh data every 5 seconds
     useEffect(() => {
-        if (!isVisible) return;
+        if (!isVisible) {return;}
 
         const refreshData = () => {
             setMetrics(JSIPerformanceMonitor.getRecentMetrics(20));
@@ -274,7 +274,7 @@ export const JSIPerformanceDashboard: React.FC<DashboardProps> = ({
         return (
             <View style={styles.crashContainer}>
                 <Text style={styles.crashTitle}>Recent Crashes ({crashReports.length})</Text>
-                {crashReports.slice(-5).map((crash, index) => (
+                {crashReports.slice(-5).map((crash, _index) => (
                     <View key={crash.id} style={styles.crashItem}>
                         <Text style={styles.crashTimestamp}>
                             {new Date(crash.timestamp).toLocaleString()}
@@ -328,7 +328,7 @@ export const JSIPerformanceDashboard: React.FC<DashboardProps> = ({
         }
     };
 
-    if (!isVisible) return null;
+    if (!isVisible) {return null;}
 
     return (
         <FadeAnimation isVisible={isVisible} style={styles.overlay}>

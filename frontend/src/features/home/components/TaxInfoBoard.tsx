@@ -32,7 +32,7 @@ const TaxInfoBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
         <View style={styles.container}>
             <View style={styles.headerRow}>
                 <Text style={styles.sectionTitle}>주요 세무 정보</Text>
-                <TouchableOpacity style={styles.moreButton}>
+                <TouchableOpacity style={styles.moreButton} onPress={() => navigation?.navigate('InfoList')}>
                     <Text style={styles.moreButtonText}>더보기</Text>
                 </TouchableOpacity>
             </View>

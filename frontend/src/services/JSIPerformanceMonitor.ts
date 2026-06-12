@@ -112,6 +112,7 @@ class JSIPerformanceMonitorService {
             id: `crash_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             timestamp: Date.now(),
             error: error.message,
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- blank stack should fall back to default text, so ?? would be wrong
             stackTrace: error.stack || 'No stack trace available',
             component,
             platform: Platform.OS,

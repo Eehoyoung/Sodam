@@ -1,17 +1,7 @@
-import {AppToast} from '../../../common/components/ds';
+import {AppToast, AppCard, AppHeader, AppListItem, AppText, ErrorState, LoadingState, MoneyCard, ScreenContainer} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
-import {Alert, StyleSheet, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import payrollService, {PayrollDetails} from '../services/payrollService';
-import {
-    AppCard,
-    AppHeader,
-    AppListItem,
-    AppText,
-    ErrorState,
-    LoadingState,
-    MoneyCard,
-    ScreenContainer,
-} from '../../../common/components/ds';
 import {formatMoney} from '../../../common/utils/format';
 import {spacing} from '../../../theme/tokens';
 
@@ -101,6 +91,7 @@ const SalaryDetailScreen: React.FC<Props> = ({route}) => {
 
     return (
         <ScreenContainer scroll header={header} testID="salary-detail-success">
+            {/* eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined */}
             {details.totalPay != null ? (
                 <MoneyCard
                     label={`근로자 ${details.employeeId} · 매장 ${details.storeId}`}
@@ -110,9 +101,11 @@ const SalaryDetailScreen: React.FC<Props> = ({route}) => {
             ) : null}
 
             <AppCard variant="flat" style={styles.summary}>
+                {/* eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined */}
                 {details.totalHours != null ? (
                     <Row label="총 근무시간" value={`${details.totalHours}h`} />
                 ) : null}
+                {/* eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined */}
                 {details.totalPay != null ? <Row label="총 급여" value={formatMoney(details.totalPay)} /> : null}
             </AppCard>
 

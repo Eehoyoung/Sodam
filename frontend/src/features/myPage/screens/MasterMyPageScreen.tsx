@@ -1,4 +1,4 @@
-import {AppToast} from '../../../common/components/ds';
+import {AppToast, AppHeader, ScreenContainer} from '../../../common/components/ds';
 import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
@@ -11,8 +11,6 @@ import {
     RefreshControl,
 } from 'react-native';
 import  LinearGradient  from 'react-native-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { AppHeader, ScreenContainer } from '../../../common/components/ds';
 import { NavigationProp } from '@react-navigation/native';
 import  Ionicons from 'react-native-vector-icons/Ionicons';
 import { COLORS } from '../../../common/components/logo/Colors';
@@ -92,16 +90,17 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
             const apiStores: StoreInfo[] = storeData.map(store => ({
                 id: store.id,
                 storeName: store.storeName,
-                businessNumber: store.businessNumber || '',
-                storePhoneNumber: store.storePhoneNumber || '',
-                businessType: store.businessType || '',
-                storeCode: store.storeCode || '',
-                fullAddress: store.fullAddress || '',
+                businessNumber: store.businessNumber ?? '',
+                storePhoneNumber: store.storePhoneNumber ?? '',
+                businessType: store.businessType ?? '',
+                storeCode: store.storeCode ?? '',
+                fullAddress: store.fullAddress ?? '',
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- wage of 0 should fall back to default minimum wage, so ?? would be wrong
                 storeStandardHourWage: store.storeStandardHourWage || 9620,
-                monthlyLaborCost: store.monthlyLaborCost || 0,
-                employeeCount: store.employeeCount || 0,
-                todayAttendance: store.todayAttendance || 0,
-                monthlyRevenue: store.monthlyRevenue || 0,
+                monthlyLaborCost: store.monthlyLaborCost ?? 0,
+                employeeCount: store.employeeCount ?? 0,
+                todayAttendance: store.todayAttendance ?? 0,
+                monthlyRevenue: store.monthlyRevenue ?? 0,
             }));
 
             // 정책 정보: info 서비스 연동 (상위 3개 노출)
@@ -168,7 +167,7 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
     };
 
     const handleStorePress = (store: StoreInfo) => {
-        navigation.navigate('StoreDetailScreen', { storeId: store.id });
+        navigation.navigate('StoreDetail', { storeId: store.id });
     };
 
     const handlePolicyPress = (policy: PolicyInfo) => {
@@ -178,6 +177,35 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
     const handleAddStore = () => {
         // HomeNavigator에 등록된 라우트로 이동
         navigation.navigate('StoreRegistration' as never);
+    };
+
+    // 빠른 메뉴 — 매장 의존 화면은 첫 매장 기준으로 진입. 매장이 없으면 등록 유도.
+    const primaryStoreId = stores[0]?.id;
+
+    const handleQuickEmployee = () => {
+        if (primaryStoreId === undefined) {
+            AppToast.show('먼저 매장을 등록해 주세요.');
+            handleAddStore();
+            return;
+        }
+        navigation.navigate('StoreDetail', {storeId: primaryStoreId});
+    };
+
+    const handleQuickAttendance = () => {
+        navigation.navigate('Attendance');
+    };
+
+    const handleQuickPayroll = () => {
+        if (primaryStoreId === undefined) {
+            AppToast.show('먼저 매장을 등록해 주세요.');
+            handleAddStore();
+            return;
+        }
+        navigation.navigate('PayrollRun', {storeId: primaryStoreId});
+    };
+
+    const handleQuickDashboard = () => {
+        navigation.navigate('OwnerDashboard');
     };
 
     const renderStoreCard = ({ item: store }: { item: StoreInfo }) => (
@@ -193,7 +221,7 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
                 end={{ x: 1, y: 1 }}
             >
                 <View style={styles.storeCardHeader}>
-                    <Text style={styles.storeName}>{store.storeName}</Text>
+                    <Text style={styles.storeName} numberOfLines={1}>{store.storeName}</Text>
                     <View style={styles.storeTypeTag}>
                         <Text style={styles.storeTypeText}>{store.businessType}</Text>
                     </View>
@@ -202,7 +230,7 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
                 <View style={styles.storeStats}>
                     <View style={styles.statItem}>
                         <Text style={styles.statLabel}>이번달 인건비</Text>
-                        <Text style={styles.statValue}>{formatCurrency(store.monthlyLaborCost)}원</Text>
+                        <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>{formatCurrency(store.monthlyLaborCost)}원</Text>
                     </View>
 
                     <View style={styles.statItem}>
@@ -219,7 +247,7 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
 
                     <View style={styles.statItem}>
                         <Text style={styles.statLabel}>이번달 매출</Text>
-                        <Text style={styles.statValue}>{formatCurrency(store.monthlyRevenue)}원</Text>
+                        <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>{formatCurrency(store.monthlyRevenue)}원</Text>
                     </View>
                 </View>
 
@@ -302,7 +330,7 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
                         </View>
                         <View style={styles.summaryItemFull}>
                             <Text style={styles.summaryLabel}>이번달 총 인건비</Text>
-                            <Text style={styles.summaryValueLarge}>{formatCurrency(masterInfo.monthlyTotalLaborCost)}원</Text>
+                            <Text style={styles.summaryValueLarge} numberOfLines={1} adjustsFontSizeToFit>{formatCurrency(masterInfo.monthlyTotalLaborCost)}원</Text>
                         </View>
                     </View>
                 </View>
@@ -344,32 +372,32 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>매장 관리</Text>
                     <View style={styles.quickMenuGrid}>
-                        <TouchableOpacity style={styles.quickMenuItem}>
+                        <TouchableOpacity style={styles.quickMenuItem} onPress={handleQuickEmployee}>
                             <View style={[styles.quickMenuIcon, { backgroundColor: '#FFF0E8' }]}>
                                 <Ionicons name="people-outline" size={24} color={COLORS.SODAM_BLUE} />
                             </View>
                             <Text style={styles.quickMenuText}>직원 관리</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.quickMenuItem}>
+                        <TouchableOpacity style={styles.quickMenuItem} onPress={handleQuickAttendance}>
                             <View style={[styles.quickMenuIcon, { backgroundColor: '#DFF6ED' }]}>
                                 <Ionicons name="time-outline" size={24} color={COLORS.SODAM_GREEN} />
                             </View>
                             <Text style={styles.quickMenuText}>근태 관리</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.quickMenuItem}>
+                        <TouchableOpacity style={styles.quickMenuItem} onPress={handleQuickPayroll}>
                             <View style={[styles.quickMenuIcon, { backgroundColor: '#FEF3C7' }]}>
                                 <Ionicons name="card-outline" size={24} color={COLORS.SODAM_ORANGE} />
                             </View>
                             <Text style={styles.quickMenuText}>급여 관리</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.quickMenuItem}>
+                        <TouchableOpacity style={styles.quickMenuItem} onPress={handleQuickDashboard}>
                             <View style={[styles.quickMenuIcon, { backgroundColor: '#EFE7DF' }]}>
-                                <Ionicons name="bar-chart-outline" size={24} color="#9C27B0" />
+                                <Ionicons name="grid-outline" size={24} color="#9C27B0" />
                             </View>
-                            <Text style={styles.quickMenuText}>매출 분석</Text>
+                            <Text style={styles.quickMenuText}>대시보드</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -430,10 +458,6 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: COLORS.GRAY_50,
-    },
     scrollView: {
         flex: 1,
     },
@@ -457,9 +481,6 @@ const styles = StyleSheet.create({
     subGreeting: {
         fontSize: 14,
         color: COLORS.GRAY_600,
-    },
-    notificationButton: {
-        padding: 8,
     },
     summaryCard: {
         backgroundColor: COLORS.WHITE,

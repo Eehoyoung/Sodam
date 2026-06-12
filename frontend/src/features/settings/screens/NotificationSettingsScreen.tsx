@@ -1,3 +1,4 @@
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
 import React, {useEffect, useMemo, useState} from 'react';
 import {Platform, Pressable, StyleSheet, Switch, Text, View} from 'react-native';
 import DateTimePicker, {DateTimePickerEvent} from '@react-native-community/datetimepicker';
@@ -50,7 +51,7 @@ const NotificationSettingsScreen: React.FC = () => {
         (async () => {
             try {
                 const raw = await unifiedStorage.getItem(STORAGE_KEY);
-                if (raw) setPrefs({...DEFAULT_PREFS, ...JSON.parse(raw)});
+                if (raw) {setPrefs({...DEFAULT_PREFS, ...JSON.parse(raw)});}
             } catch (_) {/* ignore */}
         })();
     }, []);
@@ -70,8 +71,8 @@ const NotificationSettingsScreen: React.FC = () => {
         return d;
     };
     const onPickerChange = (which: 'start' | 'end') => (event: DateTimePickerEvent, date?: Date) => {
-        if (Platform.OS === 'android') setPickerOpenFor(null);
-        if (event.type === 'dismissed' || !date) return;
+        if (Platform.OS === 'android') {setPickerOpenFor(null);}
+        if (event.type === 'dismissed' || !date) {return;}
         const time = `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
         const key = which === 'start' ? 'quietStart' : 'quietEnd';
         update({...prefs, [key]: time});
@@ -229,16 +230,6 @@ const QuietTimePicker: React.FC<{
 };
 
 const makeStyles = (c: ThemeColors) => StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: c.background},
-    scrollContent: {padding: tokens.spacing.lg, paddingBottom: tokens.spacing.huge},
-    title: {
-        fontSize: tokens.typography.sizes.xxl,
-        fontWeight: tokens.typography.weights.bold,
-        color: c.textPrimary,
-        letterSpacing: -0.5,
-        marginTop: tokens.spacing.md,
-        marginBottom: tokens.spacing.sm,
-    },
     subtitle: {
         fontSize: tokens.typography.sizes.md,
         color: c.textSecondary,

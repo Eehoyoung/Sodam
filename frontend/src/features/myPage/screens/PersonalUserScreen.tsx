@@ -12,15 +12,11 @@ import {
     StatusBar,
     Dimensions,
     FlatList,
-    ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import SectionCard from '../../../common/components/sections/SectionCard';
-import SectionHeader from '../../../common/components/sections/SectionHeader';
 import PrimaryButton from '../../../common/components/buttons/PrimaryButton';
 import AuthContext from '../../../contexts/AuthContext';
 import storeService from '../../store/services/storeService';
-import attendanceService from '../../attendance/services/attendanceService';
 
 Dimensions.get('window');
 
@@ -88,7 +84,7 @@ const MultiStoreWorkScreen: React.FC = () => {
 
     // 매장 데이터 - API 연동
     const [stores, setStores] = useState<Store[]>([]);
-    const [loadingStores, setLoadingStores] = useState<boolean>(true);
+    const [, setLoadingStores] = useState<boolean>(true);
 
     // 상태 관리
     const [currentTime, setCurrentTime] = useState<string>('');

@@ -41,7 +41,7 @@ class JSIMonitor {
      * Initialize the JSI monitor
      */
     initialize(config?: Partial<JSIMonitorConfig>) {
-        if (this.isInitialized) return;
+        if (this.isInitialized) {return;}
 
         this.config = {...this.config, ...config};
 
@@ -119,6 +119,7 @@ class JSIMonitor {
     trackWorkletExecution = (workletName: string, component?: string) => {
         // This should be called via runOnJS from worklets for tracking
         if (__DEV__) {
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- blank component name should fall back to default text, so ?? would be wrong
             console.log(`⚡ Worklet executed: ${workletName} in ${component || 'unknown component'}`);
         }
     };
@@ -175,7 +176,7 @@ class JSIMonitor {
         if (typeof global !== 'undefined') {
             // Monitor Dimensions.get calls
             const globalDimensions = (global as any).Dimensions;
-            if (globalDimensions && globalDimensions.get) {
+            if (globalDimensions?.get) {
                 const originalDimensionsGet = globalDimensions.get;
                 globalDimensions.get = (...args: any[]) => {
                     // Check if we're potentially in a worklet context
@@ -231,6 +232,7 @@ class JSIMonitor {
         try {
             throw new Error();
         } catch (e) {
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- blank stack should fall back to default text, so ?? would be wrong
             return (e as Error).stack || 'Stack trace not available';
         }
     }
@@ -240,7 +242,7 @@ class JSIMonitor {
      */
     private checkForJSIError(error: Error) {
         const message = error.message || '';
-        const stack = error.stack || '';
+        const stack = error.stack ?? '';
 
         if (this.isJSIRelatedError(message) || this.isJSIRelatedError(stack)) {
             this.reportViolation({
@@ -257,7 +259,7 @@ class JSIMonitor {
      * Report a JSI violation
      */
     private reportViolation(violation: JSIViolation) {
-        if (!this.config.enabled) return;
+        if (!this.config.enabled) {return;}
 
         this.violationCount++;
 
@@ -328,7 +330,7 @@ class JSIMonitor {
     /**
      * Handle critical violations
      */
-    private handleCriticalViolation(violation: JSIViolation) {
+    private handleCriticalViolation(_violation: JSIViolation) {
         // In development, we can show an alert or take other actions
         if (__DEV__) {
             // Use runOnJS to safely call JavaScript functions

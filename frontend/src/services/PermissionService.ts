@@ -210,7 +210,6 @@ export class PermissionService {
         showRationale: boolean = true
     ): Promise<PermissionResult> {
         try {
-            const config = PERMISSION_MAP[type];
             const permission = this.getPermissionForPlatform(type);
 
             // 먼저 현재 상태 확인
@@ -472,7 +471,6 @@ export class PermissionService {
      * 다중 권한 설명 다이얼로그 표시
      */
     private static showMultiplePermissionsRationale(types: PermissionType[]): Promise<boolean> {
-        const titles = types.map(type => PERMISSION_MAP[type].title).join(', ');
         const descriptions = types.map(type => `• ${PERMISSION_MAP[type].description}`).join('\n');
 
         return new Promise((resolve) => {

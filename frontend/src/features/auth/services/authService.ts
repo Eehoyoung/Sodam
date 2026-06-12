@@ -92,13 +92,17 @@ const mapAuthResponse = async (data: any): Promise<AuthResponse> => {
     const root = data?.data && data?.message !== undefined ? data.data : data;
     const accessToken = root?.accessToken ?? root?.token ?? root?.jwtToken;
     const refreshToken = root?.refreshToken;
-    const user: User = root?.user ?? {
-        id: root?.userId,
-        name: root?.name ?? '',
-        email: root?.email ?? '',
-        phone: root?.phone ?? undefined,
-        role: mapRole(root?.userGrade),
-        profileCompleted: root?.profileCompleted ?? root?.user?.profileCompleted ?? false,
+    const rawUser = root?.user;
+    const user: User = {
+        ...(rawUser ?? {}),
+        id: rawUser?.id ?? root?.userId,
+        name: rawUser?.name ?? root?.name ?? '',
+        email: rawUser?.email ?? root?.email ?? '',
+        phone: rawUser?.phone ?? root?.phone ?? undefined,
+        role: mapRole(rawUser?.role ?? rawUser?.userGrade ?? root?.role ?? root?.userGrade),
+        profileCompleted: rawUser?.profileCompleted ?? root?.profileCompleted,
+        consentCompleted: rawUser?.consentCompleted ?? root?.consentCompleted,
+        locationConsented: rawUser?.locationConsented ?? root?.locationConsented,
     };
 
     if (!accessToken) {
@@ -241,7 +245,8 @@ const authService = {
     },
 
     isAuthenticated: async (): Promise<boolean> => {
-        const token = await TokenManager.getAccess();
+        const tokens = await TokenManager.getTokens();
+        const token = tokens?.accessToken ?? await TokenManager.getAccess();
         if (!token) {
             return false;
         }
@@ -250,11 +255,15 @@ const authService = {
         // 여기서 미리 false 반환하면 자동 로그인 흐름이 즉시 refresh 시도(또는 로그인 화면) 로 분기.
         try {
             const parts = token.split('.');
-            if (parts.length !== 3) return true; // 형식 깨졌으면 일단 사용 시도 (서버가 판정)
+            if (parts.length !== 3) {
+                return true; // 형식 깨졌으면 일단 사용 시도 (서버가 판정)
+            }
             const payload = JSON.parse(
                 decodeBase64Url(parts[1]),
             );
-            if (typeof payload?.exp !== 'number') return true;
+            if (typeof payload?.exp !== 'number') {
+                return true;
+            }
             const nowSec = Math.floor(Date.now() / 1000);
             return payload.exp > nowSec;
         } catch (_) {

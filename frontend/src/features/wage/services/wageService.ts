@@ -42,7 +42,7 @@ async function putStandardHourlyWage(storeId: number, hourlyWage: number): Promi
 async function getEmployeeWage(employeeId: number, storeId: number): Promise<EmployeeWageResponse> {
   // API: GET /api/wages/employee/{employeeId}/store/{storeId}
   const res = await api.get<any>(`/api/wages/employee/${employeeId}/store/${storeId}`);
-  const raw = (res.data as any)?.data || res.data || {};
+  const raw = (res.data)?.data || res.data || {};
   return normalizeEmployeeWageResponse(raw, employeeId, storeId);
 }
 
@@ -56,7 +56,7 @@ async function upsertEmployeeWage(payload: UpsertEmployeeWagePayload): Promise<E
     useStoreStandardWage: useStoreStd,
   };
   const res = await api.post<any>(`/api/wages/employee`, body);
-  const raw = (res.data as any)?.data || res.data || {};
+  const raw = (res.data)?.data || res.data || {};
   return normalizeEmployeeWageResponse(raw, payload.employeeId, payload.storeId);
 }
 

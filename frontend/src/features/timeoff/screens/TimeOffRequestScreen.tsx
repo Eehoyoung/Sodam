@@ -1,17 +1,7 @@
-import {AppToast} from '../../../common/components/ds';
+import {AppToast, AppButton, AppCard, AppHeader, AppInput, AppText, CtaStack, ScreenContainer, SuccessState} from '../../../common/components/ds';
 import React, {useState} from 'react';
-import {Alert, StyleSheet, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
-import {
-    AppButton,
-    AppCard,
-    AppHeader,
-    AppInput,
-    AppText,
-    CtaStack,
-    ScreenContainer,
-    SuccessState,
-} from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 import api from '../../../common/utils/api';
 
@@ -73,7 +63,7 @@ const TimeOffRequestScreen: React.FC = () => {
     return (
         <ScreenContainer
             scroll
-            header={<AppHeader title="휴가 신청" onBack={() => navigation.goBack()} actions={[{label: '내역', onPress: () => {}}]} />}
+            header={<AppHeader title="휴가 신청" onBack={() => navigation.goBack()} />}
             footer={
                 <CtaStack bordered>
                     <AppButton label="휴가 신청하기" loading={loading} onPress={submit} />

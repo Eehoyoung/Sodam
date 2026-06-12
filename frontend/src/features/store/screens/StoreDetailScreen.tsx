@@ -1,18 +1,10 @@
-import {AppToast} from '../../../common/components/ds';
+import {AppToast, AppButton, AppCard, AppHeader, AppListItem, AppText, ErrorState, LoadingState, ScreenContainer} from '../../../common/components/ds';
 import React, {useState, useEffect} from 'react';
-import {StyleSheet, View} from 'react-native';
+import {Share, StyleSheet, View} from 'react-native';
 import {RouteProp, NavigationProp} from '@react-navigation/native';
-import {Alert} from 'react-native';
-import {
-    AppCard,
-    AppHeader,
-    AppText,
-    ErrorState,
-    LoadingState,
-    ScreenContainer,
-} from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
+import {InviteShareSheet} from '../components/StoreSheets';
 import storeService, {StoreDetailDto} from '../services/storeService';
 
 type StoreDetailScreenRouteProp = RouteProp<{StoreDetail: {storeId: number}}, 'StoreDetail'>;
@@ -31,6 +23,20 @@ export default function StoreDetailScreen({route, navigation}: StoreDetailScreen
     const [store, setStore] = useState<StoreDetailDto | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [inviteVisible, setInviteVisible] = useState(false);
+
+    const shareCode = async () => {
+        if (!store?.storeCode) {
+            return;
+        }
+        try {
+            await Share.share({
+                message: `${store.storeName} 직원 초대 코드: ${store.storeCode}\n소담 앱에서 이 코드로 매장에 합류하세요.`,
+            });
+        } catch (_) {/* ignore */}
+    };
+
+    const copyCode = () => AppToast.show(`초대 코드: ${store?.storeCode ?? ''}`);
 
     useEffect(() => {
         loadStoreDetail();
@@ -60,9 +66,11 @@ export default function StoreDetailScreen({route, navigation}: StoreDetailScreen
             </ScreenContainer>
         );
     }
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- boolean condition (logical OR), not value coalescing
     if (error || !store) {
         return (
             <ScreenContainer header={header}>
+                {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty-string error should fall back to default text, so ?? would be wrong */}
                 <ErrorState title="불러오지 못했어요" description={error || '매장 정보를 찾을 수 없어요.'} primary={{label: '다시 시도', onPress: loadStoreDetail}} />
             </ScreenContainer>
         );
@@ -71,7 +79,7 @@ export default function StoreDetailScreen({route, navigation}: StoreDetailScreen
     return (
         <ScreenContainer scroll header={header}>
             <AppCard variant="navy" hero>
-                <AppText variant="headingSm" tone="inverse">{store.storeName}</AppText>
+                <AppText variant="headingSm" tone="inverse" numberOfLines={1} style={styles.heroName}>{store.storeName}</AppText>
                 <AppText variant="caption" tone="inverse" style={styles.heroSub}>{store.storeCode} · {store.businessType}</AppText>
             </AppCard>
 
@@ -94,12 +102,52 @@ export default function StoreDetailScreen({route, navigation}: StoreDetailScreen
                 </Section>
             ) : null}
 
+            <View style={styles.section}>
+                <AppText variant="titleMd" style={styles.sectionTitle}>매장 관리</AppText>
+                <AppCard variant="flat">
+                    <AppListItem
+                        title="직원 시급 정책"
+                        subtitle="매장 기준 시급과 변경 이력"
+                        right="›"
+                        onPress={() => (navigation as any).navigate('WageSettings', {storeId})}
+                    />
+                    <AppListItem
+                        title="운영시간 설정"
+                        subtitle="요일별 영업·휴무 시간"
+                        right="›"
+                        onPress={() => (navigation as any).navigate('StoreOperatingHours', {storeId})}
+                    />
+                    <AppListItem
+                        title="직원 초대"
+                        subtitle="초대 코드 공유로 직원 합류"
+                        right="›"
+                        onPress={() => setInviteVisible(true)}
+                    />
+                </AppCard>
+                <AppButton
+                    label="매장 정보 편집"
+                    variant="outline"
+                    onPress={() => (navigation as any).navigate('StoreEdit', {storeId})}
+                    style={styles.editBtn}
+                />
+            </View>
+
+            {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- boolean condition (logical OR), not value coalescing */}
             {store.createdAt || store.updatedAt ? (
                 <Section title="시스템 정보">
                     {store.createdAt ? <InfoRow label="등록일" value={new Date(store.createdAt).toLocaleDateString('ko-KR')} /> : null}
                     {store.updatedAt ? <InfoRow label="수정일" value={new Date(store.updatedAt).toLocaleDateString('ko-KR')} /> : null}
                 </Section>
             ) : null}
+
+            <InviteShareSheet
+                visible={inviteVisible}
+                onClose={() => setInviteVisible(false)}
+                code={store.storeCode}
+                onShareKakao={shareCode}
+                onShareSms={shareCode}
+                onCopy={copyCode}
+            />
         </ScreenContainer>
     );
 }
@@ -122,7 +170,9 @@ const InfoRow: React.FC<{label: string; value: string}> = ({label, value}) => {
 };
 
 const styles = StyleSheet.create({
+    heroName: {flexShrink: 1},
     heroSub: {marginTop: 4, opacity: 0.82},
+    editBtn: {marginTop: spacing.md},
     section: {marginTop: spacing.lg},
     sectionTitle: {marginBottom: spacing.sm},
     infoRow: {

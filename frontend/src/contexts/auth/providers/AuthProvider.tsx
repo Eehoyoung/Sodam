@@ -12,9 +12,9 @@ interface AuthContextType {
     isFirstLaunch: boolean;
 
     // 액션
-    login: (email: string, password: string) => Promise<void>;
+    login: (email: string, password: string) => Promise<User>;
     logout: () => Promise<void>;
-    kakaoLogin: (code: string) => Promise<void>;
+    kakaoLogin: (code: string) => Promise<User>;
     setFirstLaunchComplete: () => Promise<void>;
 }
 
@@ -63,7 +63,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
         let hasInitialized = false;
 
         const initializeAuth = async () => {
-            if (!isMounted || hasInitialized) return;
+            if (!isMounted || hasInitialized) {
+                return;
+            }
             hasInitialized = true;
 
             try {
@@ -113,12 +115,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
     }, []); // 의존성 배열 제거 - 한 번만 실행
 
     // 액션 래퍼 - 기존 API와 호환성 유지
-    const login = async (email: string, password: string) => {
+    const login = async (email: string, password: string): Promise<User> => {
         authState.setLoading(true);
         try {
             const result = await authActions.login(email, password);
             if (result.success) {
                 authState.setUser(result.user);
+                return result.user;
             } else {
                 throw new Error('Login failed');
             }
@@ -137,12 +140,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
         }
     };
 
-    const kakaoLogin = async (code: string) => {
+    const kakaoLogin = async (code: string): Promise<User> => {
         authState.setLoading(true);
         try {
             const result = await authActions.kakaoLogin(code);
             if (result.success) {
                 authState.setUser(result.user);
+                return result.user;
             } else {
                 throw new Error('Kakao login failed');
             }

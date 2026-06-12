@@ -1,17 +1,8 @@
-import {AppToast, ConfirmSheet} from '../../../common/components/ds';
+import {AppToast, ConfirmSheet, AppBadge, AppButton, AppCard, AppHeader, AppListItem, AppText, ScreenContainer} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
-import {Alert, ScrollView, StyleSheet, View} from 'react-native';
+import {ScrollView, StyleSheet, View} from 'react-native';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
-import {
-    AppBadge,
-    AppButton,
-    AppCard,
-    AppHeader,
-    AppListItem,
-    AppText,
-    ScreenContainer,
-} from '../../../common/components/ds';
 import {layout, spacing} from '../../../theme/tokens';
 import {HeroSlot, SummarySlot, ActionsSlot, InfoSlot} from '../components/RoleSlots';
 

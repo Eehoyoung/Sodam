@@ -1,18 +1,10 @@
-import {AppToast} from '../../../common/components/ds';
+import {AppToast, AppButton, AppCard, AppHeader, AppInput, AppText, CtaStack, ScreenContainer} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
-import {Alert, StyleSheet, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
-import {
-    AppButton,
-    AppCard,
-    AppHeader,
-    AppInput,
-    AppText,
-    CtaStack,
-    ScreenContainer,
-} from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 import api from '../../../common/utils/api';
+import storeService from '../services/storeService';
 
 /**
  * 14 StoreEdit — 확정 시안.
@@ -30,6 +22,12 @@ const StoreEditScreen: React.FC = () => {
     const [radius, setRadius] = useState('100');
     const [loading, setLoading] = useState(false);
 
+    // 주소/위치 — 카카오 주소 API 키 미발급 상태라 수동 입력 + 좌표 목 보정으로 처리.
+    const [fullAddress, setFullAddress] = useState('');
+    const [initialAddress, setInitialAddress] = useState('');
+    const [coords, setCoords] = useState<{latitude: number; longitude: number} | null>(null);
+    const [geocoding, setGeocoding] = useState(false);
+
     useEffect(() => {
         (async () => {
             if (!storeId) {
@@ -37,15 +35,38 @@ const StoreEditScreen: React.FC = () => {
             }
             try {
                 const res = await api.get<any>(`/api/stores/${storeId}`);
-                const s = res.data as any;
+                const s = res.data;
                 setStoreName(s.storeName ?? '');
                 setPhone(s.storePhoneNumber ?? '');
                 setBusinessType(s.businessType ?? '');
                 setStandardWage(s.storeStandardHourWage ? String(s.storeStandardHourWage) : '');
                 setRadius(s.radius ? String(s.radius) : '100');
+                setFullAddress(s.fullAddress ?? '');
+                setInitialAddress(s.fullAddress ?? '');
+                if (typeof s.latitude === 'number' && typeof s.longitude === 'number') {
+                    setCoords({latitude: s.latitude, longitude: s.longitude});
+                }
             } catch (_) {/* ignore */}
         })();
     }, [storeId]);
+
+    // 주소 검색(임시): 카카오 키 발급 전까지 좌표를 목으로 채워 위치 변경을 가능케 한다.
+    const searchAddress = async () => {
+        if (!fullAddress || fullAddress.trim().length < 2) {
+            AppToast.warn('주소를 입력한 뒤 검색해 주세요.');
+            return;
+        }
+        setGeocoding(true);
+        try {
+            // TODO[키 발급]: 카카오 로컬 API 연동. 현재는 서울시청 근처 좌표로 목 보정.
+            await new Promise(r => setTimeout(r, 400));
+            const jitter = () => (Math.random() - 0.5) * 0.01;
+            setCoords({latitude: 37.5663 + jitter(), longitude: 126.9779 + jitter()});
+            AppToast.success('주소 좌표를 확인했어요. 저장 시 위치가 반영돼요.');
+        } finally {
+            setGeocoding(false);
+        }
+    };
 
     const submit = async () => {
         if (!storeName || storeName.length < 2) {
@@ -63,6 +84,18 @@ const StoreEditScreen: React.FC = () => {
                 storeStandardHourWage: wage,
                 radius: r,
             });
+
+            // 주소가 바뀐 경우에만 위치 갱신 (좌표는 검색으로 채워진 경우 함께 전송).
+            const addressChanged = fullAddress.trim() !== initialAddress.trim();
+            if (storeId && addressChanged && fullAddress.trim().length >= 2) {
+                await storeService.putLocation(storeId, {
+                    fullAddress: fullAddress.trim(),
+                    radius: r,
+                    ...(coords ?? {}),
+                });
+                setInitialAddress(fullAddress.trim());
+            }
+
             AppToast.success('매장 정보가 변경됐어요.');
             navigation.goBack();
         } catch (e: any) {
@@ -85,6 +118,25 @@ const StoreEditScreen: React.FC = () => {
                 <AppInput label="매장명" value={storeName} onChangeText={setStoreName} />
                 <AppInput label="전화번호" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
                 <AppInput label="업종" value={businessType} onChangeText={setBusinessType} placeholder="예: 음식점" />
+
+                <View style={styles.addressBlock}>
+                    <AppInput
+                        label="매장 주소"
+                        value={fullAddress}
+                        onChangeText={setFullAddress}
+                        placeholder="예: 서울시 중구 세종대로 110"
+                        helper={coords ? '좌표 확인됨 · 저장 시 위치가 반영돼요.' : '주소 변경 후 검색을 눌러 좌표를 확인해 주세요.'}
+                    />
+                    <AppButton
+                        label="주소 검색"
+                        variant="outline"
+                        size="md"
+                        loading={geocoding}
+                        onPress={searchAddress}
+                        style={styles.addressBtn}
+                    />
+                </View>
+
                 <AppInput label="기본 시급 (원/시간)" value={standardWage} onChangeText={setStandardWage} keyboardType="number-pad" />
                 <AppInput
                     label="출퇴근 인증 반경 (m)"
@@ -107,6 +159,8 @@ const StoreEditScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
     form: {gap: spacing.md},
+    addressBlock: {gap: spacing.sm},
+    addressBtn: {alignSelf: 'flex-start'},
     note: {marginTop: spacing.lg},
     noteSub: {marginTop: 4},
 });

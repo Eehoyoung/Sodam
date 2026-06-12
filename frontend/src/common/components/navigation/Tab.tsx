@@ -91,6 +91,7 @@ const Tab: React.FC<TabProps> = ({
                         </Text>
 
                         {/* 배지가 있는 경우 렌더링 */}
+                        {/* eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined */}
                         {item.badge != null && (
                             <View style={styles.badge}>
                                 <Text style={styles.badgeText}>{item.badge}</Text>

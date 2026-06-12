@@ -1,7 +1,7 @@
 import {useCallback, useRef} from 'react';
 import authService from '../../../features/auth/services/authService';
 import {safeLogger} from '../../../utils/safeLogger';
-import {useStorage} from './useStorage';
+import TokenManager from '../../../services/TokenManager';
 
 interface AuthActionsHook {
     login: (email: string, password: string) => Promise<{ success: boolean; user?: any }>;
@@ -12,7 +12,6 @@ interface AuthActionsHook {
 }
 
 export const useAuthActions = (): AuthActionsHook => {
-    const {getItem, removeItem} = useStorage();
     const isLoadingRef = useRef(false);
     const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -81,7 +80,8 @@ export const useAuthActions = (): AuthActionsHook => {
             abortControllerRef.current = new AbortController();
             isLoadingRef.current = true;
 
-            const token = await getItem('userToken');
+            const tokens = await TokenManager.getTokens();
+            const token = tokens?.accessToken ?? await TokenManager.getAccess();
 
             if (token) {
                 console.log('[useAuthActions] Token found, fetching user data...');
@@ -100,7 +100,7 @@ export const useAuthActions = (): AuthActionsHook => {
 
             safeLogger.error('[useAuthActions] Auth check failed:', error);
             try {
-                await removeItem('userToken');
+                await TokenManager.clear();
             } catch (removeError) {
                 safeLogger.error('[useAuthActions] Failed to remove token:', removeError);
             }
@@ -109,7 +109,7 @@ export const useAuthActions = (): AuthActionsHook => {
             isLoadingRef.current = false;
             abortControllerRef.current = null;
         }
-    }, [getItem, removeItem]);
+    }, []);
 
     return {
         login,

@@ -1,13 +1,13 @@
-import {AppToast} from '../../../common/components/ds';
-import React, {useMemo, useState} from 'react';
-import {Alert, StyleSheet, View} from 'react-native';
-import {NavigationProp} from '@react-navigation/native';
+import React, {useEffect, useMemo, useState} from 'react';
+import {StyleSheet, View} from 'react-native';
+import {NavigationProp, RouteProp} from '@react-navigation/native';
 import {
     AppButton,
     AppCard,
     AppHeader,
     AppInput,
     AppText,
+    AppToast,
     CtaStack,
     ScreenContainer,
     SegmentedControl,
@@ -16,31 +16,34 @@ import {spacing} from '../../../theme/tokens';
 import authApi from '../services/authApi';
 import ConsentBlock, {ConsentValue} from '../components/ConsentBlock';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
+import {AuthStackParamList} from '../../../navigation/types';
+import {AuthPurpose, purposeToPendingSlug, purposeLabel} from '../../../navigation/authFlow';
 
 interface SignupScreenProps {
     navigation: NavigationProp<any>;
+    route: RouteProp<AuthStackParamList, 'Signup'>;
 }
 
-type RoleId = 'boss' | 'employee' | 'personal';
+type RoleId = AuthPurpose;
 
-// 세그먼트 순서 = 확정 시안 (사장님 · 직원 · 개인)
 const ROLES: {id: RoleId; label: string; hint: string}[] = [
-    {id: 'boss', label: '사장님', hint: '첫 매장 등록과 직원 초대까지 이어서 도와드려요.'},
-    {id: 'employee', label: '직원', hint: '매장 코드로 가입하면 출퇴근과 급여명세를 봐요.'},
-    {id: 'personal', label: '개인', hint: '회사 승인 없이 내 근무 시간을 직접 기록해요.'},
+    {id: 'boss', label: '사장님', hint: '매장 등록과 직원 초대까지 이어서 준비할 수 있어요.'},
+    {id: 'employee', label: '직원', hint: '매장 코드로 합류하고 출퇴근과 급여명세를 확인해요.'},
+    {id: 'personal', label: '개인', hint: '매장 없이 근무 시간과 급여 기록을 직접 관리해요.'},
 ];
 
 const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-/**
- * 05 Signup — 확정 시안.
- * 라이트 배경 + 역할 세그먼트 + 기본 정보 + 약관 동의. 가입 로직/약관 검증은 보존.
- */
-const SignUpScreen: React.FC<SignupScreenProps> = ({navigation}) => {
+const indexForPurpose = (purpose?: AuthPurpose) => {
+    const index = ROLES.findIndex(role => role.id === purpose);
+    return index >= 0 ? index : 0;
+};
+
+const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [roleIndex, setRoleIndex] = useState(0);
+    const [roleIndex, setRoleIndex] = useState(() => indexForPurpose(route.params?.selectedPurpose));
     const [isLoading, setIsLoading] = useState(false);
     const [emailError, setEmailError] = useState<string | undefined>();
     const [pwError, setPwError] = useState<string | undefined>();
@@ -50,6 +53,12 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation}) => {
         privacy: false,
         marketing: false,
     });
+
+    useEffect(() => {
+        if (route.params?.selectedPurpose) {
+            setRoleIndex(indexForPurpose(route.params.selectedPurpose));
+        }
+    }, [route.params?.selectedPurpose]);
 
     const role = ROLES[roleIndex];
 
@@ -70,7 +79,7 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation}) => {
             return;
         }
         if (!consent.age || !consent.terms || !consent.privacy) {
-            AppToast.warn('만 14세 이상·이용약관·개인정보 처리방침은 필수 동의 항목이에요.');
+            AppToast.warn('서비스 이용을 위해 필수 약관에 동의해 주세요.');
             return;
         }
 
@@ -79,23 +88,18 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation}) => {
             const userGrade = role.id === 'boss' ? 'MASTER' : role.id === 'employee' ? 'EMPLOYEE' : 'PERSONAL';
             await authApi.join(
                 {name, email, password},
-                {purpose: role.id as any, userGrade: userGrade as any, consent},
+                {purpose: role.id, userGrade, consent},
             );
 
-            // 첫 로그인 시 팝업 억제용으로 선택한 목적 로컬 저장
-            const purposeSlug = role.id === 'boss' ? 'master' : role.id === 'employee' ? 'employee' : 'user';
-            try {
-                await unifiedStorage.setItem('pendingPurposeAfterSignup', purposeSlug);
-            } catch (_) {/* no-op */}
-
-            AppToast.success('가입이 완료됐어요. 로그인해 주세요.');
-            navigation.navigate('Login');
+            await unifiedStorage.setItem('pendingPurposeAfterSignup', purposeToPendingSlug(role.id));
+            AppToast.success('가입이 완료되었습니다. 로그인 후 약관과 기본 정보를 마저 설정해 주세요.');
+            navigation.navigate('Login', {selectedPurpose: role.id, fromSignup: true});
             setName('');
             setEmail('');
             setPassword('');
         } catch (e: any) {
             const beMsg = e?.response?.data?.message;
-            AppToast.error(beMsg && typeof beMsg === 'string' ? beMsg : '회원가입에 실패했어요. 잠시 후 다시 시도해 주세요.');
+            AppToast.error(beMsg && typeof beMsg === 'string' ? beMsg : '회원가입에 실패했습니다. 입력값을 확인하고 다시 시도해 주세요.');
         } finally {
             setIsLoading(false);
         }
@@ -105,7 +109,7 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation}) => {
         () => (
             <CtaStack bordered>
                 <AppButton
-                    label="다음"
+                    label="가입 완료"
                     loading={isLoading}
                     loadingLabel="가입 중..."
                     onPress={handleSignup}
@@ -119,12 +123,12 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation}) => {
     return (
         <ScreenContainer
             scroll
-            header={<AppHeader title="회원가입" rightText="1/3" onBack={() => navigation.goBack()} />}
+            header={<AppHeader title="회원가입" onBack={() => navigation.goBack()} />}
             footer={footer}>
             <SegmentedControl options={ROLES.map(r => r.label)} value={roleIndex} onChange={setRoleIndex} />
 
             <AppCard variant="warm" style={styles.hint}>
-                <AppText variant="titleMd">{role.label}으로 시작하면</AppText>
+                <AppText variant="titleMd">{purposeLabel(role.id)}으로 시작합니다</AppText>
                 <AppText variant="caption" tone="secondary" style={styles.hintSub}>
                     {role.hint}
                 </AppText>

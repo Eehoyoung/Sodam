@@ -41,7 +41,7 @@ const NotificationCenterScreen: React.FC = () => {
     const load = useCallback(async () => {
         try {
             const res = await api.get<InboxItem[]>('/api/notifications/inbox?page=0&size=50');
-            setItems((res.data as InboxItem[]) ?? []);
+            setItems((res.data) ?? []);
         } catch (_) {
             setItems([]);
         } finally {
@@ -79,7 +79,7 @@ const NotificationCenterScreen: React.FC = () => {
     const filtered = filter === 'ALL' ? items : items.filter(i => i.category === filter);
 
     return (
-        <ScreenContainer padded={false} header={<AppHeader title="알림" actions={[{label: '설정', onPress: () => {}}]} />}>
+        <ScreenContainer padded={false} header={<AppHeader title="알림" actions={[{label: '설정', onPress: () => navigation.navigate('NotificationSettings')}]} />}>
             <View style={styles.filters}>
                 {FILTERS.map(f => (
                     <Pressable

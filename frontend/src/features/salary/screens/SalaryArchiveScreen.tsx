@@ -5,7 +5,6 @@ import {
     AppBadge,
     AppHeader,
     AppListItem,
-    AppText,
     EmptyState,
     LoadingState,
     ScreenContainer,

@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { AuthStackParamList, RootNavigationProp } from './types';
+import React, {useEffect} from 'react';
+import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
+import {AuthStackParamList, RootNavigationProp, RootStackParamList} from './types';
 import LoginScreen from '../features/auth/screens/LoginScreen';
 import SignupScreen from '../features/auth/screens/SignupScreen';
 import PasswordResetScreen from '../features/auth/screens/PasswordResetScreen';
@@ -8,59 +9,62 @@ import OnboardingCarouselScreen from '../features/welcome/screens/OnboardingCaro
 import KakaoLoginScreen from '../features/auth/screens/KakaoLoginScreen';
 import ConsentScreen from '../features/auth/screens/ConsentScreen';
 import ProfileBasicsScreen from '../features/auth/screens/ProfileBasicsScreen';
-import { useAuth } from '../contexts/AuthContext';
-import { useNavigation } from '@react-navigation/native';
+import {useAuth} from '../contexts/AuthContext';
 import appHeaderOptions from './appHeaderOptions';
+import {resolvePostAuthRoute, resetToRootRoute, type AuthGateParams} from './authFlow';
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
 const AuthNavigator: React.FC = () => {
-  const { user } = useAuth();
-  const navigation = useNavigation<RootNavigationProp>();
+    const {user} = useAuth();
+    const navigation = useNavigation<RootNavigationProp>();
+    const route = useRoute<RouteProp<RootStackParamList, 'Auth'>>();
+    const initialScreen = route.params?.screen ?? 'Login';
+    const nestedParams = route.params?.params as AuthGateParams | undefined;
 
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-    // 필수 약관 미동의 (소셜 가입 직후) → Consent 로 강제 진입 (PIPA §22, G-2)
-    if (user.consentCompleted === false) {
-      navigation.reset({
-        index: 0,
-        routes: [{name: 'Auth' as never, params: {screen: 'Consent'} as never}] as any,
-      });
-      return;
-    }
-    // 프로필 미완성 (회원가입 직후) → ProfileBasics 로 강제 진입
-    if (user.profileCompleted === false) {
-      navigation.reset({
-        index: 0,
-        routes: [{name: 'Auth' as never, params: {screen: 'ProfileBasics'} as never}] as any,
-      });
-      return;
-    }
-    // 이미 로그인된 사용자는 Auth 스택으로 돌아갈 수 없도록 루트 리셋
-    navigation.reset({ index: 0, routes: [{ name: 'HomeRoot' as never }] as any });
-  }, [user, navigation]);
+    useEffect(() => {
+        if (!user) {
+            return;
+        }
+        resetToRootRoute(navigation, resolvePostAuthRoute(user, nestedParams?.selectedPurpose));
+    }, [user, navigation, nestedParams?.selectedPurpose]);
 
-  return (
-    <Stack.Navigator screenOptions={appHeaderOptions}>
-      <Stack.Screen name="Login" component={LoginScreen} options={{ title: '로그인' }} />
-      <Stack.Screen name="Signup" component={SignupScreen} options={{ title: '회원가입' }} />
-      <Stack.Screen name="PasswordReset" component={PasswordResetScreen} options={{ title: '비밀번호 찾기' }} />
-      <Stack.Screen name="OnboardingCarousel" component={OnboardingCarouselScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="KakaoLogin" component={KakaoLoginScreen} options={{ headerShown: false }} />
-      <Stack.Screen
-        name="Consent"
-        component={ConsentScreen}
-        options={{ title: '약관 동의', headerBackVisible: false, gestureEnabled: false }}
-      />
-      <Stack.Screen
-        name="ProfileBasics"
-        component={ProfileBasicsScreen}
-        options={{ title: '기본 정보', headerBackVisible: false, gestureEnabled: false }}
-      />
-    </Stack.Navigator>
-  );
+    return (
+        <Stack.Navigator initialRouteName={initialScreen} screenOptions={appHeaderOptions}>
+            <Stack.Screen
+                name="Login"
+                component={LoginScreen}
+                initialParams={route.params?.screen === 'Login' ? nestedParams : undefined}
+                options={{title: '로그인'}}
+            />
+            <Stack.Screen
+                name="Signup"
+                component={SignupScreen}
+                initialParams={route.params?.screen === 'Signup' ? nestedParams : undefined}
+                options={{title: '회원가입'}}
+            />
+            <Stack.Screen name="PasswordReset" component={PasswordResetScreen} options={{title: '비밀번호 찾기'}} />
+            <Stack.Screen name="OnboardingCarousel" component={OnboardingCarouselScreen} options={{headerShown: false}} />
+            <Stack.Screen
+                name="KakaoLogin"
+                component={KakaoLoginScreen}
+                initialParams={route.params?.screen === 'KakaoLogin' ? nestedParams : undefined}
+                options={{headerShown: false}}
+            />
+            <Stack.Screen
+                name="Consent"
+                component={ConsentScreen}
+                initialParams={route.params?.screen === 'Consent' ? nestedParams : undefined}
+                options={{title: '약관 동의', headerBackVisible: false, gestureEnabled: false}}
+            />
+            <Stack.Screen
+                name="ProfileBasics"
+                component={ProfileBasicsScreen}
+                initialParams={route.params?.screen === 'ProfileBasics' ? nestedParams : undefined}
+                options={{title: '기본 정보', headerBackVisible: false, gestureEnabled: false}}
+            />
+        </Stack.Navigator>
+    );
 };
 
 export default AuthNavigator;

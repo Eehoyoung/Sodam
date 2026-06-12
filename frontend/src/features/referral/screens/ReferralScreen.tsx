@@ -41,7 +41,7 @@ const ReferralScreen: React.FC = () => {
             } catch (_) {/* ignore */}
             try {
                 const h = await api.get<ReferralItem[]>('/api/referrals/my-history');
-                setHistory((h.data as ReferralItem[]) ?? []);
+                setHistory((h.data) ?? []);
             } catch (_) {/* ignore */}
         })();
     }, []);

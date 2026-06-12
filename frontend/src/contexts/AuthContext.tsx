@@ -5,6 +5,7 @@ import {unifiedStorage} from '../common/utils/unifiedStorage';
 import {safeLogger} from '../utils/safeLogger';
 import { setOnUnauthorized } from '../common/utils/api';
 import {navigate} from '../navigation/navigationRef';
+import PaywallHost from '../features/subscription/components/PaywallHost';
 
 /**
  * 인증 컨텍스트 타입 정의
@@ -16,7 +17,7 @@ interface AuthContextType {
     loading: boolean;
     login: (email: string, password: string) => Promise<User>;
     logout: () => Promise<void>;
-    kakaoLogin: (code: string) => Promise<void>;
+    kakaoLogin: (code: string) => Promise<User>;
 }
 
 /**
@@ -182,11 +183,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
      * 카카오 로그인 함수
      * TanStack Query 뮤테이션을 사용하여 카카오 로그인 처리
      */
-    const kakaoLogin = async (code: string): Promise<void> => {
+    const kakaoLogin = async (code: string): Promise<User> => {
         try {
             console.log('[AuthProvider] 카카오 로그인 시도');
-            await kakaoLoginMutation.mutateAsync(code);
+            const result = await kakaoLoginMutation.mutateAsync(code);
             console.log('[AuthProvider] 카카오 로그인 성공');
+            return result.user;
         } catch (error) {
             console.error('[AuthProvider] 카카오 로그인 실패:', error);
             safeLogger.error('Kakao login failed', error);
@@ -256,6 +258,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
     return (
         <AuthContext.Provider value={contextValue}>
             {children}
+            {/* 전역 페이월(402 PLAN_REQUIRED) — 401 핸들러와 동일하게 앱 루트 1회 마운트 */}
+            <PaywallHost />
         </AuthContext.Provider>
     );
 };

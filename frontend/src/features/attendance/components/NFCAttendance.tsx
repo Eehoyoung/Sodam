@@ -1,8 +1,8 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {Linking, Platform, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import NfcManager, {Ndef, NfcTech} from 'react-native-nfc-manager';
-import {Button, Card, Toast} from '../../../common/components';
-import {AppToast, ConfirmSheet} from '../../../common/components/ds';
+import {Toast} from '../../../common/components';
+import {AppToast, ConfirmSheet, AppButton, AppCard} from '../../../common/components/ds';
 import {colors, spacing} from '../../../common/styles/theme';
 import {useAuth} from '../../../contexts/AuthContext';
 import {
@@ -74,7 +74,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
             setIsNFCSupported(isSupported);
 
             if (!isSupported) {
-                if (onError) onError('이 기기는 NFC를 지원하지 않아요.');
+                if (onError) {onError('이 기기는 NFC를 지원하지 않아요.');}
                 return;
             }
 
@@ -110,9 +110,9 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
             }
         } catch (error) {
             console.error('[DEBUG_LOG] NFCAttendance: NFC initialization failed:', error);
-            if (!isMountedRef.current) return;
+            if (!isMountedRef.current) {return;}
 
-            if (onError) onError('NFC 초기화에 실패했어요.');
+            if (onError) {onError('NFC 초기화에 실패했어요.');}
         }
     };
 
@@ -173,6 +173,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                 Toast.show({
                     type: 'success',
                     text1: isCheckingIn ? '출근 완료' : '퇴근 완료',
+                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty-string message should fall back to default text, so ?? would be wrong
                     text2: result.message || `${isCheckingIn ? '출근' : '퇴근'}이 성공적으로 처리됐어요.`,
                     visibilityTime: 3000,
                 });
@@ -181,12 +182,13 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                     onSuccess(isCheckingIn);
                 }
             } else {
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty-string message should fall back to default text, so ?? would be wrong
                 throw new Error(result.message || 'NFC 출퇴근 처리에 실패했어요.');
             }
         } catch (error) {
             console.error('[DEBUG_LOG] NFCAttendance: NFC tag processing failed:', error);
 
-            if (!isMountedRef.current) return;
+            if (!isMountedRef.current) {return;}
 
             const errorMessage = error instanceof Error ? error.message : 'NFC 태그 처리 중 오류가 생겼어요.';
 
@@ -215,7 +217,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
             return;
         }
 
-        if (!isMountedRef.current) return;
+        if (!isMountedRef.current) {return;}
 
         try {
             setIsActive(true);
@@ -233,7 +235,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                 return;
             }
 
-            if (tag && tag.ndefMessage && tag.ndefMessage.length > 0) {
+            if (tag?.ndefMessage?.length) {
                 // NDEF 메시지에서 데이터 추출
                 const ndefRecord = tag.ndefMessage[0];
                 const nfcData = Ndef.text.decodePayload(Uint8Array.from((ndefRecord as any).payload || []));
@@ -241,7 +243,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                 await handleNFCTagScanned(nfcData);
             } else {
                 // 일반 태그 ID 사용
-                const tagId = tag?.id || '';
+                const tagId = tag?.id ?? '';
                 if (tagId) {
                     await handleNFCTagScanned(tagId);
                 } else {
@@ -251,7 +253,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
         } catch (error) {
             console.error('[DEBUG_LOG] NFCAttendance: NFC reading failed:', error);
 
-            if (!isMountedRef.current) return;
+            if (!isMountedRef.current) {return;}
 
             const errorMessage = error instanceof Error ? error.message : 'NFC 태그 읽기에 실패했어요.';
 
@@ -298,7 +300,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
 
     if (!isNFCSupported) {
         return (
-            <Card style={styles.container}>
+            <AppCard variant="elevated" style={styles.container}>
                 <View style={styles.unsupportedContainer}>
                     <Icon name="nfc-off" size={64} color={c.text?.secondary || '#666'}/>
                     <Text style={styles.unsupportedTitle}>NFC 미지원</Text>
@@ -307,12 +309,12 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                         다른 출퇴근 방법을 이용해주세요.
                     </Text>
                 </View>
-            </Card>
+            </AppCard>
         );
     }
 
     return (
-        <Card style={styles.container}>
+        <AppCard variant="elevated" style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.title}>NFC 출퇴근</Text>
                 <TouchableOpacity
@@ -364,8 +366,8 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
 
             <View style={styles.buttonContainer}>
                 {!isActive ? (
-                    <Button
-                        title={`NFC ${isCheckingIn ? '출근' : '퇴근'} 시작`}
+                    <AppButton
+                        label={`NFC ${isCheckingIn ? '출근' : '퇴근'} 시작`}
                         onPress={startNFCReading}
                         disabled={!isNFCEnabled || loading}
                         style={[
@@ -374,8 +376,8 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                         ]}
                     />
                 ) : (
-                    <Button
-                        title="NFC 읽기 중지"
+                    <AppButton
+                        label="NFC 읽기 중지"
                         onPress={stopNFCReading}
                         style={styles.actionButton}
                     />
@@ -390,7 +392,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                     </Text>
                 </View>
             )}
-        </Card>
+        </AppCard>
     );
 };
 

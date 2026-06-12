@@ -1,17 +1,7 @@
-import {AppToast} from '../../../common/components/ds';
+import {AppToast, AppButton, AppCard, AppHeader, AppInput, AppText, CtaStack, ScreenContainer, SuccessState} from '../../../common/components/ds';
 import React, {useState} from 'react';
-import {Alert, Pressable, StyleSheet, View} from 'react-native';
+import {Pressable, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
-import {
-    AppButton,
-    AppCard,
-    AppHeader,
-    AppInput,
-    AppText,
-    CtaStack,
-    ScreenContainer,
-    SuccessState,
-} from '../../../common/components/ds';
 import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';

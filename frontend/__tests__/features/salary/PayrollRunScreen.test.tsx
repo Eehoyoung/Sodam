@@ -58,6 +58,17 @@ jest.mock('../../../src/common/utils/api', () => {
 
 jest.mock('../../../src/theme/tokens', () => jest.requireActual('../../../src/theme/tokens'));
 
+// 매장 셀렉터 추가 후: useAuth(사장 ID) + storeService(매장 목록) 의존 — 테스트에선 무력화.
+// storeId 는 route param(7) 으로 그대로 흐르므로 매장 목록 없이도 정산 플로우는 동일.
+jest.mock('../../../src/contexts/AuthContext', () => ({
+    useAuth: () => ({user: {id: 1, name: '사장', role: 'MASTER'}}),
+}));
+
+jest.mock('../../../src/features/store/services/storeService', () => ({
+    __esModule: true,
+    default: {getMasterStores: jest.fn().mockResolvedValue([])},
+}));
+
 import PayrollRunScreen from '../../../src/features/salary/screens/PayrollRunScreen';
 import api from '../../../src/common/utils/api';
 
@@ -216,12 +227,12 @@ describe('PayrollRunScreen (3단계 정산 마법사)', () => {
             await flush();
         });
 
-        // 모든 payrollId 에 PUT 호출
+        // 모든 payrollId 에 발급(/issue) 호출 — BE 가 확정→지급완료를 원자 처리 (DRAFT→PAID 직접 전이 400 방지)
         expect(apiMock.put).toHaveBeenCalledTimes(2);
         const urls = apiMock.put.mock.calls.map(c => c[0]);
         expect(urls).toEqual([
-            '/api/payroll/11/status?status=PAID',
-            '/api/payroll/12/status?status=PAID',
+            '/api/payroll/11/issue',
+            '/api/payroll/12/issue',
         ]);
 
         // DONE 단계

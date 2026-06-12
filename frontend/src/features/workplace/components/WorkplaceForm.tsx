@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
 import {StyleSheet, View} from 'react-native';
-import {Button, Input} from '../../../common/components';
+import {Input} from '../../../common/components';
+import {AppButton} from '../../../common/components/ds';
 import {Workplace} from '../types';
 
 type WorkplaceFormProps = {
@@ -14,8 +15,8 @@ export const WorkplaceForm: React.FC<WorkplaceFormProps> = ({
                                                                 onSubmit,
                                                                 isSubmitting = false,
                                                             }) => {
-    const [name, setName] = useState(initialValues.name || '');
-    const [address, setAddress] = useState(initialValues.address || '');
+    const [name, setName] = useState(initialValues.name ?? '');
+    const [address, setAddress] = useState(initialValues.address ?? '');
 
     const handleSubmit = () => {
         onSubmit({
@@ -40,8 +41,8 @@ export const WorkplaceForm: React.FC<WorkplaceFormProps> = ({
                 placeholder="주소를 입력하세요"
                 containerStyle={styles.inputContainer}
             />
-            <Button
-                title={initialValues.id ? "수정하기" : "등록하기"}
+            <AppButton
+                label={initialValues.id ? "수정하기" : "등록하기"}
                 onPress={handleSubmit}
                 disabled={!name || !address || isSubmitting}
                 loading={isSubmitting}

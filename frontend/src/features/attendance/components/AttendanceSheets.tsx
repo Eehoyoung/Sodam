@@ -6,7 +6,6 @@ import React, {useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {
     AppInput,
-    AppText,
     BottomSheet,
     ErrorState,
     ScreenContainer,
@@ -113,6 +112,7 @@ export const PersonalRecordEditSheet: React.FC<{
             onClose={onClose}
             scrollable
             title="기록 수정"
+            // eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined
             description={expectedPay != null ? `예상 급여 ${formatMoney(expectedPay)}` : undefined}
             primary={{label: '수정 저장', onPress: () => onSave({date, checkIn, checkOut, wage})}}>
             <View style={styles.form}>

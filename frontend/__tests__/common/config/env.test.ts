@@ -11,6 +11,7 @@ describe('env (config)', () => {
         process.env = {...ORIGINAL_ENV};
         delete process.env.SODAM_API_BASE_URL;
         delete process.env.SODAM_ENV;
+        delete process.env.SODAM_TOSS_CLIENT_KEY;
     });
 
     afterAll(() => {
@@ -32,6 +33,25 @@ describe('env (config)', () => {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const mod = require('../../../src/common/config/env');
         return mod.env;
+    }
+
+    /**
+     * Platform 모킹 후 env 모듈의 isTossLive 헬퍼를 새로 로드해서 반환.
+     */
+    function loadIsTossLiveWith(clientKey?: string): () => boolean {
+        (globalThis as any).__DEV__ = true;
+        if (clientKey === undefined) {
+            delete process.env.SODAM_TOSS_CLIENT_KEY;
+        } else {
+            process.env.SODAM_TOSS_CLIENT_KEY = clientKey;
+        }
+        jest.doMock('react-native', () => ({
+            Platform: {OS: 'ios', select: (o: any) => o.ios},
+            NativeModules: {},
+        }));
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const mod = require('../../../src/common/config/env');
+        return mod.isTossLive;
     }
 
     describe('apiBaseUrl 자동 분기', () => {
@@ -94,6 +114,23 @@ describe('env (config)', () => {
         it('tossClientKey 는 env 가 없으면 토스 공개 테스트 키로 폴백', () => {
             const env = loadEnvWith({os: 'ios', dev: true});
             expect(env.tossClientKey).toBe('test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq');
+        });
+    });
+
+    describe('isTossLive 게이팅', () => {
+        it('샌드박스 테스트 키(test_*) → false', () => {
+            const isTossLive = loadIsTossLiveWith('test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq');
+            expect(isTossLive()).toBe(false);
+        });
+
+        it('키 미주입(기본 샌드박스 폴백) → false', () => {
+            const isTossLive = loadIsTossLiveWith(undefined);
+            expect(isTossLive()).toBe(false);
+        });
+
+        it('운영 클라이언트 키(live_ck_*) → true', () => {
+            const isTossLive = loadIsTossLiveWith('live_ck_xxxxxxxxxxxxxxxx');
+            expect(isTossLive()).toBe(true);
         });
     });
 });

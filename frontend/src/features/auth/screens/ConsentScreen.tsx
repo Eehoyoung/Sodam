@@ -1,6 +1,6 @@
 import React, {useState} from 'react';
 import {StyleSheet} from 'react-native';
-import {NavigationProp} from '@react-navigation/native';
+import {NavigationProp, RouteProp} from '@react-navigation/native';
 import {useQueryClient} from '@tanstack/react-query';
 import {
     AppButton,
@@ -17,21 +17,15 @@ import {queryKeys} from '../../../common/utils/queryClient';
 import ConsentBlock, {ConsentValue} from '../components/ConsentBlock';
 import authApi from '../services/authApi';
 import {User} from '../services/authService';
+import {AuthStackParamList} from '../../../navigation/types';
+import {resetToRootRoute, resolvePostAuthRoute} from '../../../navigation/authFlow';
 
 interface Props {
     navigation: NavigationProp<any>;
+    route: RouteProp<AuthStackParamList, 'Consent'>;
 }
 
-/**
- * 동의 화면 (PIPA §22 — 필수/선택 분리, G-2).
- *
- * 흐름: 카카오 등 소셜 로그인 → (consentCompleted=false 면) 본 화면 강제 진입 →
- *   필수 3종 동의 → POST /api/auth/consents → 캐시 갱신 → ProfileBasics 또는 메인.
- *
- * 약관 본문(법률 문구)은 ConsentBlock 의 "보기"에서 표시하며, 실제 문구는 변호사 검토 후
- * 주입된다. 본 화면은 동의 수집·전송만 담당한다.
- */
-export default function ConsentScreen({navigation}: Props) {
+export default function ConsentScreen({navigation, route}: Props) {
     const {user} = useAuth();
     const queryClient = useQueryClient();
 
@@ -47,7 +41,15 @@ export default function ConsentScreen({navigation}: Props) {
 
     const handleSubmit = async () => {
         if (!requiredOk) {
-            AppToast.warn('필수 약관에 모두 동의해 주세요.');
+            AppToast.warn('서비스 이용을 위해 필수 약관에 모두 동의해 주세요.');
+            return;
+        }
+        if (!user) {
+            AppToast.error('로그인 정보가 필요합니다. 다시 로그인해 주세요.');
+            navigation.reset({
+                index: 0,
+                routes: [{name: 'Auth' as never, params: {screen: 'Login', params: route.params} as never}] as any,
+            });
             return;
         }
         setSubmitting(true);
@@ -58,25 +60,13 @@ export default function ConsentScreen({navigation}: Props) {
                 privacy: consent.privacy,
                 marketing: consent.marketing,
             });
-            // 캐시의 사용자 동의 상태를 즉시 반영해 네비게이터 재진입(루프) 방지
-            queryClient.setQueryData<User | null>(queryKeys.auth.currentUser(), prev =>
-                prev ? {...prev, consentCompleted: true} : prev,
-            );
 
-            const profileDone = user?.profileCompleted !== false;
-            if (profileDone) {
-                navigation.reset({
-                    index: 0,
-                    routes: [{name: 'HomeRoot' as never}] as any,
-                });
-            } else {
-                navigation.reset({
-                    index: 0,
-                    routes: [{name: 'Auth' as never, params: {screen: 'ProfileBasics'} as never}] as any,
-                });
-            }
+            const nextUser = {...user, consentCompleted: true};
+            queryClient.setQueryData<User | null>(queryKeys.auth.currentUser(), nextUser);
+
+            resetToRootRoute(navigation, resolvePostAuthRoute(nextUser, route.params?.selectedPurpose));
         } catch (e: any) {
-            const msg = e?.response?.data?.message ?? '동의 저장에 실패했어요. 잠시 후 다시 시도해 주세요.';
+            const msg = e?.response?.data?.message ?? '약관 동의 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.';
             AppToast.error(msg);
         } finally {
             setSubmitting(false);
@@ -90,21 +80,21 @@ export default function ConsentScreen({navigation}: Props) {
             footer={
                 <CtaStack bordered>
                     <AppButton
-                        label="동의하고 시작하기"
+                        label="동의하고 계속"
                         loading={submitting}
                         loadingLabel="저장 중..."
                         disabled={!requiredOk}
                         onPress={handleSubmit}
                     />
                     <AppText variant="caption" tone="tertiary" center>
-                        필수 항목에 동의하셔야 서비스를 이용할 수 있어요.
+                        필수 항목에 동의해야 소담을 이용할 수 있어요.
                     </AppText>
                 </CtaStack>
             }>
             <AppCard variant="warm" hero>
-                <AppText variant="headingSm">시작하기 전에</AppText>
+                <AppText variant="headingSm">서비스 이용을 위한 설정</AppText>
                 <AppText variant="bodyMd" tone="secondary" style={styles.heroSub}>
-                    소담을 안전하게 이용하실 수 있도록{'\n'}약관에 동의해 주세요.
+                    가입 또는 소셜 로그인 후 처음 한 번만 필요한 약관 동의 단계입니다.
                 </AppText>
             </AppCard>
 

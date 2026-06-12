@@ -50,7 +50,7 @@ export function usePushPermission(autoRequest = false): UsePushPermissionResult 
     };
 
     useEffect(() => {
-        if (autoRequest) request();
+        if (autoRequest) {request();}
     }, [autoRequest]);
 
     return {status, request};

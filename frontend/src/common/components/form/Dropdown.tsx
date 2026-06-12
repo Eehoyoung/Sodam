@@ -53,7 +53,7 @@ const Dropdown: React.FC<DropdownProps> = ({
 
     // 드롭다운 열기
     const openDropdown = () => {
-        if (disabled) return;
+        if (disabled) {return;}
 
         // 드롭다운 위치 계산
         if (dropdownRef.current) {
@@ -132,6 +132,7 @@ const Dropdown: React.FC<DropdownProps> = ({
                 activeOpacity={0.7}
                 accessibilityRole="button"
                 accessibilityState={{disabled}}
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- blank a11y label should fall back to placeholder, so ?? would announce an empty label
                 accessibilityLabel={label || placeholder}
                 accessibilityHint="드롭다운 메뉴를 엽니다">
                 <Text

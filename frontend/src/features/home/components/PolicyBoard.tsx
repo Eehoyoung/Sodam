@@ -48,8 +48,9 @@ const PolicyBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
     }, []);
 
     // 더보기 버튼 클릭 처리
+    // 'PolicyList' 라우트는 미등록 — 정책/정보 목록이 모여있는 'InfoList' 로 연결
     const handleViewMore = () => {
-        navigation?.navigate('PolicyList');
+        navigation?.navigate('InfoList');
     };
 
     const renderItem = ({item}: { item: Policy }) => (

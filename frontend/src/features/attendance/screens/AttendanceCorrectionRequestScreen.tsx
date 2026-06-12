@@ -1,17 +1,7 @@
-import {AppToast} from '../../../common/components/ds';
+import {AppToast, AppButton, AppCard, AppHeader, AppInput, AppText, CtaStack, ScreenContainer, SuccessState} from '../../../common/components/ds';
 import React, {useState} from 'react';
-import {Alert, StyleSheet, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
-import {
-    AppButton,
-    AppCard,
-    AppHeader,
-    AppInput,
-    AppText,
-    CtaStack,
-    ScreenContainer,
-    SuccessState,
-} from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 
 interface RouteParams {

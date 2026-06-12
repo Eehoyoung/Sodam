@@ -29,6 +29,7 @@ const Spinner: React.FC<SpinnerProps> = ({
                     style,
                 ]}
                 accessibilityRole="progressbar"
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- blank a11y label should fall back to default, so ?? would announce an empty label
                 accessibilityLabel={text || '로딩 중'}>
                 <ActivityIndicator size={size} color={color}/>
                 {text && (
@@ -44,6 +45,7 @@ const Spinner: React.FC<SpinnerProps> = ({
         <View
             style={[styles.container, style]}
             accessibilityRole="progressbar"
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- blank a11y label should fall back to default, so ?? would announce an empty label
             accessibilityLabel={text || '로딩 중'}>
             <ActivityIndicator size={size} color={color}/>
             {text && (

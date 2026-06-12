@@ -1,16 +1,7 @@
-import {AppToast, ConfirmSheet} from '../../../common/components/ds';
+import {AppToast, ConfirmSheet, AppButton, AppCard, AppHeader, AppInput, AppListItem, AppText, ScreenContainer} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useRoute} from '@react-navigation/native';
-import {
-    AppButton,
-    AppCard,
-    AppHeader,
-    AppInput,
-    AppListItem,
-    AppText,
-    ScreenContainer,
-} from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 import {formatWage} from '../../../common/utils/format';
 import api from '../../../common/utils/api';
@@ -41,7 +32,7 @@ const WageSettingsScreen: React.FC = () => {
             } catch (_) {/* ignore */}
             try {
                 const hRes = await api.get<any[]>(`/api/wages/store/${storeId}/history`);
-                setHistory((hRes.data as any[]) ?? []);
+                setHistory((hRes.data) ?? []);
             } catch (_) {/* TODO[P2 BE]: WageHistory 조회 API 미노출 */}
         })();
     }, [storeId]);

@@ -35,7 +35,9 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
       isMountedRef.current = false;
       try {
         Geolocation.stopObserving();
-      } catch {}
+      } catch {
+        // ignore: cleanup best-effort, observer may already be stopped
+      }
     };
   }, []);
 
@@ -44,12 +46,12 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
       setLoading(true);
       if (workplaceId) {
         const curr = await attendanceService.getCurrentAttendance(workplaceId);
-        if (isMountedRef.current) setCurrentAttendance(curr);
+        if (isMountedRef.current) {setCurrentAttendance(curr);}
       }
     } catch (e) {
       console.warn('[useAttendance] Failed to load current status', e);
     } finally {
-      if (isMountedRef.current) setLoading(false);
+      if (isMountedRef.current) {setLoading(false);}
     }
   }, [workplaceId]);
 
@@ -62,11 +64,11 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
       start.setMonth(now.getMonth() - 1);
       const startDate = start.toISOString().slice(0, 10);
       const data = await attendanceService.getAttendanceRecords({ startDate, endDate, workplaceId });
-      if (isMountedRef.current) setRecords(data);
+      if (isMountedRef.current) {setRecords(data);}
     } catch (e) {
       console.warn('[useAttendance] Failed to load records', e);
     } finally {
-      if (isMountedRef.current) setRecordsLoading(false);
+      if (isMountedRef.current) {setRecordsLoading(false);}
     }
   }, [workplaceId]);
 
@@ -99,7 +101,7 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
       Geolocation.getCurrentPosition(
         pos => {
           const { latitude, longitude } = pos.coords;
-          if (isMountedRef.current) setCurrentLocation({ latitude, longitude });
+          if (isMountedRef.current) {setCurrentLocation({ latitude, longitude });}
           resolve({ latitude, longitude });
         },
         _err => {
@@ -127,7 +129,6 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
             label: '설정으로 이동',
             onPress: () => {
               if (Platform.OS === 'android') {
-                // @ts-ignore: react-native Linking may not have sendIntent types
                 Linking.sendIntent?.('android.settings.NFC_SETTINGS');
               } else {
                 Linking.openSettings();
@@ -149,7 +150,7 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
   // 위치 권한이 없으면 출퇴근 자체가 불가능 — 매장 반경 검증을 BE 가 강제.
   const ensureLocation = useCallback(async () => {
     const granted = await requestLocationPermission();
-    if (!granted) return null;
+    if (!granted) {return null;}
     return await getCurrentLocation();
   }, [requestLocationPermission, getCurrentLocation]);
 
@@ -177,7 +178,7 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
         }
       } else if (method === 'nfc') {
         const ok = await ensureNFCAvailable();
-        if (!ok) return;
+        if (!ok) {return;}
         AppToast.show('NFC 스캔은 상세 화면에서 진행돼요.');
         return;
       }
@@ -194,7 +195,7 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
     } catch (e) {
       AppToast.error('출근 처리에 실패했어요. 다시 시도해 주세요.');
     } finally {
-      if (isMountedRef.current) setLoading(false);
+      if (isMountedRef.current) {setLoading(false);}
     }
   }, [method, workplaceId, employeeIdNum, ensureLocation, ensureNFCAvailable, loadRecentRecords]);
 
@@ -222,7 +223,7 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
         }
       } else if (method === 'nfc') {
         const ok = await ensureNFCAvailable();
-        if (!ok) return;
+        if (!ok) {return;}
         AppToast.show('NFC 스캔은 상세 화면에서 진행돼요.');
         return;
       }
@@ -239,7 +240,7 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
     } catch (e) {
       AppToast.error('퇴근 처리에 실패했어요. 다시 시도해 주세요.');
     } finally {
-      if (isMountedRef.current) setLoading(false);
+      if (isMountedRef.current) {setLoading(false);}
     }
   }, [method, currentAttendance, workplaceId, employeeIdNum, ensureLocation, ensureNFCAvailable, loadRecentRecords]);
 

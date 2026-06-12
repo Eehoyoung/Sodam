@@ -3,23 +3,22 @@ import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {AppBadge, AppButton, AppText, Brandmark} from '../../../common/components/ds';
-// 다크 그라디언트 배경 위 흰 카드 — 항상 #FFFFFF (테마 무관, 의도된 콘트라스트)
 import {gradient, radius, spacing} from '../../../theme/tokens';
+import {OnboardingRole, roleToPurpose} from '../../../navigation/authFlow';
 
 interface UsageSelectionScreenProps {
     navigation: any;
 }
 
-type Role = 'owner' | 'employee' | 'personal';
-
-/**
- * 01 RoleStart — 확정 시안.
- * 첫 화면은 마케팅 랜딩이 아니라 역할 선택 + 즉시 시작 경험.
- */
 const UsageSelectionScreen: React.FC<UsageSelectionScreenProps> = ({navigation}) => {
     const insets = useSafeAreaInsets();
-    // 역할 정보는 WelcomeMain/가입 흐름에서 사용 (현 라우팅 보존)
-    const handleSelection = (_role: Role) => navigation.navigate('WelcomeMain');
+
+    const handleSelection = (selectedRole: OnboardingRole) => {
+        navigation.navigate('WelcomeMain', {
+            selectedRole,
+            selectedPurpose: roleToPurpose(selectedRole),
+        });
+    };
 
     return (
         <LinearGradient colors={gradient.darkScreen} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={styles.flex}>
@@ -29,10 +28,10 @@ const UsageSelectionScreen: React.FC<UsageSelectionScreenProps> = ({navigation})
                     showsVerticalScrollIndicator={false}>
                     <Brandmark size={56} />
                     <AppText variant="headingLg" tone="inverse" style={styles.title}>
-                        {'오늘 가게 운영,\n여기서 끝내세요'}
+                        {'어떤 방식으로\n소담을 시작할까요?'}
                     </AppText>
                     <AppText variant="bodyMd" tone="inverse" style={styles.copy}>
-                        출퇴근부터 급여명세까지 사장님과 직원이 같은 기록을 봅니다.
+                        선택한 역할은 가입과 첫 홈 화면까지 이어집니다. 나중에 서버 계정 정보가 확인되면 서버 역할을 우선 적용합니다.
                     </AppText>
 
                     <View style={styles.cards}>
@@ -41,7 +40,7 @@ const UsageSelectionScreen: React.FC<UsageSelectionScreenProps> = ({navigation})
                                 <View style={styles.flexShrink}>
                                     <AppText variant="headingSm">사장님</AppText>
                                     <AppText variant="caption" tone="secondary" style={styles.cardSub}>
-                                        미출근, 급여, 직원 초대
+                                        매장, 직원, 급여를 함께 관리해요.
                                     </AppText>
                                 </View>
                                 <AppBadge label="추천" tone="warning" />
@@ -51,14 +50,14 @@ const UsageSelectionScreen: React.FC<UsageSelectionScreenProps> = ({navigation})
                         <Pressable onPress={() => handleSelection('employee')} style={styles.glassCard}>
                             <AppText variant="headingSm" tone="inverse">직원</AppText>
                             <AppText variant="caption" tone="inverse" style={styles.glassSub}>
-                                출근, 퇴근, 급여명세
+                                출퇴근, 휴가, 급여명세를 확인해요.
                             </AppText>
                         </Pressable>
 
                         <Pressable onPress={() => handleSelection('personal')} style={styles.glassCard}>
-                            <AppText variant="headingSm" tone="inverse">개인 기록</AppText>
+                            <AppText variant="headingSm" tone="inverse">개인</AppText>
                             <AppText variant="caption" tone="inverse" style={styles.glassSub}>
-                                내 알바 시간 직접 기록
+                                근무 시간과 급여 기록을 개인용으로 남겨요.
                             </AppText>
                         </Pressable>
                     </View>

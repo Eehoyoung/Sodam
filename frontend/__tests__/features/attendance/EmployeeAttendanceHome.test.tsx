@@ -238,7 +238,8 @@ describe('EmployeeAttendanceHome', () => {
                 circle.props.onPress();
                 await flush();
             });
-            expect(mockNavigate).toHaveBeenCalledWith('AttendanceCheckIn', {storeId: 7});
+            // 출퇴근은 실제 처리 화면 'Attendance'(AttendanceScreen)로 연결 (구 AttendanceCheckIn 라우트 미구현)
+            expect(mockNavigate).toHaveBeenCalledWith('Attendance');
         } finally {
             global.Date = realDate;
         }

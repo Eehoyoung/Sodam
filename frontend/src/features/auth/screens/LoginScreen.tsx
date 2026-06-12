@@ -1,34 +1,32 @@
-import {AppToast} from '../../../common/components/ds';
 import React, {useState} from 'react';
 import {KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {NavigationProp} from '@react-navigation/native';
-import {AppButton, AppInput, AppText, Brandmark} from '../../../common/components/ds';
+import {NavigationProp, RouteProp} from '@react-navigation/native';
+import {AppButton, AppInput, AppText, AppToast, Brandmark} from '../../../common/components/ds';
 import {gradient, spacing} from '../../../theme/tokens';
 import {useResponsive} from '../../../common/hooks/useResponsive';
 import authApi from '../services/authApi';
 import {useAuth} from '../../../contexts/AuthContext';
-import PurposeSelectModal, {Purpose} from '../components/PurposeSelectModal';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
-import {normalizeUserGrade} from '../utils/grade';
+import {AuthStackParamList} from '../../../navigation/types';
+import {
+    AuthPurpose,
+    hasServerRole,
+    pendingSlugToPurpose,
+    resetToRootRoute,
+    resolvePostAuthRoute,
+} from '../../../navigation/authFlow';
 
 interface LoginScreenProps {
     navigation: NavigationProp<any>;
+    route: RouteProp<AuthStackParamList, 'Login'>;
 }
-
-type MyPageTarget = 'UserMyPageScreen' | 'EmployeeMyPageScreen' | 'MasterMyPageScreen';
 
 const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-/**
- * 04 Login — 확정 시안.
- * 다크 배경 + 히어로 카피 + 이메일/비밀번호 + 카카오. 로그인 로직/라우팅은 보존.
- */
-export default function LoginScreen({navigation}: LoginScreenProps) {
+export default function LoginScreen({navigation, route}: LoginScreenProps) {
     const r = useResponsive();
-    // compact(<360) 또는 compactHeight(<700): 다크 히어로 화면이 키보드 올라오면 좁아진다.
-    // brandmark 한 단계 축소 + scroll paddingTop·title·form gap 을 줄여 키보드 뜬 상태에서도 CTA 가 보이게.
     const brandSize = r.pick({compact: 48, default: 56});
     const scrollPadTop = r.isCompactHeight ? spacing.lg : spacing.xxl;
     const titleMargin = r.pick({compact: spacing.md, default: spacing.lg});
@@ -39,107 +37,71 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
     const [showPassword, setShowPassword] = useState(false);
     const [emailError, setEmailError] = useState<string | undefined>();
     const [isLoading, setIsLoading] = useState(false);
-    const [purposeModalVisible, setPurposeModalVisible] = useState(false);
-    const [pendingUserId] = useState<number | null>(null);
 
     const {login: authLogin} = useAuth();
+    const selectedPurpose = route.params?.selectedPurpose;
+
+    const consumePendingPurpose = async (loggedInUser: Awaited<ReturnType<typeof authLogin>>): Promise<AuthPurpose | undefined> => {
+        const pending = await unifiedStorage.getItem('pendingPurposeAfterSignup');
+        const pendingPurpose = pendingSlugToPurpose(pending);
+        const fallbackPurpose = pendingPurpose ?? selectedPurpose;
+
+        if (pendingPurpose && loggedInUser?.id && !hasServerRole(loggedInUser)) {
+            try {
+                await authApi.setPurpose(loggedInUser.id, pendingPurpose);
+            } catch (_) {
+                // The local fallback still keeps the first landing deterministic.
+            }
+        }
+
+        if (pending) {
+            await unifiedStorage.removeItem('pendingPurposeAfterSignup');
+        }
+
+        return fallbackPurpose;
+    };
 
     const handleLogin = async () => {
+        if (isLoading) {
+            return;
+        }
         if (!email || !password) {
             AppToast.error('이메일과 비밀번호를 입력해 주세요.');
             return;
         }
         if (!isValidEmail(email)) {
-            setEmailError('올바른 이메일 형식을 입력해 주세요.');
+            setEmailError('올바른 이메일 형식으로 입력해 주세요.');
             return;
         }
 
         setIsLoading(true);
         try {
             const loggedInUser = await authLogin(email, password);
-            const grade = normalizeUserGrade((loggedInUser?.role as any) ?? undefined);
-            let targetScreen: MyPageTarget = 'UserMyPageScreen';
-            if (grade === 'EMPLOYEE') {
-                targetScreen = 'EmployeeMyPageScreen';
-            } else if (grade === 'MASTER') {
-                targetScreen = 'MasterMyPageScreen';
+            const fallbackPurpose = await consumePendingPurpose(loggedInUser);
+            const nextRoute = resolvePostAuthRoute(loggedInUser, fallbackPurpose);
+
+            if (nextRoute.name === 'Auth' && nextRoute.params.screen === 'Consent') {
+                AppToast.success('로그인되었습니다. 서비스 이용을 위해 약관 동의를 완료해 주세요.');
+            } else if (nextRoute.name === 'Auth' && nextRoute.params.screen === 'ProfileBasics') {
+                AppToast.success('로그인되었습니다. 기본 정보를 마저 입력해 주세요.');
+            } else {
+                AppToast.success('로그인되었습니다.');
             }
 
-            const userId = (loggedInUser?.id as unknown as number) ?? null;
-
-            // 1) 가입 시 선택한 사용 목적 자동 적용 (email/password 흐름)
-            try {
-                const pending = await unifiedStorage.getItem('pendingPurposeAfterSignup');
-                if (pending && userId) {
-                    const mappedPurpose: Purpose =
-                        pending === 'master' ? 'boss' : pending === 'employee' ? 'employee' : 'personal';
-                    try {
-                        await authApi.setPurpose(userId, mappedPurpose);
-                    } catch (_) {/* backend may not be ready */}
-                    try {
-                        await unifiedStorage.removeItem('pendingPurposeAfterSignup');
-                    } catch (_) {/* ignore */}
-
-                    const target: MyPageTarget =
-                        mappedPurpose === 'boss'
-                            ? 'MasterMyPageScreen'
-                            : mappedPurpose === 'employee'
-                                ? 'EmployeeMyPageScreen'
-                                : 'UserMyPageScreen';
-
-                    AppToast.success('로그인 성공!');
-                    navigation.reset({
-                        index: 0,
-                        routes: [{name: 'HomeRoot' as never, params: {screen: target} as never}] as any,
-                    });
-                    return;
-                }
-            } catch (_) {/* ignore */}
-
-            // 2) 이메일/비밀번호 로그인은 팝업 없이 항상 등급으로 라우팅
-            AppToast.success('로그인 성공!');
-            navigation.reset({
-                index: 0,
-                routes: [{name: 'HomeRoot' as never, params: {screen: targetScreen} as never}] as any,
-            });
-        } catch (error) {
-            AppToast.error('로그인에 실패했어요. 다시 시도해 주세요.');
+            resetToRootRoute(navigation, nextRoute);
+        } catch (error: any) {
+            const status = error?.response?.status;
+            const message = status === 401 || status === 403
+                ? '이메일 또는 비밀번호가 맞지 않습니다. 다시 입력하거나 비밀번호 찾기를 이용해 주세요.'
+                : '로그인에 실패했습니다. 네트워크 상태를 확인하고 다시 시도해 주세요.';
+            AppToast.error(message);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleKakao = async () => {
-        try {
-            await authApi.openKakaoLogin();
-        } catch (e) {
-            AppToast.error('카카오 로그인 페이지를 여는 데 실패했어요.');
-        }
-    };
-
-    const handlePurposeSelect = async (purpose: Purpose) => {
-        const userId = pendingUserId;
-        const chosenGrade = purpose === 'boss' ? 'MASTER' : purpose === 'employee' ? 'EMPLOYEE' : 'NORMAL';
-        if (userId) {
-            try {
-                await authApi.setPurpose(userId, purpose);
-            } catch (_) {/* 서버 미구현 가능 */}
-            try {
-                await unifiedStorage.setItem(`purpose_selected_${userId}`, 'true');
-            } catch (_) {/* ignore */}
-        }
-        const target: MyPageTarget =
-            chosenGrade === 'MASTER'
-                ? 'MasterMyPageScreen'
-                : chosenGrade === 'EMPLOYEE'
-                    ? 'EmployeeMyPageScreen'
-                    : 'UserMyPageScreen';
-        setPurposeModalVisible(false);
-        AppToast.success('사용 목적이 설정됐어요.');
-        navigation.reset({
-            index: 0,
-            routes: [{name: 'HomeRoot' as never, params: {screen: target} as never}] as any,
-        });
+    const handleKakao = () => {
+        navigation.navigate('KakaoLogin', {selectedPurpose});
     };
 
     return (
@@ -151,7 +113,9 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
                         {'다시 오셨네요.\n바로 시작해요'}
                     </AppText>
                     <AppText variant="bodyMd" tone="inverse" style={styles.copy}>
-                        매장 상태와 내 근무 기록을 이어서 확인합니다.
+                        {route.params?.fromSignup
+                            ? '가입한 계정으로 로그인하면 약관 동의와 기본 정보 설정을 이어서 진행합니다.'
+                            : '로그인 후 필요한 설정이 남아 있으면 먼저 안내해 드립니다.'}
                     </AppText>
 
                     <View style={[styles.form, {marginTop: formMargin, gap: formGap}]}>
@@ -164,7 +128,7 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
                                     setEmailError(undefined);
                                 }
                             }}
-                            onBlur={() => setEmailError(email && !isValidEmail(email) ? '올바른 이메일 형식을 입력해 주세요.' : undefined)}
+                            onBlur={() => setEmailError(email && !isValidEmail(email) ? '올바른 이메일 형식으로 입력해 주세요.' : undefined)}
                             keyboardType="email-address"
                             autoCapitalize="none"
                             autoCorrect={false}
@@ -192,27 +156,20 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
                             <AppText variant="caption" tone="inverse" style={styles.link}>비밀번호 찾기</AppText>
                         </Pressable>
                         <AppText variant="caption" tone="inverse" style={styles.dot}>·</AppText>
-                        <Pressable onPress={() => navigation.navigate('Signup')} hitSlop={8}>
+                        <Pressable onPress={() => navigation.navigate('Signup', {selectedPurpose})} hitSlop={8}>
                             <AppText variant="caption" tone="inverse" style={styles.link}>회원가입</AppText>
                         </Pressable>
                     </View>
                 </ScrollGuard>
-
-                <PurposeSelectModal
-                    visible={purposeModalVisible}
-                    onClose={() => setPurposeModalVisible(false)}
-                    onSelectPurpose={handlePurposeSelect}
-                />
             </SafeAreaView>
         </LinearGradient>
     );
 }
 
-/** 키보드 회피 + 스크롤 (다크 화면 전용 경량 래퍼) */
 const ScrollGuard: React.FC<{children: React.ReactNode; scrollPadTop?: number}> = ({children, scrollPadTop}) => (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
-            contentContainerStyle={[styles.scroll, scrollPadTop != null && {paddingTop: scrollPadTop}]}
+            contentContainerStyle={[styles.scroll, scrollPadTop !== null && scrollPadTop !== undefined && {paddingTop: scrollPadTop}]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
             {children}

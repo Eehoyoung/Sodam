@@ -1,3 +1,4 @@
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
 import React, {useMemo, useState} from 'react';
 import {Modal, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {tokens} from '../../../theme/tokens';
@@ -43,7 +44,7 @@ const ConsentBlock: React.FC<ConsentBlockProps> = ({value, onChange, legalTexts}
     };
 
     const docText = useMemo(() => {
-        if (!openedDoc) return '';
+        if (!openedDoc) {return '';}
         if (openedDoc === 'terms') {
             return legalTexts?.terms ?? FALLBACK_TERMS;
         }
@@ -98,6 +99,7 @@ const ConsentBlock: React.FC<ConsentBlockProps> = ({value, onChange, legalTexts}
             />
 
             <Modal
+                // eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined
                 visible={openedDoc != null}
                 animationType="slide"
                 transparent
