@@ -1,24 +1,23 @@
-import {AppToast} from '../../../common/components/ds';
+/* eslint-disable react-native/no-unused-styles -- styles built via createStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import {AppToast, AppButton, AppCard, AppText, AmountText} from '../../../common/components/ds';
 import React, { useState, useEffect, useMemo, useContext } from 'react';
 import {
     View,
-    Text,
-    TouchableOpacity,
     ScrollView,
     TextInput,
     Modal,
     StyleSheet,
-    SafeAreaView,
     StatusBar,
-    Dimensions,
     FlatList,
+    TouchableOpacity,
 } from 'react-native';
+import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
-import PrimaryButton from '../../../common/components/buttons/PrimaryButton';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import {radius, shadow, spacing} from '../../../theme/tokens';
+import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import AuthContext from '../../../contexts/AuthContext';
 import storeService from '../../store/services/storeService';
-
-Dimensions.get('window');
 
 // 타입 정의
 interface Store {
@@ -79,6 +78,10 @@ interface MonthlyStats {
 }
 
 const MultiStoreWorkScreen: React.FC = () => {
+    const c = useThemeColors();
+    const insets = useSafeAreaInsets();
+    const styles = useMemo(() => createStyles(c), [c]);
+
     // AuthContext에서 사용자 정보 가져오기
     const { user } = useContext(AuthContext);
 
@@ -106,10 +109,10 @@ const MultiStoreWorkScreen: React.FC = () => {
     // 현재 선택된 매장 정보
     const currentStore = useMemo(() => {
         if (stores.length === 0) {
-            return { id: '', name: '매장 없음', color: '#999999', hourlyWage: 0 };
+            return { id: '', name: '매장 없음', color: c.brandSecondary, hourlyWage: 0 };
         }
         return stores.find(store => store.id === selectedStoreId) ?? stores[0];
-    }, [selectedStoreId, stores]);
+    }, [selectedStoreId, stores, c.brandSecondary]);
 
     // 현재 매장의 작업 세션
     const currentSession = useMemo(() =>
@@ -339,7 +342,7 @@ const MultiStoreWorkScreen: React.FC = () => {
                 const mappedStores: Store[] = storesData.map((store: any) => ({
                     id: String(store.id),
                     name: store.storeName,
-                    color: store.color || '#0066CC', // 기본 색상
+                    color: store.color || '#FF6B35', // 기본 색상
                     hourlyWage: store.storeStandardHourWage || 10000,
                 }));
 
@@ -438,7 +441,7 @@ const MultiStoreWorkScreen: React.FC = () => {
             const timeString = now.toTimeString().slice(0, 5);
             addRecord('출근', timeString, selectedStoreId);
 
-            AppToast.success(`${currentStore.name}에 출근이 기록됐어요! 💪`);
+            AppToast.success(`${currentStore.name}에 출근이 기록됐어요!`);
         }
     };
 
@@ -469,7 +472,7 @@ const MultiStoreWorkScreen: React.FC = () => {
                 [selectedStoreId]: newSession,
             }));
 
-            AppToast.success(`${currentStore.name}에서 퇴근이 기록됐어요! 수고하셨어요! 🎉`);
+            AppToast.success(`${currentStore.name}에서 퇴근이 기록됐어요! 수고하셨어요!`);
         }
     };
 
@@ -499,7 +502,7 @@ const MultiStoreWorkScreen: React.FC = () => {
             const timeString = now.toTimeString().slice(0, 5);
             addRecord('휴게시작', timeString, selectedStoreId);
 
-            AppToast.success(`${currentStore.name}에서 휴게시간이 시작됐어요! ☕`);
+            AppToast.success(`${currentStore.name}에서 휴게시간이 시작됐어요!`);
         }
     };
 
@@ -530,7 +533,7 @@ const MultiStoreWorkScreen: React.FC = () => {
             const timeString = now.toTimeString().slice(0, 5);
             addRecord('휴게종료', timeString, selectedStoreId);
 
-            AppToast.success(`${currentStore.name}에서 휴게시간이 종료됐어요! 화이팅! 💪`);
+            AppToast.success(`${currentStore.name}에서 휴게시간이 종료됐어요! 화이팅!`);
         }
     };
 
@@ -599,200 +602,189 @@ const MultiStoreWorkScreen: React.FC = () => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="light-content" />
+        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+            <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
             {/* 헤더 */}
             <LinearGradient
-                colors={[currentStore.color, '#243B4A']}
+                colors={[currentStore.color, c.brandSecondary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.header}
             >
-                <Text style={styles.userName}>김알바님</Text>
-                <Text style={styles.currentTime}>{currentTime}</Text>
+                <AppText variant="headingMd" tone="inverse">김알바님</AppText>
+                <AppText variant="bodyMd" tone="inverse" style={styles.currentTime}>{currentTime}</AppText>
 
                 {/* 매장 선택 버튼 */}
                 <TouchableOpacity
                     style={styles.storeSelector}
                     onPress={() => setShowStoreSelector(true)}
                 >
-                    <Text style={styles.storeName}>{currentStore.name}</Text>
-                    <Text style={styles.storeChangeText}>매장 변경 ▼</Text>
+                    <AppText variant="headingSm" tone="inverse" numberOfLines={1}>{currentStore.name}</AppText>
+                    <View style={styles.storeChangeRow}>
+                        <AppText variant="caption" tone="inverse" style={styles.storeChangeText}>매장 변경</AppText>
+                        <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.85)" />
+                    </View>
                 </TouchableOpacity>
 
                 <View style={styles.workStatus}>
-                    <View>
-                        <Text style={styles.statusLabel}>근무 상태</Text>
-                        <Text style={styles.statusValue}>{getWorkStatusText()}</Text>
+                    <View style={styles.workStatusItem}>
+                        <AppText variant="caption" tone="inverse" style={styles.statusLabel}>근무 상태</AppText>
+                        <AppText variant="headingSm" tone="inverse">{getWorkStatusText()}</AppText>
                     </View>
-                    <View>
-                        <Text style={styles.statusLabel}>오늘 총 근무시간</Text>
-                        <Text style={styles.statusValue}>{formatTime(todayWorkSummary.totalWorkTime)}</Text>
+                    <View style={styles.workStatusItem}>
+                        <AppText variant="caption" tone="inverse" style={styles.statusLabel}>오늘 총 근무시간</AppText>
+                        <AppText variant="headingSm" tone="inverse">{formatTime(todayWorkSummary.totalWorkTime)}</AppText>
                     </View>
                 </View>
             </LinearGradient>
 
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
                 {/* 실시간 근무 현황 */}
-                <View style={styles.card}>
+                <AppCard variant="hero" style={styles.card}>
                     <View style={styles.cardHeader}>
-                        <Text style={styles.cardIcon}>⏰</Text>
-                        <Text style={styles.cardTitle}>현재 매장 근무 현황</Text>
+                        <Ionicons name="time-outline" size={20} color={c.brandPrimary} style={styles.cardIcon} />
+                        <AppText variant="headingSm">현재 매장 근무 현황</AppText>
                     </View>
 
                     <View style={styles.statsGrid}>
-                        <View style={styles.statItem}>
-                            <Text style={styles.statLabel}>현재 근무시간</Text>
-                            <Text style={[styles.statValue, styles.highlight]}>
-                                {getCurrentWorkTime(currentSession)}
-                            </Text>
+                        <View style={styles.statBox}>
+                            <AppText variant="caption" tone="secondary" style={styles.statLabel}>현재 근무시간</AppText>
+                            <AppText variant="headingMd" tone="brand">{getCurrentWorkTime(currentSession)}</AppText>
                         </View>
-                        <View style={styles.statItem}>
-                            <Text style={styles.statLabel}>예상 급여</Text>
-                            <Text style={[styles.statValue, styles.highlight]}>
-                                ₩{getExpectedPay(currentSession).toLocaleString()}
-                            </Text>
+                        <View style={styles.statBox}>
+                            <AppText variant="caption" tone="secondary" style={styles.statLabel}>예상 급여</AppText>
+                            <AmountText size={24}>₩{getExpectedPay(currentSession).toLocaleString()}</AmountText>
                         </View>
                     </View>
 
                     {/* 원터치 근태 기록 버튼들 */}
                     <View style={styles.actionButtons}>
-                        <TouchableOpacity
-                            style={[
-                                styles.actionBtn,
-                                styles.primaryBtn,
-                                { backgroundColor: currentStore.color },
-                                !currentSession.isWorking ? {} : styles.disabledBtn
-                            ]}
-                            onPress={clockIn}
-                            disabled={currentSession.isWorking}
-                        >
-                            <Text style={styles.actionBtnText}>🏃‍♂️ 출근</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[
-                                styles.actionBtn,
-                                styles.secondaryBtn,
-                                currentSession.isWorking ? {} : styles.disabledBtn
-                            ]}
-                            onPress={clockOut}
-                            disabled={!currentSession.isWorking}
-                        >
-                            <Text style={styles.actionBtnText}>🚪 퇴근</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[
-                                styles.actionBtn,
-                                styles.successBtn,
-                                (currentSession.isWorking && !currentSession.isOnBreak) ? {} : styles.disabledBtn
-                            ]}
-                            onPress={breakStart}
-                            disabled={!currentSession.isWorking || currentSession.isOnBreak}
-                        >
-                            <Text style={styles.actionBtnText}>☕ 휴게시작</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[
-                                styles.actionBtn,
-                                styles.successBtn,
-                                (currentSession.isWorking && currentSession.isOnBreak) ? {} : styles.disabledBtn
-                            ]}
-                            onPress={breakEnd}
-                            disabled={!currentSession.isWorking || !currentSession.isOnBreak}
-                        >
-                            <Text style={styles.actionBtnText}>💪 휴게종료</Text>
-                        </TouchableOpacity>
+                        <View style={styles.actionHalf}>
+                            <AppButton
+                                label="출근"
+                                size="md"
+                                onPress={clockIn}
+                                disabled={currentSession.isWorking}
+                                leftIcon={<Ionicons name="enter-outline" size={18} color={c.textInverse} />}
+                            />
+                        </View>
+                        <View style={styles.actionHalf}>
+                            <AppButton
+                                label="퇴근"
+                                size="md"
+                                variant="secondary"
+                                onPress={clockOut}
+                                disabled={!currentSession.isWorking}
+                                leftIcon={<Ionicons name="exit-outline" size={18} color={c.brandSecondary} />}
+                            />
+                        </View>
+                        <View style={styles.actionHalf}>
+                            <AppButton
+                                label="휴게시작"
+                                size="md"
+                                variant="outline"
+                                onPress={breakStart}
+                                disabled={!currentSession.isWorking || currentSession.isOnBreak}
+                                leftIcon={<Ionicons name="cafe-outline" size={18} color={c.brandPrimary} />}
+                            />
+                        </View>
+                        <View style={styles.actionHalf}>
+                            <AppButton
+                                label="휴게종료"
+                                size="md"
+                                variant="outline"
+                                onPress={breakEnd}
+                                disabled={!currentSession.isWorking || !currentSession.isOnBreak}
+                                leftIcon={<Ionicons name="play-outline" size={18} color={c.brandPrimary} />}
+                            />
+                        </View>
                     </View>
 
-                    <TouchableOpacity
-                        style={[styles.actionBtn, styles.outlineBtn, styles.fullWidth]}
+                    <AppButton
+                        label="수동 시간 입력"
+                        size="md"
+                        variant="ghost"
                         onPress={() => setShowManualModal(true)}
-                    >
-                        <Text style={[styles.actionBtnText, styles.outlineBtnText]}>✏️ 수동 시간 입력</Text>
-                    </TouchableOpacity>
-                </View>
+                        leftIcon={<Ionicons name="create-outline" size={18} color={c.brandPrimary} />}
+                    />
+                </AppCard>
 
                 {/* 오늘의 매장별 근무 기록 */}
-                <View style={styles.card}>
+                <AppCard variant="plain" style={styles.card}>
                     <View style={styles.cardHeader}>
-                        <Text style={styles.cardIcon}>📝</Text>
-                        <Text style={styles.cardTitle}>오늘의 매장별 근무 기록</Text>
+                        <Ionicons name="document-text-outline" size={20} color={c.brandPrimary} style={styles.cardIcon} />
+                        <AppText variant="headingSm">오늘의 매장별 근무 기록</AppText>
                     </View>
 
                     {Object.entries(todayWorkSummary.stores).map(([storeId, storeData]) => {
                         const store = stores.find(s => s.id === storeId);
                         return (
                             <View key={storeId} style={styles.storeWorkSection}>
-                                <View style={[styles.storeHeader, { backgroundColor: store?.color + '20' }]}>
-                                    <View style={[styles.storeColorDot, { backgroundColor: store?.color }]} />
-                                    <Text style={styles.storeWorkTitle}>{storeData.storeName}</Text>
-                                    <Text style={styles.storeWorkTime}>{formatTime(storeData.workTime)}</Text>
+                                <View style={styles.storeHeader}>
+                                    <View style={[styles.storeColorDot, { backgroundColor: store?.color ?? c.brandPrimary }]} />
+                                    <AppText variant="titleMd" numberOfLines={1} style={styles.storeWorkTitle}>{storeData.storeName}</AppText>
+                                    <AppText variant="titleMd" tone="secondary">{formatTime(storeData.workTime)}</AppText>
                                 </View>
 
                                 <View style={styles.recordList}>
                                     {storeData.records.map((record, index) => (
                                         <View key={index} style={styles.recordItem}>
-                                            <Text style={styles.recordType}>{record.type}</Text>
-                                            <Text style={styles.recordTime}>{record.time}</Text>
+                                            <AppText variant="caption" weight="600">{record.type}</AppText>
+                                            <AppText variant="caption" tone="secondary">{record.time}</AppText>
                                         </View>
                                     ))}
                                 </View>
 
                                 <View style={styles.storeEarnings}>
-                                    <Text style={styles.earningsText}>예상 급여: ₩{storeData.earnings.toLocaleString()}</Text>
+                                    <AppText variant="caption" tone="secondary" weight="600">예상 급여: ₩{storeData.earnings.toLocaleString()}</AppText>
                                 </View>
                             </View>
                         );
                     })}
 
                     {Object.keys(todayWorkSummary.stores).length === 0 && (
-                        <Text style={styles.noRecordsText}>오늘 근무 기록이 없어요.</Text>
+                        <AppText variant="bodyMd" tone="secondary" center style={styles.noRecordsText}>오늘 근무 기록이 없어요.</AppText>
                     )}
-                </View>
+                </AppCard>
 
                 {/* 오늘 총 요약 */}
-                <View style={styles.card}>
+                <AppCard variant="plain" style={styles.card}>
                     <View style={styles.cardHeader}>
-                        <Text style={styles.cardIcon}>📊</Text>
-                        <Text style={styles.cardTitle}>오늘 총 요약</Text>
+                        <Ionicons name="bar-chart-outline" size={20} color={c.brandPrimary} style={styles.cardIcon} />
+                        <AppText variant="headingSm">오늘 총 요약</AppText>
                     </View>
 
                     <View style={styles.summaryGrid}>
                         <View style={styles.summaryItem}>
-                            <Text style={styles.summaryLabel}>총 근무시간</Text>
-                            <Text style={styles.summaryValue}>{formatTime(todayWorkSummary.totalWorkTime)}</Text>
+                            <AppText variant="caption" tone="secondary" style={styles.summaryLabel}>총 근무시간</AppText>
+                            <AppText variant="titleMd">{formatTime(todayWorkSummary.totalWorkTime)}</AppText>
                         </View>
                         <View style={styles.summaryItem}>
-                            <Text style={styles.summaryLabel}>총 예상급여</Text>
-                            <Text style={styles.summaryValue}>₩{todayWorkSummary.totalEarnings.toLocaleString()}</Text>
+                            <AppText variant="caption" tone="secondary" style={styles.summaryLabel}>총 예상급여</AppText>
+                            <AppText variant="titleMd" numberOfLines={1} adjustsFontSizeToFit>₩{todayWorkSummary.totalEarnings.toLocaleString()}</AppText>
                         </View>
                         <View style={styles.summaryItem}>
-                            <Text style={styles.summaryLabel}>근무 매장수</Text>
-                            <Text style={styles.summaryValue}>{Object.keys(todayWorkSummary.stores).length}개</Text>
+                            <AppText variant="caption" tone="secondary" style={styles.summaryLabel}>근무 매장수</AppText>
+                            <AppText variant="titleMd">{Object.keys(todayWorkSummary.stores).length}개</AppText>
                         </View>
                         <View style={styles.summaryItem}>
-                            <Text style={styles.summaryLabel}>평균 시급</Text>
-                            <Text style={styles.summaryValue}>
+                            <AppText variant="caption" tone="secondary" style={styles.summaryLabel}>평균 시급</AppText>
+                            <AppText variant="titleMd" numberOfLines={1} adjustsFontSizeToFit>
                                 ₩{todayWorkSummary.totalWorkTime > 0
                                 ? Math.round(todayWorkSummary.totalEarnings / (todayWorkSummary.totalWorkTime / 3600)).toLocaleString()
-                                : '0'
-                            }
-                            </Text>
+                                : '0'}
+                            </AppText>
                         </View>
                     </View>
-                </View>
+                </AppCard>
 
                 {/* 월별 기록 보기 버튼 */}
-                <PrimaryButton
-                  title="📅 월별 근무 기록 보기"
+                <AppButton
+                  label="월별 근무 기록 보기"
                   onPress={() => setShowMonthlyView(true)}
                   testID="btnMonthlyRecords"
-                  accessibilityLabel="월별 근무 기록 보기"
-                  style={[styles.fullWidth]}
+                  leftIcon={<Ionicons name="calendar-outline" size={18} color={c.textInverse} />}
                 />
             </ScrollView>
 
@@ -806,9 +798,9 @@ const MultiStoreWorkScreen: React.FC = () => {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>근무할 매장 선택</Text>
-                            <TouchableOpacity onPress={() => setShowStoreSelector(false)}>
-                                <Text style={styles.modalClose}>✕</Text>
+                            <AppText variant="headingSm">근무할 매장 선택</AppText>
+                            <TouchableOpacity onPress={() => setShowStoreSelector(false)} hitSlop={8}>
+                                <Ionicons name="close" size={22} color={c.textSecondary} />
                             </TouchableOpacity>
                         </View>
 
@@ -825,11 +817,11 @@ const MultiStoreWorkScreen: React.FC = () => {
                                 >
                                     <View style={[styles.storeColorDot, { backgroundColor: item.color }]} />
                                     <View style={styles.storeOptionInfo}>
-                                        <Text style={styles.storeOptionName}>{item.name}</Text>
-                                        <Text style={styles.storeOptionWage}>시급: ₩{item.hourlyWage.toLocaleString()}</Text>
+                                        <AppText variant="titleMd" numberOfLines={1}>{item.name}</AppText>
+                                        <AppText variant="caption" tone="secondary">시급: ₩{item.hourlyWage.toLocaleString()}</AppText>
                                     </View>
                                     {selectedStoreId === item.id && (
-                                        <Text style={styles.selectedIcon}>✓</Text>
+                                        <Ionicons name="checkmark" size={20} color={c.brandPrimary} />
                                     )}
                                 </TouchableOpacity>
                             )}
@@ -848,14 +840,14 @@ const MultiStoreWorkScreen: React.FC = () => {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>수동 시간 입력</Text>
-                            <TouchableOpacity onPress={() => setShowManualModal(false)}>
-                                <Text style={styles.modalClose}>✕</Text>
+                            <AppText variant="headingSm">수동 시간 입력</AppText>
+                            <TouchableOpacity onPress={() => setShowManualModal(false)} hitSlop={8}>
+                                <Ionicons name="close" size={22} color={c.textSecondary} />
                             </TouchableOpacity>
                         </View>
 
                         <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>매장 선택</Text>
+                            <AppText variant="caption" weight="600" tone="secondary" style={styles.inputLabel}>매장 선택</AppText>
                             <View style={styles.pickerContainer}>
                                 {stores.map((store) => (
                                     <TouchableOpacity
@@ -867,19 +859,20 @@ const MultiStoreWorkScreen: React.FC = () => {
                                         onPress={() => setManualRecord(prev => ({ ...prev, storeId: store.id }))}
                                     >
                                         <View style={[styles.storeColorDot, { backgroundColor: store.color }]} />
-                                        <Text style={[
-                                            styles.pickerText,
-                                            manualRecord.storeId === store.id && styles.pickerTextSelected
-                                        ]}>
+                                        <AppText
+                                            variant="caption"
+                                            weight={manualRecord.storeId === store.id ? '700' : '400'}
+                                            tone={manualRecord.storeId === store.id ? 'inverse' : 'secondary'}
+                                            numberOfLines={1}>
                                             {store.name}
-                                        </Text>
+                                        </AppText>
                                     </TouchableOpacity>
                                 ))}
                             </View>
                         </View>
 
                         <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>기록 유형</Text>
+                            <AppText variant="caption" weight="600" tone="secondary" style={styles.inputLabel}>기록 유형</AppText>
                             <View style={styles.pickerContainer}>
                                 {['출근', '퇴근', '휴게시작', '휴게종료'].map((type) => (
                                     <TouchableOpacity
@@ -890,12 +883,12 @@ const MultiStoreWorkScreen: React.FC = () => {
                                         ]}
                                         onPress={() => setManualRecord(prev => ({ ...prev, type: type as WorkRecord['type'] }))}
                                     >
-                                        <Text style={[
-                                            styles.pickerText,
-                                            manualRecord.type === type && styles.pickerTextSelected
-                                        ]}>
+                                        <AppText
+                                            variant="caption"
+                                            weight={manualRecord.type === type ? '700' : '400'}
+                                            tone={manualRecord.type === type ? 'inverse' : 'secondary'}>
                                             {type}
-                                        </Text>
+                                        </AppText>
                                     </TouchableOpacity>
                                 ))}
                             </View>
@@ -903,35 +896,36 @@ const MultiStoreWorkScreen: React.FC = () => {
 
                         <View style={styles.timeInputGrid}>
                             <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>시간</Text>
+                                <AppText variant="caption" weight="600" tone="secondary" style={styles.inputLabel}>시간</AppText>
                                 <TextInput
                                     style={styles.inputField}
                                     value={manualRecord.hour}
                                     onChangeText={(text) => setManualRecord(prev => ({ ...prev, hour: text }))}
                                     placeholder="시"
+                                    placeholderTextColor={c.textTertiary}
                                     keyboardType="numeric"
                                     maxLength={2}
                                 />
                             </View>
                             <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>분</Text>
+                                <AppText variant="caption" weight="600" tone="secondary" style={styles.inputLabel}>분</AppText>
                                 <TextInput
                                     style={styles.inputField}
                                     value={manualRecord.minute}
                                     onChangeText={(text) => setManualRecord(prev => ({ ...prev, minute: text }))}
                                     placeholder="분"
+                                    placeholderTextColor={c.textTertiary}
                                     keyboardType="numeric"
                                     maxLength={2}
                                 />
                             </View>
                         </View>
 
-                        <TouchableOpacity
-                            style={[styles.actionBtn, styles.primaryBtn, styles.fullWidth]}
+                        <AppButton
+                            label="기록 추가"
                             onPress={addManualRecord}
-                        >
-                            <Text style={styles.actionBtnText}>✅ 기록 추가</Text>
-                        </TouchableOpacity>
+                            leftIcon={<Ionicons name="checkmark-circle-outline" size={18} color={c.textInverse} />}
+                        />
                     </View>
                 </View>
             </Modal>
@@ -946,9 +940,9 @@ const MultiStoreWorkScreen: React.FC = () => {
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalContent, styles.monthlyModalContent]}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>월별 근무 기록</Text>
-                            <TouchableOpacity onPress={() => setShowMonthlyView(false)}>
-                                <Text style={styles.modalClose}>✕</Text>
+                            <AppText variant="headingSm">월별 근무 기록</AppText>
+                            <TouchableOpacity onPress={() => setShowMonthlyView(false)} hitSlop={8}>
+                                <Ionicons name="close" size={22} color={c.textSecondary} />
                             </TouchableOpacity>
                         </View>
 
@@ -964,15 +958,15 @@ const MultiStoreWorkScreen: React.FC = () => {
                                         ]}
                                         onPress={() => setSelectedMonth(month)}
                                     >
-                                        <Text style={[
-                                            styles.monthOptionText,
-                                            selectedMonth === month && styles.monthOptionTextSelected
-                                        ]}>
+                                        <AppText
+                                            variant="caption"
+                                            weight={selectedMonth === month ? '700' : '400'}
+                                            tone={selectedMonth === month ? 'inverse' : 'secondary'}>
                                             {new Date(month + '-01').toLocaleDateString('ko-KR', {
                                                 year: 'numeric',
                                                 month: 'long'
                                             })}
-                                        </Text>
+                                        </AppText>
                                     </TouchableOpacity>
                                 ))}
                             </ScrollView>
@@ -981,63 +975,62 @@ const MultiStoreWorkScreen: React.FC = () => {
                         {/* 월별 통계 */}
                         <ScrollView style={styles.monthlyContent}>
                             <View style={styles.monthlyStatsCard}>
-                                <Text style={styles.monthlyStatsTitle}>
+                                <AppText variant="headingSm" center style={styles.monthlyStatsTitle}>
                                     {new Date(selectedMonth + '-01').toLocaleDateString('ko-KR', {
                                         year: 'numeric',
                                         month: 'long'
                                     })} 통계
-                                </Text>
+                                </AppText>
 
                                 <View style={styles.monthlyStatsGrid}>
                                     <View style={styles.monthlyStatItem}>
-                                        <Text style={styles.monthlyStatLabel}>총 근무시간</Text>
-                                        <Text style={styles.monthlyStatValue}>{formatTime(monthlyStats.totalWorkTime)}</Text>
+                                        <AppText variant="caption" tone="secondary" style={styles.monthlyStatLabel}>총 근무시간</AppText>
+                                        <AppText variant="titleMd">{formatTime(monthlyStats.totalWorkTime)}</AppText>
                                     </View>
                                     <View style={styles.monthlyStatItem}>
-                                        <Text style={styles.monthlyStatLabel}>총 급여</Text>
-                                        <Text style={styles.monthlyStatValue}>₩{monthlyStats.totalEarnings.toLocaleString()}</Text>
+                                        <AppText variant="caption" tone="secondary" style={styles.monthlyStatLabel}>총 급여</AppText>
+                                        <AppText variant="titleMd" numberOfLines={1} adjustsFontSizeToFit>₩{monthlyStats.totalEarnings.toLocaleString()}</AppText>
                                     </View>
                                     <View style={styles.monthlyStatItem}>
-                                        <Text style={styles.monthlyStatLabel}>근무일수</Text>
-                                        <Text style={styles.monthlyStatValue}>{monthlyStats.workDays}일</Text>
+                                        <AppText variant="caption" tone="secondary" style={styles.monthlyStatLabel}>근무일수</AppText>
+                                        <AppText variant="titleMd">{monthlyStats.workDays}일</AppText>
                                     </View>
                                     <View style={styles.monthlyStatItem}>
-                                        <Text style={styles.monthlyStatLabel}>평균 일급</Text>
-                                        <Text style={styles.monthlyStatValue}>
+                                        <AppText variant="caption" tone="secondary" style={styles.monthlyStatLabel}>평균 일급</AppText>
+                                        <AppText variant="titleMd" numberOfLines={1} adjustsFontSizeToFit>
                                             ₩{monthlyStats.workDays > 0
                                             ? Math.round(monthlyStats.totalEarnings / monthlyStats.workDays).toLocaleString()
-                                            : '0'
-                                        }
-                                        </Text>
+                                            : '0'}
+                                        </AppText>
                                     </View>
                                 </View>
                             </View>
 
                             {/* 매장별 통계 */}
                             <View style={styles.storeBreakdownCard}>
-                                <Text style={styles.storeBreakdownTitle}>매장별 상세 통계</Text>
+                                <AppText variant="headingSm" style={styles.storeBreakdownTitle}>매장별 상세 통계</AppText>
 
                                 {Object.entries(monthlyStats.storeBreakdown).map(([storeId, storeStats]) => {
                                     const store = stores.find(s => s.id === storeId);
                                     return (
                                         <View key={storeId} style={styles.storeBreakdownItem}>
                                             <View style={styles.storeBreakdownHeader}>
-                                                <View style={[styles.storeColorDot, { backgroundColor: store?.color }]} />
-                                                <Text style={styles.storeBreakdownName}>{storeStats.storeName}</Text>
+                                                <View style={[styles.storeColorDot, { backgroundColor: store?.color ?? c.brandPrimary }]} />
+                                                <AppText variant="titleMd" numberOfLines={1} style={styles.flex}>{storeStats.storeName}</AppText>
                                             </View>
 
                                             <View style={styles.storeBreakdownStats}>
                                                 <View style={styles.storeBreakdownStat}>
-                                                    <Text style={styles.storeBreakdownStatLabel}>근무시간</Text>
-                                                    <Text style={styles.storeBreakdownStatValue}>{formatTime(storeStats.workTime)}</Text>
+                                                    <AppText variant="caption" tone="secondary" style={styles.storeBreakdownStatLabel}>근무시간</AppText>
+                                                    <AppText variant="caption" weight="700">{formatTime(storeStats.workTime)}</AppText>
                                                 </View>
                                                 <View style={styles.storeBreakdownStat}>
-                                                    <Text style={styles.storeBreakdownStatLabel}>급여</Text>
-                                                    <Text style={styles.storeBreakdownStatValue}>₩{storeStats.earnings.toLocaleString()}</Text>
+                                                    <AppText variant="caption" tone="secondary" style={styles.storeBreakdownStatLabel}>급여</AppText>
+                                                    <AppText variant="caption" weight="700">₩{storeStats.earnings.toLocaleString()}</AppText>
                                                 </View>
                                                 <View style={styles.storeBreakdownStat}>
-                                                    <Text style={styles.storeBreakdownStatLabel}>근무일</Text>
-                                                    <Text style={styles.storeBreakdownStatValue}>{storeStats.days}일</Text>
+                                                    <AppText variant="caption" tone="secondary" style={styles.storeBreakdownStatLabel}>근무일</AppText>
+                                                    <AppText variant="caption" weight="700">{storeStats.days}일</AppText>
                                                 </View>
                                             </View>
                                         </View>
@@ -1045,7 +1038,7 @@ const MultiStoreWorkScreen: React.FC = () => {
                                 })}
 
                                 {Object.keys(monthlyStats.storeBreakdown).length === 0 && (
-                                    <Text style={styles.noDataText}>해당 월에 근무 기록이 없어요.</Text>
+                                    <AppText variant="bodyMd" tone="secondary" center style={styles.noRecordsText}>해당 월에 근무 기록이 없어요.</AppText>
                                 )}
                             </View>
                         </ScrollView>
@@ -1053,278 +1046,184 @@ const MultiStoreWorkScreen: React.FC = () => {
                 </View>
             </Modal>
 
-            {/* 플로팅 타이머 */}
+            {/* 플로팅 타이머 — absolute top:100(노치 침범) 대신 안전영역 기준 inset 배치 */}
             {currentSession.isWorking && (
-                <View style={[styles.floatingTimer, { backgroundColor: currentStore.color }]}>
-                    <Text style={styles.floatingTimerText}>
-                        {currentStore.name.split(' ')[0]} ⏱️ {getCurrentWorkTime(currentSession)}
-                    </Text>
+                <View style={[styles.floatingTimer, { backgroundColor: currentStore.color, top: insets.top + spacing.sm }]}>
+                    <Ionicons name="timer-outline" size={14} color={c.textInverse} />
+                    <AppText variant="caption" weight="700" tone="inverse" numberOfLines={1} style={styles.floatingTimerText}>
+                        {currentStore.name.split(' ')[0]} {getCurrentWorkTime(currentSession)}
+                    </AppText>
                 </View>
             )}
         </SafeAreaView>
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F7F4EF',
+        backgroundColor: c.surfaceCanvas,
     },
     header: {
-        padding: 20,
-        paddingTop: 40,
+        paddingHorizontal: spacing.xxl,
+        paddingTop: spacing.xxl,
+        paddingBottom: spacing.xxl,
         alignItems: 'center',
     },
-    userName: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: 'white',
-        marginBottom: 4,
-    },
     currentTime: {
-        fontSize: 16,
-        color: 'rgba(255,255,255,0.9)',
-        marginBottom: 16,
+        opacity: 0.9,
+        marginTop: spacing.xs,
+        marginBottom: spacing.lg,
     },
     storeSelector: {
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 16,
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        borderRadius: radius.lg,
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.lg,
+        marginBottom: spacing.lg,
         alignItems: 'center',
         width: '100%',
     },
-    storeName: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: 'white',
-        marginBottom: 4,
+    storeChangeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        marginTop: spacing.xs,
     },
     storeChangeText: {
-        fontSize: 14,
-        color: 'rgba(255,255,255,0.8)',
+        opacity: 0.85,
     },
     workStatus: {
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        borderRadius: 12,
-        padding: 16,
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        borderRadius: radius.lg,
+        padding: spacing.lg,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         width: '100%',
+        gap: spacing.lg,
+    },
+    workStatusItem: {
+        flex: 1,
+        minWidth: 0,
     },
     statusLabel: {
-        fontSize: 14,
-        color: 'rgba(255,255,255,0.8)',
-        marginBottom: 4,
-    },
-    statusValue: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: 'white',
+        opacity: 0.85,
+        marginBottom: spacing.xs,
     },
     content: {
         flex: 1,
-        padding: 20,
+    },
+    contentInner: {
+        padding: spacing.xxl,
+        gap: spacing.xxl,
     },
     card: {
-        backgroundColor: 'white',
-        borderRadius: 16,
-        padding: 20,
-        marginBottom: 20,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 5,
+        marginBottom: 0,
     },
     cardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: spacing.lg,
     },
     cardIcon: {
-        fontSize: 20,
-        marginRight: 8,
-    },
-    cardTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#2E2823',
+        marginRight: spacing.sm,
     },
     statsGrid: {
         flexDirection: 'row',
-        gap: 16,
-        marginBottom: 20,
+        gap: spacing.lg,
+        marginBottom: spacing.xl,
     },
-    statItem: {
+    statBox: {
         flex: 1,
+        minWidth: 0,
         alignItems: 'center',
-        padding: 16,
-        backgroundColor: '#F7F4EF',
-        borderRadius: 12,
+        padding: spacing.lg,
+        backgroundColor: c.surfaceCanvas,
+        borderRadius: radius.lg,
     },
     statLabel: {
-        fontSize: 12,
-        color: '#625B55',
-        marginBottom: 4,
-    },
-    statValue: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#2E2823',
-    },
-    highlight: {
-        color: '#FF6B35',
+        marginBottom: spacing.xs,
     },
     actionButtons: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 12,
-        marginBottom: 20,
+        gap: spacing.md,
+        marginBottom: spacing.lg,
     },
-    actionBtn: {
-        flex: 1,
-        minWidth: '45%',
-        padding: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    primaryBtn: {
-        backgroundColor: '#FF6B35',
-    },
-    secondaryBtn: {
-        backgroundColor: '#243B4A',
-    },
-    successBtn: {
-        backgroundColor: '#12A87B',
-    },
-    outlineBtn: {
-        backgroundColor: 'white',
-        borderWidth: 2,
-        borderColor: '#E8E0D8',
-    },
-    disabledBtn: {
-        opacity: 0.5,
-    },
-    fullWidth: {
-        minWidth: '100%',
-    },
-    actionBtnText: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: 'white',
-    },
-    outlineBtnText: {
-        color: '#4A433D',
+    actionHalf: {
+        width: '47%',
+        flexGrow: 1,
     },
     storeWorkSection: {
-        marginBottom: 20,
-        borderRadius: 12,
+        marginBottom: spacing.lg,
+        borderRadius: radius.lg,
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: '#E8E0D8',
+        backgroundColor: c.surfaceCanvas,
     },
     storeHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 12,
-        justifyContent: 'space-between',
+        padding: spacing.md,
+        gap: spacing.sm,
     },
     storeColorDot: {
         width: 12,
         height: 12,
         borderRadius: 6,
-        marginRight: 8,
     },
     storeWorkTitle: {
         flex: 1,
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#2E2823',
-    },
-    storeWorkTime: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#243B4A',
     },
     recordList: {
-        paddingHorizontal: 12,
+        paddingHorizontal: spacing.md,
     },
     recordItem: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        backgroundColor: '#F7F4EF',
-        marginBottom: 4,
-        borderRadius: 6,
-    },
-    recordType: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#2E2823',
-    },
-    recordTime: {
-        fontSize: 14,
-        color: '#625B55',
+        paddingVertical: spacing.sm,
+        paddingHorizontal: spacing.md,
+        backgroundColor: c.background,
+        marginBottom: spacing.xs,
+        borderRadius: radius.md,
     },
     storeEarnings: {
-        padding: 12,
-        backgroundColor: '#EFE7DF',
+        padding: spacing.md,
+        backgroundColor: c.divider,
         alignItems: 'center',
     },
-    earningsText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#243B4A',
-    },
     noRecordsText: {
-        textAlign: 'center',
-        color: '#625B55',
-        fontSize: 16,
-        padding: 20,
+        padding: spacing.xl,
     },
     summaryGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 12,
+        gap: spacing.md,
     },
     summaryItem: {
-        flex: 1,
-        minWidth: '45%',
-        backgroundColor: '#F7F4EF',
-        padding: 16,
-        borderRadius: 12,
+        width: '47%',
+        flexGrow: 1,
+        backgroundColor: c.surfaceCanvas,
+        padding: spacing.lg,
+        borderRadius: radius.lg,
         alignItems: 'center',
     },
     summaryLabel: {
-        fontSize: 12,
-        color: '#625B55',
-        marginBottom: 8,
-    },
-    summaryValue: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#243B4A',
+        marginBottom: spacing.sm,
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: c.overlayDark,
         justifyContent: 'center',
         alignItems: 'center',
     },
     modalContent: {
-        backgroundColor: 'white',
-        borderRadius: 20,
+        backgroundColor: c.background,
+        borderRadius: radius.xxl,
         width: '90%',
         maxWidth: 400,
-        padding: 20,
+        padding: spacing.xl,
         maxHeight: '80%',
     },
     monthlyModalContent: {
@@ -1335,186 +1234,131 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#2E2823',
-    },
-    modalClose: {
-        fontSize: 18,
-        color: '#625B55',
-        padding: 5,
+        marginBottom: spacing.xl,
     },
     storeOption: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        borderRadius: 12,
-        marginBottom: 8,
-        backgroundColor: '#F7F4EF',
+        padding: spacing.lg,
+        borderRadius: radius.lg,
+        marginBottom: spacing.sm,
+        backgroundColor: c.surfaceCanvas,
+        gap: spacing.sm,
     },
     storeOptionSelected: {
-        backgroundColor: '#E0F2FE',
+        backgroundColor: c.brandPrimarySoft,
         borderWidth: 2,
-        borderColor: '#243B4A',
+        borderColor: c.brandPrimary,
     },
     storeOptionInfo: {
         flex: 1,
-        marginLeft: 8,
-    },
-    storeOptionName: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#2E2823',
-        marginBottom: 4,
-    },
-    storeOptionWage: {
-        fontSize: 14,
-        color: '#625B55',
-    },
-    selectedIcon: {
-        fontSize: 18,
-        color: '#243B4A',
-        fontWeight: 'bold',
+        minWidth: 0,
     },
     inputGroup: {
-        marginBottom: 16,
+        marginBottom: spacing.lg,
+        flex: 1,
     },
     inputLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#4A433D',
-        marginBottom: 8,
+        marginBottom: spacing.sm,
     },
     inputField: {
         width: '100%',
-        padding: 12,
-        borderWidth: 2,
-        borderColor: '#E8E0D8',
-        borderRadius: 8,
+        padding: spacing.md,
+        borderWidth: 1,
+        borderColor: c.border,
+        borderRadius: radius.md,
         fontSize: 16,
-        backgroundColor: 'white',
+        color: c.textPrimary,
+        backgroundColor: c.background,
     },
     pickerContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 8,
+        gap: spacing.sm,
     },
     pickerItem: {
-        flex: 1,
+        flexGrow: 1,
         minWidth: '45%',
-        padding: 12,
+        padding: spacing.md,
         borderWidth: 1,
-        borderColor: '#E8E0D8',
-        borderRadius: 8,
+        borderColor: c.border,
+        borderRadius: radius.md,
         alignItems: 'center',
         flexDirection: 'row',
         justifyContent: 'center',
+        gap: spacing.xs,
     },
     pickerItemSelected: {
-        backgroundColor: '#FF6B35',
-        borderColor: '#FF6B35',
-    },
-    pickerText: {
-        fontSize: 14,
-        color: '#4A433D',
-    },
-    pickerTextSelected: {
-        color: 'white',
-        fontWeight: 'bold',
+        backgroundColor: c.brandPrimary,
+        borderColor: c.brandPrimary,
     },
     timeInputGrid: {
         flexDirection: 'row',
-        gap: 12,
+        gap: spacing.md,
     },
     monthSelector: {
-        marginBottom: 20,
+        marginBottom: spacing.xl,
     },
     monthOption: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        marginRight: 8,
-        borderRadius: 20,
-        backgroundColor: '#EFE7DF',
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.sm,
+        marginRight: spacing.sm,
+        borderRadius: radius.pill,
+        backgroundColor: c.surfaceMuted,
     },
     monthOptionSelected: {
-        backgroundColor: '#243B4A',
-    },
-    monthOptionText: {
-        fontSize: 14,
-        color: '#625B55',
-    },
-    monthOptionTextSelected: {
-        color: 'white',
-        fontWeight: 'bold',
+        backgroundColor: c.brandSecondary,
     },
     monthlyContent: {
         flex: 1,
     },
     monthlyStatsCard: {
-        backgroundColor: '#F7F4EF',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 16,
+        backgroundColor: c.surfaceCanvas,
+        borderRadius: radius.lg,
+        padding: spacing.lg,
+        marginBottom: spacing.lg,
     },
     monthlyStatsTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#2E2823',
-        marginBottom: 16,
-        textAlign: 'center',
+        marginBottom: spacing.lg,
     },
     monthlyStatsGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 12,
+        gap: spacing.md,
     },
     monthlyStatItem: {
-        flex: 1,
+        flexGrow: 1,
         minWidth: '45%',
-        backgroundColor: 'white',
-        padding: 12,
-        borderRadius: 8,
+        backgroundColor: c.background,
+        padding: spacing.md,
+        borderRadius: radius.md,
         alignItems: 'center',
     },
     monthlyStatLabel: {
-        fontSize: 12,
-        color: '#625B55',
-        marginBottom: 4,
-    },
-    monthlyStatValue: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#243B4A',
+        marginBottom: spacing.xs,
     },
     storeBreakdownCard: {
-        backgroundColor: 'white',
-        borderRadius: 12,
-        padding: 16,
+        backgroundColor: c.background,
+        borderRadius: radius.lg,
+        padding: spacing.lg,
     },
     storeBreakdownTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#2E2823',
-        marginBottom: 16,
+        marginBottom: spacing.lg,
     },
     storeBreakdownItem: {
-        marginBottom: 16,
-        padding: 12,
-        backgroundColor: '#F7F4EF',
-        borderRadius: 8,
+        marginBottom: spacing.lg,
+        padding: spacing.md,
+        backgroundColor: c.surfaceCanvas,
+        borderRadius: radius.md,
     },
     storeBreakdownHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: spacing.md,
+        gap: spacing.sm,
     },
-    storeBreakdownName: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#2E2823',
+    flex: {
+        flex: 1,
     },
     storeBreakdownStats: {
         flexDirection: 'row',
@@ -1524,41 +1368,21 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     storeBreakdownStatLabel: {
-        fontSize: 12,
-        color: '#625B55',
-        marginBottom: 4,
-    },
-    storeBreakdownStatValue: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#243B4A',
-    },
-    noDataText: {
-        textAlign: 'center',
-        color: '#625B55',
-        fontSize: 16,
-        padding: 20,
+        marginBottom: spacing.xs,
     },
     floatingTimer: {
         position: 'absolute',
-        top: 100,
-        right: 20,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 20,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-        elevation: 8,
+        right: spacing.xl,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm,
+        borderRadius: radius.pill,
+        ...shadow.lg,
     },
     floatingTimerText: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: 'white',
+        maxWidth: 160,
     },
 });
 

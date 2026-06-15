@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
     AppBadge,
     AppCard,
@@ -10,6 +11,7 @@ import {
     ScreenContainer,
     SegmentedControl,
 } from '../../../common/components/ds';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {spacing} from '../../../theme/tokens';
 
 type ReqType = 'correction' | 'timeoff' | 'inquiry';
@@ -38,6 +40,7 @@ const STATUS: Record<ReqStatus, {label: string; tone: 'warning' | 'success' | 'e
  */
 const RequestStatusScreen: React.FC = () => {
     const navigation = useNavigation<any>();
+    const c = useThemeColors();
     const [tab, setTab] = useState(0); // 0 전체 1 대기 2 처리됨
 
     // 실데이터 연결 전 표시용 (BE 연동 시 교체)
@@ -53,8 +56,8 @@ const RequestStatusScreen: React.FC = () => {
 
             {filtered.length === 0 ? (
                 <EmptyState
-                    glyph="🗂"
-                    markColor="#F1EEE9"
+                    glyph={<Ionicons name="file-tray-stacked-outline" size={40} color={c.textTertiary} />}
+                    markColor={c.surfaceMuted}
                     title="보낸 요청이 없어요"
                     description="정정·휴가·문의를 보내면 여기서 진행 상태를 확인할 수 있어요."
                 />
