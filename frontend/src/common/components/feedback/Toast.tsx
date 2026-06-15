@@ -12,6 +12,7 @@ let withTiming: any;
 
 try {
   if (ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE)) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional native module, guarded require (loaded only when animations are enabled)
     const reanimated = require('react-native-reanimated');
     Animated = reanimated.default;
     interpolate = reanimated.interpolate;
@@ -71,10 +72,12 @@ const Toast: ToastComponent = ({
     const shouldUseAnimations = ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE);
 
     // Only use animated values when animations are enabled
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: reanimated hook gated on native module availability
     const fadeAnim = shouldUseAnimations && useSharedValue ? useSharedValue(0) : null;
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Conditionally create animated styles only when animations are enabled
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: reanimated hook gated on native module availability
     const animatedStyle = shouldUseAnimations && useAnimatedStyle && fadeAnim && interpolate ? useAnimatedStyle(() => ({
         opacity: fadeAnim.value,
         transform: [
@@ -249,4 +252,4 @@ Toast.show = (params: ToastShowParams) => {
     // For now, we're just logging the message
 };
 
-export default Toast as ToastComponent;
+export default Toast;

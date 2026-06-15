@@ -162,6 +162,53 @@ class SmokeRestE2ETest {
         assertThat(userRepository.findByEmail("newuser_smoke@example.com")).isPresent();
     }
 
+    @Test
+    @DisplayName("POST /api/login — 가입 사용자 로그인 200 + 토큰 응답")
+    void loginAfterJoin_ok() throws Exception {
+        Map<String, Object> joinBody = new HashMap<>();
+        joinBody.put("email", "login_smoke@example.com");
+        joinBody.put("password", "Sodam123!");
+        joinBody.put("name", "로그인 사용자");
+        joinBody.put("ageConfirmed", true);
+        joinBody.put("termsAgreed", true);
+        joinBody.put("privacyAgreed", true);
+        joinBody.put("marketingAgreed", false);
+
+        mockMvc.perform(post("/api/join")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(joinBody)))
+                .andExpect(status().isOk());
+
+        Map<String, Object> loginBody = new HashMap<>();
+        loginBody.put("email", "login_smoke@example.com");
+        loginBody.put("password", "Sodam123!");
+
+        mockMvc.perform(post("/api/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginBody)))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.accessToken").isString())
+                .andExpect(jsonPath("$.data.refreshToken").isString())
+                .andExpect(jsonPath("$.data.userId").isNumber())
+                .andExpect(jsonPath("$.data.userGrade").value("ROLE_PERSONAL"));
+    }
+
+    @Test
+    @DisplayName("POST /api/login — 잘못된 비밀번호 401")
+    void loginWithWrongPassword_unauthorized() throws Exception {
+        Map<String, Object> body = new HashMap<>();
+        body.put("email", "missing_smoke@example.com");
+        body.put("password", "Wrong123!");
+
+        mockMvc.perform(post("/api/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andDo(print())
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
     // =====================================================================
     // #3 — 휴가 셀프 신청 200
     // =====================================================================
@@ -244,5 +291,49 @@ class SmokeRestE2ETest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    // =====================================================================
+    // #9 — 동의 수집 E2E (G-2): 소셜 가입(동의 미수집) → POST /api/auth/consents → consentCompleted
+    // =====================================================================
+    @Test
+    @DisplayName("POST /api/auth/consents — 필수 동의 수집 200 + consentCompleted 반영")
+    void recordConsents_completesRequiredConsents() throws Exception {
+        User social = new User("social_smoke@example.com", "소셜가입자");
+        social.setUserGrade(UserGrade.Personal);
+        social = userRepository.save(social);
+        assertThat(social.hasCompletedRequiredConsents()).isFalse();
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("termsAgreed", true);
+        body.put("privacyAgreed", true);
+        body.put("ageConfirmed", true);
+        body.put("locationInfoAgreed", true);
+        body.put("marketingAgreed", false);
+
+        mockMvc.perform(post("/api/auth/consents")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body))
+                        .with(asPrincipal(social)))
+                .andExpect(status().isOk());
+
+        User reloaded = userRepository.findById(social.getId()).orElseThrow();
+        assertThat(reloaded.hasCompletedRequiredConsents()).isTrue();
+        assertThat(reloaded.hasAgreedLocationInfo()).isTrue();
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/consents — 필수 동의 누락 시 400")
+    void recordConsents_rejectsMissingRequired() throws Exception {
+        Map<String, Object> body = new HashMap<>();
+        body.put("termsAgreed", true);
+        body.put("privacyAgreed", false); // 필수 누락
+        body.put("ageConfirmed", true);
+
+        mockMvc.perform(post("/api/auth/consents")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body))
+                        .with(asPrincipal(employeeUser)))
+                .andExpect(status().isBadRequest());
     }
 }

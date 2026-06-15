@@ -1,36 +1,55 @@
 import React from 'react';
-import {FlatList, SafeAreaView, StatusBar, StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import {AppHeader, AppListItem, AppText, ScreenContainer} from '../../../common/components/ds';
+import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 
-const MOCK_ITEMS = Array.from({length: 20}).map((_, i) => ({id: String(i + 1), name: `항목 ${i + 1}`}));
-
+/**
+ * HomeScreen — v3 토스식 라우팅 랜딩.
+ * 큰 인사 타이포 + 역할별 큰 리스트(Ionicons). 동작/네비게이션 보존.
+ */
 const HomeScreen: React.FC = () => {
+    const navigation = useNavigation<any>();
+    const c = useThemeColors();
     return (
-        <SafeAreaView style={styles.safeArea}>
-            <StatusBar barStyle="dark-content"/>
-            <View style={styles.header}>
-                <Text style={styles.title}>홈 (모의 데이터)</Text>
+        <ScreenContainer scroll header={<AppHeader title="오늘의 소담" actions={[{label: '알림', icon: <Ionicons name="notifications-outline" size={20} color={c.brandPrimary} />, accessibilityLabel: '알림', onPress: () => navigation.navigate('NotificationCenter')}]} />}>
+            <View style={styles.intro}>
+                <AppText variant="headingLg">어디로 갈까요?</AppText>
+                <AppText variant="bodyLg" tone="secondary" style={styles.sub}>
+                    역할에 맞는 홈으로 바로 안내해 드릴게요.
+                </AppText>
             </View>
-            <FlatList
-                data={MOCK_ITEMS}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.listContent}
-                renderItem={({item}) => (
-                    <View style={styles.card}>
-                        <Text style={styles.cardText}>{item.name}</Text>
-                    </View>
-                )}
-            />
-        </SafeAreaView>
+
+            <View style={styles.list}>
+                <AppListItem
+                    title="사장 홈"
+                    subtitle="매장 운영 현황 보기"
+                    left={<Ionicons name="storefront-outline" size={24} color={c.brandPrimary} />}
+                    right="›"
+                />
+                <AppListItem
+                    title="직원 홈"
+                    subtitle="출근·퇴근 바로가기"
+                    left={<Ionicons name="time-outline" size={24} color={c.brandPrimary} />}
+                    right="›"
+                />
+                <AppListItem
+                    title="개인 기록장"
+                    subtitle="내 근무 시간 직접 기록"
+                    left={<Ionicons name="create-outline" size={24} color={c.brandPrimary} />}
+                    right="›"
+                />
+            </View>
+        </ScreenContainer>
     );
 };
 
 const styles = StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: '#FFFFFF'},
-    header: {padding: 16, borderBottomColor: '#E5E7EB', borderBottomWidth: StyleSheet.hairlineWidth},
-    title: {fontSize: 20, fontWeight: '700'},
-    listContent: {padding: 16},
-    card: {backgroundColor: '#F3F4F6', padding: 12, borderRadius: 8, marginBottom: 8},
-    cardText: {color: '#111'},
+    intro: {marginBottom: spacing.xxl},
+    sub: {marginTop: spacing.sm},
+    list: {gap: spacing.sm},
 });
 
 export default HomeScreen;

@@ -31,6 +31,7 @@ const PrimaryButton: React.FC<PrimaryButtonProps> = ({
       disabled={isDisabled}
       style={[styles.button, isDisabled && styles.disabled, Array.isArray(style) ? style : [style]]}
       accessibilityRole="button"
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- blank a11y label should fall back to title, so ?? would announce an empty label
       accessibilityLabel={accessibilityLabel || title}
       testID={testID}
     >

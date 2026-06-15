@@ -19,6 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.rich.sodam.security.annotation.AnyAuthenticated;
+import com.rich.sodam.security.annotation.MasterOnly;
 
 import java.io.IOException;
 import java.util.List;
@@ -43,6 +44,7 @@ public class PolicyInfoController {
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
+    @MasterOnly // 콘텐츠 작성은 관리자(사장)만 — 일반 직원 쓰기 차단
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PolicyInfoResponseDto> createPolicyInfo(
             @Parameter(description = "국가정책 정보 생성 요청 DTO", required = true)
@@ -114,6 +116,7 @@ public class PolicyInfoController {
             @ApiResponse(responseCode = "404", description = "국가정책 정보를 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
+    @MasterOnly // 콘텐츠 수정은 관리자(사장)만
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PolicyInfoResponseDto> updatePolicyInfo(
             @Parameter(description = "국가정책 정보 ID", required = true)
@@ -130,6 +133,7 @@ public class PolicyInfoController {
             @ApiResponse(responseCode = "404", description = "국가정책 정보를 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
+    @MasterOnly // 콘텐츠 삭제는 관리자(사장)만
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePolicyInfo(
             @Parameter(description = "국가정책 정보 ID", required = true)

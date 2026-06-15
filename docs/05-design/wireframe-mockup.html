@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>소담 — 토스급 리디자인 방향 목업 (디자인 AI 참고)</title>
+<style>
+  :root{
+    --primary:#FF6B35; --primaryDark:#E85A2A; --primarySoft:#FFF0E8;
+    --secondary:#243B4A; --accent:#F4A261;
+    --canvas:#F7F4EF; --surface:#FFFFFF; --warm:#FFFBF5;
+    --text:#201A17; --text2:#625B55; --text3:#9A9189; --divider:#EFE7DF;
+    --success:#12A87B; --warning:#F59E0B; --error:#E5484D;
+  }
+  *{box-sizing:border-box;font-family:Pretendard,-apple-system,"Apple SD Gothic Neo",sans-serif;-webkit-font-smoothing:antialiased;}
+  body{margin:0;background:#E7E1D9;color:var(--text);padding:28px;}
+  h1{font-size:22px;margin:0 0 4px;}
+  .sub{color:var(--text2);font-size:14px;margin-bottom:28px;max-width:780px;line-height:1.5;}
+  .row{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;}
+  .phone{width:360px;height:740px;background:var(--canvas);border-radius:34px;border:9px solid #16110E;
+         overflow:hidden;box-shadow:0 18px 50px rgba(36,59,74,.28);position:relative;display:flex;flex-direction:column;}
+  .status{height:34px;flex:0 0 34px;}
+  .scr{flex:1;padding:28px 24px;display:flex;flex-direction:column;}
+  .cta{position:absolute;left:24px;right:24px;bottom:28px;}
+  .btn{display:block;width:100%;height:56px;border:0;border-radius:16px;font-size:17px;font-weight:700;cursor:pointer;}
+  .btn.primary{background:var(--primary);color:#fff;box-shadow:0 8px 20px rgba(255,107,53,.30);}
+  .btn.ghost{background:transparent;color:var(--text2);height:44px;font-weight:600;font-size:15px;}
+  .scrname{font-size:12px;color:var(--text3);text-align:center;margin-top:10px;letter-spacing:.2px;}
+  .greet{font-size:17px;color:var(--text2);margin-bottom:4px;}
+  .store{font-size:15px;color:var(--text3);}
+  .heroLabel{font-size:16px;color:var(--text2);margin-top:48px;}
+  .hero{font-size:52px;font-weight:800;letter-spacing:-1.5px;line-height:1.05;margin-top:6px;}
+  .hero small{font-size:30px;font-weight:800;}
+  .heroSub{font-size:15px;color:var(--text3);margin-top:12px;}
+  .pill{display:inline-flex;align-items:center;gap:6px;background:#fff;border-radius:999px;padding:10px 16px;
+        font-size:14px;color:var(--text2);box-shadow:0 2px 10px rgba(36,59,74,.06);margin-top:28px;width:fit-content;}
+  .dotok{width:8px;height:8px;border-radius:50%;background:var(--warning);}
+  /* full action */
+  .center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .bigbtn{width:200px;height:200px;border-radius:50%;background:var(--primary);color:#fff;font-size:26px;font-weight:800;
+          display:flex;align-items:center;justify-content:center;box-shadow:0 18px 44px rgba(255,107,53,.40);}
+  .bigsub{margin-top:28px;font-size:16px;color:var(--text2);}
+  .topstore{font-size:15px;color:var(--text3);}
+  /* step flow */
+  .progress{height:4px;background:var(--divider);border-radius:2px;margin-bottom:40px;}
+  .progress i{display:block;height:100%;width:33%;background:var(--primary);border-radius:2px;}
+  .q{font-size:28px;font-weight:800;letter-spacing:-.5px;line-height:1.25;}
+  .qhint{font-size:15px;color:var(--text3);margin-top:12px;}
+  .field{margin-top:40px;border-bottom:2px solid var(--primary);padding-bottom:10px;font-size:34px;font-weight:800;color:var(--text);}
+  .field span{color:var(--text3);}
+  /* subscribe */
+  .plans{display:flex;flex-direction:column;gap:14px;margin-top:8px;}
+  .recwrap{background:linear-gradient(135deg,#FFF3EC,#FFFBF5);border:2px solid var(--primary);border-radius:22px;padding:22px;}
+  .recwrap .tag{display:inline-block;background:var(--primary);color:#fff;font-size:12px;font-weight:700;border-radius:999px;padding:4px 12px;}
+  .recwrap .pn{font-size:20px;font-weight:800;margin-top:12px;}
+  .recwrap .pp{font-size:26px;font-weight:800;margin-top:6px;}
+  .recwrap .pd{font-size:14px;color:var(--text2);margin-top:10px;line-height:1.5;}
+  .mini{display:flex;justify-content:space-between;align-items:center;padding:14px 4px;border-bottom:1px solid var(--divider);}
+  .mini b{font-size:15px;font-weight:700;} .mini span{font-size:14px;color:var(--text2);}
+  .h{font-size:24px;font-weight:800;letter-spacing:-.5px;margin-bottom:8px;}
+</style>
+</head>
+<body>
+  <h1>소담 — <b>토스급</b> 리디자인 방향 목업 <span style="font-size:13px;color:#625B55">(디자인 AI 개선 출발점)</span></h1>
+  <p class="sub">방향: <b>한 화면 = 한 가지 · 숫자가 히어로 · 압도적 여백 · 하단 풀폭 CTA 1개 · 진행형 스텝 플로우.</b>
+  올드·과밀(카드 욱여넣기·4분할 메뉴)을 버리고 핀테크의 명료함 + 소상공인의 따뜻함으로. (라이트만 표시 — 다크모드 별도 필수)</p>
+
+  <div class="row">
+
+    <!-- 1. 홈: 히어로 숫자 + 1 CTA -->
+    <div>
+      <div class="phone"><div class="status"></div><div class="scr">
+        <div class="greet">은영 사장님, 좋은 아침이에요</div>
+        <div class="store">소담 데모 카페</div>
+        <div class="heroLabel">9월 예상 인건비</div>
+        <div class="hero">3,120,000<small>원</small></div>
+        <div class="heroSub">지난달보다 12만원 늘었어요</div>
+        <div class="pill"><span class="dotok"></span> 지훈님 오늘 아직 미출근</div>
+      </div>
+      <div class="cta">
+        <button class="btn primary">9월 급여 정산하기</button>
+        <button class="btn ghost">매장·직원 관리</button>
+      </div></div>
+      <div class="scrname">① 홈 — 숫자 하나 + 행동 하나</div>
+    </div>
+
+    <!-- 2. 출퇴근: 풀스크린 단일 액션 -->
+    <div>
+      <div class="phone"><div class="status"></div><div class="scr">
+        <div class="topstore">소담 데모 카페 · NFC·GPS 준비됨</div>
+        <div class="center">
+          <div class="bigbtn">출근</div>
+          <div class="bigsub">화면을 탭하면 출근이 기록돼요</div>
+        </div>
+      </div>
+      <div class="cta"><button class="btn ghost">다른 매장에서 일해요</button></div>
+      </div>
+      <div class="scrname">② 출퇴근 — 거대한 단일 액션</div>
+    </div>
+
+    <!-- 3. 스텝 플로우: 한 번에 하나 묻기 -->
+    <div>
+      <div class="phone"><div class="status"></div><div class="scr">
+        <div class="progress"><i></i></div>
+        <div class="q">지훈님 시급을<br>얼마로 설정할까요?</div>
+        <div class="qhint">비워두면 매장 기본 시급(12,000원)이 적용돼요</div>
+        <div class="field"><span>₩</span> 13,000</div>
+      </div>
+      <div class="cta"><button class="btn primary">다음</button></div>
+      </div>
+      <div class="scrname">③ 설정·정산 — 진행형 스텝(한 번에 하나)</div>
+    </div>
+
+    <!-- 4. 구독: 추천 1개 강조 -->
+    <div>
+      <div class="phone"><div class="status"></div><div class="scr">
+        <div class="h">사장님께 딱 맞는<br>플랜을 골랐어요</div>
+        <div class="plans">
+          <div class="recwrap">
+            <span class="tag">추천</span>
+            <div class="pn">프로</div>
+            <div class="pp">월 19,900원</div>
+            <div class="pd">직원 무제한 · 4대보험 신고서 자동작성 · 노동법 경고 · 대시보드</div>
+          </div>
+          <div class="mini"><b>스타터 · 9,900원</b><span>명세서 PDF · 직원 5명 ›</span></div>
+          <div class="mini"><b>무료</b><span>출퇴근 · 미리보기 ›</span></div>
+          <div class="mini"><b>프리미엄 · 39,900원</b><span>멀티매장 무제한 ›</span></div>
+        </div>
+      </div>
+      <div class="cta"><button class="btn primary">프로로 시작하기</button></div>
+      </div>
+      <div class="scrname">④ 구독 — 추천 1개를 크게, 나머진 한 줄</div>
+    </div>
+
+  </div>
+</body>
+</html>

@@ -16,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.rich.sodam.security.annotation.AnyAuthenticated;
+import com.rich.sodam.security.annotation.MasterOnly;
 
 import java.io.IOException;
 import java.util.List;
@@ -123,6 +124,9 @@ public class QnaInfoController {
             @ApiResponse(responseCode = "404", description = "사이트 질문을 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
+    // 질문 작성(create)은 사용자 허용 유지. 수정/삭제(답변·관리)는 관리자만.
+    // TODO: 작성자(userId) 모델 신설 후 "본인 질문 수정/삭제" 허용 — 보강검토 M-2
+    @MasterOnly
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<QnaInfoResponseDto> updateQnaInfo(
             @Parameter(description = "사이트 질문 ID", required = true)
@@ -139,6 +143,7 @@ public class QnaInfoController {
             @ApiResponse(responseCode = "404", description = "사이트 질문을 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
+    @MasterOnly // 삭제는 관리자만 (작성자 모델 신설 시 본인 허용 — M-2)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteQnaInfo(
             @Parameter(description = "사이트 질문 ID", required = true)

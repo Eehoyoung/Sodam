@@ -1,11 +1,18 @@
 import React, {useEffect, useState} from 'react';
-import {Alert, Pressable, Share, StyleSheet, Text, View} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
-import {tokens} from '../../../theme/tokens';
-import Card from '../../../common/components/data-display/Card';
-import Button from '../../../common/components/form/Button';
-import Badge from '../../../common/components/data-display/Badge';
+import {Pressable, Share, StyleSheet, View} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import {
+    AppBadge,
+    AppButton,
+    AppCard,
+    AppHeader,
+    AppListItem,
+    AppText,
+    AppToast,
+    ScreenContainer,
+} from '../../../common/components/ds';
+import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
 
 interface MyCode {
@@ -21,11 +28,11 @@ interface ReferralItem {
 }
 
 /**
- * 친구 추천 (PRD_OWNER A60·A61, PRD_EMPLOYEE E-A60·E-A61).
- *
- * 내 추천 코드 발급 + 공유 + 적용 이력.
+ * 44 Referral — 확정 시안.
+ * 추천 코드 발급/공유 + 적용 이력. share/copy 로직 보존.
  */
 const ReferralScreen: React.FC = () => {
+    const c = useThemeColors();
     const [code, setCode] = useState<MyCode | null>(null);
     const [history, setHistory] = useState<ReferralItem[]>([]);
 
@@ -37,124 +44,84 @@ const ReferralScreen: React.FC = () => {
             } catch (_) {/* ignore */}
             try {
                 const h = await api.get<ReferralItem[]>('/api/referrals/my-history');
-                setHistory((h.data as ReferralItem[]) ?? []);
+                setHistory((h.data) ?? []);
             } catch (_) {/* ignore */}
         })();
     }, []);
 
     const share = async () => {
-        if (!code) return;
+        if (!code) {
+            return;
+        }
         try {
             await Share.share({message: code.shareText});
         } catch (_) {/* ignore */}
     };
 
-    const copyCode = () => {
-        // RN의 Clipboard 는 별도 SDK — fallback 으로 Alert
-        Alert.alert('추천 코드', code?.referralCode ?? '');
-    };
+    const copyCode = () => AppToast.show(`내 추천 코드: ${code?.referralCode ?? ''}`);
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <View style={styles.heroWrap}>
-                <LinearGradient
-                    colors={tokens.gradient.brand}
-                    start={{x: 0, y: 0}}
-                    end={{x: 1, y: 1}}
-                    style={styles.hero}
-                >
-                    <Text style={styles.heroEmoji}>🎁</Text>
-                    <Text style={styles.heroTitle}>친구 추천하고{'\n'}1개월 무료 받기</Text>
-                    <Text style={styles.heroSub}>친구가 첫 결제 시 양쪽 모두 1개월 무료!</Text>
-                </LinearGradient>
-            </View>
+        <ScreenContainer scroll header={<AppHeader title="친구 추천" actions={[{label: '공유', onPress: share}]} />}>
+            <AppCard variant="navy" hero>
+                <AppText variant="headingSm" tone="inverse">사장님 친구에게 소담을 알려주세요</AppText>
+                <AppText variant="bodyMd" tone="inverse" style={styles.heroSub}>
+                    추천받은 사장님이 첫 정산을 끝내면 양쪽 모두 혜택을 드려요.
+                </AppText>
+            </AppCard>
 
-            <Card bordered style={styles.codeCard}>
-                <Text style={styles.codeLabel}>내 추천 코드</Text>
-                <Pressable onPress={copyCode}>
-                    <Text style={styles.codeText}>{code?.referralCode ?? '...'}</Text>
+            <AppCard variant="warm" style={styles.codeCard}>
+                <AppText variant="caption" tone="secondary">내 추천 코드</AppText>
+                <Pressable onPress={copyCode} style={styles.codeWrap} accessibilityRole="button" accessibilityLabel="추천 코드 복사">
+                    <AppText variant="display" tone="brand" weight="800" style={styles.codeText}>{code?.referralCode ?? '...'}</AppText>
+                    <Ionicons name="copy-outline" size={18} color={c.textTertiary} />
                 </Pressable>
-                <Text style={styles.helper}>코드를 눌러 복사하거나 아래 버튼으로 공유하세요.</Text>
-                <Button
-                    title="카카오톡으로 공유"
-                    onPress={share}
-                    variant="primary"
-                    size="md"
-                    fullWidth
-                    style={{marginTop: tokens.spacing.md}}
-                />
-            </Card>
+                <AppText variant="caption" tone="tertiary" center>코드를 눌러 복사하거나 아래 버튼으로 공유하세요.</AppText>
+                <AppButton label="추천 링크 공유" leftIcon={<Ionicons name="share-social-outline" size={18} color={c.textInverse} />} onPress={share} style={styles.cta} />
+            </AppCard>
 
-            <Text style={styles.sectionTitle}>추천한 친구</Text>
+            <AppText variant="headingSm" style={styles.sectionTitle}>추천한 친구</AppText>
             {history.length === 0 ? (
-                <Text style={styles.empty}>
-                    아직 추천한 친구가 없어요.{'\n'}코드를 공유해 보세요!
-                </Text>
+                <AppText variant="bodyMd" tone="tertiary" style={styles.empty}>
+                    아직 추천한 친구가 없어요. 코드를 공유해 보세요!
+                </AppText>
             ) : (
-                history.map(it => (
-                    <View key={it.id} style={styles.row}>
-                        <Text style={styles.refName}>{it.refereeName}</Text>
-                        <Badge
-                            text={statusLabel(it.status)}
-                            type={it.status === 'CONVERTED' ? 'success' : 'neutral'}
+                <View style={styles.list}>
+                    {history.map(it => (
+                        <AppListItem
+                            key={it.id}
+                            title={it.refereeName}
+                            left={<Ionicons name="person-circle-outline" size={28} color={c.textTertiary} />}
+                            right={<AppBadge label={statusLabel(it.status)} tone={it.status === 'CONVERTED' ? 'success' : 'neutral'} />}
                         />
-                    </View>
-                ))
+                    ))}
+                </View>
             )}
-        </SafeAreaView>
+        </ScreenContainer>
     );
 };
 
 function statusLabel(s: string): string {
-    if (s === 'CONVERTED') return '결제 완료';
-    if (s === 'REGISTERED') return '가입 완료';
-    if (s === 'EXPIRED') return '만료';
+    if (s === 'CONVERTED') {
+        return '결제 완료';
+    }
+    if (s === 'REGISTERED') {
+        return '가입 완료';
+    }
+    if (s === 'EXPIRED') {
+        return '만료';
+    }
     return '취소';
 }
 
 const styles = StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: tokens.colors.background},
-    heroWrap: {padding: tokens.spacing.lg},
-    hero: {borderRadius: tokens.radius.xl, padding: tokens.spacing.xl, alignItems: 'center'},
-    heroEmoji: {fontSize: 48, marginBottom: tokens.spacing.md},
-    heroTitle: {
-        color: tokens.colors.textInverse,
-        fontSize: tokens.typography.sizes.xl,
-        fontWeight: tokens.typography.weights.bold,
-        textAlign: 'center',
-        lineHeight: 30,
-    },
-    heroSub: {color: tokens.colors.textInverse, opacity: 0.9, marginTop: tokens.spacing.sm, textAlign: 'center'},
-    codeCard: {marginHorizontal: tokens.spacing.lg, alignItems: 'center', padding: tokens.spacing.xl},
-    codeLabel: {color: tokens.colors.textSecondary, fontSize: tokens.typography.sizes.sm},
-    codeText: {
-        fontSize: 32,
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.brandPrimary,
-        letterSpacing: 4,
-        marginVertical: tokens.spacing.md,
-        fontVariant: ['tabular-nums'],
-    },
-    helper: {color: tokens.colors.textTertiary, fontSize: tokens.typography.sizes.xs},
-    sectionTitle: {
-        marginHorizontal: tokens.spacing.lg,
-        marginTop: tokens.spacing.xl,
-        marginBottom: tokens.spacing.sm,
-        fontSize: tokens.typography.sizes.md,
-        fontWeight: tokens.typography.weights.semibold,
-        color: tokens.colors.textSecondary,
-    },
-    row: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: tokens.spacing.lg,
-        paddingVertical: tokens.spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: tokens.colors.divider,
-    },
-    refName: {fontSize: tokens.typography.sizes.md, color: tokens.colors.textPrimary},
-    empty: {textAlign: 'center', padding: tokens.spacing.xl, color: tokens.colors.textTertiary, lineHeight: 22},
+    heroSub: {marginTop: spacing.xs, opacity: 0.82},
+    codeCard: {marginTop: spacing.lg, alignItems: 'center'},
+    codeWrap: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginVertical: spacing.sm},
+    codeText: {letterSpacing: 4},
+    cta: {marginTop: spacing.lg, alignSelf: 'stretch'},
+    sectionTitle: {marginTop: spacing.xxl, marginBottom: spacing.md},
+    empty: {paddingVertical: spacing.md, lineHeight: 22},
+    list: {gap: spacing.sm},
 });
 
 export default ReferralScreen;

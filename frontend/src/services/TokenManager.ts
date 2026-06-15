@@ -18,7 +18,7 @@ export const TokenManager = {
   },
 
   async getAccess(): Promise<string | null> {
-    if (memoryAccess) return memoryAccess;
+    if (memoryAccess) {return memoryAccess;}
     const t = await unifiedStorage.getItem(ACCESS_KEY);
     memoryAccess = t;
     return t;
@@ -30,7 +30,7 @@ export const TokenManager = {
   },
 
   async getRefresh(): Promise<string | null> {
-    if (memoryRefresh) return memoryRefresh;
+    if (memoryRefresh) {return memoryRefresh;}
     const t = await unifiedStorage.getItem(REFRESH_KEY);
     memoryRefresh = t;
     return t;
@@ -50,7 +50,7 @@ export const TokenManager = {
       this.getAccess(),
       this.getRefresh(),
     ]);
-    if (!a || !r) return null;
+    if (!a || !r) {return null;}
     return { accessToken: a, refreshToken: r } as Tokens;
   },
 

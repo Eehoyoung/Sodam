@@ -176,6 +176,7 @@ let reanimatedExports: any;
 
 try {
     if (ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE)) {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional native module, guarded require (loaded only when animations are enabled)
         const reanimated = require('react-native-reanimated');
         reanimatedExports = {
             useSharedValue: reanimated.useSharedValue,

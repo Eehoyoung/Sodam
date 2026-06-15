@@ -11,19 +11,19 @@ async function unwrap<T = any>(promise: Promise<{ data: any }>): Promise<T> {
 }
 
 async function list(params?: { page?: number; size?: number; query?: string }): Promise<QnAItem[]> {
-  const data = await unwrap<any>(api.get(`/api/site-questions`, params as any));
+  const data = await unwrap<any>(api.get(`/api/qna-info`, params as any));
   return Array.isArray(data) ? data : [];
 }
 
 async function getById(id: number): Promise<QnAItem> {
-  return unwrap<QnAItem>(api.get(`/api/site-questions/${id}`));
+  return unwrap<QnAItem>(api.get(`/api/qna-info/${id}`));
 }
 
 async function create(payload: { title: string; content: string; attachments?: Array<{ name: string; uri: string; type: string }> }): Promise<{ id: number }> {
   const form = new FormData();
   form.append('title', payload.title);
   form.append('content', payload.content);
-  (payload.attachments || []).forEach((f, idx) => {
+  (payload.attachments ?? []).forEach((f, idx) => {
     // RN FormData accepts file descriptors but the TS lib types only allow string | Blob.
     (form as any).append('files', {
       uri: f.uri,
@@ -32,7 +32,7 @@ async function create(payload: { title: string; content: string; attachments?: A
     });
   });
 
-  return unwrap<{ id: number }>(api.post(`/api/site-questions`, form as any, {
+  return unwrap<{ id: number }>(api.post(`/api/qna-info`, form as any, {
     headers: { 'Content-Type': 'multipart/form-data' }
   } as any));
 }

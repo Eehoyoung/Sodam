@@ -1,22 +1,22 @@
-import React, {useState} from 'react';
-import {
-    Alert,
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
-} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import {AppToast, AppBadge, AppButton, AppCard, AppInput, AppText, CtaStack, HeroNumber, ScreenContainer, StepScaffold} from '../../../common/components/ds';
+import React, {useEffect, useMemo, useState} from 'react';
+import {Modal, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {tokens} from '../../../theme/tokens';
-import Button from '../../../common/components/form/Button';
-import Card from '../../../common/components/data-display/Card';
-import Badge from '../../../common/components/data-display/Badge';
-import Input from '../../../common/components/form/Input';
+import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
+import {useAuth} from '../../../contexts/AuthContext';
 import api from '../../../common/utils/api';
+import storeService, {StoreSummaryDto} from '../../store/services/storeService';
+
+// 정산 계산 로직 보존을 위한 경량 어댑터 (구식 Badge/Input → DS)
+const Badge: React.FC<any> = ({text, type}) => (
+    <AppBadge
+        label={text}
+        tone={type === 'success' ? 'success' : type === 'warning' ? 'warning' : type === 'error' ? 'error' : 'info'}
+    />
+);
+const Input: React.FC<any> = ({helperText, ...rest}) => <AppInput helper={helperText} {...rest} />;
 
 type Step = 'PERIOD' | 'PREVIEW' | 'CONFIRM' | 'DONE';
 
@@ -38,39 +38,55 @@ interface PayrollPreview {
     adjustmentReason?: string;
 }
 
+const won = (n: number) => `₩${n.toLocaleString('ko-KR')}`;
+
 /**
- * 사장 정산 플로우 (PRD_OWNER S-301).
+ * 사장 정산 플로우 (PRD_OWNER S-301) — v3 토스식 진행형 스텝(StepScaffold).
  *
- * 3 단계:
+ * 4 단계(한 번에 하나만 묻기):
  *   1) PERIOD  — 매장·기간 선택
- *   2) PREVIEW — 직원별 자동 계산 결과 확인 + 가감 조정
+ *   2) PREVIEW — 직원별 자동 계산 결과 확인 + 가감 조정 (총액 HeroNumber)
  *   3) CONFIRM — 명세서 발급 + 직원 푸시
+ *   4) DONE    — 완료
  *
- * BE 가 미리보기/발급 API 를 모두 동일 엔드포인트로 처리한다는 가정 하에 작성.
+ * BE 엔드포인트(변경 없음):
  *   - POST /api/payroll/calculate   (storeId, startDate, endDate) → 직원별 미리보기
- *   - PUT  /api/payroll/{id}/status?status=PAID (발급 확정)
- *
- * TODO[P1 BE]: 개별 가감 (adjustment) 엔드포인트:
- *   - POST /api/payroll/{id}/adjustment {amount, reason}
- *   현재 화면은 로컬 state 만 보관, BE 호출은 stub.
+ *   - PUT  /api/payroll/{id}/issue  (발급 확정)
  */
 const PayrollRunScreen: React.FC = () => {
     const route = useRoute<any>();
     const navigation = useNavigation<any>();
     const storeIdParam = route.params?.storeId as number | undefined;
+    const {user} = useAuth();
 
     const [step, setStep] = useState<Step>('PERIOD');
     const [storeId, setStoreId] = useState<number | null>(storeIdParam ?? null);
+    const [stores, setStores] = useState<StoreSummaryDto[]>([]);
     const [startDate, setStartDate] = useState(getDefaultStart());
     const [endDate, setEndDate] = useState(getDefaultEnd());
     const [previews, setPreviews] = useState<PayrollPreview[]>([]);
     const [loading, setLoading] = useState(false);
 
+    // 사장 매장 목록 로드 → 손으로 매장 ID 입력하지 않도록 셀렉터 제공.
+    useEffect(() => {
+        if (user?.id === undefined) {
+            return;
+        }
+        (async () => {
+            try {
+                const list = await storeService.getMasterStores(user.id);
+                setStores(list);
+                // 파라미터로 매장이 안 넘어온 경우 첫 매장을 기본 선택.
+                setStoreId(prev => prev ?? list[0]?.id ?? null);
+            } catch (_) {/* 셀렉터 없이도 진행 가능 */}
+        })();
+    }, [user?.id]);
+
     const totalNet = previews.reduce((s, p) => s + (p.netWage ?? 0) + (p.adjustment ?? 0), 0);
 
     const goPreview = async () => {
         if (!storeId) {
-            Alert.alert('확인 필요', '매장을 선택해 주세요.');
+            AppToast.warn('매장을 선택해 주세요.');
             return;
         }
         setLoading(true);
@@ -100,10 +116,7 @@ const PayrollRunScreen: React.FC = () => {
             );
             setStep('PREVIEW');
         } catch (e: any) {
-            Alert.alert(
-                '계산 실패',
-                e?.response?.data?.message ?? '급여 계산 중 오류가 났어요. 잠시 후 다시 시도해 주세요.',
-            );
+            AppToast.error(e?.response?.data?.message ?? '급여 계산 중 오류가 났어요. 잠시 후 다시 시도해 주세요.');
         } finally {
             setLoading(false);
         }
@@ -113,96 +126,166 @@ const PayrollRunScreen: React.FC = () => {
 
     const issuePayrolls = async () => {
         setLoading(true);
-        try {
-            for (const p of previews) {
-                if (p.payrollId) {
-                    await api.put(`/api/payroll/${p.payrollId}/status?status=PAID`);
-                }
+        // BE /issue 가 확정→지급완료를 원자 처리(DRAFT→PAID 직접 전이 400 방지).
+        // 항목별 성공/실패를 집계해 부분 발급 상황을 사장에게 정확히 알린다.
+        const issuable = previews.filter(p => p.payrollId);
+        let success = 0;
+        const failed: string[] = [];
+        for (const p of issuable) {
+            try {
+                await api.put(`/api/payroll/${p.payrollId}/issue`);
+                success += 1;
+            } catch (_) {
+                failed.push(p.employeeName ?? `#${p.payrollId}`);
             }
+        }
+        setLoading(false);
+
+        if (failed.length === 0) {
             setStep('DONE');
-        } catch (e: any) {
-            Alert.alert(
-                '발급 실패',
-                '일부 명세서 발급에 실패했어요. 잠시 후 다시 시도해 주세요.',
-            );
-        } finally {
-            setLoading(false);
+        } else if (success === 0) {
+            AppToast.error('명세서 발급에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        } else {
+            AppToast.error(`${success}건 발급 완료, ${failed.length}건 실패(${failed.join(', ')}). 실패분만 다시 시도해 주세요.`);
+            setStep('DONE');
         }
     };
 
+    // 완료 화면은 ScreenContainer 로 중앙 정렬 (진행바 없음).
+    if (step === 'DONE') {
+        return (
+            <ScreenContainer
+                footer={
+                    <CtaStack>
+                        <AppButton label="홈으로 돌아가기" onPress={() => navigation.goBack()} />
+                    </CtaStack>
+                }>
+                <DoneBlock totalNet={totalNet} count={previews.length} />
+            </ScreenContainer>
+        );
+    }
+
+    if (step === 'PERIOD') {
+        return (
+            <StepScaffold
+                progress={1 / 3}
+                title="1단계: 기간 설정"
+                subtitle="정산할 매장과 기간을 골라 주세요. 기본은 이번 달 1일~말일이에요."
+                footer={
+                    <CtaStack>
+                        <AppButton label="다음: 미리보기" loading={loading} onPress={goPreview} />
+                    </CtaStack>
+                }>
+                <PeriodForm
+                    storeId={storeId}
+                    setStoreId={setStoreId}
+                    stores={stores}
+                    startDate={startDate}
+                    setStartDate={setStartDate}
+                    endDate={endDate}
+                    setEndDate={setEndDate}
+                />
+            </StepScaffold>
+        );
+    }
+
+    if (step === 'PREVIEW') {
+        return (
+            <StepScaffold
+                progress={2 / 3}
+                title="2단계: 미리보기"
+                footer={
+                    <CtaStack>
+                        <AppButton
+                            label="다음: 명세서 발급"
+                            disabled={previews.length === 0}
+                            onPress={goConfirm}
+                        />
+                    </CtaStack>
+                }>
+                <PreviewList
+                    previews={previews}
+                    totalNet={totalNet}
+                    onAdjust={(idx: number, amount: number, reason: string) => {
+                        const next = [...previews];
+                        next[idx] = {...next[idx], adjustment: amount, adjustmentReason: reason};
+                        setPreviews(next);
+                    }}
+                />
+            </StepScaffold>
+        );
+    }
+
+    // CONFIRM
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <Stepper step={step} />
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                {step === 'PERIOD' && (
-                    <PeriodForm
-                        storeId={storeId}
-                        setStoreId={setStoreId}
-                        startDate={startDate}
-                        setStartDate={setStartDate}
-                        endDate={endDate}
-                        setEndDate={setEndDate}
-                        onNext={goPreview}
-                        loading={loading}
-                    />
-                )}
-
-                {step === 'PREVIEW' && (
-                    <PreviewList
-                        previews={previews}
-                        totalNet={totalNet}
-                        onAdjust={(idx: number, amount: number, reason: string) => {
-                            const next = [...previews];
-                            next[idx] = {...next[idx], adjustment: amount, adjustmentReason: reason};
-                            setPreviews(next);
-                        }}
-                        onNext={goConfirm}
-                    />
-                )}
-
-                {step === 'CONFIRM' && (
-                    <ConfirmCard
-                        startDate={startDate}
-                        endDate={endDate}
-                        previews={previews}
-                        totalNet={totalNet}
-                        loading={loading}
-                        onIssue={issuePayrolls}
-                    />
-                )}
-
-                {step === 'DONE' && (
-                    <DoneCard
-                        totalNet={totalNet}
-                        onClose={() => navigation.goBack()}
-                    />
-                )}
-            </ScrollView>
-        </SafeAreaView>
+        <StepScaffold
+            progress={1}
+            title="3단계: 확인"
+            subtitle="발급하면 직원 앱에 자동으로 알림이 전송돼요."
+            footer={
+                <CtaStack>
+                    <AppButton label="명세서 발급하기" loading={loading} onPress={issuePayrolls} />
+                </CtaStack>
+            }>
+            <ConfirmBlock
+                startDate={startDate}
+                endDate={endDate}
+                previews={previews}
+                totalNet={totalNet}
+            />
+        </StepScaffold>
     );
 };
 
-const Stepper: React.FC<{step: Step}> = ({step}) => {
-    const idx = step === 'PERIOD' ? 0 : step === 'PREVIEW' ? 1 : step === 'CONFIRM' ? 2 : 3;
-    const labels = ['기간', '미리보기', '확인'];
+const StoreSelector: React.FC<{
+    stores: StoreSummaryDto[];
+    storeId: number | null;
+    setStoreId: (id: number | null) => void;
+}> = ({stores, storeId, setStoreId}) => {
+    const styles = useStyles();
+    const c = useThemeColors();
+
+    // 매장 목록을 못 불러온 경우(네트워크 등) 손입력 폴백 — 평소엔 노출되지 않는다.
+    if (stores.length === 0) {
+        return (
+            <Input
+                label="매장 ID"
+                value={storeId ? String(storeId) : ''}
+                onChangeText={(v: string) => setStoreId(parseInt(v, 10) || null)}
+                keyboardType="number-pad"
+                placeholder="예: 1"
+                helperText="매장 목록을 불러오지 못하면 ID를 직접 입력해 주세요."
+            />
+        );
+    }
+
     return (
-        <View style={styles.stepper}>
-            {labels.map((label, i) => (
-                <React.Fragment key={label}>
-                    <View
-                        style={[
-                            styles.stepDot,
-                            i < idx && styles.stepDotDone,
-                            i === idx && styles.stepDotActive,
-                        ]}
-                    >
-                        <Text style={styles.stepText}>{i + 1}</Text>
-                    </View>
-                    {i < labels.length - 1 && (
-                        <View style={[styles.stepLine, i < idx && styles.stepLineDone]} />
-                    )}
-                </React.Fragment>
-            ))}
+        <View style={styles.selectorBlock}>
+            <Text style={styles.selectorLabel}>정산 매장</Text>
+            <View style={styles.chipRow}>
+                {stores.map(s => {
+                    const on = s.id === storeId;
+                    return (
+                        <Pressable
+                            key={s.id}
+                            onPress={() => setStoreId(s.id)}
+                            style={[
+                                styles.chip,
+                                {borderColor: on ? c.brandPrimary : c.border},
+                                on && {backgroundColor: c.surfaceWarm},
+                            ]}>
+                            <Text
+                                style={[
+                                    styles.chipText,
+                                    {color: on ? c.brandPrimary : c.textSecondary},
+                                ]}
+                                numberOfLines={1}>
+                                {s.storeName}
+                            </Text>
+                        </Pressable>
+                    );
+                })}
+            </View>
         </View>
     );
 };
@@ -210,42 +293,25 @@ const Stepper: React.FC<{step: Step}> = ({step}) => {
 const PeriodForm: React.FC<any> = ({
     storeId,
     setStoreId,
+    stores,
     startDate,
     setStartDate,
     endDate,
     setEndDate,
-    onNext,
-    loading,
-}) => (
-    <View>
-        <Text style={styles.title}>1단계: 기간 설정</Text>
-        <Text style={styles.subtitle}>
-            정산할 매장과 기간을 선택해 주세요.{'\n'}기본은 이번 달 1일~말일이에요.
-        </Text>
+}) => {
+    const storeList: StoreSummaryDto[] = stores ?? [];
+    return (
+        <View style={fieldStyles.gap}>
+            <StoreSelector stores={storeList} storeId={storeId} setStoreId={setStoreId} />
+            <Input label="시작일 (YYYY-MM-DD)" value={startDate} onChangeText={setStartDate} />
+            <Input label="종료일 (YYYY-MM-DD)" value={endDate} onChangeText={setEndDate} />
+        </View>
+    );
+};
 
-        <Input
-            label="매장 ID (1매장 사용 시 기본값)"
-            value={storeId ? String(storeId) : ''}
-            onChangeText={v => setStoreId(parseInt(v, 10) || null)}
-            keyboardType="number-pad"
-            placeholder="예: 1"
-        />
-        <Input label="시작일 (YYYY-MM-DD)" value={startDate} onChangeText={setStartDate} />
-        <Input label="종료일 (YYYY-MM-DD)" value={endDate} onChangeText={setEndDate} />
-
-        <Button
-            title="다음: 미리보기"
-            onPress={onNext}
-            variant="primary"
-            size="lg"
-            fullWidth
-            loading={loading}
-            style={styles.cta}
-        />
-    </View>
-);
-
-const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust, onNext}) => {
+const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust}) => {
+    const styles = useStyles();
+    const c = useThemeColors();
     const [adjustingIdx, setAdjustingIdx] = useState<number | null>(null);
     const [adjustAmount, setAdjustAmount] = useState('');
     const [adjustReason, setAdjustReason] = useState('');
@@ -257,11 +323,12 @@ const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust, onNext}) => {
         setAdjustReason(cur.adjustmentReason ?? '');
     };
     const commitAdjust = () => {
-        if (adjustingIdx == null) return;
+        // eslint-disable-next-line eqeqeq -- intentional == null: matches both null and undefined
+        if (adjustingIdx == null) {return;}
         const num = parseInt((adjustAmount || '0').replace(/[^0-9-]/g, ''), 10) || 0;
         const reason = adjustReason.trim();
         if (num !== 0 && reason.length < 2) {
-            Alert.alert('확인 필요', '사유를 2자 이상 입력해 주세요.');
+            AppToast.warn('사유를 2자 이상 입력해 주세요.');
             return;
         }
         onAdjust(adjustingIdx, num, reason);
@@ -271,154 +338,148 @@ const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust, onNext}) => {
     };
 
     return (
-    <View>
-        <Text style={styles.title}>2단계: 미리보기</Text>
-        <Card bordered style={styles.totalCard}>
-            <Text style={styles.totalLabel}>총 지급 예정</Text>
-            <Text style={styles.totalAmount}>₩{totalNet.toLocaleString('ko-KR')}</Text>
-            <Text style={styles.totalSub}>{previews.length}명 직원</Text>
-        </Card>
+        <View style={fieldStyles.gap}>
+            <HeroNumber
+                label="총 지급 예정"
+                value={won(totalNet)}
+                sub={`직원 ${previews.length}명`}
+                accent
+            />
 
-        {previews.length === 0 ? (
-            <Text style={styles.empty}>이 기간에 정산할 출퇴근 기록이 없어요.</Text>
-        ) : (
-            previews.map((p: PayrollPreview, idx: number) => (
-                <Card key={idx} bordered style={styles.empCard}>
-                    <View style={styles.empHeader}>
-                        <Text style={styles.empName}>{p.employeeName}</Text>
-                        {p.adjustment ? (
-                            <Badge
-                                text={`${p.adjustment > 0 ? '+' : ''}${p.adjustment.toLocaleString('ko-KR')}원`}
-                                type={p.adjustment > 0 ? 'success' : 'warning'}
-                            />
-                        ) : null}
-                    </View>
-                    <KV label="기본 근무" value={`${p.regularHours.toFixed(1)}h · ${p.regularWage.toLocaleString('ko-KR')}원`} />
-                    <KV label="연장" value={`${p.overtimeHours.toFixed(1)}h · ${p.overtimeWage.toLocaleString('ko-KR')}원`} />
-                    <KV label="야간" value={`${p.nightWorkHours.toFixed(1)}h · ${p.nightWorkWage.toLocaleString('ko-KR')}원`} />
-                    <KV label="주휴" value={`${p.weeklyAllowance.toLocaleString('ko-KR')}원`} />
-                    <View style={styles.empDivider} />
-                    <KV label="세전" value={`${p.grossWage.toLocaleString('ko-KR')}원`} />
-                    <KV label="세금 (3.3%)" value={`-${p.taxAmount.toLocaleString('ko-KR')}원`} />
-                    <KV label="실수령" value={`${(p.netWage + (p.adjustment ?? 0)).toLocaleString('ko-KR')}원`} highlight />
-                    <Button
-                        title={p.adjustment ? '가감 수정' : '+ 가감 추가'}
-                        onPress={() => openAdjust(idx)}
-                        variant="ghost"
-                        size="sm"
-                    />
-                </Card>
-            ))
-        )}
+            {previews.length === 0 ? (
+                <AppText variant="bodyMd" tone="tertiary" center style={styles.emptyPad}>
+                    이 기간에 정산할 출퇴근 기록이 없어요.
+                </AppText>
+            ) : (
+                previews.map((p: PayrollPreview, idx: number) => (
+                    <AppCard key={idx} variant="plain" style={styles.empCard}>
+                        <View style={styles.empHeader}>
+                            <AppText variant="headingSm" numberOfLines={1} style={styles.empName}>{p.employeeName}</AppText>
+                            {p.adjustment ? (
+                                <Badge
+                                    text={`${p.adjustment > 0 ? '+' : ''}${p.adjustment.toLocaleString('ko-KR')}원`}
+                                    type={p.adjustment > 0 ? 'success' : 'warning'}
+                                />
+                            ) : null}
+                        </View>
+                        <KV label="기본 근무" value={`${p.regularHours.toFixed(1)}h · ${p.regularWage.toLocaleString('ko-KR')}원`} />
+                        <KV label="연장" value={`${p.overtimeHours.toFixed(1)}h · ${p.overtimeWage.toLocaleString('ko-KR')}원`} />
+                        <KV label="야간" value={`${p.nightWorkHours.toFixed(1)}h · ${p.nightWorkWage.toLocaleString('ko-KR')}원`} />
+                        <KV label="주휴" value={`${p.weeklyAllowance.toLocaleString('ko-KR')}원`} />
+                        <View style={[styles.empDivider, {backgroundColor: c.divider}]} />
+                        <KV label="세전" value={`${p.grossWage.toLocaleString('ko-KR')}원`} />
+                        <KV label="세금 (3.3%)" value={`-${p.taxAmount.toLocaleString('ko-KR')}원`} />
+                        <KV label="실수령" value={`${(p.netWage + (p.adjustment ?? 0)).toLocaleString('ko-KR')}원`} highlight />
+                        <AppButton
+                            label={p.adjustment ? '가감 수정' : '가감 추가'}
+                            onPress={() => openAdjust(idx)}
+                            variant="ghost"
+                            size="sm"
+                            fullWidth={false}
+                            style={styles.adjustBtn}
+                        />
+                    </AppCard>
+                ))
+            )}
 
-        <Button
-            title="다음: 명세서 발급"
-            onPress={onNext}
-            variant="primary"
-            size="lg"
-            fullWidth
-            disabled={previews.length === 0}
-            style={styles.cta}
-        />
-
-        <Modal
-            visible={adjustingIdx != null}
-            transparent
-            animationType="slide"
-            onRequestClose={() => setAdjustingIdx(null)}
-        >
-            <View style={styles.modalBackdrop}>
-                <View style={styles.modalSheet}>
-                    <View style={styles.modalHandle} />
-                    <Text style={styles.modalTitle}>가감 추가</Text>
-                    <Text style={styles.modalLabel}>금액 (+ / -)</Text>
-                    <TextInput
-                        style={styles.modalInput}
-                        value={adjustAmount}
-                        onChangeText={setAdjustAmount}
-                        keyboardType="numbers-and-punctuation"
-                        placeholder="예: 50000 또는 -20000"
-                        placeholderTextColor={tokens.colors.textTertiary}
-                    />
-                    <Text style={styles.modalLabel}>사유</Text>
-                    <TextInput
-                        style={[styles.modalInput, {height: 80, textAlignVertical: 'top'}]}
-                        value={adjustReason}
-                        onChangeText={setAdjustReason}
-                        multiline
-                        placeholder="예: 야간 보너스 / 식대 가불 등"
-                        placeholderTextColor={tokens.colors.textTertiary}
-                    />
-                    <View style={styles.modalRow}>
-                        <Pressable
-                            onPress={() => setAdjustingIdx(null)}
-                            style={[styles.modalBtn, styles.modalBtnCancel]}
-                        >
-                            <Text style={styles.modalBtnCancelText}>취소</Text>
-                        </Pressable>
-                        <Pressable
-                            onPress={commitAdjust}
-                            style={[styles.modalBtn, styles.modalBtnConfirm]}
-                        >
-                            <Text style={styles.modalBtnConfirmText}>적용</Text>
-                        </Pressable>
+            <Modal
+                // eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined
+                visible={adjustingIdx != null}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setAdjustingIdx(null)}
+            >
+                <View style={styles.modalBackdrop}>
+                    <View style={styles.modalSheet}>
+                        <View style={styles.modalHandle} />
+                        <Text style={styles.modalTitle}>가감 추가</Text>
+                        <Text style={styles.modalLabel}>금액 (+ / -)</Text>
+                        <TextInput
+                            style={styles.modalInput}
+                            value={adjustAmount}
+                            onChangeText={setAdjustAmount}
+                            keyboardType="numbers-and-punctuation"
+                            placeholder="예: 50000 또는 -20000"
+                            placeholderTextColor={c.textTertiary}
+                        />
+                        <Text style={styles.modalLabel}>사유</Text>
+                        <TextInput
+                            style={[styles.modalInput, {height: 80, textAlignVertical: 'top'}]}
+                            value={adjustReason}
+                            onChangeText={setAdjustReason}
+                            multiline
+                            placeholder="예: 야간 보너스 / 식대 가불 등"
+                            placeholderTextColor={c.textTertiary}
+                        />
+                        <View style={styles.modalRow}>
+                            <Pressable
+                                onPress={() => setAdjustingIdx(null)}
+                                style={[styles.modalBtn, styles.modalBtnCancel]}
+                            >
+                                <Text style={styles.modalBtnCancelText}>취소</Text>
+                            </Pressable>
+                            <Pressable
+                                onPress={commitAdjust}
+                                style={[styles.modalBtn, styles.modalBtnConfirm]}
+                            >
+                                <Text style={styles.modalBtnConfirmText}>적용</Text>
+                            </Pressable>
+                        </View>
                     </View>
                 </View>
-            </View>
-        </Modal>
-    </View>
+            </Modal>
+        </View>
     );
 };
 
-const ConfirmCard: React.FC<any> = ({startDate, endDate, previews, totalNet, loading, onIssue}) => (
-    <View>
-        <Text style={styles.title}>3단계: 확인</Text>
-        <Card bordered style={styles.confirmCard}>
-            <Text style={styles.confirmEmoji}>✅</Text>
-            <Text style={styles.confirmTitle}>정산 준비 완료</Text>
-            <KV label="기간" value={`${startDate} ~ ${endDate}`} />
-            <KV label="직원" value={`${previews.length}명`} />
-            <KV label="총액" value={`₩${totalNet.toLocaleString('ko-KR')}`} highlight />
-        </Card>
+const ConfirmBlock: React.FC<any> = ({startDate, endDate, previews, totalNet}) => {
+    const styles = useStyles();
+    return (
+        <View style={fieldStyles.gap}>
+            <HeroNumber label="발급 총액" value={won(totalNet)} sub={`직원 ${previews.length}명`} accent />
+            <AppCard variant="warm" style={styles.confirmCard}>
+                <KV label="기간" value={`${startDate} ~ ${endDate}`} />
+                <KV label="직원" value={`${previews.length}명`} />
+                <KV label="총액" value={won(totalNet)} highlight />
+            </AppCard>
+            <AppText variant="caption" tone="tertiary" style={styles.confirmNote}>
+                발급 후 24시간 이내 취소할 수 있어요.
+            </AppText>
+        </View>
+    );
+};
 
-        <Text style={styles.confirmNote}>
-            발급하면 직원 앱에 자동으로 명세서 알림이 전송돼요.{'\n'}
-            발급 후 24시간 이내 취소할 수 있어요.
-        </Text>
-
-        <Button
-            title="명세서 발급하기"
-            onPress={onIssue}
-            variant="primary"
-            size="lg"
-            fullWidth
-            loading={loading}
-            style={styles.cta}
-        />
-    </View>
-);
-
-const DoneCard: React.FC<any> = ({totalNet, onClose}) => (
-    <View style={styles.doneBox}>
-        <Text style={styles.doneEmoji}>🎉</Text>
-        <Text style={styles.title}>명세서 발급이 끝났어요</Text>
-        <Text style={styles.subtitle}>
-            총 ₩{totalNet.toLocaleString('ko-KR')} 정산.{'\n'}직원분들께 알림이 전송됐어요.
-        </Text>
-        <Button title="홈으로 돌아가기" onPress={onClose} variant="primary" size="lg" fullWidth />
-    </View>
-);
+const DoneBlock: React.FC<{totalNet: number; count: number}> = ({totalNet, count}) => {
+    const styles = useStyles();
+    return (
+        <View style={styles.doneBox}>
+            <HeroNumber
+                label="명세서 발급이 끝났어요"
+                value={won(totalNet)}
+                sub={`직원 ${count}명에게 알림을 보냈어요`}
+                accent
+                center
+            />
+            <AppText variant="bodyMd" tone="secondary" center style={styles.doneCopy}>
+                사장님, 이번 정산이 모두 끝났어요.
+            </AppText>
+        </View>
+    );
+};
 
 const KV: React.FC<{label: string; value: string; highlight?: boolean}> = ({
     label,
     value,
     highlight,
-}) => (
-    <View style={styles.kvRow}>
-        <Text style={styles.kvLabel}>{label}</Text>
-        <Text style={[styles.kvValue, highlight && styles.kvValueHighlight]}>{value}</Text>
-    </View>
-);
+}) => {
+    const styles = useStyles();
+    return (
+        <View style={styles.kvRow}>
+            <Text style={styles.kvLabel}>{label}</Text>
+            <Text style={[styles.kvValue, highlight && styles.kvValueHighlight]}>{value}</Text>
+        </View>
+    );
+};
 
 function getDefaultStart(): string {
     const d = new Date();
@@ -433,140 +494,102 @@ function pad(n: number): string {
     return String(n).padStart(2, '0');
 }
 
-const styles = StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: tokens.colors.background},
-    scrollContent: {padding: tokens.spacing.lg, paddingBottom: tokens.spacing.huge},
-    stepper: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: tokens.spacing.md,
-    },
-    stepDot: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: tokens.colors.surfaceMuted,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    stepDotActive: {backgroundColor: tokens.colors.brandPrimary},
-    stepDotDone: {backgroundColor: tokens.colors.success},
-    stepText: {color: tokens.colors.textInverse, fontWeight: '700'},
-    stepLine: {flex: 1, height: 2, backgroundColor: tokens.colors.surfaceMuted, maxWidth: 60},
-    stepLineDone: {backgroundColor: tokens.colors.success},
+const fieldStyles = StyleSheet.create({
+    gap: {gap: tokens.spacing.lg},
+});
 
-    title: {
-        fontSize: tokens.typography.sizes.xxl,
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
-        marginBottom: tokens.spacing.sm,
-        letterSpacing: -0.3,
+// 다크모드 대응: 모든 색상 토큰을 c(현재 테마 팔레트)로부터 받아 styles 를 매번 만들어 준다.
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
+    selectorBlock: {gap: tokens.spacing.sm},
+    selectorLabel: {
+        fontSize: tokens.typography.sizes.sm,
+        color: c.textSecondary,
+        fontWeight: tokens.typography.weights.semibold,
     },
-    subtitle: {
-        fontSize: tokens.typography.sizes.md,
-        color: tokens.colors.textSecondary,
-        marginBottom: tokens.spacing.xl,
-        lineHeight: 22,
+    chipRow: {flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing.sm},
+    chip: {
+        paddingHorizontal: tokens.spacing.lg,
+        paddingVertical: tokens.spacing.sm,
+        borderRadius: tokens.radius.lg,
+        borderWidth: 1.5,
+        maxWidth: 220,
     },
+    chipText: {fontSize: tokens.typography.sizes.sm, fontWeight: tokens.typography.weights.semibold},
 
-    totalCard: {alignItems: 'center', paddingVertical: tokens.spacing.xl},
-    totalLabel: {fontSize: tokens.typography.sizes.sm, color: tokens.colors.textSecondary},
-    totalAmount: {
-        fontSize: 36,
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.brandPrimary,
-        marginVertical: tokens.spacing.xs,
-        letterSpacing: -1,
-    },
-    totalSub: {fontSize: tokens.typography.sizes.xs, color: tokens.colors.textTertiary},
+    emptyPad: {paddingVertical: tokens.spacing.xl},
 
-    empty: {textAlign: 'center', padding: tokens.spacing.xl, color: tokens.colors.textTertiary},
+    empCard: {gap: 2},
+    empHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacing.sm, gap: tokens.spacing.sm},
+    empName: {flexShrink: 1},
+    empDivider: {height: 1, marginVertical: tokens.spacing.xs},
+    adjustBtn: {marginTop: tokens.spacing.sm, alignSelf: 'flex-start'},
 
-    empCard: {marginVertical: tokens.spacing.sm},
-    empHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacing.sm},
-    empName: {fontSize: tokens.typography.sizes.lg, fontWeight: '700', color: tokens.colors.textPrimary},
-    empDivider: {
-        height: 1,
-        backgroundColor: tokens.colors.divider,
-        marginVertical: tokens.spacing.xs,
-    },
-
-    kvRow: {flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4},
-    kvLabel: {color: tokens.colors.textSecondary, fontSize: tokens.typography.sizes.sm},
-    kvValue: {color: tokens.colors.textPrimary, fontSize: tokens.typography.sizes.sm, fontWeight: '500', fontVariant: ['tabular-nums']},
+    kvRow: {flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, gap: tokens.spacing.md},
+    kvLabel: {color: c.textSecondary, fontSize: tokens.typography.sizes.sm},
+    kvValue: {color: c.textPrimary, fontSize: tokens.typography.sizes.sm, fontWeight: '500' as const, fontVariant: ['tabular-nums' as const], flexShrink: 1, textAlign: 'right' as const},
     kvValueHighlight: {
-        color: tokens.colors.brandPrimary,
-        fontWeight: '700',
+        color: c.brandPrimary,
+        fontWeight: '700' as const,
         fontSize: tokens.typography.sizes.md,
     },
 
-    confirmCard: {alignItems: 'center', paddingVertical: tokens.spacing.xxl},
-    confirmEmoji: {fontSize: 56, marginBottom: tokens.spacing.md},
-    confirmTitle: {
-        fontSize: tokens.typography.sizes.xl,
-        fontWeight: '700',
-        color: tokens.colors.success,
-        marginBottom: tokens.spacing.md,
-    },
-    confirmNote: {
-        textAlign: 'center',
-        color: tokens.colors.textTertiary,
-        fontSize: tokens.typography.sizes.xs,
-        marginVertical: tokens.spacing.lg,
-        lineHeight: 18,
-    },
+    confirmCard: {gap: tokens.spacing.xs},
+    confirmNote: {textAlign: 'center' as const, lineHeight: 18},
 
-    doneBox: {alignItems: 'center', paddingTop: tokens.spacing.huge},
-    doneEmoji: {fontSize: 72, marginBottom: tokens.spacing.lg},
+    doneBox: {flex: 1, alignItems: 'center', justifyContent: 'center', gap: tokens.spacing.md},
+    doneCopy: {maxWidth: 280},
 
-    cta: {marginTop: tokens.spacing.xxl},
-
-    modalBackdrop: {flex: 1, backgroundColor: tokens.colors.overlayDark, justifyContent: 'flex-end'},
+    modalBackdrop: {flex: 1, backgroundColor: c.overlayDark, justifyContent: 'flex-end'},
     modalSheet: {
-        backgroundColor: tokens.colors.background,
-        borderTopLeftRadius: tokens.radius.xl,
-        borderTopRightRadius: tokens.radius.xl,
-        padding: tokens.spacing.lg,
+        backgroundColor: c.background,
+        borderTopLeftRadius: tokens.radius.xxl,
+        borderTopRightRadius: tokens.radius.xxl,
+        padding: tokens.spacing.xl,
         paddingBottom: tokens.spacing.huge,
     },
     modalHandle: {
         width: 40,
         height: 4,
         borderRadius: 2,
-        backgroundColor: tokens.colors.border,
+        backgroundColor: c.border,
         alignSelf: 'center',
         marginBottom: tokens.spacing.md,
     },
     modalTitle: {
         fontSize: tokens.typography.sizes.lg,
         fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
+        color: c.textPrimary,
         marginBottom: tokens.spacing.md,
     },
     modalLabel: {
         fontSize: tokens.typography.sizes.sm,
-        color: tokens.colors.textSecondary,
+        color: c.textSecondary,
         marginTop: tokens.spacing.md,
         marginBottom: tokens.spacing.xs,
         fontWeight: tokens.typography.weights.semibold,
     },
     modalInput: {
         borderWidth: 1.5,
-        borderColor: tokens.colors.border,
+        borderColor: c.border,
         borderRadius: tokens.radius.lg,
         paddingHorizontal: tokens.spacing.lg,
         paddingVertical: tokens.spacing.sm,
         fontSize: tokens.typography.sizes.md,
-        color: tokens.colors.textPrimary,
-        backgroundColor: tokens.colors.surface,
+        color: c.textPrimary,
+        backgroundColor: c.surface,
     },
     modalRow: {flexDirection: 'row', gap: tokens.spacing.sm, marginTop: tokens.spacing.lg},
     modalBtn: {flex: 1, paddingVertical: tokens.spacing.md, borderRadius: tokens.radius.lg, alignItems: 'center'},
-    modalBtnCancel: {backgroundColor: tokens.colors.surfaceMuted},
-    modalBtnCancelText: {color: tokens.colors.textSecondary, fontWeight: tokens.typography.weights.semibold},
-    modalBtnConfirm: {backgroundColor: tokens.colors.brandPrimary},
-    modalBtnConfirmText: {color: tokens.colors.textInverse, fontWeight: tokens.typography.weights.bold},
+    modalBtnCancel: {backgroundColor: c.surfaceMuted},
+    modalBtnCancelText: {color: c.textSecondary, fontWeight: tokens.typography.weights.semibold},
+    modalBtnConfirm: {backgroundColor: c.brandPrimary},
+    modalBtnConfirmText: {color: c.textInverse, fontWeight: tokens.typography.weights.bold},
 });
+
+/** 컴포넌트 본문에서 styles 를 한 줄로 가져오는 헬퍼 */
+const useStyles = () => {
+    const c = useThemeColors();
+    return useMemo(() => makeStyles(c), [c]);
+};
 
 export default PayrollRunScreen;

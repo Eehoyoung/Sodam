@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit;
  */
 @Slf4j
 @Service
-@Profile("dev")
+@Profile({"dev", "test"})
 public class InMemoryTokenStore implements TokenStore {
 
     /** key = "USER_TOKENS:{userId}", inner key = tokenHash, inner value = expiresAtMillis */

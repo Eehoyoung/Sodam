@@ -93,6 +93,17 @@ public class WageController {
         return ResponseEntity.ok(wage);
     }
 
+    @Operation(summary = "매장 시급 변경 이력 조회 (사장만)",
+            description = "매장 기본/직원 개별 시급 변경 이력을 최신순으로 반환합니다.")
+    @MasterOnly
+    @GetMapping("/store/{storeId}/history")
+    public ResponseEntity<java.util.List<com.rich.sodam.dto.response.WageHistoryDto>> getStoreWageHistory(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long storeId) {
+        guard.assertMasterOwnsStore(principal.getId(), storeId);
+        return ResponseEntity.ok(storeManagementService.getStoreWageHistory(storeId));
+    }
+
     @Operation(summary = "직원 할당 및 임금 설정", description = "특정 직원을 매장에 할당하고 임금을 설정합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "할당 성공"),

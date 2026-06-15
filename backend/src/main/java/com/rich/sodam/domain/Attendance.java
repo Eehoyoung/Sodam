@@ -46,10 +46,12 @@ public class Attendance {
     private LocalDateTime checkOutTime;
 
     // 위치 정보
-    @Column(nullable = false)
+    // 수동 출퇴근 등록(manualCheckIn)은 GPS 좌표 없이 등록 가능하므로 nullable 허용.
+    // (checkOut 좌표는 이미 nullable — 일관성 유지)
+    @Column
     private Double checkInLatitude;
 
-    @Column(nullable = false)
+    @Column
     private Double checkInLongitude;
 
     private Double checkOutLatitude;
@@ -59,6 +61,14 @@ public class Attendance {
     // 주휴수당 정보
     @Setter
     private BigDecimal weeklyAllowance;
+
+    /**
+     * 휴일근로 여부(§56②). 약정휴일·공휴일 등 휴일에 근로한 경우 true.
+     * 사장이 수동 지정하며, true 면 급여계산 시 휴일가산(8h이내 50%·초과 100%)을 적용한다.
+     */
+    @Setter
+    @Column(name = "holiday_work", nullable = false)
+    private boolean holidayWork = false;
 
 
     // 시급 정보 (당시 적용된 시급)

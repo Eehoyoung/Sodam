@@ -105,7 +105,7 @@ class PerformanceMonitor {
      * Start performance monitoring
      */
     startMonitoring(): void {
-        if (this.isMonitoring) return;
+        if (this.isMonitoring) {return;}
 
         this.isMonitoring = true;
         this.startTime = performance.now();
@@ -123,7 +123,7 @@ class PerformanceMonitor {
      * Stop performance monitoring
      */
     stopMonitoring(): void {
-        if (!this.isMonitoring) return;
+        if (!this.isMonitoring) {return;}
 
         this.isMonitoring = false;
 
@@ -232,6 +232,7 @@ class PerformanceMonitor {
 
         // Send to analytics service
         try {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires -- lazy require avoids a circular import with AnalyticsService
             const analyticsService = require('./AnalyticsService').analyticsService;
             analyticsService.trackEvent({
                 eventName: 'performance_issue',
@@ -400,8 +401,6 @@ class PerformanceMonitor {
     private initializeFrameRateMonitoring(): void {
         let frameCount = 0;
         let lastTime = performance.now();
-        const targetFPS = 60;
-        const frameInterval = 1000 / targetFPS;
 
         const measureFrameRate = () => {
             const currentTime = performance.now();
@@ -535,7 +534,7 @@ export const performanceUtils = {
         let timeout: ReturnType<typeof setTimeout>;
         return ((...args: any[]) => {
             clearTimeout(timeout);
-            timeout = setTimeout(() => func.apply(null, args), wait);
+            timeout = setTimeout(() => func(...args), wait);
         }) as T;
     },
 
@@ -544,7 +543,7 @@ export const performanceUtils = {
         let inThrottle: boolean;
         return ((...args: any[]) => {
             if (!inThrottle) {
-                func.apply(null, args);
+                func(...args);
                 inThrottle = true;
                 setTimeout(() => inThrottle = false, limit);
             }

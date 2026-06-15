@@ -260,7 +260,7 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
         queries.forEach(query => {
             const currentOptions = query.options;
             if (currentOptions) {
-                const adjustedOptions = adjustCacheForNetwork(
+                adjustCacheForNetwork(
                     {
                         staleTime: (currentOptions as any).staleTime || 5 * 60 * 1000,
                         gcTime: (currentOptions as any).gcTime || 10 * 60 * 1000,

@@ -34,7 +34,7 @@ export const offlineAttendanceQueue = {
 
     async flush(): Promise<{succeeded: number; failed: number}> {
         const list = await readQueue();
-        if (list.length === 0) return {succeeded: 0, failed: 0};
+        if (list.length === 0) {return {succeeded: 0, failed: 0};}
 
         let succeeded = 0;
         const remaining: QueuedCheckIn[] = [];
@@ -69,7 +69,7 @@ export const offlineAttendanceQueue = {
 async function readQueue(): Promise<QueuedCheckIn[]> {
     try {
         const raw = await unifiedStorage.getItem(QUEUE_KEY);
-        if (!raw) return [];
+        if (!raw) {return [];}
         return JSON.parse(raw);
     } catch (_) {
         return [];

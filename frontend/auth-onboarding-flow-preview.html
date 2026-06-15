@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>소담 인증/온보딩 플로우 미리보기</title>
+  <style>
+    :root {
+      --ink: #17202a;
+      --muted: #667085;
+      --line: #d9e0e7;
+      --paper: #ffffff;
+      --brand: #1f7a6b;
+      --brand-2: #f2a65a;
+      --soft: #f6f8fb;
+      --dark-a: #10233f;
+      --dark-b: #173a35;
+      --danger: #c04444;
+      --ok: #227c55;
+      --radius: 8px;
+      --shadow: 0 18px 48px rgba(15, 32, 42, .18);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        linear-gradient(115deg, rgba(16, 35, 63, .94), rgba(23, 58, 53, .94)),
+        url("https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?auto=format&fit=crop&w=1600&q=80");
+      background-size: cover;
+      background-position: center;
+    }
+
+    button, input { font: inherit; }
+    button {
+      border: 0;
+      cursor: pointer;
+      border-radius: var(--radius);
+      min-height: 46px;
+      padding: 0 18px;
+      font-weight: 800;
+      transition: transform .14s ease, opacity .14s ease, background .14s ease;
+    }
+    button:active { transform: translateY(1px); }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(320px, 420px) minmax(520px, 1fr);
+    }
+
+    .phone-zone {
+      display: grid;
+      place-items: center;
+      padding: 32px 24px;
+    }
+
+    .phone {
+      width: min(390px, 100%);
+      height: min(780px, calc(100vh - 48px));
+      min-height: 640px;
+      background: #f9fbfd;
+      border: 1px solid rgba(255,255,255,.42);
+      border-radius: 30px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .status {
+      height: 28px;
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      padding: 0 24px 4px;
+      font-size: 12px;
+      font-weight: 800;
+      background: #f9fbfd;
+    }
+
+    .screen {
+      display: none;
+      min-height: 0;
+      flex: 1;
+      flex-direction: column;
+    }
+    .screen.active { display: flex; }
+
+    .dark {
+      color: #fff;
+      background:
+        linear-gradient(138deg, rgba(16, 35, 63, .98), rgba(31, 122, 107, .94)),
+        url("https://images.unsplash.com/photo-1556740738-b6a63e27c4df?auto=format&fit=crop&w=900&q=80");
+      background-size: cover;
+      background-position: center;
+    }
+
+    .content {
+      flex: 1;
+      overflow: auto;
+      padding: 24px;
+    }
+
+    .bottom {
+      padding: 16px 24px 22px;
+      border-top: 1px solid rgba(217,224,231,.82);
+      background: rgba(255,255,255,.94);
+      display: grid;
+      gap: 10px;
+    }
+    .dark .bottom {
+      border-top-color: rgba(255,255,255,.15);
+      background: rgba(9, 23, 31, .35);
+      backdrop-filter: blur(10px);
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 26px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+    .mark {
+      width: 46px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: #fff;
+      color: var(--brand);
+      font-weight: 950;
+      box-shadow: 0 10px 24px rgba(0,0,0,.12);
+    }
+    .dark .mark { background: #fff; }
+
+    h1, h2, p { margin: 0; }
+    h1 {
+      font-size: 30px;
+      line-height: 1.22;
+      letter-spacing: 0;
+      margin-top: 12px;
+    }
+    h2 {
+      font-size: 22px;
+      line-height: 1.28;
+      letter-spacing: 0;
+    }
+    .lead {
+      margin-top: 10px;
+      color: rgba(255,255,255,.78);
+      line-height: 1.55;
+      font-size: 15px;
+    }
+    .plain-lead {
+      margin-top: 8px;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 14px;
+    }
+
+    .role-list { display: grid; gap: 10px; margin-top: 28px; }
+    .role {
+      text-align: left;
+      padding: 18px;
+      min-height: 86px;
+      border: 1px solid rgba(255,255,255,.2);
+      background: rgba(255,255,255,.12);
+      color: #fff;
+    }
+    .role strong { display: block; font-size: 18px; margin-bottom: 5px; }
+    .role span { color: rgba(255,255,255,.74); font-size: 13px; font-weight: 600; }
+    .role.featured {
+      background: #fff;
+      color: var(--ink);
+      border-color: #fff;
+    }
+    .role.featured span { color: var(--muted); }
+    .badge {
+      float: right;
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: #fff1dd;
+      color: #986014;
+      font-weight: 900;
+    }
+
+    .primary { background: var(--brand); color: #fff; }
+    .secondary { background: #eef3f6; color: var(--ink); }
+    .ghost { background: transparent; color: inherit; border: 1px solid currentColor; }
+    .kakao { background: #fee500; color: #191600; }
+
+    .topbar {
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      border-bottom: 1px solid rgba(217,224,231,.75);
+      background: rgba(255,255,255,.92);
+    }
+    .topbar.darkbar {
+      color: #fff;
+      background: rgba(9, 23, 31, .25);
+      border-bottom-color: rgba(255,255,255,.14);
+    }
+    .link-btn {
+      min-height: auto;
+      padding: 8px 0;
+      background: transparent;
+      color: inherit;
+      font-weight: 850;
+    }
+
+    .hero-center {
+      flex: 1;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 28px;
+    }
+    .hero-center .mark {
+      width: 62px;
+      height: 62px;
+      margin: 0 auto 18px;
+      font-size: 22px;
+    }
+
+    .step {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--brand);
+      font-weight: 900;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--brand);
+    }
+
+    .segment {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      padding: 4px;
+      border-radius: var(--radius);
+      background: #e9eef3;
+      margin: 16px 0;
+    }
+    .segment button {
+      min-height: 38px;
+      padding: 0 8px;
+      background: transparent;
+      color: var(--muted);
+    }
+    .segment button.selected {
+      background: #fff;
+      color: var(--ink);
+      box-shadow: 0 2px 10px rgba(15,32,42,.08);
+    }
+
+    .notice {
+      border: 1px solid #f0d8b8;
+      background: #fff7ed;
+      border-radius: var(--radius);
+      padding: 16px;
+      margin: 14px 0;
+    }
+
+    .form {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+    input {
+      height: 46px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 0 13px;
+      color: var(--ink);
+      background: #fff;
+      outline: none;
+    }
+    input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(31,122,107,.12); }
+
+    .checks { display: grid; gap: 9px; margin-top: 18px; }
+    .check {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .check input { width: 18px; height: 18px; }
+
+    .toast {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 18px;
+      padding: 13px 14px;
+      border-radius: var(--radius);
+      background: #182330;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1.4;
+      box-shadow: 0 12px 28px rgba(0,0,0,.24);
+      opacity: 0;
+      transform: translateY(12px);
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .toast.error { background: var(--danger); }
+    .toast.ok { background: var(--ok); }
+
+    .home-grid {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      background: #fff;
+    }
+    .metric strong {
+      display: block;
+      font-size: 24px;
+      margin-bottom: 4px;
+    }
+    .metric span { color: var(--muted); font-size: 13px; font-weight: 700; }
+
+    .side {
+      color: #fff;
+      padding: 40px clamp(28px, 5vw, 70px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .side h2 {
+      max-width: 700px;
+      font-size: clamp(28px, 4vw, 48px);
+    }
+    .side p {
+      margin-top: 14px;
+      max-width: 620px;
+      color: rgba(255,255,255,.76);
+      line-height: 1.7;
+    }
+    .flow {
+      display: grid;
+      gap: 10px;
+      margin-top: 28px;
+      max-width: 620px;
+    }
+    .flow-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 13px 14px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.08);
+      border-radius: var(--radius);
+      color: rgba(255,255,255,.9);
+    }
+    .num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #fff;
+      color: var(--brand);
+      font-weight: 950;
+      flex: 0 0 auto;
+    }
+    .state-panel {
+      margin-top: 28px;
+      max-width: 620px;
+      padding: 16px;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: var(--radius);
+      background: rgba(255,255,255,.1);
+    }
+    .state-panel code {
+      display: block;
+      white-space: pre-wrap;
+      color: #f3fbff;
+      line-height: 1.6;
+      font-size: 13px;
+    }
+
+    @media (max-width: 900px) {
+      body { background-attachment: fixed; }
+      .shell { grid-template-columns: 1fr; }
+      .side { display: none; }
+      .phone-zone { padding: 14px; }
+      .phone { height: calc(100vh - 28px); min-height: 620px; border-radius: 22px; }
+    }
+  </style>
+  <link rel="stylesheet" href="./prd-previews/app-runtime.css" />
+</head>
+<body>
+  <main class="shell">
+    <section class="phone-zone">
+      <div class="phone" aria-label="소담 앱 화면 미리보기">
+        <div class="status"><span>9:41</span><span>소담</span></div>
+
+        <section class="screen dark active" data-screen="role">
+          <div class="content">
+            <div class="brand-row">
+              <div class="brand"><span class="mark">소</span><span>소담</span></div>
+            </div>
+            <h1>어떤 방식으로<br />소담을 시작할까요?</h1>
+            <p class="lead">선택한 역할은 가입과 첫 홈 화면까지 이어집니다. 서버 계정 정보가 확인되면 서버 역할을 우선 적용합니다.</p>
+            <div class="role-list">
+              <button class="role featured" data-role="boss">
+                <span class="badge">추천</span>
+                <strong>사장님</strong>
+                <span>매장, 직원, 급여를 함께 관리해요.</span>
+              </button>
+              <button class="role" data-role="employee"><strong>직원</strong><span>출퇴근, 휴가, 급여명세를 확인해요.</span></button>
+              <button class="role" data-role="personal"><strong>개인</strong><span>근무 시간과 급여 기록을 개인용으로 남겨요.</span></button>
+            </div>
+          </div>
+          <div class="bottom"><button class="primary" data-role="boss">사장님으로 시작하기</button></div>
+        </section>
+
+        <section class="screen dark" data-screen="welcome">
+          <div class="topbar darkbar"><strong>소담</strong><button class="link-btn" data-go="login">로그인</button></div>
+          <div class="hero-center">
+            <div>
+              <div class="mark">소</div>
+              <h1><span data-role-label>사장님</span> 흐름으로<br />가입을 준비했어요</h1>
+              <p class="lead">가입 후 로그인하면 서비스 이용에 필요한 약관 동의와 기본 정보를 이어서 설정합니다.</p>
+            </div>
+          </div>
+          <div class="bottom">
+            <button class="primary" data-go="signup"><span data-role-label>사장님</span>으로 가입하기</button>
+            <button class="secondary" data-go="login">이미 계정이 있어요</button>
+          </div>
+        </section>
+
+        <section class="screen" data-screen="signup">
+          <div class="topbar"><button class="link-btn" data-go="welcome">뒤로</button><strong>회원가입</strong><span></span></div>
+          <div class="content">
+            <span class="step"><span class="dot"></span>가입</span>
+            <h2>가입 정보를 입력해 주세요</h2>
+            <p class="plain-lead">자동 로그인 대신 로그인 후 약관과 기본 정보를 이어서 설정하는 흐름입니다.</p>
+            <div class="segment">
+              <button data-segment="boss">사장님</button>
+              <button data-segment="employee">직원</button>
+              <button data-segment="personal">개인</button>
+            </div>
+            <div class="notice">
+              <strong><span data-role-label>사장님</span>으로 시작합니다</strong>
+              <p class="plain-lead" data-role-hint>매장 등록과 직원 초대까지 이어서 준비할 수 있어요.</p>
+            </div>
+            <div class="form">
+              <label>이름<input value="김소담" /></label>
+              <label>이메일<input value="owner@sodam.app" /></label>
+              <label>비밀번호<input type="password" value="sodam1234" /></label>
+            </div>
+            <div class="checks">
+              <label class="check">만 14세 이상입니다 <input type="checkbox" checked /></label>
+              <label class="check">이용약관 동의 <input type="checkbox" checked /></label>
+              <label class="check">개인정보 처리방침 동의 <input type="checkbox" checked /></label>
+              <label class="check">마케팅 수신 동의 <input type="checkbox" /></label>
+            </div>
+          </div>
+          <div class="bottom"><button class="primary" data-action="signupDone">가입 완료</button></div>
+        </section>
+
+        <section class="screen dark" data-screen="login">
+          <div class="content">
+            <div class="brand-row">
+              <div class="brand"><span class="mark">소</span><span>소담</span></div>
+            </div>
+            <h1>다시 오셨네요.<br />바로 시작해요</h1>
+            <p class="lead" data-login-copy>로그인 후 필요한 설정이 남아 있으면 먼저 안내해 드립니다.</p>
+            <div class="form">
+              <label style="color:rgba(255,255,255,.8)">이메일<input value="owner@sodam.app" /></label>
+              <label style="color:rgba(255,255,255,.8)">비밀번호<input type="password" value="sodam1234" /></label>
+            </div>
+          </div>
+          <div class="bottom">
+            <button class="primary" data-action="login">로그인</button>
+            <button class="kakao" data-go="kakao">카카오로 계속</button>
+            <button class="ghost" data-go="signup">회원가입</button>
+          </div>
+        </section>
+
+        <section class="screen dark" data-screen="kakao">
+          <div class="hero-center">
+            <div>
+              <div class="mark" style="background:#fee500;color:#191600">K</div>
+              <h1>카카오로<br />간편하게 계속</h1>
+              <p class="lead" data-kakao-message>카카오 인증을 시작하면 브라우저가 열립니다.</p>
+            </div>
+          </div>
+          <div class="bottom">
+            <button class="kakao" data-action="kakaoStart">카카오 인증 시작</button>
+            <button class="ghost" data-action="kakaoSuccess">성공 리다이렉트 시뮬레이션</button>
+            <button class="ghost" data-action="kakaoCancel">취소하고 이메일 로그인</button>
+          </div>
+        </section>
+
+        <section class="screen" data-screen="consent">
+          <div class="topbar"><strong>약관 동의</strong></div>
+          <div class="content">
+            <span class="step"><span class="dot"></span>약관</span>
+            <h2>서비스 이용을 위한 설정</h2>
+            <p class="plain-lead">가입 또는 소셜 로그인 후 처음 한 번만 필요한 약관 동의 단계입니다.</p>
+            <div class="checks">
+              <label class="check">만 14세 이상입니다 <input type="checkbox" checked /></label>
+              <label class="check">이용약관 동의 <input type="checkbox" checked /></label>
+              <label class="check">개인정보 처리방침 동의 <input type="checkbox" checked /></label>
+              <label class="check">마케팅 수신 동의 <input type="checkbox" /></label>
+            </div>
+          </div>
+          <div class="bottom">
+            <button class="primary" data-action="consentDone">동의하고 계속</button>
+            <p class="plain-lead" style="text-align:center;margin:0">필수 항목에 동의해야 소담을 이용할 수 있어요.</p>
+          </div>
+        </section>
+
+        <section class="screen" data-screen="profile">
+          <div class="topbar"><strong>기본 정보</strong></div>
+          <div class="content">
+            <span class="step"><span class="dot"></span>기본정보</span>
+            <h2>마지막 필수 설정이에요</h2>
+            <p class="plain-lead">소담을 안전하게 이용할 수 있도록 연락 가능한 기본 정보를 확인해 주세요.</p>
+            <div class="form">
+              <label>이름<input value="김소담" /></label>
+              <label>휴대폰 번호<input value="010-1234-5678" /></label>
+              <label>생년월일 (선택)<input value="1990-01-01" /></label>
+            </div>
+          </div>
+          <div class="bottom">
+            <button class="primary" data-action="profileDone">저장하고 시작</button>
+            <p class="plain-lead" style="text-align:center;margin:0">입력한 정보는 알림과 고객지원에만 사용합니다.</p>
+          </div>
+        </section>
+
+        <section class="screen" data-screen="home">
+          <div class="topbar"><strong data-home-title>사장님 홈</strong><button class="link-btn" data-action="reset">처음부터</button></div>
+          <div class="content">
+            <span class="step"><span class="dot"></span>홈 진입</span>
+            <h2><span data-role-label>사장님</span> 역할로 시작합니다</h2>
+            <p class="plain-lead">서버가 role을 내려주면 서버 값을 우선하고, 없을 때만 온보딩 선택값을 fallback으로 사용합니다.</p>
+            <div class="home-grid" data-home-grid></div>
+          </div>
+        </section>
+
+        <div class="toast" id="toast"></div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <h2>역할 선택에서 홈 진입까지 끊기지 않는 신규 사용자 플로우</h2>
+      <p>이 HTML은 변경된 UX 흐름을 확인하기 위한 정적 프로토타입입니다. 왼쪽 화면에서 역할 선택, 가입, 로그인, 카카오 상태, 약관, 기본정보, 역할별 홈 진입을 순서대로 눌러볼 수 있습니다.</p>
+      <div class="flow">
+        <div class="flow-row"><span class="num">1</span><span>토큰 없음: 웰컴/역할 선택 진입</span></div>
+        <div class="flow-row"><span class="num">2</span><span>역할 선택값: 가입/로그인/홈 fallback으로 유지</span></div>
+        <div class="flow-row"><span class="num">3</span><span>로그인 성공: 약관 미동의 → 기본정보 미완성 → 홈 순서</span></div>
+        <div class="flow-row"><span class="num">4</span><span>카카오: 진행/취소/실패/성공 상태와 이메일 로그인 fallback</span></div>
+      </div>
+      <div class="state-panel">
+        <code id="debugState"></code>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const state = {
+      screen: 'role',
+      purpose: 'boss',
+      pendingAfterSignup: false,
+      consentCompleted: false,
+      profileCompleted: false,
+      serverRole: null,
+      fromSignup: false
+    };
+
+    const labels = {
+      boss: '사장님',
+      employee: '직원',
+      personal: '개인'
+    };
+    const hints = {
+      boss: '매장 등록과 직원 초대까지 이어서 준비할 수 있어요.',
+      employee: '매장 코드로 합류하고 출퇴근과 급여명세를 확인해요.',
+      personal: '근무 시간과 급여 기록을 개인용으로 남겨요.'
+    };
+    const homeData = {
+      boss: [['3', '오늘 출근 직원'], ['2건', '급여 확인 필요'], ['1개', '운영 중인 매장']],
+      employee: [['09:03', '오늘 출근 시간'], ['8시간', '예상 근무'], ['1건', '확인할 급여명세']],
+      personal: [['6시간', '오늘 기록'], ['4일', '이번 주 근무'], ['₩320,000', '예상 급여']]
+    };
+
+    const show = (screen) => {
+      state.screen = screen;
+      document.querySelectorAll('.screen').forEach(el => el.classList.toggle('active', el.dataset.screen === screen));
+      render();
+    };
+
+    const toast = (message, type = '') => {
+      const el = document.getElementById('toast');
+      el.textContent = message;
+      el.className = 'toast show ' + type;
+      window.clearTimeout(toast.timer);
+      toast.timer = window.setTimeout(() => el.className = 'toast', 2200);
+    };
+
+    const resolvePostAuth = () => {
+      if (!state.consentCompleted) return 'consent';
+      if (!state.profileCompleted) return 'profile';
+      return 'home';
+    };
+
+    const setPurpose = (purpose) => {
+      state.purpose = purpose;
+      render();
+    };
+
+    const render = () => {
+      document.querySelectorAll('[data-role-label]').forEach(el => el.textContent = labels[state.purpose]);
+      const hint = document.querySelector('[data-role-hint]');
+      if (hint) hint.textContent = hints[state.purpose];
+      document.querySelectorAll('[data-segment]').forEach(btn => btn.classList.toggle('selected', btn.dataset.segment === state.purpose));
+      const loginCopy = document.querySelector('[data-login-copy]');
+      if (loginCopy) {
+        loginCopy.textContent = state.fromSignup
+          ? '가입한 계정으로 로그인하면 약관 동의와 기본 정보 설정을 이어서 진행합니다.'
+          : '로그인 후 필요한 설정이 남아 있으면 먼저 안내해 드립니다.';
+      }
+      const title = document.querySelector('[data-home-title]');
+      if (title) title.textContent = `${labels[state.purpose]} 홈`;
+      const grid = document.querySelector('[data-home-grid]');
+      if (grid) {
+        grid.innerHTML = homeData[state.purpose]
+          .map(([value, label]) => `<div class="metric"><strong>${value}</strong><span>${label}</span></div>`)
+          .join('');
+      }
+      document.getElementById('debugState').textContent =
+`현재 화면: ${state.screen}
+선택 역할: ${state.purpose} (${labels[state.purpose]})
+가입 후 목적값 저장: ${state.pendingAfterSignup}
+약관 완료: ${state.consentCompleted}
+기본정보 완료: ${state.profileCompleted}
+서버 role: ${state.serverRole || '없음, 선택값 fallback'}`;
+    };
+
+    document.addEventListener('click', (event) => {
+      const roleBtn = event.target.closest('[data-role]');
+      if (roleBtn) {
+        setPurpose(roleBtn.dataset.role);
+        show('welcome');
+        return;
+      }
+
+      const segment = event.target.closest('[data-segment]');
+      if (segment) {
+        setPurpose(segment.dataset.segment);
+        return;
+      }
+
+      const go = event.target.closest('[data-go]');
+      if (go) {
+        show(go.dataset.go);
+        return;
+      }
+
+      const action = event.target.closest('[data-action]');
+      if (!action) return;
+
+      switch (action.dataset.action) {
+        case 'signupDone':
+          state.pendingAfterSignup = true;
+          state.fromSignup = true;
+          toast('가입이 완료되었습니다. 로그인 후 약관과 기본 정보를 마저 설정해 주세요.', 'ok');
+          show('login');
+          break;
+        case 'login':
+          toast(state.pendingAfterSignup ? '로그인되었습니다. 약관 동의를 완료해 주세요.' : '로그인되었습니다.', 'ok');
+          state.pendingAfterSignup = false;
+          show(resolvePostAuth());
+          break;
+        case 'kakaoStart':
+          document.querySelector('[data-kakao-message]').textContent = '브라우저에서 인증을 마치면 앱으로 돌아옵니다. 돌아오지 않으면 이메일 로그인으로 진행해 주세요.';
+          toast('카카오 인증 진행 중입니다.');
+          break;
+        case 'kakaoSuccess':
+          toast('카카오 인증이 완료되었습니다. 다음 단계로 이동합니다.', 'ok');
+          show(resolvePostAuth());
+          break;
+        case 'kakaoCancel':
+          document.querySelector('[data-kakao-message]').textContent = '카카오 로그인을 취소했습니다. 이메일 로그인으로 계속할 수 있어요.';
+          toast('카카오 로그인을 취소했습니다.');
+          show('login');
+          break;
+        case 'consentDone':
+          state.consentCompleted = true;
+          toast('약관 동의가 저장되었습니다.', 'ok');
+          show(resolvePostAuth());
+          break;
+        case 'profileDone':
+          state.profileCompleted = true;
+          toast('기본 정보가 저장되었습니다.', 'ok');
+          show('home');
+          break;
+        case 'reset':
+          Object.assign(state, {
+            screen: 'role',
+            purpose: 'boss',
+            pendingAfterSignup: false,
+            consentCompleted: false,
+            profileCompleted: false,
+            serverRole: null,
+            fromSignup: false
+          });
+          show('role');
+          break;
+      }
+    });
+
+    render();
+  </script>
+</body>
+</html>

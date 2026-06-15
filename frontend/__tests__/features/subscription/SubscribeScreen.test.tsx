@@ -9,9 +9,14 @@ jest.mock('react-native', () => ({
     ScrollView: 'ScrollView',
     Pressable: 'Pressable',
     ActivityIndicator: 'ActivityIndicator',
+    // DS v2: ScreenContainer→KeyboardAvoidingView/StatusBar, CtaStack→useWindowDimensions(useResponsive)
+    KeyboardAvoidingView: 'KeyboardAvoidingView',
+    StatusBar: 'StatusBar',
     Alert: {alert: jest.fn()},
     Platform: {OS: 'ios', select: (o: any) => o.ios},
     Dimensions: {get: () => ({width: 375, height: 812})},
+    useWindowDimensions: () => ({width: 375, height: 812}),
+    useColorScheme: () => 'light',
 }));
 
 // 네비게이션 mock — 화면별 navigate 추적
@@ -27,61 +32,33 @@ jest.mock('@react-navigation/native', () => ({
 // SafeAreaView mock — 이미 jest.setup.js 에 있지만 명시
 jest.mock('react-native-safe-area-context', () => ({
     SafeAreaView: ({children}: any) => children,
+    // CtaStack 의 useResponsive 가 useSafeAreaInsets 사용
+    useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
 }));
 
 // subscriptionApi mock
 jest.mock('../../../src/features/subscription/services/subscriptionApi', () => {
     const planList = [
-        {name: 'FREE', displayName: '기본', monthlyPriceKrw: 0, description: '기본 근태/급여'},
-        {name: 'BUSINESS', displayName: '비즈니스', monthlyPriceKrw: 15000, description: '근태+급여+명세서'},
-        {name: 'PREMIUM', displayName: '프리미엄', monthlyPriceKrw: 50000, description: '세무사 1:1'},
-        {name: 'COMMISSION', displayName: '환급형', monthlyPriceKrw: 0, description: '환급 수수료'},
+        {name: 'FREE', displayName: '무료', monthlyPriceKrw: 0, description: '출퇴근 무제한 + 급여 미리보기'},
+        {name: 'STARTER', displayName: '스타터', monthlyPriceKrw: 9900, description: '급여 자동 계산 + 명세서 PDF'},
+        {name: 'PRO', displayName: '프로', monthlyPriceKrw: 19900, description: '직원 무제한 + 4대보험 신고서'},
+        {name: 'PREMIUM', displayName: '프리미엄', monthlyPriceKrw: 39900, description: '프로 전부 + 멀티매장 무제한'},
     ];
     const api = {
         getPlans: jest.fn().mockResolvedValue(planList),
         getMyCurrent: jest.fn().mockResolvedValue(null),
         subscribeFree: jest.fn().mockResolvedValue({id: 1, plan: 'FREE', status: 'ACTIVE'}),
         subscribePaid: jest.fn(),
+        pause: jest.fn().mockResolvedValue({id: 1, plan: 'STARTER', status: 'PAUSED'}),
+        resume: jest.fn().mockResolvedValue({id: 1, plan: 'STARTER', status: 'ACTIVE'}),
         cancel: jest.fn(),
     };
     return {__esModule: true, default: api, subscriptionApi: api};
 });
 
 // 토큰 단순 모킹 — 깊이 있는 색상 객체 의존성 단순화
-jest.mock('../../../src/theme/tokens', () => ({
-    tokens: {
-        colors: {
-            brandPrimary: '#FF6B35',
-            brandPrimaryDark: '#C2410C',
-            brandSecondary: '#222',
-            textPrimary: '#111',
-            textSecondary: '#374151',
-            textTertiary: '#9CA3AF',
-            textInverse: '#fff',
-            success: '#16A34A',
-            successBg: '#DCFCE7',
-            warning: '#CA8A04',
-            warningBg: '#FEF9C3',
-            error: '#DC2626',
-            errorBg: '#FEE2E2',
-            info: '#2563EB',
-            infoBg: '#DBEAFE',
-            background: '#FFF',
-            surface: '#FFF',
-            surfaceMuted: '#F3F4F6',
-            divider: '#E5E7EB',
-            border: '#E5E7EB',
-        },
-        spacing: {xs: 2, sm: 4, md: 8, lg: 12, xl: 16, xxl: 20, xxxl: 24, huge: 40},
-        radius: {md: 6, lg: 10, xl: 14, pill: 999},
-        typography: {
-            sizes: {xs: 11, sm: 13, md: 15, lg: 17, xl: 19, xxl: 22, display: 28},
-            weights: {semibold: '600', bold: '700'},
-        },
-        shadow: {sm: {}, md: {}, lg: {}, brand: {}},
-        gradient: {brand: ['#FF6B35', '#FF8A65']},
-    },
-}));
+// 실제 토큰 사용 — DS named export 전체 제공 (부분 모킹 시 import 크래시)
+jest.mock('../../../src/theme/tokens', () => jest.requireActual('../../../src/theme/tokens'));
 
 import SubscribeScreen from '../../../src/features/subscription/screens/SubscribeScreen';
 import subscriptionApi from '../../../src/features/subscription/services/subscriptionApi';
@@ -110,7 +87,7 @@ describe('SubscribeScreen', () => {
         expect(renderer).toBeTruthy();
     });
 
-    test('4종 플랜 카드 렌더링 (FREE/BUSINESS/PREMIUM/COMMISSION)', async () => {
+    test('4종 플랜 카드 렌더링 (FREE/STARTER/PRO/PREMIUM)', async () => {
         let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
         await act(async () => {
             renderer = ReactTestRenderer.create(<SubscribeScreen />);
@@ -118,7 +95,7 @@ describe('SubscribeScreen', () => {
         });
         const texts = renderer!.root.findAllByType('Text').map(t => t.props.children);
         // displayName 4개 모두 등장해야 함
-        expect(texts).toEqual(expect.arrayContaining(['기본', '비즈니스', '프리미엄', '환급형']));
+        expect(texts).toEqual(expect.arrayContaining(['무료', '스타터', '프로', '프리미엄']));
     });
 
     test('FREE 선택 후 버튼 누르면 subscribeFree() 호출', async () => {
@@ -128,12 +105,14 @@ describe('SubscribeScreen', () => {
             await flush();
         });
 
-        // 플랜 카드 = Pressable, accessibilityLabel/title 로 직접 찾기 어렵다.
-        // Card 의 onPress 는 setSelectedPlan(plan.name) — Pressable 중 FREE 가 첫 번째.
-        const pressables = renderer!.root.findAllByType('Pressable');
-        // 플랜 카드 4개 + 하단 버튼 1개 → 첫 번째 = FREE
+        // DS v2: 헤더 back(Pressable)·하단 AppButton 도 Pressable 이므로 인덱스로 찾으면 안 된다.
+        // 플랜 카드(AppCard)는 accessibilityState.selected 가 정의된 Pressable 이며 플랜 순서대로 렌더.
+        const planCards = renderer!.root
+            .findAllByType('Pressable')
+            .filter(p => p.props.accessibilityState && 'selected' in p.props.accessibilityState);
+        // 0=FREE, 1=STARTER, 2=PRO, 3=PREMIUM
         await act(async () => {
-            pressables[0].props.onPress();
+            planCards[0].props.onPress();
             await flush();
         });
 
@@ -152,17 +131,19 @@ describe('SubscribeScreen', () => {
         expect((subscriptionApi as any).subscribeFree).toHaveBeenCalledTimes(1);
     });
 
-    test('BUSINESS 선택 후 버튼 누르면 TossBillingAuth 로 navigate', async () => {
+    test('STARTER 선택 후 버튼 누르면 TossBillingAuth 로 navigate', async () => {
         let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
         await act(async () => {
             renderer = ReactTestRenderer.create(<SubscribeScreen />);
             await flush();
         });
 
-        const pressables = renderer!.root.findAllByType('Pressable');
-        // 두 번째 = BUSINESS
+        const planCards = renderer!.root
+            .findAllByType('Pressable')
+            .filter(p => p.props.accessibilityState && 'selected' in p.props.accessibilityState);
+        // 1 = STARTER
         await act(async () => {
-            pressables[1].props.onPress();
+            planCards[1].props.onPress();
             await flush();
         });
 
@@ -174,13 +155,14 @@ describe('SubscribeScreen', () => {
             subscribeBtn!.props.onPress();
             await flush();
         });
-        expect(mockNavigate).toHaveBeenCalledWith('TossBillingAuth', {plan: 'BUSINESS'});
+        // 결제(TossBillingAuth) 화면은 PG 연동 승인 후 신설 — 미구현 라우트로 navigate 하지 않고 안내만 (크래시 방지)
+        expect(mockNavigate).not.toHaveBeenCalledWith('TossBillingAuth', {plan: 'STARTER'});
     });
 
-    test('현재 구독 = BUSINESS 일 때 해당 카드에 "이용 중" 배지 노출', async () => {
+    test('현재 구독 = STARTER 일 때 해당 카드에 "이용 중" 배지 노출', async () => {
         (subscriptionApi as any).getMyCurrent.mockResolvedValueOnce({
             id: 1,
-            plan: 'BUSINESS',
+            plan: 'STARTER',
             status: 'ACTIVE',
         });
 
@@ -192,5 +174,76 @@ describe('SubscribeScreen', () => {
 
         const texts = renderer!.root.findAllByType('Text').map(t => t.props.children);
         expect(texts).toContain('이용 중');
+    });
+
+    test('유료 플랜 선택 시 결제 주기 세그먼트(월/반년/연) 노출', async () => {
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<SubscribeScreen />);
+            await flush();
+        });
+
+        const planCards = renderer!.root
+            .findAllByType('Pressable')
+            .filter(p => p.props.accessibilityState && 'selected' in p.props.accessibilityState);
+        // 1 = STARTER (유료)
+        await act(async () => {
+            planCards[1].props.onPress();
+            await flush();
+        });
+
+        const texts = renderer!.root.findAllByType('Text').map(t => t.props.children);
+        expect(texts).toEqual(expect.arrayContaining(['월납', '반년납', '연납']));
+        expect(texts).toContain('반년납 1개월 무료 / 연납 2개월 무료');
+    });
+
+    test('현재 ACTIVE 구독이면 "구독 일시정지" 버튼 → pause() 호출', async () => {
+        (subscriptionApi as any).getMyCurrent.mockResolvedValueOnce({
+            id: 1,
+            plan: 'STARTER',
+            status: 'ACTIVE',
+        });
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<SubscribeScreen />);
+            await flush();
+        });
+
+        const pauseBtn = renderer!.root
+            .findAllByType('Pressable')
+            .find(p => p.props.accessibilityLabel === '구독 일시정지');
+        expect(pauseBtn).toBeTruthy();
+
+        await act(async () => {
+            pauseBtn!.props.onPress();
+            await flush();
+        });
+        expect((subscriptionApi as any).pause).toHaveBeenCalledTimes(1);
+    });
+
+    test('현재 PAUSED 구독이면 "구독 재개하기" 버튼 → resume() 호출', async () => {
+        (subscriptionApi as any).getMyCurrent.mockResolvedValueOnce({
+            id: 1,
+            plan: 'STARTER',
+            status: 'PAUSED',
+        });
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<SubscribeScreen />);
+            await flush();
+        });
+
+        const resumeBtn = renderer!.root
+            .findAllByType('Pressable')
+            .find(p => p.props.accessibilityLabel === '구독 재개하기');
+        expect(resumeBtn).toBeTruthy();
+
+        await act(async () => {
+            resumeBtn!.props.onPress();
+            await flush();
+        });
+        expect((subscriptionApi as any).resume).toHaveBeenCalledTimes(1);
     });
 });

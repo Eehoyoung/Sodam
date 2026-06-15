@@ -1,43 +1,41 @@
-import React, {useEffect, useRef, useState} from 'react';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import {AppToast, ConfirmSheet, AppBadge, AppButton, AppCard, AppHeader, AppText, AmountText, CtaStack, SegmentedControl, ScreenContainer} from '../../../common/components/ds';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {
     ActivityIndicator,
-    Alert,
     FlatList,
     Linking,
     Modal,
     Platform,
     RefreshControl,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import Geolocation from 'react-native-geolocation-service';
 import {PERMISSIONS, request, RESULTS} from 'react-native-permissions';
 import NfcManager from 'react-native-nfc-manager';
-import {Button, Card, MainLayout} from '../../../common/components';
 import attendanceService from '../services/attendanceService';
-import {AttendanceRecord, AttendanceStatus} from '../types';
+import {AttendanceRecord, AttendanceStatus, CheckInRequest, CheckOutRequest} from '../types';
 import {format} from 'date-fns';
 import {ko} from 'date-fns/locale';
-import { COLORS } from '../../../common/components/logo/Colors';
-import LinearGradient from 'react-native-linear-gradient';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useNavigation } from '@react-navigation/native';
+import { useThemeColors, ThemeColors } from '../../../common/hooks/useThemeColors';
 
-// 네비게이션 타입 정의
-type AttendanceStackParamList = {
-    Attendance: undefined;
-    AttendanceDetail: { attendanceId: string };
-    CheckIn: undefined;
-    NFCScan: undefined;
-};
-
-type AttendanceScreenNavigationProp = NativeStackNavigationProp<AttendanceStackParamList, 'Attendance'>;
+type CheckInMethod = 'standard' | 'location' | 'nfc';
+const METHOD_ORDER: CheckInMethod[] = ['standard', 'location', 'nfc'];
+const METHOD_LABELS = ['기본', '위치', 'NFC'];
 
 const AttendanceScreen = () => {
-    const navigation = useNavigation<AttendanceScreenNavigationProp>();
+    const navigation = useNavigation<any>();
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
+    const { user } = useAuth();
+    const employeeIdNum = Number(user?.id);
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -47,8 +45,8 @@ const AttendanceScreen = () => {
     const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
     const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
     const [showNFCReader, setShowNFCReader] = useState(false);
-    const [nfcTagId, setNfcTagId] = useState<string>('');
-    const [checkInMethod, setCheckInMethod] = useState<'standard' | 'location' | 'nfc'>('standard');
+    const [, setNfcTagId] = useState<string>('');
+    const [checkInMethod, setCheckInMethod] = useState<CheckInMethod>('standard');
 
     // Refs to track location services and component mount status for proper cleanup
     const locationWatchId = useRef<number | null>(null);
@@ -59,44 +57,34 @@ const AttendanceScreen = () => {
         try {
             const isSupported = await NfcManager.isSupported();
             if (!isSupported) {
-                Alert.alert(
-                    'NFC 미지원',
-                    '이 기기는 NFC를 지원하지 않습니다. 다른 출퇴근 방법을 이용해주세요.',
-                    [{text: '확인'}]
-                );
+                AppToast.warn('이 기기는 NFC를 지원하지 않아요. 다른 출퇴근 방법을 이용해 주세요.');
                 return false;
             }
 
             const isEnabled = await NfcManager.isEnabled();
             if (!isEnabled) {
-                Alert.alert(
-                    'NFC 비활성화',
-                    'NFC 출퇴근을 위해 NFC를 활성화해주세요.',
-                    [
-                        {text: '취소', style: 'cancel'},
-                        {
-                            text: '설정으로 이동',
-                            onPress: () => {
-                                if (Platform.OS === 'android') {
-                                    Linking.sendIntent('android.settings.NFC_SETTINGS');
-                                } else {
-                                    Linking.openSettings();
-                                }
+                ConfirmSheet.confirm({
+                    title: 'NFC를 켜 주세요',
+                    description: 'NFC 출퇴근을 쓰려면 시스템 설정에서 NFC를 켜야 해요.',
+                    primary: {
+                        label: '설정으로 이동',
+                        onPress: () => {
+                            if (Platform.OS === 'android') {
+                                Linking.sendIntent('android.settings.NFC_SETTINGS');
+                            } else {
+                                Linking.openSettings();
                             }
-                        }
-                    ]
-                );
+                        },
+                    },
+                    secondary: {label: '취소'},
+                });
                 return false;
             }
 
             return true;
         } catch (error) {
             console.error('NFC 지원 확인 실패:', error);
-            Alert.alert(
-                'NFC 오류',
-                'NFC 상태를 확인할 수 없습니다.',
-                [{text: '확인'}]
-            );
+            AppToast.error('NFC 상태를 확인할 수 없어요.');
             return false;
         }
     };
@@ -134,8 +122,8 @@ const AttendanceScreen = () => {
                 setCurrentAttendance(currentData);
             }
         } catch (error) {
-            console.error('출퇴근 기록을 가져오는 중 오류가 발생했습니다:', error);
-            Alert.alert('오류', '출퇴근 기록을 불러오는 데 실패했습니다. 다시 시도해주세요.');
+            console.error('출퇴근 기록을 가져오는 중 오류가 생겼어요:', error);
+            AppToast.error('출퇴근 기록을 불러오는 데 실패했어요. 다시 시도해 주세요.');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -156,7 +144,7 @@ const AttendanceScreen = () => {
                 setSelectedWorkplaceId(data[0].id);
             }
         } catch (error) {
-            console.error('근무지 목록을 가져오는 중 오류가 발생했습니다:', error);
+            console.error('근무지 목록을 가져오는 중 오류가 생겼어요:', error);
         }
     };
 
@@ -174,14 +162,10 @@ const AttendanceScreen = () => {
                 getCurrentLocation();
             } else {
                 setLocationPermissionGranted(false);
-                Alert.alert(
-                    '위치 권한 필요',
-                    '위치 기반 출퇴근을 위해서는 위치 접근 권한이 필요합니다.',
-                    [{text: '확인'}]
-                );
+                AppToast.warn('위치 기반 출퇴근을 쓰려면 위치 권한이 필요해요.');
             }
         } catch (error) {
-            console.error('위치 권한 요청 중 오류가 발생했습니다:', error);
+            console.error('위치 권한 요청 중 오류가 생겼어요:', error);
         }
     };
 
@@ -209,7 +193,7 @@ const AttendanceScreen = () => {
                     }
 
                     console.error('AttendanceScreen: Location error:', error);
-                    Alert.alert('오류', '위치 정보를 가져오는 데 실패했습니다. 다시 시도해주세요.');
+                    AppToast.error('위치 정보를 가져오는 데 실패했어요. 다시 시도해 주세요.');
                 },
                 {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000}
             );
@@ -269,26 +253,45 @@ const AttendanceScreen = () => {
         fetchAttendanceRecords();
     };
 
+    // BE AttendanceRequestDto: employeeId/storeId/latitude/longitude 모두 @NotNull — 기본 출근도 위치 필수
+    const requireAuthAndLocation = (): { ok: false } | { ok: true; loc: { latitude: number; longitude: number } } => {
+        if (!Number.isFinite(employeeIdNum)) {
+            AppToast.show('로그인이 필요합니다.');
+            return { ok: false };
+        }
+        if (!currentLocation) {
+            AppToast.show('위치 정보를 가져오는 중입니다. 잠시 후 다시 시도해 주세요.');
+            getCurrentLocation();
+            return { ok: false };
+        }
+        return { ok: true, loc: currentLocation };
+    };
+
     // 기본 출근 처리
     const handleCheckIn = async () => {
         if (!selectedWorkplaceId) {
-            Alert.alert('알림', '근무지를 선택해주세요.');
+            AppToast.show('근무지를 선택해주세요.');
             return;
         }
 
+        const gate = requireAuthAndLocation();
+        if (!gate.ok) {return;}
+
         try {
-            const checkInData = {
-                workplaceId: selectedWorkplaceId
+            const checkInData: CheckInRequest = {
+                employeeId: employeeIdNum,
+                workplaceId: selectedWorkplaceId,
+                latitude: gate.loc.latitude,
+                longitude: gate.loc.longitude,
             };
 
-            // TODO(API): 출근 처리(checkIn) 엔드포인트 연동
             const response = await attendanceService.checkIn(checkInData);
-            Alert.alert('성공', '출근 처리되었습니다.');
+            AppToast.success('출근 처리됐어요.');
             setCurrentAttendance(response);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('출근 처리 중 오류가 발생했습니다:', error);
-            Alert.alert('오류', '출근 처리에 실패했습니다. 다시 시도해주세요.');
+            console.error('출근 처리 중 오류가 생겼어요:', error);
+            AppToast.error('출근 처리에 실패했어요. 다시 시도해 주세요.');
         }
     };
 
@@ -297,7 +300,7 @@ const AttendanceScreen = () => {
         // TODO(API): 위치 인증/출근 처리 API 연동
         // TODO(AUTH): 'employeeId' 임시값을 로그인 사용자 ID로 대체
         if (!selectedWorkplaceId) {
-            Alert.alert('알림', '근무지를 선택해주세요.');
+            AppToast.show('근무지를 선택해주세요.');
             return;
         }
 
@@ -307,40 +310,45 @@ const AttendanceScreen = () => {
         }
 
         if (!currentLocation) {
-            Alert.alert('알림', '위치 정보를 가져오는 중입니다. 잠시 후 다시 시도해주세요.');
+            AppToast.show('위치 정보를 가져오는 중입니다. 잠시 후 다시 시도해 주세요.');
             getCurrentLocation();
+            return;
+        }
+
+        if (!Number.isFinite(employeeIdNum)) {
+            AppToast.show('로그인이 필요합니다.');
             return;
         }
 
         try {
             // 위치 기반 인증 먼저 수행
             const verifyResult = await attendanceService.verifyLocationAttendance(
-                '1', // 임시 employeeId (실제 구현에서는 로그인한 사용자 ID 사용)
+                String(employeeIdNum),
                 selectedWorkplaceId,
                 currentLocation.latitude,
                 currentLocation.longitude
             );
 
             if (!verifyResult.success) {
-                Alert.alert('알림', verifyResult.message ?? '위치 인증에 실패했습니다. 매장 반경 내에서 다시 시도해주세요.');
+                AppToast.warn(verifyResult.message ?? '위치 인증에 실패했어요. 매장 반경 내에서 다시 시도해 주세요.');
                 return;
             }
 
             // 인증 성공 시 출근 처리
-            const checkInData = {
+            const checkInData: CheckInRequest = {
+                employeeId: employeeIdNum,
                 workplaceId: selectedWorkplaceId,
                 latitude: currentLocation.latitude,
-                longitude: currentLocation.longitude
+                longitude: currentLocation.longitude,
             };
 
-            // TODO(API): 출근 처리(checkIn) 엔드포인트 연동
             const response = await attendanceService.checkIn(checkInData);
-            Alert.alert('성공', '위치 기반 출근 처리되었습니다.');
+            AppToast.success('위치 기반 출근 처리됐어요.');
             setCurrentAttendance(response);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('위치 기반 출근 처리 중 오류가 발생했습니다:', error);
-            Alert.alert('오류', '위치 기반 출근 처리에 실패했습니다. 다시 시도해주세요.');
+            console.error('위치 기반 출근 처리 중 오류가 생겼어요:', error);
+            AppToast.error('위치 기반 출근 처리에 실패했어요. 다시 시도해 주세요.');
         }
     };
 
@@ -349,59 +357,69 @@ const AttendanceScreen = () => {
         // TODO(API): NFC 태그 인증/출근 처리 API 연동
         // TODO(NFC): 실제 태그값 파싱/검증 로직 연동
         if (!selectedWorkplaceId) {
-            Alert.alert('알림', '근무지를 선택해주세요.');
+            AppToast.show('근무지를 선택해주세요.');
             return;
         }
+
+        const gate = requireAuthAndLocation();
+        if (!gate.ok) {return;}
 
         try {
             // NFC 태그 기반 인증 먼저 수행
             const verifyResult = await attendanceService.verifyNfcTagAttendance(
-                '1', // 임시 employeeId (실제 구현에서는 로그인한 사용자 ID 사용)
+                String(employeeIdNum),
                 selectedWorkplaceId,
                 scannedNFCTag
             );
 
             if (!verifyResult.success) {
-                Alert.alert('알림', verifyResult.message ?? 'NFC 태그 인증에 실패했습니다. 다시 시도해주세요.');
+                AppToast.warn(verifyResult.message ?? 'NFC 태그 인증에 실패했어요. 다시 시도해 주세요.');
                 return;
             }
 
-            // 인증 성공 시 출근 처리
-            const checkInData = {
-                workplaceId: selectedWorkplaceId
+            // 인증 성공 시 출근 처리 — NFC 모드도 BE 는 lat/lng 필수
+            const checkInData: CheckInRequest = {
+                employeeId: employeeIdNum,
+                workplaceId: selectedWorkplaceId,
+                latitude: gate.loc.latitude,
+                longitude: gate.loc.longitude,
             };
 
-            // TODO(API): 출근 처리(checkIn) 엔드포인트 연동
             const response = await attendanceService.checkIn(checkInData);
-            Alert.alert('성공', 'NFC 태그 기반 출근 처리되었습니다.');
+            AppToast.success('NFC 태그 기반 출근 처리됐어요.');
             setCurrentAttendance(response);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('NFC 태그 기반 출근 처리 중 오류가 발생했습니다:', error);
-            Alert.alert('오류', 'NFC 태그 기반 출근 처리에 실패했습니다. 다시 시도해주세요.');
+            console.error('NFC 태그 기반 출근 처리 중 오류가 생겼어요:', error);
+            AppToast.error('NFC 태그 기반 출근 처리에 실패했어요. 다시 시도해 주세요.');
         }
     };
 
     // 기본 퇴근 처리
     const handleCheckOut = async () => {
         if (!currentAttendance) {
-            Alert.alert('알림', '현재 출근 상태가 아닙니다.');
+            AppToast.show('현재 출근 상태가 아닙니다.');
             return;
         }
 
+        const gate = requireAuthAndLocation();
+        if (!gate.ok) {return;}
+
         try {
-            const checkOutData = {
-                workplaceId: selectedWorkplaceId
+            const checkOutData: CheckOutRequest = {
+                employeeId: employeeIdNum,
+                workplaceId: selectedWorkplaceId,
+                latitude: gate.loc.latitude,
+                longitude: gate.loc.longitude,
             };
 
-            // TODO(API): 퇴근 처리(checkOut) 엔드포인트 연동
             await attendanceService.checkOut(currentAttendance.id, checkOutData);
-            Alert.alert('성공', '퇴근 처리되었습니다.');
+            AppToast.success('퇴근 처리됐어요.');
             setCurrentAttendance(null);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('퇴근 처리 중 오류가 발생했습니다:', error);
-            Alert.alert('오류', '퇴근 처리에 실패했습니다. 다시 시도해주세요.');
+            console.error('퇴근 처리 중 오류가 생겼어요:', error);
+            AppToast.error('퇴근 처리에 실패했어요. 다시 시도해 주세요.');
         }
     };
 
@@ -410,7 +428,7 @@ const AttendanceScreen = () => {
         // TODO(API): 위치 인증/퇴근 처리 API 연동
         // TODO(AUTH): 'employeeId' 임시값을 로그인 사용자 ID로 대체
         if (!currentAttendance) {
-            Alert.alert('알림', '현재 출근 상태가 아닙니다.');
+            AppToast.show('현재 출근 상태가 아닙니다.');
             return;
         }
 
@@ -420,40 +438,45 @@ const AttendanceScreen = () => {
         }
 
         if (!currentLocation) {
-            Alert.alert('알림', '위치 정보를 가져오는 중입니다. 잠시 후 다시 시도해주세요.');
+            AppToast.show('위치 정보를 가져오는 중입니다. 잠시 후 다시 시도해 주세요.');
             getCurrentLocation();
+            return;
+        }
+
+        if (!Number.isFinite(employeeIdNum)) {
+            AppToast.show('로그인이 필요합니다.');
             return;
         }
 
         try {
             // 위치 기반 인증 먼저 수행
             const verifyResult = await attendanceService.verifyLocationAttendance(
-                '1', // 임시 employeeId (실제 구현에서는 로그인한 사용자 ID 사용)
+                String(employeeIdNum),
                 selectedWorkplaceId,
                 currentLocation.latitude,
                 currentLocation.longitude
             );
 
             if (!verifyResult.success) {
-                Alert.alert('알림', verifyResult.message ?? '위치 인증에 실패했습니다. 매장 반경 내에서 다시 시도해주세요.');
+                AppToast.warn(verifyResult.message ?? '위치 인증에 실패했어요. 매장 반경 내에서 다시 시도해 주세요.');
                 return;
             }
 
             // 인증 성공 시 퇴근 처리
-            const checkOutData = {
+            const checkOutData: CheckOutRequest = {
+                employeeId: employeeIdNum,
                 workplaceId: selectedWorkplaceId,
                 latitude: currentLocation.latitude,
-                longitude: currentLocation.longitude
+                longitude: currentLocation.longitude,
             };
 
-            // TODO(API): 퇴근 처리(checkOut) 엔드포인트 연동
             await attendanceService.checkOut(currentAttendance.id, checkOutData);
-            Alert.alert('성공', '위치 기반 퇴근 처리되었습니다.');
+            AppToast.success('위치 기반 퇴근 처리됐어요.');
             setCurrentAttendance(null);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('위치 기반 퇴근 처리 중 오류가 발생했습니다:', error);
-            Alert.alert('오류', '위치 기반 퇴근 처리에 실패했습니다. 다시 시도해주세요.');
+            console.error('위치 기반 퇴근 처리 중 오류가 생겼어요:', error);
+            AppToast.error('위치 기반 퇴근 처리에 실패했어요. 다시 시도해 주세요.');
         }
     };
 
@@ -462,56 +485,60 @@ const AttendanceScreen = () => {
         // TODO(API): NFC 태그 인증/퇴근 처리 API 연동
         // TODO(NFC): 실제 태그값 파싱/검증 로직 연동
         if (!currentAttendance) {
-            Alert.alert('알림', '현재 출근 상태가 아닙니다.');
+            AppToast.show('현재 출근 상태가 아닙니다.');
             return;
         }
+
+        const gate = requireAuthAndLocation();
+        if (!gate.ok) {return;}
 
         try {
             // NFC 태그 기반 인증 먼저 수행
             const verifyResult = await attendanceService.verifyNfcTagAttendance(
-                '1', // 임시 employeeId (실제 구현에서는 로그인한 사용자 ID 사용)
+                String(employeeIdNum),
                 selectedWorkplaceId,
                 scannedNFCTag
             );
 
             if (!verifyResult.success) {
-                Alert.alert('알림', verifyResult.message ?? 'NFC 태그 인증에 실패했습니다. 다시 시도해주세요.');
+                AppToast.warn(verifyResult.message ?? 'NFC 태그 인증에 실패했어요. 다시 시도해 주세요.');
                 return;
             }
 
-            // 인증 성공 시 퇴근 처리
-            const checkOutData = {
-                workplaceId: selectedWorkplaceId
+            // 인증 성공 시 퇴근 처리 — NFC 모드도 BE 는 lat/lng 필수
+            const checkOutData: CheckOutRequest = {
+                employeeId: employeeIdNum,
+                workplaceId: selectedWorkplaceId,
+                latitude: gate.loc.latitude,
+                longitude: gate.loc.longitude,
             };
 
-            // TODO(API): 퇴근 처리(checkOut) 엔드포인트 연동
             await attendanceService.checkOut(currentAttendance.id, checkOutData);
-            Alert.alert('성공', 'NFC 태그 기반 퇴근 처리되었습니다.');
+            AppToast.success('NFC 태그 기반 퇴근 처리됐어요.');
             setCurrentAttendance(null);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('NFC 태그 기반 퇴근 처리 중 오류가 발생했습니다:', error);
-            Alert.alert('오류', 'NFC 태그 기반 퇴근 처리에 실패했습니다. 다시 시도해주세요.');
+            console.error('NFC 태그 기반 퇴근 처리 중 오류가 생겼어요:', error);
+            AppToast.error('NFC 태그 기반 퇴근 처리에 실패했어요. 다시 시도해 주세요.');
         }
     };
 
-    // 출퇴근 상태에 따른 색상 반환
-    const getStatusColor = (status: AttendanceStatus) => {
+    // 출퇴근 상태에 따른 배지 톤 반환 (색 단독 의미전달 금지 — 라벨과 함께)
+    const getStatusTone = (status: AttendanceStatus): 'success' | 'info' | 'warning' | 'error' | 'neutral' => {
         switch (status) {
             case AttendanceStatus.CHECKED_IN:
-                return COLORS.SUCCESS; // 출근
+                return 'success';
             case AttendanceStatus.CHECKED_OUT:
-                return COLORS.SODAM_BLUE; // 퇴근
+                return 'info';
             case AttendanceStatus.LATE:
-                return COLORS.WARNING; // 지각
-            case AttendanceStatus.ABSENT:
-                return COLORS.ERROR; // 결근
             case AttendanceStatus.EARLY_LEAVE:
-                return COLORS.SODAM_ORANGE; // 조퇴
+                return 'warning';
+            case AttendanceStatus.ABSENT:
+                return 'error';
             case AttendanceStatus.ON_LEAVE:
-                return COLORS.INFO; // 휴가/정보
+                return 'info';
             default:
-                return COLORS.GRAY_500; // 기본
+                return 'neutral';
         }
     };
 
@@ -537,53 +564,76 @@ const AttendanceScreen = () => {
         }
     };
 
+    // 현재 근무 시간(시:분) 계산 — WORKING 상태 보조 표기
+    const elapsedLabel = (): string => {
+        if (!currentAttendance) {
+            return '';
+        }
+        const ms = new Date().getTime() - new Date(currentAttendance.checkInTime).getTime();
+        const h = Math.floor(ms / (1000 * 60 * 60));
+        const m = Math.floor(ms / (1000 * 60)) % 60;
+        return `${h}시간 ${m}분`;
+    };
+
+    // 선택된 방식에 따른 출근 핸들러
+    const onCheckInPress = () => {
+        if (checkInMethod === 'standard') {handleCheckIn();}
+        else if (checkInMethod === 'location') {handleCheckInWithLocation();}
+        else {openNFCReader();}
+    };
+    // 선택된 방식에 따른 퇴근 핸들러
+    const onCheckOutPress = () => {
+        if (checkInMethod === 'standard') {handleCheckOut();}
+        else if (checkInMethod === 'location') {handleCheckOutWithLocation();}
+        else {openNFCReader();}
+    };
+
+    const isWorking = !!currentAttendance;
+    const ctaLabel = isWorking
+        ? checkInMethod === 'location' ? '위치 기반 퇴근하기' : checkInMethod === 'nfc' ? 'NFC 태그로 퇴근하기' : '퇴근하기'
+        : checkInMethod === 'location' ? '위치 기반 출근하기' : checkInMethod === 'nfc' ? 'NFC 태그로 출근하기' : '출근하기';
+
     // 출퇴근 기록 항목 렌더링
     const renderAttendanceItem = ({item}: { item: AttendanceRecord }) => {
-        const date = format(new Date(item.date), 'yyyy년 MM월 dd일 (EEE)', {locale: ko});
+        const date = format(new Date(item.date), 'M월 d일 (EEE)', {locale: ko});
         const checkInTime = item.checkInTime ? format(new Date(item.checkInTime), 'HH:mm') : '-';
         const checkOutTime = item.checkOutTime ? format(new Date(item.checkOutTime), 'HH:mm') : '-';
         const workHours = item.workHours ? `${item.workHours}시간` : '-';
 
         return (
             <TouchableOpacity
-                onPress={() => navigation.navigate('AttendanceDetail', {attendanceId: item.id})}
+                // 일자별 상세는 근무 캘린더에서 확인
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate('AttendanceCalendar')}
             >
-                <Card style={styles.attendanceCard}>
+                <AppCard variant="plain" style={styles.attendanceCard}>
                     <View style={styles.attendanceHeader}>
                         <Text style={styles.attendanceDate}>{date}</Text>
-                        <View style={[styles.statusBadge, {backgroundColor: getStatusColor(item.status)}]}>
-                            <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
+                        <AppBadge label={getStatusText(item.status)} tone={getStatusTone(item.status)} />
+                    </View>
+
+                    <View style={styles.timeContainer}>
+                        <View style={styles.timeItem}>
+                            <Text style={styles.timeLabel}>출근</Text>
+                            <Text style={styles.timeValue}>{checkInTime}</Text>
+                        </View>
+                        <View style={styles.timeSeparator}/>
+                        <View style={styles.timeItem}>
+                            <Text style={styles.timeLabel}>퇴근</Text>
+                            <Text style={styles.timeValue}>{checkOutTime}</Text>
+                        </View>
+                        <View style={styles.timeSeparator}/>
+                        <View style={styles.timeItem}>
+                            <Text style={styles.timeLabel}>근무시간</Text>
+                            <Text style={styles.timeValue}>{workHours}</Text>
                         </View>
                     </View>
 
-                    <View style={styles.attendanceDetails}>
-                        <View style={styles.timeContainer}>
-                            <View style={styles.timeItem}>
-                                <Text style={styles.timeLabel}>출근</Text>
-                                <Text style={styles.timeValue}>{checkInTime}</Text>
-                            </View>
-
-                            <View style={styles.timeSeparator}/>
-
-                            <View style={styles.timeItem}>
-                                <Text style={styles.timeLabel}>퇴근</Text>
-                                <Text style={styles.timeValue}>{checkOutTime}</Text>
-                            </View>
-
-                            <View style={styles.timeSeparator}/>
-
-                            <View style={styles.timeItem}>
-                                <Text style={styles.timeLabel}>근무시간</Text>
-                                <Text style={styles.timeValue}>{workHours}</Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.workplaceContainer}>
-                            <Icon name="business" size={14} color={COLORS.GRAY_500}/>
-                            <Text style={styles.workplaceName}>{item.workplaceName}</Text>
-                        </View>
+                    <View style={styles.workplaceContainer}>
+                        <Ionicons name="business-outline" size={14} color={c.textTertiary}/>
+                        <Text numberOfLines={1} style={styles.workplaceName}>{item.workplaceName}</Text>
                     </View>
-                </Card>
+                </AppCard>
             </TouchableOpacity>
         );
     };
@@ -591,9 +641,9 @@ const AttendanceScreen = () => {
     // 빈 목록 표시
     const renderEmptyList = () => (
         <View style={styles.emptyContainer}>
-            <Icon name="event-busy" size={64} color={COLORS.GRAY_300}/>
-            <Text style={styles.emptyText}>출퇴근 기록이 없습니다.</Text>
-            <Text style={styles.emptySubText}>출근 버튼을 눌러 근무를 시작해보세요.</Text>
+            <Ionicons name="calendar-outline" size={56} color={c.textTertiary}/>
+            <Text style={styles.emptyText}>출퇴근 기록이 없어요.</Text>
+            <Text style={styles.emptySubText}>출근 버튼을 눌러 근무를 시작해 보세요.</Text>
         </View>
     );
 
@@ -610,14 +660,14 @@ const AttendanceScreen = () => {
                         onPress={() => setShowNFCReader(false)}
                         style={styles.closeButton}
                     >
-                        <Icon name="close" size={24} color="#fff"/>
+                        <Ionicons name="close" size={24} color={c.textInverse}/>
                     </TouchableOpacity>
                     <Text style={styles.nfcTitle}>NFC 태그 읽기</Text>
                 </View>
 
                 <View style={styles.nfcReaderContainer}>
                     <View style={styles.nfcIconContainer}>
-                        <Icon name="nfc" size={80} color={COLORS.SUCCESS}/>
+                        <Ionicons name="wifi" size={72} color={c.success}/>
                     </View>
 
                     <Text style={styles.nfcInstructions}>
@@ -629,409 +679,203 @@ const AttendanceScreen = () => {
                     </Text>
 
                     <View style={styles.nfcStatusContainer}>
-                        <ActivityIndicator size="large" color={COLORS.SUCCESS}/>
+                        <ActivityIndicator size="large" color={c.success}/>
                         <Text style={styles.nfcStatusText}>NFC 태그를 기다리는 중...</Text>
                     </View>
                 </View>
 
                 <View style={styles.nfcFooter}>
-                    <TouchableOpacity
-                        style={styles.cancelButton}
-                        onPress={() => setShowNFCReader(false)}
-                    >
-                        <Text style={styles.cancelButtonText}>취소</Text>
-                    </TouchableOpacity>
+                    <AppButton label="취소" variant="destructive" onPress={() => setShowNFCReader(false)} />
                 </View>
             </View>
         </Modal>
     );
 
     return (
-        <MainLayout>
-            <View style={styles.container}>
-                {renderNFCReader()}
-                <LinearGradient
-                    colors={[...COLORS.GRADIENT_PRIMARY]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.headerGradient}
-                >
-                    <Text style={styles.headerTitle}>출퇴근 관리</Text>
-                </LinearGradient>
-
-                <View style={styles.workplaceSelector}>
-                    {workplaces.map(workplace => (
-                        <TouchableOpacity
-                            key={workplace.id}
-                            style={[
-                                styles.workplaceOption,
-                                selectedWorkplaceId === workplace.id && styles.selectedWorkplace
-                            ]}
-                            onPress={() => setSelectedWorkplaceId(workplace.id)}
+        <ScreenContainer
+            padded={false}
+            header={<AppHeader title="출퇴근" />}
+            footer={
+                <CtaStack bordered>
+                    <AppButton
+                        label={ctaLabel}
+                        variant={isWorking ? 'secondary' : 'primary'}
+                        onPress={isWorking ? onCheckOutPress : onCheckInPress}
+                    />
+                </CtaStack>
+            }>
+            {renderNFCReader()}
+            <FlatList
+                data={loading ? [] : attendanceRecords}
+                renderItem={renderAttendanceItem}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.listContainer}
+                showsVerticalScrollIndicator={false}
+                ListHeaderComponent={
+                    <View>
+                        {/* 매장 칩 — 가로 스크롤 */}
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.chipRow}
                         >
-                            <Text
-                                style={[
-                                    styles.workplaceOptionText,
-                                    selectedWorkplaceId === workplace.id && styles.selectedWorkplaceText
-                                ]}
-                            >
-                                {workplace.name}
+                            {workplaces.map(workplace => {
+                                const on = selectedWorkplaceId === workplace.id;
+                                return (
+                                    <TouchableOpacity
+                                        key={workplace.id}
+                                        activeOpacity={0.85}
+                                        style={[styles.chip, on && styles.chipOn]}
+                                        onPress={() => setSelectedWorkplaceId(workplace.id)}
+                                    >
+                                        <Text numberOfLines={1} style={[styles.chipText, on && styles.chipTextOn]}>
+                                            {workplace.name}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+
+                        {/* 현재 상태 히어로 */}
+                        <View style={styles.hero}>
+                            <Text style={styles.heroLabel}>
+                                {isWorking ? '근무 중이에요' : '아직 출근 전이에요'}
                             </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-
-                <View style={styles.currentStatusContainer}>
-                    <Card style={styles.currentStatusCard}>
-                        <Text style={styles.currentStatusTitle}>현재 근무 상태</Text>
-
-                        <View style={styles.statusInfo}>
-                            {currentAttendance ? (
+                            {isWorking && currentAttendance ? (
                                 <>
-                                    <View style={styles.statusDetail}>
-                                        <Text style={styles.statusLabel}>출근 시간:</Text>
-                                        <Text style={styles.statusValue}>
-                                            {format(new Date(currentAttendance.checkInTime), 'HH:mm')}
-                                        </Text>
-                                    </View>
-
-                                    <View style={styles.statusDetail}>
-                                        <Text style={styles.statusLabel}>근무 시간:</Text>
-                                        <Text style={styles.statusValue}>
-                                            {Math.floor((new Date().getTime() - new Date(currentAttendance.checkInTime).getTime()) / (1000 * 60 * 60))}시간
-                                            {Math.floor((new Date().getTime() - new Date(currentAttendance.checkInTime).getTime()) / (1000 * 60)) % 60}분
-                                        </Text>
-                                    </View>
+                                    <AmountText size={44} tone="primary">{elapsedLabel()}</AmountText>
+                                    <Text style={styles.heroSub}>
+                                        {format(new Date(currentAttendance.checkInTime), 'HH:mm')} 출근 · 퇴근하려면 아래 버튼을 눌러주세요
+                                    </Text>
                                 </>
                             ) : (
-                                <Text style={styles.notWorkingText}>현재 근무 중이 아닙니다</Text>
+                                <>
+                                    <AmountText size={40} tone="brand">출근하기</AmountText>
+                                    <Text style={styles.heroSub}>방식을 고르고 아래 버튼으로 출근을 등록하세요</Text>
+                                </>
                             )}
                         </View>
 
-                        <View style={styles.checkInMethodSelector}>
-                            <TouchableOpacity
-                                style={[
-                                    styles.methodOption,
-                                    checkInMethod === 'standard' && styles.selectedMethod
-                                ]}
-                                onPress={() => setCheckInMethod('standard')}
-                            >
-                                <Icon name="login" size={16} color={checkInMethod === 'standard' ? '#fff' : '#555'}/>
-                                <Text
-                                    style={[
-                                        styles.methodOptionText,
-                                        checkInMethod === 'standard' && styles.selectedMethodText
-                                    ]}
-                                >
-                                    기본
-                                </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[
-                                    styles.methodOption,
-                                    checkInMethod === 'location' && styles.selectedMethod
-                                ]}
-                                onPress={() => {
-                                    setCheckInMethod('location');
-                                    if (!locationPermissionGranted) {
-                                        requestLocationPermission();
-                                    } else {
-                                        getCurrentLocation();
+                        {/* 출퇴근 방식 세그먼트 */}
+                        <View style={styles.methodSection}>
+                            <Text style={styles.methodLabel}>인증 방식</Text>
+                            <SegmentedControl
+                                options={METHOD_LABELS}
+                                value={METHOD_ORDER.indexOf(checkInMethod)}
+                                onChange={(i) => {
+                                    const next = METHOD_ORDER[i];
+                                    setCheckInMethod(next);
+                                    if (next === 'location') {
+                                        if (!locationPermissionGranted) {
+                                            requestLocationPermission();
+                                        } else {
+                                            getCurrentLocation();
+                                        }
                                     }
                                 }}
-                            >
-                                <Icon name="location-on" size={16}
-                                      color={checkInMethod === 'location' ? '#fff' : '#555'}/>
-                                <Text
-                                    style={[
-                                        styles.methodOptionText,
-                                        checkInMethod === 'location' && styles.selectedMethodText
-                                    ]}
-                                >
-                                    위치
-                                </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[
-                                    styles.methodOption,
-                                    checkInMethod === 'nfc' && styles.selectedMethod
-                                ]}
-                                onPress={() => setCheckInMethod('nfc')}
-                            >
-                                <Icon name="nfc" size={16}
-                                      color={checkInMethod === 'nfc' ? '#fff' : '#555'}/>
-                                <Text
-                                    style={[
-                                        styles.methodOptionText,
-                                        checkInMethod === 'nfc' && styles.selectedMethodText
-                                    ]}
-                                >
-                                    NFC
-                                </Text>
-                            </TouchableOpacity>
+                            />
                         </View>
 
-                        <View style={styles.actionButtons}>
-                            {!currentAttendance ? (
-                                <>
-                                    {checkInMethod === 'standard' && (
-                                        <Button
-                                            title="출근하기"
-                                            onPress={handleCheckIn}
-                                            type="primary"
-                                            icon="login"
-                                            fullWidth
-                                        />
-                                    )}
-                                    {checkInMethod === 'location' && (
-                                        <Button
-                                            title="위치 기반 출근하기"
-                                            onPress={handleCheckInWithLocation}
-                                            type="primary"
-                                            icon="location-on"
-                                            fullWidth
-                                        />
-                                    )}
-                                    {checkInMethod === 'nfc' && (
-                                        <Button
-                                            title="NFC 태그로 출근하기"
-                                            onPress={openNFCReader}
-                                            type="primary"
-                                            icon="nfc"
-                                            fullWidth
-                                        />
-                                    )}
-                                </>
-                            ) : (
-                                <>
-                                    {checkInMethod === 'standard' && (
-                                        <Button
-                                            title="퇴근하기"
-                                            onPress={handleCheckOut}
-                                            type="secondary"
-                                            icon="logout"
-                                            fullWidth
-                                        />
-                                    )}
-                                    {checkInMethod === 'location' && (
-                                        <Button
-                                            title="위치 기반 퇴근하기"
-                                            onPress={handleCheckOutWithLocation}
-                                            type="secondary"
-                                            icon="location-on"
-                                            fullWidth
-                                        />
-                                    )}
-                                    {checkInMethod === 'nfc' && (
-                                        <Button
-                                            title="NFC 태그로 퇴근하기"
-                                            onPress={openNFCReader}
-                                            type="secondary"
-                                            icon="nfc"
-                                            fullWidth
-                                        />
-                                    )}
-                                </>
-                            )}
-                        </View>
-                    </Card>
-                </View>
+                        {/* 최근 기록 섹션 타이틀 */}
+                        <AppText variant="headingSm" style={styles.recordsTitle}>최근 출퇴근 기록</AppText>
 
-                <View style={styles.recordsContainer}>
-                    <View style={styles.recordsHeader}>
-                        <Text style={styles.recordsTitle}>최근 출퇴근 기록</Text>
+                        {loading ? (
+                            <View style={styles.loadingContainer}>
+                                <ActivityIndicator size="large" color={c.brandPrimary}/>
+                                <Text style={styles.loadingText}>출퇴근 기록을 불러오는 중...</Text>
+                            </View>
+                        ) : null}
                     </View>
-
-                    {loading ? (
-                        <View style={styles.loadingContainer}>
-                            <ActivityIndicator size="large" color={COLORS.SODAM_BLUE}/>
-                            <Text style={styles.loadingText}>출퇴근 기록을 불러오는 중...</Text>
-                        </View>
-                    ) : (
-                        <FlatList
-                            data={attendanceRecords}
-                            renderItem={renderAttendanceItem}
-                            keyExtractor={(item) => item.id}
-                            contentContainerStyle={styles.listContainer}
-                            ListEmptyComponent={renderEmptyList}
-                            refreshControl={
-                                <RefreshControl
-                                    refreshing={refreshing}
-                                    onRefresh={handleRefresh}
-                                    colors={[COLORS.SODAM_BLUE]}
-                                />
-                            }
-                        />
-                    )}
-                </View>
-            </View>
-        </MainLayout>
+                }
+                ListEmptyComponent={loading ? null : renderEmptyList}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={handleRefresh}
+                        colors={[c.brandPrimary]}
+                    />
+                }
+            />
+        </ScreenContainer>
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: COLORS.GRAY_50,
-    },
-    headerGradient: {
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
+    listContainer: {
+        paddingHorizontal: 24,
         paddingTop: 20,
-        paddingBottom: 16,
-        paddingHorizontal: 16,
-        borderBottomLeftRadius: 0,
-        borderBottomRightRadius: 0,
+        paddingBottom: 24,
+        gap: 12,
     },
-    headerTitle: {
-        padding: 16,
-        backgroundColor: COLORS.WHITE,
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.GRAY_200,
-    },
-    header: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: COLORS.WHITE,
-    },
-    workplaceSelector: {
+    chipRow: {
         flexDirection: 'row',
-        backgroundColor: COLORS.WHITE,
-        padding: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.GRAY_200,
+        gap: 8,
+        paddingBottom: 4,
     },
-    workplaceOption: {
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 20,
-        marginRight: 8,
-        backgroundColor: COLORS.GRAY_100,
+    chip: {
+        paddingVertical: 10,
+        paddingHorizontal: 18,
+        borderRadius: 999,
+        backgroundColor: c.surfaceMuted,
+        maxWidth: 200,
     },
-    selectedWorkplace: {
-        backgroundColor: COLORS.SODAM_ORANGE,
+    chipOn: {
+        backgroundColor: c.brandPrimary,
     },
-    workplaceOptionText: {
-        color: COLORS.GRAY_600,
-        fontWeight: '500',
-    },
-    selectedWorkplaceText: {
-        color: COLORS.WHITE,
-    },
-    currentStatusContainer: {
-        padding: 16,
-    },
-    currentStatusCard: {
-        padding: 16,
-    },
-    currentStatusTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: COLORS.GRAY_800,
-        marginBottom: 12,
-    },
-    statusInfo: {
-        marginBottom: 16,
-    },
-    statusDetail: {
-        flexDirection: 'row',
-        marginBottom: 8,
-    },
-    statusLabel: {
-        width: 80,
+    chipText: {
+        color: c.textSecondary,
+        fontWeight: '700',
         fontSize: 14,
-        color: COLORS.GRAY_600,
     },
-    statusValue: {
+    chipTextOn: {
+        color: c.textInverse,
+    },
+    hero: {
+        marginTop: 28,
+        marginBottom: 4,
+    },
+    heroLabel: {
         fontSize: 14,
-        fontWeight: '500',
-        color: COLORS.GRAY_800,
+        fontWeight: '700',
+        color: c.textSecondary,
+        marginBottom: 6,
     },
-    notWorkingText: {
-        fontSize: 14,
-        color: COLORS.GRAY_600,
-        fontStyle: 'italic',
-        textAlign: 'center',
-        marginVertical: 8,
-    },
-    checkInMethodSelector: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 16,
-    },
-    methodOption: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 20,
-        marginHorizontal: 4,
-        backgroundColor: COLORS.GRAY_100,
-    },
-    selectedMethod: {
-        backgroundColor: COLORS.SODAM_ORANGE,
-    },
-    methodOptionText: {
-        color: COLORS.GRAY_600,
-        fontWeight: '500',
-        marginLeft: 4,
-    },
-    selectedMethodText: {
-        color: COLORS.WHITE,
-    },
-    actionButtons: {
+    heroSub: {
         marginTop: 8,
+        fontSize: 14,
+        color: c.textTertiary,
+        lineHeight: 20,
     },
-    recordsContainer: {
-        flex: 1,
+    methodSection: {
+        marginTop: 28,
     },
-    recordsHeader: {
-        padding: 16,
-        paddingBottom: 8,
+    methodLabel: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: c.textSecondary,
+        marginBottom: 10,
     },
     recordsTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: COLORS.GRAY_800,
-    },
-    listContainer: {
-        padding: 16,
-        paddingTop: 0,
+        marginTop: 32,
+        marginBottom: 12,
     },
     attendanceCard: {
-        marginBottom: 12,
-        padding: 16,
+        gap: 14,
     },
     attendanceHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 12,
     },
     attendanceDate: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: COLORS.GRAY_800,
-    },
-    statusBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    statusText: {
-        fontSize: 12,
-        color: '#fff',
-        fontWeight: '500',
-    },
-    attendanceDetails: {
-        marginTop: 4,
+        fontSize: 15,
+        fontWeight: '700',
+        color: c.textPrimary,
     },
     timeContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 12,
+        alignItems: 'center',
     },
     timeItem: {
         alignItems: 'center',
@@ -1039,60 +883,61 @@ const styles = StyleSheet.create({
     },
     timeLabel: {
         fontSize: 12,
-        color: COLORS.GRAY_600,
+        color: c.textTertiary,
         marginBottom: 4,
     },
     timeValue: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: COLORS.GRAY_800,
+        fontSize: 16,
+        fontWeight: '700',
+        color: c.textPrimary,
     },
     timeSeparator: {
         width: 1,
-        backgroundColor: COLORS.GRAY_200,
+        height: 28,
+        backgroundColor: c.divider,
         marginHorizontal: 8,
     },
     workplaceContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: 6,
     },
     workplaceName: {
+        flexShrink: 1,
         fontSize: 12,
-        color: COLORS.GRAY_600,
-        marginLeft: 4,
+        color: c.textSecondary,
     },
     loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
+        justifyContent: 'center',
+        paddingVertical: 40,
     },
     loadingText: {
         marginTop: 12,
         fontSize: 14,
-        color: COLORS.GRAY_600,
+        color: c.textSecondary,
     },
     emptyContainer: {
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 40,
+        paddingVertical: 48,
+        gap: 8,
     },
     emptyText: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: COLORS.GRAY_700,
-        marginTop: 16,
+        fontSize: 17,
+        fontWeight: '700',
+        color: c.textPrimary,
+        marginTop: 8,
     },
     emptySubText: {
         fontSize: 14,
-        color: COLORS.GRAY_500,
-        marginTop: 8,
+        color: c.textTertiary,
         textAlign: 'center',
     },
     // NFC 리더 관련 스타일
     nfcContainer: {
         flex: 1,
-        backgroundColor: COLORS.GRAY_50,
+        backgroundColor: c.surfaceCanvas,
     },
     nfcHeader: {
         flexDirection: 'row',
@@ -1100,14 +945,14 @@ const styles = StyleSheet.create({
         paddingTop: 50,
         paddingHorizontal: 20,
         paddingBottom: 20,
-        backgroundColor: COLORS.SUCCESS,
+        backgroundColor: c.success,
     },
     closeButton: {
         padding: 10,
     },
     nfcTitle: {
         flex: 1,
-        color: COLORS.WHITE,
+        color: c.textInverse,
         fontSize: 18,
         fontWeight: 'bold',
         textAlign: 'center',
@@ -1121,10 +966,10 @@ const styles = StyleSheet.create({
     },
     nfcIconContainer: {
         marginBottom: 30,
-        padding: 20,
-        borderRadius: 50,
-        backgroundColor: COLORS.WHITE,
-        shadowColor: '#000',
+        padding: 24,
+        borderRadius: 60,
+        backgroundColor: c.surface,
+        shadowColor: c.shadowColor,
         shadowOffset: {
             width: 0,
             height: 2,
@@ -1136,13 +981,13 @@ const styles = StyleSheet.create({
     nfcInstructions: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: COLORS.GRAY_800,
+        color: c.textPrimary,
         textAlign: 'center',
         marginBottom: 10,
     },
     nfcSubInstructions: {
         fontSize: 14,
-        color: COLORS.GRAY_600,
+        color: c.textSecondary,
         textAlign: 'center',
         marginBottom: 30,
         lineHeight: 20,
@@ -1153,27 +998,15 @@ const styles = StyleSheet.create({
     },
     nfcStatusText: {
         fontSize: 16,
-        color: COLORS.SUCCESS,
+        color: c.success,
         marginTop: 10,
         fontWeight: '500',
     },
     nfcFooter: {
         padding: 20,
-        backgroundColor: COLORS.WHITE,
+        backgroundColor: c.surface,
         borderTopWidth: 1,
-        borderTopColor: COLORS.GRAY_200,
-    },
-    cancelButton: {
-        backgroundColor: COLORS.ERROR,
-        paddingVertical: 15,
-        paddingHorizontal: 30,
-        borderRadius: 8,
-        alignItems: 'center',
-    },
-    cancelButtonText: {
-        color: COLORS.WHITE,
-        fontSize: 16,
-        fontWeight: 'bold',
+        borderTopColor: c.border,
     },
 });
 

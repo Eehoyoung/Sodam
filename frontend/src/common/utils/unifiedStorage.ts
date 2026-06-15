@@ -128,7 +128,7 @@ export class UnifiedStorage implements StorageInterface {
      */
     public async getObject<T>(key: string): Promise<T | null> {
         const jsonString = await this.getItem(key);
-        if (!jsonString) return null;
+        if (!jsonString) {return null;}
 
         try {
             return JSON.parse(jsonString) as T;
@@ -192,6 +192,7 @@ export class UnifiedStorage implements StorageInterface {
         const persistData = {
             data,
             timestamp: Date.now(),
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- ttl of 0 is not a valid value here; fall back to default, so ?? would be wrong
             ttl: ttl || 24 * 60 * 60 * 1000, // 기본 24시간
         };
 
@@ -213,7 +214,7 @@ export class UnifiedStorage implements StorageInterface {
             ttl: number;
         }>(key);
 
-        if (!persistData) return null;
+        if (!persistData) {return null;}
 
         // TTL 확인
         const now = Date.now();
@@ -255,7 +256,7 @@ export class UnifiedStorage implements StorageInterface {
     }
 
     private async _initialize(): Promise<void> {
-        if (this.isReady) return;
+        if (this.isReady) {return;}
 
         this.log('스토리지 초기화 시작');
 
@@ -371,7 +372,7 @@ export class UnifiedStorage implements StorageInterface {
                 try {
                     const keys = await this.asyncStorage.getAllKeys();
                     const prefixedKeys = keys.filter((key: string) =>
-                        key.startsWith(this.config.keyPrefix || '')
+                        key.startsWith(this.config.keyPrefix ?? '')
                     );
                     await this.asyncStorage.multiRemove(prefixedKeys);
                     this.log('clear: 모든 데이터 삭제 완료');
@@ -388,7 +389,7 @@ export class UnifiedStorage implements StorageInterface {
                 try {
                     const keys = await this.asyncStorage.getAllKeys();
                     const filteredKeys = keys
-                        .filter((key: string) => key.startsWith(this.config.keyPrefix || ''))
+                        .filter((key: string) => key.startsWith(this.config.keyPrefix ?? ''))
                         .map((key: string) => this.removeKeyPrefix(key));
                     this.log(`getAllKeys: ${filteredKeys.length}개 키 반환`);
                     return filteredKeys;

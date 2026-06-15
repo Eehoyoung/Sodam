@@ -8,9 +8,12 @@
  * - react-native-screens enableScreens(true) — 네이티브 모듈 존재 시에만 가드 호출
  */
 import React, {useEffect, useState} from 'react';
-import {InteractionManager, StyleSheet} from 'react-native';
+import {InteractionManager, StyleSheet, View} from 'react-native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
+import {GlobalOfflineBanner} from './src/common/components/ds/GlobalOfflineBanner';
+import {AppToastHost} from './src/common/components/ds/AppToast';
+import {ConfirmSheetHost} from './src/common/components/ds/ConfirmSheet';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import InitializationErrorBoundary from './src/components/InitializationErrorBoundary';
 import ThemeProvider from './src/common/providers/ThemeProvider';
@@ -116,7 +119,14 @@ const App: React.FC = () => {
         <QueryClientProvider client={queryClient}>
           <SafeAreaProvider>
             <ErrorBoundary>
-              <ThemeProvider>{WithAuthMock}</ThemeProvider>
+              <ThemeProvider>
+                <View style={styles.container}>
+                  {WithAuthMock}
+                  <GlobalOfflineBanner />
+                  <AppToastHost />
+                  <ConfirmSheetHost />
+                </View>
+              </ThemeProvider>
             </ErrorBoundary>
           </SafeAreaProvider>
         </QueryClientProvider>

@@ -1,75 +1,98 @@
-import React, {useEffect, useState} from 'react';
-import {Alert, ScrollView, StyleSheet, Text, View} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {AppToast, AppButton, AppHeader, AppText, CtaStack, ScreenContainer, SegmentedControl} from '../../../common/components/ds';
+import React, {useEffect, useMemo, useState} from 'react';
+import {StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
-import {tokens} from '../../../theme/tokens';
-import {Button} from '../../../common/components';
-import Card from '../../../common/components/data-display/Card';
-import Badge from '../../../common/components/data-display/Badge';
+import {spacing} from '../../../theme/tokens';
+import {useResponsive} from '../../../common/hooks/useResponsive';
+import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
+import {SubscriptionPlanCard, PlanCardView} from '../components/SubscriptionPlanCard';
+import {isTossLive} from '../../../common/config/env';
 import subscriptionApi, {
+    BillingCycle,
     PlanCatalogItem,
     PlanType,
     SubscriptionResponse,
 } from '../services/subscriptionApi';
 
+// 결제 주기 세그먼트: 인덱스 ↔ BillingCycle 매핑 (월/반년/연)
+const CYCLE_OPTIONS = ['월납', '반년납', '연납'] as const;
+const CYCLE_BY_INDEX: readonly BillingCycle[] = ['MONTHLY', 'HALF_YEARLY', 'YEARLY'];
+
 type Highlight = {text: string; included: boolean};
 
-const PLAN_VISUALS: Record<
-    PlanType,
-    {emoji: string; accent: string; recommended?: boolean; highlights: Highlight[]}
-> = {
+// 다크 모드 대응을 위해 accent 색은 테마에서 받아 매번 생성한다.
+const buildPlanVisuals = (c: ThemeColors): Record<PlanType, {emoji: string; accent: string; recommended?: boolean; highlights: Highlight[]}> => ({
     FREE: {
         emoji: '🌱',
-        accent: tokens.colors.textSecondary,
+        accent: c.textSecondary,
         highlights: [
-            {text: '기본 근태 기록 + 급여 자동 계산', included: true},
-            {text: 'FAQ + 이메일 고객 지원', included: true},
-            {text: '광고 노출', included: true},
-            {text: '급여 명세서 발급', included: false},
-            {text: '세무 환급 연계', included: false},
+            {text: '출퇴근 무제한 (직원 2명)', included: true},
+            {text: '급여 미리보기 (숫자 확인)', included: true},
+            {text: '근로계약서 양식', included: true},
+            {text: '광고 없음', included: true},
+            {text: '급여 명세서 PDF 발급', included: false},
+            {text: '4대보험 신고서', included: false},
         ],
     },
-    BUSINESS: {
+    STARTER: {
         emoji: '✨',
-        accent: tokens.colors.brandPrimary,
+        accent: c.brandPrimary,
+        highlights: [
+            {text: '급여 자동 계산 + 명세서 PDF 발급', included: true},
+            {text: '퇴직금 계산 · 노동법 경고(기본)', included: true},
+            {text: '인건비 비율 분석', included: true},
+            {text: '4대보험 조회·알림 (맛보기)', included: true},
+            {text: '4대보험 신고서 자동작성', included: false},
+            {text: '전자 근로계약서', included: false},
+        ],
+    },
+    PRO: {
+        emoji: '👑',
+        accent: c.brandSecondary,
         recommended: true,
         highlights: [
-            {text: 'NFC + GPS 근태 + 급여 자동 산출', included: true},
-            {text: '급여 명세서 발급 + 직원 알림', included: true},
-            {text: '맞춤 대시보드', included: true},
-            {text: '채널톡 1:1 응대', included: true},
-            {text: '세무 환급 별도 신청', included: false},
+            {text: '직원 무제한 + 풀 노동법 경고', included: true},
+            {text: '연차 관리', included: true},
+            {text: '4대보험 신고서 자동작성 (직접 제출)', included: true},
+            {text: '전자 근로계약서·문서 보관', included: true},
+            {text: '맞춤 대시보드 · 멀티매장 1개 포함', included: true},
         ],
     },
     PREMIUM: {
-        emoji: '👑',
-        accent: tokens.colors.brandSecondary,
+        emoji: '💎',
+        accent: c.success,
         highlights: [
-            {text: '비즈니스 플랜 전부 포함', included: true},
-            {text: '세무사 1:1 상담 + 신고 대행', included: true},
-            {text: '다매장 통합 대시보드', included: true},
-            {text: '연 1회 무료 추가 세무 상담', included: true},
+            {text: 'PRO 플랜 전부 포함', included: true},
+            {text: '멀티매장 무제한 · 전담 CS', included: true},
+            {text: '세무사·노무사 우선 연결 (실비 별도)', included: true},
+            {text: '근로감독 증거 패키지', included: true},
         ],
     },
-    COMMISSION: {
-        emoji: '💸',
-        accent: tokens.colors.success,
-        highlights: [
-            {text: '종합소득세 환급 신청 대행', included: true},
-            {text: '필요 서류 자동 발급', included: true},
-            {text: '세무사 상담 포함', included: true},
-            {text: '월정액 없음 · 환급금의 10~20% 수수료', included: true},
-        ],
-    },
-};
+});
 
+/**
+ * 31 Subscribe — 확정 시안.
+ * 플랜 선택. ⚠️ 결제 로직(subscribeFree/TossBillingAuth)은 변경 없이 표현만 교체.
+ */
 const SubscribeScreen: React.FC = () => {
     const navigation = useNavigation<any>();
+    const r = useResponsive();
+    const c = useThemeColors();
+    const planVisuals = useMemo(() => buildPlanVisuals(c), [c]);
+    // compact(<360): 플랜 카드 4장이 세로로 길게 흐르므로 list gap·subtitle 여백·이모지 크기를 한 단계 축소해 1.5장 fold-above 보장.
+    const listGap = r.pick({compact: spacing.sm, default: spacing.md});
+    const subtitleMargin = r.pick({compact: spacing.md, default: spacing.lg});
     const [plans, setPlans] = useState<PlanCatalogItem[]>([]);
     const [current, setCurrent] = useState<SubscriptionResponse | null>(null);
     const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
+    const [cycleIndex, setCycleIndex] = useState(0);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
+
+    const billingCycle: BillingCycle = CYCLE_BY_INDEX[cycleIndex] ?? 'MONTHLY';
+    const isPaidSelected = selectedPlan !== null && selectedPlan !== 'FREE';
+    const isActive = current?.status === 'ACTIVE';
+    const isPaused = current?.status === 'PAUSED';
 
     useEffect(() => {
         let mounted = true;
@@ -79,12 +102,18 @@ const SubscribeScreen: React.FC = () => {
                     subscriptionApi.getPlans().catch(() => buildFallbackPlans()),
                     subscriptionApi.getMyCurrent().catch(() => null),
                 ]);
-                if (!mounted) return;
+                if (!mounted) {
+                    return;
+                }
                 setPlans(planList.length > 0 ? planList : buildFallbackPlans());
                 setCurrent(mine);
-                if (mine?.plan) setSelectedPlan(mine.plan);
+                if (mine?.plan) {
+                    setSelectedPlan(mine.plan);
+                }
             } finally {
-                if (mounted) setLoading(false);
+                if (mounted) {
+                    setLoading(false);
+                }
             }
         })();
         return () => {
@@ -94,229 +123,165 @@ const SubscribeScreen: React.FC = () => {
 
     const handleSubscribe = async () => {
         if (!selectedPlan) {
-            Alert.alert('알림', '플랜을 선택해 주세요.');
+            AppToast.show('플랜을 선택해 주세요.');
             return;
         }
         setProcessing(true);
         try {
             if (selectedPlan === 'FREE') {
                 await subscriptionApi.subscribeFree();
-                Alert.alert('완료', '무료 플랜으로 시작합니다.', [
-                    {text: '확인', onPress: () => navigation.navigate('Home')},
-                ]);
-            } else if (selectedPlan === 'COMMISSION') {
-                Alert.alert(
-                    '환급형 안내',
-                    '환급형은 종합소득세 환급 금액의 10~20% 수수료로 운영됩니다.\n환급 신청서 작성을 시작할까요?',
-                    [
-                        {text: '나중에', style: 'cancel'},
-                        {text: '신청 시작', onPress: () => navigation.navigate('TaxRefundIntake')},
-                    ],
-                );
+                AppToast.success('무료 플랜으로 시작해요.');
+                navigation.navigate('Home');
+            } else if (isTossLive()) {
+                // 운영 클라이언트 키가 주입된 경우에만 빌링 인증 창으로 이동.
+                // 인증 성공 → subscribePaid(plan, authKey, billingCycle) 는 TossBillingAuth 화면이 호출한다.
+                navigation.navigate('TossBillingAuth', {plan: selectedPlan, billingCycle});
             } else {
-                navigation.navigate('TossBillingAuth', {plan: selectedPlan});
+                // 샌드박스/빈 키 → 결제 창을 띄우지 않고 안내만 (키 주입 전 안전망).
+                AppToast.show('유료 결제는 준비 중이에요. 곧 만나요!');
             }
         } catch (e: any) {
-            Alert.alert(
-                '오류',
-                e?.response?.data?.message ??
-                    '구독 처리에 실패했어요. 잠시 후 다시 시도해 주세요.',
-            );
+            // 유료 전환 실패 → 결제 실패 안내 화면 (갭분석 A4). 무료/일반 오류는 알럿.
+            if (selectedPlan && selectedPlan !== 'FREE') {
+                navigation.navigate('PaymentFailed');
+            } else {
+                AppToast.error(e?.response?.data?.message ?? '구독 처리에 실패했어요. 잠시 후 다시 시도해 주세요.');
+            }
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handlePause = async () => {
+        setProcessing(true);
+        try {
+            const updated = await subscriptionApi.pause();
+            setCurrent(updated);
+            AppToast.success('구독을 일시정지했어요. 언제든 다시 시작할 수 있어요.');
+        } catch (e: any) {
+            AppToast.error(e?.response?.data?.message ?? '일시정지에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleResume = async () => {
+        setProcessing(true);
+        try {
+            const updated = await subscriptionApi.resume();
+            setCurrent(updated);
+            AppToast.success('구독을 다시 시작했어요.');
+        } catch (e: any) {
+            AppToast.error(e?.response?.data?.message ?? '재개에 실패했어요. 잠시 후 다시 시도해 주세요.');
         } finally {
             setProcessing(false);
         }
     };
 
     const renderPlan = (plan: PlanCatalogItem) => {
-        const v = PLAN_VISUALS[plan.name];
+        const v = planVisuals[plan.name];
         const isSelected = selectedPlan === plan.name;
-        const isCurrent = current?.plan === plan.name && current.status === 'ACTIVE';
+        const isCurrent = current?.plan === plan.name && current?.status === 'ACTIVE';
+
+        const view: PlanCardView = {
+            name: plan.name,
+            displayName: plan.displayName,
+            priceLabel: formatPrice(plan),
+            emoji: v.emoji,
+            recommended: v.recommended,
+            highlights: v.highlights,
+        };
 
         return (
-            <Card
+            <SubscriptionPlanCard
                 key={plan.name}
+                view={view}
+                selected={isSelected}
+                isCurrent={isCurrent}
                 onPress={() => setSelectedPlan(plan.name)}
-                bordered
-                style={[
-                    styles.planCard,
-                    isSelected && {borderColor: v.accent, borderWidth: 2},
-                ] as any}
-                elevation={isSelected ? 4 : 1}
-            >
-                <View style={styles.planHeader}>
-                    <View style={styles.planTitleRow}>
-                        <Text style={styles.planEmoji}>{v.emoji}</Text>
-                        <View>
-                            <Text style={[styles.planName, {color: v.accent}]}>
-                                {plan.displayName}
-                            </Text>
-                            <Text style={styles.planPrice}>{formatPrice(plan)}</Text>
-                        </View>
-                    </View>
-                    <View style={styles.planBadges}>
-                        {v.recommended ? <Badge text="추천" type="primary" /> : null}
-                        {isCurrent ? <Badge text="이용 중" type="success" /> : null}
-                    </View>
-                </View>
-
-                <Text style={styles.planDescription}>{plan.description}</Text>
-
-                <View style={styles.divider} />
-
-                {v.highlights.map((h, idx) => (
-                    <View key={idx} style={styles.highlightRow}>
-                        <Text style={[styles.checkIcon, !h.included && styles.checkIconDim]}>
-                            {h.included ? '✓' : '–'}
-                        </Text>
-                        <Text
-                            style={[
-                                styles.highlightText,
-                                !h.included && styles.highlightTextDim,
-                            ]}
-                        >
-                            {h.text}
-                        </Text>
-                    </View>
-                ))}
-            </Card>
+            />
         );
     };
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-            >
-                <Text style={styles.title}>소담과 함께 시작해요</Text>
-                <Text style={styles.subtitle}>
-                    매장 규모에 맞는 플랜을 선택해 주세요.{'\n'}언제든 해지·변경할 수 있어요.
-                </Text>
+        <ScreenContainer
+            scroll
+            header={<AppHeader title="구독" onBack={() => navigation.goBack()} />}
+            footer={
+                <CtaStack bordered>
+                    <AppButton
+                        label={selectedPlan === 'FREE' ? '무료로 시작하기' : '결제 진행하기'}
+                        loading={processing}
+                        disabled={!selectedPlan}
+                        onPress={handleSubscribe}
+                    />
+                    <AppText variant="caption" tone="tertiary" center>구독 시 이용약관·개인정보 처리방침에 동의하게 됩니다.</AppText>
+                </CtaStack>
+            }>
+            <AppText variant="headingLg" style={styles.title}>매장에 딱 맞는 플랜을 골라요</AppText>
+            <AppText variant="bodyLg" tone="secondary" style={[styles.subtitle, {marginBottom: subtitleMargin}]}>
+                언제든 해지·변경할 수 있어요. 대부분의 사장님은 프로를 선택해요.
+            </AppText>
 
-                {loading ? (
-                    <Text style={styles.loadingText}>플랜 정보를 불러오는 중…</Text>
-                ) : (
-                    plans.map(renderPlan)
-                )}
+            {!loading && isPaidSelected ? (
+                <View style={styles.cycleBlock}>
+                    <AppText variant="titleMd" style={styles.cycleTitle}>결제 주기</AppText>
+                    <SegmentedControl
+                        options={[...CYCLE_OPTIONS]}
+                        value={cycleIndex}
+                        onChange={setCycleIndex}
+                    />
+                    <AppText variant="caption" tone="tertiary" style={styles.cycleHint}>
+                        반년납 1개월 무료 / 연납 2개월 무료
+                    </AppText>
+                </View>
+            ) : null}
 
-                <Button
-                    title={selectedPlan === 'FREE' ? '무료로 시작하기' : '결제 진행하기'}
-                    onPress={handleSubscribe}
-                    variant="primary"
-                    size="lg"
-                    loading={processing}
-                    disabled={!selectedPlan}
-                    fullWidth
-                    style={styles.subscribeButton}
-                />
-                <Text style={styles.legalText}>
-                    구독 시 이용약관·개인정보 처리방침에 동의하게 됩니다.
-                </Text>
-            </ScrollView>
-        </SafeAreaView>
+            {loading ? (
+                <AppText variant="bodyMd" tone="tertiary" center style={styles.loadingText}>플랜 정보를 불러오는 중…</AppText>
+            ) : (
+                <View style={[styles.list, {gap: listGap}]}>{plans.map(renderPlan)}</View>
+            )}
+
+            {!loading && (isActive || isPaused) ? (
+                <View style={styles.manageBlock}>
+                    <AppButton
+                        label={isPaused ? '구독 재개하기' : '구독 일시정지'}
+                        variant={isPaused ? 'secondary' : 'outline'}
+                        loading={processing}
+                        onPress={isPaused ? handleResume : handlePause}
+                    />
+                </View>
+            ) : null}
+        </ScreenContainer>
     );
 };
 
 function buildFallbackPlans(): PlanCatalogItem[] {
     return [
-        {name: 'FREE', displayName: '기본', monthlyPriceKrw: 0, description: '기본 근태/급여 + 광고 노출'},
-        {name: 'BUSINESS', displayName: '비즈니스', monthlyPriceKrw: 15000, description: '근태+급여+명세서+대시보드+CS'},
-        {name: 'PREMIUM', displayName: '프리미엄', monthlyPriceKrw: 50000, description: '비즈니스 전부 + 세무사 1:1'},
-        {name: 'COMMISSION', displayName: '환급형', monthlyPriceKrw: 0, description: '종소세 환급 수수료 10~20%'},
+        {name: 'FREE', displayName: '무료', monthlyPriceKrw: 0, description: '출퇴근 무제한 + 급여 미리보기 (직원 2명)'},
+        {name: 'STARTER', displayName: '스타터', monthlyPriceKrw: 9900, description: '급여 자동 계산 + 명세서 PDF 발급 (직원 5명)'},
+        {name: 'PRO', displayName: '프로', monthlyPriceKrw: 19900, description: '직원 무제한 + 4대보험 신고서 + 전자 근로계약서'},
+        {name: 'PREMIUM', displayName: '프리미엄', monthlyPriceKrw: 39900, description: '프로 전부 + 멀티매장 무제한 + 전담 CS'},
     ];
 }
 
 function formatPrice(p: PlanCatalogItem): string {
-    if (p.name === 'COMMISSION') return '환급금의 10~20%';
-    if (p.monthlyPriceKrw <= 0) return '무료';
+    if (p.monthlyPriceKrw <= 0) {
+        return '무료';
+    }
     return `월 ${p.monthlyPriceKrw.toLocaleString('ko-KR')}원`;
 }
 
 const styles = StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: tokens.colors.background},
-    scrollContent: {
-        padding: tokens.spacing.lg,
-        paddingBottom: tokens.spacing.huge,
-    },
-    title: {
-        fontSize: tokens.typography.sizes.xxl,
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
-        marginTop: tokens.spacing.lg,
-        marginBottom: tokens.spacing.xs,
-        letterSpacing: -0.5,
-    },
-    subtitle: {
-        fontSize: tokens.typography.sizes.md,
-        color: tokens.colors.textSecondary,
-        marginBottom: tokens.spacing.xl,
-        lineHeight: 22,
-    },
-    loadingText: {
-        textAlign: 'center',
-        color: tokens.colors.textTertiary,
-        marginVertical: tokens.spacing.xl,
-    },
-    planCard: {marginBottom: tokens.spacing.md},
-    planHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-    },
-    planTitleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: tokens.spacing.md,
-    },
-    planEmoji: {fontSize: 28},
-    planName: {
-        fontSize: tokens.typography.sizes.lg,
-        fontWeight: tokens.typography.weights.bold,
-        letterSpacing: -0.3,
-    },
-    planPrice: {
-        fontSize: tokens.typography.sizes.sm,
-        color: tokens.colors.textSecondary,
-        marginTop: 2,
-    },
-    planBadges: {flexDirection: 'row', gap: tokens.spacing.xs},
-    planDescription: {
-        marginTop: tokens.spacing.md,
-        fontSize: tokens.typography.sizes.sm,
-        color: tokens.colors.textSecondary,
-        lineHeight: 20,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: tokens.colors.divider,
-        marginVertical: tokens.spacing.md,
-    },
-    highlightRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        marginBottom: tokens.spacing.xs,
-    },
-    checkIcon: {
-        width: 22,
-        fontSize: 16,
-        color: tokens.colors.success,
-        fontWeight: tokens.typography.weights.bold,
-    },
-    checkIconDim: {color: tokens.colors.textTertiary},
-    highlightText: {
-        flex: 1,
-        fontSize: tokens.typography.sizes.sm,
-        color: tokens.colors.textPrimary,
-        lineHeight: 20,
-    },
-    highlightTextDim: {color: tokens.colors.textTertiary},
-    subscribeButton: {marginTop: tokens.spacing.xl},
-    legalText: {
-        marginTop: tokens.spacing.md,
-        textAlign: 'center',
-        fontSize: tokens.typography.sizes.xs,
-        color: tokens.colors.textTertiary,
-    },
+    title: {marginTop: spacing.sm},
+    subtitle: {marginTop: spacing.sm, marginBottom: spacing.lg},
+    loadingText: {marginVertical: spacing.xl},
+    list: {gap: spacing.md},
+    cycleBlock: {marginBottom: spacing.xl, gap: spacing.sm},
+    cycleTitle: {fontWeight: '700'},
+    cycleHint: {marginTop: spacing.xs},
+    manageBlock: {marginTop: spacing.xxl},
 });
 
 export default SubscribeScreen;

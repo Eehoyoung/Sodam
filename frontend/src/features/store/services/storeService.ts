@@ -66,9 +66,21 @@ const getStoreById = async (storeId: number): Promise<StoreDetailDto> => {
 };
 
 async function createStore(payload: StoreRegistrationPayload): Promise<{ id: number }> {
+    // ⚠️ FE↔BE 의미 정합 (P2 통합테스트로 발견·수정): BE `Store.businessNumber` 컬럼은
+    //   '사업자등록번호'(NOT NULL·UNIQUE) 이나, FE 폼의 `businessNumber` 는 화면상 '매장 유선전화'.
+    //   여기서 BE 계약에 맞춰 매핑을 정정한다 (FE 화면 라벨/상태는 그대로 두어 UX 보존).
+    //   - BE `businessNumber`      ← FE `businessLicenseNumber` (사업자번호)
+    //   - BE `storePhoneNumber`    ← FE `storePhoneNumber || businessNumber(유선)` (휴대폰 우선, 없으면 유선)
+    //   - BE `businessLicenseNumber` 는 그대로 — MasterProfile 별도 저장에 사용됨
+    const bePayload = {
+        ...payload,
+        businessNumber: payload.businessLicenseNumber,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- blank phone should fall back to businessNumber then '', so ?? would be wrong
+        storePhoneNumber: payload.storePhoneNumber || payload.businessNumber || '',
+    };
     // 표준 엔드포인트 시도
     try {
-        const res = await api.post<{ id: number }>(`/api/stores/registration`, payload);
+        const res = await api.post<{ id: number }>(`/api/stores/registration`, bePayload);
         const data: any = res.data;
         if (typeof data?.id === 'number') {
             return {id: data.id};
@@ -80,7 +92,7 @@ async function createStore(payload: StoreRegistrationPayload): Promise<{ id: num
         // 404/405면 대체 경로 시도
         if (e?.response?.status === 404 || e?.response?.status === 405) {
             try {
-                const res2 = await api.post<{ id: number }>(`/api/stores/registration`, payload);
+                const res2 = await api.post<{ id: number }>(`/api/stores/registration`, bePayload);
                 const d2: any = res2.data;
                 if (typeof d2?.id === 'number') {
                     return {id: d2.id};
@@ -100,10 +112,14 @@ async function createStore(payload: StoreRegistrationPayload): Promise<{ id: num
 }
 
 // [API Mapping] PUT /api/stores/{storeId}/location — 매장 위치/반경 설정 업데이트
-async function putLocation(storeId: number, coords: { latitude: number; longitude: number; radius?: number }): Promise<{ success: boolean }>{
+// BE LocationUpdateDto: { radius, fullAddress, latitude, longitude }
+async function putLocation(
+  storeId: number,
+  payload: { latitude?: number; longitude?: number; radius?: number; fullAddress?: string },
+): Promise<{ success: boolean }>{
   const res = await api.put<{
       data: { success: boolean; }; success: boolean
-  }>(`/api/stores/${storeId}/location`, coords);
+  }>(`/api/stores/${storeId}/location`, payload);
   return res.data?.data || res.data || { success: true };
 }
 

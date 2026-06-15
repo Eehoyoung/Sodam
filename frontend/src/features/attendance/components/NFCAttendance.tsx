@@ -1,7 +1,8 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {Alert, Linking, Platform, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {Linking, Platform, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import NfcManager, {Ndef, NfcTech} from 'react-native-nfc-manager';
-import {Button, Card, Toast} from '../../../common/components';
+import {Toast} from '../../../common/components';
+import {AppToast, ConfirmSheet, AppButton, AppCard} from '../../../common/components/ds';
 import {colors, spacing} from '../../../common/styles/theme';
 import {useAuth} from '../../../contexts/AuthContext';
 import {
@@ -73,7 +74,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
             setIsNFCSupported(isSupported);
 
             if (!isSupported) {
-                if (onError) onError('이 기기는 NFC를 지원하지 않습니다.');
+                if (onError) {onError('이 기기는 NFC를 지원하지 않아요.');}
                 return;
             }
 
@@ -91,29 +92,27 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
             setIsNFCEnabled(isEnabled);
 
             if (!isEnabled) {
-                Alert.alert(
-                    'NFC 비활성화',
-                    'NFC 출퇴근을 위해 NFC를 활성화해주세요. 설정에서 NFC를 켜주세요.',
-                    [
-                        {text: '취소', style: 'cancel'},
-                        {
-                            text: '설정으로 이동',
-                            onPress: () => {
-                                if (Platform.OS === 'android') {
-                                    Linking.sendIntent('android.settings.NFC_SETTINGS');
-                                } else {
-                                    Linking.openSettings();
-                                }
+                ConfirmSheet.confirm({
+                    title: 'NFC가 꺼져 있어요',
+                    description: 'NFC 출퇴근을 위해 설정에서 NFC를 켜 주세요.',
+                    primary: {
+                        label: '설정으로 이동',
+                        onPress: () => {
+                            if (Platform.OS === 'android') {
+                                Linking.sendIntent('android.settings.NFC_SETTINGS');
+                            } else {
+                                Linking.openSettings();
                             }
-                        }
-                    ]
-                );
+                        },
+                    },
+                    secondary: {label: '취소'},
+                });
             }
         } catch (error) {
             console.error('[DEBUG_LOG] NFCAttendance: NFC initialization failed:', error);
-            if (!isMountedRef.current) return;
+            if (!isMountedRef.current) {return;}
 
-            if (onError) onError('NFC 초기화에 실패했습니다.');
+            if (onError) {onError('NFC 초기화에 실패했어요.');}
         }
     };
 
@@ -150,7 +149,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
             }
 
             if (!user?.id) {
-                throw new Error('사용자 정보를 찾을 수 없습니다.');
+                throw new Error('사용자 정보를 찾을 수 없어요.');
             }
 
             // 출근/퇴근 API 호출
@@ -162,7 +161,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
             const result = await verifyFunction({
                 employeeId: employeeIdNum,
                 storeId: parsedData.storeId,
-                nfcTagId: nfcData
+                tagId: nfcData,
             });
 
             if (!isMountedRef.current) {
@@ -174,7 +173,8 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                 Toast.show({
                     type: 'success',
                     text1: isCheckingIn ? '출근 완료' : '퇴근 완료',
-                    text2: result.message || `${isCheckingIn ? '출근' : '퇴근'}이 성공적으로 처리되었습니다.`,
+                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty-string message should fall back to default text, so ?? would be wrong
+                    text2: result.message || `${isCheckingIn ? '출근' : '퇴근'}이 성공적으로 처리됐어요.`,
                     visibilityTime: 3000,
                 });
 
@@ -182,14 +182,15 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                     onSuccess(isCheckingIn);
                 }
             } else {
-                throw new Error(result.message || 'NFC 출퇴근 처리에 실패했습니다.');
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty-string message should fall back to default text, so ?? would be wrong
+                throw new Error(result.message || 'NFC 출퇴근 처리에 실패했어요.');
             }
         } catch (error) {
             console.error('[DEBUG_LOG] NFCAttendance: NFC tag processing failed:', error);
 
-            if (!isMountedRef.current) return;
+            if (!isMountedRef.current) {return;}
 
-            const errorMessage = error instanceof Error ? error.message : 'NFC 태그 처리 중 오류가 발생했습니다.';
+            const errorMessage = error instanceof Error ? error.message : 'NFC 태그 처리 중 오류가 생겼어요.';
 
             Toast.show({
                 type: 'error',
@@ -212,11 +213,11 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
     // NFC 태그 읽기 시작
     const startNFCReading = async () => {
         if (!isNFCSupported || !isNFCEnabled) {
-            Alert.alert('NFC 사용 불가', 'NFC가 지원되지 않거나 비활성화되어 있습니다.');
+            AppToast.warn('NFC를 사용할 수 없어요. 지원 여부와 설정을 확인해 주세요.');
             return;
         }
 
-        if (!isMountedRef.current) return;
+        if (!isMountedRef.current) {return;}
 
         try {
             setIsActive(true);
@@ -234,7 +235,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                 return;
             }
 
-            if (tag && tag.ndefMessage && tag.ndefMessage.length > 0) {
+            if (tag?.ndefMessage?.length) {
                 // NDEF 메시지에서 데이터 추출
                 const ndefRecord = tag.ndefMessage[0];
                 const nfcData = Ndef.text.decodePayload(Uint8Array.from((ndefRecord as any).payload || []));
@@ -242,19 +243,19 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                 await handleNFCTagScanned(nfcData);
             } else {
                 // 일반 태그 ID 사용
-                const tagId = tag?.id || '';
+                const tagId = tag?.id ?? '';
                 if (tagId) {
                     await handleNFCTagScanned(tagId);
                 } else {
-                    throw new Error('NFC 태그에서 데이터를 읽을 수 없습니다.');
+                    throw new Error('NFC 태그에서 데이터를 읽을 수 없어요.');
                 }
             }
         } catch (error) {
             console.error('[DEBUG_LOG] NFCAttendance: NFC reading failed:', error);
 
-            if (!isMountedRef.current) return;
+            if (!isMountedRef.current) {return;}
 
-            const errorMessage = error instanceof Error ? error.message : 'NFC 태그 읽기에 실패했습니다.';
+            const errorMessage = error instanceof Error ? error.message : 'NFC 태그 읽기에 실패했어요.';
 
             Toast.show({
                 type: 'error',
@@ -299,21 +300,21 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
 
     if (!isNFCSupported) {
         return (
-            <Card style={styles.container}>
+            <AppCard variant="elevated" style={styles.container}>
                 <View style={styles.unsupportedContainer}>
                     <Icon name="nfc-off" size={64} color={c.text?.secondary || '#666'}/>
                     <Text style={styles.unsupportedTitle}>NFC 미지원</Text>
                     <Text style={styles.unsupportedMessage}>
-                        이 기기는 NFC를 지원하지 않습니다.{'\n'}
+                        이 기기는 NFC를 지원하지 않아요.{'\n'}
                         다른 출퇴근 방법을 이용해주세요.
                     </Text>
                 </View>
-            </Card>
+            </AppCard>
         );
     }
 
     return (
-        <Card style={styles.container}>
+        <AppCard variant="elevated" style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.title}>NFC 출퇴근</Text>
                 <TouchableOpacity
@@ -365,8 +366,8 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
 
             <View style={styles.buttonContainer}>
                 {!isActive ? (
-                    <Button
-                        title={`NFC ${isCheckingIn ? '출근' : '퇴근'} 시작`}
+                    <AppButton
+                        label={`NFC ${isCheckingIn ? '출근' : '퇴근'} 시작`}
                         onPress={startNFCReading}
                         disabled={!isNFCEnabled || loading}
                         style={[
@@ -375,8 +376,8 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                         ]}
                     />
                 ) : (
-                    <Button
-                        title="NFC 읽기 중지"
+                    <AppButton
+                        label="NFC 읽기 중지"
                         onPress={stopNFCReading}
                         style={styles.actionButton}
                     />
@@ -385,13 +386,13 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
 
             {!isNFCEnabled && (
                 <View style={styles.warningContainer}>
-                    <Icon name="warning" size={20} color={c.warning?.main || '#FFC107'}/>
+                    <Icon name="warning" size={20} color={c.warning?.main || '#F59E0B'}/>
                     <Text style={styles.warningText}>
-                        NFC가 비활성화되어 있습니다. 설정에서 NFC를 활성화해주세요.
+                        NFC가 비활성화되어 있어요. 설정에서 NFC를 활성화해주세요.
                     </Text>
                 </View>
             )}
-        </Card>
+        </AppCard>
     );
 };
 
@@ -422,7 +423,7 @@ const styles = StyleSheet.create({
         backgroundColor: c.success?.main || '#4CAF50',
     },
     checkOutMode: {
-        backgroundColor: c.warning?.main || '#FFC107',
+        backgroundColor: c.warning?.main || '#F59E0B',
     },
     modeText: {
         color: c.text?.inverse || '#fff',
@@ -445,7 +446,7 @@ const styles = StyleSheet.create({
         marginBottom: spacing.lg,
         padding: spacing.lg,
         borderRadius: 50,
-        backgroundColor: c.background?.secondary || '#F5F5F5',
+        backgroundColor: c.background?.secondary || '#F1EEE9',
     },
     instructionText: {
         fontSize: 16,
@@ -479,7 +480,7 @@ const styles = StyleSheet.create({
         backgroundColor: c.success?.main || '#4CAF50',
     },
     checkOutButton: {
-        backgroundColor: c.warning?.main || '#FFC107',
+        backgroundColor: c.warning?.main || '#F59E0B',
     },
     warningContainer: {
         flexDirection: 'row',

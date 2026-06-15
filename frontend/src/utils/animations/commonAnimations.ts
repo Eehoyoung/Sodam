@@ -245,14 +245,13 @@ export const bounceIn = (
 
 // Combined Animations
 export const fadeInWithSlide = (
-    slideDistance: number = 50,
-    direction: 'up' | 'down' | 'left' | 'right' = 'up',
+    _slideDistance: number = 50,
+    _direction: 'up' | 'down' | 'left' | 'right' = 'up',
     duration: number = ANIMATION_DURATIONS.NORMAL,
     easing: (value: number) => number = Easing.out(Easing.cubic),
     onComplete?: AnimationCallback
 ) => {
     'worklet';
-    const targetPosition = direction === 'up' || direction === 'left' ? -slideDistance : slideDistance;
 
     return {
         opacity: fadeIn(duration, easing, onComplete),
@@ -389,6 +388,7 @@ export const createSpringAnimation = (
 export const cancelAnimation = (sharedValue: any) => {
     'worklet';
     // Cancel any running animation on the shared value
+    // eslint-disable-next-line no-self-assign -- reanimated: reassigning a shared value to itself interrupts the in-flight animation
     sharedValue.value = sharedValue.value;
 };
 

@@ -1,8 +1,10 @@
 import React, {useEffect, useRef} from 'react';
-import {Animated, Dimensions, StyleSheet, Text, View} from 'react-native';
+import {Animated, StyleSheet, View} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {tokens} from '../../../theme/tokens';
+import {Brandmark} from '../../../common/components/ds';
+// Splash 는 항상 다크 그라디언트 위 — 테마 무관 흰 텍스트.
+import {spacing, tokens} from '../../../theme/tokens';
 
 interface Props {
     /** 최소 노출 시간 (ms). 빠르게 부트되어도 브랜드 인상 확보. */
@@ -12,11 +14,8 @@ interface Props {
 }
 
 /**
- * 소담 스플래시 (PRD_GUEST G-001).
- *
- * - 브랜드 그라디언트 #FF7A1A → #FF5722 (135도)
- * - 로고 페이드 인 + 슬로건 1.5초 후 페이드 인
- * - 최소 0.8초, 최대 1.6초 노출
+ * 00 Splash — 확정 시안.
+ * 다크 네이비 배경 + 브랜드 마크 페이드 인 + 슬로건. 최소 0.8초, 최대 1.6초 노출.
  */
 const SplashScreen: React.FC<Props> = ({minDurationMs = 800, onReady}) => {
     const logoOpacity = useRef(new Animated.Value(0)).current;
@@ -26,25 +25,12 @@ const SplashScreen: React.FC<Props> = ({minDurationMs = 800, onReady}) => {
     useEffect(() => {
         const start = Date.now();
         Animated.parallel([
-            Animated.timing(logoOpacity, {
-                toValue: 1,
-                duration: 400,
-                useNativeDriver: true,
-            }),
-            Animated.spring(logoScale, {
-                toValue: 1,
-                friction: 6,
-                tension: 80,
-                useNativeDriver: true,
-            }),
+            Animated.timing(logoOpacity, {toValue: 1, duration: 400, useNativeDriver: true}),
+            Animated.spring(logoScale, {toValue: 1, friction: 6, tension: 80, useNativeDriver: true}),
         ]).start();
 
         const sloganTimer = setTimeout(() => {
-            Animated.timing(sloganOpacity, {
-                toValue: 1,
-                duration: 400,
-                useNativeDriver: true,
-            }).start();
+            Animated.timing(sloganOpacity, {toValue: 1, duration: 400, useNativeDriver: true}).start();
         }, 500);
 
         const readyTimer = setTimeout(() => {
@@ -62,25 +48,17 @@ const SplashScreen: React.FC<Props> = ({minDurationMs = 800, onReady}) => {
     return (
         <SafeAreaView style={styles.safeArea}>
             <LinearGradient
-                colors={tokens.gradient.brand}
+                colors={tokens.gradient.darkScreen}
                 start={{x: 0, y: 0}}
                 end={{x: 1, y: 1}}
-                style={styles.gradient}
-            >
+                style={styles.gradient}>
                 <View style={styles.center}>
-                    <Animated.View
-                        style={[
-                            styles.logoCircle,
-                            {opacity: logoOpacity, transform: [{scale: logoScale}]},
-                        ]}
-                    >
-                        <Text style={styles.logoChar}>소</Text>
+                    <Animated.View style={{opacity: logoOpacity, transform: [{scale: logoScale}]}}>
+                        <Brandmark size={64} />
                     </Animated.View>
-                    <Animated.Text style={[styles.brandName, {opacity: logoOpacity}]}>
-                        소담
-                    </Animated.Text>
+                    <Animated.Text style={[styles.brandName, {opacity: logoOpacity}]}>소담</Animated.Text>
                     <Animated.Text style={[styles.slogan, {opacity: sloganOpacity}]}>
-                        소상공인을 담다
+                        작은 가게의 오늘 할 일을 바로 끝내는 운영 비서
                     </Animated.Text>
                 </View>
             </LinearGradient>
@@ -88,42 +66,23 @@ const SplashScreen: React.FC<Props> = ({minDurationMs = 800, onReady}) => {
     );
 };
 
-const {width} = Dimensions.get('window');
-
 const styles = StyleSheet.create({
-    safeArea: {flex: 1},
+    safeArea: {flex: 1, backgroundColor: '#1B2A33'},
     gradient: {flex: 1, alignItems: 'center', justifyContent: 'center'},
-    center: {alignItems: 'center', justifyContent: 'center'},
-    logoCircle: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        backgroundColor: 'rgba(255, 255, 255, 0.18)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: tokens.spacing.xxl,
-        borderWidth: 2,
-        borderColor: 'rgba(255, 255, 255, 0.32)',
-    },
-    logoChar: {
-        fontSize: 64,
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textInverse,
-        letterSpacing: -2,
-        marginTop: -4,
-    },
+    center: {alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xxl},
     brandName: {
-        fontSize: 40,
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textInverse,
-        letterSpacing: 4,
-        marginBottom: tokens.spacing.md,
+        fontSize: 35,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        marginTop: spacing.lg,
+        marginBottom: spacing.sm,
     },
     slogan: {
-        fontSize: tokens.typography.sizes.md,
-        color: tokens.colors.textInverse,
-        opacity: 0.85,
-        letterSpacing: 1,
+        fontSize: 14,
+        lineHeight: 20,
+        color: '#FFFFFF',
+        opacity: 0.78,
+        textAlign: 'center',
     },
 });
 

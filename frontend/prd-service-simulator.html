@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>소담 PRD 서비스 앱 미리보기</title>
+  <style>
+    :root {
+      --ink: #201A17;
+      --muted: #625B55;
+      --subtle: #9A9189;
+      --line: #E8E0D8;
+      --paper: #FFFFFF;
+      --canvas: #F7F4EF;
+      --warm: #FFFBF5;
+      --brand: #FF6B35;
+      --brand-dark: #E85A2A;
+      --brand-soft: #FFF0E8;
+      --navy: #243B4A;
+      --dark: #172932;
+      --ok: #12A87B;
+      --ok-bg: #DFF6ED;
+      --warn: #F59E0B;
+      --warn-bg: #FEF3C7;
+      --danger: #E5484D;
+      --danger-bg: #FEE2E2;
+      --info: #3B82F6;
+      --info-bg: #DBEAFE;
+      --shadow: 0 18px 48px rgba(32, 26, 23, .2);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+    }
+
+    * { box-sizing: border-box; letter-spacing: 0; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        linear-gradient(122deg, rgba(36, 59, 74, .96), rgba(23, 41, 50, .95), rgba(43, 32, 25, .92)),
+        url("https://images.unsplash.com/photo-1556740738-b6a63e27c4df?auto=format&fit=crop&w=1800&q=80");
+      background-size: cover;
+      background-position: center;
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button {
+      border: 0;
+      min-height: 46px;
+      padding: 0 16px;
+      border-radius: 16px;
+      cursor: pointer;
+      font-weight: 850;
+      transition: transform .14s ease, opacity .14s ease, box-shadow .14s ease;
+    }
+    button:active { transform: scale(.97); opacity: .9; }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: 30px; line-height: 1.22; }
+    h2 { font-size: 22px; line-height: 1.32; }
+    h3 { font-size: 17px; line-height: 1.38; }
+    p { color: var(--muted); line-height: 1.55; }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(320px, 430px) minmax(520px, 1fr);
+    }
+
+    .phone-zone { display: grid; place-items: center; padding: 32px 24px; }
+    .phone {
+      width: min(390px, 100%);
+      height: min(812px, calc(100vh - 48px));
+      min-height: 670px;
+      border-radius: 30px;
+      overflow: hidden;
+      background: var(--canvas);
+      border: 1px solid rgba(255,255,255,.45);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .status {
+      height: 28px;
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      padding: 0 24px 4px;
+      font-size: 12px;
+      font-weight: 900;
+      background: var(--canvas);
+    }
+    .appbar {
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.94);
+    }
+    .appbar-side { min-width: 42px; color: var(--brand); font-weight: 900; }
+    .appbar strong { font-size: 18px; }
+    .icon-btn {
+      width: 38px;
+      min-height: 38px;
+      padding: 0;
+      display: inline-grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      color: var(--brand);
+      border-radius: 14px;
+    }
+
+    .screen {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--canvas);
+    }
+    .content {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      padding: 16px;
+      display: grid;
+      align-content: start;
+      gap: 12px;
+    }
+    .bottom {
+      padding: 10px 12px 14px;
+      background: rgba(255,255,255,.94);
+      border-top: 1px solid var(--line);
+    }
+    .tabbar {
+      height: 62px;
+      border-radius: 24px;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      box-shadow: 0 6px 14px rgba(36,59,74,.14);
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      padding: 0 7px;
+      gap: 2px;
+    }
+    .tabbar button {
+      min-height: 54px;
+      padding: 0 2px;
+      background: transparent;
+      color: var(--subtle);
+      font-size: 10px;
+      line-height: 1.2;
+      border-radius: 16px;
+    }
+    .tabbar button.active { color: var(--brand); }
+    .tabbar span { display: block; font-size: 18px; margin-bottom: 2px; }
+
+    .hero {
+      min-height: 184px;
+      padding: 20px;
+      border-radius: 24px;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background:
+        linear-gradient(135deg, rgba(36,59,74,.96), rgba(23,41,50,.95), rgba(43,32,25,.9)),
+        radial-gradient(circle at 88% 18%, rgba(255,107,53,.28), transparent 32%);
+      box-shadow: 0 6px 14px rgba(36,59,74,.14);
+    }
+    .hero p { color: rgba(255,255,255,.76); margin-top: 8px; font-size: 14px; }
+    .brand-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+    .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 950; }
+    .mark {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: var(--paper);
+      color: var(--brand);
+      font-weight: 950;
+      box-shadow: 0 10px 24px rgba(0,0,0,.12);
+    }
+    .hero .mark { box-shadow: none; }
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      display: grid;
+      gap: 10px;
+    }
+    .warm { background: var(--warm); border-color: #FFB48F; }
+    .metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .metric {
+      min-height: 96px;
+      border-radius: 16px;
+      padding: 14px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+    }
+    .metric strong { display: block; font-size: 26px; line-height: 1.18; }
+    .metric span { display: block; color: var(--muted); font-size: 12px; font-weight: 800; margin-top: 5px; }
+    .list { display: grid; gap: 8px; }
+    .item {
+      min-height: 62px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: var(--paper);
+    }
+    .item strong { display: block; font-size: 15px; }
+    .item small, .caption { display: block; color: var(--muted); font-size: 12px; line-height: 1.45; margin-top: 2px; }
+    .pill {
+      min-height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: #F1EEE9;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .pill.ok { background: var(--ok-bg); color: var(--ok); }
+    .pill.warn { background: var(--warn-bg); color: var(--warn); }
+    .pill.danger { background: var(--danger-bg); color: var(--danger); }
+    .pill.info { background: var(--info-bg); color: var(--info); }
+    .primary {
+      min-height: 54px;
+      background: var(--brand);
+      color: #fff;
+      box-shadow: 0 8px 16px rgba(255,107,53,.32);
+    }
+    .secondary {
+      min-height: 54px;
+      background: var(--paper);
+      color: var(--navy);
+      border: 1px solid var(--line);
+    }
+    .ghost {
+      min-height: 44px;
+      background: transparent;
+      color: var(--brand);
+      border: 1px solid var(--line);
+    }
+    .kakao { background: #FEE500; color: #201A17; min-height: 54px; }
+    .cta-stack { display: grid; gap: 8px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .row button { flex: 1; }
+    .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+    .day {
+      aspect-ratio: 1;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+    }
+    .day.work { background: var(--ok-bg); color: var(--ok); border-color: transparent; }
+    .day.warn { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+    .day.absent { background: var(--danger-bg); color: var(--danger); border-color: transparent; }
+
+    .splash {
+      flex: 1;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      background:
+        linear-gradient(137deg, rgba(36,59,74,.96), rgba(23,41,50,.95), rgba(43,32,25,.9)),
+        radial-gradient(circle at 78% 16%, rgba(255,107,53,.3), transparent 35%);
+    }
+    .splash .content { padding: 24px; }
+    .splash p { color: rgba(255,255,255,.76); }
+    .role-card {
+      text-align: left;
+      min-height: 88px;
+      padding: 16px;
+      border-radius: 16px;
+      color: #fff;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.18);
+      justify-content: flex-start;
+      display: block;
+    }
+    .role-card.active { background: #fff; color: var(--ink); }
+    .role-card span { display: block; color: rgba(255,255,255,.7); font-size: 12px; margin-top: 5px; }
+    .role-card.active span { color: var(--muted); }
+
+    .side {
+      color: #fff;
+      padding: 32px 32px 28px;
+      display: grid;
+      align-content: start;
+      gap: 16px;
+    }
+    .side h1 { max-width: 620px; }
+    .side > p { max-width: 680px; color: rgba(255,255,255,.74); }
+    .panel {
+      width: min(760px, 100%);
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 24px;
+      padding: 18px;
+      backdrop-filter: blur(12px);
+      display: grid;
+      gap: 14px;
+    }
+    .panel h2 { font-size: 18px; }
+    .seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .seg button, .chip-grid button {
+      min-height: 42px;
+      background: rgba(255,255,255,.1);
+      color: rgba(255,255,255,.78);
+      border: 1px solid rgba(255,255,255,.14);
+      box-shadow: none;
+    }
+    .seg button.active, .chip-grid button.active {
+      background: #fff;
+      color: var(--ink);
+      border-color: #fff;
+    }
+    .chip-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .scenario { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .scenario button { min-height: 44px; background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.16); }
+    .state {
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      white-space: pre-wrap;
+      color: rgba(255,255,255,.82);
+      background: rgba(0,0,0,.22);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 16px;
+      padding: 14px;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .toast {
+      position: absolute;
+      left: 50%;
+      bottom: 94px;
+      transform: translateX(-50%) translateY(12px);
+      width: calc(100% - 48px);
+      min-height: 48px;
+      display: grid;
+      place-items: center;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(32,26,23,.92);
+      color: #fff;
+      font-weight: 800;
+      font-size: 13px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease;
+      z-index: 20;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 900px) {
+      body { background: #172932; }
+      .shell { grid-template-columns: 1fr; }
+      .side { display: none; }
+      .phone-zone { padding: 14px; }
+      .phone { width: min(390px, 100%); height: calc(100vh - 28px); min-height: 640px; border-radius: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="phone-zone">
+      <div class="phone" aria-label="소담 PRD 서비스 앱 미리보기">
+        <div class="status"><span>9:41</span><span>소담</span></div>
+        <div id="phoneScreen" class="screen"></div>
+        <div id="toast" class="toast"></div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <div>
+        <div class="brand"><span class="mark">소</span><strong>Sodam PRD Preview</strong></div>
+        <h1>실제 앱 화면처럼 눌러보는 서비스 시뮬레이터</h1>
+        <p>정적 HTML이지만 화면 구성은 앱 프레임 기준으로 다시 만들었습니다. 역할과 화면, 엣지케이스를 바꾸면 왼쪽 폰 화면이 즉시 갱신됩니다.</p>
+      </div>
+
+      <section class="panel">
+        <h2>역할</h2>
+        <div class="seg" id="roleControls"></div>
+      </section>
+
+      <section class="panel">
+        <h2>화면</h2>
+        <div class="chip-grid" id="screenControls"></div>
+      </section>
+
+      <section class="panel">
+        <h2>시나리오</h2>
+        <div class="scenario">
+          <button data-scenario="offline">오프라인 토글</button>
+          <button data-scenario="error">오류 상태</button>
+          <button data-scenario="empty">빈 상태</button>
+          <button data-scenario="paywall">페이월</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>상태</h2>
+        <div class="state" id="debug"></div>
+      </section>
+    </aside>
+  </main>
+
+  <script>
+    const roles = {
+      guest: { label: '비회원', title: '소담 시작', tabs: [['🏠','시작'], ['👤','역할'], ['✅','약관'], ['📝','정보'], ['→','홈']] },
+      owner: { label: '사장님', title: '사장님 홈', tabs: [['🏠','홈'], ['🏪','매장'], ['⏱','근태'], ['₩','급여'], ['i','정보']] },
+      employee: { label: '직원', title: '직원 홈', tabs: [['🏠','홈'], ['⏱','출퇴근'], ['₩','급여'], ['🏪','매장'], ['🔔','알림']] },
+      admin: { label: '운영자', title: '운영자', tabs: [['📊','KPI'], ['👥','사용자'], ['💳','결제'], ['✍','CMS'], ['⚙','시스템']] },
+    };
+
+    const screens = {
+      guest: [
+        ['onboarding', '온보딩'],
+        ['auth', '가입/로그인'],
+        ['consent', '약관'],
+        ['profile', '기본정보'],
+        ['landing', '역할 홈'],
+      ],
+      owner: [
+        ['home', '홈'],
+        ['store', '매장'],
+        ['attendance', '근태'],
+        ['payroll', '급여'],
+        ['info', '정보'],
+      ],
+      employee: [
+        ['home', '홈'],
+        ['attendance', '출퇴근'],
+        ['payroll', '급여'],
+        ['store', '매장'],
+        ['noti', '알림'],
+      ],
+      admin: [
+        ['dashboard', 'KPI'],
+        ['users', '사용자'],
+        ['billing', '결제'],
+        ['cms', 'CMS'],
+        ['system', '시스템'],
+      ],
+    };
+
+    const state = {
+      role: 'owner',
+      screen: 'home',
+      selectedPurpose: '사장님',
+      offline: false,
+      mode: 'normal',
+      payrollStatus: 'DRAFT',
+      attendance: '근무 중 03:24',
+      subscription: 'FREE',
+      toast: '',
+    };
+
+    const $ = (selector) => document.querySelector(selector);
+    const money = (v) => Math.round(v).toLocaleString('ko-KR') + '원';
+    const pill = (text, tone = '') => `<span class="pill ${tone}">${text}</span>`;
+    const button = (text, action, cls = 'primary') => `<button class="${cls}" data-action="${action}">${text}</button>`;
+
+    function initFromHash() {
+      const raw = decodeURIComponent(location.hash.replace('#',''));
+      if (!raw) return;
+      const [role, screen] = raw.split(':');
+      if (roles[role]) state.role = role;
+      if (screen && screens[state.role].some(([id]) => id === screen)) state.screen = screen;
+    }
+
+    function showToast(message) {
+      const el = $('#toast');
+      el.textContent = message;
+      el.classList.add('show');
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => el.classList.remove('show'), 1800);
+    }
+
+    function appChrome(title, body, activeIndex) {
+      const role = roles[state.role];
+      const tabs = role.tabs.map(([icon, label], index) => {
+        const target = screens[state.role][index]?.[0] ?? screens[state.role][0][0];
+        return `<button class="${index === activeIndex ? 'active' : ''}" data-screen="${target}"><span>${icon}</span>${label}</button>`;
+      }).join('');
+      return `
+        <div class="appbar">
+          <span class="appbar-side">${state.offline ? '오프' : ''}</span>
+          <strong>${title}</strong>
+          <button class="icon-btn" data-action="notify">⋯</button>
+        </div>
+        <div class="content">${body}</div>
+        <div class="bottom"><div class="tabbar">${tabs}</div></div>
+      `;
+    }
+
+    function renderGuest() {
+      if (state.screen === 'onboarding') {
+        return `
+          <div class="splash">
+            <div class="content">
+              <div class="brand-row"><div class="brand"><span class="mark">소</span><strong>소담</strong></div>${pill('첫 실행')}</div>
+              <div class="hero">
+                <div><h1>출퇴근과 급여를<br />한 번에 정리해요</h1><p>사장님은 매장 운영을, 직원은 내 기록과 급여를 빠르게 확인합니다.</p></div>
+                <div class="cta-stack">${button('역할 선택하기', 'guestRole')}${button('이미 계정이 있어요', 'guestLogin', 'secondary')}</div>
+              </div>
+              <button class="role-card active" data-action="purposeOwner"><strong>사장님</strong><span>직원, 근태, 급여, 구독 관리</span></button>
+              <button class="role-card" data-action="purposeEmployee"><strong>직원</strong><span>출퇴근, 명세서, 매장 가입</span></button>
+              <button class="role-card" data-action="purposePersonal"><strong>개인</strong><span>내 근무 기록과 정보 확인</span></button>
+            </div>
+          </div>`;
+      }
+      if (state.screen === 'auth') {
+        return appChrome('가입/로그인', `
+          <div class="hero"><div><h2>${state.selectedPurpose}로 시작하기</h2><p>가입 후 약관과 기본정보를 마저 설정하면 홈으로 이동합니다.</p></div>${button('카카오로 계속하기', 'kakao', 'kakao')}</div>
+          <div class="card"><h3>이메일 로그인</h3><input value="owner@sodam.app" /><input type="password" value="sodam1234" />${button('로그인', 'login')}</div>
+          <div class="card warm"><strong>가입 완료 후 안내</strong><p class="caption">로그인 후 필수 약관과 기본 정보를 설정해야 서비스 이용이 가능합니다.</p></div>
+        `, 1);
+      }
+      if (state.screen === 'consent') {
+        return appChrome('약관 동의', `
+          <div class="card"><h2>서비스 이용을 위해 필요한 약관이에요</h2><p>필수 항목을 확인하면 기본정보 단계로 이동합니다.</p></div>
+          <div class="list">
+            <div class="item"><div><strong>서비스 이용약관</strong><small>필수</small></div>${pill('동의 필요','warn')}</div>
+            <div class="item"><div><strong>개인정보 처리방침</strong><small>필수</small></div>${pill('동의 필요','warn')}</div>
+            <div class="item"><div><strong>마케팅 알림</strong><small>선택</small></div>${pill('선택')}</div>
+          </div>
+          ${button('필수 약관 동의', 'consent')}
+        `, 2);
+      }
+      if (state.screen === 'profile') {
+        return appChrome('기본 정보', `
+          <div class="card"><h2>마지막 설정이에요</h2><p>역할별 홈에서 필요한 기본 정보를 입력합니다.</p></div>
+          <div class="card"><input value="김은영" /><input value="010-1234-5678" /><input value="${state.selectedPurpose}" />${button('저장하고 홈으로', 'profile')}</div>
+        `, 3);
+      }
+      return appChrome('역할 홈 진입', `
+        <div class="hero"><div><h2>${state.selectedPurpose} 홈으로 이동했어요</h2><p>서버 역할이 있으면 서버 값을 우선하고, 없으면 선택한 역할을 사용합니다.</p></div>${button('사장님 홈 보기', 'goOwner')}</div>
+      `, 4);
+    }
+
+    function renderOwner() {
+      if (state.screen === 'home') {
+        return appChrome('사장님 홈', `
+          <div class="hero"><div><h2>은영 사장님,<br />오늘 출근 2/3명</h2><p>${state.offline ? '오프라인 캐시 기준으로 보여드려요.' : '오늘 상태와 이번 달 예상 급여를 한눈에 확인합니다.'}</p></div><div class="row">${button('이상 출퇴근 확인','ownerAttendance','secondary')}${button('급여 정산','ownerPayroll')}</div></div>
+          <div class="metric-grid"><div class="metric"><strong>2/3</strong><span>오늘 출근</span></div><div class="metric"><strong>${money(3286400)}</strong><span>예상 급여</span></div><div class="metric"><strong>${state.subscription}</strong><span>현재 플랜</span></div><div class="metric"><strong>7일</strong><span>정산까지</span></div></div>
+          <div class="card warm"><h3>다음 행동</h3><p>미출근 직원에게 푸시를 보내거나 급여 정산 전 누락 기록을 확인하세요.</p></div>
+        `, 0);
+      }
+      if (state.screen === 'store') {
+        return appChrome('매장·직원', `
+          <div class="card"><h2>소담 광교점</h2><p>출퇴근 인증 반경 100m · 매장 코드 ST2026-A8F2</p>${button('매장 정보 저장','saveStore')}</div>
+          <div class="list"><div class="item"><div><strong>민지</strong><small>활성 · 시급 12,000원</small></div>${pill('근무 중','ok')}</div><div class="item"><div><strong>지훈</strong><small>활성 · 시급 11,500원</small></div>${pill('미출근','danger')}</div></div>
+          ${button('직원 초대하기','invite')}
+        `, 1);
+      }
+      if (state.screen === 'attendance') {
+        return appChrome('출퇴근 보드', `
+          <div class="list"><div class="item"><div><strong>민지</strong><small>09:03 출근 · 위치 인증 성공</small></div>${pill('근무 중','ok')}</div><div class="item"><div><strong>지훈</strong><small>근무 시작 18분 지연</small></div>${pill('확인 필요','warn')}</div><div class="item"><div><strong>서아</strong><small>18:12 퇴근 완료</small></div>${pill('완료','info')}</div></div>
+          <div class="card warm"><h3>이상 탐지</h3><p>GPS 범위 밖 시도와 운영시간 외 출근은 사장님 확인 후 수동 보정할 수 있습니다.</p></div>
+          <div class="row">${button('수동 기록 추가','manualAttendance')}${button('직원에게 푸시','pushEmployee','secondary')}</div>
+        `, 2);
+      }
+      if (state.screen === 'payroll') {
+        return appChrome('급여 정산', `
+          <div class="hero"><div><h2>6월 급여 정산</h2><p>기본/연장/야간/주휴와 사업소득세 3.3%를 분리 표시합니다.</p></div>${pill(state.payrollStatus, state.payrollStatus === 'APPROVED' ? 'info' : 'warn')}</div>
+          <div class="list"><div class="item"><div><strong>민지</strong><small>기본 92h · 야간 6h</small></div><strong>${money(1328400)}</strong></div><div class="item"><div><strong>지훈</strong><small>주 15시간 미달 · 주휴 0</small></div><strong>${money(781600)}</strong></div></div>
+          <div class="row">${button('자동 계산','calculate','secondary')}${button('명세서 생성','approvePayroll')}</div>
+        `, 3);
+      }
+      return appChrome('정보 허브', `
+        <div class="list"><div class="item"><div><strong>주휴수당 계산법</strong><small>노무 · 최근 본 콘텐츠</small></div>${pill('노무','info')}</div><div class="item"><div><strong>종합소득세 자료 체크</strong><small>세무 · 사장님 추천</small></div>${pill('세무')}</div></div>
+        <div class="card"><h3>Q&A</h3><p>질문을 남기면 운영자가 답변하고 푸시로 알려줍니다.</p>${button('Q&A 등록','qna')}</div>
+      `, 4);
+    }
+
+    function renderEmployee() {
+      if (state.screen === 'home') {
+        return appChrome('직원 홈', `
+          <div class="card" style="text-align:center;padding:24px 16px"><h2>좋은 아침이에요, 지훈님</h2><button class="primary" style="width:178px;height:178px;border-radius:999px;margin:18px auto 10px;font-size:21px" data-action="punch">${state.attendance}</button><p class="caption">NFC를 우선 시도하고, 미지원 단말은 GPS-only로 자동 전환합니다.</p></div>
+          <div class="metric-grid"><div class="metric"><strong>12,000원</strong><span>오늘 시급</span></div><div class="metric"><strong>소담 광교점</strong><span>근무 매장</span></div></div>
+        `, 0);
+      }
+      if (state.screen === 'attendance') {
+        const days = Array.from({length: 35}, (_, i) => `<div class="day ${i % 7 === 0 ? 'warn' : i % 6 === 0 ? 'absent' : i % 2 === 0 ? 'work' : ''}">${i + 1}</div>`).join('');
+        return appChrome('근무 캘린더', `
+          <div class="card"><h2>6월 근무 캘린더</h2><div class="calendar">${days}</div></div>
+          <div class="card"><h3>선택일 상세</h3><p>출근 09:03 · 퇴근 18:12 · 위치 인증 성공</p>${button('정정 요청','correction','secondary')}</div>
+        `, 1);
+      }
+      if (state.screen === 'payroll') {
+        return appChrome('급여 명세', `
+          <div class="hero"><div><h2>6월 예상 실수령액</h2><p>기본 근무, 야간/연장, 주휴, 세금을 분리해서 확인합니다.</p></div><strong style="font-size:30px">${money(1090800)}</strong></div>
+          <div class="list"><div class="item"><strong>기본 근무</strong><span>${money(960000)}</span></div><div class="item"><strong>주휴수당</strong><span>${money(96000)}</span></div><div class="item"><strong>세금 3.3%</strong><span>- ${money(37200)}</span></div></div>
+          ${button('이의 신청','dispute','secondary')}
+        `, 2);
+      }
+      if (state.screen === 'store') {
+        return appChrome('매장 가입', `
+          <div class="card"><h2>소속 매장</h2><div class="item"><div><strong>소담 광교점</strong><small>활성 · 내 시급 12,000원</small></div>${pill('활성','ok')}</div></div>
+          <div class="card"><h3>매장 코드 입력</h3><input value="ST2026-A8F2" />${button('매장 가입하기','joinStore')}</div>
+        `, 3);
+      }
+      return appChrome('알림', `
+        <div class="list"><div class="item"><div><strong>급여 명세 도착</strong><small>6월 명세서를 확인해 주세요.</small></div>${pill('급여','info')}</div><div class="item"><div><strong>퇴근 누락 의심</strong><small>어제 퇴근 기록이 없어요.</small></div>${pill('확인','warn')}</div><div class="item"><div><strong>매장 공지</strong><small>주말 운영시간이 변경됐어요.</small></div>${pill('공지')}</div></div>
+      `, 4);
+    }
+
+    function renderAdmin() {
+      if (state.screen === 'dashboard') {
+        return appChrome('운영 KPI', `
+          <div class="hero"><div><h2>오늘 신규 18명<br />유료 전환 6건</h2><p>Sentry, 결제 실패, 미응대 CS를 한 화면에서 확인합니다.</p></div>${pill('운영 정상','ok')}</div>
+          <div class="metric-grid"><div class="metric"><strong>18</strong><span>신규 가입</span></div><div class="metric"><strong>6</strong><span>유료 전환</span></div><div class="metric"><strong>${money(884000)}</strong><span>MRR</span></div><div class="metric"><strong>4</strong><span>미응대 CS</span></div></div>
+        `, 0);
+      }
+      if (state.screen === 'users') {
+        return appChrome('사용자 관리', `
+          <div class="card"><input value="owner@sodam.app" /></div>
+          <div class="list"><div class="item"><div><strong>김은영</strong><small>MASTER · PRO · 디바이스 2개</small></div>${pill('활성','ok')}</div><div class="item"><div><strong>박지훈</strong><small>EMPLOYEE · 매장 2개</small></div>${pill('활성','ok')}</div></div>
+          <div class="row">${button('등급 변경','convert','secondary')}${button('비활성화','disable','ghost')}</div>
+        `, 1);
+      }
+      if (state.screen === 'billing') {
+        return appChrome('결제 운영', `
+          <div class="list"><div class="item"><div><strong>소담 광교점</strong><small>PRO · 다음 결제 2026-07-01</small></div>${pill('ACTIVE','ok')}</div><div class="item"><div><strong>연남 카페</strong><small>STARTER · 2회 실패</small></div>${pill('PAST_DUE','danger')}</div></div>
+          <div class="card warm"><h3>분쟁 처리</h3><p>환불 실행은 운영자 재인증 후 가능합니다.</p>${button('PAST_DUE 알림','pastDue','secondary')}</div>
+        `, 2);
+      }
+      if (state.screen === 'cms') {
+        return appChrome('콘텐츠 CMS', `
+          <div class="card"><h2>주휴수당 계산법</h2><p>주 15시간 이상 근무 시 주휴수당 계산 기준을 안내합니다.</p>${button('공개','publish')}</div>
+          <div class="list"><div class="item"><div><strong>4대보험 가입 자격</strong><small>노무 · 조회 248</small></div>${pill('공개','ok')}</div><div class="item"><div><strong>종소세 자료 체크</strong><small>세무 · 조회 91</small></div>${pill('초안','warn')}</div></div>
+        `, 3);
+      }
+      return appChrome('시스템', `
+        <div class="card"><h2>푸시 발송</h2><p>세그먼트별 예약 발송과 A/B 테스트를 실행합니다.</p>${button('예약 발송','schedulePush')}</div>
+        <div class="list"><div class="item"><strong>점검 모드</strong>${pill(state.mode === 'error' ? 'ON' : 'OFF', state.mode === 'error' ? 'warn' : 'ok')}</div><div class="item"><strong>BillingScheduler</strong>${pill('대기')}</div></div>
+      `, 4);
+    }
+
+    function renderModeOverride() {
+      if (state.mode === 'empty') {
+        return appChrome(roles[state.role].title, `
+          <div class="card" style="text-align:center;padding:42px 18px"><h2>아직 표시할 데이터가 없어요</h2><p>첫 매장 등록, 첫 직원 초대, 첫 출근 기록처럼 다음 행동을 안내합니다.</p>${button('첫 항목 만들기','createFirst')}</div>
+        `, 0);
+      }
+      if (state.mode === 'error') {
+        return appChrome(roles[state.role].title, `
+          <div class="card warm" style="text-align:center;padding:42px 18px"><h2>처리에 실패했어요</h2><p>네트워크 상태를 확인한 뒤 다시 시도해 주세요. 입력값은 유지됩니다.</p>${button('다시 시도','retry')}</div>
+        `, 0);
+      }
+      if (state.mode === 'paywall') {
+        return appChrome('구독 안내', `
+          <div class="hero"><div><h2>명세서 발급은 PRO부터 가능해요</h2><p>급여 자동 계산과 직원 푸시를 계속 사용하려면 플랜을 선택해 주세요.</p></div>${button('PRO 시작하기','upgrade')}</div>
+          <div class="card"><h3>포함 기능</h3><p>직원 10명, 급여 명세서, 세무/노무 정보 허브, 우선 지원</p></div>
+        `, 0);
+      }
+      return null;
+    }
+
+    function renderPhone() {
+      const override = renderModeOverride();
+      if (override) return override;
+      if (state.role === 'guest') return renderGuest();
+      if (state.role === 'owner') return renderOwner();
+      if (state.role === 'employee') return renderEmployee();
+      return renderAdmin();
+    }
+
+    function renderControls() {
+      $('#roleControls').innerHTML = Object.entries(roles).map(([id, role]) =>
+        `<button class="${state.role === id ? 'active' : ''}" data-role="${id}">${role.label}</button>`
+      ).join('');
+      $('#screenControls').innerHTML = screens[state.role].map(([id, label]) =>
+        `<button class="${state.screen === id ? 'active' : ''}" data-screen="${id}">${label}</button>`
+      ).join('');
+      $('#debug').textContent =
+`role: ${state.role} (${roles[state.role].label})
+screen: ${state.screen}
+selectedPurpose: ${state.selectedPurpose}
+offline: ${state.offline}
+mode: ${state.mode}
+payrollStatus: ${state.payrollStatus}
+attendance: ${state.attendance}
+subscription: ${state.subscription}`;
+    }
+
+    function render() {
+      $('#phoneScreen').innerHTML = renderPhone();
+      renderControls();
+      history.replaceState(null, '', `#${state.role}:${state.screen}`);
+    }
+
+    document.addEventListener('click', (event) => {
+      const role = event.target.closest('[data-role]');
+      if (role) {
+        state.role = role.dataset.role;
+        state.screen = screens[state.role][0][0];
+        state.mode = 'normal';
+        render();
+        return;
+      }
+      const screen = event.target.closest('[data-screen]');
+      if (screen) {
+        state.screen = screen.dataset.screen;
+        state.mode = 'normal';
+        render();
+        return;
+      }
+      const scenario = event.target.closest('[data-scenario]');
+      if (scenario) {
+        if (scenario.dataset.scenario === 'offline') state.offline = !state.offline;
+        else state.mode = state.mode === scenario.dataset.scenario ? 'normal' : scenario.dataset.scenario;
+        render();
+        showToast(scenario.textContent.trim() + ' 적용');
+        return;
+      }
+      const action = event.target.closest('[data-action]');
+      if (!action) return;
+      const name = action.dataset.action;
+      if (name === 'guestRole') state.screen = 'auth';
+      if (name === 'guestLogin') state.screen = 'auth';
+      if (name === 'kakao') state.screen = 'consent';
+      if (name === 'login') state.screen = 'consent';
+      if (name === 'consent') state.screen = 'profile';
+      if (name === 'profile') state.screen = 'landing';
+      if (name === 'goOwner') { state.role = 'owner'; state.screen = 'home'; }
+      if (name === 'purposeOwner') state.selectedPurpose = '사장님';
+      if (name === 'purposeEmployee') state.selectedPurpose = '직원';
+      if (name === 'purposePersonal') state.selectedPurpose = '개인';
+      if (name === 'ownerAttendance') state.screen = 'attendance';
+      if (name === 'ownerPayroll') state.screen = 'payroll';
+      if (name === 'approvePayroll') state.payrollStatus = 'APPROVED';
+      if (name === 'calculate') state.payrollStatus = 'CALCULATED';
+      if (name === 'punch') state.attendance = state.attendance.startsWith('근무') ? '퇴근 완료' : '근무 중 00:01';
+      if (name === 'upgrade') state.subscription = 'PRO';
+      render();
+      showToast(action.textContent.trim() + ' 처리');
+    });
+
+    window.addEventListener('hashchange', () => {
+      initFromHash();
+      render();
+    });
+
+    initFromHash();
+    render();
+  </script>
+</body>
+</html>

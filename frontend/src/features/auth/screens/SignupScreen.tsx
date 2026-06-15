@@ -1,366 +1,193 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, StyleSheet } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import SodamLogo from '../../../common/components/logo/SodamLogo';
-import { COLORS } from '../../../common/components/logo/Colors';
-import { NavigationProp } from '@react-navigation/native';
+import React, {useEffect, useMemo, useState} from 'react';
+import {StyleSheet, View} from 'react-native';
+import {NavigationProp, RouteProp} from '@react-navigation/native';
+import {
+    AppButton,
+    AppCard,
+    AppHeader,
+    AppInput,
+    AppText,
+    AppToast,
+    CtaStack,
+    ScreenContainer,
+    SegmentedControl,
+} from '../../../common/components/ds';
+import {spacing} from '../../../theme/tokens';
 import authApi from '../services/authApi';
-import { unifiedStorage } from '../../../common/utils/unifiedStorage';
+import ConsentBlock, {ConsentValue} from '../components/ConsentBlock';
+import {unifiedStorage} from '../../../common/utils/unifiedStorage';
+import {AuthStackParamList} from '../../../navigation/types';
+import {AuthPurpose, purposeToPendingSlug, purposeLabel} from '../../../navigation/authFlow';
 
-interface UserType {
-    id: 'personal' | 'boss' | 'employee';
-    title: string;
-    description: string;
-    icon: string;
-    color: string;
-    backgroundColor: string;
+interface SignupScreenProps {
+    navigation: NavigationProp<any>;
+    route: RouteProp<AuthStackParamList, 'Signup'>;
 }
 
-interface SignupScreenProps { navigation: NavigationProp<any>; }
+type RoleId = AuthPurpose;
 
-const SignUpScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
+const ROLES: {id: RoleId; label: string; hint: string}[] = [
+    {id: 'boss', label: '사장님', hint: '매장 등록과 직원 초대까지 이어서 준비할 수 있어요.'},
+    {id: 'employee', label: '직원', hint: '매장 코드로 합류하고 출퇴근과 급여명세를 확인해요.'},
+    {id: 'personal', label: '개인', hint: '매장 없이 근무 시간과 급여 기록을 직접 관리해요.'},
+];
+
+const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+const indexForPurpose = (purpose?: AuthPurpose) => {
+    const index = ROLES.findIndex(role => role.id === purpose);
+    return index >= 0 ? index : 0;
+};
+
+const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [selectedUserType, setSelectedUserType] = useState<string | null>(null);
+    const [roleIndex, setRoleIndex] = useState(() => indexForPurpose(route.params?.selectedPurpose));
     const [isLoading, setIsLoading] = useState(false);
+    const [emailError, setEmailError] = useState<string | undefined>();
+    const [pwError, setPwError] = useState<string | undefined>();
+    const [consent, setConsent] = useState<ConsentValue>({
+        age: false,
+        terms: false,
+        privacy: false,
+        marketing: false,
+    });
 
-    const userTypes: UserType[] = [
-        {
-            id: 'personal',
-            title: '개인 사용자',
-            description: '혼자서 간편하게 근태 기록',
-            icon: '🏠',
-            color: COLORS.SUCCESS,
-            backgroundColor: '#ECFDF5'
-        },
-        {
-            id: 'boss',
-            title: '매장 대표',
-            description: '직원들의 근태를 관리',
-            icon: '🏢',
-            color: COLORS.SODAM_BLUE,
-            backgroundColor: '#EFF8FF'
-        },
-        {
-            id: 'employee',
-            title: '직원',
-            description: '매장에 참여하여 근태 기록',
-            icon: '👥',
-            color: COLORS.SODAM_GREEN,
-            backgroundColor: '#FDF2F8'
+    useEffect(() => {
+        if (route.params?.selectedPurpose) {
+            setRoleIndex(indexForPurpose(route.params.selectedPurpose));
         }
-    ];
+    }, [route.params?.selectedPurpose]);
+
+    const role = ROLES[roleIndex];
 
     const handleSignup = async () => {
-        if (isLoading) {return;}
-
-        if (!name || !email || !password || !selectedUserType) {
-            Alert.alert('알림', '모든 정보를 입력하고 사용자 타입을 선택해주세요.');
+        if (isLoading) {
+            return;
+        }
+        if (!name || !email || !password) {
+            AppToast.show('이름, 이메일, 비밀번호를 모두 입력해 주세요.');
+            return;
+        }
+        if (!isValidEmail(email)) {
+            setEmailError('올바른 이메일 주소를 입력해 주세요.');
+            return;
+        }
+        if (password.length < 8) {
+            setPwError('비밀번호는 8자 이상이어야 해요.');
+            return;
+        }
+        if (!consent.age || !consent.terms || !consent.privacy) {
+            AppToast.warn('서비스 이용을 위해 필수 약관에 동의해 주세요.');
             return;
         }
 
         setIsLoading(true);
-
         try {
-            const userGrade = selectedUserType === 'boss' ? 'MASTER' : selectedUserType === 'employee' ? 'EMPLOYEE' : 'PERSONAL';
-            await authApi.join({ name, email, password }, { purpose: selectedUserType as any, userGrade: userGrade as any });
+            const userGrade = role.id === 'boss' ? 'MASTER' : role.id === 'employee' ? 'EMPLOYEE' : 'PERSONAL';
+            await authApi.join(
+                {name, email, password},
+                {purpose: role.id, userGrade, consent},
+            );
 
-            // Persist selected purpose locally to suppress popup on first login
-            const purposeSlug = selectedUserType === 'boss' ? 'master' : selectedUserType === 'employee' ? 'employee' : 'user';
-            try { await unifiedStorage.setItem('pendingPurposeAfterSignup', purposeSlug); } catch (_) { /* no-op */ }
-
-            Alert.alert('회원가입 완료', '가입이 완료되었습니다. 로그인해 주세요.', [
-                { text: '확인', onPress: () => navigation.navigate('Login') }
-            ]);
+            await unifiedStorage.setItem('pendingPurposeAfterSignup', purposeToPendingSlug(role.id));
+            AppToast.success('가입이 완료되었습니다. 로그인 후 약관과 기본 정보를 마저 설정해 주세요.');
+            navigation.navigate('Login', {selectedPurpose: role.id, fromSignup: true});
             setName('');
             setEmail('');
             setPassword('');
-            setSelectedUserType(null);
-        } catch (e) {
-            Alert.alert('오류', '회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        } catch (e: any) {
+            const beMsg = e?.response?.data?.message;
+            AppToast.error(beMsg && typeof beMsg === 'string' ? beMsg : '회원가입에 실패했습니다. 입력값을 확인하고 다시 시도해 주세요.');
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleLogin = () => {
-        navigation.navigate('Login');
-    };
-
-    const renderUserTypeCard = (userType: UserType) => {
-        const isSelected = selectedUserType === userType.id;
-
-        return (
-            <TouchableOpacity
-                key={userType.id}
-                style={[
-                    styles.userTypeCard,
-                    isSelected && {
-                        borderColor: userType.color,
-                        backgroundColor: userType.backgroundColor
-                    }
-                ]}
-                onPress={() => setSelectedUserType(userType.id)}
-            >
-                <View style={[
-                    styles.radioButton,
-                    isSelected && { borderColor: COLORS.SODAM_ORANGE }
-                ]}>
-                    {isSelected && <View style={styles.radioInner} />}
-                </View>
-
-                <View style={styles.userTypeContent}>
-                    <Text style={styles.userTypeIcon}>{userType.icon}</Text>
-                    <View>
-                        <Text style={styles.userTypeTitle}>{userType.title}</Text>
-                        <Text style={styles.userTypeDesc}>{userType.description}</Text>
-                    </View>
-                </View>
-            </TouchableOpacity>
-        );
-    };
+    const footer = useMemo(
+        () => (
+            <CtaStack bordered>
+                <AppButton
+                    label="가입 완료"
+                    loading={isLoading}
+                    loadingLabel="가입 중..."
+                    onPress={handleSignup}
+                />
+            </CtaStack>
+        ),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [isLoading, name, email, password, roleIndex, consent],
+    );
 
     return (
-        <LinearGradient
-            colors={[COLORS.SODAM_BLUE, '#6A5ACD', COLORS.SODAM_GREEN]}
-            style={styles.container}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-        >
-            <SafeAreaView style={styles.safeArea}>
-            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                {/* 헤더 */}
-                <View style={styles.header}>
-                    <SodamLogo size={100} variant="simple" />
-                    <Text style={styles.headerTitle}>회원가입</Text>
-                    <Text style={styles.headerSubtitle}>소담과 함께 시작해보세요</Text>
-                </View>
+        <ScreenContainer
+            scroll
+            header={<AppHeader title="회원가입" onBack={() => navigation.goBack()} />}
+            footer={footer}>
+            <AppText variant="headingLg" style={styles.title}>
+                {'소담을\n시작할게요'}
+            </AppText>
 
-                {/* 폼 카드 */}
-                <View style={styles.formCard}>
-                    {/* 기본 정보 입력 */}
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>기본 정보</Text>
+            <AppText variant="titleMd" tone="secondary" style={styles.sectionLabel}>
+                어떤 역할인가요?
+            </AppText>
+            <SegmentedControl options={ROLES.map(r => r.label)} value={roleIndex} onChange={setRoleIndex} />
 
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>이름</Text>
-                            <TextInput
-                                style={styles.formInput}
-                                placeholder="이름을 입력해주세요"
-                                value={name}
-                                onChangeText={setName}
-                                placeholderTextColor={COLORS.GRAY_400}
-                            />
-                        </View>
+            <AppCard variant="warm" style={styles.hint}>
+                <AppText variant="titleMd">{purposeLabel(role.id)}으로 시작합니다</AppText>
+                <AppText variant="caption" tone="secondary" style={styles.hintSub}>
+                    {role.hint}
+                </AppText>
+            </AppCard>
 
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>이메일</Text>
-                            <TextInput
-                                style={styles.formInput}
-                                placeholder="이메일 주소를 입력해주세요"
-                                value={email}
-                                onChangeText={setEmail}
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                                placeholderTextColor={COLORS.GRAY_400}
-                            />
-                        </View>
+            <View style={styles.form}>
+                <AppInput label="이름" placeholder="이름을 입력해 주세요" value={name} onChangeText={setName} />
+                <AppInput
+                    label="이메일"
+                    placeholder="name@example.com"
+                    value={email}
+                    onChangeText={t => {
+                        setEmail(t);
+                        if (emailError) {
+                            setEmailError(undefined);
+                        }
+                    }}
+                    onBlur={() => setEmailError(email && !isValidEmail(email) ? '올바른 이메일 주소를 입력해 주세요.' : undefined)}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    error={emailError}
+                />
+                <AppInput
+                    label="비밀번호"
+                    placeholder="8자 이상 입력"
+                    helper={pwError ? undefined : '8자 이상 입력해 주세요.'}
+                    value={password}
+                    onChangeText={t => {
+                        setPassword(t);
+                        if (pwError) {
+                            setPwError(undefined);
+                        }
+                    }}
+                    secureTextEntry
+                    error={pwError}
+                />
+            </View>
 
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>비밀번호</Text>
-                            <TextInput
-                                style={styles.formInput}
-                                placeholder="비밀번호를 입력해주세요 (8자 이상)"
-                                value={password}
-                                onChangeText={setPassword}
-                                secureTextEntry
-                                placeholderTextColor={COLORS.GRAY_400}
-                            />
-                        </View>
-                    </View>
-
-                    {/* 사용자 타입 선택 */}
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>사용 목적을 선택해주세요</Text>
-                        {userTypes.map(renderUserTypeCard)}
-                    </View>
-
-                    {/* 버튼들 */}
-                    <View style={styles.buttonSection}>
-                        <TouchableOpacity
-                            style={[styles.signupButton, isLoading && styles.signupButtonDisabled]}
-                            onPress={handleSignup}
-                            disabled={isLoading}
-                        >
-                            <Text style={styles.signupButtonText}>
-                                {isLoading ? '가입 중...' : '가입하기'}
-                            </Text>
-                        </TouchableOpacity>
-
-
-                        <TouchableOpacity style={styles.loginLink} onPress={handleLogin}>
-                            <Text style={styles.loginLinkText}>
-                                이미 계정이 있으신가요? 로그인
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </ScrollView>
-            </SafeAreaView>
-        </LinearGradient>
+            <View style={styles.consent}>
+                <ConsentBlock value={consent} onChange={setConsent} />
+            </View>
+        </ScreenContainer>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    safeArea: {
-        flex: 1,
-    },
-    scrollContent: {
-        paddingHorizontal: 24,
-        paddingBottom: 24,
-    },
-    scrollView: {
-        flex: 1,
-    },
-    header: {
-        paddingTop: 40,
-        paddingBottom: 24,
-        paddingHorizontal: 20,
-        alignItems: 'center',
-        backgroundColor: 'transparent',
-    },
-    headerTitle: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        color: COLORS.WHITE,
-        marginTop: 20,
-        marginBottom: 8,
-    },
-    headerSubtitle: {
-        fontSize: 16,
-        color: 'rgba(255,255,255,0.8)',
-    },
-    formCard: {
-        backgroundColor: COLORS.WHITE,
-        marginTop: -20,
-        marginHorizontal: 20,
-        borderRadius: 25,
-        padding: 30,
-        shadowColor: COLORS.BLACK,
-        shadowOffset: {
-            width: 0,
-            height: 10,
-        },
-        shadowOpacity: 0.2,
-        shadowRadius: 30,
-        elevation: 10,
-    },
-    section: {
-        marginBottom: 30,
-    },
-    sectionTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: COLORS.GRAY_800,
-        marginBottom: 20,
-        textAlign: 'center',
-    },
-    inputGroup: {
-        marginBottom: 20,
-    },
-    inputLabel: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: COLORS.GRAY_700,
-        marginBottom: 8,
-    },
-    formInput: {
-        borderWidth: 2,
-        borderColor: COLORS.GRAY_200,
-        borderRadius: 15,
-        padding: 16,
-        fontSize: 16,
-        backgroundColor: COLORS.GRAY_50,
-        color: COLORS.GRAY_800,
-    },
-    userTypeCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 20,
-        borderRadius: 15,
-        borderWidth: 2,
-        borderColor: COLORS.GRAY_200,
-        backgroundColor: COLORS.GRAY_50,
-        marginBottom: 12,
-    },
-    radioButton: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        borderWidth: 2,
-        borderColor: COLORS.GRAY_300,
-        marginRight: 15,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: COLORS.WHITE,
-    },
-    radioInner: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        backgroundColor: COLORS.SODAM_ORANGE,
-    },
-    userTypeContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    userTypeIcon: {
-        fontSize: 32,
-        marginRight: 15,
-    },
-    userTypeTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: COLORS.GRAY_800,
-        marginBottom: 4,
-    },
-    userTypeDesc: {
-        fontSize: 14,
-        color: COLORS.GRAY_500,
-    },
-    buttonSection: {
-        marginTop: 10,
-    },
-    signupButton: {
-        backgroundColor: COLORS.SODAM_ORANGE,
-        borderRadius: 15,
-        padding: 18,
-        alignItems: 'center',
-        marginBottom: 15,
-    },
-    signupButtonDisabled: {
-        opacity: 0.6,
-    },
-    signupButtonText: {
-        color: COLORS.WHITE,
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    loginLink: {
-        alignItems: 'center',
-        padding: 15,
-    },
-    loginLinkText: {
-        color: COLORS.GRAY_500,
-        fontSize: 16,
-        textDecorationLine: 'underline',
-    },
+    title: {marginBottom: spacing.xxl, letterSpacing: -0.8},
+    sectionLabel: {marginBottom: spacing.sm},
+    hint: {marginTop: spacing.md},
+    hintSub: {marginTop: 4},
+    form: {marginTop: spacing.xxl, gap: spacing.md},
+    consent: {marginTop: spacing.xxl},
 });
 
 export default SignUpScreen;

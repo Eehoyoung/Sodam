@@ -31,10 +31,12 @@ import AttendanceCalendarScreen from '../features/attendance/screens/AttendanceC
 import NotificationCenterScreen from '../features/notification/screens/NotificationCenterScreen';
 import WageSettingsScreen from '../features/store/screens/WageSettingsScreen';
 import StoreEditScreen from '../features/store/screens/StoreEditScreen';
+import StoreOperatingHoursScreen from '../features/store/screens/StoreOperatingHoursScreen';
 import MissingAttendanceCenterScreen from '../features/attendance/screens/MissingAttendanceCenterScreen';
 import AccountSettingsScreen from '../features/myPage/screens/AccountSettingsScreen';
 import TimeOffRequestScreen from '../features/timeoff/screens/TimeOffRequestScreen';
 import ReferralScreen from '../features/referral/screens/ReferralScreen';
+import TossBillingAuthScreen from '../features/subscription/screens/TossBillingAuthScreen';
 import appHeaderOptions from './appHeaderOptions';
 
 export type HomeStackParamList = {
@@ -74,10 +76,12 @@ export type HomeStackParamList = {
     AttendanceCalendar: undefined;
     WageSettings: {storeId: number};
     StoreEdit: {storeId: number};
+    StoreOperatingHours: {storeId: number};
     MissingAttendanceCenter: undefined;
     AccountSettings: undefined;
     TimeOffRequest: {storeId: number};
     Referral: undefined;
+    TossBillingAuth: {plan: string; billingCycle: string};
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -220,10 +224,12 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             />
             <Stack.Screen name="WageSettings" component={WageSettingsScreen} options={{headerShown: true, title: '시급 설정'}} />
             <Stack.Screen name="StoreEdit" component={StoreEditScreen} options={{headerShown: true, title: '매장 정보 편집'}} />
+            <Stack.Screen name="StoreOperatingHours" component={StoreOperatingHoursScreen} options={{headerShown: true, title: '운영시간 설정'}} />
             <Stack.Screen name="MissingAttendanceCenter" component={MissingAttendanceCenterScreen} options={{headerShown: true, title: '출퇴근 이상'}} />
             <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} options={{headerShown: true, title: '계정 설정'}} />
             <Stack.Screen name="TimeOffRequest" component={TimeOffRequestScreen} options={{headerShown: true, title: '휴가 신청'}} />
             <Stack.Screen name="Referral" component={ReferralScreen} options={{headerShown: true, title: '친구 추천'}} />
+            <Stack.Screen name="TossBillingAuth" component={TossBillingAuthScreen} options={{headerShown: true, title: '카드 등록'}} />
         </Stack.Navigator>
     );
 };

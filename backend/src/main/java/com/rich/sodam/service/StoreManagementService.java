@@ -45,6 +45,19 @@ public interface StoreManagementService {
 
     /** 사장 메모 조회. */
     String getOwnerMemo(Long storeId, Long employeeId);
+
+    /** 직원 활성/비활성 토글(퇴사·복직 처리). */
+    void setEmployeeActive(Long storeId, Long employeeId, boolean active);
+
+    /** 매장 운영시간(요일별) 조회. */
+    com.rich.sodam.dto.response.OperatingHoursResponseDto getOperatingHours(Long storeId);
+
+    /** 매장 운영시간(요일별) 수정. 출퇴근 누락 알림·운영시간 외 경고의 기준값. */
+    com.rich.sodam.dto.response.OperatingHoursResponseDto updateOperatingHours(
+            Long storeId, com.rich.sodam.dto.request.OperatingHoursUpdateDto dto);
+
+    /** 매장 시급 변경 이력(기본/개별) 최신순. */
+    java.util.List<com.rich.sodam.dto.response.WageHistoryDto> getStoreWageHistory(Long storeId);
 }
 
 

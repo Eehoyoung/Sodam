@@ -24,4 +24,12 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
             "where s.status = com.rich.sodam.domain.type.SubscriptionStatus.PAST_DUE " +
             "  and s.nextBillingAt <= :now")
     List<Subscription> findPastDueForRetry(LocalDateTime now);
+
+    /** 90일 슬립 후보: 비활성(updatedAt 오래됨) 무료·활성·미휴면 구독. */
+    @Query("select s from Subscription s " +
+            "where s.plan = com.rich.sodam.domain.type.PlanType.FREE " +
+            "  and s.status = com.rich.sodam.domain.type.SubscriptionStatus.ACTIVE " +
+            "  and s.dormantAt is null " +
+            "  and s.updatedAt <= :cutoff")
+    List<Subscription> findDormantFreeCandidates(LocalDateTime cutoff);
 }

@@ -45,7 +45,7 @@ const Avatar: React.FC<AvatarProps> = ({
     const borderRadius = shape === 'circle' ? avatarSize / 2 : avatarSize / 8;
 
     const getInitials = (): string => {
-        if (!name) return '';
+        if (!name) {return '';}
 
         const nameParts = name.trim().split(' ');
         if (nameParts.length === 1) {
@@ -88,6 +88,7 @@ const Avatar: React.FC<AvatarProps> = ({
                     style={imgStyle}
                     onError={handleImageError}
                     accessibilityRole="image"
+                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- blank a11y label should fall back to default, so ?? would announce an empty label
                     accessibilityLabel={name || 'User avatar'}
                 />
             ) : name ? (

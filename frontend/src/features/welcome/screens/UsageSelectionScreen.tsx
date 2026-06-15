@@ -1,179 +1,122 @@
 import React from 'react';
-import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet,
-    SafeAreaView,
-    StatusBar,
-    Dimensions,
-} from 'react-native';
+import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-
-Dimensions.get('window');
+import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import {AppBadge, AppButton, AppText, Brandmark} from '../../../common/components/ds';
+import {gradient, radius, spacing} from '../../../theme/tokens';
+import {OnboardingRole, roleToPurpose} from '../../../navigation/authFlow';
 
 interface UsageSelectionScreenProps {
     navigation: any;
 }
 
-const UsageSelectionScreen: React.FC<UsageSelectionScreenProps> = ({ navigation }) => {
-    const handleSelection = () => {
-        navigation.navigate('WelcomeMain');
+interface RoleOption {
+    role: OnboardingRole;
+    icon: string;
+    title: string;
+    sub: string;
+    recommended?: boolean;
+}
+
+const ROLE_OPTIONS: RoleOption[] = [
+    {role: 'owner', icon: 'storefront-outline', title: '사장님', sub: '매장·직원·급여를 함께 관리해요.', recommended: true},
+    {role: 'employee', icon: 'person-outline', title: '직원', sub: '출퇴근·휴가·급여명세를 확인해요.'},
+    {role: 'personal', icon: 'time-outline', title: '개인', sub: '근무 시간과 급여 기록을 직접 남겨요.'},
+];
+
+const UsageSelectionScreen: React.FC<UsageSelectionScreenProps> = ({navigation}) => {
+    const insets = useSafeAreaInsets();
+
+    const handleSelection = (selectedRole: OnboardingRole) => {
+        navigation.navigate('WelcomeMain', {
+            selectedRole,
+            selectedPurpose: roleToPurpose(selectedRole),
+        });
     };
 
-
     return (
-        <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <LinearGradient colors={gradient.darkScreen} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={styles.flex}>
+            <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
+                <ScrollView
+                    contentContainerStyle={[styles.content, {paddingBottom: spacing.md}]}
+                    showsVerticalScrollIndicator={false}>
+                    <Brandmark size={56} />
+                    <AppText variant="display" tone="inverse" style={styles.title}>
+                        {'어떻게\n시작할까요?'}
+                    </AppText>
+                    <AppText variant="bodyLg" tone="inverse" style={styles.copy}>
+                        선택한 역할로 가입과 첫 화면까지 이어집니다.
+                    </AppText>
 
-    <LinearGradient
-        colors={['#43e97b', '#38f9d7']}
-    style={styles.gradient}
-        >
-        {/* 헤더 */}
-        <View style={styles.header}>
-    <Text style={styles.title}>어떻게 사용하고 싶으세요?</Text>
-        <Text style={styles.subtitle}>용도에 맞는 방식을 선택해주세요</Text>
-    </View>
+                    <View style={styles.cards}>
+                        {ROLE_OPTIONS.map(opt => (
+                            <RoleRow key={opt.role} option={opt} onPress={() => handleSelection(opt.role)} />
+                        ))}
+                    </View>
+                </ScrollView>
 
-    {/* 선택 옵션들 */}
-    <View style={styles.optionsContainer}>
-        {/* 개인 근태 기록 */}
-        <TouchableOpacity
-    style={styles.optionCard}
-    onPress={handleSelection}
-    activeOpacity={0.8}
-    >
-    <Text style={styles.optionIcon}>🏠</Text>
-    <Text style={styles.optionTitle}>개인 근태 기록</Text>
-    <Text style={styles.optionDescription}>
-        혼자서 간편하게 출퇴근{'\n'}시간을 기록하고 싶어요
-    </Text>
-    <Text style={styles.optionBadge}>✓ 무료로 시작</Text>
-    </TouchableOpacity>
-
-    {/* 매장 사장으로 시작 */}
-    <TouchableOpacity
-        style={styles.optionCard}
-        onPress={handleSelection}
-        activeOpacity={0.8}
-    >
-    <Text style={styles.optionIcon}>🏢</Text>
-    <Text style={styles.optionTitle}>매장 사장으로 시작</Text>
-    <Text style={styles.optionDescription}>
-        우리 매장 직원들의{'\n'}근태를 관리하고 싶어요
-    </Text>
-    <Text style={[styles.optionBadge, { color: '#3b82f6' }]}>✓ 매장 등록 필요</Text>
-    </TouchableOpacity>
-
-    {/* 직원으로 참여 */}
-    <TouchableOpacity
-        style={styles.optionCard}
-        onPress={handleSelection}
-        activeOpacity={0.8}
-    >
-    <Text style={styles.optionIcon}>👥</Text>
-    <Text style={styles.optionTitle}>직원으로 참여</Text>
-    <Text style={styles.optionDescription}>
-        이미 등록된 매장에서{'\n'}일하고 있어요
-    </Text>
-    <Text style={[styles.optionBadge, { color: '#f59e0b' }]}>✓ 매장 코드 필요</Text>
-    </TouchableOpacity>
-    </View>
-
-    {/* 하단 안내 텍스트 */}
-    <View style={styles.footer}>
-    <Text style={styles.footerText}>
-            💡 언제든지 설정에서 사용 방식을 변경할 수 있어요
-    </Text>
-    </View>
-    </LinearGradient>
-    </SafeAreaView>
-);
+                <View style={[styles.cta, {paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.sm}]}>
+                    <AppButton label="사장님으로 시작하기" onPress={() => handleSelection('owner')} />
+                </View>
+            </SafeAreaView>
+        </LinearGradient>
+    );
 };
 
+const RoleRow: React.FC<{option: RoleOption; onPress: () => void}> = ({option, onPress}) => (
+    <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${option.title} 역할로 시작`}
+        style={({pressed}) => [styles.row, pressed && styles.rowPressed]}>
+        <View style={styles.iconWrap}>
+            <Ionicons name={option.icon} size={24} color="#FFFFFF" />
+        </View>
+        <View style={styles.rowBody}>
+            <View style={styles.rowTitleLine}>
+                <AppText variant="headingSm" tone="inverse" numberOfLines={1} style={styles.flexShrink}>
+                    {option.title}
+                </AppText>
+                {option.recommended ? <AppBadge label="추천" tone="warning" /> : null}
+            </View>
+            <AppText variant="bodyMd" tone="inverse" numberOfLines={1} style={styles.rowSub}>
+                {option.sub}
+            </AppText>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
+    </Pressable>
+);
+
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    gradient: {
-        flex: 1,
-        paddingHorizontal: 20,
-    },
-    header: {
+    flex: {flex: 1},
+    content: {paddingHorizontal: spacing.xxl, paddingTop: spacing.xxl, flexGrow: 1},
+    title: {marginTop: spacing.xl, letterSpacing: -1},
+    copy: {marginTop: spacing.md, opacity: 0.82},
+    cards: {marginTop: spacing.xxxl, gap: spacing.md},
+    row: {
+        flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 60,
-        marginBottom: 40,
+        gap: spacing.lg,
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        borderRadius: radius.xl,
+        paddingVertical: spacing.lg,
+        paddingHorizontal: spacing.lg,
     },
-    title: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: 'white',
-        textAlign: 'center',
-        marginBottom: 10,
-    },
-    subtitle: {
-        fontSize: 16,
-        color: 'rgba(255, 255, 255, 0.9)',
-        textAlign: 'center',
-    },
-    optionsContainer: {
-        flex: 1,
+    rowPressed: {opacity: 0.85, transform: [{scale: 0.99}]},
+    iconWrap: {
+        width: 48,
+        height: 48,
+        borderRadius: radius.lg,
+        alignItems: 'center',
         justifyContent: 'center',
-        gap: 20,
+        backgroundColor: 'rgba(255,255,255,0.12)',
     },
-    optionCard: {
-        backgroundColor: 'white',
-        borderRadius: 20,
-        padding: 25,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 8,
-        },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 8,
-        transform: [{ scale: 1 }],
-    },
-    optionIcon: {
-        fontSize: 50,
-        marginBottom: 15,
-    },
-    optionTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#333',
-        marginBottom: 8,
-        textAlign: 'center',
-    },
-    optionDescription: {
-        fontSize: 14,
-        color: '#666',
-        textAlign: 'center',
-        lineHeight: 20,
-        marginBottom: 12,
-    },
-    optionBadge: {
-        fontSize: 12,
-        color: '#10b981',
-        fontWeight: 'bold',
-    },
-    footer: {
-        alignItems: 'center',
-        paddingBottom: 40,
-        paddingTop: 20,
-    },
-    footerText: {
-        fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.8)',
-        textAlign: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        borderRadius: 20,
-    },
+    rowBody: {flex: 1, minWidth: 0},
+    rowTitleLine: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
+    flexShrink: {flexShrink: 1},
+    rowSub: {marginTop: 2, opacity: 0.78},
+    cta: {paddingHorizontal: spacing.xxl},
 });
 
-export default UsageSelectionScreen
+export default UsageSelectionScreen;

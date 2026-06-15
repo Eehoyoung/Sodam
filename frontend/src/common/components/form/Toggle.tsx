@@ -96,6 +96,7 @@ const Toggle: React.FC<ToggleProps> = ({
                 disabled={disabled}
                 accessibilityRole="switch"
                 accessibilityState={{checked: value, disabled}}
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- blank a11y label should fall back to state text, so ?? would announce an empty label
                 accessibilityLabel={label || (value ? '켜짐' : '꺼짐')}>
                 <View style={[styles.toggle, toggleStyle]}>
                     <View style={thumbStyle}/>

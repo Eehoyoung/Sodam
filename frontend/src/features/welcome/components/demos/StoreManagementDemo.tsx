@@ -14,6 +14,7 @@ let withTiming: any;
 
 try {
   if (ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE)) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional native module, guarded require (loaded only when animations are enabled)
     const reanimated = require('react-native-reanimated');
     Animated = reanimated.default;
     Easing = reanimated.Easing;
@@ -186,7 +187,7 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
                         setDemoStep('complete');
                         onDemoComplete({
                             success: true,
-                            message: '매장 통합관리 체험이 완료되었습니다!',
+                            message: '매장 통합관리 체험이 완료됐어요!',
                             timestamp: Date.now(),
                             management: {
                                 success: true,
@@ -227,7 +228,7 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
                 runOnJS(() => {
                     onDemoComplete({
                         success: false,
-                        message: '데모가 취소되었습니다.',
+                        message: '데모가 취소됐어요.',
                         timestamp: Date.now()
                     });
                 })();
@@ -448,7 +449,7 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
         }
     };
 
-    if (!isVisible) return null;
+    if (!isVisible) {return null;}
 
     return (
         <Animated.View style={[styles.overlay, containerStyle]}>
@@ -476,10 +477,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         zIndex: 1000,
     },
-    demoModalBase: {
-        // Removed dimensions-dependent width - now handled by dynamicStyles
-        // backgroundColor, borderRadius, padding, maxWidth, alignItems, maxHeight moved to dynamicStyles
-    },
     closeButton: {
         position: 'absolute',
         top: 16,
@@ -487,7 +484,7 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#F5F5F5',
+        backgroundColor: '#F1EEE9',
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 1001,

@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Sodam Additional — Employee / Personal / Common</title>
+  <style>
+    :root{
+      --brand:#ff6b35;--brand2:#e85a2a;--soft:#fff0e8;--navy:#243b4a;--ink:#201a17;
+      --sub:#625b55;--muted:#9a9189;--bg:#f7f4ef;--card:#fff;--line:#e8e0d8;
+      --green:#12a87b;--greenbg:#dff6ed;--amber:#f59e0b;--amberbg:#fff4d8;
+      --blue:#3b82f6;--bluebg:#e8f1ff;--red:#e5484d;--redbg:#fee2e2;
+      --phone-w:clamp(300px,92vw,390px);
+      font-family:Inter,Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(135deg,#fffaf4,#eef4f2);color:var(--ink)}
+    .page{max-width:1880px;margin:auto;padding:clamp(16px,3vw,36px)}
+    .intro{display:grid;grid-template-columns:minmax(280px,1fr) auto;gap:20px;align-items:end;margin-bottom:22px}
+    h1{font-size:clamp(32px,5vw,60px);line-height:1.06;margin:0;letter-spacing:0}
+    .lead{max-width:840px;color:var(--sub);font-size:clamp(14px,1.4vw,18px);line-height:1.7;word-break:keep-all}
+    .meta{background:rgba(255,255,255,.72);border:1px solid var(--line);border-radius:999px;padding:12px 16px;font-size:13px;font-weight:900;color:var(--navy)}
+    .tools{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 24px}
+    .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:9px 12px;font-size:12px;font-weight:900;color:var(--sub)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--phone-w)),1fr));gap:clamp(18px,2vw,28px);align-items:start}
+    .tile-title{font-size:14px;font-weight:950;color:var(--navy);margin:0 0 4px;padding-left:4px}
+    .tile-desc{font-size:12px;color:var(--sub);margin:0 0 9px;padding-left:4px;line-height:1.5;word-break:keep-all}
+    .phone{width:var(--phone-w);max-width:100%;margin:auto;background:#171412;border-radius:clamp(28px,8vw,40px);padding:clamp(8px,2vw,12px);box-shadow:0 22px 72px rgba(36,59,74,.16)}
+    .screen{height:clamp(620px,176vw,760px);max-height:780px;border-radius:clamp(22px,6vw,30px);background:var(--bg);overflow:hidden;position:relative;display:flex;flex-direction:column}
+    .screen.dark{background:linear-gradient(160deg,#263f4f,#172932 55%,#2b2019);color:#fff}
+    .screen.hi{background:#000;color:#fff}
+    .status{height:26px;flex:0 0 26px;padding:0 clamp(14px,4vw,20px);display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:950;opacity:.84}
+    .head{height:56px;flex:0 0 56px;padding:0 clamp(12px,4vw,18px);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(232,224,216,.76);background:rgba(255,255,255,.78);backdrop-filter:blur(18px);gap:8px}
+    .head.darkhead{background:transparent;border-bottom:0;color:#fff}
+    .head.hihead{background:#111;border-bottom:1px solid #444;color:#fff}
+    .title{font-size:clamp(16px,4.7vw,19px);font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .icon{min-width:36px;height:36px;border-radius:13px;background:#fff;border:1px solid var(--line);display:grid;place-items:center;color:var(--brand);font-size:11px;font-weight:950;padding:0 8px;white-space:nowrap}
+    .content{flex:1;overflow:hidden;padding:clamp(13px,4vw,18px);padding-bottom:calc(78px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px}
+    .scroll{overflow:auto;padding-bottom:calc(84px + env(safe-area-inset-bottom));scrollbar-width:none}
+    .scroll::-webkit-scrollbar{display:none}
+    .dark .content{padding:clamp(18px,5vw,24px)}
+    .mark{width:clamp(46px,13vw,58px);height:clamp(46px,13vw,58px);border-radius:18px;background:linear-gradient(145deg,var(--brand),#ff9b63);display:grid;place-items:center;color:#fff;font-weight:950;box-shadow:0 16px 34px rgba(255,107,53,.28);flex:0 0 auto}
+    .heroTitle{font-size:clamp(25px,7.8vw,35px);line-height:1.15;margin:8px 0 4px;font-weight:950;letter-spacing:0;word-break:keep-all}
+    .copy{color:var(--sub);font-size:clamp(12px,3.4vw,14px);line-height:1.55;word-break:keep-all;margin:0}
+    .dark .copy{color:rgba(255,255,255,.76)}
+    .hi .copy{color:rgba(255,255,255,.9)}
+    .card{background:var(--card);border:1px solid rgba(232,224,216,.78);border-radius:clamp(15px,4.4vw,21px);padding:clamp(12px,3.8vw,16px);min-width:0}
+    .warm{background:#fffbf5}.navy{background:var(--navy);color:#fff;border:0}.soft{background:var(--soft);border-color:#ffd7c7}
+    .hi .card{background:#1a1a1a;border:1px solid #555;color:#fff}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}.row>div{min-width:0}
+    .stack{display:grid;gap:8px}.cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.cols2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .label{font-size:11px;color:var(--sub);font-weight:900}.navy .label{color:#d8d0c8}.hi .label{color:#ffd84d}
+    .mid{font-size:clamp(16px,4.8vw,20px);font-weight:950;line-height:1.22;word-break:keep-all}
+    .big{font-size:clamp(22px,7.2vw,31px);font-weight:950;color:var(--brand);letter-spacing:0;line-height:1.18;word-break:keep-all}
+    .small{font-size:clamp(11px,3.1vw,12px);line-height:1.45;color:var(--muted);margin:3px 0 0;word-break:keep-all}
+    .badge{display:inline-flex;align-items:center;justify-content:center;min-height:27px;padding:6px 9px;border-radius:999px;background:var(--greenbg);color:var(--green);font-size:11px;font-weight:950;white-space:nowrap}
+    .badge.warn{background:var(--amberbg);color:#b56d00}.badge.info{background:var(--bluebg);color:var(--blue)}.badge.err{background:var(--redbg);color:var(--red)}
+    .field{min-height:48px;border-radius:15px;background:#fff;border:1px solid var(--line);display:flex;align-items:center;padding:0 14px;color:var(--muted);font-size:13px;font-weight:800;min-width:0}
+    .btn{min-height:52px;border-radius:17px;background:var(--brand);color:#fff;display:grid;place-items:center;text-align:center;font-weight:950;font-size:14px;padding:0 14px;box-shadow:0 14px 32px rgba(255,107,53,.2);word-break:keep-all}
+    .btn.sub{background:#fff;color:var(--navy);border:1px solid var(--line);box-shadow:none}.btn.ghost{background:transparent;color:var(--brand);border:0;box-shadow:none}
+    .hi .btn.sub{background:#222;color:#fff;border:1px solid #888}
+    .list{display:grid;gap:8px}
+    .item{background:#fff;border:1px solid rgba(232,224,216,.75);border-radius:16px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:58px}
+    .hi .item{background:#1a1a1a;border:1px solid #555;color:#fff}
+    .item b{font-size:clamp(13px,3.8vw,15px);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.item p{margin:3px 0 0;color:var(--sub);font-size:12px;line-height:1.35}
+    .hi .item p{color:#bbb}
+    .seg{display:flex;background:#eee7df;border-radius:16px;padding:4px;gap:2px}.seg span{flex:1;text-align:center;padding:9px 4px;border-radius:13px;font-size:12px;font-weight:950;color:var(--sub);white-space:nowrap}.seg .on{background:#fff;color:var(--brand);box-shadow:0 6px 18px rgba(36,59,74,.08)}
+    .progress{height:8px;background:#eee3da;border-radius:999px;overflow:hidden;margin-top:8px}.progress i{display:block;height:100%;width:72%;background:linear-gradient(90deg,var(--brand),#ff9b63);border-radius:999px}
+    .punch{width:min(58vw,220px);height:min(58vw,220px);max-width:220px;max-height:220px;min-width:176px;min-height:176px;border-radius:50%;background:radial-gradient(circle at 36% 30%,rgba(255,255,255,.28),transparent 36%),linear-gradient(145deg,var(--brand),#ff8954);margin:18px auto;display:grid;place-items:center;color:#fff;text-align:center;box-shadow:0 24px 58px rgba(255,107,53,.32)}
+    .punch b{font-size:clamp(22px,7vw,28px)}.punch span{display:block;margin-top:8px;font-size:12px;color:#ffe3d7;font-weight:900}
+    .quick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.quick div{background:#fff;border:1px solid var(--line);border-radius:15px;min-height:48px;display:grid;place-items:center;text-align:center;font-size:12px;font-weight:950;padding:6px;word-break:keep-all}
+    .center{height:100%;display:grid;place-items:center;text-align:center}.center>div{max-width:280px}
+    .tabs{position:absolute;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));height:62px;border-radius:24px;background:rgba(255,255,255,.9);border:1px solid rgba(232,224,216,.8);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:center;box-shadow:0 12px 32px rgba(36,59,74,.1);backdrop-filter:blur(18px)}
+    .tabs span{text-align:center;font-size:10px;font-weight:950;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tabs .on{color:var(--brand)}
+    /* coachmark spotlight overlay */
+    .coach{position:absolute;inset:0;background:rgba(20,16,12,.72);display:flex;flex-direction:column;justify-content:flex-end;padding:20px}
+    .spot{position:absolute;border:3px dashed #ffd7c7;border-radius:50%}
+    .bubble{background:#fff;border-radius:18px;padding:16px;box-shadow:0 16px 40px rgba(0,0,0,.3)}
+    .ring{width:160px;height:160px;border-radius:50%;border:8px solid #eee3da;border-top-color:var(--blue);display:grid;place-items:center;margin:14px auto;text-align:center}
+    @media (max-width:360px){
+      :root{--phone-w:min(100%,320px)}
+      .content{gap:8px}.card{padding:12px}.cols{gap:6px}.quick{gap:6px}.tabs span{font-size:9px}.screen{height:650px}
+    }
+    @media (min-width:760px){.screen{height:740px}}
+    @media (max-width:760px){.intro{grid-template-columns:1fr}.meta{width:max-content}.page{padding:16px 10px 40px}}
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="intro">
+      <div>
+        <h1>소담 추가 스크린 — 직원 · 개인 · 공통 상태</h1>
+        <p class="lead">기존 82개 목업에 없지만 출시·운영에 꼭 필요한 보조 화면 모음입니다. 네트워크/세션/점검 등 시스템 상태, 권한 영구거부 복구 흐름, 접근성(큰 글자·고대비), 첫 출근 온보딩, 휴게 타이머, 알림 프라이머, 강제 업데이트, 빈 상태를 다룹니다. 기준 디자인 시스템(brand #ff6b35, 폰 프레임, safe-area CTA, 320~430px 반응형)을 그대로 재사용했고, 색만으로 의미를 전달하지 않도록 모든 상태에 텍스트·아이콘·배지를 함께 붙였습니다.</p>
+      </div>
+      <div class="meta">11 screens · employee/personal/common</div>
+    </section>
+    <div class="tools">
+      <span class="chip">시스템 상태(오프라인/세션/점검)</span>
+      <span class="chip">권한 영구거부 복구</span>
+      <span class="chip">접근성 큰 글자·고대비</span>
+      <span class="chip">첫 출근 온보딩</span>
+      <span class="chip">휴게 타이머</span>
+      <span class="chip">강제 업데이트</span>
+      <span class="chip">색+텍스트 동시 전달</span>
+    </div>
+    <section id="grid" class="grid"></section>
+  </main>
+
+  <script>
+    const tabs = {
+      owner:['홈','매장','근태','급여','내정보'],
+      employee:['홈','출퇴근','급여','정보','내정보'],
+      personal:['홈','기록','급여','정보','내정보']
+    };
+    const status = '<div class="status"><span>9:41</span><span>100%</span></div>';
+    const statusOff = '<div class="status"><span>9:41</span><span>✈ 오프라인 · 100%</span></div>';
+    const tabbar = (type='owner', on=0) => `<div class="tabs">${tabs[type].map((t,i)=>`<span class="${i===on?'on':''}">${t}</span>`).join('')}</div>`;
+    const head = (title, action='') => `<div class="head"><div class="title">${title}</div>${action?`<div class="icon">${action}</div>`:''}</div>`;
+    const hiHead = (title, action='') => `<div class="head hihead"><div class="title">${title}</div>${action?`<div class="icon">${action}</div>`:''}</div>`;
+    const item = (a,b,c='') => `<div class="item"><div><b>${a}</b><p>${b}</p></div>${c}</div>`;
+    const badge = (t,k='') => `<span class="badge ${k}">${t}</span>`;
+    const field = t => `<div class="field">${t}</div>`;
+    const btn = (t,k='') => `<div class="btn ${k}">${t}</div>`;
+    const money = (label,value,sub='') => `<div class="card warm"><div class="label">${label}</div><div class="big">${value}</div>${sub?`<p class="small">${sub}</p>`:''}</div>`;
+
+    const screens = [
+
+      ['A1 네트워크 오프라인',
+        '인터넷이 끊겼을 때. 기록은 단말에 안전 보관되고 연결되면 자동 동기화된다는 안심 메시지. 색(주황)에만 의존하지 않게 아이콘+배지+본문으로 상태 명시.',
+        '',
+        `${statusOff}${head('오프라인','재시도')}<div class="content center"><div><div class="mark" style="margin:auto;background:var(--amber)">✈</div><div class="heroTitle" style="font-size:25px;color:var(--ink)">인터넷 연결이<br>끊겼어요</div><p class="copy">출퇴근 기록은 휴대폰에 안전하게 저장돼요. 연결되면 자동으로 사장님과 맞춰드릴게요.</p><div class="card warm" style="margin-top:16px;text-align:left"><div class="row"><div><b>대기 중인 기록 1건</b><p class="small">오늘 09:58 출근 (미전송)</p></div>${badge('대기','warn')}</div></div>${btn('다시 연결 시도')}${btn('오프라인으로 계속 보기','sub')}</div></div>`],
+
+      ['A2 세션 만료 재로그인',
+        '토큰 만료로 자동 로그아웃된 상황. 직전 화면으로 돌아갈 수 있다고 안내하고 보안상 재인증 유도. 마지막 화면 컨텍스트를 카드로 보존.',
+        '',
+        `${status}${head('다시 로그인','도움')}<div class="content scroll"><div class="card warm"><div class="row"><div><b>보안을 위해 로그아웃됐어요</b><p class="small">한동안 활동이 없어 자동으로 로그아웃했어요.</p></div>${badge('만료','warn')}</div></div><div class="card"><div class="label">돌아갈 화면</div><div class="mid">5월 급여명세</div><p class="small">로그인하면 보던 화면으로 바로 이어드려요.</p></div>${field('owner@sodam.dev')}${field('비밀번호')}${btn('다시 로그인')}${btn('카카오로 계속','sub')}<p class="copy" style="text-align:center">비밀번호 찾기</p></div>`],
+
+      ['A3 서버 점검 안내',
+        '계획된 서버 점검 시간. 종료 예정 시각을 명시하고 사용자 데이터는 안전함을 강조. 액션은 새로고침과 공지 보기뿐.',
+        'dark',
+        `${status}<div class="content center"><div><div class="mark" style="margin:auto;background:var(--blue)">🔧</div><div class="heroTitle">잠시 점검 중이에요</div><p class="copy">더 안정적인 소담을 위해 서버를 정비하고 있어요. 기록과 급여 데이터는 그대로 안전합니다.</p><div class="card" style="background:rgba(255,255,255,.12);color:#fff;margin-top:16px"><div class="label" style="color:#cfe0ff">예상 종료</div><div class="mid">오늘 오전 5시 30분</div></div>${btn('새로고침')}${btn('공지 확인하기','sub')}</div></div>`],
+
+      ['A4 위치 권한 영구거부 복구',
+        '위치 권한을 "다시 묻지 않음"으로 거부한 직원. 앱 내 재요청이 불가하므로 OS 설정으로 이동하는 단계별 안내 + 대안(사장 수동 처리).',
+        '',
+        `${status}${head('위치 권한','도움')}<div class="content scroll"><div class="card warm"><div class="row"><div><b>위치 권한이 꺼져 있어요</b><p class="small">출근 위치를 확인할 수 없어 인증을 못 했어요.</p></div>${badge('차단됨','err')}</div></div><div class="card"><div class="label">설정에서 켜는 방법</div><div class="list" style="margin-top:10px">${item('1단계','휴대폰 설정 > 소담 열기')}${item('2단계','권한 > 위치 선택')}${item('3단계','"앱 사용 중 허용"으로 변경')}</div></div>${btn('소담 설정 화면 열기')}${btn('사장님께 수동 출근 요청','sub')}</div>`],
+
+      ['A5 NFC 미지원 대체 흐름',
+        '단말이 NFC 자체를 지원하지 않거나 OS에서 꺼진 경우. GPS 출근/사장 수동요청으로 자연스럽게 우회. 기존 60번보다 원인 진단 단계를 추가.',
+        '',
+        `${status}${head('출퇴근 인증','도움')}<div class="content scroll"><div class="seg"><span>기본</span><span>위치</span><span class="on">NFC</span></div><div class="card warm"><div class="row"><div><b>NFC를 사용할 수 없어요</b><p class="small">이 기기에서 NFC가 꺼져 있거나 지원되지 않아요.</p></div>${badge('미지원','warn')}</div></div><div class="card"><div class="label">대신 이렇게 출근할 수 있어요</div><div class="list" style="margin-top:10px">${item('GPS 위치로 출근','매장 반경 안이면 바로 인증',badge('추천'))}${item('사장님 수동 처리','출근을 직접 요청',badge('대안','info'))}</div></div>${btn('GPS로 출근하기')}${btn('사장님께 수동 요청','sub')}</div>`],
+
+      ['A6 큰 글자 접근성 뷰 (200%)',
+        '시스템 글자 크기 200% 직원 홈. 핵심 정보(출근 버튼·시급·시간)만 남기고 폰트·터치영역 확대, 보조 정보는 줄임. 레이아웃이 깨지지 않게 1열 스택.',
+        '',
+        `${status}${head('민지님','내역')}<div class="content"><p class="label" style="font-size:16px">5월 25일 월요일</p><div class="punch" style="width:min(64vw,230px);height:min(64vw,230px)"><div><b style="font-size:34px">출근하기</b><span style="font-size:15px">GPS 정상</span></div></div><div class="card warm" style="text-align:center"><div class="label" style="font-size:16px">이번 달 일한 시간</div><div class="big" style="font-size:40px">42.5시간</div><p class="copy" style="font-size:18px;color:var(--ink);margin-top:6px">446,250원</p></div></div>${tabbar('employee',0)}`],
+
+      ['A7 고대비 / 다크 모드 프리뷰',
+        '고대비 모드 미리보기. 순흑 배경 + 굵은 흰 글자 + 노란 라벨로 명도 대비 확보(WCAG AAA 지향). 상태는 색 외에 [정상]/[확인] 텍스트 배지 병기.',
+        'hi',
+        `${status}${hiHead('출퇴근 (고대비)','내역')}<div class="content scroll"><div class="card"><div class="label">오늘 근무 상태</div><div class="mid" style="color:#fff">근무 중 · 03:12</div><p class="copy">카페 소담 반경 안</p></div><div class="list">${item('출근','09:58 · 위치 정상','<span class="badge">정상</span>')}${item('퇴근','아직 기록 없음','<span class="badge warn">대기</span>')}</div><div class="card"><div class="label">화면 표시</div><p class="copy">고대비 모드가 켜져 있어요. 글자와 배경 대비를 최대로 높였어요.</p></div>${btn('퇴근하기')}${btn('표준 모드로 전환','sub')}</div>`],
+
+      ['A8 첫 출근 온보딩 코치마크',
+        '직원이 매장 가입 후 첫 진입 시 출근 버튼을 짚어주는 스포트라이트 코치마크. 1/3 단계 표시, 한 번에 한 항목만 강조.',
+        '',
+        `${status}${head('민지님','')}<div class="content"><div style="text-align:center"><p class="label">5월 25일 월요일</p><div class="punch"><div><b>출근하기</b><span>GPS 정상</span></div></div></div></div>
+        <div class="coach"><div class="spot" style="left:50%;top:200px;transform:translateX(-50%);width:230px;height:230px"></div><div class="bubble"><div class="row"><div class="label" style="color:var(--brand)">1/3 · 첫 출근 안내</div>${badge('건너뛰기','info')}</div><div class="mid" style="margin-top:6px">여기를 눌러 출근하세요</div><p class="small" style="color:var(--sub)">매장 근처에서 버튼을 누르면 위치를 확인해 출근이 기록돼요.</p><div style="margin-top:12px">${btn('다음')}</div></div></div>`],
+
+      ['A9 개인 사용자 휴게 타이머 진행',
+        '개인 기록 사용자가 휴게 시작 후 진행 중인 화면. 카운트업 링, 휴게는 급여에서 제외됨을 명시. 종료/취소 액션.',
+        '',
+        `${status}${head('휴게 중','도움')}<div class="content"><div style="text-align:center"><div class="ring"><div><div class="big" style="font-size:30px;color:var(--blue)">12:34</div><p class="label" style="color:var(--blue)">휴게 경과</p></div></div><p class="label">스타디 카페 주말</p></div><div class="card warm" style="text-align:left"><div class="row"><div><b>휴게시간은 급여에서 빠져요</b><p class="small">근무 03:12 중 휴게 12분이 제외됩니다.</p></div>${badge('제외','info')}</div></div>${btn('휴게 종료하고 근무 재개')}${btn('휴게 취소','sub')}</div>`],
+
+      ['A10 푸시 알림 동의 프라이머',
+        'OS 권한 팝업을 띄우기 전 가치를 먼저 설명하는 프라이머(거부율 낮추기용). 무엇을 알려줄지 구체적으로 나열, 나중에 설정 가능 안내.',
+        '',
+        `${status}${head('알림 받기','')}<div class="content center"><div><div class="mark" style="margin:auto">🔔</div><div class="heroTitle" style="font-size:26px;color:var(--ink)">중요한 순간에만<br>알려드릴게요</div><p class="copy">꼭 필요한 알림만 보냅니다. 광고성 알림은 따로 끌 수 있어요.</p><div class="list" style="text-align:left;margin-top:16px">${item('급여명세 도착','사장님이 명세서를 발급하면')}${item('정정 요청 결과','내 정정/휴가가 승인되면')}${item('출근 리마인드','근무 시작 시간이 다가오면')}</div>${btn('알림 받기')}${btn('나중에 할게요','sub')}</div></div>`],
+
+      ['A11 앱 강제 업데이트',
+        '구버전 호환 종료로 업데이트 전까지 진행 불가. 닫기/뒤로가기 없는 차단형 화면, 버전 정보와 업데이트 사유 명시, 스토어 이동 CTA만 제공.',
+        'dark',
+        `${status}<div class="content center"><div><div class="mark" style="margin:auto;background:var(--brand)">⬆</div><div class="heroTitle">업데이트가<br>필요해요</div><p class="copy">급여 계산이 더 정확해지도록 중요한 내용을 고쳤어요. 계속하려면 최신 버전으로 업데이트해 주세요.</p><div class="card" style="background:rgba(255,255,255,.12);color:#fff;margin-top:16px;text-align:left"><div class="row"><div><b style="color:#fff">현재 1.2.0</b><p class="copy">최신 1.4.0</p></div>${badge('필수','warn')}</div></div>${btn('지금 업데이트')}<p class="copy" style="margin-top:10px;font-size:11px">업데이트 후 자동으로 보던 화면으로 돌아가요.</p></div></div>`]
+
+    ];
+
+    const grid = document.getElementById('grid');
+    grid.innerHTML = screens.map(([name, desc, mode, html]) => `
+      <article class="tile">
+        <h2 class="tile-title">${name}</h2>
+        <p class="tile-desc">${desc}</p>
+        <div class="phone"><div class="screen ${mode}">${html}</div></div>
+      </article>
+    `).join('');
+  </script>
+</body>
+</html>

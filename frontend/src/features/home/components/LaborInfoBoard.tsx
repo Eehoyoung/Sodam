@@ -36,9 +36,7 @@ const LaborInfoBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
     };
 
     const handleViewMorePress = () => {
-        // 더 많은 노무 정보를 볼 수 있는 화면으로 이동
-        // 추후 구현 예정
-        console.log('더 많은 노무 정보 보기');
+        navigation.navigate('InfoList');
     };
 
     return (
@@ -82,7 +80,7 @@ const styles = StyleSheet.create({
         color: '#333',
     },
     moreButton: {
-        backgroundColor: '#3498db',
+        backgroundColor: '#FF6B35',
         paddingVertical: 6,
         paddingHorizontal: 15,
         borderRadius: 20,

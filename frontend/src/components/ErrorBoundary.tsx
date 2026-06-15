@@ -195,7 +195,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             console.log('[ErrorBoundary] Restarting app in development mode...');
             // 개발 환경에서는 페이지 새로고침 (웹 환경에서만)
             const g: any = typeof globalThis !== 'undefined' ? (globalThis as any) : {};
-            if (g.window && g.window.location && typeof g.window.location.reload === 'function') {
+            if (g.window?.location && typeof g.window.location.reload === 'function') {
                 g.window.location.reload();
             }
         } else {
@@ -326,6 +326,7 @@ export function withErrorBoundary<P extends object>(
         </ErrorBoundary>
     );
 
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- blank displayName should fall back to component name, so ?? would be wrong
     WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;
 
     return WrappedComponent;

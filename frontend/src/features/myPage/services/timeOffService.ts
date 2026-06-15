@@ -2,8 +2,9 @@ import api from '../../../common/utils/api';
 
 // [API Mapping] TimeOff APIs — Phase 2 minimal integration
 
-export interface TimeOffRequestPayload { employeeId: number; storeId: number; from: string; to: string; reason?: string }
-export interface TimeOffItem { id: number; employeeId: number; storeId: number; status: string; from: string; to: string }
+// BE TimeOffCreateRequest 와 매핑: startDate/endDate/reason 모두 @NotNull
+export interface TimeOffRequestPayload { employeeId: number; storeId: number; startDate: string; endDate: string; reason: string }
+export interface TimeOffItem { id: number; employeeId: number; storeId: number; status: string; startDate: string; endDate: string }
 
 async function unwrap<T = any>(promise: Promise<{ data: any }>): Promise<T> {
   const res = await promise;

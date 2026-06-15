@@ -27,7 +27,7 @@ const PolicyBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
                 ]);
             }
         } catch (err) {
-            console.error('정책 데이터를 가져오는 중 오류가 발생했습니다:', err);
+            console.error('정책 데이터를 가져오는 중 오류가 생겼어요:', err);
             setError(true);
             // 백업 데이터 (API 호출 실패 시)
             setPolicies([
@@ -48,8 +48,9 @@ const PolicyBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
     }, []);
 
     // 더보기 버튼 클릭 처리
+    // 'PolicyList' 라우트는 미등록 — 정책/정보 목록이 모여있는 'InfoList' 로 연결
     const handleViewMore = () => {
-        navigation?.navigate('PolicyList');
+        navigation?.navigate('InfoList');
     };
 
     const renderItem = ({item}: { item: Policy }) => (
@@ -68,7 +69,7 @@ const PolicyBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
                 <View style={styles.headerRow}>
                     <Text style={styles.sectionTitle}>정부 주요 정책 소개</Text>
                 </View>
-                <ActivityIndicator size="large" color="#3498db"/>
+                <ActivityIndicator size="large" color="#FF6B35"/>
                 <Text style={styles.loadingText}>정책 정보를 불러오는 중...</Text>
             </View>
         );
@@ -80,7 +81,7 @@ const PolicyBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
                 <View style={styles.headerRow}>
                     <Text style={styles.sectionTitle}>정부 주요 정책 소개</Text>
                 </View>
-                <Text style={styles.errorText}>정책 정보를 불러올 수 없습니다.</Text>
+                <Text style={styles.errorText}>정책 정보를 불러올 수 없어요.</Text>
                 <TouchableOpacity style={styles.retryButton} onPress={fetchPolicies}>
                     <Text style={styles.retryButtonText}>다시 시도</Text>
                 </TouchableOpacity>
@@ -125,7 +126,7 @@ const styles = StyleSheet.create({
         color: '#333',
     },
     moreButton: {
-        backgroundColor: '#3498db',
+        backgroundColor: '#FF6B35',
         paddingVertical: 6,
         paddingHorizontal: 15,
         borderRadius: 20,
@@ -174,7 +175,7 @@ const styles = StyleSheet.create({
         marginVertical: 10,
     },
     retryButton: {
-        backgroundColor: '#3498db',
+        backgroundColor: '#FF6B35',
         paddingVertical: 8,
         paddingHorizontal: 20,
         borderRadius: 20,

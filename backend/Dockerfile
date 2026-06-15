@@ -50,11 +50,11 @@ USER sodam
 
 # 환경변수 기본값 (compose 에서 override)
 ENV SPRING_PROFILES_ACTIVE=prod \
-    SERVER_PORT=8080 \
+    SERVER_PORT=7070 \
     JAVA_OPTS="-XX:+UseG1GC -XX:MaxRAMPercentage=75 -Djava.security.egd=file:/dev/./urandom" \
     TZ=Asia/Seoul
 
-EXPOSE 8080
+EXPOSE 7070
 
 # 헬스체크 — actuator/health 정상 응답 시 healthy
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \

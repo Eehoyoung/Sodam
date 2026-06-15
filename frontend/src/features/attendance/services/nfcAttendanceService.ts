@@ -5,7 +5,8 @@ import {api} from '../../../common/utils/api';
 export interface NFCVerifyRequest {
     employeeId: number;
     storeId: number;
-    nfcTagId: string;
+    /** NFC 태그 식별자 — BE `NfcVerifyRequest.tagId` @NotBlank 와 매핑되는 키 */
+    tagId: string;
 }
 
 export interface NFCVerifyResponse {
@@ -58,7 +59,7 @@ export const verifyCheckOutByNFC = async (
             '/api/attendance/verify/nfc',
             {
                 ...request,
-                isCheckOut: true
+                isCheckOut: true,
             }
         );
         const raw = response.data;

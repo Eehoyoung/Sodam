@@ -99,8 +99,10 @@ public class JwtTokenProvider {
         try {
             extractClaims(token);
             return true;
-        } catch (JwtException | IllegalArgumentException e) {
-            log.error("Invalid JWT token: {}", e.getMessage());
+        } catch (JwtException | IllegalArgumentException | InvalidTokenException e) {
+            // extractClaims 는 JWT 예외를 InvalidTokenException 으로 변환해 던지므로 함께 잡아야
+            // 무효 토큰에서 예외가 전파되지 않고 false 가 반환된다(인증 필터 안정성).
+            log.warn("Invalid JWT token: {}", e.getMessage());
             return false;
         }
     }

@@ -81,7 +81,7 @@ class ErrorMonitoringSystem {
         stack?: string;
         context?: Partial<ErrorContext>;
     }) {
-        if (!this.isEnabled) return;
+        if (!this.isEnabled) {return;}
 
         const {type, severity, message, stack, context = {}} = params;
         const errorId = this.generateErrorId(type, message);
@@ -128,7 +128,7 @@ class ErrorMonitoringSystem {
      * Record performance metric
      */
     public recordPerformanceMetric(metric: string, value: number) {
-        if (!this.isEnabled) return;
+        if (!this.isEnabled) {return;}
 
         if (!this.performanceMetrics.has(metric)) {
             this.performanceMetrics.set(metric, []);
@@ -225,7 +225,7 @@ class ErrorMonitoringSystem {
      * 전역 에러 핸들러 설정
      */
     private setupGlobalErrorHandlers() {
-        if (!this.isEnabled) return;
+        if (!this.isEnabled) {return;}
 
         // 처리되지 않은 Promise 거부 처리
         if (typeof global !== 'undefined' && global.process) {
@@ -256,13 +256,13 @@ class ErrorMonitoringSystem {
      * 성능 모니터링 시작
      */
     private startPerformanceMonitoring() {
-        if (!this.isEnabled) return;
+        if (!this.isEnabled) {return;}
 
         // In Jest/test environment, skip starting intervals to avoid open handles
         try {
             const g: any = typeof globalThis !== 'undefined' ? (globalThis as any) : {};
             const isJest = !!g.jest || (typeof process !== 'undefined' && (process as any)?.env?.JEST_WORKER_ID);
-            if (isJest) return;
+            if (isJest) {return;}
         } catch {
             // ignore env detection errors
         }

@@ -45,7 +45,7 @@ export const useJSICrashReporting = (
 
     // Setup global error handlers
     useEffect(() => {
-        if (!enableAutoReporting) return;
+        if (!enableAutoReporting) {return;}
 
         const originalConsoleError = console.error;
         const originalConsoleWarn = console.warn;

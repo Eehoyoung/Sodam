@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
@@ -21,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * AUTH-008 사업주 전환 기능을 포함한 사용자 서비스 테스트
  */
 @SpringBootTest
+@ActiveProfiles("test")
 @Transactional
 class UserServiceTest {
 
@@ -136,7 +138,13 @@ class UserServiceTest {
         JoinDto joinDto = new JoinDto();
         joinDto.setEmail("newuser@example.com");
         joinDto.setName("신규사용자");
-        joinDto.setPassword("password123");
+        // 비밀번호 정책: 8자 이상 + 대소문자·숫자·특수문자 각 1개 이상
+        joinDto.setPassword("Sodam123!");
+        // 필수 약관 동의 (이용약관·개인정보·만 14세 이상) — 법적 필수값
+        joinDto.setAgeConfirmed(true);
+        joinDto.setTermsAgreed(true);
+        joinDto.setPrivacyAgreed(true);
+        joinDto.setMarketingAgreed(false);
 
         // When
         User result = userService.joinUser(joinDto, "Master");
@@ -145,7 +153,8 @@ class UserServiceTest {
         assertNotNull(result);
         assertEquals("newuser@example.com", result.getEmail());
         assertEquals("신규사용자", result.getName());
-        assertEquals(UserGrade.Personal, result.getUserGrade());
+        // "Master" 헤더 등급 → MASTER 로 매핑됨 (resolveUserGrade)
+        assertEquals(UserGrade.MASTER, result.getUserGrade());
         assertNotNull(result.getCreatedAt());
         // 비밀번호는 암호화되어 저장되므로 직접 비교하지 않음
         assertNotNull(result.getPassword());

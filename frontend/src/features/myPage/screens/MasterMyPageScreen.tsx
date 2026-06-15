@@ -1,20 +1,19 @@
+import {AppToast, AppBadge, AppCard, AppHeader, AppText, AmountText, HeroNumber, ScreenContainer} from '../../../common/components/ds';
 import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
-    Text,
     ScrollView,
     TouchableOpacity,
     StyleSheet,
-    Dimensions,
+    useWindowDimensions,
     FlatList,
     RefreshControl,
-    Alert,
 } from 'react-native';
-import  LinearGradient  from 'react-native-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import { NavigationProp } from '@react-navigation/native';
-import  Ionicons from 'react-native-vector-icons/Ionicons';
-import { COLORS } from '../../../common/components/logo/Colors';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import {gradient, radius, shadow, spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import policyService from '../../info/services/policyService';
 import storeService from '../../store/services/storeService';
 import laborInfoService from '../../../services/laborInfoService';
@@ -57,10 +56,18 @@ interface LaborInfo {
     overtimeRate: number;
 }
 
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = width * 0.85;
+interface QuickMenu {
+    key: string;
+    label: string;
+    icon: string;
+    onPress: () => void;
+}
 
 export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenProps) {
+    const c = useThemeColors();
+    // 반응형: 회전/폴더블 대응 (모듈레벨 Dimensions.get 금지 — useWindowDimensions)
+    const { width } = useWindowDimensions();
+    const CARD_WIDTH = width * 0.85;
     const [stores, setStores] = useState<StoreInfo[]>([]);
     const [policies, setPolicies] = useState<PolicyInfo[]>([]);
     const [laborInfo, setLaborInfo] = useState<LaborInfo | null>(null);
@@ -91,16 +98,17 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
             const apiStores: StoreInfo[] = storeData.map(store => ({
                 id: store.id,
                 storeName: store.storeName,
-                businessNumber: store.businessNumber || '',
-                storePhoneNumber: store.storePhoneNumber || '',
-                businessType: store.businessType || '',
-                storeCode: store.storeCode || '',
-                fullAddress: store.fullAddress || '',
+                businessNumber: store.businessNumber ?? '',
+                storePhoneNumber: store.storePhoneNumber ?? '',
+                businessType: store.businessType ?? '',
+                storeCode: store.storeCode ?? '',
+                fullAddress: store.fullAddress ?? '',
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- wage of 0 should fall back to default minimum wage, so ?? would be wrong
                 storeStandardHourWage: store.storeStandardHourWage || 9620,
-                monthlyLaborCost: store.monthlyLaborCost || 0,
-                employeeCount: store.employeeCount || 0,
-                todayAttendance: store.todayAttendance || 0,
-                monthlyRevenue: store.monthlyRevenue || 0,
+                monthlyLaborCost: store.monthlyLaborCost ?? 0,
+                employeeCount: store.employeeCount ?? 0,
+                todayAttendance: store.todayAttendance ?? 0,
+                monthlyRevenue: store.monthlyRevenue ?? 0,
             }));
 
             // 정책 정보: info 서비스 연동 (상위 3개 노출)
@@ -152,7 +160,7 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
             }));
 
         } catch (error) {
-            Alert.alert('오류', '데이터를 불러오는데 실패했습니다.');
+            AppToast.error('데이터를 불러오는데 실패했어요.');
         }
     };
 
@@ -167,7 +175,7 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
     };
 
     const handleStorePress = (store: StoreInfo) => {
-        navigation.navigate('StoreDetailScreen', { storeId: store.id });
+        navigation.navigate('StoreDetail', { storeId: store.id });
     };
 
     const handlePolicyPress = (policy: PolicyInfo) => {
@@ -179,144 +187,174 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
         navigation.navigate('StoreRegistration' as never);
     };
 
+    // 빠른 메뉴 — 매장 의존 화면은 첫 매장 기준으로 진입. 매장이 없으면 등록 유도.
+    const primaryStoreId = stores[0]?.id;
+
+    const handleQuickEmployee = () => {
+        if (primaryStoreId === undefined) {
+            AppToast.show('먼저 매장을 등록해 주세요.');
+            handleAddStore();
+            return;
+        }
+        navigation.navigate('StoreDetail', {storeId: primaryStoreId});
+    };
+
+    const handleQuickAttendance = () => {
+        navigation.navigate('Attendance');
+    };
+
+    const handleQuickPayroll = () => {
+        if (primaryStoreId === undefined) {
+            AppToast.show('먼저 매장을 등록해 주세요.');
+            handleAddStore();
+            return;
+        }
+        navigation.navigate('PayrollRun', {storeId: primaryStoreId});
+    };
+
+    const handleQuickDashboard = () => {
+        navigation.navigate('OwnerDashboard');
+    };
+
+    const quickMenus: QuickMenu[] = [
+        {key: 'employee', label: '직원 관리', icon: 'people-outline', onPress: handleQuickEmployee},
+        {key: 'attendance', label: '근태 관리', icon: 'time-outline', onPress: handleQuickAttendance},
+        {key: 'payroll', label: '급여 관리', icon: 'card-outline', onPress: handleQuickPayroll},
+        {key: 'dashboard', label: '대시보드', icon: 'grid-outline', onPress: handleQuickDashboard},
+    ];
+
     const renderStoreCard = ({ item: store }: { item: StoreInfo }) => (
         <TouchableOpacity
-            style={styles.storeCard}
+            style={[styles.storeCard, {width: CARD_WIDTH}]}
             onPress={() => handleStorePress(store)}
-            activeOpacity={0.8}
+            activeOpacity={0.85}
         >
             <LinearGradient
-                colors={['#FF6B35', '#FF8A65']}
+                colors={gradient.brand}
                 style={styles.storeCardGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
             >
                 <View style={styles.storeCardHeader}>
-                    <Text style={styles.storeName}>{store.storeName}</Text>
+                    <AppText variant="headingSm" tone="inverse" numberOfLines={1} style={styles.storeName}>{store.storeName}</AppText>
                     <View style={styles.storeTypeTag}>
-                        <Text style={styles.storeTypeText}>{store.businessType}</Text>
+                        <AppText variant="caption" tone="inverse" weight="600" numberOfLines={1}>{store.businessType}</AppText>
                     </View>
                 </View>
 
                 <View style={styles.storeStats}>
                     <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>이번달 인건비</Text>
-                        <Text style={styles.statValue}>{formatCurrency(store.monthlyLaborCost)}원</Text>
+                        <AppText variant="caption" tone="inverse" style={styles.statLabel}>이번달 인건비</AppText>
+                        <AmountText size={18} tone="inverse">{formatCurrency(store.monthlyLaborCost)}원</AmountText>
                     </View>
 
                     <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>직원 수</Text>
-                        <Text style={styles.statValue}>{store.employeeCount}명</Text>
+                        <AppText variant="caption" tone="inverse" style={styles.statLabel}>직원 수</AppText>
+                        <AppText variant="headingSm" tone="inverse">{store.employeeCount}명</AppText>
                     </View>
                 </View>
 
                 <View style={styles.storeStats}>
                     <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>오늘 출근</Text>
-                        <Text style={styles.statValue}>{store.todayAttendance}명</Text>
+                        <AppText variant="caption" tone="inverse" style={styles.statLabel}>오늘 출근</AppText>
+                        <AppText variant="headingSm" tone="inverse">{store.todayAttendance}명</AppText>
                     </View>
 
                     <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>이번달 매출</Text>
-                        <Text style={styles.statValue}>{formatCurrency(store.monthlyRevenue)}원</Text>
+                        <AppText variant="caption" tone="inverse" style={styles.statLabel}>이번달 매출</AppText>
+                        <AmountText size={18} tone="inverse">{formatCurrency(store.monthlyRevenue)}원</AmountText>
                     </View>
                 </View>
 
                 <View style={styles.storeFooter}>
-                    <Text style={styles.storeAddress}>{store.fullAddress}</Text>
-                    <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.8)" />
+                    <AppText variant="caption" tone="inverse" numberOfLines={1} style={styles.storeAddress}>{store.fullAddress}</AppText>
+                    <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.85)" />
                 </View>
             </LinearGradient>
         </TouchableOpacity>
     );
 
     const renderPolicyCard = (policy: PolicyInfo) => (
-        <TouchableOpacity
+        <AppCard
             key={policy.id}
-            style={styles.policyCard}
+            variant="plain"
             onPress={() => handlePolicyPress(policy)}
-            activeOpacity={0.8}
+            style={styles.policyCard}
         >
-            <View style={styles.policyHeader}>
-                <View style={styles.policyTitleRow}>
-                    <Text style={styles.policyTitle}>{policy.title}</Text>
-                    {policy.isNew && (
-                        <View style={styles.newBadge}>
-                            <Text style={styles.newBadgeText}>NEW</Text>
-                        </View>
-                    )}
-                </View>
-                <View style={styles.policyCategoryTag}>
-                    <Text style={styles.policyCategoryText}>{policy.category}</Text>
-                </View>
+            <View style={styles.policyTitleRow}>
+                <AppText variant="titleMd" numberOfLines={1} style={styles.policyTitle}>{policy.title}</AppText>
+                {policy.isNew && <AppBadge label="NEW" tone="info" />}
+            </View>
+            <View style={styles.policyCategoryTag}>
+                <AppText variant="caption" tone="secondary" weight="600">{policy.category}</AppText>
             </View>
 
-            <Text style={styles.policyDescription}>{policy.description}</Text>
+            <AppText variant="bodyMd" tone="secondary" numberOfLines={2} style={styles.policyDescription}>{policy.description}</AppText>
 
             <View style={styles.policyFooter}>
-                <Text style={styles.policyDeadline}>마감: {policy.deadline}</Text>
-                <Ionicons name="chevron-forward" size={16} color={COLORS.GRAY_400} />
+                <AppText variant="caption" tone="tertiary">마감: {policy.deadline}</AppText>
+                <Ionicons name="chevron-forward" size={16} color={c.textTertiary} />
             </View>
-        </TouchableOpacity>
+        </AppCard>
     );
 
     return (
-        <SafeAreaView style={styles.container}>
+        <ScreenContainer
+            padded={false}
+            header={
+                <AppHeader
+                    title="내 정보"
+                    actions={[
+                        {label: '알림', onPress: () => navigation.navigate('NotificationCenter')},
+                        {label: '설정', onPress: () => navigation.navigate('AccountSettings')},
+                    ]}
+                />
+            }>
             <ScrollView
                 style={styles.scrollView}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
                 showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContent}
             >
-                {/* 헤더 */}
+                {/* 인사 */}
                 <View style={styles.header}>
-                    <View style={styles.headerContent}>
-                        <Text style={styles.greeting}>안녕하세요, {masterInfo.name}님</Text>
-                        <Text style={styles.subGreeting}>오늘도 화이팅하세요! 💪</Text>
-                    </View>
-
-                    <TouchableOpacity style={styles.notificationButton}>
-                        <Ionicons name="notifications-outline" size={24} color={COLORS.GRAY_600} />
-                    </TouchableOpacity>
+                    <AppText variant="headingMd">안녕하세요, {masterInfo.name}님</AppText>
+                    <AppText variant="bodyMd" tone="secondary" style={styles.subGreeting}>오늘도 화이팅하세요!</AppText>
                 </View>
 
-                {/* 전체 현황 카드 */}
-                <View style={styles.summaryCard}>
-                    <Text style={styles.summaryTitle}>전체 현황</Text>
-                    <View style={styles.summaryGrid}>
-                        <View style={styles.summaryItem}>
-                            <Text style={styles.summaryLabel}>운영 매장</Text>
-                            <Text style={styles.summaryValue}>{masterInfo.totalStores}개</Text>
-                        </View>
-                        <View style={styles.summaryItem}>
-                            <Text style={styles.summaryLabel}>전체 직원</Text>
-                            <Text style={styles.summaryValue}>{masterInfo.totalEmployees}명</Text>
-                        </View>
-                        <View style={styles.summaryItemFull}>
-                            <Text style={styles.summaryLabel}>이번달 총 인건비</Text>
-                            <Text style={styles.summaryValueLarge}>{formatCurrency(masterInfo.monthlyTotalLaborCost)}원</Text>
-                        </View>
-                    </View>
+                {/* 전체 현황 — 히어로 숫자(이번달 총 인건비) */}
+                <View style={styles.sectionPadded}>
+                    <AppCard variant="hero">
+                        <HeroNumber
+                            label="이번달 총 인건비"
+                            value={`${formatCurrency(masterInfo.monthlyTotalLaborCost)}원`}
+                            sub={`운영 매장 ${masterInfo.totalStores}개 · 전체 직원 ${masterInfo.totalEmployees}명`}
+                            accent
+                        />
+                    </AppCard>
                 </View>
 
                 {/* 매장 목록 */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>내 매장</Text>
+                        <AppText variant="headingSm">내 매장</AppText>
                         <TouchableOpacity onPress={handleAddStore}>
-                            <Text style={styles.sectionMore}>매장 추가</Text>
+                            <AppText variant="titleMd" tone="brand">매장 추가</AppText>
                         </TouchableOpacity>
                     </View>
 
                     {stores.length === 0 ? (
-                        <View style={styles.emptyStateCard}>
-                            <Ionicons name="storefront-outline" size={40} color={COLORS.GRAY_400} />
-                            <Text style={styles.emptyStateTitle}>등록된 매장이 없습니다</Text>
-                            <Text style={styles.emptyStateDesc}>매장을 추가하고 직원과 급여를 관리해보세요</Text>
-                            <TouchableOpacity style={styles.addStoreButton} onPress={handleAddStore}>
-                                <Text style={styles.addStoreButtonText}>매장 추가하기</Text>
-                            </TouchableOpacity>
+                        <View style={styles.sectionPadded}>
+                            <AppCard variant="plain" style={styles.emptyStateCard}>
+                                <Ionicons name="storefront-outline" size={40} color={c.textTertiary} />
+                                <AppText variant="titleMd" center style={styles.emptyStateTitle}>등록된 매장이 없어요</AppText>
+                                <AppText variant="bodyMd" tone="secondary" center style={styles.emptyStateDesc}>매장을 추가하고 직원과 급여를 관리해보세요</AppText>
+                                <TouchableOpacity style={[styles.addStoreButton, {backgroundColor: c.brandPrimary}]} onPress={handleAddStore}>
+                                    <AppText variant="titleMd" tone="inverse" weight="700">매장 추가하기</AppText>
+                                </TouchableOpacity>
+                            </AppCard>
                         </View>
                     ) : (
                         <FlatList
@@ -326,7 +364,7 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
                             keyExtractor={(item) => item.id.toString()}
                             horizontal
                             showsHorizontalScrollIndicator={false}
-                            snapToInterval={CARD_WIDTH + 16}
+                            snapToInterval={CARD_WIDTH + spacing.lg}
                             decelerationRate="fast"
                             contentContainerStyle={styles.storeList}
                         />
@@ -334,42 +372,23 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
                 </View>
 
                 {/* 빠른 메뉴 */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>매장 관리</Text>
+                <View style={styles.sectionPadded}>
+                    <AppText variant="headingSm" style={styles.quickMenuTitle}>매장 관리</AppText>
                     <View style={styles.quickMenuGrid}>
-                        <TouchableOpacity style={styles.quickMenuItem}>
-                            <View style={[styles.quickMenuIcon, { backgroundColor: '#E3F2FD' }]}>
-                                <Ionicons name="people-outline" size={24} color={COLORS.SODAM_BLUE} />
-                            </View>
-                            <Text style={styles.quickMenuText}>직원 관리</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.quickMenuItem}>
-                            <View style={[styles.quickMenuIcon, { backgroundColor: '#E8F5E8' }]}>
-                                <Ionicons name="time-outline" size={24} color={COLORS.SODAM_GREEN} />
-                            </View>
-                            <Text style={styles.quickMenuText}>근태 관리</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.quickMenuItem}>
-                            <View style={[styles.quickMenuIcon, { backgroundColor: '#FFF3E0' }]}>
-                                <Ionicons name="card-outline" size={24} color={COLORS.SODAM_ORANGE} />
-                            </View>
-                            <Text style={styles.quickMenuText}>급여 관리</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.quickMenuItem}>
-                            <View style={[styles.quickMenuIcon, { backgroundColor: '#F3E5F5' }]}>
-                                <Ionicons name="bar-chart-outline" size={24} color="#9C27B0" />
-                            </View>
-                            <Text style={styles.quickMenuText}>매출 분석</Text>
-                        </TouchableOpacity>
+                        {quickMenus.map(menu => (
+                            <TouchableOpacity key={menu.key} style={styles.quickMenuItem} onPress={menu.onPress}>
+                                <View style={[styles.quickMenuIcon, {backgroundColor: c.brandPrimarySoft}]}>
+                                    <Ionicons name={menu.icon} size={24} color={c.brandPrimary} />
+                                </View>
+                                <AppText variant="caption" tone="secondary" center numberOfLines={1}>{menu.label}</AppText>
+                            </TouchableOpacity>
+                        ))}
                     </View>
                 </View>
 
                 {/* 정부 정책 정보 */}
                 <InfoSlot testID="slotInfoPolicies">
-                <View style={styles.section}>
+                <View style={styles.sectionPadded}>
                     <SectionCard>
                         <SectionHeader
                           title="정부 지원 정책"
@@ -386,30 +405,28 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
                 {/* 노무 정보 */}
                 {laborInfo && (
                     <InfoSlot testID="slotInfoLabor">
-                    <View style={styles.section}>
+                    <View style={styles.sectionPadded}>
                         <SectionCard>
                             <SectionHeader title={`${laborInfo.year}년 노무 정보`} onPressAction={() => navigation.navigate('InfoList')} actionLabel="자세히" />
-                            <View style={styles.laborInfoCard}>
                             <View style={styles.laborInfoGrid}>
                                 <View style={styles.laborInfoItem}>
-                                    <Text style={styles.laborInfoLabel}>최저임금</Text>
-                                    <Text style={styles.laborInfoValue}>{formatCurrency(laborInfo.minimumWage)}원</Text>
+                                    <AppText variant="caption" tone="secondary" center style={styles.laborInfoLabel}>최저임금</AppText>
+                                    <AppText variant="titleMd" numberOfLines={1} adjustsFontSizeToFit>{formatCurrency(laborInfo.minimumWage)}원</AppText>
                                 </View>
                                 <View style={styles.laborInfoItem}>
-                                    <Text style={styles.laborInfoLabel}>주 최대 근무시간</Text>
-                                    <Text style={styles.laborInfoValue}>{laborInfo.weeklyMaxHours}시간</Text>
+                                    <AppText variant="caption" tone="secondary" center style={styles.laborInfoLabel}>주 최대 근무시간</AppText>
+                                    <AppText variant="titleMd">{laborInfo.weeklyMaxHours}시간</AppText>
                                 </View>
                                 <View style={styles.laborInfoItem}>
-                                    <Text style={styles.laborInfoLabel}>연장근무 수당</Text>
-                                    <Text style={styles.laborInfoValue}>{laborInfo.overtimeRate}배</Text>
+                                    <AppText variant="caption" tone="secondary" center style={styles.laborInfoLabel}>연장근무 수당</AppText>
+                                    <AppText variant="titleMd">{laborInfo.overtimeRate}배</AppText>
                                 </View>
                             </View>
 
-                            <TouchableOpacity style={styles.laborInfoButton} onPress={() => navigation.navigate('InfoList')}>
-                                <Text style={styles.laborInfoButtonText}>근로기준법 자세히 보기</Text>
-                                <Ionicons name="chevron-forward" size={16} color={COLORS.SODAM_BLUE} />
+                            <TouchableOpacity style={[styles.laborInfoButton, {borderTopColor: c.divider}]} onPress={() => navigation.navigate('InfoList')}>
+                                <AppText variant="titleMd" tone="brand">근로기준법 자세히 보기</AppText>
+                                <Ionicons name="chevron-forward" size={16} color={c.brandPrimary} />
                             </TouchableOpacity>
-                        </View>
                         </SectionCard>
                     </View>
                     </InfoSlot>
@@ -418,371 +435,185 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
                 {/* 하단 여백 */}
                 <View style={styles.bottomSpacing} />
             </ScrollView>
-        </SafeAreaView>
+        </ScreenContainer>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: COLORS.GRAY_50,
-    },
     scrollView: {
         flex: 1,
     },
+    scrollContent: {
+        paddingTop: spacing.sm,
+    },
     header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        backgroundColor: COLORS.WHITE,
-    },
-    headerContent: {
-        flex: 1,
-    },
-    greeting: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: COLORS.GRAY_800,
-        marginBottom: 4,
+        paddingHorizontal: spacing.xxl,
+        paddingVertical: spacing.lg,
     },
     subGreeting: {
-        fontSize: 14,
-        color: COLORS.GRAY_600,
-    },
-    notificationButton: {
-        padding: 8,
-    },
-    summaryCard: {
-        backgroundColor: COLORS.WHITE,
-        margin: 20,
-        padding: 20,
-        borderRadius: 16,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    summaryTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: COLORS.GRAY_800,
-        marginBottom: 16,
-    },
-    summaryGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-    },
-    summaryItem: {
-        width: '48%',
-        marginBottom: 16,
-    },
-    summaryItemFull: {
-        width: '100%',
-        alignItems: 'center',
-        paddingTop: 16,
-        borderTopWidth: 1,
-        borderTopColor: COLORS.GRAY_200,
-    },
-    summaryLabel: {
-        fontSize: 14,
-        color: COLORS.GRAY_600,
-        marginBottom: 4,
-    },
-    summaryValue: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: COLORS.GRAY_800,
-    },
-    summaryValueLarge: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: COLORS.SODAM_ORANGE,
+        marginTop: spacing.xs,
     },
     section: {
-        marginBottom: 24,
+        marginBottom: spacing.xxl,
+    },
+    sectionPadded: {
+        paddingHorizontal: spacing.xxl,
+        marginBottom: spacing.xxl,
     },
     sectionHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        marginBottom: 16,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: COLORS.GRAY_800,
-    },
-    sectionMore: {
-        fontSize: 14,
-        color: COLORS.SODAM_BLUE,
-        fontWeight: '500',
+        paddingHorizontal: spacing.xxl,
+        marginBottom: spacing.lg,
     },
     storeList: {
-        paddingLeft: 20,
+        paddingLeft: spacing.xxl,
     },
     storeCard: {
-        width: CARD_WIDTH,
-        marginRight: 16,
-        borderRadius: 16,
+        marginRight: spacing.lg,
+        borderRadius: radius.xxl,
         overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 8,
+        ...shadow.lg,
     },
     storeCardGradient: {
-        padding: 20,
+        padding: spacing.xl,
     },
     storeCardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: spacing.lg,
     },
     storeName: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: COLORS.WHITE,
         flex: 1,
+        marginRight: spacing.sm,
     },
     storeTypeTag: {
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
-    },
-    storeTypeText: {
-        fontSize: 12,
-        color: COLORS.WHITE,
-        fontWeight: '500',
+        paddingHorizontal: spacing.sm,
+        paddingVertical: spacing.xs,
+        borderRadius: radius.md,
+        flexShrink: 0,
     },
     storeStats: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 12,
+        gap: spacing.lg,
+        marginBottom: spacing.md,
     },
     statItem: {
         flex: 1,
+        minWidth: 0,
     },
     statLabel: {
-        fontSize: 12,
-        color: 'rgba(255, 255, 255, 0.8)',
-        marginBottom: 4,
-    },
-    statValue: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: COLORS.WHITE,
+        opacity: 0.85,
+        marginBottom: spacing.xs,
     },
     storeFooter: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginTop: 8,
-        paddingTop: 12,
+        marginTop: spacing.sm,
+        paddingTop: spacing.md,
         borderTopWidth: 1,
         borderTopColor: 'rgba(255, 255, 255, 0.2)',
     },
     storeAddress: {
-        fontSize: 12,
-        color: 'rgba(255, 255, 255, 0.8)',
         flex: 1,
+        opacity: 0.85,
+        marginRight: spacing.sm,
+    },
+    quickMenuTitle: {
+        marginBottom: spacing.lg,
     },
     quickMenuGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        paddingHorizontal: 20,
     },
     quickMenuItem: {
         width: '25%',
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: spacing.xl,
     },
     quickMenuIcon: {
         width: 56,
         height: 56,
-        borderRadius: 28,
+        borderRadius: radius.pill,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 8,
-    },
-    quickMenuText: {
-        fontSize: 12,
-        color: COLORS.GRAY_700,
-        textAlign: 'center',
+        marginBottom: spacing.sm,
     },
     emptyStateCard: {
-        backgroundColor: COLORS.WHITE,
-        marginHorizontal: 20,
-        padding: 24,
-        borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
-        elevation: 3,
+        paddingVertical: spacing.xxl,
     },
     emptyStateTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: COLORS.GRAY_800,
-        marginTop: 12,
-        marginBottom: 6,
-        textAlign: 'center',
+        marginTop: spacing.md,
+        marginBottom: spacing.xs,
     },
     emptyStateDesc: {
-        fontSize: 14,
-        color: COLORS.GRAY_600,
-        textAlign: 'center',
-        marginBottom: 12,
+        marginBottom: spacing.lg,
     },
     addStoreButton: {
-        backgroundColor: COLORS.SODAM_ORANGE,
-        borderRadius: 12,
-        paddingVertical: 12,
-        paddingHorizontal: 20,
+        borderRadius: radius.lg,
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.xl,
         alignItems: 'center',
         justifyContent: 'center',
         minWidth: 140,
     },
-    addStoreButtonText: {
-        color: COLORS.WHITE,
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
     policyList: {
-        paddingHorizontal: 20,
+        gap: spacing.md,
     },
     policyCard: {
-        backgroundColor: COLORS.WHITE,
-        padding: 16,
-        borderRadius: 12,
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 1,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    policyHeader: {
-        marginBottom: 8,
+        marginBottom: 0,
     },
     policyTitleRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 8,
+        gap: spacing.sm,
+        marginBottom: spacing.sm,
     },
     policyTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: COLORS.GRAY_800,
         flex: 1,
-    },
-    newBadge: {
-        backgroundColor: COLORS.SODAM_ORANGE,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 4,
-        marginLeft: 8,
-    },
-    newBadgeText: {
-        fontSize: 10,
-        color: COLORS.WHITE,
-        fontWeight: 'bold',
     },
     policyCategoryTag: {
         alignSelf: 'flex-start',
-        backgroundColor: COLORS.GRAY_100,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 6,
-    },
-    policyCategoryText: {
-        fontSize: 12,
-        color: COLORS.GRAY_600,
-        fontWeight: '500',
+        marginBottom: spacing.sm,
     },
     policyDescription: {
-        fontSize: 14,
-        color: COLORS.GRAY_600,
-        marginBottom: 12,
-        lineHeight: 20,
+        marginBottom: spacing.md,
     },
     policyFooter: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
-    policyDeadline: {
-        fontSize: 12,
-        color: COLORS.GRAY_500,
-    },
-    laborInfoCard: {
-        backgroundColor: COLORS.WHITE,
-        margin: 20,
-        padding: 20,
-        borderRadius: 16,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
-    },
     laborInfoGrid: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 16,
+        gap: spacing.md,
+        marginBottom: spacing.lg,
     },
     laborInfoItem: {
         flex: 1,
         alignItems: 'center',
+        minWidth: 0,
     },
     laborInfoLabel: {
-        fontSize: 12,
-        color: COLORS.GRAY_600,
-        marginBottom: 4,
-        textAlign: 'center',
-    },
-    laborInfoValue: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: COLORS.GRAY_800,
+        marginBottom: spacing.xs,
     },
     laborInfoButton: {
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        paddingTop: 16,
+        gap: spacing.xs,
+        paddingTop: spacing.lg,
         borderTopWidth: 1,
-        borderTopColor: COLORS.GRAY_200,
-    },
-    laborInfoButtonText: {
-        fontSize: 14,
-        color: COLORS.SODAM_BLUE,
-        fontWeight: '500',
-        marginRight: 4,
     },
     bottomSpacing: {
-        height: 40,
+        height: spacing.huge,
     },
 });

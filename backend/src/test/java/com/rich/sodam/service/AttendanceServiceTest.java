@@ -15,6 +15,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -60,8 +61,9 @@ class AttendanceServiceTest {
     void setUp() {
         System.out.println("[DEBUG_LOG] AttendanceServiceTest 테스트 데이터 초기화 시작");
 
-        // 테스트 사용자 생성
+        // 테스트 사용자 생성 (GPS 출퇴근용 위치정보 동의 부여 — 위치정보법 §18 가드 통과)
         testUser = new User("test@example.com", "테스트사용자");
+        testUser.setLocationInfoAgreedAt(java.time.LocalDateTime.now());
         testUser = userRepository.save(testUser);
         System.out.println("[DEBUG_LOG] 테스트 사용자 생성 완료 - ID: " + testUser.getId());
 
@@ -131,6 +133,20 @@ class AttendanceServiceTest {
         assertThat(result.getCheckInTime()).isNotNull();
 
         System.out.println("[DEBUG_LOG] 위치 검증 포함 출근 처리 성공");
+    }
+
+    @Test
+    @DisplayName("위치정보 미동의 시 GPS 출근 차단 - 위치정보법 §18 (G-1)")
+    void checkInWithVerification_BlockedWithoutLocationConsent() {
+        // Given - 위치정보 동의 철회
+        testUser.setLocationInfoAgreedAt(null);
+        userRepository.save(testUser);
+
+        // When & Then - 위치 검증 이전에 동의 가드가 먼저 차단
+        assertThatThrownBy(() -> attendanceService.checkInWithVerification(
+                testEmployee.getId(), testStore.getId(), 37.5665, 126.9780))
+                .isInstanceOf(InvalidOperationException.class)
+                .hasMessageContaining("위치정보");
     }
 
     @Test
@@ -401,7 +417,9 @@ class AttendanceServiceTest {
         // Given - 먼저 출근 기록 생성
         attendanceService.checkIn(testEmployee.getId(), testStore.getId(), 37.5665, 126.9780);
 
-        LocalDateTime checkInTime = LocalDateTime.now().minusMinutes(30); // 같은 날짜
+        // 같은 날짜 보장 — now()-30분은 자정 직후(00:00~00:30) 전날로 롤오버해 중복검출 실패(플래키)였음.
+        // 당일 자정(00:00)은 항상 오늘이며 now() 이하라 결정론적.
+        LocalDateTime checkInTime = LocalDate.now().atStartOfDay();
         ManualAttendanceRequestDto request = ManualAttendanceRequestDto.builder()
                 .employeeId(testEmployee.getId())
                 .storeId(testStore.getId())

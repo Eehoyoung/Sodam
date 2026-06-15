@@ -1,5 +1,5 @@
 import React from 'react';
-import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {Pressable, ScrollView, StyleSheet, Text} from 'react-native';
 import {tokens} from '../../../theme/tokens';
 
 export interface SelectableStore {
@@ -19,7 +19,7 @@ interface Props {
  * 가로 스크롤 + 선택 강조.
  */
 const StoreSelector: React.FC<Props> = ({stores, selectedId, onSelect}) => {
-    if (!stores || stores.length <= 1) return null;
+    if (!stores || stores.length <= 1) {return null;}
     return (
         <ScrollView
             horizontal

@@ -229,4 +229,48 @@ class LocationVerificationServiceTest {
         System.out.println("[DEBUG_LOG] 다양한 반경 설정 테스트 완료 - 50m 반경: " + resultSmallRadius +
                 ", 100m 반경: " + resultLargeRadius);
     }
+
+    @Test
+    @DisplayName("verifyWithDistance - 반경 내: success=true, 거리>=0")
+    void verifyWithDistance_withinRadius() {
+        var r = locationVerificationService.verifyWithDistance(testStore.getId(), 37.5665, 126.9780);
+        assertThat(r.isSuccess()).isTrue();
+        assertThat(r.getDistance()).isNotNull().isGreaterThanOrEqualTo(0.0);
+        assertThat(r.getReason()).isNull();
+    }
+
+    @Test
+    @DisplayName("verifyWithDistance - 반경 밖: success=false, OUT_OF_RANGE, 거리>반경")
+    void verifyWithDistance_outOfRange() {
+        var r = locationVerificationService.verifyWithDistance(testStore.getId(), 37.6000, 127.0500);
+        assertThat(r.isSuccess()).isFalse();
+        assertThat(r.getReason()).isEqualTo("OUT_OF_RANGE");
+        assertThat(r.getDistance()).isNotNull().isGreaterThan((double) testStore.getRadius());
+    }
+
+    @Test
+    @DisplayName("verifyWithDistance - 좌표 null: success=false, 거리 null")
+    void verifyWithDistance_nullCoords() {
+        var r = locationVerificationService.verifyWithDistance(testStore.getId(), null, null);
+        assertThat(r.isSuccess()).isFalse();
+        assertThat(r.getDistance()).isNull();
+        assertThat(r.getReason()).isEqualTo("OUT_OF_RANGE");
+    }
+
+    @Test
+    @DisplayName("verifyWithDistance - 매장 위치 미설정: success=false")
+    void verifyWithDistance_noLocation() {
+        Store noLoc = new Store("위치미설정매장", "8888888888", "02-8888-8888", "카페", 20000, 100);
+        noLoc = storeRepository.save(noLoc);
+        var r = locationVerificationService.verifyWithDistance(noLoc.getId(), 37.5665, 126.9780);
+        assertThat(r.isSuccess()).isFalse();
+        assertThat(r.getDistance()).isNull();
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 매장: EntityNotFoundException")
+    void verifyWithDistance_storeNotFound() {
+        assertThatThrownBy(() -> locationVerificationService.verifyWithDistance(999999L, 37.5665, 126.9780))
+                .isInstanceOf(EntityNotFoundException.class);
+    }
 }

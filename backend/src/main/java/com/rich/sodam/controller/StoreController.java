@@ -8,6 +8,7 @@ import com.rich.sodam.dto.request.StoreUpdateDto;
 import com.rich.sodam.dto.response.GeocodingResult;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.service.GeocodingService;
+import com.rich.sodam.service.StoreAccessGuard;
 import com.rich.sodam.service.StoreManagementServiceImpl;
 import com.rich.sodam.service.StoreQueryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,6 +39,7 @@ public class StoreController {
     private final StoreManagementServiceImpl storeManagementService;
     private final GeocodingService geocodingService;
     private final StoreQueryService storeQueryService;
+    private final StoreAccessGuard storeAccessGuard;
 
     @Operation(summary = "매장 등록", description = "새로운 매장을 등록하고 사용자를 해당 매장의 사장으로 지정합니다.")
     @ApiResponses(value = {
@@ -141,6 +143,39 @@ public class StoreController {
         return ResponseEntity.ok().build();
     }
 
+    @Operation(summary = "직원 활성/비활성 토글 (사장만)",
+            description = "직원을 매장에서 비활성(퇴사) 또는 활성(복직) 처리합니다. 본인 소유 매장만.")
+    @PutMapping("/{storeId}/employees/{employeeId}/active")
+    public ResponseEntity<java.util.Map<String, Object>> setEmployeeActive(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal
+                com.rich.sodam.security.UserPrincipal principal,
+            @PathVariable Long storeId,
+            @PathVariable Long employeeId,
+            @RequestParam boolean active) {
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        storeManagementService.setEmployeeActive(storeId, employeeId, active);
+        return ResponseEntity.ok(java.util.Map.of("employeeId", employeeId, "active", active));
+    }
+
+    @Operation(summary = "매장 운영시간 조회", description = "요일별 영업 시작/종료/휴무를 반환합니다.")
+    @GetMapping("/{storeId}/operating-hours")
+    public ResponseEntity<com.rich.sodam.dto.response.OperatingHoursResponseDto> getOperatingHours(
+            @PathVariable Long storeId) {
+        return ResponseEntity.ok(storeManagementService.getOperatingHours(storeId));
+    }
+
+    @Operation(summary = "매장 운영시간 설정 (사장만)",
+            description = "요일별 영업시간을 저장합니다. 출퇴근 누락 알림·운영시간 외 경고의 기준값입니다.")
+    @PutMapping("/{storeId}/operating-hours")
+    public ResponseEntity<com.rich.sodam.dto.response.OperatingHoursResponseDto> updateOperatingHours(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal
+                com.rich.sodam.security.UserPrincipal principal,
+            @PathVariable Long storeId,
+            @Valid @RequestBody com.rich.sodam.dto.request.OperatingHoursUpdateDto dto) {
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        return ResponseEntity.ok(storeManagementService.updateOperatingHours(storeId, dto));
+    }
+
     @Operation(summary = "사장의 매장 목록 조회", description = "특정 사용자(사장)가 관리하는 모든 매장 목록을 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공",
@@ -197,6 +232,8 @@ public class StoreController {
             @Parameter(description = "매장 ID", required = true) @PathVariable Long storeId,
             @Parameter(description = "위치 업데이트 정보", required = true) @Valid @RequestBody LocationUpdateDto locationDto) {
 
+        storeAccessGuard.assertMasterOwnsStore(getCurrentUserId(), storeId); // 자기 매장만 수정
+
         // 주소가 변경된 경우 좌표 정보 갱신
         if (locationDto.getFullAddress() != null) {
             GeocodingResult geocoding = geocodingService.getCoordinates(locationDto.getFullAddress());
@@ -208,9 +245,10 @@ public class StoreController {
         return ResponseEntity.ok(store);
     }
 
-    @Operation(summary = "매장 단건 조회", description = "ID로 활성 매장 정보를 조회합니다.")
+    @Operation(summary = "매장 단건 조회", description = "ID로 활성 매장 정보를 조회합니다. 자기 매장만 조회 가능합니다.")
     @GetMapping("/{id}")
     public ResponseEntity<Store> getStoreById(@PathVariable Long id) {
+        storeAccessGuard.assertMasterOwnsStore(getCurrentUserId(), id); // 타 매장 정보 조회 차단
         return storeQueryService.findActiveById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -221,6 +259,7 @@ public class StoreController {
     public ResponseEntity<Store> updateStore(
             @Parameter(description = "매장 ID", required = true) @PathVariable Long storeId,
             @Parameter(description = "업데이트 정보", required = true) @Valid @RequestBody StoreUpdateDto updateDto) {
+        storeAccessGuard.assertMasterOwnsStore(getCurrentUserId(), storeId); // 자기 매장만 수정
         Store updated = storeManagementService.updateStore(storeId, updateDto);
         return ResponseEntity.ok(updated);
     }
@@ -228,6 +267,7 @@ public class StoreController {
     @Operation(summary = "매장 삭제", description = "매장을 소프트 삭제합니다.")
     @DeleteMapping("/{storeId}")
     public ResponseEntity<Void> deleteStore(@PathVariable Long storeId) {
+        storeAccessGuard.assertMasterOwnsStore(getCurrentUserId(), storeId); // 자기 매장만 삭제
         storeManagementService.deleteStore(storeId);
         return ResponseEntity.noContent().build();
     }

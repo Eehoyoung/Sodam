@@ -1,17 +1,10 @@
+import {AppToast, ConfirmSheet, AppBadge, AppButton, AppCard, AppHeader, AppText, EmptyState, LoadingState, ScreenContainer} from '../../../common/components/ds';
 import React, {useCallback, useEffect, useState} from 'react';
-import {
-    Alert,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
-} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {tokens} from '../../../theme/tokens';
-import Card from '../../../common/components/data-display/Card';
-import Badge from '../../../common/components/data-display/Badge';
-import Button from '../../../common/components/form/Button';
+import {RefreshControl, ScrollView, StyleSheet, View} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
 
 interface PendingItem {
@@ -23,12 +16,12 @@ interface PendingItem {
 }
 
 /**
- * 사장 출퇴근 이상 알림 센터 (PRD_OWNER S-601).
- *
- * BE: `/api/store-queries/{storeId}/stats/today` 의 pendingEmployees 활용 + 추가 검색.
- * 현재는 매장 1개 가정 (다매장은 P2).
+ * 25 MissingAttendanceCenter — 확정 시안.
+ * 사장 출퇴근 이상 알림 센터. load/sendNudge 로직 + 당겨서 새로고침 보존.
  */
 const MissingAttendanceCenterScreen: React.FC = () => {
+    const navigation = useNavigation<any>();
+    const c = useThemeColors();
     const [items, setItems] = useState<PendingItem[]>([]);
     const [refreshing, setRefreshing] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -36,11 +29,11 @@ const MissingAttendanceCenterScreen: React.FC = () => {
     const load = useCallback(async () => {
         try {
             const storesRes = await api.get<any[]>('/api/stores/master/current');
-            const stores = (storesRes.data as any[]) ?? [];
+            const stores = (storesRes.data) ?? [];
             const collected: PendingItem[] = [];
             for (const s of stores) {
                 const statsRes = await api.get<any>(`/api/store-queries/${s.id}/stats/today`);
-                const data = statsRes.data as any;
+                const data = statsRes.data;
                 (data?.pendingEmployees ?? []).forEach((name: string, idx: number) => {
                     collected.push({
                         employeeId: idx,
@@ -64,114 +57,119 @@ const MissingAttendanceCenterScreen: React.FC = () => {
     }, [load]);
 
     const sendNudge = (item: PendingItem) => {
-        Alert.alert(
-            '푸시 알림 발송',
-            `${item.employeeName} 님께 출근 확인 알림을 보내시겠어요?`,
-            [
-                {text: '취소', style: 'cancel'},
-                {
-                    text: '보내기',
-                    onPress: async () => {
-                        try {
-                            await api.post('/api/notifications/push-to-employee', {
-                                employeeId: item.employeeId,
-                                title: '출근 확인 부탁드려요',
-                                body: `${item.storeName} 매장 출근이 등록되지 않았어요. 확인해 주세요.`,
-                            });
-                            Alert.alert('전송 완료', '직원에게 알림을 보냈어요.');
-                        } catch (e: any) {
-                            Alert.alert('실패', '알림 발송에 실패했어요.');
-                        }
-                    },
+        ConfirmSheet.confirm({
+            title: `${item.employeeName} 님께 알림을 보낼까요?`,
+            description: '출근 확인 푸시 알림이 직원에게 즉시 발송돼요.',
+            primary: {
+                label: '보내기',
+                onPress: async () => {
+                    try {
+                        await api.post('/api/notifications/push-to-employee', {
+                            employeeId: item.employeeId,
+                            title: '출근 확인 부탁드려요',
+                            body: `${item.storeName} 매장 출근이 등록되지 않았어요. 확인해 주세요.`,
+                        });
+                        AppToast.success('직원에게 알림을 보냈어요.');
+                    } catch (e: any) {
+                        AppToast.error('알림 발송에 실패했어요.');
+                    }
                 },
-            ],
-        );
+            },
+            secondary: {label: '취소'},
+        });
     };
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ScreenContainer padded={false} header={<AppHeader title="출퇴근 이상" />}>
             <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
-            >
-                <Text style={styles.title}>출퇴근 이상 알림 센터</Text>
-                <Text style={styles.subtitle}>
-                    오늘 출근하지 않았거나 퇴근 기록이 없는 직원이에요.{'\n'}
-                    원터치로 알림을 보낼 수 있어요.
-                </Text>
-
+                contentContainerStyle={styles.content}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={() => {
+                            setRefreshing(true);
+                            load();
+                        }}
+                    />
+                }>
                 {loading ? (
-                    <Text style={styles.empty}>불러오는 중…</Text>
+                    <LoadingState title="확인하고 있어요" description="오늘 출퇴근 이상 기록을 정리하는 중입니다" />
                 ) : items.length === 0 ? (
-                    <View style={styles.emptyBox}>
-                        <Text style={styles.emptyEmoji}>✅</Text>
-                        <Text style={styles.emptyTitle}>모두 정상이에요</Text>
-                        <Text style={styles.emptyBody}>
-                            오늘 출근 누락이나 미체크아웃이 없어요.
-                        </Text>
-                    </View>
+                    <EmptyState
+                        glyph={<Ionicons name="checkmark-sharp" size={28} color={c.textInverse} />}
+                        markColor={c.success}
+                        title="모두 정상이에요"
+                        description="오늘 출근 누락이나 미체크아웃이 없어요."
+                    />
                 ) : (
-                    items.map((it, idx) => (
-                        <Card key={idx} bordered style={styles.itemCard}>
-                            <View style={styles.itemRow}>
-                                <View style={{flex: 1}}>
-                                    <Text style={styles.itemName}>{it.employeeName}</Text>
-                                    <Text style={styles.itemStore}>{it.storeName}</Text>
-                                </View>
-                                <Badge
-                                    text={it.type === 'NO_CHECK_IN' ? '미출근' : '미퇴근'}
-                                    type="warning"
-                                />
+                    <>
+                        <AppCard variant="navy" hero style={styles.heroCard}>
+                            <AppText variant="caption" tone="inverse" style={styles.heroLabel}>정산 전 확인할 일</AppText>
+                            <View style={styles.heroNumRow}>
+                                <AppText tone="inverse" style={styles.heroNumber}>{items.length}</AppText>
+                                <AppText variant="headingSm" tone="inverse" style={styles.heroUnit}>건</AppText>
                             </View>
-                            <View style={styles.itemActions}>
-                                <Button title="알림 보내기" onPress={() => sendNudge(it)} variant="primary" size="sm" />
-                                <Button
-                                    title="수동 기록"
-                                    onPress={() => Alert.alert('안내', '수동 기록은 출퇴근 보드에서 가능해요.')}
-                                    variant="outline"
-                                    size="sm"
-                                />
-                            </View>
-                        </Card>
-                    ))
+                            <AppText variant="bodyMd" tone="inverse" style={styles.heroSub}>
+                                퇴근 누락과 미출근 기록을 먼저 정리하세요.
+                            </AppText>
+                        </AppCard>
+
+                        <View style={styles.list}>
+                            {items.map((it, idx) => (
+                                <AppCard key={idx} variant="plain">
+                                    <View style={styles.itemRow}>
+                                        <View style={styles.itemLeft}>
+                                            <Ionicons name="person-circle-outline" size={28} color={c.warning} />
+                                            <View style={styles.flexShrink}>
+                                                <AppText variant="titleMd" numberOfLines={1}>{it.employeeName}</AppText>
+                                                <AppText variant="caption" tone="secondary" numberOfLines={1} style={styles.itemSub}>
+                                                    {it.storeName}
+                                                </AppText>
+                                            </View>
+                                        </View>
+                                        <AppBadge label={it.type === 'NO_CHECK_IN' ? '미출근' : '미퇴근'} tone="warning" />
+                                    </View>
+                                    <View style={styles.actions}>
+                                        <AppButton label="알림 보내기" size="md" fullWidth={false} onPress={() => sendNudge(it)} style={styles.actionBtn} />
+                                        <AppButton
+                                            label="수동 기록"
+                                            size="md"
+                                            variant="outline"
+                                            fullWidth={false}
+                                            onPress={() => navigation.navigate('Attendance')}
+                                            style={styles.actionBtn}
+                                        />
+                                    </View>
+                                </AppCard>
+                            ))}
+                        </View>
+                    </>
                 )}
             </ScrollView>
-        </SafeAreaView>
+        </ScreenContainer>
     );
 };
 
 const styles = StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: tokens.colors.background},
-    scrollContent: {padding: tokens.spacing.lg, paddingBottom: tokens.spacing.huge},
-    title: {
-        fontSize: tokens.typography.sizes.xxl,
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
-        marginTop: tokens.spacing.md,
-        marginBottom: tokens.spacing.sm,
-        letterSpacing: -0.3,
+    content: {
+        flexGrow: 1,
+        paddingHorizontal: spacing.xxl,
+        paddingTop: spacing.lg,
+        paddingBottom: spacing.xxxl,
     },
-    subtitle: {
-        fontSize: tokens.typography.sizes.md,
-        color: tokens.colors.textSecondary,
-        lineHeight: 22,
-        marginBottom: tokens.spacing.xl,
-    },
-    empty: {textAlign: 'center', color: tokens.colors.textTertiary, padding: tokens.spacing.xl},
-    emptyBox: {alignItems: 'center', padding: tokens.spacing.huge},
-    emptyEmoji: {fontSize: 64, marginBottom: tokens.spacing.lg},
-    emptyTitle: {
-        fontSize: tokens.typography.sizes.lg,
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.success,
-        marginBottom: tokens.spacing.sm,
-    },
-    emptyBody: {color: tokens.colors.textSecondary, textAlign: 'center', lineHeight: 22},
-    itemCard: {marginBottom: tokens.spacing.md},
-    itemRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
-    itemName: {fontSize: tokens.typography.sizes.lg, fontWeight: '700', color: tokens.colors.textPrimary},
-    itemStore: {fontSize: tokens.typography.sizes.sm, color: tokens.colors.textSecondary, marginTop: 2},
-    itemActions: {flexDirection: 'row', gap: tokens.spacing.sm, marginTop: tokens.spacing.md},
+    heroCard: {},
+    heroLabel: {opacity: 0.82, fontWeight: '800'},
+    heroNumRow: {flexDirection: 'row', alignItems: 'baseline', marginTop: spacing.xs},
+    heroNumber: {fontSize: 52, lineHeight: 56, fontWeight: '800', letterSpacing: -1},
+    heroUnit: {marginLeft: spacing.xs},
+    heroSub: {marginTop: spacing.sm, opacity: 0.82},
+    list: {marginTop: spacing.xl, gap: spacing.md},
+    itemRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm},
+    itemLeft: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 1},
+    flexShrink: {flexShrink: 1},
+    itemSub: {marginTop: 2},
+    actions: {flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg},
+    actionBtn: {flex: 1},
 });
 
 export default MissingAttendanceCenterScreen;

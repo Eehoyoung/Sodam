@@ -81,6 +81,20 @@ public class Store {
     private Boolean isDeleted = false;
 
     /**
+     * 상시근로자 5인 이상 여부 (근로기준법 §11, §56).
+     * 5인 미만이면 연장·야간·휴일 가산수당(§56)·연차(§60) 미적용.
+     * null = 미설정 → 가산 적용(체불 방지 안전 기본값). false = 5인 미만(가산 제외).
+     * 상시근로자 수 산정은 사장 입력 기반(시행령 §7의2 4주 평균은 향후 정교화).
+     */
+    @Column(name = "five_or_more_employees")
+    private Boolean fiveOrMoreEmployees;
+
+    /** §56 가산수당 적용 여부 (5인 미만이 아니면 적용). */
+    public boolean isPremiumApplicable() {
+        return !Boolean.FALSE.equals(fiveOrMoreEmployees);
+    }
+
+    /**
      * 매장 생성자
      *
      * @param storeName             매장 이름

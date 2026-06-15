@@ -4,7 +4,7 @@
  */
 
 import api from '../../../common/utils/api';
-import {LaborInfo, InfoCategory, InfoArticle} from '../types';
+import {LaborInfo, InfoCategory} from '../types';
 
 // 공통 DTO -> UI 타입 매퍼
 const mapToLaborInfo = (dto: any): LaborInfo => ({
@@ -35,7 +35,7 @@ const laborInfoService = {
     /**
      * 카테고리별(임시) 노동법 정보 목록 조회
      */
-    getLaborInfosByCategory: async (categoryId: string): Promise<LaborInfo[]> => {
+    getLaborInfosByCategory: async (_categoryId: string): Promise<LaborInfo[]> => {
         try {
             // 백엔드 카테고리 미정: ALL 또는 기타 모두 전체 목록으로 대체
             const res = await api.get<any[]>(`/api/labor-info`);

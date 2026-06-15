@@ -9,8 +9,13 @@ jest.mock('react-native', () => ({
     Pressable: 'Pressable',
     ActivityIndicator: 'ActivityIndicator',
     RefreshControl: 'RefreshControl',
+    // DS v2: ScreenContainer 가 KeyboardAvoidingView/StatusBar 를 사용 → 누락 시 undefined 컴포넌트 크래시
+    KeyboardAvoidingView: 'KeyboardAvoidingView',
+    StatusBar: 'StatusBar',
     Alert: {alert: jest.fn()},
     Platform: {OS: 'ios', select: (o: any) => o.ios},
+    useWindowDimensions: () => ({width: 375, height: 812}),
+    useColorScheme: () => 'light',
 }));
 
 const mockNavigate = jest.fn();
@@ -21,6 +26,8 @@ jest.mock('@react-navigation/native', () => ({
 
 jest.mock('react-native-safe-area-context', () => ({
     SafeAreaView: ({children}: any) => children,
+    // useResponsive 가 useSafeAreaInsets 사용 (compact 분기 추가 후 OwnerDashboard 가 의존)
+    useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
 }));
 
 jest.mock('react-native-linear-gradient', () => 'LinearGradient');
@@ -49,40 +56,9 @@ jest.mock('../../../src/common/utils/api', () => {
     return {__esModule: true, default: api, setOnUnauthorized: jest.fn()};
 });
 
-jest.mock('../../../src/theme/tokens', () => ({
-    tokens: {
-        colors: {
-            brandPrimary: '#FF6B35',
-            brandSecondary: '#222',
-            brandPrimaryDark: '#C2410C',
-            textPrimary: '#111',
-            textSecondary: '#374151',
-            textTertiary: '#9CA3AF',
-            textInverse: '#fff',
-            success: '#16A34A',
-            successBg: '#DCFCE7',
-            warning: '#CA8A04',
-            warningBg: '#FEF9C3',
-            error: '#DC2626',
-            errorBg: '#FEE2E2',
-            info: '#2563EB',
-            infoBg: '#DBEAFE',
-            background: '#FFF',
-            surface: '#FFF',
-            surfaceMuted: '#F3F4F6',
-            divider: '#E5E7EB',
-            border: '#E5E7EB',
-        },
-        spacing: {xs: 2, sm: 4, md: 8, lg: 12, xl: 16, xxl: 20, xxxl: 24, huge: 40},
-        radius: {md: 6, lg: 10, xl: 14, pill: 999},
-        typography: {
-            sizes: {xs: 11, sm: 13, md: 15, lg: 17, xl: 19, xxl: 22, display: 28},
-            weights: {semibold: '600', bold: '700'},
-        },
-        shadow: {sm: {}, md: {}, lg: {}, brand: {}},
-        gradient: {brand: ['#FF6B35', '#FF8A65']},
-    },
-}));
+// 실제 토큰 사용 — DS 컴포넌트가 named export(colors/spacing/radius/...)를 쓰므로
+// 부분 모킹 대신 requireActual 로 전체 토큰을 제공한다.
+jest.mock('../../../src/theme/tokens', () => jest.requireActual('../../../src/theme/tokens'));
 
 import OwnerDashboardScreen from '../../../src/features/home/screens/OwnerDashboardScreen';
 import api from '../../../src/common/utils/api';
@@ -214,11 +190,8 @@ describe('OwnerDashboardScreen', () => {
         });
 
         const texts = renderer!.root.findAllByType('Text').map(t => t.props.children);
-        // Badge 의 text 가 "3/5명" 으로 들어감 (Badge 내부 Text)
-        const containsCount = texts.some(c => {
-            if (typeof c === 'string') return c === '3/5명';
-            return false;
-        });
+        // DS v2: "출근" Metric 카드가 `${checkedInCount}/${totalActiveEmployees}` 를 단일 문자열로 렌더
+        const containsCount = texts.some(c => typeof c === 'string' && c === '3/5');
         expect(containsCount).toBe(true);
     });
 
@@ -237,8 +210,8 @@ describe('OwnerDashboardScreen', () => {
         });
 
         const texts = renderer!.root.findAllByType('Text').map(t => t.props.children);
-        // today 가 null 일 때 greetingStore 는 "매장 정보 불러오는 중…" 표시
-        expect(texts).toContain('매장 정보 불러오는 중…');
+        // DS v2: 매장 0개 콜드스타트(A6) → EmptyState 로 첫 매장 등록 유도
+        expect(texts).toContain('첫 매장을 등록해 볼까요?');
     });
 
     test('빈 직원(pendingEmployees=[]) 시 "모든 직원이 출근했어요" 메시지', async () => {

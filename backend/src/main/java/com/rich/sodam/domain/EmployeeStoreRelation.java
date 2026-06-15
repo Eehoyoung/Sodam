@@ -57,6 +57,14 @@ public class EmployeeStoreRelation {
     @Column(name = "owner_memo", length = 500)
     private String ownerMemo;
 
+    /**
+     * 1주 소정근로일 수(약정 근무일). 주휴수당 개근 판정의 분모.
+     * null 이면 미설정 — 주휴 산정 시 "출근≥1=개근" 폴백(과지급 방향). 설정 시 결근까지 정확 판정.
+     * (근로기준법 §55 시행령 §30: 1주 소정근로일 개근 시 주휴 발생)
+     */
+    @Column(name = "contracted_weekly_days")
+    private Integer contractedWeeklyDays;
+
     public EmployeeStoreRelation(EmployeeProfile employeeProfile, Store store) {
         this.employeeProfile = employeeProfile;
         this.store = store;

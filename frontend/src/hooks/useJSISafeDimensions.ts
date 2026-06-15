@@ -65,6 +65,7 @@ export const useJSISafeDimensions = (): JSISafeDimensions => {
     try {
         // Cache raw dimensions first to prevent JSI violations
         console.log('[DEBUG_LOG] useJSISafeDimensions: About to create rawDimensions useMemo');
+        // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: hooks wrapped in try/catch to survive native bridge unavailability
         const rawDimensions = useMemo(() => {
             console.log('[DEBUG_LOG] useJSISafeDimensions: Inside rawDimensions useMemo callback');
             try {
@@ -116,6 +117,7 @@ export const useJSISafeDimensions = (): JSISafeDimensions => {
         console.log('[DEBUG_LOG] useJSISafeDimensions: rawDimensions created successfully:', rawDimensions);
 
         // Cache screen dimensions using raw dimensions
+        // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: hooks wrapped in try/catch to survive native bridge unavailability
         const dimensions = useMemo((): ScreenDimensions => {
             const {width, height} = rawDimensions;
 
@@ -129,6 +131,7 @@ export const useJSISafeDimensions = (): JSISafeDimensions => {
         console.log('[DEBUG_LOG] useJSISafeDimensions: dimensions created successfully');
 
         // Cache responsive breakpoints using raw width
+        // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: hooks wrapped in try/catch to survive native bridge unavailability
         const breakpoints = useMemo((): ResponsiveBreakpoints => {
             const {width} = rawDimensions;
 
@@ -141,6 +144,7 @@ export const useJSISafeDimensions = (): JSISafeDimensions => {
         }, [rawDimensions.width]);
 
         // Cache safe area calculations using raw dimensions
+        // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: hooks wrapped in try/catch to survive native bridge unavailability
         const safeAreas = useMemo((): SafeAreas => {
             const {width, height} = rawDimensions;
 
@@ -153,6 +157,7 @@ export const useJSISafeDimensions = (): JSISafeDimensions => {
         }, [rawDimensions.width, rawDimensions.height]);
 
         // Pre-calculate common animation values for worklet safety using raw dimensions
+        // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: hooks wrapped in try/catch to survive native bridge unavailability
         const animationValues = useMemo(() => {
             const {width, height} = rawDimensions;
 

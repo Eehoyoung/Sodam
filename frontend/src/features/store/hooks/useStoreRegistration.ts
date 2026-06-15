@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Alert } from 'react-native';
+import {AppToast} from '../../../common/components/ds';
 import storeService, { StoreRegistrationPayload } from '../services/storeService';
 
 interface Options {
@@ -14,11 +14,11 @@ export const useStoreRegistration = (options?: Options) => {
     setIsLoading(true);
     try {
       const { id } = await storeService.createStore(payload);
-      Alert.alert('매장 등록 완료', '매장이 성공적으로 등록되었습니다.');
+      AppToast.success('매장이 등록됐어요.');
       options?.onSuccess?.(id);
     } catch (e: any) {
       console.error('[StoreRegistration] submit error', e);
-      Alert.alert('오류', '매장 등록 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      AppToast.error('매장 등록에 실패했어요. 잠시 후 다시 시도해 주세요.');
     } finally {
       setIsLoading(false);
     }

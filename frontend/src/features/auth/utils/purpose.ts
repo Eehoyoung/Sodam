@@ -15,6 +15,7 @@ export const shouldShowPurposePopup = ({
   rawUserGrade,
   hasAlreadySelectedPurpose,
 }: PurposePopupCondition): boolean => {
+  // eslint-disable-next-line eqeqeq -- intentional == null: matches both null and undefined
   const noServerGrade = rawUserGrade == null || rawUserGrade === '';
   return Boolean(isKakaoUser && noServerGrade && !hasAlreadySelectedPurpose);
 };

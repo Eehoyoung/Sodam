@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.MessageSource;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.util.Locale;
 
@@ -14,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * 다국어 메시지 소스 테스트
  */
 @SpringBootTest
+@ActiveProfiles("test")
 class MessageConfigTest {
 
     @Autowired

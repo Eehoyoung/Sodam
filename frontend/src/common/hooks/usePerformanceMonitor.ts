@@ -225,7 +225,7 @@ export const usePerformanceMonitor = (config: Partial<PerformanceMonitorConfig> 
      * 성능 임계값 확인 및 경고 생성
      */
     const checkThresholds = useCallback((currentMetrics: PerformanceMetrics) => {
-        if (!finalConfig.enableAlerts) return;
+        if (!finalConfig.enableAlerts) {return;}
 
         const newAlerts: PerformanceAlert[] = [];
         const thresholds = finalConfig.alertThresholds;
@@ -314,7 +314,7 @@ export const usePerformanceMonitor = (config: Partial<PerformanceMonitorConfig> 
      * 성능 지표 업데이트
      */
     const updateMetrics = useCallback(() => {
-        if (!finalConfig.enabled) return;
+        if (!finalConfig.enabled) {return;}
 
         const currentMetrics = calculateMetrics();
         setMetrics(currentMetrics);
@@ -464,7 +464,7 @@ export const usePerformanceMonitor = (config: Partial<PerformanceMonitorConfig> 
      * 모니터링 시작
      */
     const startMonitoring = useCallback(() => {
-        if (isMonitoring || !finalConfig.enabled) return;
+        if (isMonitoring || !finalConfig.enabled) {return;}
 
         setIsMonitoring(true);
 
@@ -483,7 +483,7 @@ export const usePerformanceMonitor = (config: Partial<PerformanceMonitorConfig> 
      * 모니터링 중지
      */
     const stopMonitoring = useCallback(() => {
-        if (!isMonitoring) return;
+        if (!isMonitoring) {return;}
 
         setIsMonitoring(false);
 

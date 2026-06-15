@@ -33,7 +33,7 @@ export const formatDate = (dateString: string): string => {
  * @returns Formatted time string
  */
 export const formatTime = (timeString: string | null): string => {
-    if (!timeString) return '-';
+    if (!timeString) {return '-';}
 
     const [hours, minutes] = timeString.split(':');
     const hour = parseInt(hours, 10);

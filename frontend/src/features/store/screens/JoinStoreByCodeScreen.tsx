@@ -1,187 +1,123 @@
+import {AppToast, AppButton, AppCard, AppHeader, AppInput, AppText, CtaStack, ScreenContainer, SuccessState} from '../../../common/components/ds';
 import React, {useState} from 'react';
-import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
-} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {Pressable, StyleSheet, View} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
-import {tokens} from '../../../theme/tokens';
-import Button from '../../../common/components/form/Button';
-import Input from '../../../common/components/form/Input';
+import {radius, spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
 
 /**
- * 매장 코드 가입 (PRD_EMPLOYEE E-301).
- *
- * 직원 본인이 사장이 공유한 매장 코드를 입력해 매장에 가입.
- * QR 스캔은 추후 카메라 SDK 도입 시 구현 — 본 화면은 코드 직접 입력 + 자리 안내.
- *
- * TODO[CONFIRM-C-2 후]: react-native-camera 또는 react-native-vision-camera 도입 후
- *   QR 스캐너 컴포넌트(`<QrCameraScanner onScanned={code => ...}/>`) 연결.
+ * 27 JoinStoreByCode — 확정 시안.
+ * 직원이 사장 매장 코드로 가입. QR 은 추후 카메라 SDK. submit 로직 보존.
  */
 const JoinStoreByCodeScreen: React.FC = () => {
     const navigation = useNavigation<any>();
+    const c = useThemeColors();
     const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
+    const [joinedStore, setJoinedStore] = useState<string | null>(null);
 
     const submit = async () => {
         const normalized = code.trim().toUpperCase();
         if (normalized.length < 8) {
-            Alert.alert('확인 필요', '매장 코드는 보통 ST 로 시작하는 12자 이상이에요.');
+            AppToast.warn('매장 코드는 보통 ST 로 시작하는 12자 이상이에요.');
             return;
         }
         setLoading(true);
         try {
-            const res = await api.post<{id: number; storeName: string}>(
-                '/api/stores/join-by-code',
-                {storeCode: normalized},
-            );
+            const res = await api.post<{id: number; storeName: string}>('/api/stores/join-by-code', {
+                storeCode: normalized,
+            });
             const storeName = (res.data as any)?.storeName ?? '매장';
-            Alert.alert('가입 완료', `${storeName} 에 가입되었어요!`, [
-                {text: '확인', onPress: () => navigation.goBack()},
-            ]);
+            setJoinedStore(storeName);
         } catch (e: any) {
-            const msg = e?.response?.data?.message
-                ?? (e?.response?.status === 404
+            const msg =
+                e?.response?.data?.message ??
+                (e?.response?.status === 404
                     ? '매장 코드와 일치하는 매장을 찾을 수 없어요.'
                     : '잠시 후 다시 시도해 주세요.');
-            Alert.alert('가입 실패', msg);
+            AppToast.error(msg);
         } finally {
             setLoading(false);
         }
     };
 
+    if (joinedStore) {
+        return (
+            <ScreenContainer header={<AppHeader title="매장 가입" onBack={() => navigation.goBack()} />}>
+                <SuccessState
+                    title={`${joinedStore}에\n가입했어요`}
+                    description="오늘부터 출퇴근 기록과 급여명세를 확인할 수 있어요."
+                    primary={{label: '출근 화면으로', onPress: () => navigation.goBack()}}
+                />
+            </ScreenContainer>
+        );
+    }
+
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={styles.flex}
-            >
-                <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-                    <Text style={styles.title}>
-                        사장님이 알려주신{'\n'}매장 코드를 입력해 주세요
-                    </Text>
-                    <Text style={styles.subtitle}>
-                        가입 후 출퇴근·급여를 한 화면에서 확인할 수 있어요.
-                    </Text>
+        <ScreenContainer
+            scroll
+            header={<AppHeader title="매장 가입" onBack={() => navigation.goBack()} actions={[{label: 'QR', onPress: () => AppToast.show('QR 스캔은 정식 출시 직전 활성화돼요.')}]} />}
+            footer={
+                <CtaStack bordered>
+                    <AppButton label="매장 가입하기" loading={loading} disabled={code.trim().length < 8} onPress={submit} />
+                </CtaStack>
+            }>
+            <AppCard variant="navy" hero>
+                <AppText variant="headingSm" tone="inverse">사장님께 받은 코드를 입력하세요</AppText>
+                <AppText variant="bodyMd" tone="inverse" style={styles.heroSub}>
+                    가입하면 오늘부터 출퇴근과 급여명세를 확인할 수 있어요.
+                </AppText>
+            </AppCard>
 
-                    <Input
-                        label="매장 코드"
-                        value={code}
-                        onChangeText={v => setCode(v.toUpperCase())}
-                        placeholder="예: ST1234ABCD"
-                        autoCapitalize="characters"
-                        autoCorrect={false}
-                        editable={!loading}
-                        helperText="대소문자 구분 없이 입력해도 괜찮아요."
-                    />
+            <AppInput
+                value={code}
+                onChangeText={(v: string) => setCode(v.toUpperCase())}
+                placeholder="예: ST1234ABCD"
+                autoCapitalize="characters"
+                autoCorrect={false}
+                editable={!loading}
+                helper="대소문자 구분 없이 입력해도 괜찮아요."
+                style={styles.codeInput}
+                containerStyle={styles.codeWrap}
+            />
 
-                    <View style={styles.divider}>
-                        <View style={styles.dividerLine} />
-                        <Text style={styles.dividerText}>또는</Text>
-                        <View style={styles.dividerLine} />
-                    </View>
+            <View style={[styles.qrPlaceholder, {borderColor: c.border, backgroundColor: c.background}]}>
+                <Ionicons name="qr-code-outline" size={48} color={c.textTertiary} />
+                <AppText variant="titleMd">QR 스캔으로 가입하기</AppText>
+                <AppText variant="caption" tone="tertiary" center style={styles.qrBody}>
+                    카메라 권한 허용 후 매장 QR 을 비춰주세요. (정식 출시 직전 활성화)
+                </AppText>
+            </View>
 
-                    <View style={styles.qrPlaceholder}>
-                        <Text style={styles.qrEmoji}>📷</Text>
-                        <Text style={styles.qrTitle}>QR 스캔으로 가입하기</Text>
-                        <Text style={styles.qrBody}>
-                            카메라 권한 허용 후 매장 QR 을 비춰주세요.{'\n'}
-                            (정식 출시 직전 활성화)
-                        </Text>
-                    </View>
-
-                    <Button
-                        title="매장 가입하기"
-                        onPress={submit}
-                        variant="primary"
-                        size="lg"
-                        fullWidth
-                        loading={loading}
-                        disabled={code.length < 8}
-                        style={styles.cta}
-                    />
-
-                    <Pressable
-                        onPress={() => Alert.alert(
-                            '매장 코드는 어디서 받나요?',
-                            '사장님 앱의 [매장 → 매장 코드] 에서 확인하거나, 카운터에 부착된 QR 을 스캔할 수 있어요.',
-                        )}
-                        style={({pressed}) => [styles.helpRow, pressed && {opacity: 0.5}]}
-                    >
-                        <Text style={styles.helpText}>매장 코드는 어디서 받나요?</Text>
-                    </Pressable>
-                </ScrollView>
-            </KeyboardAvoidingView>
-        </SafeAreaView>
+            <Pressable
+                onPress={() =>
+                    AppToast.show('사장님 앱의 매장 코드 또는 카운터 QR 에서 확인할 수 있어요.')
+                }
+                style={({pressed}) => [styles.helpRow, pressed && {opacity: 0.5}]}>
+                <AppText variant="caption" tone="brand" weight="700">매장 코드는 어디서 받나요?</AppText>
+            </Pressable>
+        </ScreenContainer>
     );
 };
 
 const styles = StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: tokens.colors.background},
-    flex: {flex: 1},
-    scrollContent: {padding: tokens.spacing.lg, paddingBottom: tokens.spacing.huge},
-    title: {
-        fontSize: tokens.typography.sizes.xxl,
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
-        letterSpacing: -0.5,
-        marginTop: tokens.spacing.md,
-        marginBottom: tokens.spacing.sm,
-        lineHeight: 32,
-    },
-    subtitle: {
-        fontSize: tokens.typography.sizes.md,
-        color: tokens.colors.textSecondary,
-        marginBottom: tokens.spacing.xxl,
-    },
-    divider: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginVertical: tokens.spacing.xl,
-    },
-    dividerLine: {flex: 1, height: 1, backgroundColor: tokens.colors.divider},
-    dividerText: {
-        paddingHorizontal: tokens.spacing.md,
-        color: tokens.colors.textTertiary,
-        fontSize: tokens.typography.sizes.xs,
-    },
+    heroSub: {marginTop: spacing.xs, opacity: 0.82},
+    codeWrap: {marginTop: spacing.lg},
+    codeInput: {fontSize: 22, letterSpacing: 4, fontWeight: '900', textAlign: 'center'},
     qrPlaceholder: {
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 2,
-        borderColor: tokens.colors.border,
         borderStyle: 'dashed',
-        borderRadius: tokens.radius.xl,
-        padding: tokens.spacing.xxl,
-        backgroundColor: tokens.colors.surface,
-        gap: tokens.spacing.sm,
+        borderRadius: radius.xl,
+        padding: spacing.xxl,
+        gap: spacing.sm,
+        marginTop: spacing.lg,
     },
-    qrEmoji: {fontSize: 56},
-    qrTitle: {
-        fontSize: tokens.typography.sizes.md,
-        fontWeight: tokens.typography.weights.semibold,
-        color: tokens.colors.textPrimary,
-    },
-    qrBody: {
-        fontSize: tokens.typography.sizes.sm,
-        color: tokens.colors.textTertiary,
-        textAlign: 'center',
-        lineHeight: 18,
-    },
-    cta: {marginTop: tokens.spacing.xxl},
-    helpRow: {alignItems: 'center', paddingVertical: tokens.spacing.lg},
-    helpText: {
-        color: tokens.colors.brandPrimary,
-        fontSize: tokens.typography.sizes.sm,
-        fontWeight: tokens.typography.weights.medium,
-    },
+    qrBody: {marginTop: 2},
+    helpRow: {alignItems: 'center', paddingVertical: spacing.lg},
 });
 
 export default JoinStoreByCodeScreen;

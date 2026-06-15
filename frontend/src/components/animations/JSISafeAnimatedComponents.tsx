@@ -23,6 +23,7 @@ let withTiming: any;
 
 try {
   if (ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE)) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional native module, guarded require (loaded only when animations are enabled)
     const reanimated = require('react-native-reanimated');
     Animated = reanimated.default;
     Easing = reanimated.Easing;
@@ -39,7 +40,7 @@ try {
 } catch (error) {
   console.warn('[RECOVERY] JSISafeAnimatedComponents: Reanimated import failed, using fallback', error);
 }
-import {useAnimationDimensions, useJSISafeDimensions} from '../../hooks/useJSISafeDimensions';
+import {useAnimationDimensions} from '../../hooks/useJSISafeDimensions';
 
 // =============================================================================
 // INTERFACES AND TYPES
@@ -115,6 +116,7 @@ export const JSISafeFadeAnimation: React.FC<FadeAnimationProps> = ({
     const shouldUseAnimations = ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE);
 
     // Only use animated values when animations are enabled
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: reanimated hook gated on native module availability
     const opacity = shouldUseAnimations && useSharedValue ? useSharedValue(isVisible ? 1 : 0) : null;
 
     React.useEffect(() => {
@@ -146,6 +148,7 @@ export const JSISafeFadeAnimation: React.FC<FadeAnimationProps> = ({
     }, [isVisible, opacity, config, onAnimationComplete, shouldUseAnimations]);
 
     // Conditionally create animated styles only when animations are enabled
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: reanimated hook gated on native module availability
     const animatedStyle = shouldUseAnimations && useAnimatedStyle && opacity ? useAnimatedStyle(() => ({
         opacity: opacity.value,
     })) : null;

@@ -1,63 +1,91 @@
 import React from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Button, Alert } from 'react-native';
-import { useAuth } from '../../../contexts/AuthContext';
-import { useCurrentUser } from '../hooks/useAuthQueries';
+import {StyleSheet, View} from 'react-native';
+import {useAuth} from '../../../contexts/AuthContext';
+import {useCurrentUser} from '../hooks/useAuthQueries';
+import {
+    AppButton,
+    AppCard,
+    AppHeader,
+    AppListItem,
+    AppText,
+    AppToast,
+    Brandmark,
+    LoadingState,
+    ScreenContainer,
+} from '../../../common/components/ds';
+import {spacing} from '../../../theme/tokens';
 
+/**
+ * 43 Profile — 확정 시안.
+ * 아바타 마크 + 계정 정보 리스트. (읽기 + 새로고침)
+ */
 const ProfileScreen: React.FC = () => {
-  const { user } = useAuth();
-  const currentUserQuery = useCurrentUser();
+    const {user} = useAuth();
+    const currentUserQuery = useCurrentUser();
 
-  const displayedUser = user ?? currentUserQuery.data ?? null;
-  const loading = currentUserQuery.isLoading;
+    const displayedUser = user ?? currentUserQuery.data ?? null;
+    const loading = currentUserQuery.isLoading;
 
-  const handleRefresh = async () => {
-    try {
-      await currentUserQuery.refetch();
-    } catch (e: any) {
-      Alert.alert('오류', e?.response?.data?.message || '프로필을 새로고침하는 중 오류가 발생했습니다.');
+    const handleRefresh = async () => {
+        try {
+            await currentUserQuery.refetch();
+        } catch (e: any) {
+            AppToast.error(e?.response?.data?.message || '프로필을 새로고침하는 중 오류가 생겼어요.');
+        }
+    };
+
+    if (loading && !displayedUser) {
+        return (
+            <ScreenContainer header={<AppHeader title="프로필" />}>
+                <LoadingState title="프로필 불러오는 중" description="잠시만 기다려 주세요" />
+            </ScreenContainer>
+        );
     }
-  };
 
-  if (loading && !displayedUser) {
+    if (!displayedUser) {
+        return (
+            <ScreenContainer header={<AppHeader title="프로필" />}>
+                <View style={styles.center}>
+                    <AppText variant="bodyLg" tone="secondary">로그인이 필요합니다.</AppText>
+                </View>
+            </ScreenContainer>
+        );
+    }
+
+    const initial = (displayedUser.name || '소').charAt(0);
+
     return (
-      <View style={styles.center}>
-        <ActivityIndicator />
-        <Text style={{ marginTop: 8 }}>프로필 불러오는 중...</Text>
-      </View>
+        <ScreenContainer scroll header={<AppHeader title="프로필" />}>
+            <AppCard variant="flat" style={styles.avatarCard}>
+                <Brandmark size={56} label={initial} />
+                <AppText variant="caption" tone="tertiary" style={styles.avatarHint}>프로필 사진</AppText>
+            </AppCard>
+
+            <View style={styles.list}>
+                <AppListItem title="ID" right={<AppText variant="titleMd">{String(displayedUser.id)}</AppText>} />
+                <AppListItem title="이름" right={<AppText variant="titleMd">{displayedUser.name || '-'}</AppText>} />
+                <AppListItem title="이메일" right={<AppText variant="titleMd">{displayedUser.email || '-'}</AppText>} />
+                <AppListItem title="역할" right={<AppText variant="titleMd">{displayedUser.role ?? '-'}</AppText>} />
+            </View>
+
+            <AppButton
+                label="새로고침"
+                variant="secondary"
+                loading={currentUserQuery.isFetching}
+                loadingLabel="새로고침 중..."
+                onPress={handleRefresh}
+                style={styles.refresh}
+            />
+        </ScreenContainer>
     );
-  }
-
-  if (!displayedUser) {
-    return (
-      <View style={styles.center}>
-        <Text>로그인이 필요합니다.</Text>
-      </View>
-    );
-  }
-
-  const roles = displayedUser.role ?? '-';
-
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>내 프로필</Text>
-      <View style={styles.row}><Text style={styles.label}>ID</Text><Text style={styles.value}>{String(displayedUser.id)}</Text></View>
-      <View style={styles.row}><Text style={styles.label}>이름</Text><Text style={styles.value}>{displayedUser.name || '-'}</Text></View>
-      <View style={styles.row}><Text style={styles.label}>이메일</Text><Text style={styles.value}>{displayedUser.email || '-'}</Text></View>
-      <View style={styles.row}><Text style={styles.label}>역할</Text><Text style={styles.value}>{roles}</Text></View>
-
-      <View style={{ height: 16 }} />
-      <Button title={currentUserQuery.isFetching ? '새로고침 중...' : '새로고침'} onPress={handleRefresh} disabled={currentUserQuery.isFetching} />
-    </View>
-  );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 20, fontWeight: '700', marginBottom: 12 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
-  label: { width: 80, color: '#64748B' },
-  value: { flex: 1, fontWeight: '600' },
+    center: {flex: 1, alignItems: 'center', justifyContent: 'center'},
+    avatarCard: {alignItems: 'center', paddingVertical: spacing.xl},
+    avatarHint: {marginTop: spacing.sm},
+    list: {marginTop: spacing.md, gap: spacing.sm},
+    refresh: {marginTop: spacing.lg},
 });
 
 export default ProfileScreen;

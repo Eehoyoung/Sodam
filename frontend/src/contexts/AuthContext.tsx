@@ -1,9 +1,11 @@
-import React, {createContext, ReactNode, useContext, useEffect} from 'react';
+import React, {createContext, ReactNode, useContext, useEffect, useRef} from 'react';
 import {User} from '../features/auth/services/authService';
 import {useAuthState, useKakaoLogin, useLogin, useLogout} from '../features/auth/hooks/useAuthQueries';
 import {unifiedStorage} from '../common/utils/unifiedStorage';
 import {safeLogger} from '../utils/safeLogger';
 import { setOnUnauthorized } from '../common/utils/api';
+import {navigate} from '../navigation/navigationRef';
+import PaywallHost from '../features/subscription/components/PaywallHost';
 
 /**
  * 인증 컨텍스트 타입 정의
@@ -15,7 +17,7 @@ interface AuthContextType {
     loading: boolean;
     login: (email: string, password: string) => Promise<User>;
     logout: () => Promise<void>;
-    kakaoLogin: (code: string) => Promise<void>;
+    kakaoLogin: (code: string) => Promise<User>;
 }
 
 /**
@@ -98,33 +100,51 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
     const logoutMutation = useLogout();
     const kakaoLoginMutation = useKakaoLogin();
 
-    /**
-     * 통합 스토리지 초기화
-     */
+    // refetchAuth 를 ref 로 안정화 — useAuthState 가 매 렌더마다 새 함수를 반환해
+    // useEffect dep 에 두면 무한 재실행(addViewAt mount 폭발 진원) 이 일어남.
+    const refetchAuthRef = useRef(refetchAuth);
     useEffect(() => {
-        const initializeStorage = async () => {
+        refetchAuthRef.current = refetchAuth;
+    });
+
+    /**
+     * 통합 스토리지 초기화 — 1회만 실행 (initRef 가드).
+     */
+    const storageInitRef = useRef(false);
+    useEffect(() => {
+        if (storageInitRef.current) {
+            return;
+        }
+        storageInitRef.current = true;
+        (async () => {
             try {
                 await unifiedStorage.initialize();
                 console.log('[AuthProvider] 통합 스토리지 초기화 완료');
-
-                // 스토리지 초기화 후 인증 상태 재확인
-                refetchAuth();
+                refetchAuthRef.current();
             } catch (error) {
                 console.error('[AuthProvider] 통합 스토리지 초기화 실패:', error);
                 safeLogger.error('Storage initialization failed', error);
             }
-        };
+        })();
+    }, []);
 
-        initializeStorage();
-    }, [refetchAuth]);
+    // 직전 인증 여부 추적 — 세션 만료(A1) 안내를 "로그인 상태였다가 튕긴 경우"에만 노출
+    const wasAuthedRef = useRef(false);
+    useEffect(() => {
+        wasAuthedRef.current = isAuthenticated;
+    }, [isAuthenticated]);
 
-    // 전역 401(리프레시 실패 등) 발생 시 인증 상태 재확인 및 UI 업데이트
+    // 전역 401(리프레시 실패 등) 발생 시 인증 상태 재확인 + 세션 만료 안내 (갭분석 A1)
+    // 1회 등록 — refetchAuthRef 통해 항상 최신 함수 호출.
     useEffect(() => {
         setOnUnauthorized(() => {
-            refetchAuth();
+            refetchAuthRef.current();
+            if (wasAuthedRef.current) {
+                navigate('SessionExpired');
+            }
         });
         return () => setOnUnauthorized(null);
-    }, [refetchAuth]);
+    }, []);
 
     /**
      * 로그인 함수
@@ -163,11 +183,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
      * 카카오 로그인 함수
      * TanStack Query 뮤테이션을 사용하여 카카오 로그인 처리
      */
-    const kakaoLogin = async (code: string): Promise<void> => {
+    const kakaoLogin = async (code: string): Promise<User> => {
         try {
             console.log('[AuthProvider] 카카오 로그인 시도');
-            await kakaoLoginMutation.mutateAsync(code);
+            const result = await kakaoLoginMutation.mutateAsync(code);
             console.log('[AuthProvider] 카카오 로그인 성공');
+            return result.user;
         } catch (error) {
             console.error('[AuthProvider] 카카오 로그인 실패:', error);
             safeLogger.error('Kakao login failed', error);
@@ -237,6 +258,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
     return (
         <AuthContext.Provider value={contextValue}>
             {children}
+            {/* 전역 페이월(402 PLAN_REQUIRED) — 401 핸들러와 동일하게 앱 루트 1회 마운트 */}
+            <PaywallHost />
         </AuthContext.Provider>
     );
 };

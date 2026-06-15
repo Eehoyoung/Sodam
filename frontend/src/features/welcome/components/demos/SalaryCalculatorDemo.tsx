@@ -7,6 +7,7 @@ let Easing: any;
 
 try {
   if (ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE)) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional native module, guarded require (loaded only when animations are enabled)
     const reanimated = require('react-native-reanimated');
     Easing = reanimated.Easing;
   }
@@ -47,11 +48,9 @@ const SalaryCalculatorDemo: React.FC<SalaryCalculatorDemoProps> = ({
     const [calculation, setCalculation] = useState<SalaryCalculation | null>(null);
     const [calculationProgress, setCalculationProgress] = useState(0);
 
-    // Use JSI-safe dimensions hook
-    let dimensions;
+    // Use JSI-safe dimensions hook (called for JSI-safety side effects; result is unused here)
     try {
-        const hookResult = useJSISafeDimensions();
-        dimensions = hookResult.dimensions;
+        useJSISafeDimensions();
     } catch (error) {
         console.error('SalaryCalculatorDemo: Failed to get dimensions:', error);
         throw error;
@@ -72,7 +71,7 @@ const SalaryCalculatorDemo: React.FC<SalaryCalculatorDemoProps> = ({
                             setDemoStep('complete');
                             onDemoComplete({
                                 success: true,
-                                message: '급여 계산 체험이 완료되었습니다!',
+                                message: '급여 계산 체험이 완료됐어요!',
                                 timestamp: Date.now(),
                                 calculation: calculation!
                             });
@@ -119,7 +118,7 @@ const SalaryCalculatorDemo: React.FC<SalaryCalculatorDemoProps> = ({
     const closeDemo = () => {
         onDemoComplete({
             success: false,
-            message: '데모가 취소되었습니다.',
+            message: '데모가 취소됐어요.',
             timestamp: Date.now()
         });
     };
@@ -291,7 +290,7 @@ const SalaryCalculatorDemo: React.FC<SalaryCalculatorDemoProps> = ({
         }
     };
 
-    if (!isVisible) return null;
+    if (!isVisible) {return null;}
 
     return (
         <CombinedAnimation
@@ -339,7 +338,7 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#F5F5F5',
+        backgroundColor: '#F1EEE9',
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 1001,
@@ -493,11 +492,6 @@ const styles = StyleSheet.create({
         color: '#666666',
     },
     resultValue: {
-        fontSize: 14,
-        color: '#333333',
-        fontWeight: '600',
-    },
-    calculationValue: {
         fontSize: 14,
         color: '#333333',
         fontWeight: '600',

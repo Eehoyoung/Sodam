@@ -38,24 +38,37 @@ describe('wageService (Phase 1 API mapping)', () => {
     expect(resp).toEqual({ success: true });
   });
 
-  test('getEmployeeWage calls GET /api/wages/employee/{employeeId}/store/{storeId}', async () => {
+  test('getEmployeeWage calls GET /api/wages/employee/{employeeId}/store/{storeId} + normalizes BE shape', async () => {
     const getMock = getGetMock();
-    getMock.mockResolvedValueOnce({ data: { employeeId: 5, storeId: 10, hourlyWage: 12000 } });
+    // BE EmployeeWageInfoDto: customHourlyWage + useStoreStandardWage
+    getMock.mockResolvedValueOnce({ data: { employeeId: 5, storeId: 10, customHourlyWage: 12000, useStoreStandardWage: false } });
 
     const resp = await wageService.getEmployeeWage(5, 10);
 
     expect(getMock).toHaveBeenCalledWith('/api/wages/employee/5/store/10');
-    expect(resp).toEqual({ employeeId: 5, storeId: 10, hourlyWage: 12000 });
+    // hourlyWage 는 호환 alias 로 채워짐 (개별시급 사용 시 customHourlyWage 값)
+    expect(resp).toEqual({
+      employeeId: 5, storeId: 10,
+      customHourlyWage: 12000, useStoreStandardWage: false,
+      hourlyWage: 12000, updatedAt: undefined,
+    });
   });
 
-  test('upsertEmployeeWage calls POST /api/wages/employee with payload', async () => {
+  test('upsertEmployeeWage calls POST /api/wages/employee + 경계 변환(hourlyWage→customHourlyWage)', async () => {
     const postMock = getPostMock();
-    postMock.mockResolvedValueOnce({ data: { employeeId: 5, storeId: 10, hourlyWage: 13000 } });
+    postMock.mockResolvedValueOnce({ data: { employeeId: 5, storeId: 10, customHourlyWage: 13000, useStoreStandardWage: false } });
 
     const payload = { employeeId: 5, storeId: 10, hourlyWage: 13000 };
     const resp = await wageService.upsertEmployeeWage(payload);
 
-    expect(postMock).toHaveBeenCalledWith('/api/wages/employee', payload);
-    expect(resp).toEqual(payload);
+    // FE hourlyWage 를 BE EmployeeWageUpdateDto 키(customHourlyWage + useStoreStandardWage)로 변환해 전송
+    expect(postMock).toHaveBeenCalledWith('/api/wages/employee', {
+      employeeId: 5, storeId: 10, customHourlyWage: 13000, useStoreStandardWage: false,
+    });
+    expect(resp).toEqual({
+      employeeId: 5, storeId: 10,
+      customHourlyWage: 13000, useStoreStandardWage: false,
+      hourlyWage: 13000, updatedAt: undefined,
+    });
   });
 });

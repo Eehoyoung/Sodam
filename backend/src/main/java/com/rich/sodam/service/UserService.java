@@ -1,9 +1,15 @@
 package com.rich.sodam.service;
 
 import com.rich.sodam.domain.User;
+import com.rich.sodam.domain.type.SubscriptionStatus;
 import com.rich.sodam.domain.type.UserGrade;
 import com.rich.sodam.dto.request.EmployeeUpdateDto;
 import com.rich.sodam.dto.request.JoinDto;
+import com.rich.sodam.core.consent.TermsVersions;
+import com.rich.sodam.domain.TermsAgreement;
+import com.rich.sodam.domain.type.TermsType;
+import com.rich.sodam.repository.SubscriptionRepository;
+import com.rich.sodam.repository.TermsAgreementRepository;
 import com.rich.sodam.repository.UserRepository;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -12,17 +18,34 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Service
 public class UserService {
 
+    /** 탈퇴 후 PII 보관 기간(일) — 처리방침상 90일. */
+    static final int PII_RETENTION_DAYS = 90;
+
+    /** 탈퇴를 차단하는 "활성" 구독 상태 — 결제 진행/유효 기간 중. */
+    private static final List<SubscriptionStatus> BLOCKING_SUBSCRIPTION_STATUSES = List.of(
+            SubscriptionStatus.ACTIVE,
+            SubscriptionStatus.PENDING_PAYMENT,
+            SubscriptionStatus.PAST_DUE);
+
     private final UserRepository userRepository;
+    private final SubscriptionRepository subscriptionRepository;
+    private final TermsAgreementRepository termsAgreementRepository;
     private final PasswordEncoder passwordEncoder;
     private final org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder bCryptPasswordEncoder = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository,
+                       SubscriptionRepository subscriptionRepository,
+                       TermsAgreementRepository termsAgreementRepository,
+                       PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.subscriptionRepository = subscriptionRepository;
+        this.termsAgreementRepository = termsAgreementRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -146,10 +169,23 @@ public class UserService {
         user.setAgeConfirmedAt(now);
         user.setTermsAgreedAt(now);
         user.setPrivacyAgreedAt(now);
-        if (Boolean.TRUE.equals(joinDto.getMarketingAgreed())) {
+        boolean marketing = Boolean.TRUE.equals(joinDto.getMarketingAgreed());
+        if (marketing) {
             user.setMarketingAgreedAt(now);
         }
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+
+        // 동의 입증·버전관리용 이력 적재 (PIPA — 동의 사실·시점·버전 보존)
+        recordAudit(saved.getId(), TermsType.AGE_14, true, now);
+        recordAudit(saved.getId(), TermsType.TERMS_OF_SERVICE, true, now);
+        recordAudit(saved.getId(), TermsType.PRIVACY_POLICY, true, now);
+        recordAudit(saved.getId(), TermsType.MARKETING, marketing, now);
+        return saved;
+    }
+
+    private void recordAudit(Long userId, TermsType type, boolean agreed, LocalDateTime at) {
+        termsAgreementRepository.save(
+                TermsAgreement.of(userId, type, TermsVersions.current(type), agreed, at));
     }
 
     /**
@@ -303,6 +339,27 @@ public class UserService {
     }
 
     /**
+     * 프로필 기본정보 보강 (회원가입 후 첫 로그인 직후 호출).
+     * - phone(필수, 숫자만 저장) + name 갱신(선택) + birthDate(선택)
+     * - 완료 시 profile_completed_at 마킹 → FE 가 본 화면 우회
+     * - phone 형식 검증은 DTO @Pattern 에서 1차, 도메인 메서드에서 2차.
+     */
+    @Transactional
+    @CacheEvict(value = "users", key = "#userId")
+    public User completeProfileBasics(Long userId, String phone, String name, java.time.LocalDate birthDate) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없어요."));
+        if (name != null && !name.isBlank()) {
+            String trimmed = name.trim();
+            if (trimmed.length() < 2 || trimmed.length() > 50) {
+                throw new IllegalArgumentException("이름은 2~50자 사이여야 해요.");
+            }
+        }
+        user.completeProfile(phone, name, birthDate);
+        return userRepository.save(user);
+    }
+
+    /**
      * 본인 기본 정보(이름) 변경. 셀프.
      */
     @Transactional
@@ -322,11 +379,11 @@ public class UserService {
 
     /**
      * 회원 탈퇴 처리 (PRD_OWNER A5).
-     * - 활성 구독 보유 시 IllegalStateException
-     * - 이메일은 즉시 익명화하지 않고 90일 보관 후 배치로 익명화 (재가입 방지)
-     * - 단순화를 위해 본 단계에서는 활성 구독 검증 + 이메일 suffix 변경으로 로그인 차단
-     *
-     * TODO[CONFIRM-운영]: 90일 후 배치 PII 익명화 작업 추가 (별도 Scheduler)
+     * - 활성 구독(ACTIVE/PENDING_PAYMENT/PAST_DUE) 보유 시 IllegalStateException (W-1)
+     *   → 컨트롤러가 ACTIVE_SUBSCRIPTION 으로 분기. 환불/해지는 본 메서드에서 처리하지 않음(결제 인접).
+     * - 이메일/비밀번호 즉시 무효화로 로그인 차단.
+     * - PII(phone/birthDate/name)는 즉시 파기하지 않고 withdrawnAt 마킹 후
+     *   90일 경과분을 UserDataRetentionScheduler 배치가 익명화 (PIPA §21, 재가입/분쟁 대비 보관).
      */
     @Transactional
     @CacheEvict(value = "users", key = "#userId")
@@ -334,9 +391,16 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-        // 활성 구독 차단 — SubscriptionService 직접 호출은 순환 의존 위험.
-        // 대신 SubscriptionRepository 를 통해 검증 (런타임 의존 — 빈 주입).
-        // 본 단계에서는 단순화: 운영에서는 ApplicationEvent 로 분리 권장.
+        // W-1: 활성 구독 차단 — SubscriptionService 직접 호출은 순환 의존 위험이라 Repository 로 검증.
+        // 차단만 수행, 환불/취소는 결제 인접 작업이므로 여기서 건드리지 않음.
+        Optional<com.rich.sodam.domain.Subscription> activeSub =
+                subscriptionRepository.findFirstByUser_IdAndStatusIn(userId, BLOCKING_SUBSCRIPTION_STATUSES);
+        if (activeSub.isPresent()) {
+            throw new IllegalStateException("활성 구독이 있어 탈퇴할 수 없습니다. 먼저 구독을 해지해 주세요.");
+        }
+
+        // 탈퇴 시점 마킹 (90일 PII 파기 기산점)
+        user.markWithdrawn();
 
         // 이메일 비활성화 (로그인 차단)
         String original = user.getEmail();
@@ -344,9 +408,29 @@ public class UserService {
         // password 도 무효화 (재로그인 방지)
         user.setPassword(bCryptPasswordEncoder.encode(java.util.UUID.randomUUID().toString()));
         userRepository.save(user);
-        // 로그 (PII 마스킹)
+        // 로그 (PII 마스킹 — 원문 이메일은 해시만)
         org.slf4j.LoggerFactory.getLogger(UserService.class)
                 .info("회원 탈퇴 처리 — userId={}, originalEmailHash={}", userId,
                         Integer.toHexString(original == null ? 0 : original.hashCode()));
+    }
+
+    /**
+     * 탈퇴 후 보관기간(90일) 경과 사용자의 PII 익명화 (PIPA §21).
+     * UserDataRetentionScheduler 배치에서 호출. 멱등(이미 익명화된 행은 쿼리에서 제외).
+     *
+     * @return 익명화 처리 건수
+     */
+    @Transactional
+    @CacheEvict(value = "users", allEntries = true)
+    public int anonymizeExpiredWithdrawnUsers() {
+        LocalDateTime threshold = LocalDateTime.now().minusDays(PII_RETENTION_DAYS);
+        List<User> targets = userRepository.findWithdrawnDueForAnonymization(threshold);
+        for (User user : targets) {
+            user.anonymizePii();
+        }
+        if (!targets.isEmpty()) {
+            userRepository.saveAll(targets);
+        }
+        return targets.size();
     }
 }

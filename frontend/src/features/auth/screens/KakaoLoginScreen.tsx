@@ -1,103 +1,141 @@
-import React, {useState} from 'react';
-import {Alert, Linking, Pressable, StyleSheet, Text, View} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import React, {useCallback, useEffect, useState} from 'react';
+import {Linking, StyleSheet, View} from 'react-native';
+import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
-import {useNavigation} from '@react-navigation/native';
-import {tokens} from '../../../theme/tokens';
-import Button from '../../../common/components/form/Button';
+import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
+import {AppButton, AppText, AppToast, Brandmark} from '../../../common/components/ds';
+import {gradient, spacing} from '../../../theme/tokens';
 import authApi from '../services/authApi';
+import {useAuth} from '../../../contexts/AuthContext';
+import {AuthStackParamList} from '../../../navigation/types';
+import {resetToRootRoute, resolvePostAuthRoute} from '../../../navigation/authFlow';
 
-/**
- * 카카오 로그인 단독 화면 (PRD_GUEST G-008).
- *
- * 흐름:
- *  - 카카오 OAuth WebView 또는 시스템 브라우저 호출
- *  - 콜백은 BE `/kakao/auth/proc` 처리
- *
- * TODO[CONFIRM-C-7]: 실 카카오 키 발급 후 SDK(@react-native-seoul/kakao-login) 도입으로 교체.
- */
+type KakaoStatus = 'idle' | 'opening' | 'waiting' | 'cancelled' | 'failed' | 'success';
+
+export const getKakaoCodeFromUrl = (url?: string | null): string | null => {
+    if (!url) {
+        return null;
+    }
+    const codeMatch = url.match(/[?&]code=([^&]+)/);
+    return codeMatch ? decodeURIComponent(codeMatch[1]) : null;
+};
+
+export const hasKakaoError = (url?: string | null): boolean => {
+    return !!url && /[?&]error=/.test(url);
+};
+
 const KakaoLoginScreen: React.FC = () => {
     const navigation = useNavigation<any>();
-    const [loading, setLoading] = useState(false);
+    const route = useRoute<RouteProp<AuthStackParamList, 'KakaoLogin'>>();
+    const insets = useSafeAreaInsets();
+    const [status, setStatus] = useState<KakaoStatus>('idle');
+    const [message, setMessage] = useState('카카오 인증을 시작하면 브라우저가 열립니다.');
+    const {kakaoLogin} = useAuth();
+
+    const completeWithCode = useCallback(async (code: string) => {
+        setStatus('opening');
+        setMessage('카카오 인증 결과를 확인하고 있습니다.');
+        try {
+            const user = await kakaoLogin(code);
+            setStatus('success');
+            setMessage('인증이 완료되었습니다. 다음 단계로 이동합니다.');
+            resetToRootRoute(navigation, resolvePostAuthRoute(user, route.params?.selectedPurpose));
+        } catch (e: any) {
+            setStatus('failed');
+            const beMsg = e?.response?.data?.message;
+            setMessage(typeof beMsg === 'string' ? beMsg : '카카오 인증에 실패했습니다. 다시 시도하거나 이메일 로그인을 이용해 주세요.');
+            AppToast.error('카카오 인증에 실패했습니다.');
+        }
+    }, [kakaoLogin, navigation, route.params?.selectedPurpose]);
+
+    const handleUrl = useCallback((url?: string | null) => {
+        const code = getKakaoCodeFromUrl(url);
+        if (code) {
+            completeWithCode(code);
+            return;
+        }
+        if (hasKakaoError(url)) {
+            setStatus('failed');
+            setMessage('카카오 인증이 완료되지 않았습니다. 다시 시도하거나 이메일 로그인으로 돌아갈 수 있어요.');
+        }
+    }, [completeWithCode]);
+
+    useEffect(() => {
+        const subscription = Linking.addEventListener('url', event => handleUrl(event.url));
+        Linking.getInitialURL().then(handleUrl).catch(() => undefined);
+        return () => subscription.remove();
+    }, [handleUrl]);
 
     const startKakao = async () => {
-        setLoading(true);
+        if (status === 'opening') {
+            return;
+        }
+        setStatus('opening');
+        setMessage('카카오 인증 화면을 여는 중입니다.');
         try {
             await authApi.openKakaoLogin();
-            // openKakaoLogin 이 외부 브라우저를 열거나 WebView 를 띄움
-            // 콜백 후 AuthContext가 자동으로 user 를 설정하면 navigation reset 됨
+            setStatus('waiting');
+            setMessage('브라우저에서 인증을 마치면 앱으로 돌아옵니다. 돌아오지 않으면 이메일 로그인으로 진행해 주세요.');
         } catch (e: any) {
-            Alert.alert('카카오 로그인 실패', '잠시 후 다시 시도해 주세요.');
-        } finally {
-            setLoading(false);
+            setStatus('failed');
+            setMessage('카카오 인증 화면을 열지 못했습니다. 네트워크 상태를 확인하거나 이메일 로그인을 이용해 주세요.');
+            AppToast.error('카카오 로그인 시작에 실패했습니다.');
         }
     };
 
+    const cancelKakao = () => {
+        setStatus('cancelled');
+        setMessage('카카오 로그인을 취소했습니다. 이메일 로그인으로 계속할 수 있어요.');
+        navigation.navigate('Login', {selectedPurpose: route.params?.selectedPurpose});
+    };
+
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-            <LinearGradient
-                colors={tokens.gradient.brand}
-                start={{x: 0, y: 0}}
-                end={{x: 1, y: 1}}
-                style={styles.gradient}
-            >
+        <LinearGradient colors={gradient.darkScreen} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={styles.flex}>
+            <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
                 <View style={styles.center}>
-                    <Text style={styles.brand}>소담</Text>
-                    <Text style={styles.slogan}>1초만에 시작해요</Text>
+                    <Brandmark size={64} label="K" backgroundColor="#FEE500" textColor="#191600" />
+                    <AppText variant="display" tone="inverse" center style={styles.title}>
+                        {'카카오로\n간편하게 계속'}
+                    </AppText>
+                    <AppText variant="bodyLg" tone="inverse" center style={styles.copy}>
+                        {message}
+                    </AppText>
                 </View>
 
-                <View style={styles.footer}>
-                    <Pressable
+                <View style={[styles.footer, {paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.sm}]}>
+                    <AppButton
+                        label={status === 'waiting' ? '카카오 인증 다시 열기' : '카카오 인증 시작'}
+                        variant="secondary"
+                        loading={status === 'opening'}
                         onPress={startKakao}
-                        style={({pressed}) => [styles.kakaoBtn, pressed && {opacity: 0.85}]}
-                    >
-                        <Text style={styles.kakaoEmoji}>💬</Text>
-                        <Text style={styles.kakaoText}>카카오로 시작하기</Text>
-                    </Pressable>
-
-                    <Button
-                        title="이메일로 로그인"
-                        onPress={() => navigation.navigate('Login')}
+                    />
+                    {status === 'waiting' ? (
+                        <AppButton
+                            label="앱으로 돌아왔어요"
+                            variant="ghost"
+                            onPress={() => Linking.getInitialURL().then(handleUrl).catch(() => {
+                                setStatus('failed');
+                                setMessage('인증 결과를 찾지 못했습니다. 다시 시도해 주세요.');
+                            })}
+                        />
+                    ) : null}
+                    <AppButton
+                        label={status === 'waiting' ? '취소하고 이메일 로그인' : '이메일로 로그인'}
                         variant="ghost"
-                        size="md"
-                        fullWidth
-                        textStyle={{color: tokens.colors.textInverse}}
+                        onPress={status === 'waiting' ? cancelKakao : () => navigation.navigate('Login', {selectedPurpose: route.params?.selectedPurpose})}
                     />
                 </View>
-            </LinearGradient>
-        </SafeAreaView>
+            </SafeAreaView>
+        </LinearGradient>
     );
 };
 
 const styles = StyleSheet.create({
-    safeArea: {flex: 1},
-    gradient: {flex: 1, padding: tokens.spacing.lg, justifyContent: 'space-between'},
-    center: {flex: 1, alignItems: 'center', justifyContent: 'center'},
-    brand: {
-        fontSize: 56,
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textInverse,
-        letterSpacing: 4,
-    },
-    slogan: {
-        marginTop: tokens.spacing.md,
-        fontSize: tokens.typography.sizes.lg,
-        color: tokens.colors.textInverse,
-        opacity: 0.85,
-    },
-    footer: {paddingBottom: tokens.spacing.lg},
-    kakaoBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#FEE500',
-        paddingVertical: tokens.spacing.lg,
-        borderRadius: tokens.radius.lg,
-        gap: tokens.spacing.md,
-        marginBottom: tokens.spacing.md,
-    },
-    kakaoEmoji: {fontSize: 24},
-    kakaoText: {color: '#3C1E1E', fontSize: tokens.typography.sizes.md, fontWeight: '700'},
+    flex: {flex: 1},
+    center: {flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xxl},
+    title: {marginTop: spacing.xxl, letterSpacing: -1},
+    copy: {marginTop: spacing.md, opacity: 0.8, maxWidth: 320},
+    footer: {paddingHorizontal: spacing.xxl, gap: spacing.sm},
 });
 
 export default KakaoLoginScreen;

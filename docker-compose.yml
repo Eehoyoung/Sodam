@@ -7,11 +7,11 @@
 #   docker compose down               # 정지 (볼륨 유지)
 #   docker compose down -v            # 정지 + 볼륨 삭제 (DB 초기화)
 #
-# 포트 매핑:
-#   - BE      : 7070  (호스트) → 8080 (컨테이너)
-#   - MySQL   : 13306 (호스트) → 3306 (컨테이너)  — 다른 프로젝트 8080/8081/3306 충돌 회피
+# 포트 매핑 (8080/8081/8082/5432/6379 등 타 프로젝트 점유 회피, BE 7070 일관):
+#   - BE      : 7070  (호스트) → 7070 (컨테이너)   — 전 구간 7070 통일
+#   - MySQL   : 13306 (호스트) → 3306 (컨테이너)
 #   - Redis   : 16379 (호스트) → 6379 (컨테이너)
-#   - Adminer : 18080 (호스트) → 8080 (컨테이너)
+#   - Adminer : 18080 (호스트) → 8080 (컨테이너, 이미지 기본)
 # =============================================================================
 
 services:
@@ -30,7 +30,7 @@ services:
     environment:
       # Spring 프로필 — dev (H2 사용) 또는 prod (MySQL 사용)
       SPRING_PROFILES_ACTIVE: prod
-      SERVER_PORT: 8080
+      SERVER_PORT: 7070
       # DB 연결 — MySQL 컨테이너 호스트
       DB_URL: jdbc:mysql://sodam-mysql:3306/sodam?serverTimezone=Asia/Seoul&useSSL=false&allowPublicKeyRetrieval=true
       DB_USERNAME: sodam
@@ -41,10 +41,16 @@ services:
       REDIS_PORT: 6379
       # JWT — 컨테이너 운영용 32바이트+ 시크릿 (운영은 Secrets Manager)
       JWT_SECRET: ${SODAM_JWT_SECRET:-Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1pcy0zMi1ieXRlcy1taW4=}
-      JWT_EXPIRATION: 3600000
-      JWT_REFRESH_EXPIRATION: 604800000
+      # 단위: 초/일 (yaml token-validity-in-seconds / refresh-token-validity-in-days 와 일치)
+      JWT_TOKEN_VALIDITY_SECONDS: 3600
+      JWT_REFRESH_VALIDITY_DAYS: 7
       # 외부 통합 — 출시 직전까지 mock 모드 유지
       SODAM_INTEGRATION_TOSS_MODE: ${SODAM_TOSS_MODE:-mock}
+      # ⭐ 토스 실키 활성화: .env 에 SODAM_TOSS_MODE=live + 아래 3개 키 입력 → compose up --build 만 하면 됨
+      #    (mock 모드에선 test_ck_dev/test_sk_dev 디폴트로 동작, 실호출 없음)
+      TOSS_CLIENT_KEY: ${TOSS_CLIENT_KEY:-test_ck_dev}
+      TOSS_SECRET_KEY: ${TOSS_SECRET_KEY:-test_sk_dev}
+      TOSS_WEBHOOK_SECRET: ${TOSS_WEBHOOK_SECRET:-}
       SODAM_INTEGRATION_FCM_MODE: ${SODAM_FCM_MODE:-mock}
       SODAM_INTEGRATION_SENTRY_MODE: ${SODAM_SENTRY_MODE:-off}
       SODAM_INTEGRATION_KAKAO_MODE: ${SODAM_KAKAO_MODE:-mock}
@@ -59,7 +65,7 @@ services:
       MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: when-authorized
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
     ports:
-      - "${SODAM_BE_PORT:-7070}:8080"
+      - "${SODAM_BE_PORT:-7070}:7070"
     volumes:
       - sodam_uploads:/app/uploads
       - sodam_logs:/app/logs
@@ -67,7 +73,7 @@ services:
       - sodam-network
     healthcheck:
       # /actuator/health 는 일부 빈 의존성 실패 시 등록 안 됨. info 는 stateless 이라 안전.
-      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/info"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:7070/actuator/info"]
       interval: 30s
       timeout: 5s
       retries: 3

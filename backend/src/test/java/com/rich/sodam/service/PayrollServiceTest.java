@@ -106,8 +106,11 @@ class PayrollServiceTest {
         System.out.println("[DEBUG_LOG] 기간별 급여 계산 테스트 시작");
 
         // Given
+        // ⚠️ 경계 race 방지: createAttendanceRecord 의 checkOut 은 (이 줄 이후의) now() 라
+        // endDate=now() 로 잡으면 H2 밀리초 정밀도에서 부하 시 checkOut > endDate 로 윈도우 밖으로
+        // 밀려 0 이 나온다(전체 실행 시 간헐 실패 원인). 윈도우 끝에 여유를 둬 기록을 확실히 포함시킨다.
         LocalDateTime startDate = LocalDateTime.now().minusDays(7);
-        LocalDateTime endDate = LocalDateTime.now();
+        LocalDateTime endDate = LocalDateTime.now().plusDays(1);
 
         // 출퇴근 기록 생성
         createAttendanceRecord(8);
@@ -235,12 +238,13 @@ class PayrollServiceTest {
     private Attendance createAttendanceRecord(int workingHours) {
         Attendance attendance = new Attendance(testEmployee, testStore);
 
-        // 출근 처리
-        attendance.checkIn(37.5665, 126.9780, testRelation.getAppliedHourlyWage());
-        attendance = attendanceRepository.save(attendance);
+        // 실제 근무 시간 간격(workingHours)을 갖도록 명시적 시각 사용.
+        // checkIn()/checkOut() 은 now() 를 쓰므로 출퇴근 간격이 0 이 되어 급여가 0 으로 계산된다.
+        LocalDateTime checkOutTime = LocalDateTime.now();
+        LocalDateTime checkInTime = checkOutTime.minusHours(workingHours);
 
-        // 퇴근 처리
-        attendance.checkOut(37.5665, 126.9780);
+        attendance.manualCheckIn(checkInTime, 37.5665, 126.9780, testRelation.getAppliedHourlyWage());
+        attendance.manualCheckOut(checkOutTime, 37.5665, 126.9780);
 
         return attendanceRepository.save(attendance);
     }

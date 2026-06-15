@@ -27,7 +27,7 @@ import jakarta.annotation.PostConstruct;
 @Slf4j
 @Configuration
 @EnableCaching
-@Profile("dev")
+@Profile({"dev", "test"})
 public class DevInfraConfig {
 
     /**

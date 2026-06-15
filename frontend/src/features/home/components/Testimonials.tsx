@@ -14,7 +14,7 @@ const Testimonials = () => {
             id: 2,
             name: '박지영',
             business: '의류 매장 점주',
-            comment: '세무 관리 기능이 특히 유용해요. 세금 계산과 신고가 어려웠는데, 이제는 손쉽게 처리할 수 있게 되었습니다.',
+            comment: '세무 관리 기능이 특히 유용해요. 세금 계산과 신고가 어려웠는데, 이제는 손쉽게 처리할 수 있게 됐어요.',
             // image: require('../assets/testimonial2.jpg'),
         },
         {

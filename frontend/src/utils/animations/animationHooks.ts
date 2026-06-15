@@ -387,12 +387,15 @@ export const useShakeAnimation = () => {
 // Stagger Animation Hook
 export const useStaggerAnimation = (itemCount: number) => {
     const animations = Array.from({length: itemCount}, (_, index) => ({
+        // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional: fixed per-item reanimated hooks; itemCount is stable for the lifetime of this hook
         opacity: useSharedValue<number>(ANIMATION_VALUES.OPACITY.HIDDEN),
+        // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional: fixed per-item reanimated hooks; itemCount is stable for the lifetime of this hook
         translateY: useSharedValue<number>(ANIMATION_VALUES.TRANSLATE.HIDDEN_DOWN),
         index,
     }));
 
     const animatedStyles = animations.map(({opacity, translateY}) =>
+        // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional: fixed per-item reanimated hooks; itemCount is stable for the lifetime of this hook
         useAnimatedStyle(() => ({
             opacity: opacity.value,
             transform: [{translateY: translateY.value}],

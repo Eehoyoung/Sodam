@@ -1,10 +1,6 @@
 module.exports = {
   root: true,
-  extends: [
-    '@react-native',
-    'eslint:recommended',
-    'prettier',
-  ],
+  extends: ['@react-native', 'eslint:recommended', 'prettier', 'plugin:storybook/recommended'],
   plugins: ['@typescript-eslint', 'react', 'react-native'],
   rules: {
     // React 관련 규칙

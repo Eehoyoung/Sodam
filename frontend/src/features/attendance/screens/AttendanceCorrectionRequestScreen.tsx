@@ -1,19 +1,10 @@
+import {AppToast, AppButton, AppCard, AppHeader, AppInput, AppText, CtaStack, ScreenContainer, SuccessState} from '../../../common/components/ds';
 import React, {useState} from 'react';
-import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
-} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
-import {tokens} from '../../../theme/tokens';
-import Button from '../../../common/components/form/Button';
-import Input from '../../../common/components/form/Input';
-import Card from '../../../common/components/data-display/Card';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
 
 interface RouteParams {
@@ -25,134 +16,133 @@ interface RouteParams {
 }
 
 /**
- * 출퇴근 정정 요청 (PRD_EMPLOYEE 부가).
- *
+ * 24 CorrectionRequest — 확정 시안.
  * 직원이 잘못 기록된 출퇴근을 사장에게 정정 요청.
- *
- * TODO[P1 BE]: POST /api/attendance/{id}/correction-request 엔드포인트 미구현.
- *  - 현재는 mock fallback (이메일 발송 또는 알림으로 사장에게 전달)
- *  - BE 구현 시 본 화면 hookup 만 교체.
+ * POST /api/attendance/{attendanceId}/correction-request 로 실제 제출(사장 승인 워크플로).
  */
 const AttendanceCorrectionRequestScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
+    const c = useThemeColors();
     const params: RouteParams = route.params ?? {};
 
     const [checkIn, setCheckIn] = useState(formatTime(params.currentCheckIn) ?? '09:00');
     const [checkOut, setCheckOut] = useState(formatTime(params.currentCheckOut) ?? '18:00');
     const [reason, setReason] = useState('');
     const [loading, setLoading] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
 
     const submit = async () => {
         if (!reason.trim() || reason.trim().length < 5) {
-            Alert.alert('확인 필요', '정정 사유를 5자 이상 적어주세요.\n사장님이 더 빠르게 검토해 주실 수 있어요.');
+            AppToast.warn('정정 사유를 5자 이상 적어주세요.\n사장님이 더 빠르게 검토해 주실 수 있어요.');
             return;
         }
         if (!isValidTime(checkIn) || !isValidTime(checkOut)) {
-            Alert.alert('확인 필요', '시간을 HH:MM 형식으로 입력해 주세요.');
+            AppToast.warn('시간을 HH:MM 형식으로 입력해 주세요.');
+            return;
+        }
+        if (!params.attendanceId) {
+            AppToast.warn('정정할 근무 기록을 먼저 선택해 주세요.');
             return;
         }
         setLoading(true);
         try {
-            // TODO[P1 BE]: 본 엔드포인트 구현 후 실제 호출 활성화
-            // await api.post(`/api/attendance/${params.attendanceId}/correction-request`, {
-            //     proposedCheckIn: checkIn,
-            //     proposedCheckOut: checkOut,
-            //     reason: reason.trim(),
-            // });
-            console.log('[correction-request mock]', {
-                attendanceId: params.attendanceId,
-                checkIn,
-                checkOut,
+            // 정정 대상 날짜(YYYY-MM-DD) + 입력 시각(HH:MM)을 LocalDateTime 으로 결합
+            const baseDate = /^\d{4}-\d{2}-\d{2}/.test(params.date ?? '')
+                ? (params.date as string).slice(0, 10)
+                : new Date().toISOString().slice(0, 10);
+            await api.post(`/api/attendance/${params.attendanceId}/correction-request`, {
+                proposedCheckIn: `${baseDate}T${checkIn}:00`,
+                proposedCheckOut: `${baseDate}T${checkOut}:00`,
                 reason: reason.trim(),
             });
-            Alert.alert(
-                '요청 전송 완료',
-                '사장님께 정정 요청을 보냈어요. 검토 후 알림으로 결과를 알려드릴게요.',
-                [{text: '확인', onPress: () => navigation.goBack()}],
-            );
+            setSubmitted(true);
         } catch (e: any) {
-            Alert.alert('실패', '요청 전송에 실패했어요. 잠시 후 다시 시도해 주세요.');
+            AppToast.error(e?.response?.data?.message ?? '요청 전송에 실패했어요. 잠시 후 다시 시도해 주세요.');
         } finally {
             setLoading(false);
         }
     };
 
+    if (submitted) {
+        return (
+            <ScreenContainer header={<AppHeader title="정정 요청" onBack={() => navigation.goBack()} />}>
+                <SuccessState
+                    title="정정 요청을 보냈어요"
+                    description="사장님이 승인하면 기록에 반영됩니다."
+                    primary={{label: '근무 기록으로', onPress: () => navigation.goBack()}}
+                />
+            </ScreenContainer>
+        );
+    }
+
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={styles.flex}
-            >
-                <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-                    <Text style={styles.title}>출퇴근 정정 요청</Text>
-                    <Text style={styles.subtitle}>
-                        잘못 기록된 출퇴근 시간을 사장님께 알려드려요.{'\n'}
-                        승인 시 자동 반영됩니다.
-                    </Text>
+        <ScreenContainer
+            scroll
+            header={<AppHeader title="정정 요청" onBack={() => navigation.goBack()} />}
+            footer={
+                <CtaStack bordered>
+                    <AppButton label="정정 요청 보내기" loading={loading} onPress={submit} />
+                </CtaStack>
+            }>
+            <AppText variant="headingLg" style={styles.question}>어디를 바로잡을까요?</AppText>
 
-                    {params.date ? (
-                        <Card bordered style={styles.summary}>
-                            <Text style={styles.summaryDate}>{params.date}</Text>
-                            {params.storeName ? (
-                                <Text style={styles.summaryStore}>{params.storeName}</Text>
-                            ) : null}
-                            {params.currentCheckIn || params.currentCheckOut ? (
-                                <Text style={styles.summaryNote}>
-                                    현재 기록: {params.currentCheckIn ?? '-'} ~ {params.currentCheckOut ?? '미체크'}
-                                </Text>
-                            ) : null}
-                        </Card>
-                    ) : null}
+            <AppCard variant="warm">
+                <AppText variant="titleMd">현재 기록</AppText>
+                {params.date ? (
+                    <AppText variant="caption" tone="secondary" style={styles.sub}>
+                        {params.date}
+                        {params.storeName ? ` · ${params.storeName}` : ''}
+                    </AppText>
+                ) : null}
+                <AppText variant="caption" tone="warning" style={styles.sub}>
+                    출근 {params.currentCheckIn ?? '-'} · 퇴근 {params.currentCheckOut ?? '미체크'}
+                </AppText>
+            </AppCard>
 
-                    <Input
-                        label="수정할 출근 시간 (HH:MM)"
-                        value={checkIn}
-                        onChangeText={setCheckIn}
-                        placeholder="09:00"
-                        keyboardType="numbers-and-punctuation"
-                        editable={!loading}
-                    />
-                    <Input
-                        label="수정할 퇴근 시간 (HH:MM)"
-                        value={checkOut}
-                        onChangeText={setCheckOut}
-                        placeholder="18:00"
-                        keyboardType="numbers-and-punctuation"
-                        editable={!loading}
-                    />
-                    <Input
-                        label="정정 사유"
-                        value={reason}
-                        onChangeText={setReason}
-                        placeholder="예: NFC 인식이 안 돼서 사장님께 말씀드리고 일했어요."
-                        multiline
-                        numberOfLines={4}
-                        editable={!loading}
-                        helperText={`${reason.length} / 200자`}
-                        maxLength={200}
-                    />
+            <View style={styles.form}>
+                <AppInput
+                    label="수정 출근 시간 (HH:MM)"
+                    value={checkIn}
+                    onChangeText={setCheckIn}
+                    placeholder="09:00"
+                    keyboardType="numbers-and-punctuation"
+                    editable={!loading}
+                />
+                <AppInput
+                    label="수정 퇴근 시간 (HH:MM)"
+                    value={checkOut}
+                    onChangeText={setCheckOut}
+                    placeholder="18:00"
+                    keyboardType="numbers-and-punctuation"
+                    editable={!loading}
+                />
+                <AppInput
+                    label="정정 사유"
+                    value={reason}
+                    onChangeText={setReason}
+                    placeholder="예: NFC 인식이 안 돼서 사장님께 말씀드리고 일했어요."
+                    multiline
+                    editable={!loading}
+                    maxLength={200}
+                    helper={`${reason.length} / 200자`}
+                />
+            </View>
 
-                    <Button
-                        title="정정 요청 보내기"
-                        onPress={submit}
-                        variant="primary"
-                        size="lg"
-                        fullWidth
-                        loading={loading}
-                        style={styles.cta}
-                    />
-                    <Text style={styles.disclaimer}>
-                        ⓘ 정정 사유는 사장님과 직원 본인만 볼 수 있어요.
-                    </Text>
-                </ScrollView>
-            </KeyboardAvoidingView>
-        </SafeAreaView>
+            <View style={styles.disclaimer}>
+                <Ionicons name="lock-closed-outline" size={14} color={c.textTertiary} />
+                <AppText variant="caption" tone="tertiary">
+                    정정 사유는 사장님과 직원 본인만 볼 수 있어요.
+                </AppText>
+            </View>
+        </ScreenContainer>
     );
 };
 
 function formatTime(iso?: string): string | undefined {
-    if (!iso) return undefined;
+    if (!iso) {
+        return undefined;
+    }
     try {
         const d = new Date(iso);
         return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -168,46 +158,10 @@ function isValidTime(s: string): boolean {
 }
 
 const styles = StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: tokens.colors.background},
-    flex: {flex: 1},
-    scrollContent: {padding: tokens.spacing.lg, paddingBottom: tokens.spacing.huge},
-    title: {
-        fontSize: tokens.typography.sizes.xxl,
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
-        letterSpacing: -0.5,
-        marginTop: tokens.spacing.md,
-        marginBottom: tokens.spacing.sm,
-    },
-    subtitle: {
-        fontSize: tokens.typography.sizes.md,
-        color: tokens.colors.textSecondary,
-        marginBottom: tokens.spacing.xl,
-        lineHeight: 22,
-    },
-    summary: {marginBottom: tokens.spacing.lg},
-    summaryDate: {
-        fontSize: tokens.typography.sizes.lg,
-        fontWeight: tokens.typography.weights.bold,
-        color: tokens.colors.textPrimary,
-    },
-    summaryStore: {
-        fontSize: tokens.typography.sizes.sm,
-        color: tokens.colors.textSecondary,
-        marginTop: 2,
-    },
-    summaryNote: {
-        marginTop: tokens.spacing.sm,
-        fontSize: tokens.typography.sizes.sm,
-        color: tokens.colors.warning,
-    },
-    cta: {marginTop: tokens.spacing.xl},
-    disclaimer: {
-        marginTop: tokens.spacing.md,
-        textAlign: 'center',
-        color: tokens.colors.textTertiary,
-        fontSize: tokens.typography.sizes.xs,
-    },
+    question: {marginBottom: spacing.xl},
+    sub: {marginTop: 4},
+    form: {marginTop: spacing.xl, gap: spacing.lg},
+    disclaimer: {marginTop: spacing.xl, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs},
 });
 
 export default AttendanceCorrectionRequestScreen;
