@@ -92,9 +92,9 @@ export default function ConsentScreen({navigation, route}: Props) {
                 </CtaStack>
             }>
             <AppCard variant="warm" hero>
-                <AppText variant="headingSm">서비스 이용을 위한 설정</AppText>
-                <AppText variant="bodyMd" tone="secondary" style={styles.heroSub}>
-                    가입 또는 소셜 로그인 후 처음 한 번만 필요한 약관 동의 단계입니다.
+                <AppText variant="headingMd">서비스 이용을 위한 설정</AppText>
+                <AppText variant="bodyLg" tone="secondary" style={styles.heroSub}>
+                    처음 한 번만 필요한 약관 동의 단계예요.
                 </AppText>
             </AppCard>
 

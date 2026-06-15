@@ -168,9 +168,9 @@ export default function ProfileBasicsScreen({navigation, route}: Props) {
                 </CtaStack>
             }>
             <AppCard variant="warm" hero>
-                <AppText variant="headingSm">마지막 필수 설정이에요</AppText>
-                <AppText variant="bodyMd" tone="secondary" style={[styles.heroSub, {marginTop: titleMargin / 2}]}>
-                    소담을 안전하게 이용할 수 있도록 연락 가능한 기본 정보를 확인해 주세요.
+                <AppText variant="headingMd">마지막 필수 설정이에요</AppText>
+                <AppText variant="bodyLg" tone="secondary" style={[styles.heroSub, {marginTop: titleMargin / 2}]}>
+                    연락 가능한 기본 정보만 확인하면 끝이에요.
                 </AppText>
             </AppCard>
 

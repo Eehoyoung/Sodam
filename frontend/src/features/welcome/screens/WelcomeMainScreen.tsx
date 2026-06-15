@@ -44,12 +44,12 @@ export default function WelcomeMainScreen({navigation, route}: WelcomeMainScreen
                         styles.hero,
                         {opacity: fadeAnim, transform: [{translateY: slideAnim}]},
                     ]}>
-                    <Brandmark size={isCompactHeight ? 52 : 58} />
-                    <AppText variant="headingLg" tone="inverse" center style={styles.title}>
-                        {`${selectedLabel} 흐름으로\n가입을 준비했어요`}
+                    <Brandmark size={isCompactHeight ? 56 : 64} />
+                    <AppText variant="display" tone="inverse" center style={styles.title}>
+                        {`${selectedLabel} 흐름으로\n준비했어요`}
                     </AppText>
-                    <AppText variant="bodyMd" tone="inverse" center style={styles.copy}>
-                        가입 후 로그인하면 서비스 이용에 필요한 약관 동의와 기본 정보를 이어서 설정합니다.
+                    <AppText variant="bodyLg" tone="inverse" center style={styles.copy}>
+                        가입 후 약관 동의와 기본 정보를 이어서 설정해요.
                     </AppText>
                 </Animated.View>
 
@@ -64,8 +64,8 @@ export default function WelcomeMainScreen({navigation, route}: WelcomeMainScreen
 
 const styles = StyleSheet.create({
     flex: {flex: 1},
-    hero: {flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl},
-    title: {marginTop: spacing.lg},
-    copy: {marginTop: spacing.sm, opacity: 0.82, maxWidth: 320},
-    ctas: {paddingHorizontal: spacing.lg, gap: spacing.sm},
+    hero: {flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xxl},
+    title: {marginTop: spacing.xxl, letterSpacing: -1},
+    copy: {marginTop: spacing.md, opacity: 0.82, maxWidth: 320},
+    ctas: {paddingHorizontal: spacing.xxl, gap: spacing.sm},
 });

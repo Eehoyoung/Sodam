@@ -2,6 +2,7 @@
 import {AppToast, AppButton, AppHeader, AppInput, ScreenContainer} from '../../../common/components/ds';
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
 import {tokens} from '../../../theme/tokens';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
@@ -143,6 +144,7 @@ const globalEmailRef = {current: ''};
 // ───── Step 2: OTP 입력 ─────
 const StepOtp: React.FC<{onNext: () => void; onBack: () => void}> = ({onNext, onBack}) => {
     const styles = useStyles();
+    const c = useThemeColors();
     const [code, setCode] = useState('');
     const [remaining, setRemaining] = useState(OTP_VALID_SECONDS);
     const [loading, setLoading] = useState(false);
@@ -217,9 +219,16 @@ const StepOtp: React.FC<{onNext: () => void; onBack: () => void}> = ({onNext, on
                 textContentType="oneTimeCode"
             />
 
-            <Text style={styles.timer}>
-                {remaining > 0 ? `⏱ ${mins}:${secs} 남음` : '⚠️ 인증번호가 만료되었어요'}
-            </Text>
+            <View style={styles.timerRow}>
+                <Ionicons
+                    name={remaining > 0 ? 'time-outline' : 'alert-circle-outline'}
+                    size={16}
+                    color={remaining > 0 ? c.warning : c.error}
+                />
+                <Text style={[styles.timer, remaining <= 0 && {color: c.error}]}>
+                    {remaining > 0 ? `${mins}:${secs} 남음` : '인증번호가 만료되었어요'}
+                </Text>
+            </View>
 
             <Button
                 title="인증 확인"
@@ -239,7 +248,8 @@ const StepOtp: React.FC<{onNext: () => void; onBack: () => void}> = ({onNext, on
                 disabled={remaining > OTP_VALID_SECONDS - 60}
             />
             <Pressable onPress={onBack} style={({pressed}) => [styles.backRow, pressed && {opacity: 0.5}]}>
-                <Text style={styles.backText}>← 이메일 다시 입력</Text>
+                <Ionicons name="chevron-back" size={15} color={c.textSecondary} />
+                <Text style={styles.backText}>이메일 다시 입력</Text>
             </Pressable>
         </View>
     );
@@ -321,9 +331,12 @@ const StepNewPassword: React.FC<{onDone: () => void}> = ({onDone}) => {
 
 const DoneCard: React.FC<{onClose: () => void}> = ({onClose}) => {
     const styles = useStyles();
+    const c = useThemeColors();
     return (
         <View style={styles.doneBox}>
-            <Text style={styles.doneEmoji}>🎉</Text>
+            <View style={styles.doneMark}>
+                <Ionicons name="checkmark" size={36} color={c.textInverse} />
+            </View>
             <Text style={styles.title}>비밀번호가 변경됐어요</Text>
             <Text style={styles.subtitle}>새 비밀번호로 다시 로그인해 주세요.</Text>
             <Button title="로그인하러 가기" onPress={onClose} variant="primary" size="lg" fullWidth />
@@ -353,9 +366,14 @@ const StrengthBar: React.FC<{strength: PasswordStrength}> = ({strength}) => {
 
 const CheckItem: React.FC<{ok: boolean; text: string}> = ({ok, text}) => {
     const styles = useStyles();
+    const c = useThemeColors();
     return (
         <View style={styles.checkRow}>
-            <Text style={[styles.checkIcon, ok && styles.checkIconOk]}>{ok ? '✓' : '○'}</Text>
+            <Ionicons
+                name={ok ? 'checkmark-circle' : 'ellipse-outline'}
+                size={16}
+                color={ok ? c.success : c.textTertiary}
+            />
             <Text style={[styles.checkText, ok && styles.checkTextOk]}>{text}</Text>
         </View>
     );
@@ -399,17 +417,18 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         color: c.textSecondary,
     },
     title: {
-        fontSize: tokens.typography.sizes.xxl,
-        fontWeight: tokens.typography.weights.bold,
+        fontSize: 28,
+        lineHeight: 36,
+        fontWeight: '800' as const,
         color: c.textPrimary,
-        letterSpacing: -0.5,
+        letterSpacing: -0.8,
         marginBottom: tokens.spacing.sm,
     },
     subtitle: {
-        fontSize: tokens.typography.sizes.md,
+        fontSize: tokens.typography.sizes.lg,
         color: c.textSecondary,
         marginBottom: tokens.spacing.xl,
-        lineHeight: 22,
+        lineHeight: 26,
     },
     otpRow: {
         flexDirection: 'row' as const,
@@ -438,13 +457,25 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         height: 1,
         width: 1,
     },
+    timerRow: {
+        flexDirection: 'row' as const,
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
+        gap: tokens.spacing.xs,
+        marginBottom: tokens.spacing.lg,
+    },
     timer: {
         textAlign: 'center' as const,
         color: c.warning,
         fontVariant: ['tabular-nums' as const],
-        marginBottom: tokens.spacing.lg,
     },
-    backRow: {alignItems: 'center' as const, paddingVertical: tokens.spacing.md},
+    backRow: {
+        flexDirection: 'row' as const,
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
+        gap: tokens.spacing.xs,
+        paddingVertical: tokens.spacing.md,
+    },
     backText: {color: c.textSecondary, fontSize: tokens.typography.sizes.sm},
     strengthTrack: {
         height: 6,
@@ -457,17 +488,18 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
     strengthFill: {height: '100%' as const, borderRadius: tokens.radius.pill},
     checkList: {gap: tokens.spacing.xs, marginVertical: tokens.spacing.md},
     checkRow: {flexDirection: 'row' as const, alignItems: 'center' as const, gap: tokens.spacing.sm},
-    checkIcon: {
-        width: 18,
-        textAlign: 'center' as const,
-        color: c.textTertiary,
-        fontSize: 14,
-    },
-    checkIconOk: {color: c.success},
     checkText: {color: c.textTertiary, fontSize: tokens.typography.sizes.sm},
     checkTextOk: {color: c.textPrimary},
     doneBox: {alignItems: 'center' as const, paddingTop: tokens.spacing.huge},
-    doneEmoji: {fontSize: 64, marginBottom: tokens.spacing.lg},
+    doneMark: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        backgroundColor: c.success,
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
+        marginBottom: tokens.spacing.lg,
+    },
 });
 
 export default PasswordResetScreen;

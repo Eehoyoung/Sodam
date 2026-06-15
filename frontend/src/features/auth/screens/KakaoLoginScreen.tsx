@@ -93,11 +93,11 @@ const KakaoLoginScreen: React.FC = () => {
         <LinearGradient colors={gradient.darkScreen} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={styles.flex}>
             <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
                 <View style={styles.center}>
-                    <Brandmark size={58} label="K" backgroundColor="#FEE500" textColor="#191600" />
-                    <AppText variant="headingLg" tone="inverse" center style={styles.title}>
+                    <Brandmark size={64} label="K" backgroundColor="#FEE500" textColor="#191600" />
+                    <AppText variant="display" tone="inverse" center style={styles.title}>
                         {'카카오로\n간편하게 계속'}
                     </AppText>
-                    <AppText variant="bodyMd" tone="inverse" center style={styles.copy}>
+                    <AppText variant="bodyLg" tone="inverse" center style={styles.copy}>
                         {message}
                     </AppText>
                 </View>
@@ -132,10 +132,10 @@ const KakaoLoginScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
     flex: {flex: 1},
-    center: {flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl},
-    title: {marginTop: spacing.lg},
-    copy: {marginTop: spacing.sm, opacity: 0.8, maxWidth: 320},
-    footer: {paddingHorizontal: spacing.lg, gap: spacing.sm},
+    center: {flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xxl},
+    title: {marginTop: spacing.xxl, letterSpacing: -1},
+    copy: {marginTop: spacing.md, opacity: 0.8, maxWidth: 320},
+    footer: {paddingHorizontal: spacing.xxl, gap: spacing.sm},
 });
 
 export default KakaoLoginScreen;

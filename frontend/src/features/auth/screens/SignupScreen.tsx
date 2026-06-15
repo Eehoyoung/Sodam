@@ -125,6 +125,13 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
             scroll
             header={<AppHeader title="회원가입" onBack={() => navigation.goBack()} />}
             footer={footer}>
+            <AppText variant="headingLg" style={styles.title}>
+                {'소담을\n시작할게요'}
+            </AppText>
+
+            <AppText variant="titleMd" tone="secondary" style={styles.sectionLabel}>
+                어떤 역할인가요?
+            </AppText>
             <SegmentedControl options={ROLES.map(r => r.label)} value={roleIndex} onChange={setRoleIndex} />
 
             <AppCard variant="warm" style={styles.hint}>
@@ -175,10 +182,12 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
 };
 
 const styles = StyleSheet.create({
+    title: {marginBottom: spacing.xxl, letterSpacing: -0.8},
+    sectionLabel: {marginBottom: spacing.sm},
     hint: {marginTop: spacing.md},
     hintSub: {marginTop: 4},
-    form: {marginTop: spacing.md, gap: spacing.md},
-    consent: {marginTop: spacing.lg},
+    form: {marginTop: spacing.xxl, gap: spacing.md},
+    consent: {marginTop: spacing.xxl},
 });
 
 export default SignUpScreen;

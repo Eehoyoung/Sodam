@@ -1,6 +1,7 @@
 /* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
 import React, {useMemo, useState} from 'react';
 import {Modal, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {tokens} from '../../../theme/tokens';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 
@@ -60,6 +61,7 @@ const ConsentBlock: React.FC<ConsentBlockProps> = ({value, onChange, legalTexts}
 
             <ConsentRow
                 styles={styles}
+                checkColor={c.textInverse}
                 checked={allChecked}
                 label="전체 동의"
                 bold
@@ -69,6 +71,7 @@ const ConsentBlock: React.FC<ConsentBlockProps> = ({value, onChange, legalTexts}
 
             <ConsentRow
                 styles={styles}
+                checkColor={c.textInverse}
                 checked={value.age}
                 label="만 14세 이상이에요"
                 required
@@ -76,6 +79,7 @@ const ConsentBlock: React.FC<ConsentBlockProps> = ({value, onChange, legalTexts}
             />
             <ConsentRow
                 styles={styles}
+                checkColor={c.textInverse}
                 checked={value.terms}
                 label="이용약관 동의"
                 required
@@ -84,6 +88,7 @@ const ConsentBlock: React.FC<ConsentBlockProps> = ({value, onChange, legalTexts}
             />
             <ConsentRow
                 styles={styles}
+                checkColor={c.textInverse}
                 checked={value.privacy}
                 label="개인정보 처리방침 동의"
                 required
@@ -92,6 +97,7 @@ const ConsentBlock: React.FC<ConsentBlockProps> = ({value, onChange, legalTexts}
             />
             <ConsentRow
                 styles={styles}
+                checkColor={c.textInverse}
                 checked={value.marketing}
                 label="마케팅 정보 수신 (선택)"
                 onPress={() => toggle('marketing')}
@@ -136,6 +142,7 @@ interface ConsentRowProps {
     bold?: boolean;
     onPress: () => void;
     onPressView?: () => void;
+    checkColor: string;
     styles: ReturnType<typeof makeStyles>;
 }
 
@@ -146,6 +153,7 @@ const ConsentRow: React.FC<ConsentRowProps> = ({
     bold,
     onPress,
     onPressView,
+    checkColor,
     styles,
 }) => (
     <View style={styles.row}>
@@ -157,7 +165,7 @@ const ConsentRow: React.FC<ConsentRowProps> = ({
             accessibilityLabel={label}
         >
             <View style={[styles.checkBox, checked && styles.checkBoxOn]}>
-                {checked ? <Text style={styles.checkMark}>✓</Text> : null}
+                {checked ? <Ionicons name="checkmark" size={16} color={checkColor} /> : null}
             </View>
             <Text style={[styles.label, bold && styles.labelBold]}>
                 {label}
@@ -181,9 +189,9 @@ const FALLBACK_MARKETING =
 
 const makeStyles = (c: ThemeColors) => StyleSheet.create({
     sectionTitle: {
-        fontSize: tokens.typography.sizes.md,
-        fontWeight: tokens.typography.weights.semibold,
-        color: c.textSecondary,
+        fontSize: tokens.typography.sizes.lg,
+        fontWeight: tokens.typography.weights.bold,
+        color: c.textPrimary,
         marginTop: tokens.spacing.lg,
         marginBottom: tokens.spacing.sm,
     },
@@ -214,7 +222,6 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         backgroundColor: c.brandPrimary,
         borderColor: c.brandPrimary,
     },
-    checkMark: {color: c.textInverse, fontWeight: '700' as const, fontSize: 14},
     label: {
         fontSize: tokens.typography.sizes.md,
         color: c.textPrimary,

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
 import {tokens} from '../../../theme/tokens';
 import {AppButton} from '../../../common/components/ds';
@@ -20,30 +21,29 @@ import {useResponsive} from '../../../common/hooks/useResponsive';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
 
 interface Slide {
-    glyph: string;
+    icon: string;
     headline: string;
     body: string;
     gradient: [string, string];
 }
 
-// 브랜드 글리프 사용 — 이모지(📲💰🌿) 대신 컨텍스트 의미를 담은 단일 문자.
-// (B2B 톤·픽셀 일관성·고대비 가독성 모두 우위)
+// 이모지(📲💰🌿) 대신 Ionicons 라인 아이콘 — Android 렌더 차이·픽셀 일관성·고대비 가독성 우위.
 const SLIDES: Slide[] = [
     {
-        glyph: 'N',
-        headline: '출퇴근, NFC 한 번이면 끝',
-        body: '카운터 위 스티커에 폰만 대면 자동 출근 인증.\n부정 출근 걱정 끝이에요.',
+        icon: 'phone-portrait-outline',
+        headline: '출퇴근,\nNFC 한 번이면 끝',
+        body: '카운터 위 스티커에 폰만 대면 자동 출근.\n부정 출근 걱정 끝이에요.',
         gradient: ['#FFB48F', '#FF6B35'],
     },
     {
-        glyph: '₩',
-        headline: '급여, 자동으로 정확하게',
+        icon: 'cash-outline',
+        headline: '급여,\n자동으로 정확하게',
         body: '주휴수당·연장·야간 시급 자동 계산.\n월말 30분이면 정산 끝나요.',
         gradient: ['#FF9B63', '#FF5722'],
     },
     {
-        glyph: '환',
-        headline: '종합소득세 환급도 한 앱에서',
+        icon: 'receipt-outline',
+        headline: '종합소득세\n환급도 한 앱에서',
         body: '세무사 부담 없이 환급 받으세요.\n환급 받은 만큼만 수수료 드릴게요.',
         gradient: ['#FF9B63', '#E5552A'],
     },
@@ -107,7 +107,7 @@ const OnboardingCarouselScreen: React.FC = () => {
                 showsHorizontalScrollIndicator={false}
                 onMomentumScrollEnd={onMomentumEnd}
                 keyExtractor={(_, i) => String(i)}
-                renderItem={({item}) => <SlideCard slide={item} width={WIDTH} styles={styles} />}
+                renderItem={({item}) => <SlideCard slide={item} width={WIDTH} iconSize={illoSize * 0.42} styles={styles} />}
             />
 
             <View style={styles.indicators}>
@@ -132,7 +132,7 @@ const OnboardingCarouselScreen: React.FC = () => {
     );
 };
 
-const SlideCard: React.FC<{slide: Slide; width: number; styles: ReturnType<typeof makeStyles>}> = ({slide, width, styles}) => (
+const SlideCard: React.FC<{slide: Slide; width: number; iconSize: number; styles: ReturnType<typeof makeStyles>}> = ({slide, width, iconSize, styles}) => (
     <View style={[styles.slide, {width}]}>
         <LinearGradient
             colors={slide.gradient}
@@ -140,7 +140,7 @@ const SlideCard: React.FC<{slide: Slide; width: number; styles: ReturnType<typeo
             end={{x: 1, y: 1}}
             style={styles.illustrationBox}
         >
-            <Text style={styles.illustrationGlyph}>{slide.glyph}</Text>
+            <Ionicons name={slide.icon} size={iconSize} color="#FFFFFF" />
         </LinearGradient>
         <Text style={styles.headline}>{slide.headline}</Text>
         <Text style={styles.body}>{slide.body}</Text>
@@ -179,30 +179,21 @@ const makeStyles = (c: ThemeColors, illoSize: number, illoMarginTop: number) => 
         marginTop: illoMarginTop,
         ...tokens.shadow.brand,
     },
-    // 글리프는 그라디언트(브랜드 오렌지) 위에 항상 흰 텍스트 — 테마 무관.
-    illustrationGlyph: {
-        fontSize: 88,
-        fontWeight: '900' as const,
-        color: '#FFFFFF',
-        letterSpacing: -2,
-        textShadowColor: 'rgba(0,0,0,0.18)',
-        textShadowOffset: {width: 0, height: 4},
-        textShadowRadius: 12,
-    },
     headline: {
         marginTop: tokens.spacing.xxxl,
-        fontSize: tokens.typography.sizes.display,
-        fontWeight: tokens.typography.weights.bold,
+        fontSize: 30,
+        lineHeight: 38,
+        fontWeight: '800' as const,
         color: c.textPrimary,
         textAlign: 'center' as const,
         letterSpacing: -1,
     },
     body: {
         marginTop: tokens.spacing.lg,
-        fontSize: tokens.typography.sizes.md,
+        fontSize: tokens.typography.sizes.lg,
         color: c.textSecondary,
         textAlign: 'center' as const,
-        lineHeight: 24,
+        lineHeight: 26,
     },
     indicators: {
         flexDirection: 'row' as const,

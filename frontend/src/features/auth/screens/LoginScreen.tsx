@@ -109,13 +109,13 @@ export default function LoginScreen({navigation, route}: LoginScreenProps) {
             <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
                 <ScrollGuard scrollPadTop={scrollPadTop}>
                     <Brandmark size={brandSize} />
-                    <AppText variant="headingLg" tone="inverse" style={[styles.title, {marginTop: titleMargin}]}>
+                    <AppText variant="display" tone="inverse" style={[styles.title, {marginTop: titleMargin}]}>
                         {'다시 오셨네요.\n바로 시작해요'}
                     </AppText>
-                    <AppText variant="bodyMd" tone="inverse" style={styles.copy}>
+                    <AppText variant="bodyLg" tone="inverse" style={styles.copy}>
                         {route.params?.fromSignup
-                            ? '가입한 계정으로 로그인하면 약관 동의와 기본 정보 설정을 이어서 진행합니다.'
-                            : '로그인 후 필요한 설정이 남아 있으면 먼저 안내해 드립니다.'}
+                            ? '로그인하면 약관 동의와 기본 정보 설정을 이어서 진행해요.'
+                            : '로그인 후 남은 설정이 있으면 먼저 안내해 드릴게요.'}
                     </AppText>
 
                     <View style={[styles.form, {marginTop: formMargin, gap: formGap}]}>
@@ -179,9 +179,9 @@ const ScrollGuard: React.FC<{children: React.ReactNode; scrollPadTop?: number}> 
 
 const styles = StyleSheet.create({
     flex: {flex: 1},
-    scroll: {flexGrow: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.xxl, paddingBottom: spacing.xl},
-    title: {marginTop: spacing.lg},
-    copy: {marginTop: spacing.sm, opacity: 0.8},
+    scroll: {flexGrow: 1, paddingHorizontal: spacing.xxl, paddingTop: spacing.xxl, paddingBottom: spacing.xl},
+    title: {marginTop: spacing.lg, letterSpacing: -1},
+    copy: {marginTop: spacing.md, opacity: 0.8},
     form: {marginTop: spacing.xl, gap: spacing.md},
     toggle: {alignSelf: 'flex-end', marginTop: -spacing.xs},
     toggleText: {opacity: 0.82},
