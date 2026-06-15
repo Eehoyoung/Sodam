@@ -1,15 +1,16 @@
 import React, {useCallback, useMemo, useRef, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
     AppButton,
     AppText,
-    Brandmark,
+    CtaStack,
     LoadingState,
     ScreenContainer,
     AppToast,
 } from '../../../common/components/ds';
-import {spacing} from '../../../theme/tokens';
+import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {env} from '../../../common/config/env';
 import subscriptionApi, {
@@ -182,18 +183,22 @@ const TossBillingAuthScreen: React.FC = () => {
     // 폴백: react-native-webview 미설치 → 의존성 임의 추가 금지, 안내만.
     if (!WebViewImpl) {
         return (
-            <ScreenContainer>
+            <ScreenContainer
+                footer={
+                    <CtaStack>
+                        <AppButton label="돌아가기" onPress={() => navigation.goBack()} />
+                    </CtaStack>
+                }>
                 <View style={styles.center}>
-                    <Brandmark size={56} label="💳" backgroundColor={c.brandPrimary} />
+                    <View style={[styles.iconBadge, {backgroundColor: c.surfaceWarm}]}>
+                        <Ionicons name="card-outline" size={34} color={c.brandPrimary} />
+                    </View>
                     <AppText variant="headingMd" center style={styles.title}>
                         결제 모듈을 준비하고 있어요
                     </AppText>
-                    <AppText variant="bodyMd" tone="secondary" center style={styles.desc}>
+                    <AppText variant="bodyLg" tone="secondary" center style={styles.desc}>
                         카드 결제 기능을 곧 열어드릴게요. 조금만 기다려 주세요.
                     </AppText>
-                    <View style={styles.ctas}>
-                        <AppButton label="돌아가기" onPress={() => navigation.goBack()} />
-                    </View>
                 </View>
             </ScreenContainer>
         );
@@ -232,9 +237,15 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingHorizontal: spacing.xl,
     },
-    title: {marginTop: spacing.md},
+    iconBadge: {
+        width: 72,
+        height: 72,
+        borderRadius: radius.xxl,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    title: {marginTop: spacing.xl},
     desc: {marginTop: spacing.sm, maxWidth: 320},
-    ctas: {alignSelf: 'stretch', marginTop: spacing.xl, gap: spacing.sm},
 });
 
 export default TossBillingAuthScreen;

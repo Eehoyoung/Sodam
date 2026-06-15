@@ -5,6 +5,7 @@ import {
     AppBadge,
     AppHeader,
     AppListItem,
+    AppText,
     EmptyState,
     LoadingState,
     ScreenContainer,
@@ -61,13 +62,16 @@ const SalaryArchiveScreen: React.FC = () => {
 
     return (
         <ScreenContainer scroll header={<AppHeader title="지난 급여명세" onBack={() => navigation.goBack()} />}>
+            <AppText variant="bodyMd" tone="secondary" style={styles.intro}>
+                퇴사·세무 목적의 과거 명세서를 다시 열어볼 수 있어요.
+            </AppText>
             <SegmentedControl options={['올해', '작년']} value={year} onChange={setYear} />
 
             {loading ? (
                 <LoadingState title="불러오는 중" description="지난 명세서를 정리하고 있어요" />
             ) : items.length === 0 ? (
                 <EmptyState
-                    glyph="🗃"
+                    glyph="₩"
                     title="아직 발급된 명세서가 없어요"
                     description="급여 정산을 마치면 발급한 명세서가 여기에 보관돼요."
                 />
@@ -89,7 +93,8 @@ const SalaryArchiveScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-    list: {marginTop: spacing.md, gap: spacing.sm},
+    intro: {marginBottom: spacing.lg},
+    list: {marginTop: spacing.lg, gap: spacing.md},
 });
 
 export default SalaryArchiveScreen;

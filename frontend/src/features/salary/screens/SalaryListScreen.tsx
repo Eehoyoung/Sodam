@@ -1,6 +1,6 @@
-import {AppToast, AppBadge, AppCard, AppHeader, AppText, EmptyState, ErrorState, LoadingState, ScreenContainer} from '../../../common/components/ds';
-import React, {useCallback, useEffect, useState} from 'react';
-import {FlatList, RefreshControl, StyleSheet, TouchableOpacity, View} from 'react-native';
+import {AmountText, AppToast, AppBadge, AppButton, AppCard, AppHeader, AppText, CtaStack, EmptyState, ErrorState, LoadingState, ScreenContainer, SegmentedControl} from '../../../common/components/ds';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import {FlatList, RefreshControl, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
@@ -103,26 +103,25 @@ const SalaryListScreen = () => {
         navigation.navigate({name: 'SalaryDetail', params: {payrollId}});
     };
 
-    const renderStorePicker = () => (
-        <View style={styles.storePicker}>
-            {stores.map(s => {
-                const on = selectedStoreId === s.id;
-                return (
-                    <TouchableOpacity
-                        key={s.id}
-                        onPress={() => setSelectedStoreId(s.id)}
-                        style={[styles.storeChip, {backgroundColor: on ? c.brandPrimary : c.surfaceMuted}]}>
-                        <AppText variant="caption" weight="800" tone={on ? 'inverse' : 'secondary'}>{s.name}</AppText>
-                    </TouchableOpacity>
-                );
-            })}
-        </View>
+    // 선택 매장 인덱스 ↔ SegmentedControl 인덱스 매핑 (매장 선택 배선 보존)
+    const storeNames = useMemo(() => stores.map(s => s.name), [stores]);
+    const storeIndex = useMemo(
+        () => Math.max(0, stores.findIndex(s => s.id === selectedStoreId)),
+        [stores, selectedStoreId],
+    );
+
+    // 이번 매장 총 지급 예정 — 화면 진입 시 "숫자가 히어로"
+    const totalPay = useMemo(
+        () => rows.reduce((s, r) => s + (r.totalPay ?? 0), 0),
+        [rows],
     );
 
     const renderItem = ({item}: { item: SalaryRow }) => (
-        <AppCard variant="elevated" style={styles.card} onPress={() => openDetail(item.payrollId)}>
-            <View style={styles.cardHeader}>
-                <AppText variant="titleMd" numberOfLines={1} style={styles.empName}>{item.employeeName ?? `근로자 ${item.employeeId}`}</AppText>
+        <AppCard variant="plain" style={styles.card} onPress={() => openDetail(item.payrollId)}>
+            <View style={styles.cardTop}>
+                <AppText variant="titleMd" numberOfLines={1} style={styles.empName}>
+                    {item.employeeName ?? `근로자 ${item.employeeId}`}
+                </AppText>
                 {item.status ? (
                     <AppBadge
                         label={STATUS_LABEL[item.status] ?? item.status}
@@ -130,28 +129,58 @@ const SalaryListScreen = () => {
                     />
                 ) : null}
             </View>
-            {item.period ? (
-                <AppText variant="caption" tone="secondary">{item.period.startDate} ~ {item.period.endDate}</AppText>
-            ) : null}
-            <View style={styles.amounts}>
-                {/* eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined */}
-                {item.totalHours != null ? (
-                    <AppText variant="caption" tone="tertiary">총 근무 {item.totalHours}h</AppText>
-                ) : null}
+            <View style={styles.cardBottom}>
+                <View style={styles.metaCol}>
+                    {item.period ? (
+                        <AppText variant="caption" tone="secondary" numberOfLines={1}>
+                            {item.period.startDate} ~ {item.period.endDate}
+                        </AppText>
+                    ) : null}
+                    {/* eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined */}
+                    {item.totalHours != null ? (
+                        <AppText variant="caption" tone="tertiary">총 근무 {item.totalHours}h</AppText>
+                    ) : null}
+                </View>
                 {/* eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined */}
                 {item.totalPay != null ? (
-                    <AppText variant="titleMd" numberOfLines={1} adjustsFontSizeToFit style={{color: c.brandPrimary}}>{formatMoney(item.totalPay)}</AppText>
+                    <AmountText size={24} tone="primary" style={styles.amount}>
+                        {formatMoney(item.totalPay)}
+                    </AmountText>
                 ) : null}
             </View>
         </AppCard>
     );
 
+    const listHeader =
+        rows.length > 0 ? (
+            <View style={styles.heroBlock}>
+                <AppText variant="caption" tone="secondary" weight="700">이번 정산 총액</AppText>
+                <AmountText size={40} tone="brand" style={styles.heroAmount}>
+                    {formatMoney(totalPay)}
+                </AmountText>
+                <AppText variant="caption" tone="tertiary">{rows.length}명 · 직원별 명세는 아래에서 확인해요</AppText>
+            </View>
+        ) : null;
+
     return (
         <ScreenContainer
             padded={false}
-            header={<AppHeader title="급여" actions={[{label: '정산', onPress: () => navigation.navigate('PayrollRun', undefined)}]} />}>
+            header={<AppHeader title="급여" />}
+            footer={
+                <CtaStack bordered>
+                    <AppButton label="급여 정산하기" onPress={() => navigation.navigate('PayrollRun', undefined)} />
+                </CtaStack>
+            }>
             <View style={[styles.container, {backgroundColor: c.surfaceCanvas}]}>
-                {renderStorePicker()}
+                {storeNames.length > 0 ? (
+                    <View style={styles.storePicker}>
+                        <SegmentedControl
+                            options={storeNames}
+                            value={storeIndex}
+                            onChange={i => setSelectedStoreId(stores[i]?.id ?? null)}
+                        />
+                    </View>
+                ) : null}
 
                 {loading ? (
                     <LoadingState title="불러오는 중" description="급여 내역을 불러오고 있어요" />
@@ -166,8 +195,10 @@ const SalaryListScreen = () => {
                         data={rows}
                         keyExtractor={(item) => String(item.payrollId)}
                         renderItem={renderItem}
+                        ListHeaderComponent={listHeader}
                         contentContainerStyle={rows.length === 0 ? styles.flexCenter : styles.list}
                         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+                        showsVerticalScrollIndicator={false}
                         ListEmptyComponent={
                             <EmptyState
                                 glyph="₩"
@@ -185,14 +216,17 @@ const SalaryListScreen = () => {
 
 const styles = StyleSheet.create({
     container: {flex: 1},
-    storePicker: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm},
-    storeChip: {paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: 999},
-    list: {paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: spacing.sm},
+    storePicker: {paddingHorizontal: spacing.xxl, paddingTop: spacing.lg, paddingBottom: spacing.xs},
+    list: {paddingHorizontal: spacing.xxl, paddingTop: spacing.md, paddingBottom: spacing.xxxl, gap: spacing.md},
     flexCenter: {flexGrow: 1, justifyContent: 'center'},
-    card: {gap: spacing.xs},
-    cardHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm},
+    heroBlock: {paddingTop: spacing.lg, paddingBottom: spacing.xl, gap: spacing.xs},
+    heroAmount: {marginVertical: spacing.xs},
+    card: {gap: spacing.md},
+    cardTop: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm},
     empName: {flexShrink: 1},
-    amounts: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.xs},
+    cardBottom: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: spacing.md},
+    metaCol: {flexShrink: 1, gap: 2},
+    amount: {flexShrink: 0, maxWidth: '55%'},
 });
 
 export default SalaryListScreen;

@@ -11,6 +11,7 @@
  */
 import React from 'react';
 import {StyleSheet, View} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {AppBadge, AppCard, AppText} from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 import {useResponsive} from '../../../common/hooks/useResponsive';
@@ -39,6 +40,17 @@ export interface SubscriptionPlanCardProps {
 }
 
 /** 티어별 accent 색 — 다크 모드 대응 위해 테마에서 매번 해석한다. */
+// 플랜별 라인 아이콘 (이모지 금지 — DS v3)
+const iconFor = (name: PlanName): string => {
+    switch (name) {
+        case 'FREE': return 'leaf-outline';
+        case 'STARTER': return 'sparkles-outline';
+        case 'PRO': return 'ribbon-outline';
+        case 'PREMIUM': return 'diamond-outline';
+        default: return 'pricetag-outline';
+    }
+};
+
 const accentFor = (name: PlanName, c: ThemeColors): string => {
     switch (name) {
         case 'FREE':
@@ -85,7 +97,7 @@ export const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
             ]}>
             <View style={styles.header}>
                 <View style={styles.titleRow}>
-                    <AppText style={[styles.emoji, {fontSize: emojiSize}]}>{view.emoji}</AppText>
+                    <Ionicons name={iconFor(view.name)} size={emojiSize} color={accent} style={styles.emoji} />
                     <View style={styles.flexShrink}>
                         <AppText variant="headingSm" style={{color: accent}}>
                             {view.displayName}

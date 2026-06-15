@@ -218,20 +218,14 @@ const SubscribeScreen: React.FC = () => {
                     <AppText variant="caption" tone="tertiary" center>구독 시 이용약관·개인정보 처리방침에 동의하게 됩니다.</AppText>
                 </CtaStack>
             }>
-            <AppText variant="headingMd" style={styles.title}>소담과 함께 시작해요</AppText>
-            <AppText variant="bodyMd" tone="secondary" style={[styles.subtitle, {marginBottom: subtitleMargin}]}>
-                매장 규모에 맞는 플랜을 선택해 주세요. 언제든 해지·변경할 수 있어요.
+            <AppText variant="headingLg" style={styles.title}>매장에 딱 맞는 플랜을 골라요</AppText>
+            <AppText variant="bodyLg" tone="secondary" style={[styles.subtitle, {marginBottom: subtitleMargin}]}>
+                언제든 해지·변경할 수 있어요. 대부분의 사장님은 프로를 선택해요.
             </AppText>
-
-            {loading ? (
-                <AppText variant="bodyMd" tone="tertiary" center style={styles.loadingText}>플랜 정보를 불러오는 중…</AppText>
-            ) : (
-                <View style={[styles.list, {gap: listGap}]}>{plans.map(renderPlan)}</View>
-            )}
 
             {!loading && isPaidSelected ? (
                 <View style={styles.cycleBlock}>
-                    <AppText variant="bodyMd" style={styles.cycleTitle}>결제 주기</AppText>
+                    <AppText variant="titleMd" style={styles.cycleTitle}>결제 주기</AppText>
                     <SegmentedControl
                         options={[...CYCLE_OPTIONS]}
                         value={cycleIndex}
@@ -242,6 +236,12 @@ const SubscribeScreen: React.FC = () => {
                     </AppText>
                 </View>
             ) : null}
+
+            {loading ? (
+                <AppText variant="bodyMd" tone="tertiary" center style={styles.loadingText}>플랜 정보를 불러오는 중…</AppText>
+            ) : (
+                <View style={[styles.list, {gap: listGap}]}>{plans.map(renderPlan)}</View>
+            )}
 
             {!loading && (isActive || isPaused) ? (
                 <View style={styles.manageBlock}>
@@ -275,13 +275,13 @@ function formatPrice(p: PlanCatalogItem): string {
 
 const styles = StyleSheet.create({
     title: {marginTop: spacing.sm},
-    subtitle: {marginTop: spacing.xs, marginBottom: spacing.lg},
+    subtitle: {marginTop: spacing.sm, marginBottom: spacing.lg},
     loadingText: {marginVertical: spacing.xl},
     list: {gap: spacing.md},
-    cycleBlock: {marginTop: spacing.lg, gap: spacing.sm},
+    cycleBlock: {marginBottom: spacing.xl, gap: spacing.sm},
     cycleTitle: {fontWeight: '700'},
     cycleHint: {marginTop: spacing.xs},
-    manageBlock: {marginTop: spacing.lg},
+    manageBlock: {marginTop: spacing.xxl},
 });
 
 export default SubscribeScreen;
