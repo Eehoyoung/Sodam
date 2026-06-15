@@ -1,15 +1,21 @@
 /* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
-import {AppToast, ConfirmSheet, AppCard, AppBadge, AppButton, BadgeTone} from '../../../common/components/ds';
-import React, {useEffect, useMemo, useState} from 'react';
 import {
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput as RNTextInput,
-    View,
-} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+    AppToast,
+    ConfirmSheet,
+    AppBadge,
+    AppButton,
+    AppCard,
+    AppHeader,
+    AmountText,
+    AppText,
+    CtaStack,
+    ScreenContainer,
+    SegmentedControl,
+    BadgeTone,
+} from '../../../common/components/ds';
+import React, {useEffect, useMemo, useState} from 'react';
+import {Pressable, StyleSheet, Text, TextInput as RNTextInput, View} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {tokens} from '../../../theme/tokens';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
@@ -48,12 +54,15 @@ const useStyles = () => {
 };
 
 /**
- * 사장 직원 상세 (PRD_OWNER S-201).
+ * 사장 직원 상세 (PRD_OWNER S-201) — v3 토스식.
+ * 히어로: 직원명 + 적용 시급(AmountText) + 활성 배지. 하단 CTA: 시급 변경.
+ * saveWage(POST /api/wages/employee)·toggleActive(PUT .../active)·memo 로직 보존.
  */
 const EmployeeDetailScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const styles = useStyles();
+    const c = useThemeColors();
     const {employeeId, storeId}: RouteParams = route.params ?? {};
 
     const [tab, setTab] = useState<TabKey>('INFO');
@@ -111,6 +120,21 @@ const EmployeeDetailScreen: React.FC = () => {
         }
     };
 
+    const confirmToggleActive = () =>
+        ConfirmSheet.confirm({
+            title: emp?.isActive === false ? '직원을 활성화할까요?' : '직원을 비활성화할까요?',
+            description:
+                emp?.isActive === false
+                    ? '활성화하면 출퇴근 기록과 급여 산정이 다시 시작돼요.'
+                    : '비활성화해도 기존 출근·급여 기록은 그대로 보존돼요.',
+            primary: {
+                label: emp?.isActive === false ? '활성화' : '비활성화',
+                destructive: emp?.isActive !== false,
+                onPress: toggleActive,
+            },
+            secondary: {label: '취소'},
+        });
+
     useEffect(() => {
         (async () => {
             try {
@@ -135,114 +159,75 @@ const EmployeeDetailScreen: React.FC = () => {
     }, [employeeId, storeId]);
 
     const initials = useMemo(() => (emp?.name ?? '?').slice(0, 1), [emp]);
+    const tabIndex = TABS.findIndex(t => t.key === tab);
+    const isInactive = emp?.isActive === false;
 
     if (!emp) {
         return (
-            <SafeAreaView style={styles.safeArea} edges={['top']}>
-                <Text style={styles.loading}>직원 정보를 불러오는 중…</Text>
-            </SafeAreaView>
+            <ScreenContainer header={<AppHeader title="직원 상세" onBack={() => navigation.goBack()} />}>
+                <AppText variant="bodyMd" tone="secondary" center style={styles.loading}>
+                    직원 정보를 불러오는 중…
+                </AppText>
+            </ScreenContainer>
         );
     }
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>{initials}</Text>
-                    </View>
-                    <View style={styles.headerText}>
-                        <Text style={styles.name}>{emp.name}</Text>
-                        <Text style={styles.email}>{emp.email}</Text>
-                        <View style={styles.headerMeta}>
-                            <AppBadge label={roleLabel(emp.role)} tone="info" />
-                            {emp.isActive === false ? (
-                                <AppBadge label="비활성" tone="neutral" />
-                            ) : (
-                                <AppBadge label="활성" tone="success" />
-                            )}
-                        </View>
-                    </View>
-                </View>
-
-                {/* Quick info */}
-                <View style={styles.quickRow}>
-                    <QuickStat
-                        icon="💰"
-                        label="시급"
-                        value={
-                            emp.appliedHourlyWage
-                                ? `${emp.appliedHourlyWage.toLocaleString('ko-KR')}원`
-                                : '미설정'
-                        }
-                    />
-                    <QuickStat icon="📅" label="입사일" value={emp.hireDate ?? '—'} />
-                </View>
-
-                {/* Tabs */}
-                <View style={styles.tabBar}>
-                    {TABS.map(t => (
-                        <Pressable
-                            key={t.key}
-                            onPress={() => setTab(t.key)}
-                            style={({pressed}) => [
-                                styles.tab,
-                                tab === t.key && styles.tabActive,
-                                pressed && {opacity: 0.7},
-                            ]}
-                        >
-                            <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>
-                                {t.label}
-                            </Text>
-                        </Pressable>
-                    ))}
-                </View>
-
-                <View style={styles.tabContent}>
-                    {tab === 'INFO' && <InfoTab emp={emp} />}
-                    {tab === 'ATTENDANCE' && <AttendanceTab employeeId={emp.id} storeId={storeId} />}
-                    {tab === 'SALARY' && <SalaryTab employeeId={emp.id} navigation={navigation} />}
-                    {tab === 'TIMEOFF' && <TimeOffTab />}
-                </View>
-
-                {/* Memo */}
-                <MemoEditor storeId={storeId} employeeId={emp.id} />
-
-                {/* Bottom actions */}
-                <View style={styles.actionsRow}>
+        <ScreenContainer
+            scroll
+            header={<AppHeader title="직원 상세" onBack={() => navigation.goBack()} />}
+            footer={
+                <CtaStack>
+                    <AppButton label="시급 변경" onPress={() => setWageSheet(true)} loading={savingWage} />
                     <AppButton
-                        label="시급 변경"
-                        onPress={() => setWageSheet(true)}
-                        variant="outline"
-                        size="md"
-                        loading={savingWage}
-                        style={styles.actionBtn}
-                    />
-                    <AppButton
-                        label={emp.isActive === false ? '활성화' : '비활성화'}
-                        onPress={() =>
-                            ConfirmSheet.confirm({
-                                title: emp.isActive === false ? '직원을 활성화할까요?' : '직원을 비활성화할까요?',
-                                description:
-                                    emp.isActive === false
-                                        ? '활성화하면 출퇴근 기록과 급여 산정이 다시 시작돼요.'
-                                        : '비활성화해도 기존 출근·급여 기록은 그대로 보존돼요.',
-                                primary: {
-                                    label: emp.isActive === false ? '활성화' : '비활성화',
-                                    destructive: emp.isActive !== false,
-                                    onPress: toggleActive,
-                                },
-                                secondary: {label: '취소'},
-                            })
-                        }
-                        variant="destructive"
-                        size="md"
+                        label={isInactive ? '직원 활성화' : '직원 비활성화'}
+                        variant={isInactive ? 'secondary' : 'destructive'}
+                        onPress={confirmToggleActive}
                         loading={togglingActive}
-                        style={styles.actionBtn}
                     />
+                </CtaStack>
+            }>
+            {/* 히어로: 직원명 + 적용 시급 */}
+            <View style={styles.hero}>
+                <View style={[styles.avatar, {backgroundColor: c.brandPrimarySoft}]}>
+                    <Text style={[styles.avatarText, {color: c.brandPrimary}]}>{initials}</Text>
                 </View>
-            </ScrollView>
+                <View style={styles.heroText}>
+                    <AppText variant="headingSm" numberOfLines={1}>{emp.name}</AppText>
+                    <AppText variant="caption" tone="secondary" numberOfLines={1} style={styles.email}>
+                        {emp.email || '이메일 미등록'}
+                    </AppText>
+                </View>
+                <AppBadge label={isInactive ? '비활성' : '활성'} tone={isInactive ? 'neutral' : 'success'} />
+            </View>
+
+            <AppCard variant="hero" style={styles.wageCard}>
+                <AppText variant="caption" tone="secondary">적용 시급</AppText>
+                <AmountText size={40} tone="brand" style={styles.wageAmount}>
+                    {emp.appliedHourlyWage
+                        ? `${emp.appliedHourlyWage.toLocaleString('ko-KR')}원`
+                        : '매장 기본'}
+                </AmountText>
+                <AppText variant="caption" tone="tertiary" style={styles.wageSub}>
+                    {emp.appliedHourlyWage ? '직원 개별 시급이 적용 중이에요.' : '매장 기준 시급을 따라요.'}
+                </AppText>
+            </AppCard>
+
+            <SegmentedControl
+                options={TABS.map(t => t.label)}
+                value={tabIndex < 0 ? 0 : tabIndex}
+                onChange={i => setTab(TABS[i].key)}
+                style={styles.segment}
+            />
+
+            <View style={styles.tabContent}>
+                {tab === 'INFO' && <InfoTab emp={emp} />}
+                {tab === 'ATTENDANCE' && <AttendanceTab employeeId={emp.id} storeId={storeId} />}
+                {tab === 'SALARY' && <SalaryTab employeeId={emp.id} navigation={navigation} />}
+                {tab === 'TIMEOFF' && <TimeOffTab />}
+            </View>
+
+            <MemoEditor storeId={storeId} employeeId={emp.id} />
 
             <WageEditSheet
                 visible={wageSheet}
@@ -250,18 +235,7 @@ const EmployeeDetailScreen: React.FC = () => {
                 employeeName={emp.name}
                 onSave={wage => saveWage(wage)}
             />
-        </SafeAreaView>
-    );
-};
-
-const QuickStat: React.FC<{icon: string; label: string; value: string}> = ({icon, label, value}) => {
-    const styles = useStyles();
-    return (
-        <AppCard variant="outlined" style={styles.quickStat}>
-            <Text style={styles.quickStatIcon}>{icon}</Text>
-            <Text style={styles.quickStatLabel}>{label}</Text>
-            <Text style={styles.quickStatValue}>{value}</Text>
-        </AppCard>
+        </ScreenContainer>
     );
 };
 
@@ -298,8 +272,14 @@ const MemoEditor: React.FC<{storeId: number; employeeId: number}> = ({storeId, e
     };
 
     return (
-        <AppCard variant="outlined" style={styles.memoCard}>
-            <Text style={styles.memoTitle}>📝 사장님 메모 (직원에게 보이지 않아요)</Text>
+        <AppCard variant="warm" style={styles.memoCard}>
+            <View style={styles.memoTitleRow}>
+                <Ionicons name="document-text-outline" size={18} color={c.textSecondary} />
+                <AppText variant="titleMd" style={styles.memoTitle}>사장님 메모</AppText>
+            </View>
+            <AppText variant="caption" tone="tertiary" style={styles.memoHint}>
+                직원에게 보이지 않아요.
+            </AppText>
             <RNTextInput
                 value={memo}
                 onChangeText={setMemo}
@@ -307,11 +287,11 @@ const MemoEditor: React.FC<{storeId: number; employeeId: number}> = ({storeId, e
                 editable={!loading}
                 placeholder="예: 마감 잘 함 / 주말 가능 등"
                 placeholderTextColor={c.textTertiary}
-                style={styles.memoInput}
+                style={[styles.memoInput, {backgroundColor: c.background, color: c.textPrimary}]}
                 maxLength={500}
             />
-            <Text style={styles.memoCount}>{memo.length} / 500자</Text>
-            <AppButton label="메모 저장" onPress={save} variant="primary" size="sm" loading={saving} />
+            <Text style={[styles.memoCount, {color: c.textTertiary}]}>{memo.length} / 500자</Text>
+            <AppButton label="메모 저장" onPress={save} variant="outline" size="md" loading={saving} />
         </AppCard>
     );
 };
@@ -330,7 +310,7 @@ const InfoTab: React.FC<{emp: Employee}> = ({emp}) => {
                         : '매장 기본 시급 사용'
                 }
             />
-            <KV label="입사일" value={emp.hireDate ?? '-'} />
+            <KV label="입사일" value={emp.hireDate ?? '-'} last />
         </View>
     );
 };
@@ -355,9 +335,8 @@ const AttendanceTab: React.FC<{employeeId: number; storeId: number}> = ({employe
         })();
     }, [employeeId, storeId]);
 
-    if (loading) {return <Text style={styles.empty}>불러오는 중…</Text>;}
-    if (items.length === 0)
-        {return <Text style={styles.empty}>이번 달 출근 기록이 아직 없어요.</Text>;}
+    if (loading) {return <Empty text="불러오는 중…" />;}
+    if (items.length === 0) {return <Empty text="이번 달 출근 기록이 아직 없어요." />;}
 
     return (
         <View style={styles.section}>
@@ -390,8 +369,8 @@ const SalaryTab: React.FC<{employeeId: number; navigation: any}> = ({employeeId,
         })();
     }, [employeeId]);
 
-    if (loading) {return <Text style={styles.empty}>불러오는 중…</Text>;}
-    if (items.length === 0) {return <Text style={styles.empty}>발급된 급여 명세서가 없어요.</Text>;}
+    if (loading) {return <Empty text="불러오는 중…" />;}
+    if (items.length === 0) {return <Empty text="발급된 급여 명세서가 없어요." />;}
 
     return (
         <View style={styles.section}>
@@ -414,21 +393,19 @@ const SalaryTab: React.FC<{employeeId: number; navigation: any}> = ({employeeId,
     );
 };
 
-const TimeOffTab: React.FC = () => {
+const TimeOffTab: React.FC = () => (
+    <Empty text={'연차 관리는 Phase 2 에 도입돼요.\n현재는 BE TimeOff 도메인만 준비된 상태예요.'} />
+);
+
+const Empty: React.FC<{text: string}> = ({text}) => {
     const styles = useStyles();
-    return (
-        <View style={styles.section}>
-            <Text style={styles.empty}>
-                연차 관리는 Phase 2 에 도입돼요.{'\n'}현재는 BE TimeOff 도메인만 준비된 상태예요.
-            </Text>
-        </View>
-    );
+    return <Text style={styles.empty}>{text}</Text>;
 };
 
-const KV: React.FC<{label: string; value: string}> = ({label, value}) => {
+const KV: React.FC<{label: string; value: string; last?: boolean}> = ({label, value, last}) => {
     const styles = useStyles();
     return (
-        <View style={styles.kvRow}>
+        <View style={[styles.kvRow, last && styles.kvRowLast]}>
             <Text style={styles.kvLabel}>{label}</Text>
             <Text style={styles.kvValue}>{value}</Text>
         </View>
@@ -477,62 +454,34 @@ function payrollStatusTone(s: string): BadgeTone {
 }
 
 const makeStyles = (c: ThemeColors) => StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: c.background},
-    scrollContent: {padding: tokens.spacing.lg, paddingBottom: tokens.spacing.huge},
-    loading: {textAlign: 'center' as const, padding: tokens.spacing.huge, color: c.textSecondary},
-    header: {flexDirection: 'row' as const, alignItems: 'center' as const, gap: tokens.spacing.lg, marginBottom: tokens.spacing.lg},
+    loading: {paddingTop: tokens.spacing.huge},
+    hero: {flexDirection: 'row' as const, alignItems: 'center' as const, gap: tokens.spacing.md},
     avatar: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
-        backgroundColor: c.surfaceMuted,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
         alignItems: 'center' as const,
         justifyContent: 'center' as const,
     },
-    avatarText: {
-        fontSize: 28,
-        color: c.brandPrimary,
-        fontWeight: tokens.typography.weights.bold,
-    },
-    headerText: {flex: 1, gap: 2},
-    name: {
-        fontSize: tokens.typography.sizes.xl,
-        fontWeight: tokens.typography.weights.bold,
-        color: c.textPrimary,
-        letterSpacing: -0.3,
-    },
-    email: {fontSize: tokens.typography.sizes.sm, color: c.textSecondary},
-    headerMeta: {flexDirection: 'row' as const, gap: tokens.spacing.xs, marginTop: tokens.spacing.xs},
-    quickRow: {flexDirection: 'row' as const, gap: tokens.spacing.md, marginBottom: tokens.spacing.lg},
-    quickStat: {flex: 1, alignItems: 'flex-start' as const},
-    quickStatIcon: {fontSize: 22, marginBottom: tokens.spacing.xs},
-    quickStatLabel: {fontSize: tokens.typography.sizes.xs, color: c.textTertiary},
-    quickStatValue: {
-        fontSize: tokens.typography.sizes.md,
-        fontWeight: tokens.typography.weights.bold,
-        color: c.textPrimary,
-        marginTop: 2,
-    },
-    tabBar: {
+    avatarText: {fontSize: 24, fontWeight: tokens.typography.weights.bold},
+    heroText: {flex: 1, minWidth: 0},
+    email: {marginTop: 2},
+    wageCard: {marginTop: tokens.spacing.xxl},
+    wageAmount: {marginTop: tokens.spacing.xs},
+    wageSub: {marginTop: tokens.spacing.xs},
+    segment: {marginTop: tokens.spacing.xxl},
+    tabContent: {minHeight: 160, marginTop: tokens.spacing.md},
+    section: {paddingVertical: tokens.spacing.xs},
+    kvRow: {
         flexDirection: 'row' as const,
-        backgroundColor: c.surfaceMuted,
-        borderRadius: tokens.radius.lg,
-        padding: 4,
-        marginBottom: tokens.spacing.md,
+        justifyContent: 'space-between' as const,
+        paddingVertical: tokens.spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: c.divider,
     },
-    tab: {flex: 1, alignItems: 'center' as const, paddingVertical: tokens.spacing.sm, borderRadius: tokens.radius.md},
-    tabActive: {backgroundColor: c.background, ...tokens.shadow.sm},
-    tabText: {
-        fontSize: tokens.typography.sizes.sm,
-        color: c.textSecondary,
-        fontWeight: tokens.typography.weights.medium,
-    },
-    tabTextActive: {color: c.brandPrimary, fontWeight: tokens.typography.weights.bold},
-    tabContent: {minHeight: 200},
-    section: {paddingVertical: tokens.spacing.sm},
-    kvRow: {flexDirection: 'row' as const, justifyContent: 'space-between' as const, paddingVertical: tokens.spacing.sm},
-    kvLabel: {color: c.textSecondary, fontSize: tokens.typography.sizes.sm},
-    kvValue: {color: c.textPrimary, fontSize: tokens.typography.sizes.md, fontWeight: '500' as const},
+    kvRowLast: {borderBottomWidth: 0},
+    kvLabel: {color: c.textSecondary, fontSize: tokens.typography.sizes.md},
+    kvValue: {color: c.textPrimary, fontSize: tokens.typography.sizes.md, fontWeight: '600' as const},
     attRow: {
         flexDirection: 'row' as const,
         justifyContent: 'space-between' as const,
@@ -540,7 +489,7 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: c.divider,
     },
-    attDate: {fontSize: tokens.typography.sizes.md, color: c.textPrimary, fontWeight: '500' as const},
+    attDate: {fontSize: tokens.typography.sizes.md, color: c.textPrimary, fontWeight: '600' as const},
     attTime: {fontSize: tokens.typography.sizes.sm, color: c.textSecondary, fontVariant: ['tabular-nums' as const]},
     salaryRow: {
         flexDirection: 'row' as const,
@@ -563,26 +512,23 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         paddingVertical: tokens.spacing.xl,
         lineHeight: 22,
     },
-    memoCard: {marginTop: tokens.spacing.md, backgroundColor: c.warningBg, borderColor: c.warning},
-    memoTitle: {fontSize: tokens.typography.sizes.sm, fontWeight: '600' as const, color: c.textPrimary, marginBottom: tokens.spacing.sm},
+    memoCard: {marginTop: tokens.spacing.xxl},
+    memoTitleRow: {flexDirection: 'row' as const, alignItems: 'center' as const, gap: tokens.spacing.xs},
+    memoTitle: {marginLeft: 2},
+    memoHint: {marginTop: 2, marginBottom: tokens.spacing.sm},
     memoInput: {
-        backgroundColor: c.background,
-        borderRadius: tokens.radius.md,
+        borderRadius: tokens.radius.lg,
         padding: tokens.spacing.md,
-        minHeight: 80,
+        minHeight: 88,
         textAlignVertical: 'top' as const,
-        fontSize: tokens.typography.sizes.sm,
-        color: c.textPrimary,
+        fontSize: tokens.typography.sizes.md,
     },
     memoCount: {
         fontSize: tokens.typography.sizes.xs,
-        color: c.textTertiary,
         textAlign: 'right' as const,
         marginTop: 4,
         marginBottom: tokens.spacing.sm,
     },
-    actionsRow: {flexDirection: 'row' as const, gap: tokens.spacing.md, marginTop: tokens.spacing.lg},
-    actionBtn: {flex: 1},
 });
 
 export default EmployeeDetailScreen;

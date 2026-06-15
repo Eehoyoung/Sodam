@@ -1,8 +1,10 @@
-import {AppToast, AppButton, AppCard, AppHeader, AppInput, AppText, CtaStack, ScreenContainer} from '../../../common/components/ds';
+import {AppToast, AppButton, AppHeader, AppInput, AppText, CtaStack, ScreenContainer} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
 import storeService from '../services/storeService';
 
@@ -13,6 +15,7 @@ import storeService from '../services/storeService';
 const StoreEditScreen: React.FC = () => {
     const route = useRoute<any>();
     const navigation = useNavigation<any>();
+    const c = useThemeColors();
     const storeId = route.params?.storeId as number | undefined;
 
     const [storeName, setStoreName] = useState('');
@@ -110,15 +113,17 @@ const StoreEditScreen: React.FC = () => {
             scroll
             header={<AppHeader title="매장 정보 수정" onBack={() => navigation.goBack()} />}
             footer={
-                <CtaStack bordered>
+                <CtaStack>
                     <AppButton label="변경사항 저장" loading={loading} onPress={submit} />
                 </CtaStack>
             }>
-            <View style={styles.form}>
+            <Section title="기본 정보">
                 <AppInput label="매장명" value={storeName} onChangeText={setStoreName} />
                 <AppInput label="전화번호" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
                 <AppInput label="업종" value={businessType} onChangeText={setBusinessType} placeholder="예: 음식점" />
+            </Section>
 
+            <Section title="위치">
                 <View style={styles.addressBlock}>
                     <AppInput
                         label="매장 주소"
@@ -133,36 +138,41 @@ const StoreEditScreen: React.FC = () => {
                         size="md"
                         loading={geocoding}
                         onPress={searchAddress}
+                        leftIcon={<Ionicons name="search-outline" size={16} color={c.brandPrimary} />}
                         style={styles.addressBtn}
                     />
                 </View>
-
-                <AppInput label="기본 시급 (원/시간)" value={standardWage} onChangeText={setStandardWage} keyboardType="number-pad" />
                 <AppInput
                     label="출퇴근 인증 반경 (m)"
                     value={radius}
                     onChangeText={setRadius}
                     keyboardType="number-pad"
-                    helper="50~1000m 권장"
+                    helper="50~1000m 권장 · 위치를 바꾸면 직원 출퇴근 가능 반경도 함께 변경돼요."
+                    containerStyle={styles.gap}
                 />
-            </View>
+            </Section>
 
-            <AppCard variant="warm" style={styles.note}>
-                <AppText variant="titleMd">위치를 바꾸면</AppText>
-                <AppText variant="caption" tone="secondary" style={styles.noteSub}>
-                    직원의 출퇴근 가능 반경도 함께 변경됩니다.
-                </AppText>
-            </AppCard>
+            <Section title="급여">
+                <AppInput label="기본 시급 (원/시간)" value={standardWage} onChangeText={setStandardWage} keyboardType="number-pad" />
+            </Section>
         </ScreenContainer>
     );
 };
 
+const Section: React.FC<{title: string; children: React.ReactNode}> = ({title, children}) => (
+    <View style={styles.section}>
+        <AppText variant="titleMd" tone="secondary" style={styles.sectionTitle}>{title}</AppText>
+        <View style={styles.form}>{children}</View>
+    </View>
+);
+
 const styles = StyleSheet.create({
+    section: {marginTop: spacing.xxl},
+    sectionTitle: {marginBottom: spacing.md},
     form: {gap: spacing.md},
+    gap: {marginTop: spacing.xs},
     addressBlock: {gap: spacing.sm},
     addressBtn: {alignSelf: 'flex-start'},
-    note: {marginTop: spacing.lg},
-    noteSub: {marginTop: 4},
 });
 
 export default StoreEditScreen;

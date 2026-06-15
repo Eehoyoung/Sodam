@@ -1,6 +1,7 @@
 import {AppToast, AppButton, AppCard, AppHeader, AppInput, AppText, CtaStack, ScreenContainer, SuccessState} from '../../../common/components/ds';
 import React, {useState} from 'react';
 import {Pressable, StyleSheet, View} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
 import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
@@ -83,7 +84,7 @@ const JoinStoreByCodeScreen: React.FC = () => {
             />
 
             <View style={[styles.qrPlaceholder, {borderColor: c.border, backgroundColor: c.background}]}>
-                <AppText style={styles.qrEmoji}>📷</AppText>
+                <Ionicons name="qr-code-outline" size={48} color={c.textTertiary} />
                 <AppText variant="titleMd">QR 스캔으로 가입하기</AppText>
                 <AppText variant="caption" tone="tertiary" center style={styles.qrBody}>
                     카메라 권한 허용 후 매장 QR 을 비춰주세요. (정식 출시 직전 활성화)
@@ -115,7 +116,6 @@ const styles = StyleSheet.create({
         gap: spacing.sm,
         marginTop: spacing.lg,
     },
-    qrEmoji: {fontSize: 48},
     qrBody: {marginTop: 2},
     helpRow: {alignItems: 'center', paddingVertical: spacing.lg},
 });

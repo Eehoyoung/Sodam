@@ -1,4 +1,4 @@
-import {AppToast, ConfirmSheet, AppButton, AppCard, AppHeader, AppInput, AppListItem, AppText, ScreenContainer} from '../../../common/components/ds';
+import {AppToast, ConfirmSheet, AppButton, AppCard, AppHeader, AppInput, AppListItem, AmountText, AppText, CtaStack, ScreenContainer} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useRoute} from '@react-navigation/native';
@@ -7,13 +7,15 @@ import {formatWage} from '../../../common/utils/format';
 import api from '../../../common/utils/api';
 
 /**
- * 18 WageSettings — 확정 시안.
- * 매장 기본 시급 변경(최저임금 경고) + 변경 이력. 적용 로직 보존.
+ * 18 WageSettings — v3 토스식.
+ * 히어로: 현재 매장 기본 시급(AmountText). 한 입력 + 하단 CTA. 아래 변경 이력.
+ * 최저임금 경고 + PUT /api/wages/store/{id}/standard + history GET 로직 보존.
  */
 const WageSettingsScreen: React.FC = () => {
     const route = useRoute<any>();
     const storeId = route.params?.storeId as number | undefined;
 
+    const [currentWage, setCurrentWage] = useState<number | null>(null);
     const [standardWage, setStandardWage] = useState('');
     const [history, setHistory] = useState<Array<any>>([]);
     const [loading, setLoading] = useState(false);
@@ -27,6 +29,7 @@ const WageSettingsScreen: React.FC = () => {
                 const storeRes = await api.get<any>(`/api/stores/${storeId}`);
                 const wage = storeRes.data?.storeStandardHourWage;
                 if (wage) {
+                    setCurrentWage(wage);
                     setStandardWage(String(wage));
                 }
             } catch (_) {/* ignore */}
@@ -59,10 +62,12 @@ const WageSettingsScreen: React.FC = () => {
         setLoading(true);
         try {
             await api.put(`/api/wages/store/${storeId}/standard`, null, {params: {standardHourlyWage: wage}});
+            setCurrentWage(wage);
             AppToast.success('매장 기본 시급이 변경됐어요.');
         } catch (e: any) {
             try {
                 await api.put(`/api/wages/store/${storeId}/standard`, {standardHourlyWage: wage});
+                setCurrentWage(wage);
                 AppToast.success('매장 기본 시급이 변경됐어요.');
             } catch (e2: any) {
                 AppToast.error(e2?.response?.data?.message ?? '시급 변경에 실패했어요.');
@@ -73,51 +78,69 @@ const WageSettingsScreen: React.FC = () => {
     };
 
     return (
-        <ScreenContainer scroll header={<AppHeader title="시급 정책" />}>
-            <AppCard variant="warm">
-                <AppText variant="titleMd">매장 기본 시급</AppText>
-                <AppText variant="caption" tone="secondary" style={styles.hint}>
-                    직원별 개별 시급이 설정되지 않은 경우 이 시급이 적용돼요.
+        <ScreenContainer
+            scroll
+            header={<AppHeader title="시급 정책" />}
+            footer={
+                <CtaStack>
+                    <AppButton label="시급 변경하기" loading={loading} onPress={submit} />
+                </CtaStack>
+            }>
+            {/* 히어로: 현재 시급 */}
+            <View style={styles.hero}>
+                <AppText variant="caption" tone="secondary">현재 매장 기본 시급</AppText>
+                <AmountText size={48} tone="primary" style={styles.heroAmount}>
+                    {currentWage ? `${currentWage.toLocaleString()}원` : '미설정'}
+                </AmountText>
+                <AppText variant="caption" tone="tertiary" style={styles.heroSub}>
+                    직원별 개별 시급이 없으면 이 시급이 적용돼요.
                 </AppText>
+            </View>
+
+            <View style={styles.inputSection}>
                 <AppInput
-                    label="시급 (원/시간)"
+                    label="새 시급 (원/시간)"
                     value={standardWage}
                     onChangeText={setStandardWage}
                     keyboardType="number-pad"
                     placeholder="예: 12000"
                     helper="2026년 최저시급은 ₩9,860 입니다 (가정)."
-                    containerStyle={styles.input}
                 />
-                <AppButton label="시급 변경하기" size="md" loading={loading} onPress={submit} style={styles.cta} />
-            </AppCard>
+            </View>
 
-            <AppText variant="titleMd" style={styles.sectionTitle}>변경 이력</AppText>
-            {history.length === 0 ? (
-                <AppText variant="caption" tone="tertiary" style={styles.empty}>
-                    변경 이력이 없어요. 시급 변경 시 자동으로 기록돼요.
-                </AppText>
-            ) : (
-                <View style={styles.list}>
-                    {history.map((h, idx) => (
-                        <AppListItem
-                            key={idx}
-                            title={h.effectiveFrom ?? '-'}
-                            subtitle={h.reason ?? '시급 변경'}
-                            right={<AppText variant="titleMd" tone="brand">{h.hourlyWage ? formatWage(h.hourlyWage) : '-'}</AppText>}
-                        />
-                    ))}
-                </View>
-            )}
+            <View style={styles.section}>
+                <AppText variant="titleMd" tone="secondary" style={styles.sectionTitle}>변경 이력</AppText>
+                {history.length === 0 ? (
+                    <AppCard variant="plain">
+                        <AppText variant="bodyMd" tone="tertiary" style={styles.empty}>
+                            변경 이력이 없어요. 시급 변경 시 자동으로 기록돼요.
+                        </AppText>
+                    </AppCard>
+                ) : (
+                    <View style={styles.list}>
+                        {history.map((h, idx) => (
+                            <AppListItem
+                                key={idx}
+                                title={h.effectiveFrom ?? '-'}
+                                subtitle={h.reason ?? '시급 변경'}
+                                right={<AppText variant="titleMd" tone="brand">{h.hourlyWage ? formatWage(h.hourlyWage) : '-'}</AppText>}
+                            />
+                        ))}
+                    </View>
+                )}
+            </View>
         </ScreenContainer>
     );
 };
 
 const styles = StyleSheet.create({
-    hint: {marginTop: 4},
-    input: {marginTop: spacing.md},
-    cta: {marginTop: spacing.md},
-    sectionTitle: {marginTop: spacing.xl, marginBottom: spacing.sm},
-    empty: {paddingVertical: spacing.md, lineHeight: 20},
+    hero: {marginBottom: spacing.sm},
+    heroAmount: {marginTop: spacing.xs},
+    heroSub: {marginTop: spacing.xs},
+    inputSection: {marginTop: spacing.xxl},
+    section: {marginTop: spacing.xxl},
+    sectionTitle: {marginBottom: spacing.md},
+    empty: {lineHeight: 20},
     list: {gap: spacing.sm},
 });
 

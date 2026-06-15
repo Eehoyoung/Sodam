@@ -1,9 +1,10 @@
 /* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
 import React, {useEffect, useMemo, useState} from 'react';
 import {Platform, Pressable, StyleSheet, Switch, Text, View} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import DateTimePicker, {DateTimePickerEvent} from '@react-native-community/datetimepicker';
 import {tokens} from '../../../theme/tokens';
-import {AppHeader, AppText, ScreenContainer} from '../../../common/components/ds';
+import {AppCard, AppHeader, AppText, ScreenContainer} from '../../../common/components/ds';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
 
@@ -44,6 +45,7 @@ const useStyles = () => {
  */
 const NotificationSettingsScreen: React.FC = () => {
     const styles = useStyles();
+    const c = useThemeColors();
     const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
     const [pickerOpenFor, setPickerOpenFor] = useState<null | 'start' | 'end'>(null);
 
@@ -80,8 +82,9 @@ const NotificationSettingsScreen: React.FC = () => {
 
     return (
         <ScreenContainer scroll header={<AppHeader title="알림 설정" />}>
+            <AppText variant="headingSm" style={styles.title}>받고 싶은 알림만{'\n'}켜두세요</AppText>
             <AppText variant="bodyMd" tone="secondary" style={styles.subtitle}>
-                받고 싶은 알림만 켜두세요. 방해받기 싫은 시간대도 정할 수 있어요.
+                방해받기 싫은 시간대도 정할 수 있어요.
             </AppText>
 
             <View>
@@ -157,9 +160,12 @@ const NotificationSettingsScreen: React.FC = () => {
                             onChange={onPickerChange(pickerOpenFor)}
                         />
                     )}
-                    <Text style={styles.note}>
-                        ⓘ 결제 실패·보안 알림 같은 긴급 알림은 방해 금지에도 발송돼요.
-                    </Text>
+                    <View style={styles.noteRow}>
+                        <Ionicons name="information-circle-outline" size={16} color={c.textTertiary} />
+                        <Text style={styles.note}>
+                            결제 실패·보안 알림 같은 긴급 알림은 방해 금지에도 발송돼요.
+                        </Text>
+                    </View>
                 </Section>
 
                 <Section title="이메일 알림 (Phase 2)">
@@ -208,7 +214,7 @@ const Section: React.FC<{
     return (
         <View style={[styles.section, disabled && {opacity: 0.5}]}>
             <Text style={styles.sectionTitle}>{title}</Text>
-            {children}
+            <AppCard variant="plain">{children}</AppCard>
         </View>
     );
 };
@@ -230,28 +236,26 @@ const QuietTimePicker: React.FC<{
 };
 
 const makeStyles = (c: ThemeColors) => StyleSheet.create({
+    title: {marginBottom: tokens.spacing.xs},
     subtitle: {
         fontSize: tokens.typography.sizes.md,
         color: c.textSecondary,
         lineHeight: 22,
-        marginBottom: tokens.spacing.xl,
+        marginBottom: tokens.spacing.sm,
     },
-    section: {marginTop: tokens.spacing.lg},
+    section: {marginTop: tokens.spacing.xxl},
     sectionTitle: {
         fontSize: tokens.typography.sizes.sm,
         color: c.textSecondary,
-        fontWeight: tokens.typography.weights.semibold,
+        fontWeight: tokens.typography.weights.bold,
         marginBottom: tokens.spacing.sm,
-        textTransform: 'uppercase' as const,
-        letterSpacing: 0.5,
+        marginLeft: 2,
     },
     row: {
         flexDirection: 'row' as const,
         alignItems: 'center' as const,
         justifyContent: 'space-between' as const,
-        paddingVertical: tokens.spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: c.divider,
+        paddingVertical: tokens.spacing.sm + 2,
     },
     rowDisabled: {opacity: 0.5},
     rowLabel: {fontSize: tokens.typography.sizes.md, color: c.textPrimary},
@@ -275,8 +279,14 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         fontWeight: tokens.typography.weights.semibold,
         fontVariant: ['tabular-nums' as const],
     },
-    note: {
+    noteRow: {
+        flexDirection: 'row' as const,
+        alignItems: 'flex-start' as const,
+        gap: tokens.spacing.xs,
         marginTop: tokens.spacing.md,
+    },
+    note: {
+        flex: 1,
         fontSize: tokens.typography.sizes.xs,
         color: c.textTertiary,
         lineHeight: 18,

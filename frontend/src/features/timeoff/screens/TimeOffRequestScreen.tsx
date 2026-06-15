@@ -1,4 +1,4 @@
-import {AppToast, AppButton, AppCard, AppHeader, AppInput, AppText, CtaStack, ScreenContainer, SuccessState} from '../../../common/components/ds';
+import {AppToast, AppButton, AppHeader, AppInput, AppText, CtaStack, ScreenContainer, SuccessState} from '../../../common/components/ds';
 import React, {useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
@@ -65,16 +65,16 @@ const TimeOffRequestScreen: React.FC = () => {
             scroll
             header={<AppHeader title="휴가 신청" onBack={() => navigation.goBack()} />}
             footer={
-                <CtaStack bordered>
+                <CtaStack>
                     <AppButton label="휴가 신청하기" loading={loading} onPress={submit} />
                 </CtaStack>
             }>
-            <AppCard variant="warm">
-                <AppText variant="titleMd">휴가를 신청해요</AppText>
-                <AppText variant="caption" tone="secondary" style={styles.sub}>
+            <View style={styles.hero}>
+                <AppText variant="headingMd">휴가를 신청해요</AppText>
+                <AppText variant="bodyMd" tone="secondary" style={styles.sub}>
                     시작·종료일과 사유를 입력하면 사장님 승인 후 자동 반영돼요.
                 </AppText>
-            </AppCard>
+            </View>
 
             <View style={styles.form}>
                 <AppInput label="시작일" placeholder="2026-06-01" value={startDate} onChangeText={setStartDate} />
@@ -98,8 +98,9 @@ function isValidDate(s: string): boolean {
 }
 
 const styles = StyleSheet.create({
-    sub: {marginTop: 4},
-    form: {marginTop: spacing.md, gap: spacing.md},
+    hero: {marginBottom: spacing.sm},
+    sub: {marginTop: spacing.sm},
+    form: {marginTop: spacing.xl, gap: spacing.md},
 });
 
 export default TimeOffRequestScreen;

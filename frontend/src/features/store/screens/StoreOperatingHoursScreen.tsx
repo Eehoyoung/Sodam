@@ -11,6 +11,7 @@ import {
 } from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
 import {Pressable, StyleSheet, View} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
@@ -199,30 +200,35 @@ const StoreOperatingHoursScreen: React.FC = () => {
             scroll
             header={<AppHeader title="운영시간 설정" onBack={() => navigation.goBack()} />}
             footer={
-                <CtaStack bordered>
+                <CtaStack>
                     <AppButton label="운영시간 저장" loading={saving} onPress={save} />
                 </CtaStack>
             }>
-            <AppText variant="caption" tone="secondary" style={styles.intro}>
-                요일별 영업 시간을 설정해 주세요. 출퇴근 인증과 이상 알림에 사용돼요.
+            <AppText variant="headingSm" style={styles.title}>요일별 영업 시간을{'\n'}설정해 주세요</AppText>
+            <AppText variant="bodyMd" tone="secondary" style={styles.intro}>
+                출퇴근 인증과 이상 알림에 사용돼요.
             </AppText>
 
             <View style={styles.list}>
                 {rows.map(r => (
-                    <AppCard key={r.dayOfWeek} variant="flat" style={styles.dayCard}>
+                    <AppCard key={r.dayOfWeek} variant="plain" style={styles.dayCard}>
                         <View style={styles.dayHeader}>
                             <AppText variant="titleMd">{DAY_KOREAN[r.dayOfWeek]}</AppText>
                             <Pressable
                                 onPress={() => updateRow(r.dayOfWeek, {isClosed: !r.isClosed})}
                                 style={[
                                     styles.closedToggle,
-                                    {borderColor: r.isClosed ? c.brandPrimary : c.border},
-                                    r.isClosed && {backgroundColor: c.surfaceWarm},
+                                    {backgroundColor: r.isClosed ? c.surfaceMuted : c.brandPrimarySoft},
                                 ]}>
+                                <Ionicons
+                                    name={r.isClosed ? 'moon-outline' : 'storefront-outline'}
+                                    size={14}
+                                    color={r.isClosed ? c.textSecondary : c.brandPrimary}
+                                />
                                 <AppText
                                     variant="caption"
                                     weight="700"
-                                    tone={r.isClosed ? 'brand' : 'secondary'}>
+                                    tone={r.isClosed ? 'secondary' : 'brand'}>
                                     {r.isClosed ? '휴무' : '영업'}
                                 </AppText>
                             </Pressable>
@@ -262,17 +268,19 @@ const StoreOperatingHoursScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-    intro: {marginBottom: spacing.md, lineHeight: 20},
-    list: {gap: spacing.sm},
-    dayCard: {gap: spacing.sm},
+    title: {marginBottom: spacing.xs},
+    intro: {marginBottom: spacing.xl, lineHeight: 22},
+    list: {gap: spacing.md},
+    dayCard: {gap: spacing.md},
     dayHeader: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
     closedToggle: {
-        minWidth: 64,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        minWidth: 70,
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.xs + 2,
-        borderRadius: radius.lg,
-        borderWidth: 1.5,
-        alignItems: 'center',
+        borderRadius: radius.pill,
         justifyContent: 'center',
     },
     closedHint: {marginTop: 2},

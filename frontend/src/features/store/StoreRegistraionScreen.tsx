@@ -1,6 +1,7 @@
-import {AppToast, AppButton, AppCard, AppHeader, AppInput, AppListItem, AppText, CtaStack, ScreenContainer} from '../../common/components/ds';
+import {AppToast, AppButton, AppHeader, AppInput, AppListItem, AppText, CtaStack, ScreenContainer} from '../../common/components/ds';
 import React, {useState} from 'react';
 import {Modal, Pressable, ScrollView, StyleSheet, View} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
 import {spacing} from '../../theme/tokens';
 import {useThemeColors} from '../../common/hooks/useThemeColors';
@@ -193,16 +194,16 @@ const StoreRegistrationScreen: React.FC = () => {
             scroll
             header={<AppHeader title="첫 매장 등록" rightText="2/3" onBack={() => navigation.goBack()} />}
             footer={
-                <CtaStack bordered>
+                <CtaStack>
                     <AppButton label="매장 등록하기" loading={isLoading} loadingLabel="등록 중..." onPress={handleStoreRegistration} />
                 </CtaStack>
             }>
-            <AppCard variant="warm">
-                <AppText variant="titleMd">출퇴근 위치를 정할게요</AppText>
-                <AppText variant="caption" tone="secondary" style={styles.hintSub}>
-                    직원이 매장 근처에서만 출근할 수 있도록 정보를 입력합니다.
+            <View style={styles.heroBlock}>
+                <AppText variant="headingMd" numberOfLines={2}>매장 정보를{'\n'}입력해 주세요</AppText>
+                <AppText variant="bodyMd" tone="secondary" style={styles.hintSub}>
+                    직원이 매장 근처에서만 출근할 수 있도록 위치와 시급을 설정해요.
                 </AppText>
-            </AppCard>
+            </View>
 
             <SectionLabel text="기본 정보" />
             <View style={styles.form}>
@@ -244,10 +245,10 @@ const StoreRegistrationScreen: React.FC = () => {
                 <View>
                     <AppText variant="caption" tone="secondary" style={styles.fieldLabel}>매장 주소 *</AppText>
                     <Pressable style={[styles.addressBtn, {borderColor: c.border, backgroundColor: c.background}]} onPress={() => setShowAddressModal(true)}>
-                        <AppText variant="bodyMd" tone={storeData.roadAddress ? 'primary' : 'tertiary'} style={styles.flex}>
+                        <AppText variant="bodyMd" tone={storeData.roadAddress ? 'primary' : 'tertiary'} numberOfLines={1} style={styles.flex}>
                             {storeData.roadAddress || '주소를 검색해주세요'}
                         </AppText>
-                        <AppText>🔍</AppText>
+                        <Ionicons name="search-outline" size={18} color={c.textTertiary} />
                     </Pressable>
                     {storeData.jibunAddress ? (
                         <AppText variant="caption" tone="tertiary" style={styles.jibun}>지번: {storeData.jibunAddress}</AppText>
@@ -308,8 +309,9 @@ const SectionLabel: React.FC<{text: string}> = ({text}) => (
 );
 
 const styles = StyleSheet.create({
-    hintSub: {marginTop: 4},
-    sectionLabel: {marginTop: spacing.xl, marginBottom: spacing.sm},
+    heroBlock: {marginBottom: spacing.sm},
+    hintSub: {marginTop: spacing.sm},
+    sectionLabel: {marginTop: spacing.xxl, marginBottom: spacing.sm},
     form: {gap: spacing.md},
     fieldLabel: {marginBottom: spacing.xs, marginLeft: 2, fontWeight: '700'},
     addressBtn: {

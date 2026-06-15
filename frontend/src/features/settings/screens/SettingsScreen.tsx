@@ -1,18 +1,21 @@
-import {AppToast, AppBadge, AppButton, AppCard, AppHeader, AppListItem, AppText, BottomSheet, ScreenContainer} from '../../../common/components/ds';
+import {AppToast, AppBadge, AppButton, AppHeader, AppListItem, AppText, BottomSheet, CtaStack, ScreenContainer} from '../../../common/components/ds';
 import React, {useState} from 'react';
 import {StyleSheet, View} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useAuth} from '../../../contexts/AuthContext';
 import {useNavigation} from '@react-navigation/native';
 import {RootNavigationProp} from '../../../navigation/types';
-import {spacing} from '../../../theme/tokens';
+import {radius, spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 
 /**
- * 39 Settings + 75 Logout Confirm Sheet — 확정 시안.
- * 계정 요약 + 설정 리스트 + 로그아웃(바텀시트 확인). 로그아웃 로직 보존.
+ * 39 Settings + 75 Logout Confirm Sheet — v3 토스식.
+ * 계정 히어로 + 설정 리스트(라인 아이콘) + 하단 로그아웃 CTA. 로그아웃 로직 보존.
  */
 const SettingsScreen: React.FC = () => {
     const {user, logout} = useAuth();
     const navigation = useNavigation<RootNavigationProp>();
+    const c = useThemeColors();
     const [logoutSheet, setLogoutSheet] = useState(false);
 
     const confirmLogout = async () => {
@@ -25,28 +28,51 @@ const SettingsScreen: React.FC = () => {
         }
     };
 
-    return (
-        <ScreenContainer scroll header={<AppHeader title="설정" />}>
-            <AppCard variant="flat">
-                <View style={styles.accountRow}>
-                    <View style={styles.flexShrink}>
-                        <AppText variant="headingSm">{user?.name ?? '-'}</AppText>
-                        <AppText variant="caption" tone="secondary" style={styles.email}>
-                            {user?.email ?? '-'}
-                        </AppText>
-                    </View>
-                    {user?.role ? <AppBadge label={String(user.role)} tone="info" /> : null}
-                </View>
-            </AppCard>
+    const initial = (user?.name ?? '?').slice(0, 1);
 
-            <View style={styles.list}>
-                <AppListItem title="프로필 보기" subtitle="이름, 이메일, 역할" right="›" onPress={() => (navigation as any).navigate('Profile')} />
-                <AppListItem title="알림" subtitle="근태, 급여, 정정 요청" right="›" onPress={() => (navigation as any).navigate('NotificationSettings')} />
-                <AppListItem title="화면 표시" subtitle="큰 글자와 다크 모드 준비" right="›" onPress={() => (navigation as any).navigate('AccountSettings')} />
-                <AppListItem title="고객지원" subtitle="문의와 공지" right="›" onPress={() => (navigation as any).navigate('QnA')} />
+    const SettingItem = ({icon, title, subtitle, route}: {icon: string; title: string; subtitle: string; route: string}) => (
+        <AppListItem
+            title={title}
+            subtitle={subtitle}
+            onPress={() => (navigation as any).navigate(route)}
+            right={<Ionicons name="chevron-forward" size={20} color={c.textTertiary} />}
+            left={
+                <View style={[styles.iconWrap, {backgroundColor: c.surfaceMuted}]}>
+                    <Ionicons name={icon} size={20} color={c.textSecondary} />
+                </View>
+            }
+        />
+    );
+
+    return (
+        <ScreenContainer
+            scroll
+            header={<AppHeader title="설정" />}
+            footer={
+                <CtaStack>
+                    <AppButton label="로그아웃" variant="secondary" onPress={() => setLogoutSheet(true)} />
+                </CtaStack>
+            }>
+            {/* 계정 히어로 */}
+            <View style={styles.hero}>
+                <View style={[styles.avatar, {backgroundColor: c.brandPrimarySoft}]}>
+                    <AppText variant="headingSm" tone="brand">{initial}</AppText>
+                </View>
+                <View style={styles.heroText}>
+                    <AppText variant="headingSm" numberOfLines={1}>{user?.name ?? '-'}</AppText>
+                    <AppText variant="caption" tone="secondary" numberOfLines={1} style={styles.email}>
+                        {user?.email ?? '-'}
+                    </AppText>
+                </View>
+                {user?.role ? <AppBadge label={String(user.role)} tone="info" /> : null}
             </View>
 
-            <AppButton label="로그아웃" variant="secondary" onPress={() => setLogoutSheet(true)} style={styles.logout} />
+            <View style={styles.list}>
+                <SettingItem icon="person-outline" title="프로필 보기" subtitle="이름, 이메일, 역할" route="Profile" />
+                <SettingItem icon="notifications-outline" title="알림" subtitle="근태, 급여, 정정 요청" route="NotificationSettings" />
+                <SettingItem icon="contrast-outline" title="화면 표시" subtitle="큰 글자와 다크 모드 준비" route="AccountSettings" />
+                <SettingItem icon="help-circle-outline" title="고객지원" subtitle="문의와 공지" route="QnA" />
+            </View>
 
             <BottomSheet
                 visible={logoutSheet}
@@ -61,11 +87,12 @@ const SettingsScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-    accountRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm},
-    flexShrink: {flexShrink: 1},
+    hero: {flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.xxl},
+    avatar: {width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center'},
+    heroText: {flex: 1, minWidth: 0},
     email: {marginTop: 2},
-    list: {marginTop: spacing.md, gap: spacing.sm},
-    logout: {marginTop: spacing.lg},
+    iconWrap: {width: 40, height: 40, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center'},
+    list: {gap: spacing.sm},
 });
 
 export default SettingsScreen;

@@ -1,8 +1,9 @@
-import {AppToast, AppButton, AppCard, AppHeader, AppListItem, AppText, ErrorState, LoadingState, ScreenContainer} from '../../../common/components/ds';
+import {AppToast, AppButton, AppCard, AppHeader, AppListItem, AmountText, AppText, CtaStack, ErrorState, LoadingState, ScreenContainer} from '../../../common/components/ds';
 import React, {useState, useEffect} from 'react';
 import {Share, StyleSheet, View} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {RouteProp, NavigationProp} from '@react-navigation/native';
-import {spacing} from '../../../theme/tokens';
+import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {InviteShareSheet} from '../components/StoreSheets';
 import storeService, {StoreDetailDto} from '../services/storeService';
@@ -15,11 +16,13 @@ interface StoreDetailScreenProps {
 }
 
 /**
- * 13 StoreDetail — 확정 시안.
- * 매장 상세. loadStoreDetail/storeService 로직 보존. (GET /api/stores/{storeId})
+ * 13 StoreDetail — v3 토스식.
+ * 히어로: 매장명 + 기본시급(AmountText). 관리 진입은 큰 리스트. 하단 CTA 1개(직원 초대).
+ * loadStoreDetail/storeService 로직 보존. (GET /api/stores/{storeId})
  */
 export default function StoreDetailScreen({route, navigation}: StoreDetailScreenProps) {
     const {storeId} = route.params;
+    const c = useThemeColors();
     const [store, setStore] = useState<StoreDetailDto | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -77,68 +80,73 @@ export default function StoreDetailScreen({route, navigation}: StoreDetailScreen
     }
 
     return (
-        <ScreenContainer scroll header={header}>
-            <AppCard variant="navy" hero>
-                <AppText variant="headingSm" tone="inverse" numberOfLines={1} style={styles.heroName}>{store.storeName}</AppText>
-                <AppText variant="caption" tone="inverse" style={styles.heroSub}>{store.storeCode} · {store.businessType}</AppText>
-            </AppCard>
-
-            <Section title="기본 정보">
-                <InfoRow label="주소" value={store.fullAddress} />
-                {store.businessNumber ? <InfoRow label="사업자번호" value={store.businessNumber} /> : null}
-                {store.storePhoneNumber ? <InfoRow label="전화번호" value={store.storePhoneNumber} /> : null}
-            </Section>
-
-            <Section title="근무 정보">
-                <InfoRow label="기준 시급" value={`${store.storeStandardHourWage.toLocaleString()}원`} />
-                {store.employeeCount !== undefined ? <InfoRow label="직원 수" value={`${store.employeeCount}명`} /> : null}
-            </Section>
-
-            {store.latitude !== undefined && store.longitude !== undefined ? (
-                <Section title="위치 설정">
-                    <InfoRow label="위도" value={store.latitude.toFixed(6)} />
-                    <InfoRow label="경도" value={store.longitude.toFixed(6)} />
-                    {store.radius ? <InfoRow label="인증 반경" value={`${store.radius}m`} /> : null}
-                </Section>
-            ) : null}
-
-            <View style={styles.section}>
-                <AppText variant="titleMd" style={styles.sectionTitle}>매장 관리</AppText>
-                <AppCard variant="flat">
-                    <AppListItem
-                        title="직원 시급 정책"
-                        subtitle="매장 기준 시급과 변경 이력"
-                        right="›"
-                        onPress={() => (navigation as any).navigate('WageSettings', {storeId})}
-                    />
-                    <AppListItem
-                        title="운영시간 설정"
-                        subtitle="요일별 영업·휴무 시간"
-                        right="›"
-                        onPress={() => (navigation as any).navigate('StoreOperatingHours', {storeId})}
-                    />
-                    <AppListItem
-                        title="직원 초대"
-                        subtitle="초대 코드 공유로 직원 합류"
-                        right="›"
-                        onPress={() => setInviteVisible(true)}
-                    />
-                </AppCard>
-                <AppButton
-                    label="매장 정보 편집"
-                    variant="outline"
-                    onPress={() => (navigation as any).navigate('StoreEdit', {storeId})}
-                    style={styles.editBtn}
-                />
+        <ScreenContainer
+            scroll
+            header={header}
+            footer={
+                <CtaStack>
+                    <AppButton label="직원 초대하기" onPress={() => setInviteVisible(true)} />
+                </CtaStack>
+            }>
+            {/* 히어로: 매장명 + 기본시급 (숫자가 히어로) */}
+            <View style={styles.hero}>
+                <AppText variant="caption" tone="secondary">기본 시급</AppText>
+                <AmountText size={44} tone="primary" style={styles.heroAmount}>
+                    {`${store.storeStandardHourWage.toLocaleString()}원`}
+                </AmountText>
+                <AppText variant="headingSm" numberOfLines={1} style={styles.heroName}>{store.storeName}</AppText>
+                <AppText variant="caption" tone="tertiary" numberOfLines={1} style={styles.heroSub}>
+                    {store.storeCode} · {store.businessType}
+                    {store.employeeCount !== undefined ? ` · 직원 ${store.employeeCount}명` : ''}
+                </AppText>
             </View>
 
-            {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- boolean condition (logical OR), not value coalescing */}
-            {store.createdAt || store.updatedAt ? (
-                <Section title="시스템 정보">
-                    {store.createdAt ? <InfoRow label="등록일" value={new Date(store.createdAt).toLocaleDateString('ko-KR')} /> : null}
-                    {store.updatedAt ? <InfoRow label="수정일" value={new Date(store.updatedAt).toLocaleDateString('ko-KR')} /> : null}
-                </Section>
-            ) : null}
+            {/* 매장 관리 — 큰 리스트 */}
+            <View style={styles.section}>
+                <AppText variant="titleMd" tone="secondary" style={styles.sectionTitle}>매장 관리</AppText>
+                <View style={styles.list}>
+                    <ManageItem
+                        c={c}
+                        icon="cash-outline"
+                        title="직원 시급 정책"
+                        subtitle="매장 기준 시급과 변경 이력"
+                        onPress={() => (navigation as any).navigate('WageSettings', {storeId})}
+                    />
+                    <ManageItem
+                        c={c}
+                        icon="time-outline"
+                        title="운영시간 설정"
+                        subtitle="요일별 영업·휴무 시간"
+                        onPress={() => (navigation as any).navigate('StoreOperatingHours', {storeId})}
+                    />
+                    <ManageItem
+                        c={c}
+                        icon="person-add-outline"
+                        title="직원 초대"
+                        subtitle="초대 코드 공유로 직원 합류"
+                        onPress={() => setInviteVisible(true)}
+                    />
+                    <ManageItem
+                        c={c}
+                        icon="create-outline"
+                        title="매장 정보 편집"
+                        subtitle="주소·연락처·업종 수정"
+                        onPress={() => (navigation as any).navigate('StoreEdit', {storeId})}
+                    />
+                </View>
+            </View>
+
+            {/* 매장 정보 */}
+            <View style={styles.section}>
+                <AppText variant="titleMd" tone="secondary" style={styles.sectionTitle}>매장 정보</AppText>
+                <AppCard variant="plain">
+                    <InfoRow label="주소" value={store.fullAddress} />
+                    {store.businessNumber ? <InfoRow label="사업자번호" value={store.businessNumber} /> : null}
+                    {store.storePhoneNumber ? <InfoRow label="전화번호" value={store.storePhoneNumber} /> : null}
+                    {store.radius ? <InfoRow label="인증 반경" value={`${store.radius}m`} /> : null}
+                    {store.createdAt ? <InfoRow label="등록일" value={new Date(store.createdAt).toLocaleDateString('ko-KR')} last /> : null}
+                </AppCard>
+            </View>
 
             <InviteShareSheet
                 visible={inviteVisible}
@@ -152,36 +160,54 @@ export default function StoreDetailScreen({route, navigation}: StoreDetailScreen
     );
 }
 
-const Section: React.FC<{title: string; children: React.ReactNode}> = ({title, children}) => (
-    <View style={styles.section}>
-        <AppText variant="titleMd" style={styles.sectionTitle}>{title}</AppText>
-        <AppCard variant="flat">{children}</AppCard>
-    </View>
+type ThemeColors = ReturnType<typeof useThemeColors>;
+
+const ManageItem: React.FC<{c: ThemeColors; icon: string; title: string; subtitle: string; onPress: () => void}> = ({c, icon, title, subtitle, onPress}) => (
+    <AppListItem
+        title={title}
+        subtitle={subtitle}
+        onPress={onPress}
+        right={<Ionicons name="chevron-forward" size={20} color={c.textTertiary} />}
+        left={
+            <View style={[styles.iconWrap, {backgroundColor: c.brandPrimarySoft}]}>
+                <Ionicons name={icon} size={20} color={c.brandPrimary} />
+            </View>
+        }
+    />
 );
 
-const InfoRow: React.FC<{label: string; value: string}> = ({label, value}) => {
+const InfoRow: React.FC<{label: string; value: string; last?: boolean}> = ({label, value, last}) => {
     const c = useThemeColors();
     return (
-        <View style={[styles.infoRow, {borderBottomColor: c.divider}]}>
+        <View style={[styles.infoRow, !last && styles.infoRowBordered, !last && {borderBottomColor: c.divider}]}>
             <AppText variant="bodyMd" tone="secondary">{label}</AppText>
-            <AppText variant="bodyMd" weight="600" style={styles.infoValue}>{value}</AppText>
+            <AppText variant="bodyMd" weight="600" numberOfLines={1} style={styles.infoValue}>{value}</AppText>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    heroName: {flexShrink: 1},
-    heroSub: {marginTop: 4, opacity: 0.82},
-    editBtn: {marginTop: spacing.md},
-    section: {marginTop: spacing.lg},
-    sectionTitle: {marginBottom: spacing.sm},
+    hero: {marginBottom: spacing.sm},
+    heroAmount: {marginTop: spacing.xs},
+    heroName: {marginTop: spacing.md},
+    heroSub: {marginTop: spacing.xs},
+    section: {marginTop: spacing.xxl},
+    sectionTitle: {marginBottom: spacing.md},
+    list: {gap: spacing.sm},
+    iconWrap: {
+        width: 40,
+        height: 40,
+        borderRadius: radius.lg,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     infoRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingVertical: spacing.sm + 2,
-        borderBottomWidth: 1,
         gap: spacing.md,
     },
+    infoRowBordered: {borderBottomWidth: 1},
     infoValue: {flex: 1, textAlign: 'right'},
 });
