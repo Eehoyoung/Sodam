@@ -6,10 +6,10 @@ import React, {useEffect, useState} from 'react';
 import {Linking, Share, StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {Toast} from '../../../common/components';
 import {
     AppBadge,
-    AppCard,
     AppHeader,
     AppListItem,
     AppText,
@@ -18,6 +18,7 @@ import {
     ScreenContainer,
 } from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 
 interface TipDetail {
     id: number;
@@ -41,6 +42,7 @@ const TipsDetailScreen = () => {
     const navigation = useNavigation<TipsDetailScreenNavigationProp>();
     const route = useRoute();
     const {tipId} = route.params as {tipId: number};
+    const c = useThemeColors();
 
     const [loading, setLoading] = useState(true);
     const [tip, setTip] = useState<TipDetail | null>(null);
@@ -145,12 +147,10 @@ const TipsDetailScreen = () => {
 
     return (
         <ScreenContainer scroll header={header}>
-            <AppCard variant="warm">
-                <AppText variant="caption" tone="brand" weight="800">운영 팁</AppText>
-                <AppText variant="headingMd" style={styles.title}>{tip.title}</AppText>
-                <AppText variant="bodyMd" tone="secondary" style={styles.summary}>{tip.summary}</AppText>
-                <AppText variant="caption" tone="tertiary" style={styles.meta}>{tip.author} · {tip.date}</AppText>
-            </AppCard>
+            <AppText variant="caption" tone="brand" weight="800" style={styles.kicker}>운영 팁</AppText>
+            <AppText variant="headingLg" style={styles.title}>{tip.title}</AppText>
+            <AppText variant="bodyLg" tone="secondary" style={styles.summary}>{tip.summary}</AppText>
+            <AppText variant="bodyMd" tone="tertiary" style={styles.meta}>{tip.author} · {tip.date}</AppText>
 
             <View style={styles.tags}>
                 {tip.tags.map((t, i) => (
@@ -162,10 +162,10 @@ const TipsDetailScreen = () => {
 
             {tip.relatedLinks && tip.relatedLinks.length > 0 ? (
                 <>
-                    <AppText variant="titleMd" style={styles.relatedTitle}>관련 링크</AppText>
+                    <AppText variant="headingSm" style={styles.relatedTitle}>관련 링크</AppText>
                     <View style={styles.list}>
                         {tip.relatedLinks.map((l, i) => (
-                            <AppListItem key={i} title={l.title} right="↗" onPress={() => openLink(l.url)} />
+                            <AppListItem key={i} title={l.title} right={<Ionicons name="open-outline" size={18} color={c.textTertiary} />} onPress={() => openLink(l.url)} />
                         ))}
                     </View>
                 </>
@@ -177,12 +177,13 @@ const TipsDetailScreen = () => {
 };
 
 const styles = StyleSheet.create({
+    kicker: {marginTop: spacing.xs},
     title: {marginTop: spacing.sm},
-    summary: {marginTop: spacing.xs},
-    meta: {marginTop: spacing.sm},
-    tags: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.md},
-    content: {marginTop: spacing.lg},
-    relatedTitle: {marginTop: spacing.xl, marginBottom: spacing.sm},
+    summary: {marginTop: spacing.sm},
+    meta: {marginTop: spacing.md},
+    tags: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.lg},
+    content: {marginTop: spacing.xxl, lineHeight: 28},
+    relatedTitle: {marginTop: spacing.xxxl, marginBottom: spacing.md},
     list: {gap: spacing.sm},
 });
 

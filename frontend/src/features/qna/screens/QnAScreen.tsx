@@ -1,7 +1,9 @@
-import {AppToast, AppBadge, AppButton, AppCard, AppHeader, AppInput, AppText, ScreenContainer} from '../../../common/components/ds';
+import {AppButton, AppCard, AppHeader, AppInput, AppText, AppToast, ScreenContainer} from '../../../common/components/ds';
 import React, {useState} from 'react';
 import {Linking, Pressable, StyleSheet, View} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 
 const faqData = [
     {id: '1', question: '소담 서비스는 어떤 서비스인가요?', answer: '소담은 아르바이트 근태 및 급여 관리를 위한 서비스입니다. 사장님은 직원들의 출퇴근 관리와 급여 계산을 쉽게 할 수 있고, 직원들은 자신의 근무 시간과 급여를 확인할 수 있어요.'},
@@ -19,6 +21,7 @@ const faqData = [
  * FAQ 아코디언 + 1:1 문의 + 카카오 채팅. 토글/제출/링크 로직 보존.
  */
 const QnAScreen: React.FC = () => {
+    const c = useThemeColors();
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [inquiryName, setInquiryName] = useState('');
     const [inquiryEmail, setInquiryEmail] = useState('');
@@ -45,22 +48,25 @@ const QnAScreen: React.FC = () => {
 
     return (
         <ScreenContainer scroll header={<AppHeader title="Q&A" actions={[{label: '글쓰기', onPress: handleInquirySubmit}]} />}>
-            <AppText variant="titleMd" style={styles.sectionTitle}>자주 묻는 질문</AppText>
+            <AppText variant="headingSm" style={styles.sectionTitle}>자주 묻는 질문</AppText>
             <View style={styles.list}>
-                {faqData.map(faq => (
-                    <AppCard key={faq.id} variant="flat" onPress={() => toggleFaq(faq.id)}>
-                        <View style={styles.faqRow}>
-                            <AppText variant="titleMd" style={styles.flex}>Q. {faq.question}</AppText>
-                            <AppBadge label={expandedId === faq.id ? '접기' : '답변'} tone="info" />
-                        </View>
-                        {expandedId === faq.id ? (
-                            <AppText variant="bodyMd" tone="secondary" style={styles.answer}>A. {faq.answer}</AppText>
-                        ) : null}
-                    </AppCard>
-                ))}
+                {faqData.map(faq => {
+                    const open = expandedId === faq.id;
+                    return (
+                        <AppCard key={faq.id} variant="plain" onPress={() => toggleFaq(faq.id)}>
+                            <View style={styles.faqRow}>
+                                <AppText variant="titleMd" style={styles.flex}>{faq.question}</AppText>
+                                <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={20} color={c.textTertiary} />
+                            </View>
+                            {open ? (
+                                <AppText variant="bodyMd" tone="secondary" style={styles.answer}>{faq.answer}</AppText>
+                            ) : null}
+                        </AppCard>
+                    );
+                })}
             </View>
 
-            <AppText variant="titleMd" style={styles.sectionTitle}>1:1 문의</AppText>
+            <AppText variant="headingSm" style={styles.sectionTitle}>1:1 문의</AppText>
             <View style={styles.form}>
                 <AppInput label="이름" value={inquiryName} onChangeText={setInquiryName} placeholder="이름을 입력하세요" />
                 <AppInput label="이메일" value={inquiryEmail} onChangeText={setInquiryEmail} placeholder="이메일을 입력하세요" keyboardType="email-address" autoCapitalize="none" />
@@ -68,8 +74,9 @@ const QnAScreen: React.FC = () => {
                 <AppButton label="문의하기" onPress={handleInquirySubmit} />
             </View>
 
-            <AppText variant="titleMd" style={styles.sectionTitle}>카카오톡 채팅 문의</AppText>
-            <Pressable onPress={handleKakaoChat} style={styles.kakaoBtn}>
+            <AppText variant="headingSm" style={styles.sectionTitle}>카카오톡 채팅 문의</AppText>
+            <Pressable onPress={handleKakaoChat} style={({pressed}) => [styles.kakaoBtn, pressed && styles.kakaoPressed]}>
+                <Ionicons name="chatbubble" size={20} color="#3C1E1E" />
                 <AppText variant="titleMd" style={styles.kakaoText}>카카오톡 채팅 문의하기</AppText>
             </Pressable>
         </ScreenContainer>
@@ -77,20 +84,23 @@ const QnAScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-    sectionTitle: {marginTop: spacing.lg, marginBottom: spacing.sm},
+    sectionTitle: {marginTop: spacing.xxl, marginBottom: spacing.md},
     list: {gap: spacing.sm},
     faqRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
     flex: {flex: 1},
-    answer: {marginTop: spacing.sm},
+    answer: {marginTop: spacing.md, lineHeight: 22},
     form: {gap: spacing.md},
     kakaoBtn: {
-        minHeight: 52,
-        borderRadius: 17,
+        minHeight: 56,
+        borderRadius: 18,
         backgroundColor: '#FEE500',
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
+        gap: spacing.sm,
         marginBottom: spacing.lg,
     },
+    kakaoPressed: {opacity: 0.9, transform: [{scale: 0.985}]},
     kakaoText: {color: '#3C1E1E'},
 });
 

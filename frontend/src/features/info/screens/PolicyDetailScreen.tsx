@@ -6,6 +6,7 @@ import React, {useEffect, useState} from 'react';
 import {Linking, Share, StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {Toast} from '../../../common/components';
 import {
     AppButton,
@@ -18,6 +19,7 @@ import {
     ScreenContainer,
 } from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 
 interface PolicyDetail {
     id: number;
@@ -41,6 +43,7 @@ const PolicyDetailScreen = () => {
     const navigation = useNavigation<PolicyDetailScreenNavigationProp>();
     const route = useRoute();
     const {policyId} = route.params as {policyId: number};
+    const c = useThemeColors();
 
     const [loading, setLoading] = useState(true);
     const [policy, setPolicy] = useState<PolicyDetail | null>(null);
@@ -152,12 +155,17 @@ const PolicyDetailScreen = () => {
     }
 
     return (
-        <ScreenContainer scroll header={header}>
-            <AppCard variant="warm">
-                <AppText variant="caption" tone="brand" weight="800">{policy.department}</AppText>
-                <AppText variant="headingMd" style={styles.title}>{policy.title}</AppText>
-                <AppText variant="caption" tone="tertiary" style={styles.meta}>등록일 {policy.date}</AppText>
-            </AppCard>
+        <ScreenContainer
+            scroll
+            header={header}
+            footer={
+                <View style={styles.footer}>
+                    <AppButton label="신청하기" onPress={openApplicationLink} />
+                </View>
+            }>
+            <AppText variant="caption" tone="brand" weight="800" style={styles.kicker}>{policy.department}</AppText>
+            <AppText variant="headingLg" style={styles.title}>{policy.title}</AppText>
+            <AppText variant="bodyMd" tone="tertiary" style={styles.meta}>등록일 {policy.date}</AppText>
 
             <AppText variant="bodyLg" style={styles.content}>{policy.content}</AppText>
 
@@ -165,12 +173,10 @@ const PolicyDetailScreen = () => {
             <InfoSection title="지원 대상" body={policy.eligibility} />
             <InfoSection title="지원 내용" body={policy.benefits} />
 
-            <AppButton label="신청하기" onPress={openApplicationLink} style={styles.apply} />
-
-            <AppText variant="titleMd" style={styles.relatedTitle}>관련 정책</AppText>
+            <AppText variant="headingSm" style={styles.relatedTitle}>관련 정책</AppText>
             <View style={styles.list}>
                 {relatedPolicies.map(item => (
-                    <AppListItem key={item.id} title={item.title} right="›" onPress={() => navigation.navigate('PolicyDetail', {policyId: item.id})} />
+                    <AppListItem key={item.id} title={item.title} right={<Ionicons name="chevron-forward" size={18} color={c.textTertiary} />} onPress={() => navigation.navigate('PolicyDetail', {policyId: item.id})} />
                 ))}
             </View>
 
@@ -180,21 +186,22 @@ const PolicyDetailScreen = () => {
 };
 
 const InfoSection: React.FC<{title: string; body: string}> = ({title, body}) => (
-    <AppCard variant="flat" style={styles.infoCard}>
+    <AppCard variant="plain" style={styles.infoCard}>
         <AppText variant="titleMd">{title}</AppText>
         <AppText variant="bodyMd" tone="secondary" style={styles.infoBody}>{body}</AppText>
     </AppCard>
 );
 
 const styles = StyleSheet.create({
+    kicker: {marginTop: spacing.xs},
     title: {marginTop: spacing.sm},
-    meta: {marginTop: spacing.sm},
-    content: {marginTop: spacing.lg},
+    meta: {marginTop: spacing.md},
+    content: {marginTop: spacing.xxl, lineHeight: 28},
     infoCard: {marginTop: spacing.md},
-    infoBody: {marginTop: spacing.xs},
-    apply: {marginTop: spacing.lg},
-    relatedTitle: {marginTop: spacing.xl, marginBottom: spacing.sm},
+    infoBody: {marginTop: spacing.xs, lineHeight: 22},
+    relatedTitle: {marginTop: spacing.xxxl, marginBottom: spacing.md},
     list: {gap: spacing.sm},
+    footer: {paddingHorizontal: spacing.xxl, paddingTop: spacing.md, paddingBottom: spacing.sm},
 });
 
 export default PolicyDetailScreen;

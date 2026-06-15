@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {Pressable, Share, StyleSheet, View} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
     AppBadge,
     AppButton,
@@ -11,6 +12,7 @@ import {
     ScreenContainer,
 } from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
 
 interface MyCode {
@@ -30,6 +32,7 @@ interface ReferralItem {
  * 추천 코드 발급/공유 + 적용 이력. share/copy 로직 보존.
  */
 const ReferralScreen: React.FC = () => {
+    const c = useThemeColors();
     const [code, setCode] = useState<MyCode | null>(null);
     const [history, setHistory] = useState<ReferralItem[]>([]);
 
@@ -68,16 +71,17 @@ const ReferralScreen: React.FC = () => {
 
             <AppCard variant="warm" style={styles.codeCard}>
                 <AppText variant="caption" tone="secondary">내 추천 코드</AppText>
-                <Pressable onPress={copyCode}>
-                    <AppText variant="numericLg" tone="brand" style={styles.codeText}>{code?.referralCode ?? '...'}</AppText>
+                <Pressable onPress={copyCode} style={styles.codeWrap} accessibilityRole="button" accessibilityLabel="추천 코드 복사">
+                    <AppText variant="display" tone="brand" weight="800" style={styles.codeText}>{code?.referralCode ?? '...'}</AppText>
+                    <Ionicons name="copy-outline" size={18} color={c.textTertiary} />
                 </Pressable>
-                <AppText variant="caption" tone="tertiary">코드를 눌러 복사하거나 아래 버튼으로 공유하세요.</AppText>
-                <AppButton label="추천 링크 공유" size="md" onPress={share} style={styles.cta} />
+                <AppText variant="caption" tone="tertiary" center>코드를 눌러 복사하거나 아래 버튼으로 공유하세요.</AppText>
+                <AppButton label="추천 링크 공유" leftIcon={<Ionicons name="share-social-outline" size={18} color={c.textInverse} />} onPress={share} style={styles.cta} />
             </AppCard>
 
-            <AppText variant="titleMd" style={styles.sectionTitle}>추천한 친구</AppText>
+            <AppText variant="headingSm" style={styles.sectionTitle}>추천한 친구</AppText>
             {history.length === 0 ? (
-                <AppText variant="caption" tone="tertiary" style={styles.empty}>
+                <AppText variant="bodyMd" tone="tertiary" style={styles.empty}>
                     아직 추천한 친구가 없어요. 코드를 공유해 보세요!
                 </AppText>
             ) : (
@@ -86,6 +90,7 @@ const ReferralScreen: React.FC = () => {
                         <AppListItem
                             key={it.id}
                             title={it.refereeName}
+                            left={<Ionicons name="person-circle-outline" size={28} color={c.textTertiary} />}
                             right={<AppBadge label={statusLabel(it.status)} tone={it.status === 'CONVERTED' ? 'success' : 'neutral'} />}
                         />
                     ))}
@@ -110,11 +115,12 @@ function statusLabel(s: string): string {
 
 const styles = StyleSheet.create({
     heroSub: {marginTop: spacing.xs, opacity: 0.82},
-    codeCard: {marginTop: spacing.md, alignItems: 'center'},
-    codeText: {letterSpacing: 4, marginVertical: spacing.sm},
-    cta: {marginTop: spacing.md, alignSelf: 'stretch'},
-    sectionTitle: {marginTop: spacing.xl, marginBottom: spacing.sm},
-    empty: {paddingVertical: spacing.md, lineHeight: 20},
+    codeCard: {marginTop: spacing.lg, alignItems: 'center'},
+    codeWrap: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginVertical: spacing.sm},
+    codeText: {letterSpacing: 4},
+    cta: {marginTop: spacing.lg, alignSelf: 'stretch'},
+    sectionTitle: {marginTop: spacing.xxl, marginBottom: spacing.md},
+    empty: {paddingVertical: spacing.md, lineHeight: 22},
     list: {gap: spacing.sm},
 });
 

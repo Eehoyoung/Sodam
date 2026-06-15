@@ -2,9 +2,9 @@ import React, {useEffect, useState} from 'react';
 import {Share, StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {Toast} from '../../../common/components';
 import {
-    AppCard,
     AppHeader,
     AppListItem,
     AppText,
@@ -13,6 +13,7 @@ import {
     ScreenContainer,
 } from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import laborInfoService from '../services/laborInfoService';
 
 export type RootStackParamList = {
@@ -39,6 +40,7 @@ const LaborInfoDetailScreen = () => {
     const navigation = useNavigation<LaborInfoDetailScreenNavigationProp>();
     const route = useRoute();
     const {infoId} = route.params as {infoId: string};
+    const c = useThemeColors();
 
     const [loading, setLoading] = useState(true);
     const [laborInfo, setLaborInfo] = useState<LaborInfoDetail | null>(null);
@@ -135,23 +137,21 @@ const LaborInfoDetailScreen = () => {
 
     return (
         <ScreenContainer scroll header={header}>
-            <AppCard variant="warm">
-                <AppText variant="caption" tone="brand" weight="800">{laborInfo.category}</AppText>
-                <AppText variant="headingMd" style={styles.title}>{laborInfo.title}</AppText>
-                <AppText variant="caption" tone="tertiary" style={styles.meta}>
-                    {laborInfo.author} · {laborInfo.date}
-                </AppText>
-            </AppCard>
+            <AppText variant="caption" tone="brand" weight="800" style={styles.kicker}>{laborInfo.category}</AppText>
+            <AppText variant="headingLg" style={styles.title}>{laborInfo.title}</AppText>
+            <AppText variant="bodyMd" tone="tertiary" style={styles.meta}>
+                {laborInfo.author} · {laborInfo.date}
+            </AppText>
 
             <AppText variant="bodyLg" style={styles.content}>{laborInfo.content}</AppText>
 
-            <AppText variant="titleMd" style={styles.relatedTitle}>관련 정보</AppText>
+            <AppText variant="headingSm" style={styles.relatedTitle}>관련 정보</AppText>
             <View style={styles.list}>
                 {relatedInfos.map(info => (
                     <AppListItem
                         key={info.id}
                         title={info.title}
-                        right="›"
+                        right={<Ionicons name="chevron-forward" size={18} color={c.textTertiary} />}
                         onPress={() => navigation.navigate('LaborInfoDetail', {infoId: info.id.toString()})}
                     />
                 ))}
@@ -163,10 +163,11 @@ const LaborInfoDetailScreen = () => {
 };
 
 const styles = StyleSheet.create({
+    kicker: {marginTop: spacing.xs},
     title: {marginTop: spacing.sm},
-    meta: {marginTop: spacing.sm},
-    content: {marginTop: spacing.lg},
-    relatedTitle: {marginTop: spacing.xl, marginBottom: spacing.sm},
+    meta: {marginTop: spacing.md},
+    content: {marginTop: spacing.xxl, lineHeight: 28},
+    relatedTitle: {marginTop: spacing.xxxl, marginBottom: spacing.md},
     list: {gap: spacing.sm},
 });
 

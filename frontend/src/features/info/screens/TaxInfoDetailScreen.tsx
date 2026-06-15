@@ -6,9 +6,9 @@ import React, {useEffect, useState} from 'react';
 import {Linking, Share, StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {Toast} from '../../../common/components';
 import {
-    AppCard,
     AppHeader,
     AppListItem,
     AppText,
@@ -17,6 +17,7 @@ import {
     ScreenContainer,
 } from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 
 interface TaxInfoDetail {
     id: number;
@@ -39,6 +40,7 @@ const TaxInfoDetailScreen = () => {
     const navigation = useNavigation<TaxInfoDetailScreenNavigationProp>();
     const route = useRoute();
     const {taxInfoId} = route.params as {taxInfoId: number};
+    const c = useThemeColors();
     const [loading, setLoading] = useState(true);
     const [taxInfo, setTaxInfo] = useState<TaxInfoDetail | null>(null);
     const [isBookmarked, setIsBookmarked] = useState(false);
@@ -150,29 +152,27 @@ const TaxInfoDetailScreen = () => {
 
     return (
         <ScreenContainer scroll header={header}>
-            <AppCard variant="warm">
-                <AppText variant="caption" tone="brand" weight="800">{taxInfo.category}</AppText>
-                <AppText variant="headingMd" style={styles.title}>{taxInfo.title}</AppText>
-                <AppText variant="caption" tone="tertiary" style={styles.meta}>{taxInfo.author} · {taxInfo.date}</AppText>
-            </AppCard>
+            <AppText variant="caption" tone="brand" weight="800" style={styles.kicker}>{taxInfo.category}</AppText>
+            <AppText variant="headingLg" style={styles.title}>{taxInfo.title}</AppText>
+            <AppText variant="bodyMd" tone="tertiary" style={styles.meta}>{taxInfo.author} · {taxInfo.date}</AppText>
 
             <AppText variant="bodyLg" style={styles.content}>{taxInfo.content}</AppText>
 
             {taxInfo.relatedLinks.length > 0 ? (
                 <>
-                    <AppText variant="titleMd" style={styles.relatedTitle}>관련 링크</AppText>
+                    <AppText variant="headingSm" style={styles.relatedTitle}>관련 링크</AppText>
                     <View style={styles.list}>
                         {taxInfo.relatedLinks.map((l, i) => (
-                            <AppListItem key={i} title={l.title} right="↗" onPress={() => openLink(l.url)} />
+                            <AppListItem key={i} title={l.title} right={<Ionicons name="open-outline" size={18} color={c.textTertiary} />} onPress={() => openLink(l.url)} />
                         ))}
                     </View>
                 </>
             ) : null}
 
-            <AppText variant="titleMd" style={styles.relatedTitle}>관련 세무 정보</AppText>
+            <AppText variant="headingSm" style={styles.relatedTitle}>관련 세무 정보</AppText>
             <View style={styles.list}>
                 {relatedTaxInfos.map(item => (
-                    <AppListItem key={item.id} title={item.title} right="›" onPress={() => navigation.navigate('TaxInfoDetail', {taxInfoId: item.id})} />
+                    <AppListItem key={item.id} title={item.title} right={<Ionicons name="chevron-forward" size={18} color={c.textTertiary} />} onPress={() => navigation.navigate('TaxInfoDetail', {taxInfoId: item.id})} />
                 ))}
             </View>
 
@@ -182,10 +182,11 @@ const TaxInfoDetailScreen = () => {
 };
 
 const styles = StyleSheet.create({
+    kicker: {marginTop: spacing.xs},
     title: {marginTop: spacing.sm},
-    meta: {marginTop: spacing.sm},
-    content: {marginTop: spacing.lg},
-    relatedTitle: {marginTop: spacing.xl, marginBottom: spacing.sm},
+    meta: {marginTop: spacing.md},
+    content: {marginTop: spacing.xxl, lineHeight: 28},
+    relatedTitle: {marginTop: spacing.xxxl, marginBottom: spacing.md},
     list: {gap: spacing.sm},
 });
 

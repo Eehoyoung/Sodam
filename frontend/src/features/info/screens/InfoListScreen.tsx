@@ -1,6 +1,7 @@
 import {AppToast, AppBadge, AppCard, AppHeader, AppInput, AppText, EmptyState, LoadingState, ScreenContainer, SegmentedControl} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
 import {FlatList, StyleSheet, View, Pressable} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {radius, spacing} from '../../../theme/tokens';
@@ -177,12 +178,12 @@ const InfoListScreen = () => {
                     keyExtractor={item => item.id}
                     contentContainerStyle={visibleArticles.length === 0 ? styles.flexCenter : styles.articleList}
                     renderItem={({item}) => (
-                        <AppCard variant="flat" onPress={() => navigateToDetail(item)} style={styles.articleCard}>
+                        <AppCard variant="plain" onPress={() => navigateToDetail(item)} style={styles.articleCard}>
                             <View style={styles.articleHeader}>
-                                <AppText variant="titleMd" style={styles.flex}>{item.title}</AppText>
-                                <AppText variant="bodyLg" tone="tertiary">›</AppText>
+                                <AppText variant="headingSm" style={styles.flex} numberOfLines={2}>{item.title}</AppText>
+                                <Ionicons name="chevron-forward" size={20} color={c.textTertiary} />
                             </View>
-                            <AppText variant="caption" tone="secondary" numberOfLines={2} style={styles.summary}>{item.summary}</AppText>
+                            <AppText variant="bodyMd" tone="secondary" numberOfLines={2} style={styles.summary}>{item.summary}</AppText>
                             <View style={styles.articleFooter}>
                                 <AppText variant="caption" tone="tertiary">{new Date(item.publishDate).toLocaleDateString('ko-KR')}</AppText>
                                 <View style={styles.tags}>
@@ -195,8 +196,8 @@ const InfoListScreen = () => {
                     )}
                     ListEmptyComponent={
                         query.trim()
-                            ? <EmptyState glyph="🔍" markColor={c.surfaceMuted} title="검색 결과가 없어요" description="다른 검색어를 입력해 보세요." />
-                            : <EmptyState glyph="ⓘ" markColor={c.surfaceMuted} title="정보가 없어요" description="다른 분류를 확인해 보세요." />
+                            ? <EmptyState glyph={<Ionicons name="search-outline" size={40} color={c.textInverse} />} markColor={c.brandSecondary} title="검색 결과가 없어요" description="다른 검색어를 입력해 보세요." />
+                            : <EmptyState glyph={<Ionicons name="document-text-outline" size={40} color={c.textInverse} />} markColor={c.brandSecondary} title="정보가 없어요" description="다른 분류를 확인해 보세요." />
                     }
                 />
             )}
@@ -209,13 +210,13 @@ const styles = StyleSheet.create({
     categoryList: {marginBottom: spacing.sm},
     categoryContent: {gap: spacing.sm, paddingRight: spacing.lg},
     chip: {paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill},
-    articleList: {paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: spacing.sm},
+    articleList: {paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md},
     flexCenter: {flexGrow: 1, justifyContent: 'center'},
     articleCard: {},
-    articleHeader: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
+    articleHeader: {flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm},
     flex: {flex: 1},
-    summary: {marginTop: spacing.xs},
-    articleFooter: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm},
+    summary: {marginTop: spacing.sm},
+    articleFooter: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md},
     tags: {flexDirection: 'row', gap: spacing.xs},
 });
 

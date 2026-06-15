@@ -1,10 +1,20 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {FlatList, Pressable, RefreshControl, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {AppHeader, AppText, EmptyState, ScreenContainer} from '../../../common/components/ds';
 import {spacing, tokens} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
+
+const CATEGORY_ICON: Record<InboxItem['category'], string> = {
+    ATTENDANCE: 'time-outline',
+    PAYROLL: 'cash-outline',
+    BILLING: 'card-outline',
+    NOTICE: 'megaphone-outline',
+    MARKETING: 'gift-outline',
+    SYSTEM: 'information-circle-outline',
+};
 
 type Category = 'ALL' | 'ATTENDANCE' | 'PAYROLL' | 'BILLING' | 'NOTICE';
 
@@ -105,15 +115,19 @@ const NotificationCenterScreen: React.FC = () => {
                 keyExtractor={it => String(it.id)}
                 renderItem={({item}) => (
                     <Pressable onPress={() => open(item)} style={({pressed}) => [styles.row, pressed && {opacity: 0.8}]}>
-                        <View
-                            style={[
-                                styles.unreadDot,
-                                {backgroundColor: item.isRead ? c.surfaceMuted : c.brandPrimary},
-                            ]}
-                        />
+                        <View style={[styles.iconWrap, {backgroundColor: item.isRead ? c.surfaceMuted : c.brandPrimarySoft}]}>
+                            <Ionicons
+                                name={CATEGORY_ICON[item.category]}
+                                size={22}
+                                color={item.isRead ? c.textTertiary : c.brandPrimary}
+                            />
+                        </View>
                         <View style={styles.rowBody}>
-                            <AppText variant="bodyMd" weight={item.isRead ? '400' : '700'}>{item.title}</AppText>
-                            <AppText variant="caption" tone="secondary" numberOfLines={2} style={styles.body}>{item.body}</AppText>
+                            <View style={styles.titleRow}>
+                                <AppText variant="bodyLg" weight={item.isRead ? '500' : '700'} style={styles.flex} numberOfLines={1}>{item.title}</AppText>
+                                {item.isRead ? null : <View style={[styles.unreadDot, {backgroundColor: c.brandPrimary}]} />}
+                            </View>
+                            <AppText variant="bodyMd" tone="secondary" numberOfLines={2} style={styles.body}>{item.body}</AppText>
                             <AppText variant="caption" tone="tertiary" style={styles.date}>{formatRel(item.createdAt)}</AppText>
                         </View>
                     </Pressable>
@@ -121,8 +135,8 @@ const NotificationCenterScreen: React.FC = () => {
                 ItemSeparatorComponent={() => <View style={[styles.separator, {backgroundColor: c.divider}]} />}
                 ListEmptyComponent={
                     <EmptyState
-                        glyph="📭"
-                        markColor={c.surfaceMuted}
+                        glyph={<Ionicons name="notifications-outline" size={40} color={c.textInverse} />}
+                        markColor={c.brandSecondary}
                         title={loading ? '불러오는 중…' : '받은 알림이 없어요'}
                         description={loading ? undefined : '새 알림이 오면 여기에 표시돼요.'}
                     />
@@ -161,12 +175,15 @@ const styles = StyleSheet.create({
         borderRadius: tokens.radius.pill,
     },
     listPad: {paddingBottom: spacing.xl},
-    row: {flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.md},
-    unreadDot: {width: 8, height: 8, borderRadius: 4, marginTop: 8},
+    row: {flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: spacing.lg, paddingVertical: spacing.lg, gap: spacing.md},
+    iconWrap: {width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center'},
+    titleRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
+    flex: {flex: 1},
+    unreadDot: {width: 8, height: 8, borderRadius: 4},
     rowBody: {flex: 1},
-    body: {marginTop: 2},
-    date: {marginTop: 4},
-    separator: {height: 1, marginLeft: spacing.lg + 16},
+    body: {marginTop: 4},
+    date: {marginTop: 6},
+    separator: {height: 1, marginLeft: spacing.lg + 44 + spacing.md},
     flexCenter: {flexGrow: 1, justifyContent: 'center'},
 });
 
