@@ -1,11 +1,13 @@
-import {AppToast, ConfirmSheet, AppCard, AppHeader, AppListItem, AppText, LoadingState, PunchButton, ScreenContainer} from '../../../common/components/ds';
+import {AppToast, ConfirmSheet, AppCard, AppHeader, AppListItem, AppText, AmountText, LoadingState, PunchButton, ScreenContainer} from '../../../common/components/ds';
 import React, {useEffect, useMemo, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {spacing} from '../../../theme/tokens';
 import {formatTimer, formatWage} from '../../../common/utils/format';
 import {useAuth} from '../../../contexts/AuthContext';
 import {useResponsive} from '../../../common/hooks/useResponsive';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
 
 type AttendanceState = 'IDLE' | 'WORKING' | 'DONE' | 'LOADING';
@@ -34,6 +36,7 @@ const EmployeeAttendanceHome: React.FC = () => {
     const navigation = useNavigation<any>();
     const {user} = useAuth();
     const r = useResponsive();
+    const c = useThemeColors();
     // PunchButton 은 이미 자체 반응형이므로 화면은 주변 여백·바깥 카드만 조절.
     // compactHeight(<700, iPhone SE/Mini 풍): 원형 CTA 가 화면을 더 차지하므로 사이 gap·marginVertical 을 줄여 quickLinks 가 안 잘리도록.
     const bodyGap = r.pick({compact: spacing.md, default: spacing.lg});
@@ -158,7 +161,7 @@ const EmployeeAttendanceHome: React.FC = () => {
             header={
                 <AppHeader
                     title={`${user?.name ?? '직원'}님`}
-                    actions={[{label: '내역', onPress: () => navigation.navigate('AttendanceCalendar')}]}
+                    actions={[{label: '내역', icon: <Ionicons name="calendar-outline" size={20} color={c.brandPrimary} />, accessibilityLabel: '근무 내역', onPress: () => navigation.navigate('AttendanceCalendar')}]}
                 />
             }>
             <View style={[styles.body, {gap: bodyGap}]}>
@@ -183,17 +186,17 @@ const EmployeeAttendanceHome: React.FC = () => {
 
                 {selectedStore ? (
                     <AppCard variant="warm" style={styles.todayCard}>
-                        <AppText variant="caption" tone="secondary">오늘</AppText>
-                        <AppText variant="numericLg" tone="brand">
+                        <AppText variant="caption" tone="secondary">오늘 누적 근무</AppText>
+                        <AmountText size={30} tone="brand">
                             {todayRecord ? formatTimer((todayRecord.workingMinutes ?? 0) * 60) : '00:00:00'}
-                        </AppText>
+                        </AmountText>
                     </AppCard>
                 ) : null}
 
                 <View style={[styles.quickLinks, {gap: quickLinksGap}]}>
-                    <AppListItem title="이번 달 급여" right="›" onPress={() => navigation.navigate('SalaryList')} />
-                    <AppListItem title="출근 기록" right="›" onPress={() => navigation.navigate('AttendanceCalendar')} />
-                    <AppListItem title="매장 코드 입력" right="›" onPress={() => navigation.navigate('JoinStoreByCode')} />
+                    <AppListItem title="이번 달 급여" left={<Ionicons name="wallet-outline" size={24} color={c.brandPrimary} />} right="›" onPress={() => navigation.navigate('SalaryList')} />
+                    <AppListItem title="출근 기록" left={<Ionicons name="calendar-outline" size={24} color={c.brandPrimary} />} right="›" onPress={() => navigation.navigate('AttendanceCalendar')} />
+                    <AppListItem title="매장 코드 입력" left={<Ionicons name="key-outline" size={24} color={c.brandPrimary} />} right="›" onPress={() => navigation.navigate('JoinStoreByCode')} />
                 </View>
             </View>
         </ScreenContainer>

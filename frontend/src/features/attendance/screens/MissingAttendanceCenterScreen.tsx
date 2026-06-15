@@ -2,7 +2,9 @@ import {AppToast, ConfirmSheet, AppBadge, AppButton, AppCard, AppHeader, AppText
 import React, {useCallback, useEffect, useState} from 'react';
 import {RefreshControl, ScrollView, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
-import {layout, spacing} from '../../../theme/tokens';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
 
 interface PendingItem {
@@ -19,6 +21,7 @@ interface PendingItem {
  */
 const MissingAttendanceCenterScreen: React.FC = () => {
     const navigation = useNavigation<any>();
+    const c = useThemeColors();
     const [items, setItems] = useState<PendingItem[]>([]);
     const [refreshing, setRefreshing] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -93,15 +96,19 @@ const MissingAttendanceCenterScreen: React.FC = () => {
                     <LoadingState title="확인하고 있어요" description="오늘 출퇴근 이상 기록을 정리하는 중입니다" />
                 ) : items.length === 0 ? (
                     <EmptyState
-                        glyph="✓"
-                        markColor="#12A87B"
+                        glyph={<Ionicons name="checkmark-sharp" size={28} color={c.textInverse} />}
+                        markColor={c.success}
                         title="모두 정상이에요"
                         description="오늘 출근 누락이나 미체크아웃이 없어요."
                     />
                 ) : (
                     <>
-                        <AppCard variant="navy" hero>
-                            <AppText variant="headingSm" tone="inverse">정산 전 {items.length}건 확인</AppText>
+                        <AppCard variant="navy" hero style={styles.heroCard}>
+                            <AppText variant="caption" tone="inverse" style={styles.heroLabel}>정산 전 확인할 일</AppText>
+                            <View style={styles.heroNumRow}>
+                                <AppText tone="inverse" style={styles.heroNumber}>{items.length}</AppText>
+                                <AppText variant="headingSm" tone="inverse" style={styles.heroUnit}>건</AppText>
+                            </View>
                             <AppText variant="bodyMd" tone="inverse" style={styles.heroSub}>
                                 퇴근 누락과 미출근 기록을 먼저 정리하세요.
                             </AppText>
@@ -109,21 +116,24 @@ const MissingAttendanceCenterScreen: React.FC = () => {
 
                         <View style={styles.list}>
                             {items.map((it, idx) => (
-                                <AppCard key={idx} variant="flat">
+                                <AppCard key={idx} variant="plain">
                                     <View style={styles.itemRow}>
-                                        <View style={styles.flexShrink}>
-                                            <AppText variant="titleMd">{it.employeeName}</AppText>
-                                            <AppText variant="caption" tone="secondary" style={styles.itemSub}>
-                                                {it.storeName}
-                                            </AppText>
+                                        <View style={styles.itemLeft}>
+                                            <Ionicons name="person-circle-outline" size={28} color={c.warning} />
+                                            <View style={styles.flexShrink}>
+                                                <AppText variant="titleMd" numberOfLines={1}>{it.employeeName}</AppText>
+                                                <AppText variant="caption" tone="secondary" numberOfLines={1} style={styles.itemSub}>
+                                                    {it.storeName}
+                                                </AppText>
+                                            </View>
                                         </View>
                                         <AppBadge label={it.type === 'NO_CHECK_IN' ? '미출근' : '미퇴근'} tone="warning" />
                                     </View>
                                     <View style={styles.actions}>
-                                        <AppButton label="알림 보내기" size="sm" fullWidth={false} onPress={() => sendNudge(it)} style={styles.actionBtn} />
+                                        <AppButton label="알림 보내기" size="md" fullWidth={false} onPress={() => sendNudge(it)} style={styles.actionBtn} />
                                         <AppButton
                                             label="수동 기록"
-                                            size="sm"
+                                            size="md"
                                             variant="outline"
                                             fullWidth={false}
                                             onPress={() => navigation.navigate('Attendance')}
@@ -143,16 +153,22 @@ const MissingAttendanceCenterScreen: React.FC = () => {
 const styles = StyleSheet.create({
     content: {
         flexGrow: 1,
-        paddingHorizontal: layout.screenPaddingHorizontal,
-        paddingTop: spacing.md,
-        paddingBottom: spacing.xl,
+        paddingHorizontal: spacing.xxl,
+        paddingTop: spacing.lg,
+        paddingBottom: spacing.xxxl,
     },
-    heroSub: {marginTop: 4, opacity: 0.82},
-    list: {marginTop: spacing.md, gap: spacing.sm},
+    heroCard: {},
+    heroLabel: {opacity: 0.82, fontWeight: '800'},
+    heroNumRow: {flexDirection: 'row', alignItems: 'baseline', marginTop: spacing.xs},
+    heroNumber: {fontSize: 52, lineHeight: 56, fontWeight: '800', letterSpacing: -1},
+    heroUnit: {marginLeft: spacing.xs},
+    heroSub: {marginTop: spacing.sm, opacity: 0.82},
+    list: {marginTop: spacing.xl, gap: spacing.md},
     itemRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm},
+    itemLeft: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 1},
     flexShrink: {flexShrink: 1},
     itemSub: {marginTop: 2},
-    actions: {flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md},
+    actions: {flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg},
     actionBtn: {flex: 1},
 });
 

@@ -1,6 +1,7 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {spacing, tokens} from '../../../theme/tokens';
 import {AppButton, AppCard, AppHeader, AppText, ScreenContainer} from '../../../common/components/ds';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
@@ -98,11 +99,11 @@ const AttendanceCalendarScreen: React.FC = () => {
         <ScreenContainer scroll header={<AppHeader title="근무 기록" rightText={`${month}월`} onBack={() => navigation.goBack()} />}>
             <View style={styles.headerRow}>
                 <Pressable onPress={prevMonth} hitSlop={12} style={styles.navBtn}>
-                    <Text style={[styles.navArrow, {color: c.brandPrimary}]}>◀</Text>
+                    <Ionicons name="chevron-back" size={22} color={c.brandPrimary} />
                 </Pressable>
-                <AppText variant="headingSm">{year}년 {month}월</AppText>
+                <AppText variant="headingMd">{year}년 {month}월</AppText>
                 <Pressable onPress={nextMonth} hitSlop={12} style={styles.navBtn}>
-                    <Text style={[styles.navArrow, {color: c.brandPrimary}]}>▶</Text>
+                    <Ionicons name="chevron-forward" size={22} color={c.brandPrimary} />
                 </Pressable>
             </View>
 
@@ -153,10 +154,8 @@ const AttendanceCalendarScreen: React.FC = () => {
                         <DetailRow label="적용 시급" value={`${selectedRecord.appliedHourlyWage.toLocaleString('ko-KR')}원`} />
                     ) : null}
                     <AppButton
-                        label="정정 요청"
+                        label="정정 요청하기"
                         variant="outline"
-                        size="sm"
-                        fullWidth={false}
                         style={styles.detailCta}
                         onPress={() =>
                             navigation.navigate('AttendanceCorrectionRequest', {
@@ -246,9 +245,8 @@ function pad(n: number): string {
 }
 
 const styles = StyleSheet.create({
-    headerRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm},
+    headerRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md},
     navBtn: {padding: spacing.sm, minWidth: 44, alignItems: 'center'},
-    navArrow: {fontSize: 20, fontWeight: '700'},
     weekRow: {flexDirection: 'row', justifyContent: 'space-around', paddingVertical: spacing.sm},
     weekDay: {flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '600'},
     grid: {flexDirection: 'row', flexWrap: 'wrap'},
@@ -261,10 +259,10 @@ const styles = StyleSheet.create({
     legendDotCircle: {width: 8, height: 8, borderRadius: 4},
     legendText: {fontSize: 12},
     empty: {paddingVertical: spacing.md},
-    detailCard: {marginTop: spacing.md},
+    detailCard: {marginTop: spacing.xl},
     detailStore: {marginTop: 2, marginBottom: spacing.sm},
-    detailRow: {flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4},
-    detailCta: {marginTop: spacing.md, alignSelf: 'flex-end'},
+    detailRow: {flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6},
+    detailCta: {marginTop: spacing.lg},
 });
 
 export default AttendanceCalendarScreen;

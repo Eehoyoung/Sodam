@@ -2,7 +2,10 @@ import {AppToast, AppButton, AppCard, AppHeader, AppInput, AppText, CtaStack, Sc
 import React, {useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
+import api from '../../../common/utils/api';
 
 interface RouteParams {
     attendanceId?: number;
@@ -14,13 +17,13 @@ interface RouteParams {
 
 /**
  * 24 CorrectionRequest — 확정 시안.
- * 직원이 잘못 기록된 출퇴근을 사장에게 정정 요청. 검증/제출 로직 보존.
- *
- * TODO[P1 BE]: POST /api/attendance/{id}/correction-request 미구현 — mock fallback.
+ * 직원이 잘못 기록된 출퇴근을 사장에게 정정 요청.
+ * POST /api/attendance/{attendanceId}/correction-request 로 실제 제출(사장 승인 워크플로).
  */
 const AttendanceCorrectionRequestScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
+    const c = useThemeColors();
     const params: RouteParams = route.params ?? {};
 
     const [checkIn, setCheckIn] = useState(formatTime(params.currentCheckIn) ?? '09:00');
@@ -38,18 +41,24 @@ const AttendanceCorrectionRequestScreen: React.FC = () => {
             AppToast.warn('시간을 HH:MM 형식으로 입력해 주세요.');
             return;
         }
+        if (!params.attendanceId) {
+            AppToast.warn('정정할 근무 기록을 먼저 선택해 주세요.');
+            return;
+        }
         setLoading(true);
         try {
-            // TODO[P1 BE]: 엔드포인트 구현 후 실제 호출 활성화
-            console.log('[correction-request mock]', {
-                attendanceId: params.attendanceId,
-                checkIn,
-                checkOut,
+            // 정정 대상 날짜(YYYY-MM-DD) + 입력 시각(HH:MM)을 LocalDateTime 으로 결합
+            const baseDate = /^\d{4}-\d{2}-\d{2}/.test(params.date ?? '')
+                ? (params.date as string).slice(0, 10)
+                : new Date().toISOString().slice(0, 10);
+            await api.post(`/api/attendance/${params.attendanceId}/correction-request`, {
+                proposedCheckIn: `${baseDate}T${checkIn}:00`,
+                proposedCheckOut: `${baseDate}T${checkOut}:00`,
                 reason: reason.trim(),
             });
             setSubmitted(true);
         } catch (e: any) {
-            AppToast.error('요청 전송에 실패했어요. 잠시 후 다시 시도해 주세요.');
+            AppToast.error(e?.response?.data?.message ?? '요청 전송에 실패했어요. 잠시 후 다시 시도해 주세요.');
         } finally {
             setLoading(false);
         }
@@ -76,6 +85,8 @@ const AttendanceCorrectionRequestScreen: React.FC = () => {
                     <AppButton label="정정 요청 보내기" loading={loading} onPress={submit} />
                 </CtaStack>
             }>
+            <AppText variant="headingLg" style={styles.question}>어디를 바로잡을까요?</AppText>
+
             <AppCard variant="warm">
                 <AppText variant="titleMd">현재 기록</AppText>
                 {params.date ? (
@@ -118,9 +129,12 @@ const AttendanceCorrectionRequestScreen: React.FC = () => {
                 />
             </View>
 
-            <AppText variant="caption" tone="tertiary" center style={styles.disclaimer}>
-                ⓘ 정정 사유는 사장님과 직원 본인만 볼 수 있어요.
-            </AppText>
+            <View style={styles.disclaimer}>
+                <Ionicons name="lock-closed-outline" size={14} color={c.textTertiary} />
+                <AppText variant="caption" tone="tertiary">
+                    정정 사유는 사장님과 직원 본인만 볼 수 있어요.
+                </AppText>
+            </View>
         </ScreenContainer>
     );
 };
@@ -144,9 +158,10 @@ function isValidTime(s: string): boolean {
 }
 
 const styles = StyleSheet.create({
+    question: {marginBottom: spacing.xl},
     sub: {marginTop: 4},
-    form: {marginTop: spacing.md, gap: spacing.md},
-    disclaimer: {marginTop: spacing.md},
+    form: {marginTop: spacing.xl, gap: spacing.lg},
+    disclaimer: {marginTop: spacing.xl, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs},
 });
 
 export default AttendanceCorrectionRequestScreen;
