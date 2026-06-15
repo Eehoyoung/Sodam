@@ -17,7 +17,18 @@ import {Pressable, StyleProp, StyleSheet, View, ViewStyle} from 'react-native';
 import {radius, shadow, spacing} from '../../../theme/tokens';
 import {useThemeColors, ThemeColors} from '../../hooks/useThemeColors';
 
-export type CardVariant = 'flat' | 'elevated' | 'outlined' | 'warm' | 'navy' | 'danger';
+export type CardVariant =
+    | 'flat'
+    | 'elevated'
+    | 'outlined'
+    | 'warm'
+    | 'navy'
+    | 'danger'
+    | 'plain'
+    | 'hero';
+
+/** v3 토스식 기본 카드 라운드(20). hero/바텀시트는 24(radius.xxl). */
+const CARD_RADIUS = 20;
 
 interface AppCardProps {
     children: ReactNode;
@@ -47,7 +58,8 @@ export const AppCard: React.FC<AppCardProps> = ({
     const c = useThemeColors();
     const base: ViewStyle[] = [
         styles.base,
-        {borderRadius: hero ? radius.xxl : radius.xl},
+        // v3 토스식: 카드 라운드 20 (hero 는 24) — 더 부드럽게
+        {borderRadius: hero || variant === 'hero' ? radius.xxl : CARD_RADIUS},
         variantStyle(variant, c),
         selected ? {borderWidth: 2, borderColor: c.brandPrimary} : null,
     ].filter(Boolean) as ViewStyle[];
@@ -77,26 +89,35 @@ const variantStyle = (variant: CardVariant, c: ThemeColors): ViewStyle => {
     switch (variant) {
         case 'elevated':
             return {backgroundColor: c.background, ...shadow.md};
+        case 'hero':
+            // v3: 핵심 요약(숫자 히어로) 카드 — 그림자로 띄우고 테두리 없음
+            return {backgroundColor: c.background, borderWidth: 0, ...shadow.lg};
         case 'outlined':
             return {backgroundColor: c.background, borderWidth: 1, borderColor: c.borderStrong};
         case 'warm':
-            return {backgroundColor: c.surfaceWarm, borderWidth: 1, borderColor: c.brandPrimaryMuted};
+            // v3: 테두리 제거 — 따뜻한 배경 + 소프트 그림자로 구분
+            return {backgroundColor: c.surfaceWarm, borderWidth: 0, ...shadow.sm};
         case 'navy':
-            return {backgroundColor: c.brandSecondary, borderWidth: 0};
+            return {backgroundColor: c.brandSecondary, borderWidth: 0, ...shadow.md};
         case 'danger':
             return {backgroundColor: c.warningBg, borderWidth: 1, borderColor: c.warning};
+        case 'plain':
+            // v3 기본: 테두리 없이 흰 배경 + 소프트 그림자 (여백·그림자로 구분)
+            return {backgroundColor: c.background, borderWidth: 0, ...shadow.sm};
         case 'flat':
         default:
-            return {backgroundColor: c.background, borderWidth: 1, borderColor: c.border};
+            // v3: flat 도 테두리를 약하게 → 그림자 기반 분리
+            return {backgroundColor: c.background, borderWidth: 0, ...shadow.sm};
     }
 };
 
 const styles = StyleSheet.create({
     base: {
-        padding: spacing.lg,
+        // v3 토스식: 카드 내부 여백 20
+        padding: spacing.xl,
         minWidth: 0,
     },
-    pressed: {opacity: 0.95, transform: [{scale: 0.99}]},
+    pressed: {opacity: 0.97, transform: [{scale: 0.99}]},
 });
 
 export default AppCard;

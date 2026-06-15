@@ -24,7 +24,7 @@ import {
     View,
     ViewStyle,
 } from 'react-native';
-import {radius, shadow, spacing} from '../../../theme/tokens';
+import {shadow, spacing} from '../../../theme/tokens';
 import {useThemeColors, ThemeColors} from '../../hooks/useThemeColors';
 
 export type ButtonVariant =
@@ -51,7 +51,8 @@ interface AppButtonProps {
     testID?: string;
 }
 
-const HEIGHTS: Record<ButtonSize, number> = {sm: 36, md: 48, lg: 54};
+// v3 토스식: primary CTA 는 더 크고 자신감 있게(56). sm/md 는 보조 액션 유지.
+const HEIGHTS: Record<ButtonSize, number> = {sm: 38, md: 50, lg: 56};
 
 export const AppButton: React.FC<AppButtonProps> = ({
     label,
@@ -124,7 +125,8 @@ const getPalette = (
         case 'primary':
             return {bg: c.brandPrimary, fg: c.textInverse};
         case 'secondary':
-            return {bg: c.background, fg: c.brandSecondary, border: c.border};
+            // v3: 네이비 outline (배경 흰색 + 네이비 텍스트 + 네이비 보더)
+            return {bg: c.background, fg: c.brandSecondary, border: c.brandSecondary};
         case 'outline':
             return {bg: 'transparent', fg: c.brandPrimary, border: c.border};
         case 'ghost':
@@ -138,12 +140,20 @@ const getPalette = (
     }
 };
 
-const textSize = (size: ButtonSize): TextStyle =>
-    size === 'sm' ? {fontSize: 13} : {fontSize: 15};
+const textSize = (size: ButtonSize): TextStyle => {
+    if (size === 'sm') {
+        return {fontSize: 13};
+    }
+    if (size === 'md') {
+        return {fontSize: 15};
+    }
+    return {fontSize: 16}; // lg: 더 큰 1차 CTA
+};
 
 const styles = StyleSheet.create({
     base: {
-        borderRadius: radius.xl,
+        // v3 토스식: 더 부드러운 라운드(18) + 촉감 있는 press(0.975)
+        borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: spacing.lg,
@@ -151,10 +161,10 @@ const styles = StyleSheet.create({
     bordered: {borderWidth: 1},
     fullWidth: {alignSelf: 'stretch'},
     auto: {alignSelf: 'center'},
-    pressed: {opacity: 0.92, transform: [{scale: 0.97}]},
+    pressed: {opacity: 0.94, transform: [{scale: 0.975}]},
     row: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center'},
     icon: {marginRight: spacing.sm},
-    label: {fontWeight: '800', textAlign: 'center'},
+    label: {fontWeight: '700', textAlign: 'center', letterSpacing: -0.2},
 });
 
 export default AppButton;

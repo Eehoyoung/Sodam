@@ -22,7 +22,7 @@ import {
     ViewStyle,
 } from 'react-native';
 import {Edge, SafeAreaView} from 'react-native-safe-area-context';
-import {layout, spacing} from '../../../theme/tokens';
+import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../hooks/useThemeColors';
 
 interface ScreenContainerProps {
@@ -67,8 +67,9 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
     const bg = backgroundColor ?? themed.surfaceCanvas;
     const shouldAvoidKeyboard = keyboardAvoiding ?? scroll;
 
+    // v3 토스식: 압도적 여백 — 좌우 24 / 상 28 기본
     const innerPadding: ViewStyle = padded
-        ? {paddingHorizontal: layout.screenPaddingHorizontal, paddingTop: spacing.md}
+        ? {paddingHorizontal: spacing.xxl, paddingTop: spacing.xxl + spacing.xs}
         : {};
 
     const body = scroll ? (
