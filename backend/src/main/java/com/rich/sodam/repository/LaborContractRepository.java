@@ -10,5 +10,7 @@ public interface LaborContractRepository extends JpaRepository<LaborContract, Lo
 
     List<LaborContract> findByEmployeeIdAndStoreIdOrderByCreatedAtDesc(Long employeeId, Long storeId);
 
+    List<LaborContract> findByEmployeeIdOrderByCreatedAtDesc(Long employeeId);
+
     Optional<LaborContract> findFirstByEmployeeIdAndStoreIdOrderByCreatedAtDesc(Long employeeId, Long storeId);
 }

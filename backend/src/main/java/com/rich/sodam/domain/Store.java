@@ -95,6 +95,19 @@ public class Store {
     }
 
     /**
+     * 상시근로자 수를 기준으로 5인 이상 여부를 산정·반영한다.
+     * <p>직원-매장 관계 변경(추가·해지) 시 호출되어 §56 가산 적용 여부를 정상화한다.
+     * 상시 5인 이상이면 true(가산 적용), 5인 미만이면 false(가산 제외).
+     * (시행령 §7의2 4주 평균 정교화는 향후 과제 — 현재는 활성 재직 인원 수 기준.)
+     *
+     * @param activeEmployeeCount 현재 활성(재직) 직원 수
+     */
+    public void applyEmployeeCount(int activeEmployeeCount) {
+        this.fiveOrMoreEmployees = activeEmployeeCount >= 5;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
      * 매장 생성자
      *
      * @param storeName             매장 이름

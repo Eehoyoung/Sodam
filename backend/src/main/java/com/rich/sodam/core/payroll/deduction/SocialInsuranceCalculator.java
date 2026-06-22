@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 
 /**
  * 4대보험 근로자 부담 공제 계산기 (2026). 단일 책임(SRP).
@@ -32,9 +33,17 @@ public class SocialInsuranceCalculator {
     }
 
     public int nationalPension(int grossWage) {
+        return nationalPension(grossWage, LocalDate.now());
+    }
+
+    /**
+     * 국민연금 근로자 부담액. 기준소득월액 상·하한 캡은 {@code onDate} 기준 적용분으로 분기한다
+     * (캡은 매년 7.1 갱신). 기존 무인자 버전은 현재 일자를 사용해 호환을 유지한다.
+     */
+    public int nationalPension(int grossWage, LocalDate onDate) {
         BigDecimal base = BigDecimal.valueOf(grossWage)
-                .max(SocialInsuranceRates.PENSION_BASE_MIN)
-                .min(SocialInsuranceRates.PENSION_BASE_MAX);
+                .max(SocialInsuranceRates.pensionBaseMin(onDate))
+                .min(SocialInsuranceRates.pensionBaseMax(onDate));
         return base.multiply(SocialInsuranceRates.NATIONAL_PENSION_EMPLOYEE)
                 .setScale(0, RoundingMode.DOWN).intValue();
     }

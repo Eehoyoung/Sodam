@@ -49,6 +49,7 @@ public class PayrollService {
     private final com.rich.sodam.core.payroll.wage.WorkHoursCalculator workHoursCalculator;
     private final com.rich.sodam.core.payroll.deduction.SocialInsuranceCalculator socialInsuranceCalculator;
     private final PlanAccessService planAccessService;
+    private final PayslipFreeGrantService payslipFreeGrantService;
 
     /** 미리보기 워터마크 문구(매장 사장 플랜이 명세서 PDF 발급 권한 미보유 시). */
     private static final String PAYSLIP_WATERMARK = "소담 미리보기 · STARTER 플랜에서 정식 발급";
@@ -774,9 +775,19 @@ public class PayrollService {
 
         // 게이팅: 매장 사장 플랜이 명세서 PDF 발급 권한(STARTER+)을 보유하지 않으면 워터마크(미리보기).
         // 하드 차단(402)은 직원의 본인 명세서 조회까지 막으므로, 발급은 허용하되 워터마크로 "정식 발급 아님"을 표시.
-        boolean watermark = payroll.getStore() == null
-                || !planAccessService.storeOwnerHasFeature(
-                        payroll.getStore().getId(), com.rich.sodam.domain.type.PlanFeature.PAYSLIP_PDF);
+        // B4(2026-06-18 승인): 무료 플랜도 매장당 "월 1회"는 워터마크 없이 정식 발급(가치 각인 후 페이월).
+        boolean watermark;
+        if (payroll.getStore() == null) {
+            watermark = true;
+        } else if (planAccessService.storeOwnerHasFeature(
+                payroll.getStore().getId(), com.rich.sodam.domain.type.PlanFeature.PAYSLIP_PDF)) {
+            watermark = false; // 유료(STARTER+): 항상 정식
+        } else if (payslipFreeGrantService.tryConsumeFreeGrant(
+                payroll.getStore().getId(), java.time.YearMonth.now())) {
+            watermark = false; // 무료 플랜 이번 달 첫 발급 → 정식(무료 1회)
+        } else {
+            watermark = true;  // 무료 플랜 2건째부터 → 워터마크(미리보기)
+        }
 
         try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream()) {
             com.lowagie.text.Document document = new com.lowagie.text.Document(com.lowagie.text.PageSize.A4);

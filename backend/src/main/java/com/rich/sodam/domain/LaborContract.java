@@ -1,5 +1,6 @@
 package com.rich.sodam.domain;
 
+import com.rich.sodam.domain.type.WagePaymentMethod;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -52,9 +53,30 @@ public class LaborContract {
     @Column(name = "wage_payment_day")
     private Integer wagePaymentDay;
 
+    /**
+     * 임금 지급방법(§17① — 계좌이체/현금). 미지정 시 null(레거시 계약 호환).
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "wage_payment_method", length = 20)
+    private WagePaymentMethod wagePaymentMethod;
+
+    /**
+     * 임금 구성항목·계산방법 명시(§17① — 기본급·수당 등 구성 분해/메모).
+     * PII 아님(개인 식별정보 미포함). 예: "기본급 시급 + 주휴수당, 연장 시 가산 1.5배".
+     */
+    @Column(name = "wage_components", length = 1000)
+    private String wageComponents;
+
     /** 소정근로시간(주). */
     @Column(name = "contracted_hours_per_week")
     private Double contractedHoursPerWeek;
+
+    /**
+     * 1주 소정근로일 수(약정 근무일). 주휴수당 개근 판정의 분모(근로기준법 §55 시행령 §30).
+     * 설정 시 직원-매장 관계에 전달되어 결근까지 정확 판정(폴백 과지급 방지).
+     */
+    @Column(name = "contracted_weekly_days")
+    private Integer contractedWeeklyDays;
 
     /** 주휴일 요일(예: SUNDAY). */
     @Column(name = "weekly_holiday_day", length = 16)
@@ -78,6 +100,23 @@ public class LaborContract {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    /**
+     * 직원 서명(동의) 처리. 멱등 — 이미 서명된 경우 최초 서명 시각을 보존한다.
+     *
+     * @return 이번 호출로 서명이 새로 기록되면 true, 이미 서명돼 있었으면 false
+     */
+    public boolean markSigned(LocalDateTime signedAt) {
+        if (this.employeeSignedAt != null) {
+            return false;
+        }
+        this.employeeSignedAt = signedAt;
+        return true;
+    }
+
+    public boolean isSigned() {
+        return this.employeeSignedAt != null;
+    }
 
     @PrePersist
     void onCreate() {
