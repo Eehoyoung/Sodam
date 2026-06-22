@@ -1,13 +1,7 @@
-// 플러그인 선언
-plugins {
-    id("com.android.application") version "8.11.1" apply false
-    id("org.jetbrains.kotlin.android") version "2.2.10" apply false
-    id("com.facebook.react") version "0.81.0" apply false
-}
-
 // FCM (Firebase) — key-ready. google-services.json 배치 + rebuild 시 활성화.
 // classpath 는 항상 선언하되, 실제 plugin 적용은 app/build.gradle 에서
 // google-services.json 존재 여부로 가드한다 (키 부재 시 빌드 깨짐 방지).
+// ⚠️ Gradle 규칙: buildscript {} 는 반드시 plugins {} 보다 먼저 와야 한다.
 buildscript {
     repositories {
         google()
@@ -16,6 +10,13 @@ buildscript {
     dependencies {
         classpath("com.google.gms:google-services:4.4.2")
     }
+}
+
+// 플러그인 선언
+plugins {
+    id("com.android.application") version "8.11.1" apply false
+    id("org.jetbrains.kotlin.android") version "2.2.10" apply false
+    id("com.facebook.react") version "0.81.0" apply false
 }
 
 ext {
