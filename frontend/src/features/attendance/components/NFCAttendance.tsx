@@ -119,6 +119,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
     // 컴포넌트 마운트 시 NFC 초기화
     useEffect(() => {
         initializeNFC();
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- 마운트 1회 NFC 초기화(초기화 함수 의존 추가 시 반복 초기화)
     }, []);
 
     // NFC 태그 스캔 처리
