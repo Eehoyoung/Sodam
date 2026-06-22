@@ -5,6 +5,19 @@ plugins {
     id("com.facebook.react") version "0.81.0" apply false
 }
 
+// FCM (Firebase) — key-ready. google-services.json 배치 + rebuild 시 활성화.
+// classpath 는 항상 선언하되, 실제 plugin 적용은 app/build.gradle 에서
+// google-services.json 존재 여부로 가드한다 (키 부재 시 빌드 깨짐 방지).
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.google.gms:google-services:4.4.2")
+    }
+}
+
 ext {
     compileSdk = 36
     targetSdkVersion = 36

@@ -136,6 +136,12 @@ jest.mock('react-native', () => ({
     },
     NativeModules: {},
     PixelRatio: {get: jest.fn(() => 2), getFontScale: jest.fn(() => 1)},
+    PermissionsAndroid: {
+        PERMISSIONS: {POST_NOTIFICATIONS: 'android.permission.POST_NOTIFICATIONS'},
+        RESULTS: {GRANTED: 'granted', DENIED: 'denied', NEVER_ASK_AGAIN: 'never_ask_again'},
+        request: jest.fn(() => Promise.resolve('granted')),
+        check: jest.fn(() => Promise.resolve(true)),
+    },
 }));
 
 // Mock react-native-linear-gradient (LinearGradient used across screens)
@@ -180,6 +186,23 @@ jest.mock('react-native-nfc-manager', () => ({
     NfcTech: {Ndef: 'Ndef', NfcA: 'NfcA'},
     NfcEvents: {DiscoverTag: 'DiscoverTag'},
 }));
+
+// Mock @react-native-firebase/messaging (FCM key-ready 래퍼는 optional-require 로
+// 이미 부재를 막지만, 모듈이 설치된 환경에서 깔끔히 동작하도록 명시 mock).
+try {
+    jest.mock('@react-native-firebase/messaging', () => {
+        const messaging = jest.fn(() => ({
+            requestPermission: jest.fn(() => Promise.resolve(1)),
+            getToken: jest.fn(() => Promise.resolve('test-fcm-token')),
+            onMessage: jest.fn(() => jest.fn()),
+            onTokenRefresh: jest.fn(() => jest.fn()),
+            setBackgroundMessageHandler: jest.fn(),
+        }));
+        return {__esModule: true, default: messaging};
+    }, {virtual: true}); // 패키지 미설치 상태에서도 mock 등록 (key-ready 검증용)
+} catch (e) {
+    // 모듈 미설치 — optional-require 가 fallback 처리
+}
 
 // Mock react-native-screens
 jest.mock('react-native-screens', () => ({

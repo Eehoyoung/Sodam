@@ -7,6 +7,21 @@ import 'react-native-reanimated';
 import {AppRegistry, LogBox} from 'react-native';
 import {name as appName} from './app.json';
 
+// FCM 백그라운드 메시지 핸들러 (컴포넌트 밖 최상위 등록 필수).
+// key-ready: @react-native-firebase/messaging·google-services.json 부재 시 skip.
+try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional native module, guarded require (FCM 키 주입 전에는 부재)
+    const messaging = require('@react-native-firebase/messaging').default;
+    if (typeof messaging === 'function') {
+        messaging().setBackgroundMessageHandler(async () => {
+            // 백그라운드 데이터 메시지 수신 시 처리 지점.
+            // 표시 알림(notification payload)은 OS 가 자동 표시한다.
+        });
+    }
+} catch (e) {
+    // 모듈 미배선 — 백그라운드 핸들러 등록 skip (정상 동작)
+}
+
 
 // 개발 환경에서만 불필요한 경고 숨기기
 if (__DEV__) {

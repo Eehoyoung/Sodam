@@ -6,6 +6,7 @@ import {safeLogger} from '../utils/safeLogger';
 import { setOnUnauthorized } from '../common/utils/api';
 import {navigate} from '../navigation/navigationRef';
 import PaywallHost from '../features/subscription/components/PaywallHost';
+import {useFcmRegistration} from '../common/hooks/useFcmRegistration';
 
 /**
  * 인증 컨텍스트 타입 정의
@@ -127,6 +128,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
             }
         })();
     }, []);
+
+    // FCM 디바이스 토큰 등록/해제를 인증 상태에 연결 (key-ready — 모듈 부재 시 no-op)
+    useFcmRegistration(isAuthenticated);
 
     // 직전 인증 여부 추적 — 세션 만료(A1) 안내를 "로그인 상태였다가 튕긴 경우"에만 노출
     const wasAuthedRef = useRef(false);

@@ -4,6 +4,13 @@
         id "com.facebook.react"
     }
 
+    // FCM (Firebase) — key-ready. google-services.json (시크릿, 커밋 금지) 이
+    // app/ 에 배치되어 있을 때만 google-services 플러그인을 적용한다.
+    // 키 부재 시(현재 상태) skip → 빌드/실행에 영향 없음.
+    if (file("google-services.json").exists()) {
+        apply plugin: "com.google.gms.google-services"
+    }
+
     android {
         namespace "com.sodam_front_end"
         compileSdkVersion 36
@@ -65,6 +72,9 @@
         maybeImpl(":react-native-vector-icons")
         maybeImpl(":react-native-linear-gradient")
         maybeImpl(":react-native-community_datetimepicker")
+        // FCM — @react-native-firebase 설치 후 autolinking 으로 잡힌다 (key-ready)
+        maybeImpl(":react-native-firebase_app")
+        maybeImpl(":react-native-firebase_messaging")
     }
 
     apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
