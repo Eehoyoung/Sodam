@@ -3,6 +3,7 @@ import {Linking, StyleSheet, View} from 'react-native';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {AppButton, AppText, AppToast, Brandmark} from '../../../common/components/ds';
 import {gradient, spacing} from '../../../theme/tokens';
 import authApi from '../services/authApi';
@@ -25,7 +26,7 @@ export const hasKakaoError = (url?: string | null): boolean => {
 };
 
 const KakaoLoginScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
     const route = useRoute<RouteProp<AuthStackParamList, 'KakaoLogin'>>();
     const insets = useSafeAreaInsets();
     const [status, setStatus] = useState<KakaoStatus>('idle');

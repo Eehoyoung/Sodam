@@ -12,7 +12,7 @@ const decodeBase64Url = (input: string): string => {
     const normalized = input.replace(/-/g, '+').replace(/_/g, '/');
     const pad = normalized.length % 4 === 0 ? '' : '='.repeat(4 - (normalized.length % 4));
     // global.atob 가 RN 0.71+ 에 내장
-    return (global as any).atob(normalized + pad);
+    return (global as typeof globalThis & { atob: (data: string) => string }).atob(normalized + pad);
 };
 
 export interface User {
@@ -62,6 +62,37 @@ export interface SignupResponse {
     success?: boolean;
 }
 
+/**
+ * BE 인증 응답의 느슨한 형태.
+ * 엔드포인트/버전마다 토큰·유저 필드 위치가 달라(root 직속 또는 user 중첩, data 래퍼 유무)
+ * 모든 후보 키를 optional 로 선언해 매퍼가 안전하게 폴백하도록 한다.
+ */
+interface RawUser {
+    id?: number;
+    name?: string;
+    email?: string;
+    phone?: string;
+    role?: string;
+    userGrade?: string;
+    profileCompleted?: boolean;
+    consentCompleted?: boolean;
+    locationConsented?: boolean;
+}
+
+interface RawAuthRoot extends RawUser {
+    accessToken?: string;
+    token?: string;
+    jwtToken?: string;
+    refreshToken?: string;
+    user?: RawUser;
+    userId?: number;
+}
+
+interface RawAuthResponse extends RawAuthRoot {
+    message?: string;
+    data?: RawAuthRoot;
+}
+
 const mapRole = (value: unknown): User['role'] | undefined => {
     if (typeof value !== 'string') {
         return undefined;
@@ -88,14 +119,15 @@ const mapSignupGrade = (role: SignupRequest['role']) => {
     return 'Personal';
 };
 
-const mapAuthResponse = async (data: any): Promise<AuthResponse> => {
+const mapAuthResponse = async (data: RawAuthResponse): Promise<AuthResponse> => {
     const root = data?.data && data?.message !== undefined ? data.data : data;
     const accessToken = root?.accessToken ?? root?.token ?? root?.jwtToken;
     const refreshToken = root?.refreshToken;
     const rawUser = root?.user;
     const user: User = {
         ...(rawUser ?? {}),
-        id: rawUser?.id ?? root?.userId,
+        // BE 응답에 id 가 없는 경우는 정상 시나리오가 아니지만, 기존 동작(undefined 허용)을 보존한다.
+        id: (rawUser?.id ?? root?.userId) as number,
         name: rawUser?.name ?? root?.name ?? '',
         email: rawUser?.email ?? root?.email ?? '',
         phone: rawUser?.phone ?? root?.phone ?? undefined,
@@ -116,11 +148,15 @@ const mapAuthResponse = async (data: any): Promise<AuthResponse> => {
     return {user, token: accessToken};
 };
 
-const postWithFallback = async <T>(primary: string, fallback: string, payload?: any) => {
+// 404/405(엔드포인트 미존재) 판별용 — axios 에러를 좁히기 위한 최소 형태.
+const statusOf = (e: unknown): number | undefined =>
+    (e as {response?: {status?: number}})?.response?.status;
+
+const postWithFallback = async <T>(primary: string, fallback: string, payload?: unknown) => {
     try {
         return await api.post<T>(primary, payload);
-    } catch (e: any) {
-        const code = e?.response?.status;
+    } catch (e: unknown) {
+        const code = statusOf(e);
         if (code === 404 || code === 405) {
             return await api.post<T>(fallback, payload);
         }
@@ -131,8 +167,8 @@ const postWithFallback = async <T>(primary: string, fallback: string, payload?: 
 const getWithFallback = async <T>(primary: string, fallback: string) => {
     try {
         return await api.get<T>(primary);
-    } catch (e: any) {
-        const code = e?.response?.status;
+    } catch (e: unknown) {
+        const code = statusOf(e);
         if (code === 404 || code === 405) {
             return await api.get<T>(fallback);
         }
@@ -143,7 +179,7 @@ const getWithFallback = async <T>(primary: string, fallback: string) => {
 const authService = {
     login: async (loginRequest: LoginRequest): Promise<AuthResponse> => {
         try {
-            const res = await postWithFallback<any>('/api/login', '/api/login', loginRequest);
+            const res = await postWithFallback<RawAuthResponse>('/api/login', '/api/login', loginRequest);
             return await mapAuthResponse(res.data);
         } catch (error) {
             logger.error('login failed', 'AUTH_SERVICE', error);
@@ -153,7 +189,7 @@ const authService = {
 
     kakaoLogin: async (code: string): Promise<AuthResponse> => {
         try {
-            const res = await api.get<any>(`/kakao/auth/proc?code=${encodeURIComponent(code)}`);
+            const res = await api.get<RawAuthResponse>(`/kakao/auth/proc?code=${encodeURIComponent(code)}`);
             return await mapAuthResponse(res.data);
         } catch (error) {
             logger.error('kakaoLogin failed', 'AUTH_SERVICE', error);
@@ -174,7 +210,7 @@ const authService = {
                 privacyAgreed: !!signupRequest.privacyAgreed,
                 marketingAgreed: !!signupRequest.marketingAgreed,
             };
-            const res = await postWithFallback<any>('/api/join', '/api/join', body);
+            const res = await postWithFallback<SignupResponse>('/api/join', '/api/join', body);
             return {
                 message: res.data?.message,
                 success: res.data?.success,
@@ -194,7 +230,7 @@ const authService = {
             const refreshToken = await TokenManager.getRefresh();
             if (refreshToken) {
                 try {
-                    await postWithFallback<any>('/api/auth/logout', '/api/logout', {refreshToken});
+                    await postWithFallback<unknown>('/api/auth/logout', '/api/logout', {refreshToken});
                 } catch (_) {
                     // ignore network errors — 로컬 세션은 무조건 정리
                 }
@@ -210,15 +246,16 @@ const authService = {
 
     getCurrentUser: async (): Promise<User> => {
         try {
-            const res = await getWithFallback<any>('/api/auth/me', '/api/me');
-            const data = res.data?.data ?? res.data;
+            const res = await getWithFallback<RawAuthResponse>('/api/auth/me', '/api/me');
+            const data: RawAuthRoot = res.data?.data ?? res.data;
+            // BE me 응답의 role/userGrade 를 앱 role 로 정규화 — 나머지 필드는 그대로 전달.
             return {
                 ...data,
                 role: mapRole(data?.role ?? data?.userGrade),
-            };
-        } catch (error: any) {
+            } as User;
+        } catch (error: unknown) {
             // 401/403/404 는 정상적인 미인증/엔드포인트 미존재 상태 — LogBox 도배 방지 위해 silent
-            const status = error?.response?.status;
+            const status = statusOf(error);
             if (status !== 401 && status !== 403 && status !== 404) {
                 logger.error('getCurrentUser failed', 'AUTH_SERVICE', error);
             }

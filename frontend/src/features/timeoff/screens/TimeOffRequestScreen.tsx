@@ -1,7 +1,9 @@
 import {AppToast, AppButton, AppHeader, AppInput, AppText, CtaStack, ScreenContainer, SuccessState} from '../../../common/components/ds';
 import React, {useState} from 'react';
 import {StyleSheet, View} from 'react-native';
-import {useNavigation, useRoute} from '@react-navigation/native';
+import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {spacing} from '../../../theme/tokens';
 import api from '../../../common/utils/api';
 
@@ -10,9 +12,9 @@ import api from '../../../common/utils/api';
  * 직원 휴가 셀프 신청. 검증/제출 로직 보존 (BE: storeId/startDate/endDate/reason).
  */
 const TimeOffRequestScreen: React.FC = () => {
-    const route = useRoute<any>();
-    const navigation = useNavigation<any>();
-    const storeId = route.params?.storeId as number | undefined;
+    const route = useRoute<RouteProp<HomeStackParamList, 'TimeOffRequest'>>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
+    const storeId = route.params?.storeId;
 
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');

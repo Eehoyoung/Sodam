@@ -1,3 +1,4 @@
+/* eslint-disable react-native/no-color-literals -- 브랜드 히어로 위 흰 오버레이/구분선 고정(레거시 화면, P2 재디자인 대상) */
 import {AppToast, AppBadge, AppCard, AppHeader, AppText, AmountText, HeroNumber, ScreenContainer} from '../../../common/components/ds';
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -184,7 +185,7 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
 
     const handleAddStore = () => {
         // HomeNavigator에 등록된 라우트로 이동
-        navigation.navigate('StoreRegistration' as never);
+        navigation.navigate('StoreRegistration');
     };
 
     // 빠른 메뉴 — 매장 의존 화면은 첫 매장 기준으로 진입. 매장이 없으면 등록 유도.

@@ -3,15 +3,19 @@ import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import authService, {AuthResponse, LoginRequest, SignupRequest, SignupResponse, User} from '../services/authService';
 import {handleQueryError, queryKeys} from '../../../common/utils/queryClient';
 
+// axios 에러에서 HTTP 상태코드만 안전하게 추출 (인증·존재 에러 분기용).
+const statusOf = (error: unknown): number | undefined =>
+    (error as {response?: {status?: number}})?.response?.status;
+
 export const useCurrentUser = () => {
     return useQuery({
         queryKey: queryKeys.auth.currentUser(),
         queryFn: async (): Promise<User> => {
             try {
                 return await authService.getCurrentUser();
-            } catch (error: any) {
+            } catch (error: unknown) {
                 // 401/403/404 는 정상 미인증/엔드포인트 미존재 — handleQueryError(LogBox 노출) 호출 안 함
-                const status = error?.response?.status;
+                const status = statusOf(error);
                 if (status !== 401 && status !== 403 && status !== 404) {
                     handleQueryError(error, 'getCurrentUser');
                 }
@@ -21,8 +25,8 @@ export const useCurrentUser = () => {
         staleTime: 10 * 60 * 1000,
         gcTime: 30 * 60 * 1000,
         enabled: false,
-        retry: (failureCount, error: any) => {
-            const status = error?.response?.status;
+        retry: (failureCount, error: unknown) => {
+            const status = statusOf(error);
             // 인증·존재 에러는 재시도해도 같은 결과 — 즉시 중단 (LogBox 폴링 방지)
             if (status === 401 || status === 403 || status === 404) {
                 return false;
@@ -88,7 +92,7 @@ export const useLogin = () => {
             cacheAuthenticatedUser(queryClient, data);
             console.log('[TanStack Query] Login success - auth cache updated');
         },
-        onError: (error: any) => {
+        onError: (error: unknown) => {
             queryClient.removeQueries({queryKey: queryKeys.auth.all});
             console.error('[TanStack Query] Login failed:', error);
         },
@@ -114,7 +118,7 @@ export const useKakaoLogin = () => {
             cacheAuthenticatedUser(queryClient, data);
             console.log('[TanStack Query] Kakao login success - auth cache updated');
         },
-        onError: (error: any) => {
+        onError: (error: unknown) => {
             queryClient.removeQueries({queryKey: queryKeys.auth.all});
             console.error('[TanStack Query] Kakao login failed:', error);
         },
@@ -137,7 +141,7 @@ export const useSignup = () => {
         onSuccess: () => {
             console.log('[TanStack Query] Signup success');
         },
-        onError: (error: any) => {
+        onError: (error: unknown) => {
             console.error('[TanStack Query] Signup failed:', error);
         },
         meta: {
@@ -161,7 +165,7 @@ export const useLogout = () => {
             queryClient.clear();
             console.log('[TanStack Query] Logout complete - cache cleared');
         },
-        onError: (error: any) => {
+        onError: (error: unknown) => {
             queryClient.clear();
             console.error('[TanStack Query] Logout failed:', error);
         },
@@ -184,7 +188,7 @@ export const usePasswordResetRequest = () => {
         onSuccess: () => {
             console.log('[TanStack Query] Password reset request complete');
         },
-        onError: (error: any) => {
+        onError: (error: unknown) => {
             console.error('[TanStack Query] Password reset request failed:', error);
         },
         meta: {
@@ -206,7 +210,7 @@ export const usePasswordReset = () => {
         onSuccess: () => {
             console.log('[TanStack Query] Password reset complete');
         },
-        onError: (error: any) => {
+        onError: (error: unknown) => {
             console.error('[TanStack Query] Password reset failed:', error);
         },
         meta: {
@@ -219,11 +223,12 @@ export const useAuthState = () => {
     const authStatusQuery = useAuthStatus();
     const currentUserQuery = useCurrentUser();
 
+    const currentUserRefetch = currentUserQuery.refetch;
     React.useEffect(() => {
         if (authStatusQuery.data === true) {
-            currentUserQuery.refetch();
+            currentUserRefetch();
         }
-    }, [authStatusQuery.data]);
+    }, [authStatusQuery.data, currentUserRefetch]);
 
     return {
         isAuthenticated: authStatusQuery.data ?? false,

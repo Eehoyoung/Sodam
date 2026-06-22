@@ -81,8 +81,8 @@ const ManagerMyPageScreen: React.FC = () => {
                 <AppHeader
                     title="매니저 홈"
                     actions={[
-                        {label: '알림', onPress: () => navigation.navigate('NotificationCenter' as never)},
-                        {label: '설정', onPress: () => navigation.navigate('AccountSettings' as never)},
+                        {label: '알림', onPress: () => navigation.navigate('NotificationCenter')},
+                        {label: '설정', onPress: () => navigation.navigate('AccountSettings')},
                     ]}
                 />
             }>

@@ -126,10 +126,11 @@ export const useSafeTimer = () => {
     const timersRef = useRef<Set<NodeJS.Timeout>>(new Set());
 
     useEffect(() => {
+        const timers = timersRef.current;
         return () => {
             // Clear all timers on unmount
-            timersRef.current.forEach(timer => clearTimeout(timer));
-            timersRef.current.clear();
+            timers.forEach(timer => clearTimeout(timer));
+            timers.clear();
         };
     }, []);
 
@@ -220,10 +221,11 @@ export const useAsyncOperationManager = () => {
     const operationsRef = useRef<Map<string, AbortController>>(new Map());
 
     useEffect(() => {
+        const operations = operationsRef.current;
         return () => {
             // Abort all operations on unmount
-            operationsRef.current.forEach(controller => controller.abort());
-            operationsRef.current.clear();
+            operations.forEach(controller => controller.abort());
+            operations.clear();
         };
     }, []);
 

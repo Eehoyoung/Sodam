@@ -1,6 +1,8 @@
 import React from 'react';
 import {StyleSheet, View} from 'react-native';
-import {useNavigation, useRoute} from '@react-navigation/native';
+import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {AppButton, AppCard, AppHeader, AppText, CtaStack, ScreenContainer} from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
@@ -10,8 +12,8 @@ import {useThemeColors} from '../../../common/hooks/useThemeColors';
  * 실제 다운로드/공유는 호출 측 onDownload/onShare (route param) 또는 기본 안내.
  */
 const PdfPreviewScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
-    const route = useRoute<any>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
+    const route = useRoute<RouteProp<HomeStackParamList, 'PdfPreview'>>();
     const c = useThemeColors();
     const title = route.params?.title ?? '급여명세서.pdf';
     const sub = route.params?.sub ?? '';

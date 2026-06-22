@@ -3,6 +3,8 @@ import React, {useState} from 'react';
 import {Modal, Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../navigation/HomeNavigator';
 import {spacing} from '../../theme/tokens';
 import {useThemeColors} from '../../common/hooks/useThemeColors';
 import useStoreRegistration from './hooks/useStoreRegistration';
@@ -54,10 +56,10 @@ const StoreRegistrationScreen: React.FC = () => {
     const [addressSearchQuery, setAddressSearchQuery] = useState('');
     const [addressResults, setAddressResults] = useState<AddressResult[]>([]);
     const [showAddressModal, setShowAddressModal] = useState(false);
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const {isLoading, submit} = useStoreRegistration({
         onSuccess: () => {
-            navigation.navigate('MasterMyPageScreen' as never);
+            navigation.navigate('MasterMyPageScreen');
         },
     });
     const [minimumWage] = useState(10030);

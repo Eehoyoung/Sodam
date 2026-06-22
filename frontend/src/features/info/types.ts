@@ -41,3 +41,15 @@ export interface TipsInfo extends InfoArticle {
     difficulty: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
     estimatedTime?: string;
 }
+
+/**
+ * BE 공통 정보 DTO (정책·세금·팁 공유 형태).
+ * 매퍼가 실제로 참조하는 필드만 선언 — 응답 키가 누락돼도 안전하게 좁힐 수 있도록 모두 optional.
+ */
+export interface InfoDto {
+    id: number | string;
+    title?: string;
+    content?: string;
+    createdAt?: string;
+    imagePath?: string;
+}

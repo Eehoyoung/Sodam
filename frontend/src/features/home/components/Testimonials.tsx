@@ -1,7 +1,12 @@
-import React from 'react';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import React, {useMemo} from 'react';
 import {Image, StyleSheet, Text, View} from 'react-native';
+import {ThemeColors, useThemeColors} from '../../../common/hooks/useThemeColors';
 
 const Testimonials = () => {
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
+
     const testimonials = [
         {
             id: 1,
@@ -50,10 +55,10 @@ const Testimonials = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
     container: {
         width: '100%',
-        backgroundColor: '#fff',
+        backgroundColor: c.surface,
         padding: 30,
         marginVertical: 10,
         alignItems: 'center',
@@ -61,12 +66,12 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 28,
         fontWeight: 'bold',
-        color: '#333',
+        color: c.textPrimary,
         marginBottom: 5,
     },
     sectionSubtitle: {
         fontSize: 16,
-        color: '#666',
+        color: c.textSecondary,
         marginBottom: 30,
     },
     testimonialContainer: {
@@ -77,7 +82,7 @@ const styles = StyleSheet.create({
     },
     testimonialCard: {
         width: '30%',
-        backgroundColor: '#f1f9ff',
+        backgroundColor: c.surfaceSky,
         borderRadius: 10,
         padding: 20,
         elevation: 2,
@@ -96,15 +101,15 @@ const styles = StyleSheet.create({
     testimonialName: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#333',
+        color: c.textPrimary,
     },
     testimonialBusiness: {
         fontSize: 14,
-        color: '#666',
+        color: c.textSecondary,
     },
     testimonialComment: {
         fontSize: 14,
-        color: '#333',
+        color: c.textPrimary,
         lineHeight: 22,
         fontStyle: 'italic',
     },

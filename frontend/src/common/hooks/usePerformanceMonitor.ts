@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
 
 /**
@@ -104,7 +104,7 @@ interface RequestTracker {
  */
 export const usePerformanceMonitor = (config: Partial<PerformanceMonitorConfig> = {}) => {
     const queryClient = useQueryClient();
-    const finalConfig = {...defaultConfig, ...config};
+    const finalConfig = useMemo(() => ({...defaultConfig, ...config}), [config]);
 
     // 상태 관리
     const [metrics, setMetrics] = useState<PerformanceMetrics>({

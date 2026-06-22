@@ -241,12 +241,12 @@ export const useCheckIn = () => {
 
             // 관련 쿼리들 무효화
             queryClient.invalidateQueries({
-                queryKey: queryKeys.attendance.store(parseInt(variables.workplaceId))
+                queryKey: queryKeys.attendance.store(parseInt(variables.workplaceId, 10))
             });
 
             if (data.employeeId) {
                 queryClient.invalidateQueries({
-                    queryKey: queryKeys.attendance.employee(parseInt(data.employeeId))
+                    queryKey: queryKeys.attendance.employee(parseInt(data.employeeId, 10))
                 });
             }
 
@@ -292,12 +292,12 @@ export const useCheckOut = () => {
 
             // 관련 쿼리들 무효화
             queryClient.invalidateQueries({
-                queryKey: queryKeys.attendance.store(parseInt(variables.checkOutData.workplaceId))
+                queryKey: queryKeys.attendance.store(parseInt(variables.checkOutData.workplaceId, 10))
             });
 
             if (data.employeeId) {
                 queryClient.invalidateQueries({
-                    queryKey: queryKeys.attendance.employee(parseInt(data.employeeId))
+                    queryKey: queryKeys.attendance.employee(parseInt(data.employeeId, 10))
                 });
             }
 
@@ -347,13 +347,13 @@ export const useUpdateAttendance = () => {
             // 관련 쿼리들 무효화
             if (data.workplaceId) {
                 queryClient.invalidateQueries({
-                    queryKey: queryKeys.attendance.store(parseInt(data.workplaceId))
+                    queryKey: queryKeys.attendance.store(parseInt(data.workplaceId, 10))
                 });
             }
 
             if (data.employeeId) {
                 queryClient.invalidateQueries({
-                    queryKey: queryKeys.attendance.employee(parseInt(data.employeeId))
+                    queryKey: queryKeys.attendance.employee(parseInt(data.employeeId, 10))
                 });
             }
 

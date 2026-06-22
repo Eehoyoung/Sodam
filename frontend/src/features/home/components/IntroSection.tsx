@@ -1,7 +1,12 @@
-import React from 'react';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import React, {useMemo} from 'react';
 import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {ThemeColors, useThemeColors} from '../../../common/hooks/useThemeColors';
 
 const IntroSection = () => {
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
+
     return (
         <View style={styles.introSection}>
             <Text style={styles.mainTitle}>소상공인을 담다! 소담</Text>
@@ -15,9 +20,9 @@ const IntroSection = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
     introSection: {
-        backgroundColor: '#f8f9fa',
+        backgroundColor: c.surfaceCanvas,
         padding: 50,
         alignItems: 'center',
         width: '100%',
@@ -26,25 +31,25 @@ const styles = StyleSheet.create({
         fontSize: 36,
         fontWeight: 'bold',
         marginBottom: 15,
-        color: '#FF6B35',
+        color: c.brandPrimary,
     },
     subTitle: {
         fontSize: 18,
         textAlign: 'center',
         maxWidth: 800,
         lineHeight: 28,
-        color: '#555',
+        color: c.textSecondary,
         marginBottom: 30,
     },
     getStartedButton: {
-        backgroundColor: '#f1c40f',
+        backgroundColor: c.warning,
         paddingVertical: 12,
         paddingHorizontal: 30,
         borderRadius: 25,
         elevation: 3,
     },
     getStartedText: {
-        color: '#333',
+        color: c.textPrimary,
         fontSize: 16,
         fontWeight: 'bold',
     },

@@ -1,3 +1,4 @@
+/* eslint-disable react-native/no-color-literals -- 브랜드 히어로 위 흰 오버레이 고정(레거시 화면, P2 재디자인 대상) */
 /* eslint-disable react-native/no-unused-styles -- styles built via createStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
 import {AppToast, AppButton, AppCard, AppText, AmountText} from '../../../common/components/ds';
 import React, { useState, useEffect, useMemo, useContext } from 'react';

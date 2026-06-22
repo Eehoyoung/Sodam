@@ -24,6 +24,8 @@ import {format} from 'date-fns';
 import {ko} from 'date-fns/locale';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import { useThemeColors, ThemeColors } from '../../../common/hooks/useThemeColors';
 
 type CheckInMethod = 'standard' | 'location' | 'nfc';
@@ -31,7 +33,7 @@ const METHOD_ORDER: CheckInMethod[] = ['standard', 'location', 'nfc'];
 const METHOD_LABELS = ['기본', '위치', 'NFC'];
 
 const AttendanceScreen = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const c = useThemeColors();
     const styles = useMemo(() => makeStyles(c), [c]);
     const { user } = useAuth();
@@ -238,6 +240,7 @@ const AttendanceScreen = () => {
     useEffect(() => {
         fetchWorkplaces();
         requestLocationPermission();
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- 마운트 1회 초기 로드(함수 의존 추가 시 반복 호출)
     }, []);
 
     // 선택된 근무지가 변경되면 출퇴근 기록 다시 조회
@@ -245,6 +248,7 @@ const AttendanceScreen = () => {
         if (selectedWorkplaceId) {
             fetchAttendanceRecords();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- 근무지 변경 시에만 재조회(fetchAttendanceRecords 는 selectedWorkplaceId 를 읽으므로 의도된 트리거)
     }, [selectedWorkplaceId]);
 
     // 새로고침 처리

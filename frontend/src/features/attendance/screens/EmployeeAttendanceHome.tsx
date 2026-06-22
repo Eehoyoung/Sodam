@@ -2,6 +2,8 @@ import {AppToast, ConfirmSheet, AppCard, AppHeader, AppListItem, AppText, Amount
 import React, {useEffect, useMemo, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {spacing} from '../../../theme/tokens';
 import {formatTimer, formatWage} from '../../../common/utils/format';
@@ -33,7 +35,7 @@ interface TodayAttendance {
  * 대형 원형 출근/퇴근 CTA(PunchButton) + 1초 카운트업. 상태머신/네비게이션 로직 보존.
  */
 const EmployeeAttendanceHome: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const {user} = useAuth();
     const r = useResponsive();
     const c = useThemeColors();

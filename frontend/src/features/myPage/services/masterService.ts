@@ -6,14 +6,18 @@ export interface MasterProfile { id: number; name?: string; phone?: string }
 export interface StoreStats { storeId: number; employees?: number; todayAttendance?: number; monthPayroll?: number }
 export interface OverallStats { stores?: number; employees?: number; monthPayroll?: number }
 
-async function unwrap<T = any>(promise: Promise<{ data: any }>): Promise<T> {
+// BE 응답은 {data: T} 래퍼이거나 곧바로 T — 둘 다 허용해 언래핑.
+interface ApiEnvelope<T> { data?: T }
+
+async function unwrap<T>(promise: Promise<{ data: unknown }>): Promise<T> {
   const res = await promise;
-  const body: any = res.data;
-  return (body?.data ?? body) as T;
+  const body = res.data as ApiEnvelope<T> | T;
+  const inner = (body as ApiEnvelope<T>)?.data;
+  return (inner ?? body) as T;
 }
 
-async function mypage(): Promise<any> {
-  return unwrap<any>(api.get(`/api/master/mypage`));
+async function mypage(): Promise<unknown> {
+  return unwrap<unknown>(api.get(`/api/master/mypage`));
 }
 
 async function getProfile(): Promise<MasterProfile> {
@@ -24,8 +28,8 @@ async function putProfile(data: Partial<MasterProfile>): Promise<MasterProfile> 
   return unwrap<MasterProfile>(api.put(`/api/master/profile`, data));
 }
 
-async function stores(): Promise<any[]> {
-  const data = await unwrap<any>(api.get(`/api/master/stores`));
+async function stores(): Promise<unknown[]> {
+  const data = await unwrap<unknown>(api.get(`/api/master/stores`));
   return Array.isArray(data) ? data : [];
 }
 
@@ -37,8 +41,8 @@ async function overallStats(): Promise<OverallStats> {
   return unwrap<OverallStats>(api.get(`/api/master/stats/overall`));
 }
 
-async function timeoffPending(): Promise<any[]> {
-  const data = await unwrap<any>(api.get(`/api/master/timeoff/pending`));
+async function timeoffPending(): Promise<unknown[]> {
+  const data = await unwrap<unknown>(api.get(`/api/master/timeoff/pending`));
   return Array.isArray(data) ? data : [];
 }
 

@@ -127,7 +127,7 @@ export const useJSISafeDimensions = (): JSISafeDimensions => {
                 isLandscape: width > height,
                 aspectRatio: width / height,
             };
-        }, [rawDimensions.width, rawDimensions.height]);
+        }, [rawDimensions]);
         console.log('[DEBUG_LOG] useJSISafeDimensions: dimensions created successfully');
 
         // Cache responsive breakpoints using raw width
@@ -141,7 +141,7 @@ export const useJSISafeDimensions = (): JSISafeDimensions => {
                 isLarge: width >= 768 && width < 1024,
                 isTablet: width >= 768,
             };
-        }, [rawDimensions.width]);
+        }, [rawDimensions]);
 
         // Cache safe area calculations using raw dimensions
         // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: hooks wrapped in try/catch to survive native bridge unavailability
@@ -154,7 +154,7 @@ export const useJSISafeDimensions = (): JSISafeDimensions => {
                 content: height * 0.8,
                 sidebar: width * 0.25,
             };
-        }, [rawDimensions.width, rawDimensions.height]);
+        }, [rawDimensions]);
 
         // Pre-calculate common animation values for worklet safety using raw dimensions
         // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: hooks wrapped in try/catch to survive native bridge unavailability
@@ -169,7 +169,7 @@ export const useJSISafeDimensions = (): JSISafeDimensions => {
                 threeQuarterWidth: width * 0.75,
                 threeQuarterHeight: height * 0.75,
             };
-        }, [rawDimensions.width, rawDimensions.height]);
+        }, [rawDimensions]);
 
         return {
             dimensions,

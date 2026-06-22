@@ -2,6 +2,8 @@ import {AppToast, ConfirmSheet, AppBadge, AppButton, AppCard, AppHeader, AppText
 import React, {useCallback, useEffect, useState} from 'react';
 import {RefreshControl, ScrollView, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
@@ -20,7 +22,7 @@ interface PendingItem {
  * 사장 출퇴근 이상 알림 센터. load/sendNudge 로직 + 당겨서 새로고침 보존.
  */
 const MissingAttendanceCenterScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const c = useThemeColors();
     const [items, setItems] = useState<PendingItem[]>([]);
     const [refreshing, setRefreshing] = useState(false);

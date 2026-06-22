@@ -2,12 +2,16 @@
 import {AppToast, AppBadge, AppButton, AppCard, AppInput, AppText, CtaStack, HeroNumber, ScreenContainer, StepScaffold} from '../../../common/components/ds';
 import React, {useEffect, useMemo, useState} from 'react';
 import {Modal, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
-import {useNavigation, useRoute} from '@react-navigation/native';
+import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {tokens} from '../../../theme/tokens';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import {useAuth} from '../../../contexts/AuthContext';
 import api from '../../../common/utils/api';
 import storeService, {StoreSummaryDto} from '../../store/services/storeService';
+import {fetchOvertimeCheck, OvertimeCheck} from '../services/overtimeService';
 
 // 정산 계산 로직 보존을 위한 경량 어댑터 (구식 Badge/Input → DS)
 const Badge: React.FC<any> = ({text, type}) => (
@@ -54,9 +58,9 @@ const won = (n: number) => `₩${n.toLocaleString('ko-KR')}`;
  *   - PUT  /api/payroll/{id}/issue  (발급 확정)
  */
 const PayrollRunScreen: React.FC = () => {
-    const route = useRoute<any>();
-    const navigation = useNavigation<any>();
-    const storeIdParam = route.params?.storeId as number | undefined;
+    const route = useRoute<RouteProp<HomeStackParamList, 'PayrollRun'>>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
+    const storeIdParam = route.params?.storeId;
     const {user} = useAuth();
 
     const [step, setStep] = useState<Step>('PERIOD');
@@ -66,6 +70,8 @@ const PayrollRunScreen: React.FC = () => {
     const [endDate, setEndDate] = useState(getDefaultEnd());
     const [previews, setPreviews] = useState<PayrollPreview[]>([]);
     const [loading, setLoading] = useState(false);
+    // 연장근로 한도(주 52h, §53) 위반 경보 — 정산 미리보기 시점에 조회(B5/L-NEW-02).
+    const [overtime, setOvertime] = useState<OvertimeCheck | null>(null);
 
     // 사장 매장 목록 로드 → 손으로 매장 ID 입력하지 않도록 셀렉터 제공.
     useEffect(() => {
@@ -115,10 +121,27 @@ const PayrollRunScreen: React.FC = () => {
                 })),
             );
             setStep('PREVIEW');
+            // 연장근로 한도 경보는 정산을 막지 않는 부가 정보 — 실패해도 정산 흐름 유지.
+            loadOvertime(storeId, startDate);
         } catch (e: any) {
             AppToast.error(e?.response?.data?.message ?? '급여 계산 중 오류가 났어요. 잠시 후 다시 시도해 주세요.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    // 정산 기간(시작일)이 속한 연·월의 주 52h 초과 여부를 조회한다.
+    const loadOvertime = async (sid: number, periodStart: string) => {
+        const [yearStr, monthStr] = periodStart.split('-');
+        const year = parseInt(yearStr, 10);
+        const month = parseInt(monthStr, 10);
+        if (!Number.isFinite(year) || !Number.isFinite(month)) {
+            return;
+        }
+        try {
+            setOvertime(await fetchOvertimeCheck(sid, year, month));
+        } catch (_) {
+            setOvertime(null); // 경보 조회 실패는 조용히 무시(정산 자체는 정상)
         }
     };
 
@@ -203,6 +226,7 @@ const PayrollRunScreen: React.FC = () => {
                         />
                     </CtaStack>
                 }>
+                <OvertimeWarning overtime={overtime} />
                 <PreviewList
                     previews={previews}
                     totalNet={totalNet}
@@ -306,6 +330,45 @@ const PeriodForm: React.FC<any> = ({
             <Input label="시작일 (YYYY-MM-DD)" value={startDate} onChangeText={setStartDate} />
             <Input label="종료일 (YYYY-MM-DD)" value={endDate} onChangeText={setEndDate} />
         </View>
+    );
+};
+
+/**
+ * 연장근로 한도(주 52h, §53) 초과 경보 카드 (B5/L-NEW-02).
+ * 위반 주가 있을 때만 노출 — "OO주 연장 한도 초과(주 54시간)" 식으로 직원·주별 표기.
+ * 소담은 연장수당은 계산하면서 한도 위반은 안 막아줬다. 위반 시 형사처벌이라 명세서 발급 전 경보한다.
+ */
+const OvertimeWarning: React.FC<{overtime: OvertimeCheck | null}> = ({overtime}) => {
+    const styles = useStyles();
+    const c = useThemeColors();
+    if (!overtime || !overtime.hasViolation || overtime.violations.length === 0) {
+        return null;
+    }
+    return (
+        <AppCard variant="danger" style={styles.warnCard}>
+            <View style={styles.warnHeader}>
+                <Ionicons name="warning-outline" size={22} color={c.warning} />
+                <AppText variant="headingSm" style={styles.warnTitle}>
+                    연장근로 한도(주 52시간) 초과가 있어요
+                </AppText>
+            </View>
+            <AppText variant="bodyMd" tone="secondary" style={styles.warnBody}>
+                아래 주는 연장근로 한도(소정 40시간 + 연장 12시간)를 넘었어요. 명세서 발급 전 근무 기록을 확인해 주세요.
+            </AppText>
+            {overtime.violations.map((v, idx) => (
+                <View key={`${v.employeeId}-${v.weekStart}-${idx}`} style={styles.warnRow}>
+                    <AppText variant="bodyMd" numberOfLines={1} style={styles.warnEmp}>
+                        {v.employeeName}
+                    </AppText>
+                    <AppText variant="bodyMd" style={styles.warnHours}>
+                        {`${v.weekStart} 주 ${v.weeklyHours.toFixed(1)}시간 (+${v.overBy.toFixed(1)})`}
+                    </AppText>
+                </View>
+            ))}
+            <AppText variant="caption" tone="tertiary" style={styles.warnDisclaimer}>
+                {overtime.disclaimer}
+            </AppText>
+        </AppCard>
     );
 };
 
@@ -517,6 +580,15 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
     chipText: {fontSize: tokens.typography.sizes.sm, fontWeight: tokens.typography.weights.semibold},
 
     emptyPad: {paddingVertical: tokens.spacing.xl},
+
+    warnCard: {gap: tokens.spacing.xs, marginBottom: tokens.spacing.lg},
+    warnHeader: {flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm},
+    warnTitle: {flexShrink: 1},
+    warnBody: {marginTop: tokens.spacing.xs, lineHeight: 18},
+    warnRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: tokens.spacing.sm, paddingVertical: 2},
+    warnEmp: {flexShrink: 1},
+    warnHours: {fontVariant: ['tabular-nums' as const], textAlign: 'right' as const},
+    warnDisclaimer: {marginTop: tokens.spacing.sm, lineHeight: 16},
 
     empCard: {gap: 2},
     empHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacing.sm, gap: tokens.spacing.sm},

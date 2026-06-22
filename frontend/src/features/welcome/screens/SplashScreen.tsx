@@ -1,3 +1,4 @@
+/* eslint-disable react-native/no-color-literals -- 스플래시 고정 브랜드색(테마 로드 전 표시, 다크/라이트 무관). */
 import React, {useEffect, useRef} from 'react';
 import {Animated, StyleSheet, View} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';

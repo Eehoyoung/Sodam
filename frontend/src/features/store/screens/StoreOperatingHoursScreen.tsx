@@ -12,7 +12,9 @@ import {
 import React, {useEffect, useState} from 'react';
 import {Pressable, StyleSheet, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import {useNavigation, useRoute} from '@react-navigation/native';
+import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
@@ -94,10 +96,10 @@ function defaultRows(): DayRow[] {
  * PUT /api/stores/{storeId}/operating-hours → 7개 요일 모두 전송
  */
 const StoreOperatingHoursScreen: React.FC = () => {
-    const route = useRoute<any>();
-    const navigation = useNavigation<any>();
+    const route = useRoute<RouteProp<HomeStackParamList, 'StoreOperatingHours'>>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const c = useThemeColors();
-    const storeId = route.params?.storeId as number | undefined;
+    const storeId = route.params?.storeId;
 
     const [rows, setRows] = useState<DayRow[]>(defaultRows());
     const [loading, setLoading] = useState(true);

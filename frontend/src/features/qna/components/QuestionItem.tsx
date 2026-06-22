@@ -1,6 +1,8 @@
-import React from 'react';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import React, {useMemo} from 'react';
 import {StyleSheet, View, Text, TouchableOpacity} from 'react-native';
-import {colors, spacing} from '../../../common/styles/theme';
+import {spacing} from '../../../common/styles/theme';
+import {ThemeColors, useThemeColors} from '../../../common/hooks/useThemeColors';
 
 interface QuestionItemProps {
     id: string;
@@ -28,6 +30,9 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
                                                        answerCount,
                                                        onPress,
                                                    }) => {
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
+
     const handlePress = () => {
         onPress(id);
     };
@@ -71,13 +76,13 @@ const QuestionItem: React.FC<QuestionItemProps> = ({
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
     container: {
-        backgroundColor: '#ffffff',
+        backgroundColor: c.surface,
         borderRadius: 8,
         padding: spacing.md,
         marginBottom: spacing.md,
-        shadowColor: '#000',
+        shadowColor: c.shadowColor,
         shadowOffset: {width: 0, height: 1},
         shadowOpacity: 0.1,
         shadowRadius: 2,
@@ -98,7 +103,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 16,
         fontWeight: '600',
-        color: colors.text,
+        color: c.textPrimary,
         marginRight: spacing.sm,
         flex: 1,
     },
@@ -109,19 +114,20 @@ const styles = StyleSheet.create({
         marginLeft: spacing.xs,
     },
     answeredBadge: {
-        backgroundColor: '#4cd964',
+        backgroundColor: c.success,
     },
     unansweredBadge: {
-        backgroundColor: '#ff9500',
+        backgroundColor: c.warning,
     },
+    // eslint-disable-next-line react-native/no-color-literals -- 흰 글자: 채도 높은 상태 배지(success/warning) 위 고정 대비, 다크에서도 동일
     statusText: {
-        color: '#ffffff',
+        color: '#FFFFFF',
         fontSize: 10,
         fontWeight: '600',
     },
     content: {
         fontSize: 14,
-        color: colors.textSecondary,
+        color: c.textSecondary,
         marginBottom: spacing.md,
         lineHeight: 20,
     },
@@ -136,12 +142,12 @@ const styles = StyleSheet.create({
     },
     author: {
         fontSize: 12,
-        color: colors.text,
+        color: c.textPrimary,
         fontWeight: '500',
     },
     date: {
         fontSize: 12,
-        color: '#999',
+        color: c.textTertiary,
         marginLeft: spacing.sm,
     },
     stats: {
@@ -150,7 +156,7 @@ const styles = StyleSheet.create({
     },
     answerCount: {
         fontSize: 12,
-        color: colors.primary,
+        color: c.brandPrimary,
         fontWeight: '500',
     },
 });

@@ -2,7 +2,9 @@ import {AppToast, AppButton, AppHeader, AppInput, AppText, CtaStack, ScreenConta
 import React, {useEffect, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import {useNavigation, useRoute} from '@react-navigation/native';
+import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
@@ -13,10 +15,10 @@ import storeService from '../services/storeService';
  * 매장명·전화·업종·기본시급·반경 편집. 조회/저장 로직 보존.
  */
 const StoreEditScreen: React.FC = () => {
-    const route = useRoute<any>();
-    const navigation = useNavigation<any>();
+    const route = useRoute<RouteProp<HomeStackParamList, 'StoreEdit'>>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const c = useThemeColors();
-    const storeId = route.params?.storeId as number | undefined;
+    const storeId = route.params?.storeId;
 
     const [storeName, setStoreName] = useState('');
     const [phone, setPhone] = useState('');

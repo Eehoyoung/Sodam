@@ -1,6 +1,8 @@
 import React from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {AppHeader, AppListItem, AppText, ScreenContainer} from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
@@ -11,7 +13,7 @@ import {useThemeColors} from '../../../common/hooks/useThemeColors';
  * 큰 인사 타이포 + 역할별 큰 리스트(Ionicons). 동작/네비게이션 보존.
  */
 const HomeScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const c = useThemeColors();
     return (
         <ScreenContainer scroll header={<AppHeader title="오늘의 소담" actions={[{label: '알림', icon: <Ionicons name="notifications-outline" size={20} color={c.brandPrimary} />, accessibilityLabel: '알림', onPress: () => navigation.navigate('NotificationCenter')}]} />}>

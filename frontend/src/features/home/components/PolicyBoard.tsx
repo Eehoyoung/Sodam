@@ -1,9 +1,13 @@
-import React, {useEffect, useState} from 'react';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import React, {useEffect, useMemo, useState} from 'react';
 import {FlatList, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator} from 'react-native';
 import homeService from '../services/homeService';
 import {Policy} from '../types';
+import {ThemeColors, useThemeColors} from '../../../common/hooks/useThemeColors';
 
 const PolicyBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
     const [policies, setPolicies] = useState<Policy[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -69,7 +73,7 @@ const PolicyBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
                 <View style={styles.headerRow}>
                     <Text style={styles.sectionTitle}>정부 주요 정책 소개</Text>
                 </View>
-                <ActivityIndicator size="large" color="#FF6B35"/>
+                <ActivityIndicator size="large" color={c.brandPrimary}/>
                 <Text style={styles.loadingText}>정책 정보를 불러오는 중...</Text>
             </View>
         );
@@ -107,10 +111,10 @@ const PolicyBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
     container: {
         width: '100%',
-        backgroundColor: '#f1f9ff',
+        backgroundColor: c.surfaceSky,
         padding: 30,
         marginVertical: 10,
     },
@@ -123,16 +127,16 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#333',
+        color: c.textPrimary,
     },
     moreButton: {
-        backgroundColor: '#FF6B35',
+        backgroundColor: c.brandPrimary,
         paddingVertical: 6,
         paddingHorizontal: 15,
         borderRadius: 20,
     },
     moreButtonText: {
-        color: '#fff',
+        color: c.textInverse,
         fontSize: 14,
         fontWeight: '500',
     },
@@ -142,16 +146,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 15,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: c.divider,
     },
     policyTitle: {
         fontSize: 16,
-        color: '#333',
+        color: c.textPrimary,
         flex: 1,
     },
     policyDate: {
         fontSize: 14,
-        color: '#888',
+        color: c.textTertiary,
         marginLeft: 10,
     },
     loadingContainer: {
@@ -162,7 +166,7 @@ const styles = StyleSheet.create({
     loadingText: {
         marginTop: 10,
         fontSize: 14,
-        color: '#666',
+        color: c.textSecondary,
     },
     errorContainer: {
         alignItems: 'center',
@@ -171,18 +175,18 @@ const styles = StyleSheet.create({
     },
     errorText: {
         fontSize: 16,
-        color: '#e74c3c',
+        color: c.error,
         marginVertical: 10,
     },
     retryButton: {
-        backgroundColor: '#FF6B35',
+        backgroundColor: c.brandPrimary,
         paddingVertical: 8,
         paddingHorizontal: 20,
         borderRadius: 20,
         marginTop: 10,
     },
     retryButtonText: {
-        color: '#fff',
+        color: c.textInverse,
         fontSize: 14,
         fontWeight: '500',
     },

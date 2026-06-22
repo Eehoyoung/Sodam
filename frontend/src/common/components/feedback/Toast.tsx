@@ -1,6 +1,8 @@
-import React, {useCallback, useEffect, useRef} from 'react';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import React, {useCallback, useEffect, useMemo, useRef} from 'react';
 import {Platform, StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle, View} from 'react-native';
 import {ENABLE_ANIMATIONS, stageAtLeast, ANIMATION_RECOVERY_STAGE} from '../../../navigation/config';
+import {ThemeColors, useThemeColors} from '../../hooks/useThemeColors';
 
 // Conditionally import Reanimated components only when needed
 let Animated: any;
@@ -69,6 +71,8 @@ const Toast: ToastComponent = ({
                                          textStyle,
                                          showCloseButton = true,
                                      }) => {
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
     const shouldUseAnimations = ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE);
 
     // Only use animated values when animations are enabled
@@ -145,14 +149,14 @@ const Toast: ToastComponent = ({
     const getBackgroundColor = () => {
         switch (type) {
             case 'success':
-                return '#2ecc71';
+                return c.success;
             case 'error':
-                return '#e74c3c';
+                return c.error;
             case 'warning':
-                return '#f39c12';
+                return c.warning;
             case 'info':
             default:
-                return '#3498db';
+                return c.info;
         }
     };
 
@@ -193,7 +197,7 @@ const Toast: ToastComponent = ({
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
     container: {
         position: 'absolute',
         left: 16,
@@ -205,7 +209,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         ...Platform.select({
             ios: {
-                shadowColor: '#000',
+                shadowColor: c.shadowColor,
                 shadowOffset: {width: 0, height: 2},
                 shadowOpacity: 0.3,
                 shadowRadius: 4,
@@ -222,8 +226,9 @@ const styles = StyleSheet.create({
     bottomPosition: {
         bottom: 20,
     },
+    // eslint-disable-next-line react-native/no-color-literals -- 흰 글자: 채도 높은 상태색(success/error 등) 배경 위 고정 대비, 다크에서도 동일
     message: {
-        color: '#fff',
+        color: '#FFFFFF',
         fontSize: 14,
         fontWeight: '500',
         flex: 1,
@@ -232,8 +237,9 @@ const styles = StyleSheet.create({
         marginLeft: 8,
         padding: 4,
     },
+    // eslint-disable-next-line react-native/no-color-literals -- 흰 글자: 채도 높은 상태색 배경 위 고정 대비, 다크에서도 동일
     closeButtonText: {
-        color: '#fff',
+        color: '#FFFFFF',
         fontSize: 16,
         fontWeight: 'bold',
     },

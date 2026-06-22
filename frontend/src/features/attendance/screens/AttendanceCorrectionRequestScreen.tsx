@@ -1,19 +1,15 @@
 import {AppToast, AppButton, AppCard, AppHeader, AppInput, AppText, CtaStack, ScreenContainer, SuccessState} from '../../../common/components/ds';
 import React, {useState} from 'react';
 import {StyleSheet, View} from 'react-native';
-import {useNavigation, useRoute} from '@react-navigation/native';
+import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
 
-interface RouteParams {
-    attendanceId?: number;
-    date?: string;
-    storeName?: string;
-    currentCheckIn?: string;
-    currentCheckOut?: string;
-}
+type RouteParams = NonNullable<HomeStackParamList['AttendanceCorrectionRequest']>;
 
 /**
  * 24 CorrectionRequest — 확정 시안.
@@ -21,8 +17,8 @@ interface RouteParams {
  * POST /api/attendance/{attendanceId}/correction-request 로 실제 제출(사장 승인 워크플로).
  */
 const AttendanceCorrectionRequestScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
-    const route = useRoute<any>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
+    const route = useRoute<RouteProp<HomeStackParamList, 'AttendanceCorrectionRequest'>>();
     const c = useThemeColors();
     const params: RouteParams = route.params ?? {};
 

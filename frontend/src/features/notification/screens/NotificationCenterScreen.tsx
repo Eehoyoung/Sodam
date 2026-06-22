@@ -1,6 +1,8 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {FlatList, Pressable, RefreshControl, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {AppHeader, AppText, EmptyState, ScreenContainer} from '../../../common/components/ds';
 import {spacing, tokens} from '../../../theme/tokens';
@@ -41,7 +43,7 @@ const FILTERS: Array<{key: Category; label: string}> = [
  * 알림 인박스 + 카테고리 필터. load/open/읽음처리 로직 보존.
  */
 const NotificationCenterScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const c = useThemeColors();
     const [items, setItems] = useState<InboxItem[]>([]);
     const [filter, setFilter] = useState<Category>('ALL');

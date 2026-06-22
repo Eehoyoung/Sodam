@@ -99,3 +99,7 @@ node_modules/
 
 *storybook.log
 storybook-static
+
+# FCM (Firebase) 시크릿 — 절대 커밋 금지 (key-ready 배치용)
+android/app/google-services.json
+ios/GoogleService-Info.plist

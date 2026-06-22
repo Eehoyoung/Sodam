@@ -1,5 +1,19 @@
 import {useState, useEffect} from 'react';
 
+/** 홈 배너 이벤트 카드. */
+export interface HomeEvent {
+    id: string;
+    title: string;
+    imageUrl?: string;
+}
+
+/** 홈 정보 카드(노동법·세금·정책·팁 공통). */
+export interface HomeInfoItem {
+    id: string;
+    title: string;
+    summary?: string;
+}
+
 /**
  * 홈 화면 데이터를 관리하는 커스텀 훅
  *
@@ -8,11 +22,11 @@ import {useState, useEffect} from 'react';
 export const useHomeData = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [events, setEvents] = useState<any[]>([]);
-    const [laborInfo, setLaborInfo] = useState<any[]>([]);
-    const [taxInfo, setTaxInfo] = useState<any[]>([]);
-    const [policyInfo, setPolicyInfo] = useState<any[]>([]);
-    const [tips, setTips] = useState<any[]>([]);
+    const [events, setEvents] = useState<HomeEvent[]>([]);
+    const [laborInfo, setLaborInfo] = useState<HomeInfoItem[]>([]);
+    const [taxInfo, setTaxInfo] = useState<HomeInfoItem[]>([]);
+    const [policyInfo, setPolicyInfo] = useState<HomeInfoItem[]>([]);
+    const [tips, setTips] = useState<HomeInfoItem[]>([]);
 
     useEffect(() => {
         const fetchHomeData = async () => {
@@ -58,8 +72,8 @@ export const useHomeData = () => {
                 ];
                 setTips(tipsData);
 
-            } catch (err: any) {
-                setError(err.message || '데이터를 불러오는 중 오류가 발생했습니다.');
+            } catch (err: unknown) {
+                setError(err instanceof Error ? err.message : '데이터를 불러오는 중 오류가 발생했습니다.');
                 console.error('홈 데이터 로딩 오류:', err);
             } finally {
                 setIsLoading(false);
@@ -113,8 +127,8 @@ export const useHomeData = () => {
             ];
             setTips(tipsData);
 
-        } catch (err: any) {
-            setError(err.message || '데이터를 불러오는 중 오류가 발생했습니다.');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : '데이터를 불러오는 중 오류가 발생했습니다.');
             console.error('홈 데이터 새로고침 오류:', err);
         } finally {
             setIsLoading(false);

@@ -1,5 +1,7 @@
-import React from 'react';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import React, {useMemo} from 'react';
 import {FlatList, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {ThemeColors, useThemeColors} from '../../../common/hooks/useThemeColors';
 
 // 노무 데이터 타입 정의
 interface LaborInfo {
@@ -9,6 +11,8 @@ interface LaborInfo {
 }
 
 const LaborInfoBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
 
     // 예시 노무 정보 데이터
     const laborInfos: LaborInfo[] = [
@@ -61,10 +65,10 @@ const LaborInfoBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
     container: {
         width: '100%',
-        backgroundColor: '#f1f9ff',
+        backgroundColor: c.surfaceSky,
         padding: 30,
         marginVertical: 10,
     },
@@ -77,16 +81,16 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#333',
+        color: c.textPrimary,
     },
     moreButton: {
-        backgroundColor: '#FF6B35',
+        backgroundColor: c.brandPrimary,
         paddingVertical: 6,
         paddingHorizontal: 15,
         borderRadius: 20,
     },
     moreButtonText: {
-        color: '#fff',
+        color: c.textInverse,
         fontSize: 14,
         fontWeight: '500',
     },
@@ -96,16 +100,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 15,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: c.divider,
     },
     laborTitle: {
         fontSize: 16,
-        color: '#333',
+        color: c.textPrimary,
         flex: 1,
     },
     laborDate: {
         fontSize: 14,
-        color: '#888',
+        color: c.textTertiary,
         marginLeft: 10,
     },
 });
