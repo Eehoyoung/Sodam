@@ -3,6 +3,7 @@ package com.rich.sodam.service;
 import com.rich.sodam.config.app.AppProperties;
 import com.rich.sodam.core.payroll.constant.MinimumWage;
 import com.rich.sodam.domain.*;
+import com.rich.sodam.domain.type.DomainEventType;
 import com.rich.sodam.dto.request.EmployeeWageUpdateDto;
 import com.rich.sodam.dto.request.LocationUpdateDto;
 import com.rich.sodam.dto.request.StoreRegistrationDto;
@@ -35,6 +36,8 @@ public class StoreManagementServiceImpl implements StoreManagementService {
     private final ValidationService validationService;
     private final AppProperties appProperties;
     private final WageHistoryRepository wageHistoryRepository;
+    private final PlanAccessService planAccessService;
+    private final DomainEventService domainEventService;
 
     @NotNull
     private Store getStore(StoreRegistrationDto storeDto) {
@@ -99,6 +102,10 @@ public class StoreManagementServiceImpl implements StoreManagementService {
             masterProfile = new MasterProfile(user, storeDto.getBusinessLicenseNumber());
             masterProfileRepository.save(masterProfile);
         }
+
+        // 멀티매장 게이트: 2번째 이상 매장은 MULTI_STORE(PRO 이상) 플랜에서만 등록 가능
+        int existingStoreCount = masterStoreRelationRepository.findByMasterProfile(masterProfile).size();
+        planAccessService.assertCanRegisterAdditionalStore(existingStoreCount);
 
         // 매장 생성
         Store store = getStore(storeDto);
@@ -202,6 +209,18 @@ public class StoreManagementServiceImpl implements StoreManagementService {
                         "직원-매장 관계를 찾을 수 없습니다. employeeId=" + employeeId + ", storeId=" + storeId));
         relation.setIsActive(active);
         employeeStoreRelationRepository.save(relation);
+        // 재직 인원 변동 → 5인 이상 여부 재산정(§56 가산 적용 정상화)
+        recountEmployeesAndApply(relation.getStore());
+    }
+
+    /**
+     * 매장의 활성 재직 인원 수로 {@code fiveOrMoreEmployees} 플래그를 재산정·반영한다.
+     * 직원 추가/해지 등 재직 인원이 변하는 지점에서 호출한다.
+     */
+    private void recountEmployeesAndApply(Store store) {
+        long activeCount = employeeStoreRelationRepository.countByStoreAndIsActiveTrue(store);
+        store.applyEmployeeCount((int) activeCount);
+        storeRepository.save(store);
     }
 
     @Override
@@ -261,6 +280,7 @@ public class StoreManagementServiceImpl implements StoreManagementService {
                 employeeStoreRelationRepository.findByEmployeeProfileAndStore(employeeProfile, store);
 
         EmployeeStoreRelation relation;
+        boolean newJoin = existingRelation.isEmpty();
         if (existingRelation.isPresent()) {
             // 이미 관계가 있으면 시급 정보만 업데이트
             relation = existingRelation.get();
@@ -273,6 +293,12 @@ public class StoreManagementServiceImpl implements StoreManagementService {
             relation = new EmployeeStoreRelation(employeeProfile, store, customHourlyWage);
         }
         employeeStoreRelationRepository.save(relation);
+        // 재직 인원 변동 → 5인 이상 여부 재산정(§56 가산 적용 정상화)
+        recountEmployeesAndApply(store);
+        // 직원이 매장에 새로 합류한 경우 계측 이벤트 발화(전환·activation 분모)
+        if (newJoin) {
+            domainEventService.record(DomainEventType.EMPLOYEE_REGISTERED, userId, storeId, null);
+        }
     }
 
     @Override

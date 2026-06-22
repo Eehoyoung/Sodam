@@ -113,6 +113,20 @@ public class Subscription {
         this.updatedAt = LocalDateTime.now();
     }
 
+    /**
+     * 무료 개월 부여 (S2 레퍼럴 보상) — 현재 기간 종료·다음 청구일을 months 만큼 뒤로 밀어
+     * 그만큼 청구 없이 이용하게 한다. 활성 구독에만 의미 있음.
+     */
+    public void grantFreeMonths(int months) {
+        if (months <= 0) {
+            return;
+        }
+        LocalDateTime base = this.currentPeriodEndAt != null ? this.currentPeriodEndAt : LocalDateTime.now();
+        this.currentPeriodEndAt = base.plusMonths(months);
+        this.nextBillingAt = this.currentPeriodEndAt;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public void markPaymentFailed() {
         this.paymentFailureCount = (this.paymentFailureCount == null ? 0 : this.paymentFailureCount) + 1;
         if (this.paymentFailureCount >= 3) {

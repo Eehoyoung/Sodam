@@ -32,4 +32,14 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
             "  and s.dormantAt is null " +
             "  and s.updatedAt <= :cutoff")
     List<Subscription> findDormantFreeCandidates(LocalDateTime cutoff);
+
+    /**
+     * win-back 대상(GR-NEW-05): 휴면 전환 시각(dormantAt)이 [from, to) 구간에 든 휴면 구독.
+     * 스케줄러가 하루 1회 호출하며 from/to 로 D+N 임계 '그날'만 잡아 중복 발송을 막는다.
+     */
+    @Query("select s from Subscription s " +
+            "where s.dormantAt is not null " +
+            "  and s.dormantAt >= :from " +
+            "  and s.dormantAt < :to")
+    List<Subscription> findDormantBetween(LocalDateTime from, LocalDateTime to);
 }

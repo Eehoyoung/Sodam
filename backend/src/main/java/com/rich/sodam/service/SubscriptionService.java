@@ -1,10 +1,12 @@
 package com.rich.sodam.service;
 
+import com.rich.sodam.config.SentryReporter;
 import com.rich.sodam.config.integration.TossBillingClient;
 import com.rich.sodam.domain.PaymentHistory;
 import com.rich.sodam.domain.Subscription;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.domain.type.BillingCycle;
+import com.rich.sodam.domain.type.DomainEventType;
 import com.rich.sodam.domain.type.PlanType;
 import com.rich.sodam.domain.type.SubscriptionStatus;
 import com.rich.sodam.repository.PaymentHistoryRepository;
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -37,6 +40,9 @@ public class SubscriptionService {
     private final PaymentHistoryRepository paymentHistoryRepository;
     private final UserRepository userRepository;
     private final TossBillingClient tossClient;
+    private final ReferralRewardService referralRewardService;
+    private final DomainEventService domainEventService;
+    private final SentryReporter sentryReporter;
 
     /**
      * 무료 플랜 가입 — 카드 없이 즉시 ACTIVE.
@@ -86,7 +92,31 @@ public class SubscriptionService {
         if (!result.isSuccess()) {
             throw new IllegalStateException("첫 결제 실패: " + result.getFailureReason());
         }
+
+        // 유료 전환(첫 결제 성공) 계측 — 전환율 분자. 적재 실패는 흐름에 영향 없음.
+        domainEventService.record(DomainEventType.SUBSCRIPTION_STARTED, userId, null, plan.name());
+
+        // S2 레퍼럴 보상: 피추천인 첫 결제 → 전환 + 양측 무료 개월(다음 청구 연기)
+        applyReferralReward(saved, userId);
         return saved;
+    }
+
+    /**
+     * 레퍼럴 보상 적용 (S2). 피추천인 첫 결제 시 전환 처리 + 추천인·피추천인 양측 무료 개월 부여.
+     * 보상 산정은 {@link ReferralRewardService} (멱등), 빌링 효과(기간 연장)는 여기서 적용.
+     */
+    private void applyReferralReward(Subscription refereeSubscription, Long refereeUserId) {
+        referralRewardService.processRefereeFirstPayment(refereeUserId).ifPresent(reward -> {
+            refereeSubscription.grantFreeMonths(reward.freeMonths());
+            if (reward.referrerUserId() != null) {
+                subscriptionRepository.findFirstByUser_IdAndStatusIn(
+                        reward.referrerUserId(),
+                        List.of(SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE))
+                        .ifPresent(referrerSub -> referrerSub.grantFreeMonths(reward.freeMonths()));
+            }
+            log.info("레퍼럴 보상 적용: referee={} referrer={} +{}개월",
+                    refereeUserId, reward.referrerUserId(), reward.freeMonths());
+        });
     }
 
     /**
@@ -207,6 +237,9 @@ public class SubscriptionService {
             result = tossClient.charge(req);
         } catch (Exception e) {
             log.error("토스 청구 예외 sub={} order={}", s.getId(), orderId, e);
+            // 결제 실패(예외) 알람 — Sentry 캡처(비활성 시 no-op). 카드/PII 미포함, 구독ID·주문ID만.
+            sentryReporter.captureException(SentryReporter.ALERT_PAYMENT_FAILURE, e,
+                    Map.of("subscriptionId", String.valueOf(s.getId()), "orderId", orderId));
             result = TossBillingClient.ChargeResult.fail(e.getMessage());
         }
 
@@ -217,6 +250,11 @@ public class SubscriptionService {
         } else {
             ph.markFailed(result.getFailureReason());
             s.markPaymentFailed();
+            // 결제 실패(거절) 알람 — PAST_DUE 전환·청구 거절을 가시화. PII 미포함.
+            sentryReporter.captureMessage(SentryReporter.ALERT_PAYMENT_FAILURE,
+                    "정기결제 실패 sub=" + s.getId() + " order=" + orderId
+                            + " status=" + s.getStatus(),
+                    Map.of("subscriptionId", String.valueOf(s.getId()), "orderId", orderId));
             // 🔴 수정: PAST_DUE 면 다음 청구일을 3일 뒤로 연장(이전엔 미연장 → 매 자정 무한 반복청구)
             if (s.getStatus() == SubscriptionStatus.PAST_DUE) {
                 s.scheduleRetry(3);
