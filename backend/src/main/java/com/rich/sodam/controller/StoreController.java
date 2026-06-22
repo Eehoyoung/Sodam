@@ -40,6 +40,7 @@ public class StoreController {
     private final GeocodingService geocodingService;
     private final StoreQueryService storeQueryService;
     private final StoreAccessGuard storeAccessGuard;
+    private final com.rich.sodam.service.DomainEventService domainEventService;
 
     @Operation(summary = "매장 등록", description = "새로운 매장을 등록하고 사용자를 해당 매장의 사장으로 지정합니다.")
     @ApiResponses(value = {
@@ -67,6 +68,8 @@ public class StoreController {
         }
         Long resolvedUserId = userId != null ? userId : getCurrentUserId();
         Store store = storeManagementService.registerStoreWithMaster(resolvedUserId, storeDto);
+        domainEventService.record(com.rich.sodam.domain.type.DomainEventType.STORE_CREATED,
+                resolvedUserId, store.getId(), null);
         return ResponseEntity.ok(store);
     }
 

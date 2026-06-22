@@ -14,7 +14,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.domain.type.PlanType;
 import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.security.annotation.RequirePlan;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -39,6 +41,7 @@ public class ExportController {
 
     @Operation(summary = "매장 출퇴근 기록 CSV",
             description = "지정 기간의 매장 출퇴근 기록을 CSV 로 내보냅니다. Excel 호환 UTF-8 BOM 포함.")
+    @RequirePlan(min = PlanType.PRO) // CSV 내보내기 = PRO 비즈니스 기능
     @GetMapping("/attendance/store/{storeId}.csv")
     @Transactional(readOnly = true)
     public ResponseEntity<byte[]> exportAttendance(
@@ -80,6 +83,7 @@ public class ExportController {
 
     @Operation(summary = "매장 급여 명세 CSV",
             description = "지정 기간의 매장 발급 급여 명세를 CSV 로 내보냅니다.")
+    @RequirePlan(min = PlanType.PRO) // CSV 내보내기 = PRO 비즈니스 기능
     @GetMapping("/payroll/store/{storeId}.csv")
     @Transactional(readOnly = true)
     public ResponseEntity<byte[]> exportPayroll(
