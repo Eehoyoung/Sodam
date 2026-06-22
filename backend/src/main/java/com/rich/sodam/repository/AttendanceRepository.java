@@ -30,6 +30,9 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     List<Attendance> findByStoreAndCheckInTimeBetweenOrderByCheckInTimeDesc(
             Store store, LocalDateTime startDate, LocalDateTime endDate);
 
+    /** 온보딩(첫 출근) 판정 — 해당 직원이 해당 매장에 출근 기록이 있는지. */
+    boolean existsByEmployeeProfile_IdAndStore_Id(Long employeeId, Long storeId);
+
     /**
      * 특정 직원의 아직 퇴근 처리되지 않은 출근 기록 조회
      */
