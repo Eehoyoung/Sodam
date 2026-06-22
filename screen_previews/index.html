@@ -1,0 +1,1063 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sodam Screen Preview Gallery</title>
+<style>
+  :root{--orange:#ff6b35;--navy:#243b4a;--paper:#fffaf3;--canvas:#f4efe8;--text:#201a17;--muted:#766b62;--line:#e8ded5;--ok:#12a87b;--warn:#f59e0b;--bad:#e5484d}
+  *{box-sizing:border-box} body{margin:0;background:var(--canvas);font-family:Arial,'Malgun Gothic',sans-serif;color:var(--text)}
+  .top{padding:28px 32px 20px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:2}
+  h1{margin:0 0 8px;font-size:28px}.note{margin:0;color:var(--muted);line-height:1.5}.stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  .stat{background:var(--paper);border:1px solid var(--line);padding:10px 12px;border-radius:12px;font-weight:700}.stat b{color:var(--orange)}
+  .wrap{padding:24px 28px 56px}.feature{margin:0 0 28px}.featureTitle{font-size:18px;margin:0 0 12px;text-transform:uppercase;color:var(--navy)}
+  .gridCards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px;align-items:start}
+  .screenCard{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:0 8px 24px rgba(36,59,74,.08)}
+  .screenCard.high{border-color:rgba(229,72,77,.5)}.screenCard.medium{border-color:rgba(245,158,11,.45)}
+  .screenMeta{display:flex;justify-content:space-between;gap:10px;margin-bottom:12px}.screenName{font-weight:800;font-size:15px}.screenPath{font-size:11px;color:var(--muted);margin-top:3px;word-break:break-all}
+  .risk{height:24px;min-width:42px;text-align:center;border-radius:999px;padding:5px 8px;font-size:11px;font-weight:800;background:#eaf7f2;color:var(--ok)}
+  .medium .risk{background:#fff6df;color:#b26a00}.high .risk{background:#ffe8e8;color:var(--bad)}
+  .phone{width:210px;height:430px;margin:0 auto 12px;border:8px solid #1f2933;border-radius:30px;background:#fff;overflow:hidden;box-shadow:0 10px 26px rgba(0,0,0,.18)}
+  .phone.hero{background:linear-gradient(140deg,#263f4f,#172932,#2b2019)}.status{height:18px}.appHeader{height:40px;padding:11px 14px;text-align:center;font-weight:800;font-size:12px;border-bottom:1px solid rgba(0,0,0,.08);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hero .appHeader{color:#fff;border-color:rgba(255,255,255,.08)}
+  .mockBody{height:372px;padding:15px;display:flex;flex-direction:column;gap:10px}.hero .mockBody{align-items:center;color:#fff}.heroMark{width:58px;height:58px;border-radius:18px;background:var(--orange);box-shadow:0 8px 18px rgba(255,107,53,.35);margin-top:28px}
+  .heroTitle{width:72%;height:18px;border-radius:9px;background:currentColor;opacity:.9}.heroLine{width:78%;height:10px;border-radius:8px;background:currentColor;opacity:.35}.short{width:54%!important}.spacer{flex:1}
+  .button{height:42px;border-radius:14px;width:100%}.primary{background:var(--orange)}.secondary{background:#fff;border:1px solid var(--line)}
+  .headerLine{height:44px;border-radius:14px;background:#fff;border:1px solid var(--line)}.card{height:86px;border-radius:16px;background:#fff3e8;border:1px solid #ffe1cf}.card.warm{height:66px}.input{height:46px;border-radius:12px;background:#fff;border:1px solid var(--line)}.checkbox{height:22px;border-radius:9px;background:#eee6df}.tabs{height:36px;border-radius:12px;background:#f0e9e1}.listRow{height:58px;border-radius:14px;background:#fff;border:1px solid var(--line)}.listRow.faded{opacity:.5}.kpi{height:110px;border-radius:18px;background:linear-gradient(135deg,#fffbf5,#fff0e8);border:1px solid #ffe1cf}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.grid span{height:70px;border-radius:14px;background:#fff;border:1px solid var(--line)}.stateIcon{width:72px;height:72px;border-radius:36px;background:#fff0e8;margin:60px auto 8px}.articleTitle{height:28px;border-radius:12px;background:#30241f}.paragraph{height:72px;border-radius:14px;background:#f4efe8}
+  .flags{display:flex;flex-wrap:wrap;gap:6px}.flags span{font-size:10px;background:#f6f1eb;color:#675b52;border-radius:999px;padding:5px 7px}
+</style>
+</head>
+<body>
+  <header class="top">
+    <h1>Sodam Screen Preview Gallery</h1>
+    <p class="note">소스 파일을 기준으로 생성한 정적 모바일 프레임 미리보기입니다. 실제 RN 런타임 스크린샷은 아니며, 디바이스 연결 없이 현재 개발된 스크린의 구조와 반응형 위험도를 빠르게 보기 위한 산출물입니다.</p>
+    <div class="stats">
+      <div class="stat">전체 <b>55</b></div>
+      <div class="stat">고위험 <b>1</b></div>
+      <div class="stat">주의 <b>8</b></div>
+      <div class="stat">양호 <b>46</b></div>
+    </div>
+  </header>
+  <main class="wrap">
+    
+      <section class="feature">
+        <h2 class="featureTitle">attendance (4)</h2>
+        <div class="gridCards">
+          
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">근무 기록</div>
+          <div class="screenPath">frontend/src/features/attendance/screens/AttendanceCalendarScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone standard">
+        <div class="status"></div>
+        <div class="appHeader">근무 기록</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="card"></div><div class="card short"></div><div class="listRow"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">정정 요청</div>
+          <div class="screenPath">frontend/src/features/attendance/screens/AttendanceCorrectionRequestScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone form">
+        <div class="status"></div>
+        <div class="appHeader">정정 요청</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="card warm"></div>
+      <div class="input"></div><div class="input"></div><div class="input"></div>
+      <div class="checkbox"></div><div class="checkbox short"></div><div class="spacer"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard medium">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">출퇴근 관리</div>
+          <div class="screenPath">frontend/src/features/attendance/screens/AttendanceScreen.tsx</div>
+        </div>
+        <span class="risk">주의</span>
+      </div>
+      <div class="phone hero">
+        <div class="status"></div>
+        <div class="appHeader">출퇴근 관리</div>
+        <div class="mockBody">
+      <div class="heroMark"></div><div class="heroTitle"></div><div class="heroLine short"></div>
+      <div class="spacer"></div><div class="button primary"></div><div class="button secondary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span><span>legacy COLORS</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">출퇴근 이상</div>
+          <div class="screenPath">frontend/src/features/attendance/screens/MissingAttendanceCenterScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone state">
+        <div class="status"></div>
+        <div class="appHeader">출퇴근 이상</div>
+        <div class="mockBody">
+      <div class="stateIcon"></div><div class="heroTitle"></div><div class="heroLine"></div><div class="heroLine short"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+        </div>
+      </section>
+      <section class="feature">
+        <h2 class="featureTitle">auth (5)</h2>
+        <div class="gridCards">
+          
+    <article class="screenCard medium">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">카카오 로그인</div>
+          <div class="screenPath">frontend/src/features/auth/screens/KakaoLoginScreen.tsx</div>
+        </div>
+        <span class="risk">주의</span>
+      </div>
+      <div class="phone hero">
+        <div class="status"></div>
+        <div class="appHeader">카카오 로그인</div>
+        <div class="mockBody">
+      <div class="heroMark"></div><div class="heroTitle"></div><div class="heroLine short"></div>
+      <div class="spacer"></div><div class="button primary"></div><div class="button secondary"></div></div>
+      </div>
+      <div class="flags"><span>SafeArea</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">로그인</div>
+          <div class="screenPath">frontend/src/features/auth/screens/LoginScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone hero">
+        <div class="status"></div>
+        <div class="appHeader">로그인</div>
+        <div class="mockBody">
+      <div class="heroMark"></div><div class="heroTitle"></div><div class="heroLine short"></div>
+      <div class="spacer"></div><div class="button primary"></div><div class="button secondary"></div></div>
+      </div>
+      <div class="flags"><span>SafeArea</span><span>Scrollable</span><span>Keyboard</span></div>
+    </article>
+    <article class="screenCard medium">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">비밀번호 찾기</div>
+          <div class="screenPath">frontend/src/features/auth/screens/PasswordResetScreen.tsx</div>
+        </div>
+        <span class="risk">주의</span>
+      </div>
+      <div class="phone form">
+        <div class="status"></div>
+        <div class="appHeader">비밀번호 찾기</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="card warm"></div>
+      <div class="input"></div><div class="input"></div><div class="input"></div>
+      <div class="checkbox"></div><div class="checkbox short"></div><div class="spacer"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span><span>absolute</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">프로필</div>
+          <div class="screenPath">frontend/src/features/auth/screens/ProfileScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone hero">
+        <div class="status"></div>
+        <div class="appHeader">프로필</div>
+        <div class="mockBody">
+      <div class="heroMark"></div><div class="heroTitle"></div><div class="heroLine short"></div>
+      <div class="spacer"></div><div class="button primary"></div><div class="button secondary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">회원가입</div>
+          <div class="screenPath">frontend/src/features/auth/screens/SignupScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone form">
+        <div class="status"></div>
+        <div class="appHeader">회원가입</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="card warm"></div>
+      <div class="input"></div><div class="input"></div><div class="input"></div>
+      <div class="checkbox"></div><div class="checkbox short"></div><div class="spacer"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+        </div>
+      </section>
+      <section class="feature">
+        <h2 class="featureTitle">home (2)</h2>
+        <div class="gridCards">
+          
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">오늘의 소담</div>
+          <div class="screenPath">frontend/src/features/home/screens/HomeScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone dashboard">
+        <div class="status"></div>
+        <div class="appHeader">오늘의 소담</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="kpi"></div>
+      <div class="grid"><span></span><span></span></div><div class="listRow"></div><div class="listRow short"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">사장 대시보드</div>
+          <div class="screenPath">frontend/src/features/home/screens/OwnerDashboardScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone state">
+        <div class="status"></div>
+        <div class="appHeader">사장 대시보드</div>
+        <div class="mockBody">
+      <div class="stateIcon"></div><div class="heroTitle"></div><div class="heroLine"></div><div class="heroLine short"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+        </div>
+      </section>
+      <section class="feature">
+        <h2 class="featureTitle">info (5)</h2>
+        <div class="gridCards">
+          
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">노무 정보</div>
+          <div class="screenPath">frontend/src/features/info/screens/InfoListScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone list">
+        <div class="status"></div>
+        <div class="appHeader">노무 정보</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="tabs"></div>
+      <div class="listRow"></div><div class="listRow"></div><div class="listRow"></div><div class="listRow"></div><div class="listRow faded"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">노동 정보 상세</div>
+          <div class="screenPath">frontend/src/features/info/screens/LaborInfoDetailScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone state">
+        <div class="status"></div>
+        <div class="appHeader">노동 정보 상세</div>
+        <div class="mockBody">
+      <div class="stateIcon"></div><div class="heroTitle"></div><div class="heroLine"></div><div class="heroLine short"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">정책 상세</div>
+          <div class="screenPath">frontend/src/features/info/screens/PolicyDetailScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone state">
+        <div class="status"></div>
+        <div class="appHeader">정책 상세</div>
+        <div class="mockBody">
+      <div class="stateIcon"></div><div class="heroTitle"></div><div class="heroLine"></div><div class="heroLine short"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">세무 정보 상세</div>
+          <div class="screenPath">frontend/src/features/info/screens/TaxInfoDetailScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone state">
+        <div class="status"></div>
+        <div class="appHeader">세무 정보 상세</div>
+        <div class="mockBody">
+      <div class="stateIcon"></div><div class="heroTitle"></div><div class="heroLine"></div><div class="heroLine short"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">팁 상세</div>
+          <div class="screenPath">frontend/src/features/info/screens/TipsDetailScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone state">
+        <div class="status"></div>
+        <div class="appHeader">팁 상세</div>
+        <div class="mockBody">
+      <div class="stateIcon"></div><div class="heroTitle"></div><div class="heroLine"></div><div class="heroLine short"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+        </div>
+      </section>
+      <section class="feature">
+        <h2 class="featureTitle">myPage (6)</h2>
+        <div class="gridCards">
+          
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">계정 설정</div>
+          <div class="screenPath">frontend/src/features/myPage/screens/AccountSettingsScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone form">
+        <div class="status"></div>
+        <div class="appHeader">계정 설정</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="card warm"></div>
+      <div class="input"></div><div class="input"></div><div class="input"></div>
+      <div class="checkbox"></div><div class="checkbox short"></div><div class="spacer"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">직원 홈</div>
+          <div class="screenPath">frontend/src/features/myPage/screens/EmployeeMyPageRNScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone dashboard">
+        <div class="status"></div>
+        <div class="appHeader">직원 홈</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="kpi"></div>
+      <div class="grid"><span></span><span></span></div><div class="listRow"></div><div class="listRow short"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">매니저 홈</div>
+          <div class="screenPath">frontend/src/features/myPage/screens/ManagerMyPageScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone dashboard">
+        <div class="status"></div>
+        <div class="appHeader">매니저 홈</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="kpi"></div>
+      <div class="grid"><span></span><span></span></div><div class="listRow"></div><div class="listRow short"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard medium">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">사장 홈</div>
+          <div class="screenPath">frontend/src/features/myPage/screens/MasterMyPageScreen.tsx</div>
+        </div>
+        <span class="risk">주의</span>
+      </div>
+      <div class="phone hero">
+        <div class="status"></div>
+        <div class="appHeader">사장 홈</div>
+        <div class="mockBody">
+      <div class="heroMark"></div><div class="heroTitle"></div><div class="heroLine short"></div>
+      <div class="spacer"></div><div class="button primary"></div><div class="button secondary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>SafeArea</span><span>Scrollable</span><span>Dimensions.get</span><span>legacy COLORS</span></div>
+    </article>
+    <article class="screenCard high">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">개인 기록장</div>
+          <div class="screenPath">frontend/src/features/myPage/screens/PersonalUserScreen.tsx</div>
+        </div>
+        <span class="risk">위험</span>
+      </div>
+      <div class="phone hero">
+        <div class="status"></div>
+        <div class="appHeader">개인 기록장</div>
+        <div class="mockBody">
+      <div class="heroMark"></div><div class="heroTitle"></div><div class="heroLine short"></div>
+      <div class="spacer"></div><div class="button primary"></div><div class="button secondary"></div></div>
+      </div>
+      <div class="flags"><span>SafeArea</span><span>Scrollable</span><span>Dimensions.get</span><span>absolute</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">내 요청</div>
+          <div class="screenPath">frontend/src/features/myPage/screens/RequestStatusScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone state">
+        <div class="status"></div>
+        <div class="appHeader">내 요청</div>
+        <div class="mockBody">
+      <div class="stateIcon"></div><div class="heroTitle"></div><div class="heroLine"></div><div class="heroLine short"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+        </div>
+      </section>
+      <section class="feature">
+        <h2 class="featureTitle">notification (1)</h2>
+        <div class="gridCards">
+          
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">알림</div>
+          <div class="screenPath">frontend/src/features/notification/screens/NotificationCenterScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone list">
+        <div class="status"></div>
+        <div class="appHeader">알림</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="tabs"></div>
+      <div class="listRow"></div><div class="listRow"></div><div class="listRow"></div><div class="listRow"></div><div class="listRow faded"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+        </div>
+      </section>
+      <section class="feature">
+        <h2 class="featureTitle">qna (1)</h2>
+        <div class="gridCards">
+          
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">Q&amp;A</div>
+          <div class="screenPath">frontend/src/features/qna/screens/QnAScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone form">
+        <div class="status"></div>
+        <div class="appHeader">Q&amp;A</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="card warm"></div>
+      <div class="input"></div><div class="input"></div><div class="input"></div>
+      <div class="checkbox"></div><div class="checkbox short"></div><div class="spacer"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+        </div>
+      </section>
+      <section class="feature">
+        <h2 class="featureTitle">referral (1)</h2>
+        <div class="gridCards">
+          
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">친구 추천</div>
+          <div class="screenPath">frontend/src/features/referral/screens/ReferralScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone standard">
+        <div class="status"></div>
+        <div class="appHeader">친구 추천</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="card"></div><div class="card short"></div><div class="listRow"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+        </div>
+      </section>
+      <section class="feature">
+        <h2 class="featureTitle">salary (5)</h2>
+        <div class="gridCards">
+          
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">급여 정산</div>
+          <div class="screenPath">frontend/src/features/salary/screens/PayrollRunScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone hero">
+        <div class="status"></div>
+        <div class="appHeader">급여 정산</div>
+        <div class="mockBody">
+      <div class="heroMark"></div><div class="heroTitle"></div><div class="heroLine short"></div>
+      <div class="spacer"></div><div class="button primary"></div><div class="button secondary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">PDF 미리보기</div>
+          <div class="screenPath">frontend/src/features/salary/screens/PdfPreviewScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone standard">
+        <div class="status"></div>
+        <div class="appHeader">PDF 미리보기</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="card"></div><div class="card short"></div><div class="listRow"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">지난 급여명세</div>
+          <div class="screenPath">frontend/src/features/salary/screens/SalaryArchiveScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone state">
+        <div class="status"></div>
+        <div class="appHeader">지난 급여명세</div>
+        <div class="mockBody">
+      <div class="stateIcon"></div><div class="heroTitle"></div><div class="heroLine"></div><div class="heroLine short"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">급여 상세</div>
+          <div class="screenPath">frontend/src/features/salary/screens/SalaryDetailScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone state">
+        <div class="status"></div>
+        <div class="appHeader">급여 상세</div>
+        <div class="mockBody">
+      <div class="stateIcon"></div><div class="heroTitle"></div><div class="heroLine"></div><div class="heroLine short"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">급여</div>
+          <div class="screenPath">frontend/src/features/salary/screens/SalaryListScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone form">
+        <div class="status"></div>
+        <div class="appHeader">급여</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="card warm"></div>
+      <div class="input"></div><div class="input"></div><div class="input"></div>
+      <div class="checkbox"></div><div class="checkbox short"></div><div class="spacer"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+        </div>
+      </section>
+      <section class="feature">
+        <h2 class="featureTitle">settings (2)</h2>
+        <div class="gridCards">
+          
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">알림 설정</div>
+          <div class="screenPath">frontend/src/features/settings/screens/NotificationSettingsScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone standard">
+        <div class="status"></div>
+        <div class="appHeader">알림 설정</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="card"></div><div class="card short"></div><div class="listRow"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">설정</div>
+          <div class="screenPath">frontend/src/features/settings/screens/SettingsScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone standard">
+        <div class="status"></div>
+        <div class="appHeader">설정</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="card"></div><div class="card short"></div><div class="listRow"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+        </div>
+      </section>
+      <section class="feature">
+        <h2 class="featureTitle">store (6)</h2>
+        <div class="gridCards">
+          
+    <article class="screenCard medium">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">직원 상세</div>
+          <div class="screenPath">frontend/src/features/store/screens/EmployeeDetailScreen.tsx</div>
+        </div>
+        <span class="risk">주의</span>
+      </div>
+      <div class="phone form">
+        <div class="status"></div>
+        <div class="appHeader">직원 상세</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="card warm"></div>
+      <div class="input"></div><div class="input"></div><div class="input"></div>
+      <div class="checkbox"></div><div class="checkbox short"></div><div class="spacer"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>SafeArea</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">매장 가입</div>
+          <div class="screenPath">frontend/src/features/store/screens/JoinStoreByCodeScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone form">
+        <div class="status"></div>
+        <div class="appHeader">매장 가입</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="card warm"></div>
+      <div class="input"></div><div class="input"></div><div class="input"></div>
+      <div class="checkbox"></div><div class="checkbox short"></div><div class="spacer"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">매장 운영</div>
+          <div class="screenPath">frontend/src/features/store/screens/StoreDetailScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone state">
+        <div class="status"></div>
+        <div class="appHeader">매장 운영</div>
+        <div class="mockBody">
+      <div class="stateIcon"></div><div class="heroTitle"></div><div class="heroLine"></div><div class="heroLine short"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">매장 정보 수정</div>
+          <div class="screenPath">frontend/src/features/store/screens/StoreEditScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone form">
+        <div class="status"></div>
+        <div class="appHeader">매장 정보 수정</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="card warm"></div>
+      <div class="input"></div><div class="input"></div><div class="input"></div>
+      <div class="checkbox"></div><div class="checkbox short"></div><div class="spacer"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">첫 매장 등록</div>
+          <div class="screenPath">frontend/src/features/store/StoreRegistraionScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone form">
+        <div class="status"></div>
+        <div class="appHeader">첫 매장 등록</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="card warm"></div>
+      <div class="input"></div><div class="input"></div><div class="input"></div>
+      <div class="checkbox"></div><div class="checkbox short"></div><div class="spacer"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">시급 정책</div>
+          <div class="screenPath">frontend/src/features/store/screens/WageSettingsScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone form">
+        <div class="status"></div>
+        <div class="appHeader">시급 정책</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="card warm"></div>
+      <div class="input"></div><div class="input"></div><div class="input"></div>
+      <div class="checkbox"></div><div class="checkbox short"></div><div class="spacer"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+        </div>
+      </section>
+      <section class="feature">
+        <h2 class="featureTitle">subscription (1)</h2>
+        <div class="gridCards">
+          
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">구독</div>
+          <div class="screenPath">frontend/src/features/subscription/screens/SubscribeScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone standard">
+        <div class="status"></div>
+        <div class="appHeader">구독</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="card"></div><div class="card short"></div><div class="listRow"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+        </div>
+      </section>
+      <section class="feature">
+        <h2 class="featureTitle">system (8)</h2>
+        <div class="gridCards">
+          
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">앱 업데이트</div>
+          <div class="screenPath">frontend/src/features/system/screens/AppUpdateScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone state">
+        <div class="status"></div>
+        <div class="appHeader">앱 업데이트</div>
+        <div class="mockBody">
+      <div class="stateIcon"></div><div class="heroTitle"></div><div class="heroLine"></div><div class="heroLine short"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">약관</div>
+          <div class="screenPath">frontend/src/features/system/screens/LegalWebviewScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone state">
+        <div class="status"></div>
+        <div class="appHeader">약관</div>
+        <div class="mockBody">
+      <div class="stateIcon"></div><div class="heroTitle"></div><div class="heroLine"></div><div class="heroLine short"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">점검 안내</div>
+          <div class="screenPath">frontend/src/features/system/screens/MaintenanceScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone state">
+        <div class="status"></div>
+        <div class="appHeader">점검 안내</div>
+        <div class="mockBody">
+      <div class="stateIcon"></div><div class="heroTitle"></div><div class="heroLine"></div><div class="heroLine short"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">결제 실패</div>
+          <div class="screenPath">frontend/src/features/system/screens/PaymentFailedScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone hero">
+        <div class="status"></div>
+        <div class="appHeader">결제 실패</div>
+        <div class="mockBody">
+      <div class="heroMark"></div><div class="heroTitle"></div><div class="heroLine short"></div>
+      <div class="spacer"></div><div class="button primary"></div><div class="button secondary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">결제 성공</div>
+          <div class="screenPath">frontend/src/features/system/screens/PaymentSuccessScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone state">
+        <div class="status"></div>
+        <div class="appHeader">결제 성공</div>
+        <div class="mockBody">
+      <div class="stateIcon"></div><div class="heroTitle"></div><div class="heroLine"></div><div class="heroLine short"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">권한 안내</div>
+          <div class="screenPath">frontend/src/features/system/screens/PermissionDeniedScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone state">
+        <div class="status"></div>
+        <div class="appHeader">권한 안내</div>
+        <div class="mockBody">
+      <div class="stateIcon"></div><div class="heroTitle"></div><div class="heroLine"></div><div class="heroLine short"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">세션 만료</div>
+          <div class="screenPath">frontend/src/features/system/screens/SessionExpiredScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone state">
+        <div class="status"></div>
+        <div class="appHeader">세션 만료</div>
+        <div class="mockBody">
+      <div class="stateIcon"></div><div class="heroTitle"></div><div class="heroLine"></div><div class="heroLine short"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">구독 안내</div>
+          <div class="screenPath">frontend/src/features/system/screens/SubscriptionGateScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone hero">
+        <div class="status"></div>
+        <div class="appHeader">구독 안내</div>
+        <div class="mockBody">
+      <div class="heroMark"></div><div class="heroTitle"></div><div class="heroLine short"></div>
+      <div class="spacer"></div><div class="button primary"></div><div class="button secondary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span></div>
+    </article>
+        </div>
+      </section>
+      <section class="feature">
+        <h2 class="featureTitle">timeoff (1)</h2>
+        <div class="gridCards">
+          
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">휴가 신청</div>
+          <div class="screenPath">frontend/src/features/timeoff/screens/TimeOffRequestScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone form">
+        <div class="status"></div>
+        <div class="appHeader">휴가 신청</div>
+        <div class="mockBody">
+      <div class="headerLine"></div><div class="card warm"></div>
+      <div class="input"></div><div class="input"></div><div class="input"></div>
+      <div class="checkbox"></div><div class="checkbox short"></div><div class="spacer"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+        </div>
+      </section>
+      <section class="feature">
+        <h2 class="featureTitle">welcome (5)</h2>
+        <div class="gridCards">
+          
+    <article class="screenCard medium">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">개발용 placeholder</div>
+          <div class="screenPath">frontend/src/features/welcome/screens/HybridMainScreen.tsx</div>
+        </div>
+        <span class="risk">주의</span>
+      </div>
+      <div class="phone hero">
+        <div class="status"></div>
+        <div class="appHeader">개발용 placeholder</div>
+        <div class="mockBody">
+      <div class="heroMark"></div><div class="heroTitle"></div><div class="heroLine short"></div>
+      <div class="spacer"></div><div class="button primary"></div><div class="button secondary"></div></div>
+      </div>
+      <div class="flags"></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">온보딩</div>
+          <div class="screenPath">frontend/src/features/welcome/screens/OnboardingCarouselScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone hero">
+        <div class="status"></div>
+        <div class="appHeader">온보딩</div>
+        <div class="mockBody">
+      <div class="heroMark"></div><div class="heroTitle"></div><div class="heroLine short"></div>
+      <div class="spacer"></div><div class="button primary"></div><div class="button secondary"></div></div>
+      </div>
+      <div class="flags"><span>SafeArea</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard medium">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">스플래시</div>
+          <div class="screenPath">frontend/src/features/welcome/screens/SplashScreen.tsx</div>
+        </div>
+        <span class="risk">주의</span>
+      </div>
+      <div class="phone hero">
+        <div class="status"></div>
+        <div class="appHeader">스플래시</div>
+        <div class="mockBody">
+      <div class="heroMark"></div><div class="heroTitle"></div><div class="heroLine short"></div>
+      <div class="spacer"></div><div class="button primary"></div><div class="button secondary"></div></div>
+      </div>
+      <div class="flags"><span>SafeArea</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">사용 목적 선택</div>
+          <div class="screenPath">frontend/src/features/welcome/screens/UsageSelectionScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone hero">
+        <div class="status"></div>
+        <div class="appHeader">사용 목적 선택</div>
+        <div class="mockBody">
+      <div class="heroMark"></div><div class="heroTitle"></div><div class="heroLine short"></div>
+      <div class="spacer"></div><div class="button primary"></div><div class="button secondary"></div></div>
+      </div>
+      <div class="flags"><span>SafeArea</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard medium">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">웰컴</div>
+          <div class="screenPath">frontend/src/features/welcome/screens/WelcomeMainScreen.tsx</div>
+        </div>
+        <span class="risk">주의</span>
+      </div>
+      <div class="phone hero">
+        <div class="status"></div>
+        <div class="appHeader">웰컴</div>
+        <div class="mockBody">
+      <div class="heroMark"></div><div class="heroTitle"></div><div class="heroLine short"></div>
+      <div class="spacer"></div><div class="button primary"></div><div class="button secondary"></div></div>
+      </div>
+      <div class="flags"><span>SafeArea</span></div>
+    </article>
+        </div>
+      </section>
+      <section class="feature">
+        <h2 class="featureTitle">workplace (2)</h2>
+        <div class="gridCards">
+          
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">근무지 상세</div>
+          <div class="screenPath">frontend/src/features/workplace/screens/WorkplaceDetailScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone state">
+        <div class="status"></div>
+        <div class="appHeader">근무지 상세</div>
+        <div class="mockBody">
+      <div class="stateIcon"></div><div class="heroTitle"></div><div class="heroLine"></div><div class="heroLine short"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+    <article class="screenCard low">
+      <div class="screenMeta">
+        <div>
+          <div class="screenName">근무지</div>
+          <div class="screenPath">frontend/src/features/workplace/screens/WorkplaceListScreen.tsx</div>
+        </div>
+        <span class="risk">양호</span>
+      </div>
+      <div class="phone state">
+        <div class="status"></div>
+        <div class="appHeader">근무지</div>
+        <div class="mockBody">
+      <div class="stateIcon"></div><div class="heroTitle"></div><div class="heroLine"></div><div class="heroLine short"></div><div class="button primary"></div></div>
+      </div>
+      <div class="flags"><span>ScreenContainer</span><span>Scrollable</span></div>
+    </article>
+        </div>
+      </section>
+  </main>
+</body>
+</html>
