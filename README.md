@@ -1,8 +1,14 @@
-﻿# 소담(SODAM) — 소상공인 근태·급여·세무 SaaS
+# 소담(SODAM) — 소상공인 근태·급여·세무 SaaS
 
 > **소상공인이 만든, 소상공인을 담는 단 하나의 운영 비서**
 >
 > 직원 1~5명짜리 가게의 출퇴근·급여·세무를 자동으로 굴려주는 모바일 SaaS.
+
+---
+
+## 📄 투자 요청서
+
+- [소담(SODAM) 투자 요청서 HTML](./investment-request.html)
 
 ---
 
@@ -35,6 +41,7 @@ cd backend
 Project_sodam/
 ├── README.md                    ← 이 문서 (진입점)
 ├── CLAUDE.md                    ← Claude Code 자율 작업 헌법 (자동 로드)
+├── investment-request.html      ← 투자 요청서 HTML
 ├── docker-compose.yml           ← Docker 풀스택
 ├── .env.example                 ← 환경변수 템플릿
 ├── .claude/                     ← Claude 설정·커스텀 명령
@@ -85,6 +92,7 @@ Project_sodam/
 | 상황 | 문서 |
 |---|---|
 | **처음 보는 사람** | `README.md` (이 문서) → `docs/02-runbook/서비스사용방법.md` |
+| **투자 검토/IR** | `investment-request.html` |
 | **개발 환경 부팅** | `docs/02-runbook/RUN_EMULATOR.md` 또는 `docs/02-runbook/DOCKER.md` |
 | **현재 진행 상황** | `docs/02-runbook/PROGRESS.md` |
 | **제품 큰 그림** | `docs/00-master-plan/마스터프로젝트개발계획.md` |
