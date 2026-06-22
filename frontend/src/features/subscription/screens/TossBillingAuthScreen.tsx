@@ -1,6 +1,8 @@
 import React, {useCallback, useMemo, useRef, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
-import {useNavigation, useRoute} from '@react-navigation/native';
+import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
     AppButton,
@@ -98,12 +100,12 @@ function extractQueryParam(url: string, key: string): string | null {
 }
 
 const TossBillingAuthScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
-    const route = useRoute<any>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
+    const route = useRoute<RouteProp<HomeStackParamList, 'TossBillingAuth'>>();
     const c = useThemeColors();
 
-    const planParam = (route.params?.plan as string | undefined) ?? '';
-    const cycleParam = (route.params?.billingCycle as string | undefined) ?? 'MONTHLY';
+    const planParam = route.params?.plan ?? '';
+    const cycleParam = route.params?.billingCycle ?? 'MONTHLY';
     const plan: PlanType | null = isPlanType(planParam) ? planParam : null;
     const billingCycle: BillingCycle = isBillingCycle(cycleParam) ? cycleParam : 'MONTHLY';
 
@@ -141,7 +143,8 @@ const TossBillingAuthScreen: React.FC = () => {
                 if (message) {
                     AppToast.error(message);
                 }
-                navigation.navigate('PaymentFailed');
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 크로스 네비게이터: PaymentFailed 는 루트 스택 라우트
+                (navigation as any).navigate('PaymentFailed');
             } finally {
                 setProcessing(false);
             }

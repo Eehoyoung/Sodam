@@ -2,6 +2,8 @@ import {AppToast, AppButton, AppHeader, AppText, CtaStack, ScreenContainer, Segm
 import React, {useEffect, useMemo, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {spacing} from '../../../theme/tokens';
 import {useResponsive} from '../../../common/hooks/useResponsive';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
@@ -75,7 +77,7 @@ const buildPlanVisuals = (c: ThemeColors): Record<PlanType, {emoji: string; acce
  * 플랜 선택. ⚠️ 결제 로직(subscribeFree/TossBillingAuth)은 변경 없이 표현만 교체.
  */
 const SubscribeScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const r = useResponsive();
     const c = useThemeColors();
     const planVisuals = useMemo(() => buildPlanVisuals(c), [c]);
@@ -143,7 +145,8 @@ const SubscribeScreen: React.FC = () => {
         } catch (e: any) {
             // 유료 전환 실패 → 결제 실패 안내 화면 (갭분석 A4). 무료/일반 오류는 알럿.
             if (selectedPlan && selectedPlan !== 'FREE') {
-                navigation.navigate('PaymentFailed');
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 크로스 네비게이터: PaymentFailed 는 루트 스택 라우트
+                (navigation as any).navigate('PaymentFailed');
             } else {
                 AppToast.error(e?.response?.data?.message ?? '구독 처리에 실패했어요. 잠시 후 다시 시도해 주세요.');
             }

@@ -1,6 +1,8 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {RefreshControl, ScrollView, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
     AppBadge,
@@ -20,8 +22,11 @@ import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {formatMoney} from '../../../common/utils/format';
 import StoreSelector, {SelectableStore} from '../../../common/components/store/StoreSelector';
+import {StoreSetupCard} from '../../store/components/StoreSetupCard';
 import {useAuth} from '../../../contexts/AuthContext';
 import api from '../../../common/utils/api';
+import {useSubscription} from '../../subscription/hooks/useSubscription';
+import {PastDueBanner} from '../../subscription/components/PastDueBanner';
 
 interface TodayStats {
     storeId: number;
@@ -44,9 +49,13 @@ interface MonthPayroll {
  * 1차 행동(급여 정산)은 하단 풀폭 CTA. load/StoreSelector/네비게이션 보존.
  */
 const OwnerDashboardScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const {user} = useAuth();
     const c = useThemeColors();
+    // 결제 실패(PAST_DUE) 침묵 이탈 방지 — 카드 재등록 유도 배너 노출용 (T1-6)
+    const {current: subscription} = useSubscription();
+    const isPastDue = subscription?.status === 'PAST_DUE';
+    const goReRegisterCard = useCallback(() => navigation.navigate('Subscribe'), [navigation]);
     const [refreshing, setRefreshing] = useState(false);
     const [stores, setStores] = useState<SelectableStore[]>([]);
     const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
@@ -54,6 +63,7 @@ const OwnerDashboardScreen: React.FC = () => {
     const [monthly, setMonthly] = useState<MonthPayroll | null>(null);
     const [loaded, setLoaded] = useState(false);
     const [error, setError] = useState(false);
+    const [setupRefreshKey, setSetupRefreshKey] = useState(0);
 
     const load = useCallback(async () => {
         try {
@@ -110,6 +120,7 @@ const OwnerDashboardScreen: React.FC = () => {
     const onRefresh = async () => {
         setRefreshing(true);
         await load();
+        setSetupRefreshKey(k => k + 1);
         setRefreshing(false);
     };
 
@@ -166,7 +177,19 @@ const OwnerDashboardScreen: React.FC = () => {
                 contentContainerStyle={styles.content}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 showsVerticalScrollIndicator={false}>
+                {isPastDue ? <PastDueBanner onPress={goReRegisterCard} /> : null}
+
                 <StoreSelector stores={stores} selectedId={selectedStoreId} onSelect={setSelectedStoreId} />
+
+                {/* 매장 설정 완성도 + 다음 한 가지 (GR-NEW-06) — 유령매장 절벽 완화 */}
+                {selectedStoreId !== null ? (
+                    <StoreSetupCard
+                        storeId={selectedStoreId}
+                        refreshKey={setupRefreshKey}
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 동적 routeName(string) 디스패치: StoreSetupCard 가 런타임에 라우트명을 결정
+                        onNavigate={(routeName, params) => navigation.navigate(routeName as any, params as any)}
+                    />
+                ) : null}
 
                 {/* 숫자 히어로 — 이번 달 예상 인건비 */}
                 <View style={styles.hero}>
@@ -245,7 +268,12 @@ const OwnerDashboardScreen: React.FC = () => {
                             subtitle="새 직원 초대·시급 설정"
                             left={<Ionicons name="people-outline" size={24} color={c.brandPrimary} />}
                             right="›"
-                            onPress={() => navigation.navigate('StoreDetail')}
+                            onPress={() => {
+                                // StoreDetail 은 storeId 필수 — 미선택 시 진입 차단(빈 파라미터 크래시 방지)
+                                if (selectedStoreId !== null) {
+                                    navigation.navigate('StoreDetail', {storeId: selectedStoreId});
+                                }
+                            }}
                         />
                         <AppListItem
                             title="위치·반경 설정"
