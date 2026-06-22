@@ -1,2 +1,1 @@
-export * from './WorkplaceListScreen';
-export * from './WorkplaceDetailScreen';
+export * from './PersonalAnnualTaxScreen';

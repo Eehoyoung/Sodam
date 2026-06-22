@@ -1,6 +1,8 @@
 import React, {useEffect, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {
     AppBadge,
     AppHeader,
@@ -13,22 +15,16 @@ import {
 } from '../../../common/components/ds';
 import {formatMoney} from '../../../common/utils/format';
 import {spacing} from '../../../theme/tokens';
-import payrollService from '../services/payrollService';
-
-interface ArchiveItem {
-    payrollId: number;
-    period: string;
-    employeeName: string;
-    netPay: number;
-    issued: boolean;
-}
+import {useAuth} from '../../../contexts/AuthContext';
+import payrollService, {ArchiveItem} from '../services/payrollService';
 
 /**
  * A12 명세서 보관함 / 지난 급여명세 (갭분석 추가).
- * 퇴사 후·세무 목적의 과거 명세 재열람. payrollService 조회 로직 사용.
+ * 퇴사 후·세무 목적의 과거 명세 재열람. 본인 employeeId 의 급여 목록을 연도로 조회.
  */
 const SalaryArchiveScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
+    const {user} = useAuth();
     const [year, setYear] = useState(0); // 0=올해, 1=작년
     const [loading, setLoading] = useState(true);
     const [items, setItems] = useState<ArchiveItem[]>([]);
@@ -38,10 +34,13 @@ const SalaryArchiveScreen: React.FC = () => {
         (async () => {
             setLoading(true);
             try {
+                const employeeId = user?.id;
+                if (!employeeId) {
+                    if (mounted) {setItems([]);}
+                    return;
+                }
                 const target = new Date().getFullYear() - year;
-                const list = await (payrollService as any)
-                    .listArchive?.(target)
-                    .catch(() => []) ?? [];
+                const list = await payrollService.listArchive(employeeId, target).catch(() => []);
                 if (mounted) {
                     setItems(Array.isArray(list) ? list : []);
                 }
@@ -58,7 +57,7 @@ const SalaryArchiveScreen: React.FC = () => {
         return () => {
             mounted = false;
         };
-    }, [year]);
+    }, [year, user?.id]);
 
     return (
         <ScreenContainer scroll header={<AppHeader title="지난 급여명세" onBack={() => navigation.goBack()} />}>

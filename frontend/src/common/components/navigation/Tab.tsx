@@ -1,5 +1,7 @@
-import React from 'react';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import React, {useMemo} from 'react';
 import {StyleSheet, Text, TextStyle, TouchableOpacity, View, ViewStyle} from 'react-native';
+import {ThemeColors, useThemeColors} from '../../hooks/useThemeColors';
 
 // 탭 아이템 타입 정의
 export interface TabItem {
@@ -48,6 +50,8 @@ const Tab: React.FC<TabProps> = ({
                                      showIndicator = true,
                                      scrollable = false,
                                  }) => {
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
     // 컨테이너 컴포넌트 결정 (스크롤 가능 여부에 따라)
     const Container = scrollable ? View : View;
     const containerStyle = scrollable ? [styles.scrollContainer, style] : [styles.container, style];
@@ -109,18 +113,18 @@ const Tab: React.FC<TabProps> = ({
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
     container: {
         flexDirection: 'row',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: c.surface,
         borderBottomWidth: 1,
-        borderBottomColor: '#E5E5EA',
+        borderBottomColor: c.border,
     },
     scrollContainer: {
         flexDirection: 'row',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: c.surface,
         borderBottomWidth: 1,
-        borderBottomColor: '#E5E5EA',
+        borderBottomColor: c.border,
     },
     tab: {
         flex: 1,
@@ -138,15 +142,15 @@ const styles = StyleSheet.create({
     },
     text: {
         fontSize: 14,
-        color: '#8E8E93',
+        color: c.textSecondary,
         textAlign: 'center',
     },
     activeText: {
-        color: '#007AFF',
+        color: c.brandPrimary,
         fontWeight: '500',
     },
     disabledText: {
-        color: '#C7C7CC',
+        color: c.textDisabled,
     },
     icon: {
         marginRight: 4,
@@ -158,13 +162,13 @@ const styles = StyleSheet.create({
         minWidth: 18,
         height: 18,
         borderRadius: 9,
-        backgroundColor: '#FF3B30',
+        backgroundColor: c.error,
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 4,
     },
     badgeText: {
-        color: '#FFFFFF',
+        color: c.textInverse,
         fontSize: 10,
         fontWeight: 'bold',
     },
@@ -174,7 +178,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         height: 2,
-        backgroundColor: '#007AFF',
+        backgroundColor: c.brandPrimary,
     },
 });
 
