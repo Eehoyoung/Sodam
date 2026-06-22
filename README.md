@@ -6,9 +6,10 @@
 
 ---
 
-## 📄 투자 요청서
+## 📄 제안 문서
 
-- [소담(SODAM) 투자 요청서 HTML](./investment-request.html)
+- [소담(SODAM) 프랜차이즈 본사 제안서 HTML](./investment-request.html)
+- [소담(SODAM) 초기 예산안 HTML](./budget-plan.html)
 
 ---
 
@@ -41,7 +42,8 @@ cd backend
 Project_sodam/
 ├── README.md                    ← 이 문서 (진입점)
 ├── CLAUDE.md                    ← Claude Code 자율 작업 헌법 (자동 로드)
-├── investment-request.html      ← 투자 요청서 HTML
+├── investment-request.html      ← 프랜차이즈 본사 제안서 HTML
+├── budget-plan.html             ← 초기 예산안 HTML
 ├── docker-compose.yml           ← Docker 풀스택
 ├── .env.example                 ← 환경변수 템플릿
 ├── .claude/                     ← Claude 설정·커스텀 명령
@@ -92,7 +94,8 @@ Project_sodam/
 | 상황 | 문서 |
 |---|---|
 | **처음 보는 사람** | `README.md` (이 문서) → `docs/02-runbook/서비스사용방법.md` |
-| **투자 검토/IR** | `investment-request.html` |
+| **프랜차이즈 본사 제출/제휴 제안** | `investment-request.html` |
+| **초기 예산 검토** | `budget-plan.html` |
 | **개발 환경 부팅** | `docs/02-runbook/RUN_EMULATOR.md` 또는 `docs/02-runbook/DOCKER.md` |
 | **현재 진행 상황** | `docs/02-runbook/PROGRESS.md` |
 | **제품 큰 그림** | `docs/00-master-plan/마스터프로젝트개발계획.md` |
