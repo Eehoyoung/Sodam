@@ -68,6 +68,17 @@ public class NotificationService {
     }
 
     @Async
+    public void notifyDocumentExpiring(Long ownerUserId, String employeeName, String docLabel, long daysLeft) {
+        String when = daysLeft < 0 ? "만료됐어요" : (daysLeft == 0 ? "오늘 만료돼요" : String.format("%d일 뒤 만료돼요", daysLeft));
+        push(ownerUserId, PushMessage.builder()
+                .title("서류 만료 알림")
+                .body(String.format("%s 님의 %s이(가) %s. 갱신을 챙겨주세요.", employeeName, docLabel, when))
+                .deepLink("sodam://store")
+                .data(Map.of("type", "DOCUMENT_EXPIRING"))
+                .build());
+    }
+
+    @Async
     public void notifyPayrollPaid(Long employeeUserId, String storeName, int netWage, String month) {
         push(employeeUserId, PushMessage.builder()
                 .title("급여 입금 완료")
@@ -94,6 +105,21 @@ public class NotificationService {
                 .body(String.format("%s 플랜 결제가 실패했어요. 카드 정보를 확인해 주세요.", planName))
                 .deepLink("sodam://subscription")
                 .data(Map.of("type", "BILLING_FAILED"))
+                .build());
+    }
+
+    /**
+     * 휴면 사장 win-back(GR-NEW-05). 휴면 전환 D+7/D+30 에 복귀를 유도.
+     * 외부 발신이 아니라 앱 내 알림(inbox 적재 + FCM, 수신동의 범위)이다.
+     * 마케팅성 문구 — CEO 톤 검토 대상.
+     */
+    @Async
+    public void notifyWinBack(Long ownerUserId) {
+        push(ownerUserId, PushMessage.builder()
+                .title("이번 달 급여, 30초면 끝나요")
+                .body("사장님, 다시 오셨네요. 직원 출퇴근부터 급여 정산까지 소담이 한 번에 도와드릴게요.")
+                .deepLink("sodam://home")
+                .data(Map.of("type", "WIN_BACK"))
                 .build());
     }
 
@@ -129,7 +155,7 @@ public class NotificationService {
         if (type.startsWith("ATTENDANCE_")) return NotificationInbox.Category.ATTENDANCE;
         if (type.startsWith("PAYROLL_")) return NotificationInbox.Category.PAYROLL;
         if (type.startsWith("BILLING_")) return NotificationInbox.Category.BILLING;
-        if (type.equals("MARKETING")) return NotificationInbox.Category.MARKETING;
+        if (type.equals("MARKETING") || type.equals("WIN_BACK")) return NotificationInbox.Category.MARKETING;
         return NotificationInbox.Category.NOTICE;
     }
 }

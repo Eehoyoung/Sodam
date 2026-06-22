@@ -31,10 +31,13 @@ public class GlobalExceptionHandler {
 
     private final MessageSource messageSource;
     private final LocaleResolver localeResolver;
+    private final com.rich.sodam.config.SentryReporter sentryReporter;
 
-    public GlobalExceptionHandler(MessageSource messageSource, LocaleResolver localeResolver) {
+    public GlobalExceptionHandler(MessageSource messageSource, LocaleResolver localeResolver,
+                                  com.rich.sodam.config.SentryReporter sentryReporter) {
         this.messageSource = messageSource;
         this.localeResolver = localeResolver;
+        this.sentryReporter = sentryReporter;
     }
 
     /**
@@ -56,6 +59,10 @@ public class GlobalExceptionHandler {
     })
     public ResponseEntity<ApiResponse<Object>> handleAccessDenied(Exception e) {
         log.warn("권한 거부: {}", e.getMessage());
+        // RBAC 우회 시도 알람 — Sentry 캡처(비활성 시 no-op). 메시지엔 PII 미포함.
+        sentryReporter.captureException(
+                com.rich.sodam.config.SentryReporter.ALERT_RBAC_BYPASS, e,
+                java.util.Map.of("exception", e.getClass().getSimpleName()));
         ApiResponse<Object> response = ApiResponse.error("FORBIDDEN",
                 e.getMessage() != null && !e.getMessage().isBlank() ? e.getMessage() : "해당 작업에 대한 권한이 없어요.");
         return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
