@@ -25,6 +25,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.security.annotation.MasterOnly;
 
 import java.util.List;
@@ -121,6 +122,7 @@ public class StoreController {
 
     @Operation(summary = "매장 코드로 가입 (직원 셀프)",
             description = "사장이 공유한 매장 코드로 직원 본인이 매장에 가입. PRD_EMPLOYEE E-301.")
+    @EmployeeOrMaster // 클래스 @MasterOnly 오버라이드 — 직원 셀프 합류 엔드포인트(E-301)는 직원도 호출
     @PostMapping("/join-by-code")
     public ResponseEntity<Store> joinByCode(
             @org.springframework.security.core.annotation.AuthenticationPrincipal
