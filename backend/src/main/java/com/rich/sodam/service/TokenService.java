@@ -27,8 +27,9 @@ public class TokenService {
      */
     public Cookie createJwtCookie(User user, String jwtToken) {
         Cookie jwtCookie = new Cookie(jwtCookieName, jwtToken);
-        jwtCookie.setHttpOnly(true);
-//        jwtCookie.setSecure(true); // HTTPS 전송
+        jwtCookie.setHttpOnly(true);          // XSS 가 토큰을 읽지 못하도록
+        jwtCookie.setSecure(true);            // HTTPS 전송만 (운영 HTTP 평문 노출 방지)
+        jwtCookie.setAttribute("SameSite", "Strict"); // CSRF 방어 — 크로스사이트 자동 전송 차단
         jwtCookie.setPath("/");
         jwtCookie.setMaxAge(cookieMaxAge);
         return jwtCookie;
@@ -43,6 +44,7 @@ public class TokenService {
         Cookie jwtCookie = new Cookie(jwtCookieName, null);
         jwtCookie.setHttpOnly(true);
         jwtCookie.setSecure(true);
+        jwtCookie.setAttribute("SameSite", "Strict"); // 발급 쿠키와 속성 일치(브라우저 매칭·삭제)
         jwtCookie.setPath("/");
         jwtCookie.setMaxAge(0); // 쿠키 즉시 만료
         return jwtCookie;

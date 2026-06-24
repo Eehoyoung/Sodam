@@ -13,7 +13,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.service.StoreAccessGuard;
 
 import java.io.IOException;
 import java.util.LinkedHashMap;
@@ -33,11 +36,14 @@ public class StorePhotoController {
     private final StorePhotoRepository storePhotoRepository;
     private final StoreRepository storeRepository;
     private final ObjectStorage objectStorage;
+    private final StoreAccessGuard storeAccessGuard;
 
     @Operation(summary = "매장 사진 목록")
     @GetMapping
     @Transactional(readOnly = true)
-    public ResponseEntity<List<Map<String, Object>>> list(@PathVariable Long storeId) {
+    public ResponseEntity<List<Map<String, Object>>> list(
+            @AuthenticationPrincipal UserPrincipal principal, @PathVariable Long storeId) {
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId); // BOLA 차단: 본인 매장만
         var photos = storePhotoRepository.findByStore_IdOrderByDisplayOrderAsc(storeId)
                 .stream().map(p -> {
                     Map<String, Object> m = new LinkedHashMap<>();
@@ -55,8 +61,10 @@ public class StorePhotoController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Transactional
     public ResponseEntity<?> upload(
+            @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId,
             @RequestParam("file") MultipartFile file) throws IOException {
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId); // BOLA 차단: 본인 매장만
         if (file == null || file.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("message", "파일이 비어 있어요."));
         }
@@ -96,7 +104,10 @@ public class StorePhotoController {
     @Operation(summary = "매장 사진 삭제")
     @DeleteMapping("/{photoId}")
     @Transactional
-    public ResponseEntity<Void> delete(@PathVariable Long storeId, @PathVariable Long photoId) {
+    public ResponseEntity<Void> delete(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long storeId, @PathVariable Long photoId) {
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId); // BOLA 차단: 본인 매장만
         storePhotoRepository.findById(photoId).ifPresent(photo -> {
             if (photo.getStore() == null || !storeId.equals(photo.getStore().getId())) return;
             objectStorage.delete(photo.getStorageKey());
