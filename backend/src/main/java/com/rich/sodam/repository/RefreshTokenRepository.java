@@ -2,6 +2,7 @@ package com.rich.sodam.repository;
 
 import com.rich.sodam.domain.RefreshToken;
 import com.rich.sodam.domain.User;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -22,6 +23,8 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
      * @param token 토큰 값
      * @return 리프레시 토큰
      */
+    // user 까지 fetch — 토큰 재발급 시 user.getEmail() lazy 접근(LazyInitializationException) 방지
+    @EntityGraph(attributePaths = {"user"})
     Optional<RefreshToken> findByToken(String token);
 
     /**
