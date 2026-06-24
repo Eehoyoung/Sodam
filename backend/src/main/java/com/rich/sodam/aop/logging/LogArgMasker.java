@@ -27,6 +27,21 @@ public final class LogArgMasker {
             "latitude", "longitude", "lat", "lng", "lon"
     );
 
+    /**
+     * 민감 PII/크리덴셜 필드명(소문자, '_' 제거 비교). 평문 로깅 금지(PIPA §29).
+     * password(BCrypt 전 평문)·주민번호·계좌·전화·생년월일·카드·토큰 등.
+     */
+    private static final Set<String> SENSITIVE_FIELD_NAMES = Set.of(
+            "password", "passwd", "pwd",
+            "residentnumber", "resident", "rrn", "ssn", "주민번호",
+            "account", "accountnumber", "bankaccount", "계좌",
+            "phone", "phonenumber", "mobile",
+            "birthdate", "birth", "생년월일",
+            "card", "cardnumber", "cvc",
+            "token", "accesstoken", "refreshtoken", "jwt", "secret", "apikey",
+            "email"
+    );
+
     private LogArgMasker() {
     }
 
@@ -34,24 +49,32 @@ public final class LogArgMasker {
      * 메서드 인자 배열을 마스킹한 문자열로 변환한다.
      */
     public static String mask(Object[] args) {
+        return mask(args, null);
+    }
+
+    /**
+     * 파라미터명을 함께 받아, 민감 파라미터(password/email 등 raw String 포함)를
+     * 타입 무관하게 마스킹한다. paramNames 가 null 이면 DTO 필드/좌표쌍 기반만 적용.
+     */
+    public static String mask(Object[] args, String[] paramNames) {
         if (args == null) {
             return "null";
         }
-
-        // 연속한 Double 2개 이상이면 위경도쌍으로 간주해 마스킹
         boolean[] maskDoubleByPosition = detectDoublePairs(args);
-
-        return "[" + maskElements(args, maskDoubleByPosition) + "]";
+        return "[" + maskElements(args, maskDoubleByPosition, paramNames) + "]";
     }
 
-    private static String maskElements(Object[] args, boolean[] maskDoubleByPosition) {
+    private static String maskElements(Object[] args, boolean[] maskDoubleByPosition, String[] paramNames) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < args.length; i++) {
             if (i > 0) {
                 sb.append(", ");
             }
             Object arg = args[i];
-            if (arg instanceof Double && maskDoubleByPosition[i]) {
+            // 파라미터명이 민감하면 타입 무관 마스킹 (raw String password/email 등)
+            if (paramNames != null && i < paramNames.length && isMaskedFieldName(paramNames[i])) {
+                sb.append(MASKED);
+            } else if (arg instanceof Double && maskDoubleByPosition[i]) {
                 sb.append(MASKED);
             } else {
                 sb.append(maskValue(arg));
@@ -85,7 +108,14 @@ public final class LogArgMasker {
     }
 
     /**
-     * 단일 값 마스킹. 좌표 필드를 가진 DTO는 해당 필드만 가린 표현으로 반환한다.
+     * 단일 객체(예: 메서드 반환값) 마스킹. DTO 의 좌표·민감 필드를 가린 표현 반환.
+     */
+    public static String maskOne(Object value) {
+        return maskValue(value);
+    }
+
+    /**
+     * 단일 값 마스킹. 좌표/민감 필드를 가진 DTO는 해당 필드만 가린 표현으로 반환한다.
      */
     private static String maskValue(Object value) {
         if (value == null) {
@@ -94,7 +124,7 @@ public final class LogArgMasker {
         if (isSimpleType(value)) {
             return String.valueOf(value);
         }
-        return maskDtoCoordinates(value);
+        return maskDtoSensitive(value);
     }
 
     private static boolean isSimpleType(Object value) {
@@ -106,17 +136,17 @@ public final class LogArgMasker {
     }
 
     /**
-     * 객체의 선언 필드 중 좌표 필드를 마스킹한 단순 표현을 만든다.
-     * 좌표 필드가 없으면 기본 toString 을 사용한다.
+     * 객체의 선언 필드 중 좌표·민감 필드를 마스킹한 단순 표현을 만든다.
+     * 좌표/민감 필드가 하나도 없으면 기본 toString 을 사용한다(디버깅 정보 보존).
      */
-    private static String maskDtoCoordinates(Object value) {
+    private static String maskDtoSensitive(Object value) {
         Class<?> type = value.getClass();
         Field[] fields = type.getDeclaredFields();
 
-        boolean hasCoordinate = Arrays.stream(fields)
-                .anyMatch(f -> COORDINATE_FIELD_NAMES.contains(f.getName().toLowerCase()));
+        boolean needsMask = Arrays.stream(fields)
+                .anyMatch(f -> isMaskedFieldName(f.getName()));
 
-        if (!hasCoordinate) {
+        if (!needsMask) {
             return String.valueOf(value);
         }
 
@@ -127,8 +157,14 @@ public final class LogArgMasker {
         return type.getSimpleName() + "(" + body + ")";
     }
 
+    /** 필드명이 좌표 또는 민감 필드인지(소문자·'_' 제거 비교). */
+    private static boolean isMaskedFieldName(String name) {
+        String n = name.toLowerCase().replace("_", "");
+        return COORDINATE_FIELD_NAMES.contains(n) || SENSITIVE_FIELD_NAMES.contains(n);
+    }
+
     private static String readMaskedField(Object owner, Field field) {
-        if (COORDINATE_FIELD_NAMES.contains(field.getName().toLowerCase())) {
+        if (isMaskedFieldName(field.getName())) {
             return MASKED;
         }
         try {

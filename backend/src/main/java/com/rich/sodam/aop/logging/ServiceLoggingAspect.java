@@ -25,8 +25,9 @@ public class ServiceLoggingAspect {
         String className = signature.getDeclaringType().getSimpleName();
         Object[] args = joinPoint.getArgs();
 
-        // 위경도 등 위치정보(PII) 평문 로깅 방지: 좌표/좌표쌍 마스킹
-        log.info("실행 시작: {}.{}() 매개변수: {}", className, methodName, LogArgMasker.mask(args));
+        // 위경도·비밀번호·이메일 등 PII/크리덴셜 평문 로깅 방지: 파라미터명+필드 기반 마스킹
+        log.info("실행 시작: {}.{}() 매개변수: {}", className, methodName,
+                LogArgMasker.mask(args, signature.getParameterNames()));
 
         long startTime = System.currentTimeMillis();
         Object result;

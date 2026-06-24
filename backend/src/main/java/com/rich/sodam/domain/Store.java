@@ -1,5 +1,6 @@
 package com.rich.sodam.domain;
 
+import com.rich.sodam.config.crypto.StringCryptoConverter;
 import com.rich.sodam.util.GeoUtils;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -42,7 +43,8 @@ public class Store {
     @Column(nullable = false, unique = true)
     private String businessNumber; // 사업자등록번호
 
-    @Column(nullable = false)
+    @Convert(converter = StringCryptoConverter.class) // PII 암호화 저장(PIPA §29)
+    @Column(nullable = false, length = 255)
     private String storePhoneNumber;
 
     @Column(nullable = false)
