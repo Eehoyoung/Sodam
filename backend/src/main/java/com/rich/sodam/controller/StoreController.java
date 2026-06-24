@@ -169,6 +169,7 @@ public class StoreController {
     @GetMapping("/{storeId}/operating-hours")
     public ResponseEntity<com.rich.sodam.dto.response.OperatingHoursResponseDto> getOperatingHours(
             @PathVariable Long storeId) {
+        storeAccessGuard.assertMasterOwnsStore(getCurrentUserId(), storeId); // BOLA 차단: 본인 매장만
         return ResponseEntity.ok(storeManagementService.getOperatingHours(storeId));
     }
 

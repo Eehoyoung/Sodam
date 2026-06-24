@@ -36,11 +36,12 @@ apiClient.interceptors.request.use(
             // silent
         }
 
-        // 요청 URL과 메서드 로그
-        console.log(
-            `[API Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`,
-            config.params || config.data || ''
-        );
+        // 요청 로그 — 개발 빌드에서만, body 제외. (운영에서 로그인 비밀번호 등 PII 노출 방지)
+        if (__DEV__) {
+            console.log(
+                `[API Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`,
+            );
+        }
 
         return config;
     },

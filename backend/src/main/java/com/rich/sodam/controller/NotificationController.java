@@ -50,8 +50,13 @@ public class NotificationController {
     @Operation(summary = "FCM 토큰 해제", description = "로그아웃/앱 삭제 시 호출.")
     @DeleteMapping("/token")
     @Transactional
-    public ResponseEntity<Void> unregisterToken(@RequestParam String token) {
-        deviceTokenRepository.findByToken(token).ifPresent(deviceTokenRepository::delete);
+    public ResponseEntity<Void> unregisterToken(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam String token) {
+        // IDOR 차단: 본인 소유 토큰만 삭제(타인 토큰 삭제 → 푸시 차단 DoS 방지)
+        deviceTokenRepository.findByToken(token)
+                .filter(dt -> dt.getUser() != null && dt.getUser().getId().equals(principal.getId()))
+                .ifPresent(deviceTokenRepository::delete);
         return ResponseEntity.noContent().build();
     }
 

@@ -220,6 +220,8 @@ const TossBillingAuthScreen: React.FC = () => {
         <View style={styles.flex}>
             <WebView
                 source={{html}}
+                // 카드사·은행·3DS 외부 인증 도메인 리다이렉트가 필요해 '*' 유지(좁히면 실결제 차단).
+                // 보안 게이트는 onShouldStartLoadWithRequest(handleNavRequest)의 sentinel URL 검증으로 수행.
                 originWhitelist={['*']}
                 onShouldStartLoadWithRequest={handleNavRequest}
                 onError={() => {

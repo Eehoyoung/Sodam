@@ -103,6 +103,11 @@ const TipsDetailScreen = () => {
     };
 
     const openLink = async (url: string) => {
+        // 보안: 서버 응답 변조 시 tel:/임의 스킴 실행 방지 — http(s) 만 허용
+        if (!/^https?:\/\//i.test(url)) {
+            setToastMessage('안전하지 않은 링크예요.');
+            return;
+        }
         try {
             const supported = await Linking.canOpenURL(url);
             if (supported) {
