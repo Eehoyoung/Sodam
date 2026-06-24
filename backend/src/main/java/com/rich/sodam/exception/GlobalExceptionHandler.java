@@ -197,6 +197,19 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 필수 쿼리 파라미터 누락 — 500 이 아닌 400 으로 응답(클라이언트 입력 오류임을 명확히).
+     */
+    @ExceptionHandler(org.springframework.web.bind.MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiResponse<Object>> handleMissingParam(
+            org.springframework.web.bind.MissingServletRequestParameterException e) {
+        log.warn("MissingServletRequestParameter: {}", e.getMessage());
+        ApiResponse<Object> response = ApiResponse.error(
+                ErrorCode.INVALID_ARGUMENT.getCode(),
+                "필수 파라미터가 누락됐어요: " + e.getParameterName());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
      * Bean Validation 위반 (PathVariable/RequestParam @Valid 검증 실패)
      */
     @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)

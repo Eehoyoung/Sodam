@@ -150,6 +150,10 @@ public class RedisConfig implements CachingConfigurer {
 
         // Java 8 시간 모듈 등록
         objectMapper.registerModule(new JavaTimeModule());
+        // Java 8 Optional 등 지원 — 미등록 시 캐시 직렬화 실패(SerializationException)
+        objectMapper.registerModule(new com.fasterxml.jackson.datatype.jdk8.Jdk8Module());
+        // 엔티티 필드 추가(스키마 드리프트) 시 캐시 역직렬화 실패 방지 → 캐시 미스 폭주 회피
+        objectMapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
         // 타입 정보 포함하여 직렬화 (PageImpl 등 복잡한 객체 지원)
         objectMapper.activateDefaultTyping(
