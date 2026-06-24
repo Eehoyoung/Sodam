@@ -49,3 +49,41 @@
 
 ## 결론
 **핵심 PRD 체인은 실 BE에서 끊김 없이 동작 증명 완료.** 운영 테스트가 빌드차단·PRD차단·배포차단 결함 3건을 추가로 잡아내 즉시 수정했다. 잔여는 외부 키(Kakao)·호스트 네트워킹(WSL 8081)·경미 후속 3건.
+
+---
+
+## 5. 더미데이터 1천건 + DB/API CRUD + 스트레스 (2026-06-24)
+
+### 5.1 더미데이터
+FK 정합 일괄삽입: 더미직원 20명 + 출퇴근 1,008건 → **attendance 1,009건**(MySQL 영속).
+
+### 5.2 DB CRUD (직접 SQL) ✅
+READ(집계 1009건/9072h) · UPDATE(시급 row=1) · DELETE(48건→0, 1009→961). 전부 영속 검증.
+
+### 5.3 API CRUD + DB 교차검증 ✅
+- READ 정합: API 961 = DB 961 (대량 정확 반환)
+- CREATE: API 출근→DB+1 / 시급 API→DB=13500
+- 매입 CRUD: 생성(자식 item 포함)→조회→삭제(cascade 자식까지) 전부 DB 일치
+- 읽기 스윕(에이전트): GET 38개 200, 게이팅 402 5개, 진짜 500 = 0
+- **쓰기 스윕(에이전트, 48개 엔드포인트)**: subscription/timeoff/correction/notice/shift/break/document/labor-contract/nfc/profile/notification 등 전부 정상 또는 의도된 비즈니스 예외
+
+### 5.4 스트레스 테스트 ✅
+| 대상 | 부하 | 결과 |
+|---|---|---|
+| 캐시 GET /api/me | 100req/동시25 | 200×100, **평균 10ms p95 11ms** |
+| 대량 attendance/store(961행 JOIN FETCH) | 100req/동시25 | 200×100, **평균 88ms p95 324ms**, ERROR 0 |
+| 버스트(50동시) | 500req | **429 다수** — 레이트리미터(Bucket4j 일반 120/분·IP) 작동, BE CPU idle·크래시/500 없음 = **회복탄력성 양호** |
+
+> 튜닝 참고: 일반 한도 120/분·IP — 매장 공용 WiFi/NAT 다중 사용자 시 정상 사용자도 throttle 가능, 운영 전 검토 권장.
+
+### 5.5 운영 테스트가 잡아 수정한 결함 (전부 커밋)
+| 결함 | 심각도 | 커밋 |
+|---|---|---|
+| 출퇴근 목록/매장/today LazyInit → 500 | 🔴 | ca36ee7 |
+| 필수 파라미터 누락 500(→400) | 🟠 | f289d27 |
+| Redis 캐시 직렬화 실패(Optional·unknown field) | 🟠 | f289d27 |
+| **POST /api/auth/refresh LazyInit → 500(토큰 갱신 전면 실패)** | 🔴 출시차단 | 89eb73a |
+
+### 5.6 인간 검토 항목(수정 안 함)
+- InsuranceFiling 응답에 평문 주민번호 echo — **의도된 설계**(제출용·미저장·로그 마스킹·마스터 전용)로 CLAUDE.md 위반 아님. 단 full RN을 JSON 응답 대신 생성 PDF로만 내릴지 product/법무 검토 권장.
+- manual-register 응답 employeeName mojibake — 인코딩 경미 이슈(비500).
