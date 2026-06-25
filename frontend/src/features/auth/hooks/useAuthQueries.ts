@@ -223,12 +223,18 @@ export const useAuthState = () => {
     const authStatusQuery = useAuthStatus();
     const currentUserQuery = useCurrentUser();
 
+    // refetch 를 ref 로 안정화 — deps 에 직접 두면 매 렌더 재실행 → refetch → 재렌더 무한루프
+    // (AuthContext.tsx 가 동일 패턴을 ref 로 이미 해소함). 인증 true 로 "전환될 때만" user fetch.
     const currentUserRefetch = currentUserQuery.refetch;
+    const currentUserRefetchRef = React.useRef(currentUserRefetch);
+    React.useEffect(() => {
+        currentUserRefetchRef.current = currentUserRefetch;
+    });
     React.useEffect(() => {
         if (authStatusQuery.data === true) {
-            currentUserRefetch();
+            currentUserRefetchRef.current();
         }
-    }, [authStatusQuery.data, currentUserRefetch]);
+    }, [authStatusQuery.data]);
 
     return {
         isAuthenticated: authStatusQuery.data ?? false,
