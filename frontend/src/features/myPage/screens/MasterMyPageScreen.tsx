@@ -119,6 +119,16 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
                 monthlyRevenue: store.monthlyRevenue ?? 0,
             }));
 
+            // 매장·기본정보를 먼저 반영 — 아래 정책/노무 API 실패가 매장 표시를 막지 않도록(독립).
+            setStores(apiStores);
+            setMasterInfo(prev => ({
+                ...prev,
+                name: user?.name ?? prev.name,
+                totalStores: apiStores.length,
+                totalEmployees: apiStores.reduce((s, st) => s + st.employeeCount, 0),
+                monthlyTotalLaborCost: apiStores.reduce((s, st) => s + st.monthlyLaborCost, 0),
+            }));
+
             // 정책 정보: info 서비스 연동 (상위 3개 노출)
             const policyDtos: any[] = await policyService.getPoliciesByCategory('ALL');
             const mockPolicies: PolicyInfo[] = (policyDtos || []).slice(0, 3).map((dto: any) => {
