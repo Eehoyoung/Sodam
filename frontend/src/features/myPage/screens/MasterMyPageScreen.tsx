@@ -15,6 +15,7 @@ import { NavigationProp } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {gradient, radius, shadow, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
+import {useAuth} from '../../../contexts/AuthContext';
 import policyService from '../../info/services/policyService';
 import storeService from '../../store/services/storeService';
 import laborInfoService from '../../../services/laborInfoService';
@@ -66,6 +67,7 @@ interface QuickMenu {
 
 export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenProps) {
     const c = useThemeColors();
+    const { user } = useAuth();
     // 반응형: 회전/폴더블 대응 (모듈레벨 Dimensions.get 금지 — useWindowDimensions)
     const { width } = useWindowDimensions();
     const CARD_WIDTH = width * 0.85;
@@ -85,12 +87,17 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
 
     useEffect(() => {
         loadData();
-    }, []);
+        // user.id 변경(로그인/계정전환) 시 본인 매장으로 재조회
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.id]);
 
     const loadData = async () => {
         try {
-            // TODO: AuthContext에서 실제 userId 가져오기
-            const userId = 1; // 임시 하드코딩
+            // 인증된 사장 본인의 id 로 조회 (하드코딩 금지 — BOLA 가드가 타인 id 차단)
+            const userId = user?.id;
+            if (!userId) {
+                return;
+            }
 
             // Store API 호출
             const storeData = await storeService.getMasterStores(userId);
@@ -155,6 +162,7 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
 
             setMasterInfo(prev => ({
                 ...prev,
+                name: user?.name ?? prev.name,
                 totalStores: apiStores.length,
                 totalEmployees,
                 monthlyTotalLaborCost: totalLaborCost,
