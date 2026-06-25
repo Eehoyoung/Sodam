@@ -102,10 +102,14 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
     return (
         <SafeAreaView style={[styles.flex, {backgroundColor: bg}]} edges={edges} testID={testID}>
             <StatusBar barStyle={statusBarStyle} translucent backgroundColor="transparent" />
-            {shouldAvoidKeyboard ? (
-                <KeyboardAvoidingView
-                    style={styles.flex}
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            {/*
+              * Android 는 manifest windowSoftInputMode=adjustResize 로 키보드를 자동 처리하므로
+              * KeyboardAvoidingView(behavior=undefined) 는 무의미하고, ScrollView 와 겹칠 때
+              * 마운트 시 setState 무한루프("Maximum update depth")를 유발한다(ProfileBasics 등).
+              * → iOS 에서만 KeyboardAvoidingView(padding) 적용.
+              */}
+            {shouldAvoidKeyboard && Platform.OS === 'ios' ? (
+                <KeyboardAvoidingView style={styles.flex} behavior="padding">
                     {content}
                 </KeyboardAvoidingView>
             ) : (
