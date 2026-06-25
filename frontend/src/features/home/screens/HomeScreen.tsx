@@ -30,18 +30,21 @@ const HomeScreen: React.FC = () => {
                     subtitle="매장 운영 현황 보기"
                     left={<Ionicons name="storefront-outline" size={24} color={c.brandPrimary} />}
                     right="›"
+                    onPress={() => navigation.navigate('OwnerDashboard')}
                 />
                 <AppListItem
                     title="직원 홈"
                     subtitle="출근·퇴근 바로가기"
                     left={<Ionicons name="time-outline" size={24} color={c.brandPrimary} />}
                     right="›"
+                    onPress={() => navigation.navigate('EmployeeAttendanceHome')}
                 />
                 <AppListItem
                     title="개인 기록장"
                     subtitle="내 근무 시간 직접 기록"
                     left={<Ionicons name="create-outline" size={24} color={c.brandPrimary} />}
                     right="›"
+                    onPress={() => navigation.navigate('Attendance')}
                 />
             </View>
         </ScreenContainer>
