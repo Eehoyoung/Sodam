@@ -88,12 +88,19 @@ export const StepScaffold: React.FC<StepScaffoldProps> = ({
     return (
         <SafeAreaView style={[styles.flex, {backgroundColor: c.surfaceCanvas}]} testID={testID}>
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
-            <KeyboardAvoidingView
-                style={styles.flex}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-                {body}
-                {footer}
-            </KeyboardAvoidingView>
+            {/* Android 는 adjustResize 가 키보드 처리 → KeyboardAvoidingView(behavior=undefined)는
+              * 무의미하고 ScrollView 와 겹쳐 마운트 setState 무한루프 유발. iOS 에서만 적용. */}
+            {Platform.OS === 'ios' ? (
+                <KeyboardAvoidingView style={styles.flex} behavior="padding">
+                    {body}
+                    {footer}
+                </KeyboardAvoidingView>
+            ) : (
+                <>
+                    {body}
+                    {footer}
+                </>
+            )}
         </SafeAreaView>
     );
 };

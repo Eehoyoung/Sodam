@@ -26,7 +26,14 @@ const AuthNavigator: React.FC = () => {
         if (!user) {
             return;
         }
-        resetToRootRoute(navigation, resolvePostAuthRoute(user, nestedParams?.selectedPurpose));
+        const target = resolvePostAuthRoute(user, nestedParams?.selectedPurpose);
+        // 미완료 게이트(Consent/ProfileBasics)면 target.name==='Auth' → 자기 자신으로 reset →
+        // 재마운트 무한루프(Maximum update depth·이중 렌더)가 된다. HomeRoot 졸업 시에만 reset.
+        // 게이트 간 전환은 각 화면 제출 핸들러(Login/Consent/ProfileBasics)가 직접 수행한다.
+        if (target.name === 'Auth') {
+            return;
+        }
+        resetToRootRoute(navigation, target);
     }, [user, navigation, nestedParams?.selectedPurpose]);
 
     return (
