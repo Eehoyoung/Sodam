@@ -61,7 +61,8 @@ const AuthNavigator: React.FC = () => {
                 name="ProfileBasics"
                 component={ProfileBasicsScreen}
                 initialParams={route.params?.screen === 'ProfileBasics' ? nestedParams : undefined}
-                options={{title: '기본 정보', headerBackVisible: false, gestureEnabled: false}}
+                // 화면이 자체 AppHeader("기본 정보")를 렌더 → 네비 헤더 끄기(이중 헤더·레이아웃 측정 충돌 제거)
+                options={{headerShown: false, gestureEnabled: false}}
             />
         </Stack.Navigator>
     );
