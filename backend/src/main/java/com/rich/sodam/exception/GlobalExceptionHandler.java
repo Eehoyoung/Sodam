@@ -223,6 +223,27 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * DB 무결성 위반 (unique 제약 등) — 매장 사업자등록번호 중복 등을 친절한 409 로 안내.
+     * 미처리 시 generic 500 으로 떨어져 사용자가 원인을 알 수 없다(매장생성 시 실제 발생).
+     */
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleDataIntegrityViolation(
+            org.springframework.dao.DataIntegrityViolationException e) {
+        String detail = e.getMostSpecificCause() != null ? e.getMostSpecificCause().getMessage() : e.getMessage();
+        log.warn("DataIntegrityViolation: {}", detail);
+        String message;
+        if (detail != null && detail.toLowerCase().contains("business_number")) {
+            message = "이미 등록된 사업자등록번호예요. 번호를 다시 확인해 주세요.";
+        } else if (detail != null && detail.toLowerCase().contains("duplicate")) {
+            message = "이미 등록된 정보예요. 중복되지 않는 값으로 다시 시도해 주세요.";
+        } else {
+            message = "요청을 처리할 수 없어요. 입력값을 다시 확인해 주세요.";
+        }
+        ApiResponse<Object> response = ApiResponse.error(ErrorCode.INVALID_ARGUMENT.getCode(), message);
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+    /**
      * 인증/권한 — Spring Security 예외는 별도 처리하므로 여기선 IllegalState
      */
     @ExceptionHandler(IllegalStateException.class)
