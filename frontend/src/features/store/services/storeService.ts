@@ -78,37 +78,18 @@ async function createStore(payload: StoreRegistrationPayload): Promise<{ id: num
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- blank phone should fall back to businessNumber then '', so ?? would be wrong
         storePhoneNumber: payload.storePhoneNumber || payload.businessNumber || '',
     };
-    // 표준 엔드포인트 시도
-    try {
-        const res = await api.post<{ id: number }>(`/api/stores/registration`, bePayload);
-        const data: any = res.data;
-        if (typeof data?.id === 'number') {
-            return {id: data.id};
-        }
-        if (typeof data?.data?.id === 'number') {
-            return {id: data.data.id};
-        }
-    } catch (e: any) {
-        // 404/405면 대체 경로 시도
-        if (e?.response?.status === 404 || e?.response?.status === 405) {
-            try {
-                const res2 = await api.post<{ id: number }>(`/api/stores/registration`, bePayload);
-                const d2: any = res2.data;
-                if (typeof d2?.id === 'number') {
-                    return {id: d2.id};
-                }
-                if (typeof d2?.data?.id === 'number') {
-                    return {id: d2.data.id};
-                }
-            } catch (_) {
-                // pass to mock fallback
-            }
-        }
+    // 실패(402 플랜게이트·400·409·5xx)는 반드시 호출자에게 전파한다.
+    // 과거엔 에러를 삼키고 가짜 id를 반환해 "매장이 등록됐어요"라는 거짓 성공을 띄웠고,
+    // 그 탓에 플랜 업그레이드(402 PLAN_REQUIRED) 유도가 통째로 묻혔다.
+    const res = await api.post<{ id: number }>(`/api/stores/registration`, bePayload);
+    const data: any = res.data;
+    if (typeof data?.id === 'number') {
+        return {id: data.id};
     }
-
-    // 최후: 목킹 결과 반환 (네트워크 불가/엔드포인트 미정 상태 대비)
-    await new Promise(r => setTimeout(r, 600));
-    return {id: Math.floor(Math.random() * 100000) + 1};
+    if (typeof data?.data?.id === 'number') {
+        return {id: data.data.id};
+    }
+    throw new Error('Invalid store registration response: missing id');
 }
 
 // [API Mapping] PUT /api/stores/{storeId}/location — 매장 위치/반경 설정 업데이트

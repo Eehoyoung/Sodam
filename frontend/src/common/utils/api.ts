@@ -111,7 +111,12 @@ apiClient.interceptors.response.use(
         const status = error?.response?.status;
 
         // 402 PLAN_REQUIRED: 플랜 부족 → 페이월 콜백 호출 후 원본 에러 전파(로직 흐름 유지)
-        if (status === 402 && error?.response?.data?.code === 'PLAN_REQUIRED') {
+        // BE(ApiResponse)는 `errorCode` 필드로 내려준다. 과거 `code`만 검사해 페이월이 안 떴음.
+        if (
+            status === 402 &&
+            (error?.response?.data?.errorCode === 'PLAN_REQUIRED' ||
+                error?.response?.data?.code === 'PLAN_REQUIRED')
+        ) {
             if (onPlanRequired) {
                 const data = error.response.data;
                 onPlanRequired({
