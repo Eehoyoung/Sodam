@@ -129,54 +129,43 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
                 monthlyTotalLaborCost: apiStores.reduce((s, st) => s + st.monthlyLaborCost, 0),
             }));
 
-            // 정책 정보: info 서비스 연동 (상위 3개 노출)
-            const policyDtos: any[] = await policyService.getPoliciesByCategory('ALL');
-            const mockPolicies: PolicyInfo[] = (policyDtos || []).slice(0, 3).map((dto: any) => {
-                const createdAt = dto.publishDate || dto.createdAt || new Date().toISOString();
-                const updatedAt = dto.updatedAt || createdAt;
-                const isNew = (() => {
-                    try {
-                        const created = new Date(createdAt).getTime();
-                        return Date.now() - created < 7 * 24 * 60 * 60 * 1000; // 7일 이내
-                    } catch {
-                        return false;
-                    }
-                })();
-                const deadline = (updatedAt || '').toString().slice(0, 10);
-                return {
-                    id: Number(dto.id),
-                    title: dto.title || '',
-                    category: '국가정책',
-                    deadline,
-                    description: (dto.content ? String(dto.content).slice(0, 80) : '').trim(),
-                    isNew,
-                } as PolicyInfo;
-            });
+            // 정책 정보(보조): 실패해도 매장 화면·새로고침을 막지 않도록 비치명 처리.
+            try {
+                const policyDtos: any[] = await policyService.getPoliciesByCategory('ALL');
+                const mockPolicies: PolicyInfo[] = (policyDtos || []).slice(0, 3).map((dto: any) => {
+                    const createdAt = dto.publishDate || dto.createdAt || new Date().toISOString();
+                    const updatedAt = dto.updatedAt || createdAt;
+                    const isNew = (() => {
+                        try {
+                            const created = new Date(createdAt).getTime();
+                            return Date.now() - created < 7 * 24 * 60 * 60 * 1000; // 7일 이내
+                        } catch {
+                            return false;
+                        }
+                    })();
+                    const deadline = (updatedAt || '').toString().slice(0, 10);
+                    return {
+                        id: Number(dto.id),
+                        title: dto.title || '',
+                        category: '국가정책',
+                        deadline,
+                        description: (dto.content ? String(dto.content).slice(0, 80) : '').trim(),
+                        isNew,
+                    } as PolicyInfo;
+                });
+                setPolicies(mockPolicies);
+            } catch (_) { /* 정책 로드 실패 — 보조 정보라 무시 */ }
 
-            // LaborInfo API 호출
-            const laborData = await laborInfoService.getCurrentLaborInfo();
-            const apiLaborInfo: LaborInfo = {
-                minimumWage: laborData.minimumWage,
-                year: laborData.year,
-                weeklyMaxHours: laborData.weeklyMaxHours,
-                overtimeRate: laborData.overtimeRate,
-            };
-
-            setStores(apiStores);
-            setPolicies(mockPolicies);
-            setLaborInfo(apiLaborInfo);
-
-            // 마스터 정보 업데이트
-            const totalEmployees = apiStores.reduce((sum, store) => sum + store.employeeCount, 0);
-            const totalLaborCost = apiStores.reduce((sum, store) => sum + store.monthlyLaborCost, 0);
-
-            setMasterInfo(prev => ({
-                ...prev,
-                name: user?.name ?? prev.name,
-                totalStores: apiStores.length,
-                totalEmployees,
-                monthlyTotalLaborCost: totalLaborCost,
-            }));
+            // 노무 정보(보조): 현재 적용 노무정보 미설정(400) 등은 무시. 새로고침 실패 토스트 방지.
+            try {
+                const laborData = await laborInfoService.getCurrentLaborInfo();
+                setLaborInfo({
+                    minimumWage: laborData.minimumWage,
+                    year: laborData.year,
+                    weeklyMaxHours: laborData.weeklyMaxHours,
+                    overtimeRate: laborData.overtimeRate,
+                });
+            } catch (_) { /* 노무 정보 미설정 등 — 보조 정보라 무시 */ }
 
         } catch (error) {
             AppToast.error('데이터를 불러오는데 실패했어요.');
@@ -219,7 +208,8 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
     };
 
     const handleQuickAttendance = () => {
-        navigation.navigate('Attendance');
+        // 사장용 근태 관리: 직원 출퇴근 이상(누락) 센터로. ('Attendance'는 본인 출퇴근(NFC) 화면이라 부적절)
+        navigation.navigate('MissingAttendanceCenter');
     };
 
     const handleQuickPayroll = () => {

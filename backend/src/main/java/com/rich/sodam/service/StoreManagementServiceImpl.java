@@ -76,6 +76,9 @@ public class StoreManagementServiceImpl implements StoreManagementService {
 
     @Override
     @Transactional
+    // 새 매장 등록 시 master의 캐시된 매장목록(getStoresByMaster)을 무효화해야 한다.
+    // 안 하면 방금 만든 매장이 홈/상세에서 누락되고 stale id로 StoreDetail 403이 난다.
+    @CacheEvict(value = "stores", key = "'master:' + #userId")
     public Store registerStoreWithMaster(Long userId, StoreRegistrationDto storeDto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
@@ -470,6 +473,8 @@ public class StoreManagementServiceImpl implements StoreManagementService {
 
     @Override
     @Transactional
+    // 매장 삭제는 드물고 어느 master 캐시인지 알기 어려우므로 stores 캐시 전체 무효화.
+    @CacheEvict(value = "stores", allEntries = true)
     public void deleteStore(Long storeId) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new EntityNotFoundException("매장을 찾을 수 없습니다."));
