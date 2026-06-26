@@ -59,13 +59,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 } else {
                     log.debug("이미 인증된 사용자입니다.");
                 }
-            } else {
-                log.debug("JWT 토큰이 없거나 유효하지 않습니다.");
+            } else if (token != null) {
+                // 토큰은 있으나 만료/무효 → EntryPoint(401)가 사유 메시지를 쓰도록 표식을 남긴다.
+                log.debug("JWT 토큰이 만료되었거나 유효하지 않습니다.");
+                request.setAttribute(JwtProperties.HEADER_STRING, "토큰이 만료되었거나 유효하지 않습니다.");
             }
         } catch (Exception e) {
             log.error("JWT 인증 처리 중 오류 발생: {}", e.getMessage());
             // 인증 실패 시 SecurityContext 초기화
             SecurityContextHolder.clearContext();
+            request.setAttribute(JwtProperties.HEADER_STRING, "토큰이 만료되었거나 유효하지 않습니다.");
         }
 
         filterChain.doFilter(request, response);
