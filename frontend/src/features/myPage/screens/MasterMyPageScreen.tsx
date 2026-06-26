@@ -204,7 +204,8 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
             handleAddStore();
             return;
         }
-        navigation.navigate('StoreDetail', {storeId: primaryStoreId});
+        // 직원 관리는 매장 운영(StoreDetail)과 분리 — 직원 명부 전용 화면으로.
+        navigation.navigate('EmployeeManagement', {storeId: primaryStoreId});
     };
 
     const handleQuickAttendance = () => {

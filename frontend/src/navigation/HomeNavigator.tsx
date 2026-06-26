@@ -25,6 +25,7 @@ import AttendanceScreen from '../features/attendance/screens/AttendanceScreen';
 import EmployeeAttendanceHome from '../features/attendance/screens/EmployeeAttendanceHome';
 import OwnerDashboardScreen from '../features/home/screens/OwnerDashboardScreen';
 import EmployeeDetailScreen from '../features/store/screens/EmployeeDetailScreen';
+import EmployeeManagementScreen from '../features/store/screens/EmployeeManagementScreen';
 import PayrollRunScreen from '../features/salary/screens/PayrollRunScreen';
 import JoinStoreByCodeScreen from '../features/store/screens/JoinStoreByCodeScreen';
 import AttendanceCorrectionRequestScreen from '../features/attendance/screens/AttendanceCorrectionRequestScreen';
@@ -98,6 +99,7 @@ export type HomeStackParamList = {
     OwnerDashboard: undefined;
     EmployeeAttendanceHome: undefined;
     EmployeeDetail: { employeeId: number; storeId: number };
+    EmployeeManagement: { storeId: number };
     PayrollRun: { storeId?: number } | undefined;
     JoinStoreByCode: undefined;
     AttendanceCorrectionRequest: {
@@ -268,6 +270,11 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
                 name="EmployeeDetail"
                 component={EmployeeDetailScreen}
                 options={{headerShown: true, title: '직원 상세'}}
+            />
+            <Stack.Screen
+                name="EmployeeManagement"
+                component={EmployeeManagementScreen}
+                options={{headerShown: false}}
             />
             <Stack.Screen
                 name="PayrollRun"

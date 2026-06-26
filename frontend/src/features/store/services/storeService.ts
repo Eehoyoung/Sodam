@@ -65,6 +65,28 @@ const getStoreById = async (storeId: number): Promise<StoreDetailDto> => {
   throw new Error('Invalid store data received');
 };
 
+// [API Mapping] GET /api/stores/{storeId}/employees — 매장 소속 직원 명부 (BOLA: 자기 매장만)
+export interface StoreEmployeeDto {
+  id: number;
+  name: string;
+  email?: string;
+  phone?: string;
+  userGrade?: string;
+}
+
+const getStoreEmployees = async (storeId: number): Promise<StoreEmployeeDto[]> => {
+  const res = await api.get<StoreEmployeeDto[]>(`/api/stores/${storeId}/employees`);
+  const data: any = res.data as any;
+  const list: any[] = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+  return list.map(u => ({
+    id: u.id,
+    name: u.name ?? '직원',
+    email: u.email ?? undefined,
+    phone: u.phone ?? undefined,
+    userGrade: u.userGrade ?? undefined,
+  }));
+};
+
 async function createStore(payload: StoreRegistrationPayload): Promise<{ id: number }> {
     // ⚠️ FE↔BE 의미 정합 (P2 통합테스트로 발견·수정): BE `Store.businessNumber` 컬럼은
     //   '사업자등록번호'(NOT NULL·UNIQUE) 이나, FE 폼의 `businessNumber` 는 화면상 '매장 유선전화'.
@@ -116,6 +138,7 @@ const storeService = {
   // 조회류
   getMasterStores,
   getStoreById,
+  getStoreEmployees,
   // 등록/설정류
   createStore,
   putLocation,
