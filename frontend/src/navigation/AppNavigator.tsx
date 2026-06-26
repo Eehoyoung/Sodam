@@ -1,7 +1,9 @@
 import React from 'react';
 import {ActivityIndicator, View} from 'react-native';
+import {useQueryClient} from '@tanstack/react-query';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import {queryKeys} from '../common/utils/queryClient';
 import AuthNavigator from './AuthNavigator';
 import HomeNavigator from './HomeNavigator';
 import Protected from '../components/Protected';
@@ -21,12 +23,21 @@ import {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const SessionExpiredRoute: React.FC<any> = ({navigation}) => (
-    <SessionExpiredScreen
-        onRelogin={() => navigation.reset({index: 0, routes: [{name: 'Auth', params: {screen: 'Login'}}]})}
-        onSupport={() => navigation.navigate('HomeRoot', {screen: 'QnA'})}
-    />
-);
+const SessionExpiredRoute: React.FC<any> = ({navigation}) => {
+    const queryClient = useQueryClient();
+    return (
+        <SessionExpiredScreen
+            onRelogin={() => {
+                // 인증 캐시를 비운 뒤 Login 으로 reset 한다. 안 비우면 stale 한 user 때문에
+                // AuthNavigator 가 곧장 홈으로 되튕긴다(= 사용자 신고 라우팅 결함).
+                queryClient.setQueryData(queryKeys.auth.currentUser(), null);
+                queryClient.setQueryData(queryKeys.auth.all, false);
+                navigation.reset({index: 0, routes: [{name: 'Auth', params: {screen: 'Login'}}]});
+            }}
+            onSupport={() => navigation.navigate('HomeRoot', {screen: 'QnA'})}
+        />
+    );
+};
 
 const PermissionDeniedRoute: React.FC<any> = ({navigation, route}) => (
     <PermissionDeniedScreen

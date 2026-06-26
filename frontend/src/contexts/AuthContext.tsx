@@ -142,6 +142,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
     // 1회 등록 — refetchAuthRef 통해 항상 최신 함수 호출.
     useEffect(() => {
         setOnUnauthorized(() => {
+            // 여기서 user 를 비우면 Protected(!user → Login reset)가 의도된 SessionExpired 안내 화면을
+            // 건너뛰어 버린다. 그래서 캐시 정리는 SessionExpired 의 '다시 로그인'(onRelogin)에서 한다.
             refetchAuthRef.current();
             if (wasAuthedRef.current) {
                 navigate('SessionExpired');
