@@ -121,7 +121,7 @@ const AttendanceScreen = () => {
             // 현재 근무 상태 조회
             if (selectedWorkplaceId) {
                 // TODO(API): 현재 근무 상태 조회 API 연동
-                const currentData = await attendanceService.getCurrentAttendance(selectedWorkplaceId);
+                const currentData = await attendanceService.getCurrentAttendance(selectedWorkplaceId, employeeIdNum);
                 setCurrentAttendance(currentData);
             }
         } catch (error) {

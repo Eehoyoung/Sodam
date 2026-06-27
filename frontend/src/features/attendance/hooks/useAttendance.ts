@@ -67,7 +67,7 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
     try {
       setLoading(true);
       if (workplaceId) {
-        const curr = await attendanceService.getCurrentAttendance(workplaceId);
+        const curr = await attendanceService.getCurrentAttendance(workplaceId, employeeIdNum);
         if (isMountedRef.current) {setCurrentAttendance(curr);}
       }
     } catch (e) {
@@ -75,7 +75,7 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
     } finally {
       if (isMountedRef.current) {setLoading(false);}
     }
-  }, [workplaceId]);
+  }, [workplaceId, employeeIdNum]);
 
   const loadRecentRecords = useCallback(async () => {
     try {
