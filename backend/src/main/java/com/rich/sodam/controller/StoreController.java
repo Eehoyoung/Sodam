@@ -22,6 +22,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -208,6 +209,10 @@ public class StoreController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "404", description = "사용자 정보를 찾을 수 없음")
     })
+    // 직원 본인의 소속 매장 조회 — 클래스 @MasterOnly 를 메서드 단위로 완화.
+    // 직원/개인도 본인 매장 목록은 봐야 출퇴근이 가능하다. BOLA 는 아래 assertSelf 로 보장.
+    // (이 완화 전에는 @MasterOnly 때문에 직원 출퇴근 화면의 매장 로딩이 403 으로 막혔다.)
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/employee/{userId}")
     public ResponseEntity<List<Store>> getStoresByEmployee(
             @Parameter(description = "사용자 ID (직원)", required = true) @PathVariable Long userId) {
