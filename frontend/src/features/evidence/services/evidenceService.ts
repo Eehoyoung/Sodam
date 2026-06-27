@@ -67,7 +67,7 @@ export async function fetchEvidencePackage(
 ): Promise<EvidencePackage> {
   const {data} = await api.get<EvidencePackage>(
     `/api/stores/${storeId}/employees/${employeeId}/evidence`,
-    {params: {from, to}},
+    {from, to},
   );
   return data;
 }

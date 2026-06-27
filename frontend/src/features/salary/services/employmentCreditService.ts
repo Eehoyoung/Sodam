@@ -19,7 +19,7 @@ export interface HeadcountTrend {
 export async function fetchHeadcountTrend(storeId: number, year: number): Promise<HeadcountTrend> {
   const {data} = await api.get<HeadcountTrend>(
     `/api/stores/${storeId}/tax/headcount-trend`,
-    {params: {year}},
+    {year},
   );
   return data;
 }

@@ -24,7 +24,7 @@ export async function fetchWithholdingStatement(
 ): Promise<WithholdingStatement> {
   const {data} = await api.get<WithholdingStatement>(
     `/api/stores/${storeId}/tax/withholding-statement`,
-    {params: {year}},
+    {year},
   );
   return data;
 }

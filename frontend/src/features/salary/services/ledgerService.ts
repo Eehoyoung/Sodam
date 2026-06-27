@@ -52,7 +52,7 @@ export async function fetchWageLedger(
 ): Promise<WageLedger> {
   const {data} = await api.get<WageLedger>(
     `/api/stores/${storeId}/ledger/wage`,
-    {params: {year, month}},
+    {year, month},
   );
   return data;
 }

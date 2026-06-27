@@ -17,7 +17,7 @@ export interface WeeklyInsights {
 export async function fetchWeeklyInsights(storeId: number, days = 7): Promise<WeeklyInsights> {
   const {data} = await api.get<WeeklyInsights>(
     `/api/stores/${storeId}/insights/weekly`,
-    {params: {days}},
+    {days},
   );
   return data;
 }

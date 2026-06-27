@@ -34,7 +34,7 @@ export async function fetchOvertimeCheck(
 ): Promise<OvertimeCheck> {
   const {data} = await api.get<OvertimeCheck>(
     `/api/stores/${storeId}/overtime-check`,
-    {params: {year, month}},
+    {year, month},
   );
   return data;
 }

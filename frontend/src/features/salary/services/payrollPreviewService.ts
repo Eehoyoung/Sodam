@@ -20,7 +20,7 @@ export async function fetchPayrollPreview(
 ): Promise<PayrollPreview> {
   const {data} = await api.get<PayrollPreview>(
     `/api/stores/${storeId}/payroll-preview`,
-    {params: {hourlyWage, weeklyHours}},
+    {hourlyWage, weeklyHours},
   );
   return data;
 }

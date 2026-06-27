@@ -32,7 +32,7 @@ export async function fetchWithholdingMonthly(
 ): Promise<WithholdingMonthly> {
   const {data} = await api.get<WithholdingMonthly>(
     `/api/stores/${storeId}/tax/withholding-monthly`,
-    {params: {year, month}},
+    {year, month},
   );
   return data;
 }
