@@ -111,10 +111,10 @@ const AttendanceScreen = () => {
             const filter = {
                 startDate,
                 endDate,
+                employeeId: Number.isFinite(employeeIdNum) ? String(employeeIdNum) : undefined,
                 workplaceId: selectedWorkplaceId || undefined
             };
 
-            // TODO(API): 출퇴근 기록 조회 API 연동 및 응답 스키마 반영
             const data = await attendanceService.getAttendanceRecords(filter);
             setAttendanceRecords(data);
 

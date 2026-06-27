@@ -5,6 +5,7 @@ import { PERMISSIONS, request, RESULTS } from 'react-native-permissions';
 import NfcManager from 'react-native-nfc-manager';
 import {AppToast, ConfirmSheet} from '../../../common/components/ds';
 import attendanceService from '../services/attendanceService';
+import storeService from '../../store/services/storeService';
 import { AttendanceRecord } from '../types';
 import { useAuth } from '../../../contexts/AuthContext';
 
@@ -15,9 +16,12 @@ interface UseAttendanceOptions {
 }
 
 export const useAttendance = (options: UseAttendanceOptions = {}) => {
-  const workplaceId = options.workplaceId ?? '1'; // Fallback to first workplace (TODO)
   const { user } = useAuth();
   const employeeIdNum = Number(user?.id);
+  // 근무지: prop 우선, 없으면 직원 본인 실제 첫 매장으로 해석.
+  // (과거 '1' 하드코딩 폴백은 엉뚱한 매장 조회/404 를 유발했다.)
+  const [resolvedWorkplaceId, setResolvedWorkplaceId] = useState<string>(options.workplaceId ?? '');
+  const workplaceId = resolvedWorkplaceId;
 
   const [method, setMethod] = useState<CheckMethod>('standard');
   const [currentAttendance, setCurrentAttendance] = useState<AttendanceRecord | null>(null);
@@ -41,6 +45,24 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
     };
   }, []);
 
+  // prop 으로 받은 근무지가 없으면 직원 본인 실제 매장을 조회해 첫 매장으로 설정.
+  useEffect(() => {
+    if (options.workplaceId) {
+      setResolvedWorkplaceId(options.workplaceId);
+      return;
+    }
+    if (!Number.isFinite(employeeIdNum)) {
+      return;
+    }
+    storeService.getEmployeeStores(employeeIdNum)
+      .then(stores => {
+        if (isMountedRef.current && stores.length > 0) {
+          setResolvedWorkplaceId(String(stores[0].id));
+        }
+      })
+      .catch(() => { /* 무시: 요약 패널은 보조 정보 */ });
+  }, [options.workplaceId, employeeIdNum]);
+
   const loadCurrentStatus = useCallback(async () => {
     try {
       setLoading(true);
@@ -63,14 +85,17 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
       const start = new Date(now);
       start.setMonth(now.getMonth() - 1);
       const startDate = start.toISOString().slice(0, 10);
-      const data = await attendanceService.getAttendanceRecords({ startDate, endDate, workplaceId });
+      const data = await attendanceService.getAttendanceRecords({
+        startDate, endDate, workplaceId,
+        employeeId: Number.isFinite(employeeIdNum) ? String(employeeIdNum) : undefined,
+      });
       if (isMountedRef.current) {setRecords(data);}
     } catch (e) {
       console.warn('[useAttendance] Failed to load records', e);
     } finally {
       if (isMountedRef.current) {setRecordsLoading(false);}
     }
-  }, [workplaceId]);
+  }, [workplaceId, employeeIdNum]);
 
   useEffect(() => {
     loadCurrentStatus();

@@ -52,7 +52,19 @@ const attendanceService = {
      */
     getAttendanceRecords: async (filter: AttendanceFilter): Promise<AttendanceRecord[]> => {
         try {
-            const response = await api.get<AttendanceRecord[]>('/api/attendance', filter);
+            // BE 실엔드포인트는 /api/attendance/employee/{employeeId}?startDate&endDate (ISO DATE_TIME).
+            // 과거엔 존재하지 않는 GET /api/attendance 를 호출해 404 가 났다.
+            const employeeIdNum = Number(filter.employeeId);
+            if (!Number.isFinite(employeeIdNum)) {
+                return [];
+            }
+            // yyyy-MM-dd → ISO LocalDateTime (하루 경계 포함)
+            const toStart = (d: string) => (d.includes('T') ? d : `${d}T00:00:00`);
+            const toEnd = (d: string) => (d.includes('T') ? d : `${d}T23:59:59`);
+            const response = await api.get<AttendanceRecord[]>(
+                `/api/attendance/employee/${employeeIdNum}`,
+                {startDate: toStart(filter.startDate), endDate: toEnd(filter.endDate)},
+            );
             return response.data;
         } catch (error) {
             logger.error('출퇴�?기록??가?�오??�??�류가 발생?�습?�다', 'ATTENDANCE_SERVICE', error);
