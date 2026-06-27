@@ -576,7 +576,9 @@ const AttendanceScreen = () => {
         if (!currentAttendance) {
             return '';
         }
-        const ms = new Date().getTime() - new Date(currentAttendance.checkInTime).getTime();
+        // 음수 방지: 기기/서버 시간대 skew(예: 기기 UTC, 서버 KST)로 경과가 음수가 되면 "-9시간"처럼
+        // 표기되던 것을 0으로 클램프. (실 운영은 기기·서버 모두 KST라 정상.)
+        const ms = Math.max(0, new Date().getTime() - new Date(currentAttendance.checkInTime).getTime());
         const h = Math.floor(ms / (1000 * 60 * 60));
         const m = Math.floor(ms / (1000 * 60)) % 60;
         return `${h}시간 ${m}분`;

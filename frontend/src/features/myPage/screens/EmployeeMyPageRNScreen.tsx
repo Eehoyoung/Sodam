@@ -8,6 +8,7 @@ import policyService from '../../info/services/policyService';
 import laborInfoService from '../../../services/laborInfoService';
 import {layout, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
+import {useAuth} from '../../../contexts/AuthContext';
 import {HeroSlot, SummarySlot, ActionsSlot, InfoSlot} from '../components/RoleSlots';
 
 interface PolicyItem {
@@ -31,6 +32,7 @@ interface LaborInfo {
  */
 const EmployeeMyPageRNScreen: React.FC = () => {
     const navigation = useNavigation<NavigationProp<HomeStackParamList>>();
+    const {user} = useAuth();
     const [policies, setPolicies] = useState<PolicyItem[]>([]);
     const [laborInfo, setLaborInfo] = useState<LaborInfo | null>(null);
 
@@ -94,7 +96,7 @@ const EmployeeMyPageRNScreen: React.FC = () => {
             }>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 <HeroSlot testID="slotHero">
-                    <AppText variant="headingMd">안녕하세요, 김알바님</AppText>
+                    <AppText variant="headingMd">안녕하세요, {user?.name ?? '직원'}님</AppText>
                     <AppText variant="bodyMd" tone="secondary" style={styles.sub}>오늘도 수고하세요! 💪</AppText>
                 </HeroSlot>
 

@@ -76,8 +76,8 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
     const [laborInfo, setLaborInfo] = useState<LaborInfo | null>(null);
     const [refreshing, setRefreshing] = useState(false);
     const [masterInfo, setMasterInfo] = useState({
-        name: '김소상',
-        businessLicenseNumber: '123-45-67890',
+        name: '',
+        businessLicenseNumber: '',
         totalStores: 0,
         totalEmployees: 0,
         monthlyTotalLaborCost: 0,
@@ -330,7 +330,7 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
             >
                 {/* 인사 */}
                 <View style={styles.header}>
-                    <AppText variant="headingMd">안녕하세요, {masterInfo.name}님</AppText>
+                    <AppText variant="headingMd">안녕하세요, {user?.name ?? masterInfo.name ?? '사장'}님</AppText>
                     <AppText variant="bodyMd" tone="secondary" style={styles.subGreeting}>오늘도 화이팅하세요!</AppText>
                 </View>
 

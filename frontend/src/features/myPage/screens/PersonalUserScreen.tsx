@@ -613,7 +613,7 @@ const MultiStoreWorkScreen: React.FC = () => {
                 end={{ x: 1, y: 1 }}
                 style={styles.header}
             >
-                <AppText variant="headingMd" tone="inverse">김알바님</AppText>
+                <AppText variant="headingMd" tone="inverse">{user?.name ?? '회원'}님</AppText>
                 <AppText variant="bodyMd" tone="inverse" style={styles.currentTime}>{currentTime}</AppText>
 
                 {/* 매장 선택 버튼 */}
