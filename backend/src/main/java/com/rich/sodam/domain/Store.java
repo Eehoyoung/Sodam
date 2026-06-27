@@ -91,6 +91,17 @@ public class Store {
     @Column(name = "five_or_more_employees")
     private Boolean fiveOrMoreEmployees;
 
+    /**
+     * 활성(재직) 직원 수 — DB 영속 아님(@Transient). 조회 시 서비스가 채워 응답에 직렬화한다.
+     * (없으면 FE 가 undefined→0 으로 처리해 홈/매장카드 "직원 0명" 오표시가 났다.)
+     */
+    @Transient
+    private Integer employeeCount;
+
+    public void setEmployeeCount(Integer employeeCount) {
+        this.employeeCount = employeeCount;
+    }
+
     /** §56 가산수당 적용 여부 (5인 미만이 아니면 적용). */
     public boolean isPremiumApplicable() {
         return !Boolean.FALSE.equals(fiveOrMoreEmployees);

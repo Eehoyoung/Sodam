@@ -25,7 +25,12 @@ public class StoreQueryService {
     }
 
     public Optional<Store> findActiveById(Long id) {
-        return storeRepository.findActiveById(id);
+        return storeRepository.findActiveById(id)
+                .map(store -> {
+                    // 응답에 활성 직원 수 포함 (FE 홈/매장상세 "직원 N명" 표기용)
+                    store.setEmployeeCount(storeRepository.countActiveEmployeesByStoreId(id));
+                    return store;
+                });
     }
 
     public Optional<Store> findActiveByBusinessNumber(String businessNumber) {

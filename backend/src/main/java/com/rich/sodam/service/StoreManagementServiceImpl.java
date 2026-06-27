@@ -389,6 +389,8 @@ public class StoreManagementServiceImpl implements StoreManagementService {
         return masterStoreRelationRepository.findByMasterProfile(masterProfile)
                 .stream()
                 .map(MasterStoreRelation::getStore)
+                .peek(store -> store.setEmployeeCount(
+                        (int) employeeStoreRelationRepository.countByStoreAndIsActiveTrue(store)))
                 .collect(Collectors.toList());
     }
 
