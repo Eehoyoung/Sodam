@@ -19,6 +19,7 @@ import Geolocation from 'react-native-geolocation-service';
 import {PERMISSIONS, request, RESULTS} from 'react-native-permissions';
 import NfcManager from 'react-native-nfc-manager';
 import attendanceService from '../services/attendanceService';
+import storeService from '../../store/services/storeService';
 import {AttendanceRecord, AttendanceStatus, CheckInRequest, CheckOutRequest} from '../types';
 import {format} from 'date-fns';
 import {ko} from 'date-fns/locale';
@@ -132,21 +133,23 @@ const AttendanceScreen = () => {
         }
     };
 
-    // 근무지 목록 조회 (실제 구현에서는 API 호출)
+    // 근무지 목록 조회 — 직원 본인이 소속된 실제 매장 (GET /api/stores/employee/{userId})
     const fetchWorkplaces = async () => {
+        if (!Number.isFinite(employeeIdNum)) {
+            return;
+        }
         try {
-            // TODO(API): 근무지 목록 API 연동 (현재 임시 데이터 사용 중)
-            const data = [
-                {id: '1', name: '카페 소담'},
-                {id: '2', name: '레스토랑 소담'}
-            ];
+            const stores = await storeService.getEmployeeStores(employeeIdNum);
+            const data = stores.map(s => ({id: String(s.id), name: s.storeName}));
             setWorkplaces(data);
-
             if (data.length > 0) {
-                setSelectedWorkplaceId(data[0].id);
+                setSelectedWorkplaceId(prev => (prev && data.some(d => d.id === prev) ? prev : data[0].id));
+            } else {
+                setSelectedWorkplaceId('');
             }
         } catch (error) {
             console.error('근무지 목록을 가져오는 중 오류가 생겼어요:', error);
+            AppToast.error('근무지 목록을 불러오지 못했어요.');
         }
     };
 

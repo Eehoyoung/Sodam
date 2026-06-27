@@ -104,6 +104,13 @@ const EmployeeMyPageRNScreen: React.FC = () => {
 
                 <ActionsSlot testID="slotActions">
                     <AppButton label="출퇴근 기록 자세히 보기" testID="btnViewAttendanceDetails" onPress={goToAttendance} />
+                    {/* 매장 입사 진입점 — 신규/추가 매장 합류. 기존엔 출퇴근 화면 깊숙이 묻혀 발견 불가했음. */}
+                    <AppButton
+                        label="매장 입사 (코드 입력)"
+                        variant="secondary"
+                        testID="btnJoinStore"
+                        onPress={() => navigation.navigate('JoinStoreByCode')}
+                    />
                 </ActionsSlot>
 
                 <InfoSlot testID="slotInfoTransparency">

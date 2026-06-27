@@ -74,6 +74,15 @@ export interface StoreEmployeeDto {
   userGrade?: string;
 }
 
+// [API Mapping] GET /api/stores/employee/{userId} — 직원이 소속된 매장 목록 (BOLA: 본인만)
+const getEmployeeStores = async (userId: number): Promise<StoreSummaryDto[]> => {
+  const res = await api.get<StoreSummaryDto[]>(`/api/stores/employee/${userId}`);
+  const data: any = res.data as any;
+  if (Array.isArray(data)) {return data as StoreSummaryDto[];}
+  if (Array.isArray(data?.data)) {return data.data as StoreSummaryDto[];}
+  return [];
+};
+
 const getStoreEmployees = async (storeId: number): Promise<StoreEmployeeDto[]> => {
   const res = await api.get<StoreEmployeeDto[]>(`/api/stores/${storeId}/employees`);
   const data: any = res.data as any;
@@ -139,6 +148,7 @@ const storeService = {
   getMasterStores,
   getStoreById,
   getStoreEmployees,
+  getEmployeeStores,
   // 등록/설정류
   createStore,
   putLocation,
