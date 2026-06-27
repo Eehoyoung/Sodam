@@ -11,6 +11,6 @@ export interface TaxSimulation {
 }
 
 export async function fetchTaxSimulation(income: number, expenses: number): Promise<TaxSimulation> {
-  const {data} = await api.get<TaxSimulation>('/api/tax/simulate', {params: {income, expenses}});
+  const {data} = await api.get<TaxSimulation>('/api/tax/simulate', {income, expenses});
   return data;
 }

@@ -26,13 +26,13 @@ export interface WorkShiftCreateBody {
 
 /** 직원 본인 시프트(기간). */
 export async function fetchMyShifts(from: string, to: string): Promise<WorkShift[]> {
-  const {data} = await api.get<WorkShift[]>('/api/shifts/my', {params: {from, to}});
+  const {data} = await api.get<WorkShift[]>('/api/shifts/my', {from, to});
   return data;
 }
 
 /** 매장 시프트 목록(사장, 기간). */
 export async function fetchStoreShifts(storeId: number, from: string, to: string): Promise<WorkShift[]> {
-  const {data} = await api.get<WorkShift[]>(`/api/stores/${storeId}/shifts`, {params: {from, to}});
+  const {data} = await api.get<WorkShift[]>(`/api/stores/${storeId}/shifts`, {from, to});
   return data;
 }
 

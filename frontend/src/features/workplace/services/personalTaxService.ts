@@ -19,7 +19,7 @@ export interface PersonalAnnualTax {
 }
 
 export async function fetchPersonalAnnualTax(userId: number, year: number): Promise<PersonalAnnualTax> {
-  const res = await api.get(`/api/personal-users/${userId}/annual-tax-summary`, {params: {year}});
+  const res = await api.get(`/api/personal-users/${userId}/annual-tax-summary`, {year});
   // 개인모드 엔드포인트는 ApiResponse{success,message,data} 로 감싼다
   const body = res.data as {data?: PersonalAnnualTax} & PersonalAnnualTax;
   return body.data ?? body;
