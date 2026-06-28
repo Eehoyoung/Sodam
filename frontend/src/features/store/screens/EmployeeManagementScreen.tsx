@@ -1,6 +1,7 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import {Share, StyleSheet, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import {useFocusEffect} from '@react-navigation/native';
 import type {RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
@@ -66,9 +67,12 @@ export default function EmployeeManagementScreen({route, navigation}: Props) {
         }
     }, [storeId]);
 
-    useEffect(() => {
-        load();
-    }, [load]);
+    // 포커스마다 재조회 — 직원 입사(코드)·삭제 등으로 목록이 바뀐 뒤 복귀해도 최신 반영.
+    useFocusEffect(
+        useCallback(() => {
+            load();
+        }, [load]),
+    );
 
     const shareCode = async () => {
         if (!storeCode) {return;}
