@@ -604,9 +604,16 @@ const AttendanceScreen = () => {
 
     // 출퇴근 기록 항목 렌더링
     const renderAttendanceItem = ({item}: { item: AttendanceRecord }) => {
-        const date = format(new Date(item.date), 'M월 d일 (EEE)', {locale: ko});
-        const checkInTime = item.checkInTime ? format(new Date(item.checkInTime), 'HH:mm') : '-';
-        const checkOutTime = item.checkOutTime ? format(new Date(item.checkOutTime), 'HH:mm') : '-';
+        // BE는 date 필드 없이 checkInTime 만 줄 수 있다. 유효하지 않은 값으로 format() 하면
+        // 'Invalid time value' RangeError 로 렌더가 통째로 크래시(LogBox Render Error)했다.
+        const safeFmt = (v?: string, pattern = 'M월 d일 (EEE)'): string => {
+            if (!v) {return '-';}
+            const d = new Date(v);
+            return isNaN(d.getTime()) ? '-' : format(d, pattern, {locale: ko});
+        };
+        const date = safeFmt(item.date || item.checkInTime);
+        const checkInTime = safeFmt(item.checkInTime, 'HH:mm');
+        const checkOutTime = safeFmt(item.checkOutTime, 'HH:mm');
         const workHours = item.workHours ? `${item.workHours}시간` : '-';
 
         return (
@@ -754,7 +761,7 @@ const AttendanceScreen = () => {
                                 <>
                                     <AmountText size={44} tone="primary">{elapsedLabel()}</AmountText>
                                     <Text style={styles.heroSub}>
-                                        {format(new Date(currentAttendance.checkInTime), 'HH:mm')} 출근 · 퇴근하려면 아래 버튼을 눌러주세요
+                                        {(() => { const d = new Date(currentAttendance.checkInTime); return isNaN(d.getTime()) ? '' : `${format(d, 'HH:mm')} 출근 · `; })()}퇴근하려면 아래 버튼을 눌러주세요
                                     </Text>
                                 </>
                             ) : (
