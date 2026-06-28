@@ -1,6 +1,6 @@
 /* eslint-disable react-native/no-color-literals -- 브랜드 히어로 위 흰 오버레이/구분선 고정(레거시 화면, P2 재디자인 대상) */
 import {AppToast, AppBadge, AppCard, AppHeader, AppText, AmountText, HeroNumber, ScreenContainer} from '../../../common/components/ds';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
     View,
     ScrollView,
@@ -11,7 +11,7 @@ import {
     RefreshControl,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { NavigationProp } from '@react-navigation/native';
+import { NavigationProp, useFocusEffect } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {gradient, radius, shadow, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
@@ -85,11 +85,14 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
 
     const storeScrollRef = useRef<FlatList>(null);
 
-    useEffect(() => {
-        loadData();
-        // user.id 변경(로그인/계정전환) 시 본인 매장으로 재조회
+    // 화면 포커스마다 재조회 — 매장 등록/삭제 등 다른 화면에서 돌아왔을 때도 최신 매장 목록 반영.
+    // (mount-only useEffect 였을 때는 매장 신규 등록 후 복귀해도 화면이 갱신되지 않았다.)
+    useFocusEffect(
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user?.id]);
+        useCallback(() => {
+            loadData();
+        }, [user?.id]),
+    );
 
     const loadData = async () => {
         try {
