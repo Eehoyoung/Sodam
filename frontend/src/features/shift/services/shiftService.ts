@@ -24,6 +24,19 @@ export interface WorkShiftCreateBody {
   memo?: string;
 }
 
+export interface StoreShiftConfirmBody {
+  from: string;
+  to: string;
+}
+
+export interface StoreShiftConfirmResult {
+  storeId: number;
+  from: string;
+  to: string;
+  confirmedCount: number;
+  notifiedCount: number;
+}
+
 /** 직원 본인 시프트(기간). */
 export async function fetchMyShifts(from: string, to: string): Promise<WorkShift[]> {
   const {data} = await api.get<WorkShift[]>('/api/shifts/my', {from, to});
@@ -45,6 +58,30 @@ export async function createShift(storeId: number, body: WorkShiftCreateBody): P
 /** 시프트 삭제(사장). */
 export async function deleteShift(storeId: number, shiftId: number): Promise<void> {
   await api.delete(`/api/stores/${storeId}/shifts/${shiftId}`);
+}
+
+export async function confirmStoreWeekShifts(
+  storeId: number,
+  body: StoreShiftConfirmBody,
+): Promise<StoreShiftConfirmResult> {
+  const {data} = await api.post<StoreShiftConfirmResult>(
+    `/api/stores/${storeId}/shifts/notify`,
+    body,
+  );
+  const wrapped: any = data as any;
+  if (typeof wrapped?.confirmedCount === 'number') {
+    return wrapped as StoreShiftConfirmResult;
+  }
+  if (typeof wrapped?.data?.confirmedCount === 'number') {
+    return wrapped.data as StoreShiftConfirmResult;
+  }
+  return {
+    storeId,
+    from: body.from,
+    to: body.to,
+    confirmedCount: 0,
+    notifiedCount: 0,
+  };
 }
 
 /** 시:분만 표시(초 절단). "09:00:00" -> "09:00" */

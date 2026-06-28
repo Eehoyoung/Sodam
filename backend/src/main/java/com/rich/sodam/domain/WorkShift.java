@@ -50,6 +50,12 @@ public class WorkShift {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "confirmed_at")
+    private LocalDateTime confirmedAt;
+
+    @Column(name = "confirmation_notification_sent_at")
+    private LocalDateTime confirmationNotificationSentAt;
+
     private WorkShift(Long employeeId, Long storeId, LocalDate shiftDate,
                       LocalTime startTime, LocalTime endTime, String memo) {
         this.employeeId = employeeId;
@@ -64,5 +70,25 @@ public class WorkShift {
     public static WorkShift create(Long employeeId, Long storeId, LocalDate shiftDate,
                                    LocalTime startTime, LocalTime endTime, String memo) {
         return new WorkShift(employeeId, storeId, shiftDate, startTime, endTime, memo);
+    }
+
+    public boolean isConfirmed() {
+        return confirmedAt != null;
+    }
+
+    public void confirm() {
+        if (this.confirmedAt == null) {
+            this.confirmedAt = LocalDateTime.now();
+        }
+    }
+
+    public boolean isConfirmationNotificationSent() {
+        return confirmationNotificationSentAt != null;
+    }
+
+    public void markConfirmationNotificationSent() {
+        if (this.confirmationNotificationSentAt == null) {
+            this.confirmationNotificationSentAt = LocalDateTime.now();
+        }
     }
 }

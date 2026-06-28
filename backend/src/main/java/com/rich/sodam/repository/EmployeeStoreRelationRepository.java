@@ -81,4 +81,14 @@ public interface EmployeeStoreRelationRepository extends JpaRepository<EmployeeS
      * 직원이 해당 매장에 소속되어 있는지 검증 (StoreAccessGuard 용).
      */
     boolean existsByEmployeeProfile_IdAndStore_Id(Long employeeId, Long storeId);
+
+    /**
+     * 직원이 해당 매장에 활성 상태로 소속되어 있는지 검증.
+     */
+    boolean existsByEmployeeProfile_IdAndStore_IdAndIsActiveTrue(Long employeeId, Long storeId);
+
+    /**
+     * 직원 ID와 매장 ID로 활성 관계 조회.
+     */
+    Optional<EmployeeStoreRelation> findByEmployeeProfile_IdAndStore_IdAndIsActiveTrue(Long employeeId, Long storeId);
 }

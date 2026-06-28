@@ -89,6 +89,16 @@ public class NotificationService {
     }
 
     @Async
+    public void notifyWorkShiftConfirmed(Long employeeUserId, String storeName, String periodLabel) {
+        push(employeeUserId, PushMessage.builder()
+                .title("근무 일정 확정")
+                .body(String.format("%s 매장의 %s 근무 일정이 확정됐어요.", storeName, periodLabel))
+                .deepLink("sodam://shifts")
+                .data(Map.of("type", "SHIFT_CONFIRMED"))
+                .build());
+    }
+
+    @Async
     public void notifyBillingSucceeded(Long ownerUserId, String planName, int amount) {
         push(ownerUserId, PushMessage.builder()
                 .title("결제 완료")

@@ -1,8 +1,14 @@
 package com.rich.sodam.service;
 
+import com.rich.sodam.domain.EmployeeProfile;
+import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.WorkShift;
 import com.rich.sodam.dto.request.WorkShiftCreateRequest;
+import com.rich.sodam.dto.request.WorkShiftNotifyRequest;
+import com.rich.sodam.dto.response.WorkShiftNotifyResponse;
 import com.rich.sodam.dto.response.WorkShiftResponse;
+import com.rich.sodam.repository.EmployeeStoreRelationRepository;
+import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.repository.WorkShiftRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
@@ -11,6 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * 근무 시프트 서비스 (B10/E-NEW-05). 사장 등록·삭제 + 매장/직원 본인 기간 조회.
@@ -23,9 +32,13 @@ import java.util.List;
 public class WorkShiftService {
 
     private final WorkShiftRepository repository;
+    private final EmployeeStoreRelationRepository relationRepository;
+    private final StoreRepository storeRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public WorkShiftResponse create(Long storeId, WorkShiftCreateRequest req) {
+        assertActiveEmployeeInStore(req.getEmployeeId(), storeId);
         WorkShift shift = repository.save(WorkShift.create(
                 req.getEmployeeId(), storeId, req.getShiftDate(),
                 req.getStartTime(), req.getEndTime(), req.getMemo()));
@@ -43,9 +56,49 @@ public class WorkShiftService {
     /** 직원 본인 기간 조회. */
     @Transactional(readOnly = true)
     public List<WorkShiftResponse> listForEmployee(Long employeeId, LocalDate from, LocalDate to) {
-        return repository.findByEmployeeIdAndShiftDateBetweenOrderByShiftDateAsc(employeeId, from, to).stream()
+        return repository.findByEmployeeIdAndShiftDateBetweenAndConfirmedAtIsNotNullOrderByShiftDateAsc(
+                        employeeId, from, to).stream()
                 .map(WorkShiftResponse::from)
                 .toList();
+    }
+
+    @Transactional
+    public WorkShiftNotifyResponse notifyConfirmed(Long storeId, WorkShiftNotifyRequest req) {
+        validateNotifyRequest(req);
+
+        List<WorkShift> unconfirmed = repository
+                .findByStoreIdAndShiftDateBetweenAndConfirmedAtIsNullOrderByShiftDateAsc(
+                        storeId, req.getFrom(), req.getTo());
+        unconfirmed.forEach(WorkShift::confirm);
+
+        List<WorkShift> notificationTargets = repository
+                .findByStoreIdAndShiftDateBetweenAndConfirmedAtIsNotNullAndConfirmationNotificationSentAtIsNullOrderByShiftDateAsc(
+                        storeId, req.getFrom(), req.getTo());
+        if (notificationTargets.isEmpty()) {
+            return new WorkShiftNotifyResponse(storeId, req.getFrom(), req.getTo(), unconfirmed.size(), 0);
+        }
+
+        Map<Long, List<WorkShift>> shiftsByEmployee = notificationTargets.stream()
+                .collect(Collectors.groupingBy(WorkShift::getEmployeeId));
+
+        String storeName = storeRepository.findById(storeId)
+                .map(store -> store.getStoreName() != null ? store.getStoreName() : "매장")
+                .orElse("매장");
+        String periodLabel = String.format("%s~%s", req.getFrom(), req.getTo());
+
+        int notified = 0;
+        for (Map.Entry<Long, List<WorkShift>> entry : shiftsByEmployee.entrySet()) {
+            Long employeeId = entry.getKey();
+            Optional<Long> employeeUserId = findActiveEmployeeUserId(employeeId, storeId);
+            if (employeeUserId.isEmpty()) {
+                continue;
+            }
+            notificationService.notifyWorkShiftConfirmed(employeeUserId.get(), storeName, periodLabel);
+            entry.getValue().forEach(WorkShift::markConfirmationNotificationSent);
+            notified++;
+        }
+
+        return new WorkShiftNotifyResponse(storeId, req.getFrom(), req.getTo(), unconfirmed.size(), notified);
     }
 
     @Transactional
@@ -56,5 +109,40 @@ public class WorkShiftService {
             throw new AccessDeniedException("해당 매장의 근무 일정이 아니에요.");
         }
         repository.delete(shift);
+    }
+
+    private void assertActiveEmployeeInStore(Long employeeId, Long storeId) {
+        if (!relationRepository.existsByEmployeeProfile_IdAndStore_IdAndIsActiveTrue(employeeId, storeId)) {
+            throw new AccessDeniedException("해당 매장에 소속된 직원이 아니에요.");
+        }
+    }
+
+    private void validateNotifyRequest(WorkShiftNotifyRequest req) {
+        if (req == null) {
+            throw new IllegalArgumentException("확정 알림 요청이 비어 있어요.");
+        }
+        validateRange(req.getFrom(), req.getTo());
+    }
+
+    private void validateRange(LocalDate from, LocalDate to) {
+        if (from == null || to == null) {
+            throw new IllegalArgumentException("조회 시작일과 종료일을 모두 입력해 주세요.");
+        }
+        if (from.isAfter(to)) {
+            throw new IllegalArgumentException("조회 시작일은 종료일보다 늦을 수 없어요.");
+        }
+    }
+
+    private Optional<Long> findActiveEmployeeUserId(Long employeeId, Long storeId) {
+        return relationRepository.findByEmployeeProfile_IdAndStore_IdAndIsActiveTrue(employeeId, storeId)
+                .map(EmployeeStoreRelation::getEmployeeProfile)
+                .flatMap(this::employeeUserId);
+    }
+
+    private Optional<Long> employeeUserId(EmployeeProfile profile) {
+        if (profile.getUser() != null && profile.getUser().getId() != null) {
+            return Optional.of(profile.getUser().getId());
+        }
+        return Optional.empty();
     }
 }
