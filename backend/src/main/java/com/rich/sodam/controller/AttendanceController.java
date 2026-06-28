@@ -176,6 +176,33 @@ public class AttendanceController {
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
+    @Operation(summary = "직원 오늘 출퇴근 매장별 단건 조회",
+            description = "직원의 오늘자 출퇴근 기록을 선택한 매장 기준으로 1건 조회합니다. 없으면 204를 반환합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공",
+                    content = @Content(schema = @Schema(implementation = AttendanceResponseDto.class))),
+            @ApiResponse(responseCode = "204", description = "오늘 출퇴근 기록 없음"),
+            @ApiResponse(responseCode = "403", description = "해당 매장 소속 직원이 아님")
+    })
+    @GetMapping("/employee/{employeeId}/store/{storeId}/today")
+    public ResponseEntity<AttendanceResponseDto> getTodayAttendanceByStore(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long employeeId,
+            @PathVariable Long storeId) {
+        guard.assertSelf(principal.getId(), employeeId);
+        guard.assertEmployeeInStore(employeeId, storeId);
+        LocalDateTime startOfDay = java.time.LocalDate.now().atStartOfDay();
+        LocalDateTime endOfDay = startOfDay.plusDays(1);
+
+        List<Attendance> all = attendanceService.getAttendancesByEmployeeStoreAndPeriod(
+                employeeId, storeId, startOfDay, endOfDay);
+        return all.stream()
+                .findFirst()
+                .map(AttendanceResponseDto::from)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
     @Operation(summary = "직원별 월간 출퇴근 기록 조회", description = "특정 직원의 월간 출퇴근 기록을 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),

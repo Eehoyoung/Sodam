@@ -26,6 +26,10 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     List<Attendance> findByEmployeeProfileAndCheckInTimeBetweenOrderByCheckInTimeDesc(
             EmployeeProfile employeeProfile, LocalDateTime startDate, LocalDateTime endDate);
 
+    @EntityGraph(attributePaths = {"employeeProfile", "employeeProfile.user", "store"})
+    List<Attendance> findByEmployeeProfileAndStoreAndCheckInTimeBetweenOrderByCheckInTimeDesc(
+            EmployeeProfile employeeProfile, Store store, LocalDateTime startDate, LocalDateTime endDate);
+
     /**
      * 특정 매장의 특정 기간 출퇴근 기록 조회
      * 최신 기록 순으로 정렬

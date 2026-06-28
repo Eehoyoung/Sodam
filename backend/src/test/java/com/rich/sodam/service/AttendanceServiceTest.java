@@ -460,4 +460,31 @@ class AttendanceServiceTest {
 
         System.out.println("[DEBUG_LOG] 잘못된 시간 순서 실패 테스트 완료");
     }
+    @Test
+    @DisplayName("직원 오늘 출퇴근 기록은 선택 매장 기준으로 조회된다")
+    void getAttendancesByEmployeeStoreAndPeriod_filtersByStore() {
+        Store otherStore = new Store("다른매장", "2234567890", "02-9999-9999", "카페", 10000, 100);
+        otherStore.updateLocation(37.5665, 126.9780, "서울시 테스트로 456", 100);
+        otherStore = storeRepository.save(otherStore);
+        employeeStoreRelationRepository.save(new EmployeeStoreRelation(testEmployee, otherStore, 13000));
+
+        LocalDateTime base = LocalDate.now().atTime(9, 0);
+        Attendance first = new Attendance(testEmployee, testStore);
+        first.manualCheckIn(base, 37.5665, 126.9780, 12000);
+        attendanceRepository.save(first);
+
+        Attendance second = new Attendance(testEmployee, otherStore);
+        second.manualCheckIn(base.plusHours(2), 37.5665, 126.9780, 13000);
+        attendanceRepository.save(second);
+
+        List<Attendance> result = attendanceService.getAttendancesByEmployeeStoreAndPeriod(
+                testEmployee.getId(),
+                otherStore.getId(),
+                LocalDate.now().atStartOfDay(),
+                LocalDate.now().plusDays(1).atStartOfDay());
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getStore().getId()).isEqualTo(otherStore.getId());
+        assertThat(result.get(0).getAppliedHourlyWage()).isEqualTo(13000);
+    }
 }
