@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.UUID;
@@ -354,6 +355,34 @@ public class Store {
 
         // 시간 범위 내에 있는지 확인
         return !time.isBefore(openTime) && !time.isAfter(closeTime);
+    }
+
+    public boolean isWithinAttendanceWindowAt(LocalDateTime dateTime) {
+        if (Boolean.TRUE.equals(isDeleted) || operatingHours == null || dateTime == null) {
+            return false;
+        }
+
+        LocalDate date = dateTime.toLocalDate();
+        return isWithinAttendanceWindowForBusinessDate(dateTime, date.minusDays(1))
+                || isWithinAttendanceWindowForBusinessDate(dateTime, date)
+                || isWithinAttendanceWindowForBusinessDate(dateTime, date.plusDays(1));
+    }
+
+    private boolean isWithinAttendanceWindowForBusinessDate(LocalDateTime dateTime, LocalDate businessDate) {
+        DayOfWeek dayOfWeek = businessDate.getDayOfWeek();
+        if (!operatingHours.isOpenOn(dayOfWeek)) {
+            return false;
+        }
+
+        LocalTime openTime = operatingHours.getOpenTime(dayOfWeek);
+        LocalTime closeTime = operatingHours.getCloseTime(dayOfWeek);
+        if (openTime == null || closeTime == null) {
+            return false;
+        }
+
+        LocalDateTime attendanceWindowStart = businessDate.atTime(openTime).minusHours(1);
+        LocalDateTime attendanceWindowEnd = businessDate.atTime(closeTime).plusHours(1);
+        return !dateTime.isBefore(attendanceWindowStart) && !dateTime.isAfter(attendanceWindowEnd);
     }
 
     // ==================== Soft Delete 관련 메서드 ====================

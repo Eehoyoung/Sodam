@@ -1,5 +1,21 @@
 import api from '../../../common/utils/api';
 
+export type DayOfWeek =
+  | 'MONDAY'
+  | 'TUESDAY'
+  | 'WEDNESDAY'
+  | 'THURSDAY'
+  | 'FRIDAY'
+  | 'SATURDAY'
+  | 'SUNDAY';
+
+export interface StoreOperatingHourPayload {
+  dayOfWeek: DayOfWeek;
+  openTime: string | null; // HH:mm:ss
+  closeTime: string | null; // HH:mm:ss
+  isClosed: boolean;
+}
+
 export interface StoreRegistrationPayload {
   storeName: string;
   businessNumber?: string; // 유선
@@ -10,6 +26,7 @@ export interface StoreRegistrationPayload {
   jibunAddress?: string;
   latitude?: number | null;
   longitude?: number | null;
+  operatingHours: StoreOperatingHourPayload[];
   radius?: number; // 출퇴근 인증 반경 (m)
   storeStandardHourWage: number; // 기준 시급
 }

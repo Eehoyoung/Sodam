@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>매장 운영시간 등록 시안</title>
+  <style>
+    :root {
+      --brand: #ff6b35;
+      --brand-dark: #e85a2a;
+      --brand-soft: #fff0e8;
+      --canvas: #f7f4ef;
+      --surface: #ffffff;
+      --warm: #fffbf5;
+      --muted: #f1eee9;
+      --border: #e8e0d8;
+      --strong: #d8cdc3;
+      --text: #201a17;
+      --sub: #625b55;
+      --tertiary: #9a9189;
+      --error: #e5484d;
+      --error-bg: #fee2e2;
+      --success: #12a87b;
+      --info-bg: #eef5ff;
+      --warning-bg: #fef3c7;
+      --warning: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--canvas);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    .page {
+      min-height: 100vh;
+      display: grid;
+      place-items: start center;
+      padding: 28px 16px;
+    }
+
+    .phone {
+      width: min(100%, 430px);
+      min-height: 880px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 12px 36px rgba(36, 59, 74, 0.12);
+    }
+
+    .header {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .back {
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--border);
+      border-radius: 19px;
+      display: grid;
+      place-items: center;
+      color: var(--brand);
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .header-title {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .header-title strong {
+      display: block;
+      font-size: 17px;
+      line-height: 24px;
+    }
+
+    .header-title span {
+      display: block;
+      margin-top: 1px;
+      color: var(--tertiary);
+      font-size: 12px;
+      line-height: 16px;
+    }
+
+    .step {
+      color: var(--brand);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .content {
+      padding: 22px 18px 108px;
+    }
+
+    .section-title {
+      margin: 0 0 8px;
+      font-size: 22px;
+      line-height: 30px;
+      font-weight: 800;
+    }
+
+    .section-copy {
+      margin: 0 0 18px;
+      color: var(--sub);
+      font-size: 14px;
+      line-height: 21px;
+    }
+
+    .field {
+      margin-top: 14px;
+    }
+
+    .label {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      color: var(--sub);
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 18px;
+    }
+
+    .hint {
+      color: var(--tertiary);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .input {
+      width: 100%;
+      height: 48px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0 14px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 700;
+      outline: 0;
+    }
+
+    .input:focus {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px var(--brand-soft);
+    }
+
+    .input.error {
+      border-color: var(--error);
+      background: #fffafa;
+    }
+
+    .error-text {
+      min-height: 18px;
+      margin-top: 6px;
+      color: var(--error);
+      font-size: 12px;
+      line-height: 18px;
+      font-weight: 700;
+    }
+
+    .preview {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: var(--brand-soft);
+      color: var(--brand-dark);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .mode-box {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 18px 0 12px;
+      padding: 4px;
+      border-radius: 8px;
+      background: var(--muted);
+    }
+
+    .mode {
+      height: 42px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--sub);
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .mode.active {
+      background: var(--surface);
+      color: var(--brand);
+      box-shadow: 0 1px 4px rgba(36, 59, 74, 0.12);
+    }
+
+    .quick-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 14px 0 10px;
+    }
+
+    .chip {
+      min-height: 34px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0 12px;
+      background: var(--surface);
+      color: var(--sub);
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .chip.primary {
+      border-color: var(--brand);
+      background: var(--brand-soft);
+      color: var(--brand);
+    }
+
+    .hours-card {
+      margin-top: 12px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--warm);
+    }
+
+    .row-two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .days {
+      display: none;
+      margin-top: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    .days.visible {
+      display: block;
+    }
+
+    .day-row {
+      display: grid;
+      grid-template-columns: 34px 1fr 1fr 58px;
+      gap: 8px;
+      align-items: start;
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .day-row:last-child {
+      border-bottom: 0;
+    }
+
+    .day-name {
+      padding-top: 14px;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .mini-field .input {
+      height: 44px;
+      padding: 0 10px;
+      font-size: 16px;
+    }
+
+    .mini-field .error-text {
+      min-height: 16px;
+      margin-top: 4px;
+      font-size: 11px;
+      line-height: 16px;
+    }
+
+    .closed {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding-top: 13px;
+      color: var(--sub);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .closed input {
+      accent-color: var(--brand);
+    }
+
+    .notice {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 8px;
+      background: var(--info-bg);
+      color: var(--sub);
+      font-size: 12px;
+      line-height: 18px;
+    }
+
+    .notice strong {
+      color: var(--text);
+    }
+
+    .warning {
+      background: var(--warning-bg);
+    }
+
+    .warning .icon {
+      color: var(--warning);
+    }
+
+    .icon {
+      flex: 0 0 auto;
+      color: var(--brand);
+      font-weight: 900;
+    }
+
+    .footer {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      width: min(calc(100% - 32px), 430px);
+      transform: translateX(-50%);
+      padding: 14px 18px 18px;
+      border-top: 1px solid var(--border);
+      border-radius: 0 0 28px 28px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.88), #fff 32%);
+    }
+
+    .cta {
+      width: 100%;
+      height: 52px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--brand);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 900;
+      box-shadow: 0 8px 16px rgba(255, 107, 53, 0.26);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 380px) {
+      .content {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+
+      .row-two {
+        grid-template-columns: 1fr;
+      }
+
+      .day-row {
+        grid-template-columns: 30px 1fr 1fr;
+      }
+
+      .closed {
+        grid-column: 2 / 4;
+        padding-top: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="phone" aria-label="매장 운영시간 등록 화면 시안">
+      <header class="header">
+        <div class="back" aria-hidden="true">‹</div>
+        <div class="header-title">
+          <strong>첫 매장 등록</strong>
+          <span>운영시간은 출퇴근 이상 여부 판단에도 사용돼요</span>
+        </div>
+        <div class="step">2/3</div>
+      </header>
+
+      <div class="content">
+        <h1 class="section-title">매장 운영시간</h1>
+        <p class="section-copy">
+          시간을 24시간 기준 4자리 숫자로 입력해 주세요. 예를 들어 오전 10시는 1000, 밤 10시는 2200이에요.
+        </p>
+
+        <div class="mode-box" role="tablist" aria-label="운영시간 설정 방식">
+          <button class="mode active" type="button" data-mode="same">매일 같음</button>
+          <button class="mode" type="button" data-mode="weekly">요일별 설정</button>
+        </div>
+
+        <section id="samePanel" class="hours-card" aria-label="매일 같은 운영시간">
+          <div class="row-two">
+            <div class="field">
+              <label class="label" for="sameOpen">오픈 시간 <span class="hint">예: 1000</span></label>
+              <input id="sameOpen" class="input time-input" inputmode="numeric" maxlength="4" value="1000" />
+              <div class="error-text" data-error-for="sameOpen"></div>
+            </div>
+            <div class="field">
+              <label class="label" for="sameClose">마감 시간 <span class="hint">예: 2200</span></label>
+              <input id="sameClose" class="input time-input" inputmode="numeric" maxlength="4" value="2200" />
+              <div class="error-text" data-error-for="sameClose"></div>
+            </div>
+          </div>
+          <div id="samePreview" class="preview">저장 예시: 매일 10:00 ~ 22:00</div>
+        </section>
+
+        <div class="quick-actions hidden" id="weeklyActions">
+          <button class="chip primary" type="button" id="copySame">매일 같음 복사</button>
+          <button class="chip" type="button" id="weekdayWeekend">평일/주말 빠른 설정</button>
+          <button class="chip" type="button" id="markSundayClosed">일요일 휴무</button>
+        </div>
+
+        <section id="weeklyPanel" class="days" aria-label="요일별 운영시간">
+          <div class="day-row" data-day="mon">
+            <div class="day-name">월</div>
+            <div class="mini-field">
+              <input class="input time-input weekly-open" inputmode="numeric" maxlength="4" value="1000" aria-label="월요일 오픈 시간" />
+              <div class="error-text"></div>
+            </div>
+            <div class="mini-field">
+              <input class="input time-input weekly-close" inputmode="numeric" maxlength="4" value="2200" aria-label="월요일 마감 시간" />
+              <div class="error-text"></div>
+            </div>
+            <label class="closed"><input type="checkbox" /> 휴무</label>
+          </div>
+          <div class="day-row" data-day="tue">
+            <div class="day-name">화</div>
+            <div class="mini-field">
+              <input class="input time-input weekly-open" inputmode="numeric" maxlength="4" value="1000" aria-label="화요일 오픈 시간" />
+              <div class="error-text"></div>
+            </div>
+            <div class="mini-field">
+              <input class="input time-input weekly-close" inputmode="numeric" maxlength="4" value="2200" aria-label="화요일 마감 시간" />
+              <div class="error-text"></div>
+            </div>
+            <label class="closed"><input type="checkbox" /> 휴무</label>
+          </div>
+          <div class="day-row" data-day="wed">
+            <div class="day-name">수</div>
+            <div class="mini-field">
+              <input class="input time-input weekly-open" inputmode="numeric" maxlength="4" value="1000" aria-label="수요일 오픈 시간" />
+              <div class="error-text"></div>
+            </div>
+            <div class="mini-field">
+              <input class="input time-input weekly-close" inputmode="numeric" maxlength="4" value="2200" aria-label="수요일 마감 시간" />
+              <div class="error-text"></div>
+            </div>
+            <label class="closed"><input type="checkbox" /> 휴무</label>
+          </div>
+          <div class="day-row" data-day="thu">
+            <div class="day-name">목</div>
+            <div class="mini-field">
+              <input class="input time-input weekly-open" inputmode="numeric" maxlength="4" value="1000" aria-label="목요일 오픈 시간" />
+              <div class="error-text"></div>
+            </div>
+            <div class="mini-field">
+              <input class="input time-input weekly-close" inputmode="numeric" maxlength="4" value="2200" aria-label="목요일 마감 시간" />
+              <div class="error-text"></div>
+            </div>
+            <label class="closed"><input type="checkbox" /> 휴무</label>
+          </div>
+          <div class="day-row" data-day="fri">
+            <div class="day-name">금</div>
+            <div class="mini-field">
+              <input class="input time-input weekly-open" inputmode="numeric" maxlength="4" value="1000" aria-label="금요일 오픈 시간" />
+              <div class="error-text"></div>
+            </div>
+            <div class="mini-field">
+              <input class="input time-input weekly-close" inputmode="numeric" maxlength="4" value="2300" aria-label="금요일 마감 시간" />
+              <div class="error-text"></div>
+            </div>
+            <label class="closed"><input type="checkbox" /> 휴무</label>
+          </div>
+          <div class="day-row" data-day="sat">
+            <div class="day-name">토</div>
+            <div class="mini-field">
+              <input class="input time-input weekly-open" inputmode="numeric" maxlength="4" value="1100" aria-label="토요일 오픈 시간" />
+              <div class="error-text"></div>
+            </div>
+            <div class="mini-field">
+              <input class="input time-input weekly-close" inputmode="numeric" maxlength="4" value="2300" aria-label="토요일 마감 시간" />
+              <div class="error-text"></div>
+            </div>
+            <label class="closed"><input type="checkbox" /> 휴무</label>
+          </div>
+          <div class="day-row" data-day="sun">
+            <div class="day-name">일</div>
+            <div class="mini-field">
+              <input class="input time-input weekly-open" inputmode="numeric" maxlength="4" value="1200" aria-label="일요일 오픈 시간" />
+              <div class="error-text"></div>
+            </div>
+            <div class="mini-field">
+              <input class="input time-input weekly-close" inputmode="numeric" maxlength="4" value="2000" aria-label="일요일 마감 시간" />
+              <div class="error-text"></div>
+            </div>
+            <label class="closed"><input type="checkbox" /> 휴무</label>
+          </div>
+        </section>
+
+        <div class="notice">
+          <span class="icon">i</span>
+          <div>
+            저장할 때는 <strong>10:00</strong>처럼 자동 변환됩니다. 사용자는 콜론을 입력하지 않아도 됩니다.
+          </div>
+        </div>
+
+        <div class="notice warning">
+          <span class="icon">!</span>
+          <div>
+            출퇴근 이상 여부는 해당 요일 운영시간 기준으로 오픈 1시간 전부터 마감 1시간 후까지 정상 범위로 봅니다.
+          </div>
+        </div>
+      </div>
+
+      <footer class="footer">
+        <button class="cta" type="button">매장 등록하기</button>
+      </footer>
+    </section>
+  </main>
+
+  <script>
+    const modes = document.querySelectorAll(".mode");
+    const samePanel = document.getElementById("samePanel");
+    const weeklyPanel = document.getElementById("weeklyPanel");
+    const weeklyActions = document.getElementById("weeklyActions");
+    const samePreview = document.getElementById("samePreview");
+
+    function parseTime(value) {
+      if (!/^\d{4}$/.test(value)) {
+        return { ok: false, message: "4자리 숫자를 적어주세요" };
+      }
+      const hour = Number(value.slice(0, 2));
+      const minute = Number(value.slice(2, 4));
+      if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+        return { ok: false, message: "다시입력해 주세요" };
+      }
+      return {
+        ok: true,
+        hour,
+        minute,
+        text: `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
+      };
+    }
+
+    function setInputState(input) {
+      const result = parseTime(input.value);
+      const error = input.parentElement.querySelector(".error-text")
+        || document.querySelector(`[data-error-for="${input.id}"]`);
+      input.classList.toggle("error", !result.ok);
+      if (error) error.textContent = result.ok ? "" : result.message;
+      return result;
+    }
+
+    function refreshSamePreview() {
+      const open = setInputState(document.getElementById("sameOpen"));
+      const close = setInputState(document.getElementById("sameClose"));
+      samePreview.textContent = open.ok && close.ok
+        ? `저장 예시: 매일 ${open.text} ~ ${close.text}`
+        : "입력값을 확인하면 저장 예시가 표시돼요";
+    }
+
+    document.querySelectorAll(".time-input").forEach(input => {
+      input.addEventListener("input", event => {
+        event.target.value = event.target.value.replace(/\D/g, "").slice(0, 4);
+        setInputState(event.target);
+        refreshSamePreview();
+      });
+    });
+
+    modes.forEach(button => {
+      button.addEventListener("click", () => {
+        modes.forEach(item => item.classList.remove("active"));
+        button.classList.add("active");
+        const weekly = button.dataset.mode === "weekly";
+        samePanel.classList.toggle("hidden", weekly);
+        weeklyPanel.classList.toggle("visible", weekly);
+        weeklyActions.classList.toggle("hidden", !weekly);
+      });
+    });
+
+    document.getElementById("copySame").addEventListener("click", () => {
+      const openValue = document.getElementById("sameOpen").value || "1000";
+      const closeValue = document.getElementById("sameClose").value || "2200";
+      weeklyPanel.querySelectorAll(".day-row").forEach(row => {
+        row.querySelector(".weekly-open").value = openValue;
+        row.querySelector(".weekly-close").value = closeValue;
+        row.querySelector("input[type='checkbox']").checked = false;
+        row.querySelectorAll(".time-input").forEach(setInputState);
+      });
+    });
+
+    document.getElementById("weekdayWeekend").addEventListener("click", () => {
+      weeklyPanel.querySelectorAll(".day-row").forEach((row, index) => {
+        row.querySelector(".weekly-open").value = index < 5 ? "1000" : "1100";
+        row.querySelector(".weekly-close").value = index < 5 ? "2200" : "2300";
+        row.querySelector("input[type='checkbox']").checked = false;
+        row.querySelectorAll(".time-input").forEach(setInputState);
+      });
+    });
+
+    document.getElementById("markSundayClosed").addEventListener("click", () => {
+      const row = weeklyPanel.querySelector('[data-day="sun"]');
+      const checkbox = row.querySelector("input[type='checkbox']");
+      checkbox.checked = true;
+      row.querySelectorAll(".time-input").forEach(input => {
+        input.classList.remove("error");
+        input.parentElement.querySelector(".error-text").textContent = "";
+      });
+    });
+
+    weeklyPanel.querySelectorAll("input[type='checkbox']").forEach(checkbox => {
+      checkbox.addEventListener("change", () => {
+        const row = checkbox.closest(".day-row");
+        row.querySelectorAll(".time-input").forEach(input => {
+          input.disabled = checkbox.checked;
+          input.style.opacity = checkbox.checked ? "0.42" : "1";
+          if (checkbox.checked) {
+            input.classList.remove("error");
+            input.parentElement.querySelector(".error-text").textContent = "";
+          } else {
+            setInputState(input);
+          }
+        });
+      });
+    });
+
+    refreshSamePreview();
+  </script>
+</body>
+</html>
