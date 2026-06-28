@@ -68,7 +68,10 @@ public class SecurityConfig {
                                 // H2 콘솔 (dev 프로필에서만 노출됨)
                                 "/h2-console/**",
                                 // 플랜 카탈로그: 비인증 조회 허용
-                                "/api/billing/plans"
+                                "/api/billing/plans",
+                                // WebSocket 핸드셰이크: HTTP 업그레이드는 허용하고, 실제 인증은
+                                // STOMP CONNECT 단계에서 JWT 로 강제(WebSocketConfig 채널 인터셉터).
+                                "/ws/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

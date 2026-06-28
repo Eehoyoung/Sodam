@@ -48,6 +48,7 @@ public class AttendanceService {
     private final UserService userService;
     private final UserRepository userRepository;
     private final DomainEventService domainEventService;
+    private final LiveSyncPublisher liveSyncPublisher;
 
     /**
      * 위치정보 수집·이용 동의 여부를 강제한다(위치정보법 §18·§19, G-1).
@@ -92,7 +93,10 @@ public class AttendanceService {
             throw LocationVerificationException.outOfRange();
         }
 
-        return checkIn(employeeId, storeId, latitude, longitude, resolveQueuedTime(queuedAt));
+        Attendance result = checkIn(employeeId, storeId, latitude, longitude, resolveQueuedTime(queuedAt));
+        // 사장 대시보드·직원 홈 라이브 동기화 — 출근 인원·근무 상태 즉시 반영.
+        liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.ATTENDANCE_CHANGED);
+        return result;
     }
 
     /**
@@ -179,7 +183,9 @@ public class AttendanceService {
             throw LocationVerificationException.outOfRange();
         }
 
-        return checkOut(employeeId, storeId, latitude, longitude, resolveQueuedTime(queuedAt));
+        Attendance result = checkOut(employeeId, storeId, latitude, longitude, resolveQueuedTime(queuedAt));
+        liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.ATTENDANCE_CHANGED);
+        return result;
     }
 
     /**
@@ -240,6 +246,16 @@ public class AttendanceService {
         EmployeeProfile employeeProfile = getEmployeeProfile(employeeId);
         return attendanceRepository.findByEmployeeProfileAndCheckInTimeBetweenOrderByCheckInTimeDesc(
                 employeeProfile, startDate, endDate);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Attendance> getAttendancesByEmployeeStoreAndPeriod(
+            Long employeeId, Long storeId, LocalDateTime startDate, LocalDateTime endDate) {
+
+        EmployeeProfile employeeProfile = getEmployeeProfile(employeeId);
+        Store store = getStore(storeId);
+        return attendanceRepository.findByEmployeeProfileAndStoreAndCheckInTimeBetweenOrderByCheckInTimeDesc(
+                employeeProfile, store, startDate, endDate);
     }
 
     /**

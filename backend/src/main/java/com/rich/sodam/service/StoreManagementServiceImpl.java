@@ -42,6 +42,7 @@ public class StoreManagementServiceImpl implements StoreManagementService {
     private final WageHistoryRepository wageHistoryRepository;
     private final PlanAccessService planAccessService;
     private final DomainEventService domainEventService;
+    private final LiveSyncPublisher liveSyncPublisher;
 
     @NotNull
     private Store getStore(StoreRegistrationDto storeDto) {
@@ -208,6 +209,8 @@ public class StoreManagementServiceImpl implements StoreManagementService {
                 .orElseThrow(() -> new EntityNotFoundException("직원 프로필이 없습니다."));
         employeeStoreRelationRepository.findByEmployeeProfileAndStore(profile, store)
                 .ifPresent(rel -> { if (Boolean.FALSE.equals(rel.getIsActive())) rel.setIsActive(true); });
+        // 사장(및 같은 매장 직원) 화면 라이브 동기화 — 인원수·직원목록 즉시 갱신.
+        liveSyncPublisher.publishStore(store.getId(), LiveSyncPublisher.SyncType.EMPLOYEES_CHANGED);
         return store;
     }
 
@@ -280,6 +283,8 @@ public class StoreManagementServiceImpl implements StoreManagementService {
         employeeStoreRelationRepository.save(relation);
         // 재직 인원 변동 → 5인 이상 여부 재산정(§56 가산 적용 정상화)
         recountEmployeesAndApply(relation.getStore());
+        // 사장 화면 라이브 동기화 — 직원 활성/비활성 즉시 반영.
+        liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.EMPLOYEES_CHANGED);
     }
 
     /**
