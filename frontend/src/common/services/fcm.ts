@@ -21,35 +21,47 @@ import {notificationApi} from './NotificationService';
  */
 
 // optional-require 경계 — 네이티브 모듈 부재 시 타입을 알 수 없어 any 허용.
-// 모듈이 주입되면 messaging() 팩토리(FirebaseMessagingTypes.Module 반환)로 해석된다.
-type MessagingFactory = (() => any) | null;
+// RNFirebase v22+ 모듈러 API(getMessaging/getToken/...)를 사용한다. 네임스페이스
+// API(messaging())는 deprecated 라 호출 시 콘솔 경고(→LogBox 배너)가 떠서 제거.
+type FcmModule = any;
 
-let _messagingResolved = false;
-let _messagingCache: MessagingFactory = null;
+let _resolved = false;
+let _mod: FcmModule = null;   // @react-native-firebase/messaging (모듈러 named exports 보유)
+let _instance: any = null;    // getMessaging(getApp()) 결과 인스턴스
 
 /**
- * `@react-native-firebase/messaging` 의 default export(messaging 팩토리)를
- * 1회만 lazy-load 하고 캐시한다. 모듈/네이티브 미배선이면 null.
+ * `@react-native-firebase/messaging`·`/app` 을 1회 lazy-load 하고
+ * 모듈러 메시징 인스턴스를 캐시한다. 모듈/네이티브 미배선이면 둘 다 null.
  */
-export function loadMessaging(): MessagingFactory {
-    if (_messagingResolved) {
-        return _messagingCache;
+function loadFcm(): {mod: FcmModule; instance: any} {
+    if (_resolved) {
+        return {mod: _mod, instance: _instance};
     }
-    _messagingResolved = true;
+    _resolved = true;
     try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional native module, guarded require (FCM 키 주입 전에는 부재)
         const mod = require('@react-native-firebase/messaging');
-        _messagingCache = (mod?.default ?? mod) || null;
+        // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional native module
+        const appMod = require('@react-native-firebase/app');
+        if (typeof mod?.getMessaging === 'function' && typeof appMod?.getApp === 'function') {
+            _mod = mod;
+            _instance = mod.getMessaging(appMod.getApp());
+        } else if (typeof mod?.default === 'function') {
+            // 구버전 폴백: 네임스페이스 팩토리(경고 동반)
+            _mod = mod;
+            _instance = mod.default();
+        }
     } catch (_e) {
         // 모듈/네이티브 미배선 — fallback (no-op) 경로로 동작
-        _messagingCache = null;
+        _mod = null;
+        _instance = null;
     }
-    return _messagingCache;
+    return {mod: _mod, instance: _instance};
 }
 
 /** FCM 네이티브 모듈이 사용 가능한지 여부. */
 export function isFcmAvailable(): boolean {
-    return loadMessaging() !== null;
+    return loadFcm().instance !== null;
 }
 
 /**
@@ -60,8 +72,8 @@ export function isFcmAvailable(): boolean {
  *  - 모듈 부재: false (크래시 금지)
  */
 export async function requestPushPermission(): Promise<boolean> {
-    const messaging = loadMessaging();
-    if (!messaging) {
+    const {mod, instance} = loadFcm();
+    if (!mod || !instance) {
         return false;
     }
 
@@ -82,7 +94,7 @@ export async function requestPushPermission(): Promise<boolean> {
         }
 
         // iOS: Firebase 권한 요청. authStatus 가 AUTHORIZED/PROVISIONAL 이면 허용.
-        const authStatus = await messaging().requestPermission();
+        const authStatus = await mod.requestPermission(instance);
         const AUTHORIZED = 1;
         const PROVISIONAL = 2;
         return authStatus === AUTHORIZED || authStatus === PROVISIONAL;
@@ -95,12 +107,12 @@ export async function requestPushPermission(): Promise<boolean> {
  * 현재 디바이스의 FCM 토큰. 모듈 부재/실패 시 null.
  */
 export async function getFcmToken(): Promise<string | null> {
-    const messaging = loadMessaging();
-    if (!messaging) {
+    const {mod, instance} = loadFcm();
+    if (!mod || !instance) {
         return null;
     }
     try {
-        const token = await messaging().getToken();
+        const token = await mod.getToken(instance);
         return token || null;
     } catch (_e) {
         return null;
@@ -158,12 +170,12 @@ export type Unsubscribe = () => void;
 export function subscribeForegroundMessages(
     handler: (message: any) => void, // optional-require 경계 — RemoteMessage 타입 부재
 ): Unsubscribe {
-    const messaging = loadMessaging();
-    if (!messaging) {
+    const {mod, instance} = loadFcm();
+    if (!mod || !instance) {
         return () => {};
     }
     try {
-        return messaging().onMessage(handler) as Unsubscribe;
+        return mod.onMessage(instance, handler) as Unsubscribe;
     } catch (_e) {
         return () => {};
     }
@@ -176,19 +188,18 @@ export function subscribeForegroundMessages(
 export function subscribeTokenRefresh(
     handler: (token: string) => void,
 ): Unsubscribe {
-    const messaging = loadMessaging();
-    if (!messaging) {
+    const {mod, instance} = loadFcm();
+    if (!mod || !instance) {
         return () => {};
     }
     try {
-        return messaging().onTokenRefresh(handler) as Unsubscribe;
+        return mod.onTokenRefresh(instance, handler) as Unsubscribe;
     } catch (_e) {
         return () => {};
     }
 }
 
 export default {
-    loadMessaging,
     isFcmAvailable,
     requestPushPermission,
     getFcmToken,
