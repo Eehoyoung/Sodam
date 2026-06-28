@@ -78,6 +78,10 @@ public class AttendanceService {
      * 그 시각을 출근시각으로 채택하고, 초과(또는 미래 시각)면 서버시각으로 폴백한다.
      */
     @Transactional
+    // 컨트롤러가 프록시로 호출하는 진입점에 캐시 무효화를 둔다. 내부에서 this.checkIn(...) 자기호출은
+    // AOP 프록시를 우회해 checkIn 의 @CacheEvict 가 발화하지 않으므로, 여기서 직접 evict 해야
+    // 출근 직후 attendance 조회(오늘/기간)가 stale 캐시를 반환하지 않는다.
+    @CacheEvict(value = "attendance", allEntries = true)
     public Attendance checkInWithVerification(Long employeeId, Long storeId,
                                               Double latitude, Double longitude, LocalDateTime queuedAt) {
         // 위치정보 동의 강제 (위치정보법 §18·§19) — GPS 좌표 수집·검증 전에 확인
@@ -162,6 +166,9 @@ public class AttendanceService {
      * 직원 퇴근 처리 (위치 검증 + 오프라인 큐 시각 수락). 임계 검증은 {@link #resolveQueuedTime}.
      */
     @Transactional
+    // 진입점에 캐시 무효화 — this.checkOut(...) 자기호출은 프록시 우회로 checkOut 의 @CacheEvict 가
+    // 발화하지 않는다(퇴근 후에도 today 조회가 checkOutTime=null 인 stale 레코드 반환 → '근무중' 잔류).
+    @CacheEvict(value = "attendance", allEntries = true)
     public Attendance checkOutWithVerification(Long employeeId, Long storeId,
                                                Double latitude, Double longitude, LocalDateTime queuedAt) {
         // 위치정보 동의 강제 (위치정보법 §18·§19)
