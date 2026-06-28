@@ -6,6 +6,7 @@ import com.rich.sodam.domain.*;
 import com.rich.sodam.domain.type.DomainEventType;
 import com.rich.sodam.dto.request.EmployeeWageUpdateDto;
 import com.rich.sodam.dto.request.LocationUpdateDto;
+import com.rich.sodam.dto.request.OperatingHoursUpdateDto.DayOperatingHours;
 import com.rich.sodam.dto.request.StoreRegistrationDto;
 import com.rich.sodam.dto.request.StoreUpdateDto;
 import com.rich.sodam.exception.EntityNotFoundException;
@@ -17,9 +18,12 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -71,7 +75,60 @@ public class StoreManagementServiceImpl implements StoreManagementService {
         if (storeDto.getRadius() != null) {
             store.setRadius(storeDto.getRadius());
         }
+
+        if (storeDto.getOperatingHours() != null) {
+            store.updateOperatingHours(toOperatingHours(storeDto.getOperatingHours()));
+        }
         return store;
+    }
+
+    private OperatingHours toOperatingHours(List<DayOperatingHours> dayOperatingHours) {
+        OperatingHours operatingHours = OperatingHours.createDefault();
+        if (dayOperatingHours == null) {
+            return operatingHours;
+        }
+
+        validateOperatingHoursRequest(dayOperatingHours);
+        for (DayOperatingHours dayHours : dayOperatingHours) {
+            boolean closed = Boolean.TRUE.equals(dayHours.getIsClosed());
+            operatingHours.setDayOperatingHours(
+                    dayHours.getDayOfWeek(),
+                    dayHours.getOpenTime(),
+                    dayHours.getCloseTime(),
+                    closed
+            );
+        }
+        return operatingHours;
+    }
+
+    private void validateOperatingHoursRequest(List<DayOperatingHours> dayOperatingHours) {
+        if (dayOperatingHours == null || dayOperatingHours.isEmpty()) {
+            throw new IllegalArgumentException("운영시간 정보는 필수입니다.");
+        }
+        if (dayOperatingHours.size() != 7) {
+            throw new IllegalArgumentException("모든 요일(7일)의 운영시간 정보가 필요합니다.");
+        }
+
+        Set<DayOfWeek> days = EnumSet.noneOf(DayOfWeek.class);
+        boolean allClosed = true;
+        for (DayOperatingHours dayHours : dayOperatingHours) {
+            if (dayHours.getDayOfWeek() == null) {
+                throw new IllegalArgumentException("요일은 필수입니다.");
+            }
+            if (!days.add(dayHours.getDayOfWeek())) {
+                throw new IllegalArgumentException("중복된 요일이 있습니다.");
+            }
+            dayHours.validate();
+            if (!Boolean.TRUE.equals(dayHours.getIsClosed())) {
+                allClosed = false;
+            }
+        }
+        if (days.size() != 7) {
+            throw new IllegalArgumentException("누락된 요일이 있습니다.");
+        }
+        if (allClosed) {
+            throw new IllegalArgumentException("최소 하루는 운영해야 합니다.");
+        }
     }
 
     @Override
@@ -124,6 +181,9 @@ public class StoreManagementServiceImpl implements StoreManagementService {
 
     @Override
     @Transactional
+    // 직원 배정 → 재직 인원 변동. 사장 매장목록 캐시 무효화(3-arg 는 자기호출이라 프록시 우회 →
+    // 진입점인 이 메서드에 둔다).
+    @CacheEvict(value = "stores", allEntries = true)
     public void assignUserToStoreAsEmployee(Long userId, Long storeId) {
         this.assignUserToStoreAsEmployee(userId, storeId, null);
     }
@@ -136,6 +196,9 @@ public class StoreManagementServiceImpl implements StoreManagementService {
      */
     @Override
     @Transactional
+    // 직원 입사 → 매장 재직 인원 변동. 사장 매장목록(getStoresByMaster, @Cacheable 'master:{id}')의
+    // employeeCount 가 stale 로 남지 않도록 stores 캐시 무효화(masterId 를 모르므로 allEntries).
+    @CacheEvict(value = "stores", allEntries = true)
     public Store joinStoreByCode(Long userId, String storeCode) {
         Store store = storeRepository.findActiveByStoreCode(storeCode)
                 .orElseThrow(() -> new EntityNotFoundException("매장 코드와 일치하는 매장을 찾을 수 없습니다."));
@@ -183,7 +246,8 @@ public class StoreManagementServiceImpl implements StoreManagementService {
                 .orElseThrow(() -> new EntityNotFoundException("매장을 찾을 수 없습니다. ID: " + storeId));
         com.rich.sodam.domain.OperatingHours oh = com.rich.sodam.domain.OperatingHours.createDefault();
         if (dto.getOperatingHours() != null) {
-            for (com.rich.sodam.dto.request.OperatingHoursUpdateDto.DayOperatingHours d : dto.getOperatingHours()) {
+            validateOperatingHoursRequest(dto.getOperatingHours());
+            for (DayOperatingHours d : dto.getOperatingHours()) {
                 boolean closed = Boolean.TRUE.equals(d.getIsClosed());
                 oh.setDayOperatingHours(d.getDayOfWeek(), d.getOpenTime(), d.getCloseTime(), closed);
             }
@@ -202,6 +266,8 @@ public class StoreManagementServiceImpl implements StoreManagementService {
 
     @Override
     @Transactional
+    // 직원 활성/비활성 → 재직 인원 변동. 사장 매장목록 employeeCount 캐시 무효화.
+    @CacheEvict(value = "stores", allEntries = true)
     public void setEmployeeActive(Long storeId, Long employeeId, boolean active) {
         if (storeId == null || employeeId == null) {
             throw new IllegalArgumentException("storeId 와 employeeId 는 필수입니다.");
