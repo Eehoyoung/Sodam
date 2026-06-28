@@ -68,7 +68,8 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
       setLoading(true);
       if (workplaceId) {
         const curr = await attendanceService.getCurrentAttendance(workplaceId, employeeIdNum);
-        if (isMountedRef.current) {setCurrentAttendance(curr);}
+        // null(일시 미수신)이면 기존 상태 유지 — 출근 직후 깜빡임 방지. 근무중 판정은 checkOutTime 으로.
+        if (isMountedRef.current && curr) {setCurrentAttendance(curr);}
       }
     } catch (e) {
       console.warn('[useAttendance] Failed to load current status', e);

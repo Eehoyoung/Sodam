@@ -18,6 +18,10 @@ const MethodChip: React.FC<{ label: string; active: boolean; onPress: () => void
 export const AttendanceSummaryPanel: React.FC<Props> = ({ workplaceId, onPressViewDetails }) => {
   const { method, setMethod, currentAttendance, loading, actions } = useAttendance({ workplaceId });
 
+  // 근무 중 = 출근 기록 있고 아직 퇴근 안 함. (today 조회는 퇴근 후에도 기록을 주므로
+  // 존재만 보면 퇴근 후에도 '근무중'·'퇴근하기' 가 남는다.)
+  const isWorking = !!currentAttendance && !currentAttendance.checkOutTime;
+
   const onChangeMethod = (m: CheckMethod) => setMethod(m);
 
   return (
@@ -25,7 +29,7 @@ export const AttendanceSummaryPanel: React.FC<Props> = ({ workplaceId, onPressVi
       <Text style={styles.title}>출퇴근 요약</Text>
 
       <View style={styles.statusBox}>
-        {currentAttendance ? (
+        {isWorking && currentAttendance ? (
           <>
             <View style={styles.rowBetween}>
               <Text style={styles.statusLabel}>상태</Text>
@@ -48,7 +52,7 @@ export const AttendanceSummaryPanel: React.FC<Props> = ({ workplaceId, onPressVi
       </View>
 
       <View style={styles.actions}>
-        {!currentAttendance ? (
+        {!isWorking ? (
           <TouchableOpacity style={[styles.primaryBtn, loading && styles.btnDisabled]} disabled={loading} onPress={actions.checkIn}>
             {loading ? <ActivityIndicator color={COLORS.WHITE}/> : <Text style={styles.primaryBtnText}>
               {method === 'standard' && '출근하기'}

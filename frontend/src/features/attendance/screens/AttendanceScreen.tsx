@@ -118,11 +118,13 @@ const AttendanceScreen = () => {
             const data = await attendanceService.getAttendanceRecords(filter);
             setAttendanceRecords(data);
 
-            // 현재 근무 상태 조회
+            // 현재 근무 상태 조회. null(오늘 기록 없음/일시 미수신)이면 기존 상태를 덮지 않는다.
+            // (출근 직후 이 재조회가 null 로 덮어 '아직 출근 전'으로 깜빡이던 것 방지)
             if (selectedWorkplaceId) {
-                // TODO(API): 현재 근무 상태 조회 API 연동
                 const currentData = await attendanceService.getCurrentAttendance(selectedWorkplaceId, employeeIdNum);
-                setCurrentAttendance(currentData);
+                if (currentData) {
+                    setCurrentAttendance(currentData);
+                }
             }
         } catch (error) {
             console.error('출퇴근 기록을 가져오는 중 오류가 생겼어요:', error);
@@ -597,7 +599,9 @@ const AttendanceScreen = () => {
         else {openNFCReader();}
     };
 
-    const isWorking = !!currentAttendance;
+    // 근무 중 = 오늘 출근 기록이 있고 아직 퇴근 안 함. checkOutTime 을 봐야 한다.
+    // (today 엔드포인트는 퇴근 후에도 그 기록을 돌려주므로, 존재만 보면 퇴근 후에도 '근무중' 으로 남았다.)
+    const isWorking = !!currentAttendance && !currentAttendance.checkOutTime;
     const ctaLabel = isWorking
         ? checkInMethod === 'location' ? '위치 기반 퇴근하기' : checkInMethod === 'nfc' ? 'NFC 태그로 퇴근하기' : '퇴근하기'
         : checkInMethod === 'location' ? '위치 기반 출근하기' : checkInMethod === 'nfc' ? 'NFC 태그로 출근하기' : '출근하기';
