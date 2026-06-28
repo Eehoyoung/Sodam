@@ -1,8 +1,8 @@
 import React, {useCallback, useState} from 'react';
 import {Share, StyleSheet, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import {useFocusEffect} from '@react-navigation/native';
-import type {RouteProp} from '@react-navigation/native';
+import {useFocusEffect, type RouteProp} from '@react-navigation/native';
+import {useStoreLiveSync} from '../../../common/hooks/useStoreLiveSync';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {
@@ -74,6 +74,9 @@ export default function EmployeeManagementScreen({route, navigation}: Props) {
         }, [load]),
     );
 
+    // 실시간 동기화 — 이 매장에 직원이 입사/활성토글되면(보고 있는 동안) 목록 즉시 갱신.
+    useStoreLiveSync(storeId ? [storeId] : [], () => load());
+
     const shareCode = async () => {
         if (!storeCode) {return;}
         try {
@@ -132,7 +135,7 @@ export default function EmployeeManagementScreen({route, navigation}: Props) {
                             <AppListItem
                                 key={emp.id}
                                 title={emp.name}
-                                subtitle={emp.phone || ROLE_LABEL[emp.userGrade ?? ''] || '직원'}
+                                subtitle={emp.phone ? emp.phone : (ROLE_LABEL[emp.userGrade ?? ''] ?? '직원')}
                                 onPress={() => navigation.navigate('EmployeeDetail', {employeeId: emp.id, storeId})}
                                 right={<Ionicons name="chevron-forward" size={20} color={c.textTertiary} />}
                                 left={

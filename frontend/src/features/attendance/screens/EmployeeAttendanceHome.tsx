@@ -24,6 +24,7 @@ import {
     WorkShift,
 } from '../../shift/services/shiftService';
 import storeService from '../../store/services/storeService';
+import {useStoreLiveSync} from '../../../common/hooks/useStoreLiveSync';
 import {spacing, radius, shadow} from '../../../theme/tokens';
 
 type AttendanceState = 'IDLE' | 'WORKING' | 'DONE' | 'LOADING';
@@ -157,6 +158,13 @@ const EmployeeAttendanceHome: React.FC = () => {
             loadStores();
         }, [loadStores]),
     );
+
+    // 실시간 동기화 — 내 매장의 출퇴근/직원 변경 시(보고 있는 동안) 선택 매장 데이터 즉시 갱신.
+    useStoreLiveSync(stores.map(s => s.id), () => {
+        if (selectedStore) {
+            loadStoreScopedData(selectedStore);
+        }
+    });
 
     useEffect(() => {
         if (!selectedStore || !user?.id) {

@@ -18,6 +18,7 @@ import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {useAuth} from '../../../contexts/AuthContext';
 import policyService from '../../info/services/policyService';
 import storeService from '../../store/services/storeService';
+import {useStoreLiveSync} from '../../../common/hooks/useStoreLiveSync';
 import laborInfoService from '../../../services/laborInfoService';
 import SectionCard from '../../../common/components/sections/SectionCard';
 import SectionHeader from '../../../common/components/sections/SectionHeader';
@@ -63,6 +64,7 @@ interface QuickMenu {
     label: string;
     icon: string;
     onPress: () => void;
+    disabled?: boolean;
 }
 
 export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenProps) {
@@ -93,6 +95,9 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
             loadData();
         }, [user?.id]),
     );
+
+    // 실시간 동기화 — 내 매장에서 직원 입사·출퇴근 발생 시(다른 기기/직원), 화면을 보고 있는 동안 즉시 갱신.
+    useStoreLiveSync(stores.map(s => s.id), () => loadData());
 
     const loadData = async () => {
         try {
@@ -229,11 +234,28 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
         navigation.navigate('OwnerDashboard');
     };
 
+    const handleQuickSchedule = () => {
+        if (primaryStoreId === undefined) {
+            AppToast.show('먼저 매장을 등록해 주세요.');
+            handleAddStore();
+            return;
+        }
+        navigation.navigate('StoreSchedule', {storeId: primaryStoreId});
+    };
+
+    const handleComingSoon = () => {
+        AppToast.show('준비중입니다.');
+    };
+
     const quickMenus: QuickMenu[] = [
         {key: 'employee', label: '직원 관리', icon: 'people-outline', onPress: handleQuickEmployee},
         {key: 'attendance', label: '근태 관리', icon: 'time-outline', onPress: handleQuickAttendance},
         {key: 'payroll', label: '급여 관리', icon: 'card-outline', onPress: handleQuickPayroll},
         {key: 'dashboard', label: '대시보드', icon: 'grid-outline', onPress: handleQuickDashboard},
+        {key: 'schedule', label: '스케줄', icon: 'calendar-outline', onPress: handleQuickSchedule},
+        {key: 'comingSoon1', label: '준비중', icon: 'hourglass-outline', onPress: handleComingSoon, disabled: true},
+        {key: 'comingSoon2', label: '준비중', icon: 'hourglass-outline', onPress: handleComingSoon, disabled: true},
+        {key: 'comingSoon3', label: '준비중', icon: 'hourglass-outline', onPress: handleComingSoon, disabled: true},
     ];
 
     const renderStoreCard = ({ item: store }: { item: StoreInfo }) => (
@@ -389,11 +411,16 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
                     <AppText variant="headingSm" style={styles.quickMenuTitle}>매장 관리</AppText>
                     <View style={styles.quickMenuGrid}>
                         {quickMenus.map(menu => (
-                            <TouchableOpacity key={menu.key} style={styles.quickMenuItem} onPress={menu.onPress}>
-                                <View style={[styles.quickMenuIcon, {backgroundColor: c.brandPrimarySoft}]}>
-                                    <Ionicons name={menu.icon} size={24} color={c.brandPrimary} />
+                            <TouchableOpacity
+                                key={menu.key}
+                                style={[styles.quickMenuItem, menu.disabled && styles.quickMenuItemDisabled]}
+                                onPress={menu.onPress}
+                                disabled={menu.disabled}
+                            >
+                                <View style={[styles.quickMenuIcon, {backgroundColor: menu.disabled ? c.surfaceMuted : c.brandPrimarySoft}]}>
+                                    <Ionicons name={menu.icon} size={24} color={menu.disabled ? c.textTertiary : c.brandPrimary} />
                                 </View>
-                                <AppText variant="caption" tone="secondary" center numberOfLines={1}>{menu.label}</AppText>
+                                <AppText variant="caption" tone={menu.disabled ? 'tertiary' : 'secondary'} center numberOfLines={1}>{menu.label}</AppText>
                             </TouchableOpacity>
                         ))}
                     </View>
@@ -548,6 +575,9 @@ const styles = StyleSheet.create({
         width: '25%',
         alignItems: 'center',
         marginBottom: spacing.xl,
+    },
+    quickMenuItemDisabled: {
+        opacity: 0.7,
     },
     quickMenuIcon: {
         width: 56,

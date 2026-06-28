@@ -3,6 +3,7 @@ import React, {useState, useCallback} from 'react';
 import {Share, StyleSheet, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useFocusEffect, type RouteProp} from '@react-navigation/native';
+import {useStoreLiveSync} from '../../../common/hooks/useStoreLiveSync';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {radius, spacing} from '../../../theme/tokens';
@@ -50,6 +51,9 @@ export default function StoreDetailScreen({route, navigation}: StoreDetailScreen
             // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [storeId]),
     );
+
+    // 실시간 동기화 — 이 매장의 직원 입사/해지·출퇴근 변경 시(보고 있는 동안) 상세 즉시 갱신.
+    useStoreLiveSync(storeId ? [storeId] : [], () => loadStoreDetail());
 
     const loadStoreDetail = async () => {
         try {

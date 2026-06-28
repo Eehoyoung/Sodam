@@ -1,6 +1,7 @@
 import React, {useCallback, useState} from 'react';
 import {RefreshControl, ScrollView, StyleSheet, View} from 'react-native';
 import {useNavigation, useFocusEffect} from '@react-navigation/native';
+import {useStoreLiveSync} from '../../../common/hooks/useStoreLiveSync';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -119,6 +120,9 @@ const OwnerDashboardScreen: React.FC = () => {
             load();
         }, [load]),
     );
+
+    // 실시간 동기화 — 선택 매장의 출퇴근/직원 변경 시(보고 있는 동안) 대시보드 즉시 갱신.
+    useStoreLiveSync(selectedStoreId ? [selectedStoreId] : [], () => load());
 
     const onRefresh = async () => {
         setRefreshing(true);
