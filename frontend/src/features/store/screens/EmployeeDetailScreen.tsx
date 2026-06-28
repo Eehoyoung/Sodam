@@ -14,10 +14,10 @@ import {
     SegmentedControl,
     BadgeTone,
 } from '../../../common/components/ds';
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, TextInput as RNTextInput, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
+import {useNavigation, useRoute, useFocusEffect, type RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {tokens} from '../../../theme/tokens';
@@ -67,6 +67,15 @@ const EmployeeDetailScreen: React.FC = () => {
     const styles = useStyles();
     const c = useThemeColors();
     const {employeeId, storeId}: RouteParams = route.params ?? ({} as RouteParams);
+
+    // 포커스마다 재조회 트리거 — 시급 변경/계약 발송 등 하위 화면에서 돌아왔을 때
+    // 직원 정보·시급이력·근태를 최신화한다(아래 모든 로딩 effect 의 deps 에 포함).
+    const [refreshKey, setRefreshKey] = useState(0);
+    useFocusEffect(
+        useCallback(() => {
+            setRefreshKey(k => k + 1);
+        }, []),
+    );
 
     const [tab, setTab] = useState<TabKey>('INFO');
     const [emp, setEmp] = useState<Employee | null>(null);
@@ -159,7 +168,8 @@ const EmployeeDetailScreen: React.FC = () => {
                 if (wage) {setEmp(e => (e ? {...e, appliedHourlyWage: wage} : e));}
             } catch (_) {/* ignore */}
         })();
-    }, [employeeId, storeId]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshKey 로 포커스 시 재조회
+    }, [employeeId, storeId, refreshKey]);
 
     const initials = useMemo(() => (emp?.name ?? '?').slice(0, 1), [emp]);
     const tabIndex = TABS.findIndex(t => t.key === tab);
@@ -225,8 +235,9 @@ const EmployeeDetailScreen: React.FC = () => {
 
             <View style={styles.tabContent}>
                 {tab === 'INFO' && <InfoTab emp={emp} />}
-                {tab === 'ATTENDANCE' && <AttendanceTab employeeId={emp.id} storeId={storeId} />}
-                {tab === 'SALARY' && <SalaryTab employeeId={emp.id} navigation={navigation} />}
+                {/* key={refreshKey}: 포커스 복귀 시 탭을 remount 해 시급/근태 데이터를 재조회한다. */}
+                {tab === 'ATTENDANCE' && <AttendanceTab key={refreshKey} employeeId={emp.id} storeId={storeId} />}
+                {tab === 'SALARY' && <SalaryTab key={refreshKey} employeeId={emp.id} navigation={navigation} />}
                 {tab === 'TIMEOFF' && <TimeOffTab />}
             </View>
 

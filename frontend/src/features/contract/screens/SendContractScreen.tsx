@@ -3,9 +3,9 @@
  * StepScaffold 3스텝: ① 대상 직원 선택 → ② 근로조건 입력/확인 → ③ 발송.
  * 발송 = POST /labor-contracts(작성·저장) + POST .../{id}/send(직원 인박스 알림).
  */
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
-import {NavigationProp, RouteProp, useNavigation, useRoute} from '@react-navigation/native';
+import {NavigationProp, RouteProp, useNavigation, useRoute, useFocusEffect} from '@react-navigation/native';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {
     AppButton,
@@ -72,9 +72,12 @@ const SendContractScreen: React.FC = () => {
         }
     }, [storeId]);
 
-    useEffect(() => {
-        loadEmployees();
-    }, [loadEmployees]);
+    // 포커스마다 재조회 — 직원 입사/삭제 후 복귀 시 계약 대상 직원 목록 최신화.
+    useFocusEffect(
+        useCallback(() => {
+            loadEmployees();
+        }, [loadEmployees]),
+    );
 
     const selectedName =
         employees.find(e => e.id === employeeId)?.name ?? params.employeeName ?? '직원';

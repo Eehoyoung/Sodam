@@ -1,6 +1,6 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import {RefreshControl, ScrollView, StyleSheet, View} from 'react-native';
-import {useNavigation} from '@react-navigation/native';
+import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -113,9 +113,12 @@ const OwnerDashboardScreen: React.FC = () => {
         }
     }, [selectedStoreId]);
 
-    useEffect(() => {
-        load();
-    }, [load]);
+    // 포커스마다 재조회 — 출퇴근/직원 입사/매장 변경이 대시보드(출근 인원·직원 수·매장)에 즉시 반영.
+    useFocusEffect(
+        useCallback(() => {
+            load();
+        }, [load]),
+    );
 
     const onRefresh = async () => {
         setRefreshing(true);
