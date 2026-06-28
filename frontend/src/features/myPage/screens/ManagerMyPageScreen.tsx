@@ -32,7 +32,6 @@ const ManagerMyPageScreen: React.FC = () => {
 
     // 포커스마다 재조회 — 점장 담당 매장/직원 변경 후 복귀 시 최신 반영.
     useFocusEffect(
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         useCallback(() => {
             loadManagerData();
         }, []),

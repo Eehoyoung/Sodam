@@ -2,8 +2,7 @@ import {AppToast, AppButton, AppCard, AppHeader, AppListItem, AmountText, AppTex
 import React, {useState, useCallback} from 'react';
 import {Share, StyleSheet, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import {useFocusEffect} from '@react-navigation/native';
-import type {RouteProp} from '@react-navigation/native';
+import {useFocusEffect, type RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {radius, spacing} from '../../../theme/tokens';
@@ -46,9 +45,9 @@ export default function StoreDetailScreen({route, navigation}: StoreDetailScreen
 
     // 포커스마다 재조회 — 직원 입사/해고·매장 정보·운영시간 변경 후 복귀 시 상세 최신화.
     useFocusEffect(
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         useCallback(() => {
             loadStoreDetail();
+            // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [storeId]),
     );
 

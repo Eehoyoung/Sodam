@@ -168,7 +168,7 @@ const EmployeeDetailScreen: React.FC = () => {
                 if (wage) {setEmp(e => (e ? {...e, appliedHourlyWage: wage} : e));}
             } catch (_) {/* ignore */}
         })();
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshKey 로 포커스 시 재조회
+        // refreshKey: 포커스 복귀 시 재조회 트리거(아래 deps 에 포함)
     }, [employeeId, storeId, refreshKey]);
 
     const initials = useMemo(() => (emp?.name ?? '?').slice(0, 1), [emp]);
