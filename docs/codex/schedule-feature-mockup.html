@@ -1,0 +1,1029 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>사장 스케줄 기능 UX 시안</title>
+  <style>
+    :root {
+      --brand: #ff6b35;
+      --brand-dark: #e85a2a;
+      --brand-soft: #fff0e8;
+      --canvas: #f7f4ef;
+      --surface: #ffffff;
+      --warm: #fffbf5;
+      --muted: #f1eee9;
+      --border: #e8e0d8;
+      --divider: #efe7df;
+      --text: #201a17;
+      --sub: #625b55;
+      --tertiary: #9a9189;
+      --success: #12a87b;
+      --warning: #f59e0b;
+      --warning-bg: #fef3c7;
+      --error: #e5484d;
+      --info-bg: #eef5ff;
+      --navy: #243b4a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--canvas);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .page {
+      min-height: 100vh;
+      padding: 28px 16px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(320px, 430px));
+      gap: 22px;
+      justify-content: center;
+      align-items: start;
+    }
+
+    .phone {
+      min-height: 880px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 12px 36px rgba(36, 59, 74, 0.12);
+      position: relative;
+    }
+
+    .header {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .back {
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--border);
+      border-radius: 19px;
+      display: grid;
+      place-items: center;
+      color: var(--brand);
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .header-title {
+      flex: 1;
+      min-width: 0;
+      font-size: 17px;
+      font-weight: 800;
+      line-height: 24px;
+    }
+
+    .header-action {
+      width: 38px;
+      height: 38px;
+      border: 0;
+      border-radius: 19px;
+      display: grid;
+      place-items: center;
+      background: var(--brand-soft);
+      color: var(--brand);
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .content {
+      padding: 20px 18px 112px;
+    }
+
+    .eyebrow {
+      margin: 0 0 6px;
+      color: var(--tertiary);
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 700;
+    }
+
+    .title {
+      margin: 0;
+      font-size: 22px;
+      line-height: 30px;
+      font-weight: 850;
+    }
+
+    .copy {
+      margin: 8px 0 0;
+      color: var(--sub);
+      font-size: 14px;
+      line-height: 21px;
+    }
+
+    .hero-card {
+      margin-top: 18px;
+      padding: 18px;
+      border-radius: 8px;
+      background: var(--navy);
+      color: #fff;
+    }
+
+    .hero-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .hero-label {
+      color: rgba(255,255,255,0.72);
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 700;
+    }
+
+    .hero-number {
+      margin-top: 8px;
+      font-size: 34px;
+      line-height: 40px;
+      font-weight: 900;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 0 9px;
+      border-radius: 999px;
+      background: var(--brand-soft);
+      color: var(--brand-dark);
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .section {
+      margin-top: 24px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 16px;
+      line-height: 22px;
+      font-weight: 850;
+    }
+
+    .small-link {
+      border: 0;
+      background: transparent;
+      color: var(--brand);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .quick-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .quick {
+      min-height: 92px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 10px 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--text);
+      text-align: center;
+    }
+
+    .quick:active {
+      transform: scale(0.98);
+    }
+
+    .quick-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: var(--brand-soft);
+      color: var(--brand);
+      font-size: 19px;
+      font-weight: 900;
+    }
+
+    .quick-label {
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 800;
+      word-break: keep-all;
+    }
+
+    .quick.disabled {
+      background: #faf9f7;
+      color: var(--tertiary);
+    }
+
+    .quick.disabled .quick-icon {
+      background: var(--muted);
+      color: var(--tertiary);
+    }
+
+    .notice {
+      margin-top: 16px;
+      display: flex;
+      gap: 8px;
+      padding: 12px;
+      border-radius: 8px;
+      background: var(--info-bg);
+      color: var(--sub);
+      font-size: 12px;
+      line-height: 18px;
+    }
+
+    .store-section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .add-store {
+      min-height: 34px;
+      border: 1px solid var(--brand);
+      border-radius: 999px;
+      padding: 0 12px;
+      background: var(--surface);
+      color: var(--brand);
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .store-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 16px;
+    }
+
+    .store-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .store-name {
+      min-width: 0;
+    }
+
+    .store-name strong {
+      display: block;
+      font-size: 17px;
+      line-height: 24px;
+      font-weight: 850;
+    }
+
+    .store-name span {
+      display: block;
+      margin-top: 3px;
+      color: var(--tertiary);
+      font-size: 12px;
+      line-height: 16px;
+    }
+
+    .store-kind {
+      border-radius: 999px;
+      padding: 5px 9px;
+      background: var(--brand-soft);
+      color: var(--brand-dark);
+      font-size: 11px;
+      font-weight: 850;
+    }
+
+    .store-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .metric {
+      min-width: 0;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--tertiary);
+      font-size: 11px;
+      line-height: 15px;
+      font-weight: 700;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 15px;
+      line-height: 21px;
+      font-weight: 850;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      padding: 4px;
+      border-radius: 8px;
+      background: var(--muted);
+      margin-top: 18px;
+    }
+
+    .tab {
+      height: 38px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--sub);
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .tab.active {
+      background: var(--surface);
+      color: var(--brand);
+      box-shadow: 0 1px 4px rgba(36, 59, 74, 0.12);
+    }
+
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .chip {
+      min-height: 36px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0 12px;
+      background: var(--surface);
+      color: var(--sub);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .chip.primary {
+      border-color: var(--brand);
+      background: var(--brand-soft);
+      color: var(--brand);
+    }
+
+    .week-strip {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      margin-top: 18px;
+    }
+
+    .day {
+      min-height: 54px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      gap: 2px;
+      background: var(--surface);
+      color: var(--sub);
+    }
+
+    .day strong {
+      font-size: 13px;
+      line-height: 16px;
+    }
+
+    .day span {
+      font-size: 11px;
+      line-height: 14px;
+    }
+
+    .day.active {
+      border-color: var(--brand);
+      background: var(--brand);
+      color: #fff;
+    }
+
+    .schedule-list {
+      margin-top: 18px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .shift-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 13px;
+    }
+
+    .shift-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .person {
+      min-width: 0;
+    }
+
+    .person strong {
+      display: block;
+      font-size: 15px;
+      line-height: 21px;
+      font-weight: 850;
+    }
+
+    .person span {
+      display: block;
+      margin-top: 2px;
+      color: var(--tertiary);
+      font-size: 12px;
+      line-height: 16px;
+    }
+
+    .time-pill {
+      min-height: 30px;
+      border-radius: 999px;
+      padding: 0 10px;
+      display: inline-flex;
+      align-items: center;
+      background: var(--brand-soft);
+      color: var(--brand-dark);
+      font-size: 13px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .shift-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 12px;
+    }
+
+    .meta {
+      border-radius: 999px;
+      padding: 5px 8px;
+      background: var(--muted);
+      color: var(--sub);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .meta.changed {
+      background: var(--warning-bg);
+      color: #8a5a00;
+    }
+
+    .template-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .template {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--warm);
+      padding: 12px;
+      text-align: left;
+    }
+
+    .template strong {
+      display: block;
+      font-size: 13px;
+      line-height: 18px;
+    }
+
+    .template span {
+      display: block;
+      margin-top: 4px;
+      color: var(--sub);
+      font-size: 12px;
+      line-height: 16px;
+    }
+
+    .footer {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 14px 18px 18px;
+      border-top: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,0.88), #fff 34%);
+    }
+
+    .cta-row {
+      display: grid;
+      grid-template-columns: 1fr 1.3fr;
+      gap: 10px;
+    }
+
+    .btn {
+      height: 52px;
+      border-radius: 8px;
+      border: 0;
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .btn.secondary {
+      background: var(--muted);
+      color: var(--sub);
+    }
+
+    .btn.primary {
+      background: var(--brand);
+      color: #fff;
+      box-shadow: 0 8px 16px rgba(255, 107, 53, 0.24);
+    }
+
+    .sheet {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 18px;
+      border-top-left-radius: 24px;
+      border-top-right-radius: 24px;
+      background: #fff;
+      box-shadow: 0 -12px 30px rgba(36, 59, 74, 0.16);
+      transform: translateY(0);
+    }
+
+    .handle {
+      width: 44px;
+      height: 5px;
+      border-radius: 999px;
+      background: var(--border);
+      margin: 0 auto 16px;
+    }
+
+    .sheet-title {
+      margin: 0;
+      font-size: 18px;
+      line-height: 26px;
+      font-weight: 850;
+    }
+
+    .field {
+      margin-top: 14px;
+    }
+
+    .label {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--sub);
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 800;
+    }
+
+    .select,
+    .input {
+      width: 100%;
+      height: 46px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 0 12px;
+      color: var(--text);
+      font-weight: 750;
+    }
+
+    .time-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .toggle-row {
+      margin-top: 14px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border-radius: 8px;
+      background: var(--warm);
+    }
+
+    .toggle-copy strong {
+      display: block;
+      font-size: 13px;
+      line-height: 18px;
+    }
+
+    .toggle-copy span {
+      display: block;
+      margin-top: 2px;
+      color: var(--sub);
+      font-size: 12px;
+      line-height: 16px;
+    }
+
+    .switch {
+      width: 48px;
+      height: 28px;
+      border-radius: 999px;
+      background: var(--brand);
+      padding: 3px;
+      flex: 0 0 auto;
+    }
+
+    .switch::after {
+      content: "";
+      display: block;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #fff;
+      margin-left: 20px;
+    }
+
+    .sheet-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .caption {
+      margin-top: 10px;
+      color: var(--tertiary);
+      font-size: 11px;
+      line-height: 16px;
+    }
+
+    @media (max-width: 900px) {
+      .page {
+        grid-template-columns: minmax(320px, 430px);
+      }
+    }
+
+    @media (max-width: 380px) {
+      .content {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+
+      .quick-grid {
+        gap: 7px;
+      }
+
+      .quick-label {
+        font-size: 11px;
+      }
+
+      .cta-row,
+      .sheet-actions {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="phone" aria-label="사장 화면 매장관리 버튼 시안">
+      <header class="header">
+        <div class="header-title">내 정보</div>
+        <button class="header-action" type="button" aria-label="알림">!</button>
+      </header>
+
+      <div class="content">
+        <p class="eyebrow">사장 홈</p>
+        <h1 class="title">매장 관리 기능을<br />2줄로 확장</h1>
+        <p class="copy">기존 4개 퀵 버튼은 유지하고, 두 번째 줄에 스케줄과 준비중 기능을 배치합니다.</p>
+
+        <div class="hero-card">
+          <div class="hero-row">
+            <div>
+              <div class="hero-label">이번 달 총 인건비</div>
+              <div class="hero-number">3,428,000원</div>
+            </div>
+            <span class="badge">직원 6명</span>
+          </div>
+        </div>
+
+        <section class="section">
+          <div class="store-section-head">
+            <h2 class="section-title">내 매장</h2>
+            <button class="add-store" type="button">매장 추가</button>
+          </div>
+
+          <article class="store-card">
+            <div class="store-card-top">
+              <div class="store-name">
+                <strong>소담식당 강남점</strong>
+                <span>ST20260629 · 직원 6명</span>
+              </div>
+              <span class="store-kind">food</span>
+            </div>
+            <div class="store-metrics">
+              <div class="metric">
+                <span>이번달 인건비</span>
+                <strong>3,428,000원</strong>
+              </div>
+              <div class="metric">
+                <span>오늘 출근</span>
+                <strong>4명</strong>
+              </div>
+              <div class="metric">
+                <span>이번 주 스케줄</span>
+                <strong>18건</strong>
+              </div>
+              <div class="metric">
+                <span>대기 알림</span>
+                <strong>3명</strong>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2 class="section-title">매장 관리</h2>
+            <button class="small-link" type="button">편집</button>
+          </div>
+
+          <div class="quick-grid">
+            <button class="quick" type="button">
+              <span class="quick-icon">👥</span>
+              <span class="quick-label">직원 관리</span>
+            </button>
+            <button class="quick" type="button">
+              <span class="quick-icon">⏱</span>
+              <span class="quick-label">근태 관리</span>
+            </button>
+            <button class="quick" type="button">
+              <span class="quick-icon">₩</span>
+              <span class="quick-label">급여 관리</span>
+            </button>
+            <button class="quick" type="button">
+              <span class="quick-icon">▦</span>
+              <span class="quick-label">대시보드</span>
+            </button>
+            <button class="quick" type="button">
+              <span class="quick-icon">📅</span>
+              <span class="quick-label">스케줄</span>
+            </button>
+            <button class="quick disabled" type="button">
+              <span class="quick-icon">…</span>
+              <span class="quick-label">준비중</span>
+            </button>
+            <button class="quick disabled" type="button">
+              <span class="quick-icon">…</span>
+              <span class="quick-label">준비중</span>
+            </button>
+            <button class="quick disabled" type="button">
+              <span class="quick-icon">…</span>
+              <span class="quick-label">준비중</span>
+            </button>
+          </div>
+
+          <div class="notice">
+            <strong>i</strong>
+            <span>스케줄만 활성화합니다. 준비중 버튼은 비활성 상태로 두고 누르면 토스트만 보여주는 방향입니다.</span>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="phone" aria-label="스케줄 작성 화면 시안">
+      <header class="header">
+        <div class="back">‹</div>
+        <div class="header-title">스케줄</div>
+        <button class="header-action" type="button" aria-label="근무 추가">+</button>
+      </header>
+
+      <div class="content">
+        <p class="eyebrow">소담식당 · 이번 주</p>
+        <h1 class="title">지난주를 불러오고<br />바뀐 근무만 고치세요</h1>
+        <p class="copy">드래그 편집은 2차로 두고, 초기 버전은 템플릿과 바텀시트로 빠르게 작성합니다.</p>
+
+        <div class="tabs">
+          <button class="tab active" type="button">주간표</button>
+          <button class="tab" type="button">직원별</button>
+          <button class="tab" type="button">템플릿</button>
+        </div>
+
+        <div class="action-row">
+          <button class="chip primary" type="button">지난주 복사</button>
+          <button class="chip" type="button">근무 추가</button>
+          <button class="chip" type="button">변경 직원만 알림</button>
+        </div>
+
+        <div class="week-strip" aria-label="요일 선택">
+          <button class="day active" type="button"><strong>월</strong><span>29</span></button>
+          <button class="day" type="button"><strong>화</strong><span>30</span></button>
+          <button class="day" type="button"><strong>수</strong><span>1</span></button>
+          <button class="day" type="button"><strong>목</strong><span>2</span></button>
+          <button class="day" type="button"><strong>금</strong><span>3</span></button>
+          <button class="day" type="button"><strong>토</strong><span>4</span></button>
+          <button class="day" type="button"><strong>일</strong><span>5</span></button>
+        </div>
+
+        <section class="section">
+          <div class="section-head">
+            <h2 class="section-title">월요일 근무</h2>
+            <span class="badge">3명 변경</span>
+          </div>
+
+          <div class="schedule-list">
+            <article class="shift-card">
+              <div class="shift-top">
+                <div class="person">
+                  <strong>김민지</strong>
+                  <span>홀 · 오전조</span>
+                </div>
+                <span class="time-pill">09:00-15:00</span>
+              </div>
+              <div class="shift-meta">
+                <span class="meta changed">지난주 복사됨</span>
+                <span class="meta">휴게 30분</span>
+                <span class="meta">알림 대상</span>
+              </div>
+            </article>
+
+            <article class="shift-card">
+              <div class="shift-top">
+                <div class="person">
+                  <strong>박준호</strong>
+                  <span>주방 · 마감조</span>
+                </div>
+                <span class="time-pill">17:00-22:30</span>
+              </div>
+              <div class="shift-meta">
+                <span class="meta">영업시간 내</span>
+                <span class="meta">휴게 30분</span>
+              </div>
+            </article>
+
+            <article class="shift-card">
+              <div class="shift-top">
+                <div class="person">
+                  <strong>이서연</strong>
+                  <span>카운터 · 신규 추가</span>
+                </div>
+                <span class="time-pill">12:00-18:00</span>
+              </div>
+              <div class="shift-meta">
+                <span class="meta changed">변경됨</span>
+                <span class="meta">알림 대상</span>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2 class="section-title">자주 쓰는 템플릿</h2>
+            <button class="small-link" type="button">관리</button>
+          </div>
+          <div class="template-grid">
+            <button class="template" type="button">
+              <strong>오전조</strong>
+              <span>09:00-15:00</span>
+            </button>
+            <button class="template" type="button">
+              <strong>마감조</strong>
+              <span>17:00-22:30</span>
+            </button>
+            <button class="template" type="button">
+              <strong>주말 풀타임</strong>
+              <span>10:00-20:00</span>
+            </button>
+            <button class="template" type="button">
+              <strong>짧은 피크</strong>
+              <span>12:00-16:00</span>
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <footer class="footer">
+        <div class="cta-row">
+          <button class="btn secondary" type="button">임시저장</button>
+          <button class="btn primary" type="button">확정하고 알림</button>
+        </div>
+      </footer>
+    </section>
+
+    <section class="phone" aria-label="근무 추가 바텀시트 시안">
+      <header class="header">
+        <div class="back">‹</div>
+        <div class="header-title">스케줄</div>
+      </header>
+
+      <div class="content">
+        <p class="eyebrow">근무 추가 방식</p>
+        <h1 class="title">정밀 드래그 대신<br />바텀시트로 빠르게 추가</h1>
+        <p class="copy">직원, 요일, 템플릿, 시간을 한 번에 고르고 저장합니다. 알림은 저장과 분리합니다.</p>
+
+        <div class="notice">
+          <strong>!</strong>
+          <span>영업시간 밖 근무, 중복 근무, 휴게 누락은 저장 전 경고로 표시합니다.</span>
+        </div>
+      </div>
+
+      <div class="sheet" role="dialog" aria-label="근무 추가">
+        <div class="handle"></div>
+        <h2 class="sheet-title">근무 추가</h2>
+
+        <div class="field">
+          <label class="label" for="employee">직원</label>
+          <select id="employee" class="select">
+            <option>김민지 · 홀</option>
+            <option>박준호 · 주방</option>
+            <option>이서연 · 카운터</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="label">요일</label>
+          <div class="action-row" style="margin-top:0">
+            <button class="chip primary" type="button">월</button>
+            <button class="chip" type="button">화</button>
+            <button class="chip primary" type="button">수</button>
+            <button class="chip" type="button">목</button>
+            <button class="chip" type="button">금</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">템플릿</label>
+          <div class="action-row" style="margin-top:0">
+            <button class="chip primary" type="button">오전조</button>
+            <button class="chip" type="button">마감조</button>
+            <button class="chip" type="button">풀타임</button>
+          </div>
+        </div>
+
+        <div class="field time-row">
+          <div>
+            <label class="label" for="start">시작</label>
+            <input id="start" class="input" value="0900" inputmode="numeric" />
+          </div>
+          <div>
+            <label class="label" for="end">종료</label>
+            <input id="end" class="input" value="1500" inputmode="numeric" />
+          </div>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-copy">
+            <strong>변경 직원에게 알림</strong>
+            <span>확정 시 김민지님에게 전송</span>
+          </div>
+          <div class="switch" aria-hidden="true"></div>
+        </div>
+
+        <div class="sheet-actions">
+          <button class="btn secondary" type="button">취소</button>
+          <button class="btn primary" type="button">추가하기</button>
+        </div>
+        <p class="caption">저장 후에도 확정 전까지 직원에게 알림은 보내지 않습니다.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
