@@ -157,7 +157,14 @@ const EmployeeAttendanceHome: React.FC = () => {
     useFocusEffect(
         useCallback(() => {
             loadStores();
-        }, [loadStores]),
+            // 포커스 복귀 시 현재 매장 출퇴근 상태를 항상 최신화한다.
+            // (매장이 동일하면 아래 useEffect[selectedStore?.id]가 재실행되지 않아,
+            //  사장 승인 출근/퇴근 등 외부 변경 후에도 WORKING/IDLE 이 stale 로 남던 버그 수정.)
+            if (selectedStore) {
+                loadStoreScopedData(selectedStore);
+            }
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [loadStores, selectedStore?.id, loadStoreScopedData]),
     );
 
     // 실시간 동기화 — 내 매장의 출퇴근/직원 변경 시(보고 있는 동안) 선택 매장 데이터 즉시 갱신.
