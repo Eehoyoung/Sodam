@@ -4,7 +4,7 @@ import {CanonicalGrade, normalizeUserGrade, purposeToGrade} from '../features/au
 export type OnboardingRole = 'owner' | 'employee' | 'personal';
 export type AuthPurpose = 'boss' | 'employee' | 'personal';
 export type PendingPurposeSlug = 'master' | 'employee' | 'user';
-export type HomeLandingScreen = 'UserMyPageScreen' | 'EmployeeMyPageScreen' | 'MasterMyPageScreen';
+export type HomeLandingScreen = 'UserMyPageScreen' | 'EmployeeMyPageScreen' | 'MasterMyPageScreen' | 'EmployeeAttendanceHome';
 export type AuthGateScreen = 'Login' | 'Signup' | 'KakaoLogin' | 'Consent' | 'ProfileBasics';
 export type AuthGateParams = {selectedPurpose?: AuthPurpose; fromSignup?: boolean};
 
@@ -81,7 +81,9 @@ export const homeScreenForGrade = (grade: CanonicalGrade): HomeLandingScreen => 
         return 'MasterMyPageScreen';
     }
     if (grade === 'EMPLOYEE') {
-        return 'EmployeeMyPageScreen';
+        // 직원 랜딩 = 시안(employee-home-screen-mockup) 디자인 화면. 승인 출퇴근 버튼 포함.
+        // 마이페이지(급여·휴가·시급 이력)는 빠른 메뉴/설정으로 접근.
+        return 'EmployeeAttendanceHome';
     }
     return 'UserMyPageScreen';
 };
