@@ -113,6 +113,32 @@ const getStoreEmployees = async (storeId: number): Promise<StoreEmployeeDto[]> =
   }));
 };
 
+export interface DayOperatingHours {
+  dayOfWeek: DayOfWeek;
+  openTime?: string | null; // HH:mm:ss
+  closeTime?: string | null;
+  isClosed: boolean;
+}
+
+/** 매장 운영시간 조회(요일별). 실패는 호출자가 best-effort 처리. */
+const getStoreOperatingHours = async (storeId: number): Promise<DayOperatingHours[]> => {
+  const res = await api.get<{ operatingHours?: DayOperatingHours[] }>(
+    `/api/stores/${storeId}/operating-hours`,
+  );
+  const data: any = res.data as any;
+  const list: any[] = Array.isArray(data?.operatingHours)
+    ? data.operatingHours
+    : Array.isArray(data?.data?.operatingHours)
+    ? data.data.operatingHours
+    : [];
+  return list.map(d => ({
+    dayOfWeek: d.dayOfWeek,
+    openTime: d.openTime ?? null,
+    closeTime: d.closeTime ?? null,
+    isClosed: d.isClosed ?? false,
+  }));
+};
+
 async function createStore(payload: StoreRegistrationPayload): Promise<{ id: number }> {
     // ⚠️ FE↔BE 의미 정합 (P2 통합테스트로 발견·수정): BE `Store.businessNumber` 컬럼은
     //   '사업자등록번호'(NOT NULL·UNIQUE) 이나, FE 폼의 `businessNumber` 는 화면상 '매장 유선전화'.
@@ -166,6 +192,7 @@ const storeService = {
   getStoreById,
   getStoreEmployees,
   getEmployeeStores,
+  getStoreOperatingHours,
   // 등록/설정류
   createStore,
   putLocation,

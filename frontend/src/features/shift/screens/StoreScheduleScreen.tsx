@@ -18,7 +18,7 @@ import {
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {radius, spacing} from '../../../theme/tokens';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
-import storeService, {StoreEmployeeDto} from '../../store/services/storeService';
+import storeService, {DayOperatingHours, DayOfWeek, StoreEmployeeDto} from '../../store/services/storeService';
 import {
     confirmStoreWeekShifts,
     createShift,
@@ -44,6 +44,17 @@ interface Props {
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+// JS getDay()(0=일) → BE DayOfWeek enum.
+const DOW_ENUM: DayOfWeek[] = [
+    'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY',
+];
+
+type ViewMode = 'list' | 'employee' | 'board';
+const VIEW_MODES: {mode: ViewMode; label: string; icon: string}[] = [
+    {mode: 'list', label: '목록', icon: 'list-outline'},
+    {mode: 'employee', label: '직원별', icon: 'people-outline'},
+    {mode: 'board', label: '보드', icon: 'grid-outline'},
+];
 
 function parseIsoDate(iso: string): Date {
     const [y, m, d] = iso.split('-').map(Number);
@@ -73,6 +84,85 @@ function shiftHours(shift: WorkShift): number {
     return shiftDurationHours(shift.startTime, shift.endTime);
 }
 
+function timeToMin(t: string): number {
+    const [h, m] = shortTime(t).split(':').map(Number);
+    return (Number.isNaN(h) ? 0 : h) * 60 + (Number.isNaN(m) ? 0 : m);
+}
+
+// 자정 넘김 고려한 [시작,종료] 분 구간. 야간(종료<=시작)이면 종료에 +24h.
+function shiftInterval(start: string, end: string): [number, number] {
+    const s = timeToMin(start);
+    let e = timeToMin(end);
+    if (e <= s) {
+        e += 24 * 60;
+    }
+    return [s, e];
+}
+
+/**
+ * 저장 전 비차단 경고(시안 §"영업시간 밖·중복 근무·휴게 누락"). 입력 형식이 유효할 때만 계산.
+ * 에러(차단)는 validate가 담당하고, 여기서는 "확인하세요" 수준의 경고만 반환한다.
+ */
+function computeShiftWarnings(args: {
+    employeeId: number | null;
+    date: string;
+    start: string;
+    end: string;
+    shifts: WorkShift[];
+    operatingHours: DayOperatingHours[];
+    excludeShiftId?: number | null;
+    employeeName?: string;
+}): string[] {
+    const {employeeId, date, start, end, shifts, operatingHours, excludeShiftId, employeeName} = args;
+    const out: string[] = [];
+    if (!employeeId || !DATE_RE.test(date) || !TIME_RE.test(start) || !TIME_RE.test(end) || start === end) {
+        return out;
+    }
+    const [s, e] = shiftInterval(start, end);
+
+    // 1) 중복 근무 — 같은 직원·같은 날, 시간 겹침
+    const overlaps = shifts.some(sh => {
+        if (sh.employeeId !== employeeId || sh.shiftDate !== date) {
+            return false;
+        }
+        if (sh.id === excludeShiftId) {
+            return false; // 수정 중인 자기 자신은 중복 비교 제외
+        }
+        const [s2, e2] = shiftInterval(shortTime(sh.startTime), shortTime(sh.endTime));
+        return s < e2 && s2 < e;
+    });
+    if (overlaps) {
+        out.push(`${employeeName ?? '이 직원'}의 근무가 같은 날 다른 근무와 시간이 겹쳐요.`);
+    }
+
+    // 2) 휴게 누락 — 근로기준법 §54
+    const hours = (e - s) / 60;
+    if (hours >= 8) {
+        out.push('8시간 이상 근무엔 1시간 이상 휴게가 필요해요 (근로기준법 §54).');
+    } else if (hours >= 4) {
+        out.push('4시간 이상 근무엔 30분 이상 휴게가 필요해요 (근로기준법 §54).');
+    }
+
+    // 3) 영업시간 밖 — 해당 요일 운영시간 대비
+    if (operatingHours.length > 0) {
+        const dow = DOW_ENUM[parseIsoDate(date).getDay()];
+        const day = operatingHours.find(d => d.dayOfWeek === dow);
+        if (day?.isClosed) {
+            out.push('휴무일에 근무가 잡혔어요. 운영시간을 확인해 주세요.');
+        } else if (day?.openTime && day?.closeTime) {
+            const open = timeToMin(day.openTime);
+            const close = timeToMin(day.closeTime);
+            const overnightShift = e > 24 * 60;
+            const beforeOpen = timeToMin(start) < open;
+            const afterClose = !overnightShift && timeToMin(end) > close;
+            if (beforeOpen || afterClose) {
+                out.push(`영업시간(${day.openTime.slice(0, 5)}~${day.closeTime.slice(0, 5)}) 밖 근무예요.`);
+            }
+        }
+    }
+    return out;
+}
+
 export default function StoreScheduleScreen({route, navigation}: Props) {
     const {storeId} = route.params;
     const c = useThemeColors();
@@ -92,7 +182,8 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
     const [copying, setCopying] = useState(false);
     const [confirming, setConfirming] = useState(false);
     const [editingShiftId, setEditingShiftId] = useState<number | null>(null);
-    const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
+    const [viewMode, setViewMode] = useState<ViewMode>('list');
+    const [operatingHours, setOperatingHours] = useState<DayOperatingHours[]>([]);
 
     // 보드(드래그)용 월~일 7일 ISO 배열.
     const weekDates = useMemo(() => {
@@ -129,16 +220,49 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
         }, {});
     }, [sortedShifts]);
 
+    // 직원별 보기 — 직원 그룹별 시프트(이름순).
+    const shiftsByEmployee = useMemo(() => {
+        const groups = new Map<number, WorkShift[]>();
+        sortedShifts.forEach(item => {
+            const list = groups.get(item.employeeId) ?? [];
+            list.push(item);
+            groups.set(item.employeeId, list);
+        });
+        return Array.from(groups.entries())
+            .map(([employeeId, list]) => ({employeeId, list}))
+            .sort((a, b) =>
+                (employeeNameById[a.employeeId] ?? '').localeCompare(employeeNameById[b.employeeId] ?? ''),
+            );
+    }, [sortedShifts, employeeNameById]);
+
+    // 저장 전 비차단 경고 — 현재 폼 입력 기준.
+    const formWarnings = useMemo(
+        () => computeShiftWarnings({
+            employeeId: selectedEmployeeId,
+            date: shiftDate,
+            start: startTime,
+            end: endTime,
+            shifts,
+            operatingHours,
+            excludeShiftId: editingShiftId,
+            employeeName: selectedEmployeeId !== null ? employeeNameById[selectedEmployeeId] : undefined,
+        }),
+        [selectedEmployeeId, shiftDate, startTime, endTime, shifts, operatingHours, editingShiftId, employeeNameById],
+    );
+
     const load = useCallback(async () => {
         setLoading(true);
         setLoadError(null);
         try {
-            const [employeeList, shiftList] = await Promise.all([
+            const [employeeList, shiftList, hours] = await Promise.all([
                 storeService.getStoreEmployees(storeId),
                 fetchStoreShifts(storeId, weekRange.from, weekRange.to),
+                // 영업시간 밖 근무 경고용 — 실패해도 화면은 정상(경고만 비활성).
+                storeService.getStoreOperatingHours(storeId).catch(() => [] as DayOperatingHours[]),
             ]);
             setEmployees(employeeList);
             setShifts(shiftList);
+            setOperatingHours(hours);
             setSelectedEmployeeId(prev => prev ?? employeeList[0]?.id ?? null);
         } catch (err: any) {
             setLoadError(err?.message || '스케줄 정보를 불러오지 못했어요.');
@@ -487,6 +611,18 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
                             </View>
                         ) : null}
 
+                        {formWarnings.length > 0 ? (
+                            <View style={[styles.warnPanel, {backgroundColor: c.surfaceMuted, borderColor: c.warning}]}>
+                                {formWarnings.map(w => (
+                                    <View key={w} style={styles.warnRow}>
+                                        <Ionicons name="alert-circle-outline" size={14} color={c.warning} />
+                                        <AppText variant="caption" tone="warning" style={styles.flex}>{w}</AppText>
+                                    </View>
+                                ))}
+                                <AppText variant="caption" tone="tertiary">저장은 가능해요. 확인 후 진행하세요.</AppText>
+                            </View>
+                        ) : null}
+
                         {error ? <AppText variant="caption" tone="error">{error}</AppText> : null}
 
                         <AppButton
@@ -528,9 +664,11 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
             </AppCard>
 
             <View style={styles.sectionTitleRow}>
-                <AppText variant="titleMd">주간 {viewMode === 'board' ? '보드' : '목록'}</AppText>
+                <AppText variant="titleMd">
+                    주간 {viewMode === 'board' ? '보드' : viewMode === 'employee' ? '직원별' : '목록'}
+                </AppText>
                 <View style={styles.viewToggle}>
-                    {(['list', 'board'] as const).map(mode => {
+                    {VIEW_MODES.map(({mode, label, icon}) => {
                         const active = viewMode === mode;
                         return (
                             <Pressable
@@ -542,14 +680,8 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
                                     styles.viewToggleBtn,
                                     {backgroundColor: active ? c.brandPrimary : c.background, borderColor: active ? c.brandPrimary : c.border},
                                 ]}>
-                                <Ionicons
-                                    name={mode === 'list' ? 'list-outline' : 'grid-outline'}
-                                    size={14}
-                                    color={active ? c.textInverse : c.textTertiary}
-                                />
-                                <AppText variant="caption" tone={active ? 'inverse' : 'tertiary'}>
-                                    {mode === 'list' ? '목록' : '보드'}
-                                </AppText>
+                                <Ionicons name={icon} size={14} color={active ? c.textInverse : c.textTertiary} />
+                                <AppText variant="caption" tone={active ? 'inverse' : 'tertiary'}>{label}</AppText>
                             </Pressable>
                         );
                     })}
@@ -579,6 +711,52 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
                         onPressShift={startEdit}
                         disabled={saving}
                     />
+                </View>
+            ) : viewMode === 'employee' ? (
+                <View style={styles.scheduleList}>
+                    {shiftsByEmployee.map(({employeeId, list}) => {
+                        const empHours = list.reduce((sum, item) => sum + shiftHours(item), 0);
+                        return (
+                            <View key={employeeId} style={styles.dayGroup}>
+                                <View style={styles.empHeaderRow}>
+                                    <AppText variant="titleMd" numberOfLines={1} style={styles.flex}>
+                                        {employeeNameById[employeeId] ?? '직원'}
+                                    </AppText>
+                                    <AppText variant="caption" tone="secondary">
+                                        {list.length}건 · {empHours.toFixed(1)}h
+                                    </AppText>
+                                </View>
+                                {list.map(item => {
+                                    const overnight = item.crossesMidnight ?? isOvernight(item.startTime, item.endTime);
+                                    const editing = item.id === editingShiftId;
+                                    return (
+                                        <Pressable key={item.id} onPress={() => startEdit(item)} accessibilityRole="button">
+                                            <AppCard
+                                                variant="flat"
+                                                style={[styles.shiftCard, editing && [styles.shiftCardEditing, {borderColor: c.brandPrimary}]]}>
+                                                <View style={styles.shiftRow}>
+                                                    <View style={[styles.shiftIcon, {backgroundColor: c.surfaceSky}]}>
+                                                        <Ionicons name="calendar-outline" size={18} color={c.info} />
+                                                    </View>
+                                                    <View style={styles.flex}>
+                                                        <AppText variant="titleMd" numberOfLines={1}>
+                                                            {formatDate(item.shiftDate)}
+                                                        </AppText>
+                                                        <AppText variant="caption" tone="secondary">
+                                                            {shortTime(item.startTime)} ~ {shortTime(item.endTime)}
+                                                            {overnight ? ' (익일)' : ''}
+                                                            {item.memo ? ` · ${item.memo}` : ''}
+                                                        </AppText>
+                                                    </View>
+                                                    <Ionicons name="create-outline" size={18} color={c.textTertiary} />
+                                                </View>
+                                            </AppCard>
+                                        </Pressable>
+                                    );
+                                })}
+                            </View>
+                        );
+                    })}
                 </View>
             ) : (
                 <View style={styles.scheduleList}>
@@ -719,6 +897,24 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.xs,
+    },
+    warnPanel: {
+        gap: spacing.xs,
+        padding: spacing.sm,
+        borderRadius: radius.md,
+        borderWidth: 1,
+    },
+    warnRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: spacing.xs,
+    },
+    empHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: spacing.sm,
+        marginLeft: spacing.xs,
     },
     editActionRow: {
         flexDirection: 'row',
