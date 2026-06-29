@@ -10,14 +10,22 @@ export interface WorkShift {
   id: number;
   employeeId: number;
   storeId: number;
-  shiftDate: string; // YYYY-MM-DD
+  shiftDate: string; // YYYY-MM-DD (시작일 기준)
   startTime: string; // HH:MM[:SS]
   endTime: string; // HH:MM[:SS]
   memo?: string | null;
+  crossesMidnight?: boolean; // BE 계산값: 종료<=시작이면 익일 종료(야간)
 }
 
 export interface WorkShiftCreateBody {
   employeeId: number;
+  shiftDate: string; // YYYY-MM-DD
+  startTime: string; // HH:MM
+  endTime: string; // HH:MM
+  memo?: string;
+}
+
+export interface WorkShiftUpdateBody {
   shiftDate: string; // YYYY-MM-DD
   startTime: string; // HH:MM
   endTime: string; // HH:MM
@@ -52,6 +60,16 @@ export async function fetchStoreShifts(storeId: number, from: string, to: string
 /** 시프트 등록(사장). */
 export async function createShift(storeId: number, body: WorkShiftCreateBody): Promise<WorkShift> {
   const {data} = await api.post<WorkShift>(`/api/stores/${storeId}/shifts`, body);
+  return data;
+}
+
+/** 시프트 수정(사장). 변경 시 BE에서 확정·알림 상태가 리셋된다(재확정 필요). */
+export async function updateShift(
+  storeId: number,
+  shiftId: number,
+  body: WorkShiftUpdateBody,
+): Promise<WorkShift> {
+  const {data} = await api.put<WorkShift>(`/api/stores/${storeId}/shifts/${shiftId}`, body);
   return data;
 }
 
@@ -90,6 +108,31 @@ export function shortTime(time: string): string {
     return '';
   }
   return time.length >= 5 ? time.slice(0, 5) : time;
+}
+
+/** HH:MM[:SS] -> 자정 기준 분. 파싱 실패 시 0. */
+function timeToMinutes(time: string): number {
+  const [h, m] = shortTime(time).split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) {
+    return 0;
+  }
+  return h * 60 + m;
+}
+
+/** 종료시각이 시작시각보다 같거나 빠르면 익일 종료(야간 근무). BE crossesMidnight와 동일 규칙. */
+export function isOvernight(startTime: string, endTime: string): boolean {
+  return timeToMinutes(endTime) <= timeToMinutes(startTime);
+}
+
+/**
+ * 근무 시간(시) 계산. 야간이면 익일로 보고 +24h 랩어라운드.
+ * 예 18:00~02:00 = 8h. 동일시각(0분)은 0h.
+ */
+export function shiftDurationHours(startTime: string, endTime: string): number {
+  const start = timeToMinutes(startTime);
+  const end = timeToMinutes(endTime);
+  const span = end > start ? end - start : end + 24 * 60 - start;
+  return span / 60;
 }
 
 /** 이번 주(월~일) 범위를 YYYY-MM-DD 문자열로 반환. */

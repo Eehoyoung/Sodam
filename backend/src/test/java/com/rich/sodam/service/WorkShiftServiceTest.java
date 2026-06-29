@@ -4,9 +4,11 @@ import com.rich.sodam.domain.EmployeeProfile;
 import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.User;
+import com.rich.sodam.domain.WorkShift;
 import com.rich.sodam.domain.type.UserGrade;
 import com.rich.sodam.dto.request.WorkShiftCreateRequest;
 import com.rich.sodam.dto.request.WorkShiftNotifyRequest;
+import com.rich.sodam.dto.request.WorkShiftUpdateRequest;
 import com.rich.sodam.dto.response.WorkShiftNotifyResponse;
 import com.rich.sodam.dto.response.WorkShiftResponse;
 import com.rich.sodam.repository.EmployeeProfileRepository;
@@ -102,6 +104,92 @@ class WorkShiftServiceTest {
         assertThat(res.endTime()).isEqualTo(LocalTime.of(18, 0));
         assertThat(res.memo()).isEqualTo("오픈");
         assertThat(workShiftRepository.findById(res.id())).isPresent();
+    }
+
+    @Test
+    @DisplayName("야간 시프트(종료<시작)는 익일 종료로 허용되고 crossesMidnight=true")
+    void createAllowsOvernightShift() {
+        Store store = store();
+        EmployeeProfile emp = employee("night@x.com", "야간직원");
+        assign(emp, store);
+
+        WorkShiftCreateRequest r = req(emp.getId(), LocalDate.of(2026, 6, 17), "마감");
+        r.setStartTime(LocalTime.of(18, 0));
+        r.setEndTime(LocalTime.of(2, 0)); // 익일 02:00
+
+        WorkShiftResponse res = workShiftService.create(store.getId(), r);
+
+        assertThat(res.crossesMidnight()).isTrue();
+        assertThat(res.startTime()).isEqualTo(LocalTime.of(18, 0));
+        assertThat(res.endTime()).isEqualTo(LocalTime.of(2, 0));
+    }
+
+    @Test
+    @DisplayName("시작·종료 시각이 같으면 0시간 근무라 거부된다")
+    void rejectsZeroLengthShift() {
+        Store store = store();
+        EmployeeProfile emp = employee("zero@x.com", "동일시각");
+        assign(emp, store);
+
+        WorkShiftCreateRequest r = req(emp.getId(), LocalDate.of(2026, 6, 17), "동일");
+        r.setStartTime(LocalTime.of(9, 0));
+        r.setEndTime(LocalTime.of(9, 0));
+
+        assertThatThrownBy(() -> workShiftService.create(store.getId(), r))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("같을 수 없어요");
+    }
+
+    @Test
+    @DisplayName("시프트 수정: 시각·메모가 갱신되고 확정 상태가 리셋된다")
+    void updateResetsConfirmation() {
+        Store store = store();
+        EmployeeProfile emp = employee("upd@x.com", "수정직원");
+        assign(emp, store);
+
+        WorkShiftResponse created = workShiftService.create(store.getId(),
+                req(emp.getId(), LocalDate.of(2026, 6, 17), "초안"));
+
+        // 확정 처리
+        WorkShiftNotifyRequest notifyReq = new WorkShiftNotifyRequest();
+        notifyReq.setFrom(LocalDate.of(2026, 6, 15));
+        notifyReq.setTo(LocalDate.of(2026, 6, 21));
+        workShiftService.notifyConfirmed(store.getId(), notifyReq);
+        assertThat(workShiftRepository.findById(created.id()).orElseThrow().isConfirmed()).isTrue();
+
+        WorkShiftUpdateRequest upd = new WorkShiftUpdateRequest();
+        upd.setShiftDate(LocalDate.of(2026, 6, 18));
+        upd.setStartTime(LocalTime.of(13, 0));
+        upd.setEndTime(LocalTime.of(22, 0));
+        upd.setMemo("수정됨");
+
+        WorkShiftResponse res = workShiftService.update(store.getId(), created.id(), upd);
+
+        assertThat(res.shiftDate()).isEqualTo(LocalDate.of(2026, 6, 18));
+        assertThat(res.startTime()).isEqualTo(LocalTime.of(13, 0));
+        assertThat(res.memo()).isEqualTo("수정됨");
+        WorkShift reloaded = workShiftRepository.findById(created.id()).orElseThrow();
+        assertThat(reloaded.isConfirmed()).isFalse();
+        assertThat(reloaded.isConfirmationNotificationSent()).isFalse();
+    }
+
+    @Test
+    @DisplayName("다른 매장의 시프트는 수정할 수 없다")
+    void updateFailsForForeignStore() {
+        Store store = store();
+        Store otherStore = store();
+        EmployeeProfile emp = employee("foreign-upd@x.com", "직원");
+        assign(emp, store);
+        WorkShiftResponse created = workShiftService.create(store.getId(),
+                req(emp.getId(), LocalDate.of(2026, 6, 17), "초안"));
+
+        WorkShiftUpdateRequest upd = new WorkShiftUpdateRequest();
+        upd.setShiftDate(LocalDate.of(2026, 6, 18));
+        upd.setStartTime(LocalTime.of(9, 0));
+        upd.setEndTime(LocalTime.of(18, 0));
+
+        assertThatThrownBy(() -> workShiftService.update(otherStore.getId(), created.id(), upd))
+                .isInstanceOf(AccessDeniedException.class);
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.rich.sodam.controller;
 
 import com.rich.sodam.dto.request.WorkShiftCreateRequest;
 import com.rich.sodam.dto.request.WorkShiftNotifyRequest;
+import com.rich.sodam.dto.request.WorkShiftUpdateRequest;
 import com.rich.sodam.dto.response.WorkShiftNotifyResponse;
 import com.rich.sodam.dto.response.WorkShiftResponse;
 import com.rich.sodam.security.UserPrincipal;
@@ -67,6 +68,18 @@ public class WorkShiftController {
             @Valid @RequestBody WorkShiftNotifyRequest req) {
         storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
         return ResponseEntity.ok(workShiftService.notifyConfirmed(storeId, req));
+    }
+
+    @MasterOnly
+    @Operation(summary = "근무 시프트 수정", description = "매장 소유 검증 후 근무 일정의 날짜·시각·메모 변경. 변경 시 재확정·재알림 필요.")
+    @PutMapping("/api/stores/{storeId}/shifts/{shiftId}")
+    public ResponseEntity<WorkShiftResponse> update(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long storeId,
+            @PathVariable Long shiftId,
+            @Valid @RequestBody WorkShiftUpdateRequest req) {
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        return ResponseEntity.ok(workShiftService.update(storeId, shiftId, req));
     }
 
     @MasterOnly

@@ -5,6 +5,7 @@ import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.WorkShift;
 import com.rich.sodam.dto.request.WorkShiftCreateRequest;
 import com.rich.sodam.dto.request.WorkShiftNotifyRequest;
+import com.rich.sodam.dto.request.WorkShiftUpdateRequest;
 import com.rich.sodam.dto.response.WorkShiftNotifyResponse;
 import com.rich.sodam.dto.response.WorkShiftResponse;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,9 +41,26 @@ public class WorkShiftService {
     @Transactional
     public WorkShiftResponse create(Long storeId, WorkShiftCreateRequest req) {
         assertActiveEmployeeInStore(req.getEmployeeId(), storeId);
+        validateShiftTimes(req.getStartTime(), req.getEndTime());
         WorkShift shift = repository.save(WorkShift.create(
                 req.getEmployeeId(), storeId, req.getShiftDate(),
                 req.getStartTime(), req.getEndTime(), req.getMemo()));
+        return WorkShiftResponse.from(shift);
+    }
+
+    /**
+     * 시프트 수정(사장). 매장 소유 일관성 재확인 후 날짜·시각·메모 변경.
+     * 변경 시 확정·알림 상태가 리셋되어 재확정·재알림이 필요해진다(직원 통보 정합성).
+     */
+    @Transactional
+    public WorkShiftResponse update(Long storeId, Long shiftId, WorkShiftUpdateRequest req) {
+        WorkShift shift = repository.findById(shiftId)
+                .orElseThrow(() -> new IllegalArgumentException("근무 일정을 찾을 수 없어요: " + shiftId));
+        if (!shift.getStoreId().equals(storeId)) {
+            throw new AccessDeniedException("해당 매장의 근무 일정이 아니에요.");
+        }
+        validateShiftTimes(req.getStartTime(), req.getEndTime());
+        shift.update(req.getShiftDate(), req.getStartTime(), req.getEndTime(), req.getMemo());
         return WorkShiftResponse.from(shift);
     }
 
@@ -109,6 +128,19 @@ public class WorkShiftService {
             throw new AccessDeniedException("해당 매장의 근무 일정이 아니에요.");
         }
         repository.delete(shift);
+    }
+
+    /**
+     * 시프트 시각 검증. 동일 시각은 0시간 근무라 거부.
+     * 종료&lt;시작은 야간(익일 종료, 예 18:00~02:00)으로 허용한다 — 주류·심야 매장 대응.
+     */
+    private void validateShiftTimes(LocalTime startTime, LocalTime endTime) {
+        if (startTime == null || endTime == null) {
+            throw new IllegalArgumentException("시작 시간과 종료 시간을 모두 입력해 주세요.");
+        }
+        if (startTime.equals(endTime)) {
+            throw new IllegalArgumentException("시작 시간과 종료 시간이 같을 수 없어요.");
+        }
     }
 
     private void assertActiveEmployeeInStore(Long employeeId, Long storeId) {

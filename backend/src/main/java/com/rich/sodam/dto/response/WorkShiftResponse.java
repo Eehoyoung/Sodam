@@ -15,7 +15,8 @@ public record WorkShiftResponse(
         LocalDate shiftDate,
         LocalTime startTime,
         LocalTime endTime,
-        String memo
+        String memo,
+        boolean crossesMidnight
 ) {
     public static WorkShiftResponse from(WorkShift s) {
         return new WorkShiftResponse(
@@ -25,6 +26,7 @@ public record WorkShiftResponse(
                 s.getShiftDate(),
                 s.getStartTime(),
                 s.getEndTime(),
-                s.getMemo());
+                s.getMemo(),
+                s.crossesMidnight());
     }
 }

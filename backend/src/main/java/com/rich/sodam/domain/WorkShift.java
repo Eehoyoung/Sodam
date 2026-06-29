@@ -72,6 +72,29 @@ public class WorkShift {
         return new WorkShift(employeeId, storeId, shiftDate, startTime, endTime, memo);
     }
 
+    /**
+     * 일정 변경. 시각/날짜/메모를 갱신한다.
+     *
+     * <p>확정·알림 상태를 리셋하는 이유: 직원에게 이미 통보된 시각이 바뀌면 "확정"의 의미가 깨진다.
+     * 변경 후에는 다시 미확정 상태가 되어 사장이 재확정·재알림해야 직원이 새 시각을 통보받는다.
+     */
+    public void update(LocalDate shiftDate, LocalTime startTime, LocalTime endTime, String memo) {
+        this.shiftDate = shiftDate;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.memo = memo;
+        this.confirmedAt = null;
+        this.confirmationNotificationSentAt = null;
+    }
+
+    /**
+     * 자정을 넘기는 야간 근무인지. 종료시각이 시작시각보다 같거나 빠르면 익일 종료(예 18:00~02:00).
+     * (동일 시각은 서비스 검증에서 거부하므로 여기 도달 시 end&lt;start = 익일.)
+     */
+    public boolean crossesMidnight() {
+        return endTime != null && startTime != null && !endTime.isAfter(startTime);
+    }
+
     public boolean isConfirmed() {
         return confirmedAt != null;
     }
