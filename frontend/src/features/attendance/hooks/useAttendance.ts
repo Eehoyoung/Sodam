@@ -273,6 +273,7 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
   return {
     method,
     setMethod,
+    workplaceId, // 훅이 해석한 실제 매장 id(prop 미전달 시 getEmployeeStores 첫 매장)
     currentAttendance,
     records,
     loading,
