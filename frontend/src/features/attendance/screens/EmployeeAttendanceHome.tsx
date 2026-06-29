@@ -240,7 +240,10 @@ const EmployeeAttendanceHome: React.FC = () => {
         };
     }, [monthlyAttendances, selectedStore, state, todayRecord]);
 
-    const currentWage = todayRecord?.appliedHourlyWage ?? selectedStore?.appliedHourlyWage ?? 0;
+    // 매장 헤더의 '시급'은 현재 적용 시급(wages 엔드포인트로 갱신된 selectedStore)을 우선 표시한다.
+    // todayRecord.appliedHourlyWage 는 출근 시점에 고정된 값이라, 사장이 시급을 바꿔도 반영되지 않는다
+    // (그래서 시급 변경이 직원 화면에 안 보이던 문제). 오늘 급여 계산엔 여전히 출근시점 시급을 쓴다.
+    const currentWage = selectedStore?.appliedHourlyWage ?? todayRecord?.appliedHourlyWage ?? 0;
     const hasPendingCorrection = false;
     const isWorking = state === 'WORKING';
 
@@ -475,7 +478,7 @@ const EmployeeAttendanceHome: React.FC = () => {
                 <SectionTitle title="빠른 메뉴" />
                 <View style={styles.quickGrid}>
                     <QuickAction icon="calendar-outline" label="내 스케줄" onPress={() => navigation.navigate('MyShift')} />
-                    <QuickAction icon="wallet-outline" label="급여" onPress={() => navigation.navigate('SalaryList')} />
+                    <QuickAction icon="wallet-outline" label="급여" onPress={() => navigation.navigate('SalaryArchive')} />
                     <QuickAction icon="document-text-outline" label="계약서" onPress={() => navigation.navigate('MyContract')} />
                     <QuickAction icon="key-outline" label="매장 합류" onPress={() => navigation.navigate('JoinStoreByCode')} />
                 </View>
