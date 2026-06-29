@@ -102,6 +102,65 @@ export async function confirmStoreWeekShifts(
   };
 }
 
+// ─── 시프트 템플릿 (매장별 주간 패턴) ───────────────────────────────
+export interface ShiftTemplateEntry {
+  employeeId: number;
+  dayOfWeek: string; // MONDAY..SUNDAY
+  startTime: string; // HH:MM[:SS]
+  endTime: string;
+  memo?: string | null;
+}
+
+export interface ShiftTemplate {
+  id: number;
+  storeId: number;
+  name: string;
+  createdAt?: string;
+  entryCount: number;
+  entries: ShiftTemplateEntry[];
+}
+
+export interface ApplyTemplateResult {
+  templateId: number;
+  weekStart: string;
+  createdCount: number;
+  skippedCount: number;
+  skipped: {employeeId: number; dayOfWeek: string; reason: string}[];
+}
+
+/** 매장 템플릿 목록(최신순). */
+export async function fetchTemplates(storeId: number): Promise<ShiftTemplate[]> {
+  const {data} = await api.get<ShiftTemplate[]>(`/api/stores/${storeId}/shift-templates`);
+  return data;
+}
+
+/** 현재 기간(from~to) 근무를 템플릿으로 저장. */
+export async function createTemplate(
+  storeId: number,
+  body: {name: string; from: string; to: string},
+): Promise<ShiftTemplate> {
+  const {data} = await api.post<ShiftTemplate>(`/api/stores/${storeId}/shift-templates`, body);
+  return data;
+}
+
+/** 템플릿을 weekStart가 속한 주(월요일 기준)에 적용. */
+export async function applyTemplate(
+  storeId: number,
+  templateId: number,
+  weekStart: string,
+): Promise<ApplyTemplateResult> {
+  const {data} = await api.post<ApplyTemplateResult>(
+    `/api/stores/${storeId}/shift-templates/${templateId}/apply?weekStart=${weekStart}`,
+    {},
+  );
+  return data;
+}
+
+/** 템플릿 삭제. */
+export async function deleteTemplate(storeId: number, templateId: number): Promise<void> {
+  await api.delete(`/api/stores/${storeId}/shift-templates/${templateId}`);
+}
+
 /** 시:분만 표시(초 절단). "09:00:00" -> "09:00" */
 export function shortTime(time: string): string {
   if (typeof time !== 'string') {

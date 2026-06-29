@@ -20,11 +20,16 @@ import {radius, spacing} from '../../../theme/tokens';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import storeService, {DayOperatingHours, DayOfWeek, StoreEmployeeDto} from '../../store/services/storeService';
 import {
+    applyTemplate,
     confirmStoreWeekShifts,
     createShift,
+    createTemplate,
     deleteShift,
+    deleteTemplate,
     fetchStoreShifts,
+    fetchTemplates,
     isOvernight,
+    ShiftTemplate,
     shiftDurationHours,
     shortTime,
     thisWeekRange,
@@ -49,11 +54,12 @@ const DOW_ENUM: DayOfWeek[] = [
     'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY',
 ];
 
-type ViewMode = 'list' | 'employee' | 'board';
+type ViewMode = 'list' | 'employee' | 'board' | 'template';
 const VIEW_MODES: {mode: ViewMode; label: string; icon: string}[] = [
     {mode: 'list', label: '목록', icon: 'list-outline'},
     {mode: 'employee', label: '직원별', icon: 'people-outline'},
     {mode: 'board', label: '보드', icon: 'grid-outline'},
+    {mode: 'template', label: '템플릿', icon: 'documents-outline'},
 ];
 
 function parseIsoDate(iso: string): Date {
@@ -184,6 +190,9 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
     const [editingShiftId, setEditingShiftId] = useState<number | null>(null);
     const [viewMode, setViewMode] = useState<ViewMode>('list');
     const [operatingHours, setOperatingHours] = useState<DayOperatingHours[]>([]);
+    const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
+    const [templateName, setTemplateName] = useState('');
+    const [templateBusy, setTemplateBusy] = useState(false);
 
     // 보드(드래그)용 월~일 7일 ISO 배열.
     const weekDates = useMemo(() => {
@@ -254,15 +263,17 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
         setLoading(true);
         setLoadError(null);
         try {
-            const [employeeList, shiftList, hours] = await Promise.all([
+            const [employeeList, shiftList, hours, tpls] = await Promise.all([
                 storeService.getStoreEmployees(storeId),
                 fetchStoreShifts(storeId, weekRange.from, weekRange.to),
                 // 영업시간 밖 근무 경고용 — 실패해도 화면은 정상(경고만 비활성).
                 storeService.getStoreOperatingHours(storeId).catch(() => [] as DayOperatingHours[]),
+                fetchTemplates(storeId).catch(() => [] as ShiftTemplate[]),
             ]);
             setEmployees(employeeList);
             setShifts(shiftList);
             setOperatingHours(hours);
+            setTemplates(tpls);
             setSelectedEmployeeId(prev => prev ?? employeeList[0]?.id ?? null);
         } catch (err: any) {
             setLoadError(err?.message || '스케줄 정보를 불러오지 못했어요.');
@@ -454,6 +465,54 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
             }
         } finally {
             setConfirming(false);
+        }
+    };
+
+    // ─── 템플릿(매장 주간 패턴) ───
+    const saveTemplate = async () => {
+        const name = templateName.trim();
+        if (!name) {
+            AppToast.error('템플릿 이름을 입력해 주세요.');
+            return;
+        }
+        setTemplateBusy(true);
+        try {
+            await createTemplate(storeId, {name, from: weekRange.from, to: weekRange.to});
+            setTemplateName('');
+            AppToast.success('템플릿을 저장했어요.');
+            setTemplates(await fetchTemplates(storeId));
+        } catch {
+            AppToast.error('템플릿 저장에 실패했어요. 이번 주 근무가 있는지 확인해 주세요.');
+        } finally {
+            setTemplateBusy(false);
+        }
+    };
+
+    const applyTpl = async (t: ShiftTemplate) => {
+        setTemplateBusy(true);
+        try {
+            const res = await applyTemplate(storeId, t.id, weekRange.from);
+            const skipMsg = res.skippedCount > 0 ? ` (${res.skippedCount}건은 비활성 직원이라 제외)` : '';
+            AppToast.success(`${res.createdCount}건을 이번 주에 추가했어요.${skipMsg}`);
+            await load();
+            setViewMode('list');
+        } catch {
+            AppToast.error('템플릿 적용에 실패했어요.');
+        } finally {
+            setTemplateBusy(false);
+        }
+    };
+
+    const removeTemplate = async (t: ShiftTemplate) => {
+        setTemplateBusy(true);
+        try {
+            await deleteTemplate(storeId, t.id);
+            AppToast.success('템플릿을 삭제했어요.');
+            setTemplates(await fetchTemplates(storeId));
+        } catch {
+            AppToast.error('템플릿 삭제에 실패했어요.');
+        } finally {
+            setTemplateBusy(false);
         }
     };
 
@@ -663,32 +722,90 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
                 )}
             </AppCard>
 
-            <View style={styles.sectionTitleRow}>
-                <AppText variant="titleMd">
-                    주간 {viewMode === 'board' ? '보드' : viewMode === 'employee' ? '직원별' : '목록'}
-                </AppText>
-                <View style={styles.viewToggle}>
-                    {VIEW_MODES.map(({mode, label, icon}) => {
-                        const active = viewMode === mode;
-                        return (
-                            <Pressable
-                                key={mode}
-                                accessibilityRole="button"
-                                accessibilityState={{selected: active}}
-                                onPress={() => setViewMode(mode)}
-                                style={[
-                                    styles.viewToggleBtn,
-                                    {backgroundColor: active ? c.brandPrimary : c.background, borderColor: active ? c.brandPrimary : c.border},
-                                ]}>
-                                <Ionicons name={icon} size={14} color={active ? c.textInverse : c.textTertiary} />
-                                <AppText variant="caption" tone={active ? 'inverse' : 'tertiary'}>{label}</AppText>
-                            </Pressable>
-                        );
-                    })}
-                </View>
+            <View style={styles.viewToggle}>
+                {VIEW_MODES.map(({mode, label, icon}) => {
+                    const active = viewMode === mode;
+                    return (
+                        <Pressable
+                            key={mode}
+                            accessibilityRole="button"
+                            accessibilityState={{selected: active}}
+                            onPress={() => setViewMode(mode)}
+                            style={[
+                                styles.viewToggleBtn,
+                                {backgroundColor: active ? c.brandPrimary : c.background, borderColor: active ? c.brandPrimary : c.border},
+                            ]}>
+                            <Ionicons name={icon} size={14} color={active ? c.textInverse : c.textTertiary} />
+                            <AppText variant="caption" tone={active ? 'inverse' : 'tertiary'}>{label}</AppText>
+                        </Pressable>
+                    );
+                })}
             </View>
 
-            {sortedShifts.length === 0 ? (
+            {viewMode === 'template' ? (
+                <View style={styles.scheduleList}>
+                    <AppCard variant="plain" style={styles.formCard}>
+                        <View style={styles.cardTitleRow}>
+                            <Ionicons name="save-outline" size={20} color={c.brandPrimary} />
+                            <AppText variant="titleMd">이번 주를 템플릿으로 저장</AppText>
+                        </View>
+                        <AppText variant="caption" tone="secondary">
+                            이번 주 근무를 요일 패턴으로 저장해, 다음 주에 한 번에 적용할 수 있어요.
+                        </AppText>
+                        <AppInput
+                            label="템플릿 이름"
+                            value={templateName}
+                            onChangeText={setTemplateName}
+                            placeholder="예: 평일 기본, 주말 강화"
+                        />
+                        <AppButton
+                            label="현재 주 저장"
+                            loading={templateBusy}
+                            disabled={templateBusy}
+                            leftIcon={<Ionicons name="save-outline" size={18} color={c.textInverse} />}
+                            onPress={saveTemplate}
+                        />
+                    </AppCard>
+
+                    {templates.length === 0 ? (
+                        <EmptyState
+                            glyph={<Ionicons name="documents-outline" size={40} color={c.textTertiary} />}
+                            markColor={c.surfaceMuted}
+                            title="저장된 템플릿이 없어요"
+                            description="이번 주 스케줄을 템플릿으로 저장하면 다음 주에 그대로 불러올 수 있어요."
+                        />
+                    ) : (
+                        templates.map(t => (
+                            <AppCard key={t.id} variant="flat" style={styles.shiftCard}>
+                                <View style={styles.shiftRow}>
+                                    <View style={[styles.shiftIcon, {backgroundColor: c.surfaceSky}]}>
+                                        <Ionicons name="documents-outline" size={18} color={c.info} />
+                                    </View>
+                                    <View style={styles.flex}>
+                                        <AppText variant="titleMd" numberOfLines={1}>{t.name}</AppText>
+                                        <AppText variant="caption" tone="secondary">근무 {t.entryCount}개</AppText>
+                                    </View>
+                                    <AppButton
+                                        label="적용"
+                                        size="sm"
+                                        fullWidth={false}
+                                        disabled={templateBusy}
+                                        onPress={() => applyTpl(t)}
+                                    />
+                                    <Pressable
+                                        accessibilityRole="button"
+                                        accessibilityLabel="템플릿 삭제"
+                                        disabled={templateBusy}
+                                        onPress={() => removeTemplate(t)}
+                                        hitSlop={8}>
+                                        <Ionicons name="trash-outline" size={20} color={c.textTertiary} />
+                                    </Pressable>
+                                </View>
+                            </AppCard>
+                        ))
+                    )}
+                </View>
+            ) : sortedShifts.length === 0 ? (
                 <EmptyState
                     glyph={<Ionicons name="calendar-outline" size={40} color={c.textTertiary} />}
                     markColor={c.surfaceMuted}
@@ -868,15 +985,11 @@ const styles = StyleSheet.create({
         flex: 1,
         minWidth: 0,
     },
-    sectionTitleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: spacing.sm,
-    },
     viewToggle: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: spacing.xs,
+        marginBottom: spacing.md,
     },
     viewToggleBtn: {
         flexDirection: 'row',
