@@ -64,6 +64,7 @@ import LegalLedgerScreen from '../features/salary/screens/LegalLedgerScreen';
 import MyShiftScreen from '../features/shift/screens/MyShiftScreen';
 import EditShiftScreen from '../features/shift/screens/EditShiftScreen';
 import StoreScheduleScreen from '../features/shift/screens/StoreScheduleScreen';
+import AttendanceApprovalScreen from '../features/attendance/screens/AttendanceApprovalScreen';
 import TaxSimulatorScreen from '../features/salary/screens/TaxSimulatorScreen';
 import PersonalAnnualTaxScreen from '../features/workplace/screens/PersonalAnnualTaxScreen';
 import StoreNoticeListScreen from '../features/notice/screens/StoreNoticeListScreen';
@@ -145,6 +146,7 @@ export type HomeStackParamList = {
     MyShift: undefined;
     EditShift: {storeId: number; employeeId: number; employeeName?: string};
     StoreSchedule: {storeId: number};
+    AttendanceApproval: {storeId: number};
     TaxSimulator: undefined;
     PersonalAnnualTax: undefined;
     StoreNoticeList: {storeId: number};
@@ -340,6 +342,7 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen name="MyShift" component={MyShiftScreen} options={{headerShown: false}} />
             <Stack.Screen name="EditShift" component={EditShiftScreen} options={{headerShown: false}} />
             <Stack.Screen name="StoreSchedule" component={StoreScheduleScreen} options={{headerShown: false}} />
+            <Stack.Screen name="AttendanceApproval" component={AttendanceApprovalScreen} options={{headerShown: false}} />
             <Stack.Screen name="TaxSimulator" component={TaxSimulatorScreen} options={{headerShown: true, title: '세무 시뮬레이터'}} />
             <Stack.Screen name="PersonalAnnualTax" component={PersonalAnnualTaxScreen} options={{headerShown: false}} />
             <Stack.Screen name="StoreNoticeList" component={StoreNoticeListScreen} options={{headerShown: false}} />

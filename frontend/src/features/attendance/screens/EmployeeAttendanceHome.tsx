@@ -24,6 +24,7 @@ import {
     WorkShift,
 } from '../../shift/services/shiftService';
 import storeService from '../../store/services/storeService';
+import {requestApproval} from '../services/attendanceApprovalService';
 import {useStoreLiveSync} from '../../../common/hooks/useStoreLiveSync';
 import {spacing, radius, shadow} from '../../../theme/tokens';
 
@@ -232,6 +233,33 @@ const EmployeeAttendanceHome: React.FC = () => {
     const hasPendingCorrection = false;
     const isWorking = state === 'WORKING';
 
+    const [approvalBusy, setApprovalBusy] = useState(false);
+
+    // 위치/NFC 없이 사장 승인으로 출퇴근 — 요청 버튼. 누르면 사장에게 알림이 가고, 승인 시 요청 시각으로 처리된다.
+    const requestApprovalPunch = async () => {
+        if (!selectedStore) {
+            AppToast.show('먼저 매장에 합류해 주세요.');
+            navigation.navigate('JoinStoreByCode');
+            return;
+        }
+        if (state === 'DONE') {
+            AppToast.show('오늘은 이미 퇴근 완료됐어요.');
+            return;
+        }
+        const reqType = isWorking ? 'CHECK_OUT' : 'CHECK_IN';
+        setApprovalBusy(true);
+        try {
+            await requestApproval(selectedStore.id, reqType);
+            AppToast.success(reqType === 'CHECK_IN'
+                ? '출근 승인을 요청했어요. 사장님 승인을 기다려 주세요.'
+                : '퇴근 승인을 요청했어요. 사장님 승인을 기다려 주세요.');
+        } catch (err: any) {
+            AppToast.error(err?.response?.data?.message || '요청에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        } finally {
+            setApprovalBusy(false);
+        }
+    };
+
     const handlePunch = () => {
         if (!selectedStore) {
             AppToast.show('먼저 매장에 합류해 주세요.');
@@ -370,6 +398,17 @@ const EmployeeAttendanceHome: React.FC = () => {
                         leftIcon={<Ionicons name="timer-outline" size={20} color="#FFFFFF" />}
                         style={styles.punchButton}
                     />
+                    {state !== 'DONE' ? (
+                        <AppButton
+                            label={state === 'WORKING' ? '사장님 승인으로 퇴근 요청' : '사장님 승인으로 출근 요청'}
+                            variant="secondary"
+                            loading={approvalBusy}
+                            disabled={approvalBusy}
+                            leftIcon={<Ionicons name="checkmark-done-outline" size={18} color={BLUE} />}
+                            style={styles.approvalButton}
+                            onPress={requestApprovalPunch}
+                        />
+                    ) : null}
                     <View style={styles.secondaryActions}>
                         <AppButton
                             label="휴게 기록"
@@ -717,6 +756,9 @@ const styles = StyleSheet.create({
     punchButton: {
         borderRadius: radius.lg,
         backgroundColor: BLUE,
+    },
+    approvalButton: {
+        marginTop: spacing.sm,
     },
     secondaryActions: {
         flexDirection: 'row',

@@ -247,13 +247,22 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
         AppToast.show('준비중입니다.');
     };
 
+    const handleQuickApproval = () => {
+        if (primaryStoreId === undefined) {
+            AppToast.show('먼저 매장을 등록해 주세요.');
+            handleAddStore();
+            return;
+        }
+        navigation.navigate('AttendanceApproval', {storeId: primaryStoreId});
+    };
+
     const quickMenus: QuickMenu[] = [
         {key: 'employee', label: '직원 관리', icon: 'people-outline', onPress: handleQuickEmployee},
         {key: 'attendance', label: '근태 관리', icon: 'time-outline', onPress: handleQuickAttendance},
         {key: 'payroll', label: '급여 관리', icon: 'card-outline', onPress: handleQuickPayroll},
         {key: 'dashboard', label: '대시보드', icon: 'grid-outline', onPress: handleQuickDashboard},
         {key: 'schedule', label: '스케줄', icon: 'calendar-outline', onPress: handleQuickSchedule},
-        {key: 'comingSoon1', label: '준비중', icon: 'hourglass-outline', onPress: handleComingSoon, disabled: true},
+        {key: 'approval', label: '출근 승인', icon: 'checkmark-done-outline', onPress: handleQuickApproval},
         {key: 'comingSoon2', label: '준비중', icon: 'hourglass-outline', onPress: handleComingSoon, disabled: true},
         {key: 'comingSoon3', label: '준비중', icon: 'hourglass-outline', onPress: handleComingSoon, disabled: true},
     ];
