@@ -172,7 +172,11 @@ const EmployeeAttendanceHome: React.FC = () => {
             return;
         }
         loadStoreScopedData(selectedStore);
-    }, [selectedStore?.id, user?.id, loadStoreScopedData, selectedStore]);
+        // ⚠️ deps 에 selectedStore(객체)를 넣으면 무한 루프: loadStoreScopedData 가 setStores 로
+        // stores 를 갱신 → selectedStore 객체 정체성 변경 → 이 effect 재실행 → … 반복.
+        // 매장 식별은 id 로 충분하므로 selectedStore?.id 만 의존한다.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedStore?.id, user?.id, loadStoreScopedData]);
 
     useEffect(() => {
         if (state !== 'WORKING') {
