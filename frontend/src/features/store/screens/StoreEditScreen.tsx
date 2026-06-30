@@ -9,6 +9,7 @@ import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
 import storeService from '../services/storeService';
+import PayrollCycleEditor, {PayrollCycleForm, defaultPayrollCycle, fromStorePayrollCycle, toPayrollCyclePayload} from '../components/PayrollCycleEditor';
 
 /**
  * 14 StoreEdit — 확정 시안.
@@ -33,6 +34,9 @@ const StoreEditScreen: React.FC = () => {
     const [coords, setCoords] = useState<{latitude: number; longitude: number} | null>(null);
     const [geocoding, setGeocoding] = useState(false);
 
+    // 급여 정산 주기(시작/마감/지급일)
+    const [cycle, setCycle] = useState<PayrollCycleForm>(defaultPayrollCycle());
+
     useEffect(() => {
         (async () => {
             if (!storeId) {
@@ -50,6 +54,10 @@ const StoreEditScreen: React.FC = () => {
                 setInitialAddress(s.fullAddress ?? '');
                 if (typeof s.latitude === 'number' && typeof s.longitude === 'number') {
                     setCoords({latitude: s.latitude, longitude: s.longitude});
+                }
+                const pc = fromStorePayrollCycle(s.payrollCycle);
+                if (pc) {
+                    setCycle(pc);
                 }
             } catch (_) {/* ignore */}
         })();
@@ -88,6 +96,7 @@ const StoreEditScreen: React.FC = () => {
                 businessType,
                 storeStandardHourWage: wage,
                 radius: r,
+                payrollCycle: toPayrollCyclePayload(cycle) ?? undefined,
             });
 
             // 주소가 바뀐 경우에만 위치 갱신 (좌표는 검색으로 채워진 경우 함께 전송).
@@ -156,6 +165,10 @@ const StoreEditScreen: React.FC = () => {
 
             <Section title="급여">
                 <AppInput label="기본 시급 (원/시간)" value={standardWage} onChangeText={setStandardWage} keyboardType="number-pad" />
+            </Section>
+
+            <Section title="급여 정산 주기">
+                <PayrollCycleEditor value={cycle} onChange={setCycle} />
             </Section>
         </ScreenContainer>
     );

@@ -44,4 +44,8 @@ public class StoreRegistrationDto {
     @Valid
     private List<OperatingHoursUpdateDto.DayOperatingHours> operatingHours;
 
+    // 급여 정산 주기(시작/마감/지급일) — 선택. 미전달 시 미설정.
+    @Valid
+    private PayrollCycleDto payrollCycle;
+
 }

@@ -76,6 +76,10 @@ public class Store {
     @Embedded
     private OperatingHours operatingHours;
 
+    // 급여 정산 주기(시작/마감/지급일) — 사장이 매장 생성/수정 시 지정. 미설정 가능.
+    @Embedded
+    private PayrollCycle payrollCycle;
+
     // Soft Delete 관련 필드
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
@@ -99,8 +103,29 @@ public class Store {
     @Transient
     private Integer employeeCount;
 
+    @Transient
+    private Long monthlyLaborCost;
+
+    @Transient
+    private Integer todayAttendance;
+
+    @Transient
+    private Long monthlyRevenue;
+
     public void setEmployeeCount(Integer employeeCount) {
         this.employeeCount = employeeCount;
+    }
+
+    public void setMonthlyLaborCost(Long monthlyLaborCost) {
+        this.monthlyLaborCost = monthlyLaborCost;
+    }
+
+    public void setTodayAttendance(Integer todayAttendance) {
+        this.todayAttendance = todayAttendance;
+    }
+
+    public void setMonthlyRevenue(Long monthlyRevenue) {
+        this.monthlyRevenue = monthlyRevenue;
     }
 
     /** §56 가산수당 적용 여부 (5인 미만이 아니면 적용). */
@@ -310,6 +335,16 @@ public class Store {
 
         newOperatingHours.validateOperatingHours();
         this.operatingHours = newOperatingHours;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 급여 정산 주기 설정/변경. null 이면 미설정으로 둔다(부분 업데이트는 호출 측에서 판단).
+     *
+     * @param newPayrollCycle 새 정산 주기(검증·정규화는 {@link PayrollCycle#of}에서 수행)
+     */
+    public void updatePayrollCycle(PayrollCycle newPayrollCycle) {
+        this.payrollCycle = newPayrollCycle;
         this.updatedAt = LocalDateTime.now();
     }
 

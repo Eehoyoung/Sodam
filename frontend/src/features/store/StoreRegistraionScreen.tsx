@@ -17,8 +17,10 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../navigation/HomeNavigator';
 import {radius, spacing} from '../../theme/tokens';
 import {useThemeColors} from '../../common/hooks/useThemeColors';
+import {TIME_DIGITS_HELPER} from '../../common/utils/dateTimeInput';
 import useStoreRegistration from './hooks/useStoreRegistration';
 import type {DayOfWeek, StoreOperatingHourPayload} from './services/storeService';
+import PayrollCycleEditor, {PayrollCycleForm, defaultPayrollCycle, toPayrollCyclePayload} from './components/PayrollCycleEditor';
 
 interface AddressResult {
     place_name: string;
@@ -156,6 +158,7 @@ const StoreRegistrationScreen: React.FC = () => {
         radius: 100,
         storeStandardHourWage: null,
     });
+    const [cycle, setCycle] = useState<PayrollCycleForm>(defaultPayrollCycle());
     const [operatingMode, setOperatingMode] = useState<OperatingMode>('same');
     const [sameOpenTime, setSameOpenTime] = useState('1000');
     const [sameCloseTime, setSameCloseTime] = useState('2200');
@@ -359,6 +362,7 @@ const StoreRegistrationScreen: React.FC = () => {
             radius: storeData.radius,
             storeStandardHourWage: storeData.storeStandardHourWage ?? minimumWage,
             operatingHours: buildOperatingHoursPayload(),
+            payrollCycle: toPayrollCyclePayload(cycle) ?? undefined,
         });
     };
 
@@ -411,6 +415,8 @@ const StoreRegistrationScreen: React.FC = () => {
                     isWageBelowMinimum={isWageBelowMinimum}
                     phoneOk={phoneOk}
                     onOpenAddressModal={() => setShowAddressModal(true)}
+                    cycle={cycle}
+                    setCycle={setCycle}
                 />
             ) : null}
 
@@ -474,6 +480,8 @@ interface BasicInfoStepProps {
     isWageBelowMinimum: boolean;
     phoneOk: boolean;
     onOpenAddressModal: () => void;
+    cycle: PayrollCycleForm;
+    setCycle: React.Dispatch<React.SetStateAction<PayrollCycleForm>>;
 }
 
 const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
@@ -484,6 +492,8 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
     isWageBelowMinimum,
     phoneOk,
     onOpenAddressModal,
+    cycle,
+    setCycle,
 }) => (
     <>
         <SectionLabel text="기본 정보" />
@@ -555,6 +565,11 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
                 keyboardType="numeric"
                 error={isWageBelowMinimum ? `최저시급(${minimumWage.toLocaleString()}원) 이상으로 설정해 주세요` : undefined}
             />
+        </View>
+
+        <SectionLabel text="급여 정산 주기" />
+        <View style={styles.form}>
+            <PayrollCycleEditor value={cycle} onChange={setCycle} />
         </View>
     </>
 );
@@ -660,6 +675,7 @@ const TimeInput: React.FC<{label: string; value: string; onChangeText: (value: s
         placeholder="1000"
         keyboardType="number-pad"
         maxLength={4}
+        helper={TIME_DIGITS_HELPER}
         error={getTimeError(value)}
         containerStyle={styles.timeInput}
     />

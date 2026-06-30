@@ -29,6 +29,22 @@ export interface StoreRegistrationPayload {
   operatingHours: StoreOperatingHourPayload[];
   radius?: number; // 출퇴근 인증 반경 (m)
   storeStandardHourWage: number; // 기준 시급
+  payrollCycle?: PayrollCyclePayload; // 급여 정산 주기(선택)
+}
+
+export type PayrollMonthOffset = 'PREV_MONTH' | 'CURRENT_MONTH' | 'NEXT_MONTH';
+
+/** 급여 정산 주기 — BE PayrollCycleDto 와 정합. day 는 정수(1~31), 말일이면 day=null + lastDay=true.
+ *  offset 의 허용값(시작=전월/당월, 마감·지급=당월/익월)은 BE 가 검증한다. */
+export interface PayrollCyclePayload {
+  startOffset: PayrollMonthOffset;
+  startDay: number;
+  endOffset: PayrollMonthOffset;
+  endDay: number | null;
+  endLastDay: boolean;
+  payOffset: PayrollMonthOffset;
+  payDay: number | null;
+  payDayLastDay: boolean;
 }
 
 export interface StoreSummaryDto {

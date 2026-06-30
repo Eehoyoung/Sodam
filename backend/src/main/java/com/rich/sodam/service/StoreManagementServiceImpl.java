@@ -20,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
@@ -43,6 +45,8 @@ public class StoreManagementServiceImpl implements StoreManagementService {
     private final PlanAccessService planAccessService;
     private final DomainEventService domainEventService;
     private final LiveSyncPublisher liveSyncPublisher;
+    private final PayrollRepository payrollRepository;
+    private final AttendanceRepository attendanceRepository;
 
     @NotNull
     private Store getStore(StoreRegistrationDto storeDto) {
@@ -79,6 +83,10 @@ public class StoreManagementServiceImpl implements StoreManagementService {
 
         if (storeDto.getOperatingHours() != null) {
             store.updateOperatingHours(toOperatingHours(storeDto.getOperatingHours()));
+        }
+
+        if (storeDto.getPayrollCycle() != null) {
+            store.updatePayrollCycle(storeDto.getPayrollCycle().toDomain());
         }
         return store;
     }
@@ -452,16 +460,29 @@ public class StoreManagementServiceImpl implements StoreManagementService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "stores", key = "'master:' + #userId")
     public List<Store> getStoresByMaster(Long userId) {
         MasterProfile masterProfile = masterProfileRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사장 프로필을 찾을 수 없습니다."));
 
+        YearMonth thisMonth = YearMonth.now();
+        LocalDate monthStart = thisMonth.atDay(1);
+        LocalDate monthEnd = thisMonth.atEndOfMonth();
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+        LocalDateTime tomorrowStart = todayStart.plusDays(1);
+
         return masterStoreRelationRepository.findByMasterProfile(masterProfile)
                 .stream()
                 .map(MasterStoreRelation::getStore)
-                .peek(store -> store.setEmployeeCount(
-                        (int) employeeStoreRelationRepository.countByStoreAndIsActiveTrue(store)))
+                .peek(store -> {
+                    store.setEmployeeCount((int) employeeStoreRelationRepository.countByStoreAndIsActiveTrue(store));
+                    long laborCost = payrollRepository.findByStoreIdAndPeriod(store.getId(), monthStart, monthEnd)
+                            .stream()
+                            .mapToLong(payroll -> payroll.getGrossWage() == null ? 0L : payroll.getGrossWage())
+                            .sum();
+                    store.setMonthlyLaborCost(laborCost);
+                    store.setTodayAttendance(attendanceRepository.findByStoreAndDate(store, todayStart, tomorrowStart).size());
+                    store.setMonthlyRevenue(0L);
+                })
                 .collect(Collectors.toList());
     }
 
@@ -539,6 +560,11 @@ public class StoreManagementServiceImpl implements StoreManagementService {
         }
         if (updateDto.getStoreStandardHourWage() != null) {
             store.setStoreStandardHourWage(updateDto.getStoreStandardHourWage());
+        }
+
+        // 급여 정산 주기 — 전달 시 전체 교체(검증·0 패딩은 PayrollCycle.of)
+        if (updateDto.getPayrollCycle() != null) {
+            store.updatePayrollCycle(updateDto.getPayrollCycle().toDomain());
         }
 
         return storeRepository.save(store);
