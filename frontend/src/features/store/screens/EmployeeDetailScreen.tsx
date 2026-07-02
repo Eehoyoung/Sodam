@@ -245,6 +245,18 @@ const EmployeeDetailScreen: React.FC = () => {
 
             <View style={styles.contractRow}>
                 <AppListItem
+                    title="즉시 보너스 지급"
+                    subtitle="오늘 바빠서 고생한 직원에게 바로 보너스를 기록하고, 다음 급여에 자동 합산해요."
+                    right="›"
+                    onPress={() =>
+                        navigation.navigate('SendBonus', {
+                            storeId,
+                            employeeId: emp.id,
+                            employeeName: emp.name,
+                        })
+                    }
+                />
+                <AppListItem
                     title="근로계약서 보내기"
                     subtitle="근로조건을 작성해 직원에게 보내고 서명을 받을 수 있어요."
                     right="›"

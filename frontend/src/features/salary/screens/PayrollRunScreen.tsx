@@ -36,6 +36,7 @@ interface PayrollPreview {
     nightWorkHours: number;
     nightWorkWage: number;
     weeklyAllowance: number;
+    bonusWage: number;
     grossWage: number;
     taxAmount: number;
     netWage: number;
@@ -124,6 +125,7 @@ const PayrollRunScreen: React.FC = () => {
                     nightWorkHours: d.nightWorkHours ?? 0,
                     nightWorkWage: d.nightWorkWage ?? 0,
                     weeklyAllowance: d.weeklyAllowance ?? 0,
+                    bonusWage: d.bonusWage ?? 0,
                     grossWage: d.grossWage ?? 0,
                     taxAmount: d.taxAmount ?? 0,
                     netWage: d.netWage ?? 0,
@@ -441,6 +443,9 @@ const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust}) => {
                         <KV label="연장" value={`${p.overtimeHours.toFixed(1)}h · ${p.overtimeWage.toLocaleString('ko-KR')}원`} />
                         <KV label="야간" value={`${p.nightWorkHours.toFixed(1)}h · ${p.nightWorkWage.toLocaleString('ko-KR')}원`} />
                         <KV label="주휴" value={`${p.weeklyAllowance.toLocaleString('ko-KR')}원`} />
+                        {p.bonusWage > 0 ? (
+                            <KV label="즉시 보너스" value={`+${p.bonusWage.toLocaleString('ko-KR')}원`} />
+                        ) : null}
                         <View style={[styles.empDivider, {backgroundColor: c.divider}]} />
                         <KV label="세전" value={`${p.grossWage.toLocaleString('ko-KR')}원`} />
                         <KV label="세금 (3.3%)" value={`-${p.taxAmount.toLocaleString('ko-KR')}원`} />
