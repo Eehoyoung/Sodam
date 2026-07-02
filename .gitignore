@@ -26,6 +26,8 @@ docs/
 **/docs/
 *.png
 *.html
+*.md
+!/README.md
 
 # Temporary scripts
 _*.ps1
