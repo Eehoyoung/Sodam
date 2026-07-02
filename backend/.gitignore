@@ -186,7 +186,6 @@ coverage/
 # Junie AI 도구
 .junie/
 .junie
-.aiignore
 
 # 코드 품질 도구
 .sonar/
