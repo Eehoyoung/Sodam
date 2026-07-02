@@ -1,8 +1,8 @@
 /**
  * S1 — 근로계약서 서명 (직원).
- * 서명 캔버스(react-native-signature-canvas)가 설치돼 있으면 손글씨 서명을,
- * 없으면 "서명에 동의합니다" 확인 버튼으로 폴백한다. 어느 경로든 POST /sign 으로
- * 서명 시각(employeeSignedAt)을 기록한다.
+ * 서명 캔버스(react-native-signature-canvas)가 설치돼 있으면 손글씨 서명을 base64 PNG 로
+ * 캡처해 함께 전송하고, 없으면 "서명에 동의합니다" 확인 버튼으로 폴백한다. 어느 경로든
+ * POST /sign 으로 서명 시각(employeeSignedAt)을 기록한다.
  */
 import React, {useMemo, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
@@ -32,8 +32,16 @@ const ContractSignScreen: React.FC = () => {
     const SignatureCanvas = useMemo(() => loadSignatureCanvas(), []);
     const [agreed, setAgreed] = useState(false);
     const [hasDrawn, setHasDrawn] = useState(false);
+    const [signatureImage, setSignatureImage] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [done, setDone] = useState(false);
+
+    // react-native-signature-canvas onOK 콜백은 'data:image/png;base64,...' 형태 — 순수 base64만 보관.
+    const onSignatureCaptured = (dataUri: string) => {
+        const base64 = dataUri.includes(',') ? dataUri.split(',')[1] : dataUri;
+        setSignatureImage(base64);
+        setHasDrawn(true);
+    };
 
     const submit = async () => {
         if (!contractId) {
@@ -42,9 +50,8 @@ const ContractSignScreen: React.FC = () => {
         }
         setSubmitting(true);
         try {
-            // 서명 이미지는 현재 BE 가 저장하지 않음(타임스탬프만 기록).
-            // 캔버스/동의 어느 경로든 서명 의사 확인 후 동일하게 /sign 호출.
-            await contractService.sign(contractId);
+            // 캔버스 경로는 서명 이미지 함께 전송, 동의 버튼 경로는 시각만 기록.
+            await contractService.sign(contractId, SignatureCanvas ? signatureImage : null);
             setDone(true);
         } catch (e: unknown) {
             AppToast.error(contractErrorMessage(e, '서명에 실패했어요. 잠시 후 다시 시도해 주세요.'));
@@ -93,8 +100,11 @@ const ContractSignScreen: React.FC = () => {
                         clearText="지우기"
                         confirmText="확인"
                         autoClear={false}
-                        onOK={() => setHasDrawn(true)}
-                        onEmpty={() => setHasDrawn(false)}
+                        onOK={onSignatureCaptured}
+                        onEmpty={() => {
+                            setHasDrawn(false);
+                            setSignatureImage(null);
+                        }}
                         style={styles.canvas}
                     />
                 </View>

@@ -1,9 +1,9 @@
 /**
  * S1 전자 근로계약서 — API 클라이언트.
- * BE LaborContractController 의 6개 엔드포인트와 1:1 매핑.
+ * BE LaborContractController 엔드포인트와 1:1 매핑.
  */
 import api from '../../../common/utils/api';
-import type {LaborContract, LaborContractCreatePayload} from '../types';
+import type {LaborContract, LaborContractContext, LaborContractCreatePayload} from '../types';
 
 /**
  * axios 에러에서 사용자용 메시지를 안전하게 추출한다(any 미사용).
@@ -26,9 +26,11 @@ export const contractService = {
         return res.data;
     },
 
-    /** 직원 본인 서명(동의). 멱등 — 이미 서명됐으면 기존 시각 유지. */
-    async sign(contractId: number): Promise<LaborContract> {
-        const res = await api.post<LaborContract>(`/api/labor-contracts/${contractId}/sign`);
+    /** 직원 본인 서명(동의). 서명 이미지(base64)는 선택 — 멱등, 이미 서명됐으면 기존 시각 유지. */
+    async sign(contractId: number, signatureImage?: string | null): Promise<LaborContract> {
+        const res = await api.post<LaborContract>(`/api/labor-contracts/${contractId}/sign`, {
+            signatureImage: signatureImage ?? null,
+        });
         return res.data;
     },
 
@@ -36,6 +38,15 @@ export const contractService = {
     async getStoreEmployeeContracts(storeId: number, employeeId: number): Promise<LaborContract[]> {
         const res = await api.get<LaborContract[]>(
             `/api/stores/${storeId}/employees/${employeeId}/labor-contracts`,
+        );
+        return res.data;
+    },
+
+    /** 사장: 근로계약서 작성 화면 보조정보(당사자 정보·최저임금·가산율) */
+    async getContext(storeId: number, employeeId: number): Promise<LaborContractContext> {
+        const res = await api.get<LaborContractContext>(
+            `/api/stores/${storeId}/labor-contracts/context`,
+            {employeeId},
         );
         return res.data;
     },

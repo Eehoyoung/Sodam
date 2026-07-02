@@ -5,6 +5,8 @@ import com.rich.sodam.domain.LaborContract;
 import com.rich.sodam.domain.type.PlanFeature;
 import com.rich.sodam.domain.type.PlanType;
 import com.rich.sodam.dto.request.LaborContractCreateRequest;
+import com.rich.sodam.dto.request.LaborContractSignRequest;
+import com.rich.sodam.dto.response.LaborContractContextResponse;
 import com.rich.sodam.dto.response.LaborContractResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.EmployeeOrMaster;
@@ -55,6 +57,20 @@ public class LaborContractController {
         guard.assertEmployeeInStore(body.employeeId(), storeId);
         LaborContract saved = laborContractService.save(body.toEntity(storeId));
         return ResponseEntity.ok(LaborContractResponse.from(saved));
+    }
+
+    /**
+     * 사장이 근로계약서 작성 화면에 채워줄 보조정보(당사자 정보·최저임금·가산율 등)를 조회한다.
+     */
+    @MasterOnly
+    @GetMapping("/stores/{storeId}/labor-contracts/context")
+    public ResponseEntity<LaborContractContextResponse> context(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long storeId,
+            @RequestParam Long employeeId) {
+        guard.assertMasterOwnsStore(principal.getId(), storeId);
+        guard.assertEmployeeInStore(employeeId, storeId);
+        return ResponseEntity.ok(laborContractService.buildContext(storeId, employeeId));
     }
 
     /**
@@ -114,12 +130,15 @@ public class LaborContractController {
 
     /**
      * 직원 본인이 근로계약서에 서명(동의)한다. 멱등 — 중복 호출 시 최초 서명 시각 유지.
+     * 서명 이미지(base64)는 선택 — 캔버스 미지원 환경은 body 없이 호출 가능.
      */
     @PostMapping("/labor-contracts/{id}/sign")
     public ResponseEntity<LaborContractResponse> sign(
             @AuthenticationPrincipal UserPrincipal principal,
-            @PathVariable Long id) {
-        LaborContract signed = laborContractService.sign(id, principal.getId());
+            @PathVariable Long id,
+            @RequestBody(required = false) LaborContractSignRequest body) {
+        String signatureImage = body != null ? body.signatureImage() : null;
+        LaborContract signed = laborContractService.sign(id, principal.getId(), signatureImage);
         return ResponseEntity.ok(LaborContractResponse.from(signed));
     }
 }
