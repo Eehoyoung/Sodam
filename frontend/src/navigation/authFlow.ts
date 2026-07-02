@@ -9,6 +9,7 @@ export type AuthGateScreen = 'Login' | 'Signup' | 'KakaoLogin' | 'Consent' | 'Pr
 export type AuthGateParams = {selectedPurpose?: AuthPurpose; fromSignup?: boolean};
 
 export type RootRoute =
+    | {name: 'SodamLanding'; params?: undefined}
     | {name: 'Welcome'; params?: {selectedRole?: OnboardingRole; selectedPurpose?: AuthPurpose}}
     | {name: 'Auth'; params: {screen?: AuthGateScreen; params?: AuthGateParams}}
     | {name: 'HomeRoot'; params: {screen?: HomeLandingScreen; params?: any}};
@@ -130,7 +131,7 @@ export const resolveInitialRootRoute = (
     if (isAuthenticated) {
         return {name: 'Auth', params: {screen: 'Login'}};
     }
-    return {name: 'Welcome'};
+    return {name: 'SodamLanding'};
 };
 
 export const resetToRootRoute = (navigation: any, route: RootRoute) => {

@@ -102,7 +102,7 @@ public class PasswordResetService {
     }
 
     /**
-     * 정책: 8자 이상, 대소문자·숫자·특수문자 각 1자 이상.
+     * 정책: 8자 이상, 대문자·소문자·숫자·특수문자 4종 중 3종 이상 포함.
      */
     public static boolean isValidPassword(String pw) {
         if (pw == null || pw.length() < 8 || pw.length() > 128) return false;
@@ -113,7 +113,8 @@ public class PasswordResetService {
             else if (Character.isDigit(c)) hasDigit = true;
             else hasSpecial = true;
         }
-        return hasUpper && hasLower && hasDigit && hasSpecial;
+        int count = (hasUpper ? 1 : 0) + (hasLower ? 1 : 0) + (hasDigit ? 1 : 0) + (hasSpecial ? 1 : 0);
+        return count >= 3;
     }
 
     private static String hash(String code) {

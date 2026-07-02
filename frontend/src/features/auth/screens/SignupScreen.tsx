@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import {StyleSheet, View} from 'react-native';
+import {Image, StyleSheet, View} from 'react-native';
 import {NavigationProp, RouteProp} from '@react-navigation/native';
 import {
     AppButton,
@@ -13,6 +13,7 @@ import {
     SegmentedControl,
 } from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
+import {SODAM_LOGO} from '../../../assets/images';
 import authApi from '../services/authApi';
 import ConsentBlock, {ConsentValue} from '../components/ConsentBlock';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
@@ -34,6 +35,18 @@ const ROLES: {id: RoleId; label: string; hint: string}[] = [
 
 const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
+// 8자 이상, 대문자·소문자·숫자·특수문자 4종 중 3종 이상
+const isValidPassword = (pw: string): boolean => {
+    if (pw.length < 8) {return false;}
+    const hasUpper = /[A-Z]/.test(pw);
+    const hasLower = /[a-z]/.test(pw);
+    const hasDigit = /[0-9]/.test(pw);
+    const hasSpecial = /[^A-Za-z0-9]/.test(pw);
+    return [hasUpper, hasLower, hasDigit, hasSpecial].filter(Boolean).length >= 3;
+};
+
+const PW_POLICY = '8자 이상, 대문자·소문자·숫자·특수문자 중 3가지 이상';
+
 const indexForPurpose = (purpose?: AuthPurpose) => {
     const index = ROLES.findIndex(role => role.id === purpose);
     return index >= 0 ? index : 0;
@@ -46,6 +59,7 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
     const [roleIndex, setRoleIndex] = useState(() => indexForPurpose(route.params?.selectedPurpose));
     const [isLoading, setIsLoading] = useState(false);
     const [emailError, setEmailError] = useState<string | undefined>();
+    const [emailChecking, setEmailChecking] = useState(false);
     const [pwError, setPwError] = useState<string | undefined>();
     const [consent, setConsent] = useState<ConsentValue>({
         age: false,
@@ -62,20 +76,45 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
 
     const role = ROLES[roleIndex];
 
+    const handleEmailBlur = async () => {
+        if (!email) {return;}
+        if (!isValidEmail(email)) {
+            setEmailError('올바른 이메일 주소를 입력해 주세요.');
+            return;
+        }
+        setEmailChecking(true);
+        try {
+            const {available} = await authApi.checkEmail(email.trim().toLowerCase());
+            setEmailError(available ? undefined : '이미 사용 중인 이메일이에요.');
+        } catch {
+            // 네트워크 오류 시 서버측 검증으로 fallback
+        } finally {
+            setEmailChecking(false);
+        }
+    };
+
     const handleSignup = async () => {
         if (isLoading) {
             return;
         }
-        if (!name || !email || !password) {
+        if (!name.trim() || !email || !password) {
             AppToast.show('이름, 이메일, 비밀번호를 모두 입력해 주세요.');
+            return;
+        }
+        if (name.trim().length < 2) {
+            AppToast.warn('이름은 2자 이상 입력해 주세요.');
             return;
         }
         if (!isValidEmail(email)) {
             setEmailError('올바른 이메일 주소를 입력해 주세요.');
             return;
         }
-        if (password.length < 8) {
-            setPwError('비밀번호는 8자 이상이어야 해요.');
+        if (emailError) {
+            AppToast.warn(emailError);
+            return;
+        }
+        if (!isValidPassword(password)) {
+            setPwError(`비밀번호: ${PW_POLICY}`);
             return;
         }
         if (!consent.age || !consent.terms || !consent.privacy) {
@@ -92,7 +131,7 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
             );
 
             await unifiedStorage.setItem('pendingPurposeAfterSignup', purposeToPendingSlug(role.id));
-            AppToast.success('가입이 완료되었습니다. 로그인 후 약관과 기본 정보를 마저 설정해 주세요.');
+            AppToast.success('가입이 완료되었습니다. 로그인 후 전화번호 등 기본 정보를 마저 설정해 주세요.');
             navigation.navigate('Login', {selectedPurpose: role.id, fromSignup: true});
             setName('');
             setEmail('');
@@ -123,8 +162,12 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
     return (
         <ScreenContainer
             scroll
-            header={<AppHeader title="회원가입" onBack={() => navigation.goBack()} />}
+            // 큰 타이틀("소담을 시작할게요")이 이미 화면 목적을 말해주므로 헤더엔 뒤로가기만 남긴다.
+            header={<AppHeader onBack={() => navigation.goBack()} />}
             footer={footer}>
+            <View style={styles.logoRow}>
+                <Image source={SODAM_LOGO} style={styles.logo} resizeMode="contain" accessibilityLabel="소담 로고" />
+            </View>
             <AppText variant="headingLg" style={styles.title}>
                 {'소담을\n시작할게요'}
             </AppText>
@@ -142,7 +185,13 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
             </AppCard>
 
             <View style={styles.form}>
-                <AppInput label="이름" placeholder="이름을 입력해 주세요" value={name} onChangeText={setName} />
+                <AppInput
+                    label="이름"
+                    placeholder="이름을 입력해 주세요 (2자 이상)"
+                    value={name}
+                    onChangeText={setName}
+                    helper="실명 또는 닉네임 2자 이상"
+                />
                 <AppInput
                     label="이메일"
                     placeholder="name@example.com"
@@ -153,15 +202,16 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
                             setEmailError(undefined);
                         }
                     }}
-                    onBlur={() => setEmailError(email && !isValidEmail(email) ? '올바른 이메일 주소를 입력해 주세요.' : undefined)}
+                    onBlur={handleEmailBlur}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     error={emailError}
+                    helper={emailChecking ? '확인 중...' : undefined}
                 />
                 <AppInput
                     label="비밀번호"
-                    placeholder="8자 이상 입력"
-                    helper={pwError ? undefined : '8자 이상 입력해 주세요.'}
+                    placeholder="비밀번호를 입력해 주세요"
+                    helper={pwError ? undefined : PW_POLICY}
                     value={password}
                     onChangeText={t => {
                         setPassword(t);
@@ -182,6 +232,8 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
 };
 
 const styles = StyleSheet.create({
+    logoRow: {alignItems: 'center', marginBottom: spacing.lg},
+    logo: {width: 56, height: 56},
     title: {marginBottom: spacing.xxl, letterSpacing: -0.8},
     sectionLabel: {marginBottom: spacing.sm},
     hint: {marginTop: spacing.md},

@@ -1,11 +1,10 @@
 import React, {useMemo, useState} from 'react';
-import {Pressable, StyleSheet, View} from 'react-native';
+import {Image, Pressable, StyleSheet, View} from 'react-native';
 import {NavigationProp, RouteProp} from '@react-navigation/native';
 import {useQueryClient} from '@tanstack/react-query';
 import {
     AppButton,
     AppCard,
-    AppHeader,
     AppInput,
     AppText,
     AppToast,
@@ -13,6 +12,7 @@ import {
     ScreenContainer,
 } from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
+import {SODAM_LOGO} from '../../../assets/images';
 import {useResponsive} from '../../../common/hooks/useResponsive';
 import {useAuth} from '../../../contexts/AuthContext';
 import userService from '../services/userService';
@@ -20,6 +20,7 @@ import {AuthStackParamList} from '../../../navigation/types';
 import {resetToRootRoute, resolvePostAuthRoute} from '../../../navigation/authFlow';
 import {queryKeys} from '../../../common/utils/queryClient';
 import {User} from '../services/authService';
+import {DATE_DIGITS_HELPER, dateDigitsToIso, isValidDateDigits, sanitizeDateDigits} from '../../../common/utils/dateTimeInput';
 
 interface Props {
     navigation: NavigationProp<any>;
@@ -46,11 +47,11 @@ const isValidBirthDate = (raw: string): boolean => {
     if (!raw) {
         return true;
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    if (!isValidDateDigits(raw)) {
         return false;
     }
-    const d = new Date(raw);
-    return !isNaN(d.getTime()) && d.getFullYear() >= 1900 && d.getFullYear() <= new Date().getFullYear();
+    const year = Number(raw.slice(0, 4));
+    return year >= 1900 && year <= new Date().getFullYear();
 };
 
 export default function ProfileBasicsScreen({navigation, route}: Props) {
@@ -88,27 +89,23 @@ export default function ProfileBasicsScreen({navigation, route}: Props) {
     };
 
     const onChangeBirth = (v: string) => {
-        const digits = v.replace(/[^0-9]/g, '').slice(0, 8);
-        let formatted = digits;
-        if (digits.length >= 5) {
-            formatted = `${digits.slice(0, 4)}-${digits.slice(4, 6)}${digits.length > 6 ? `-${digits.slice(6)}` : ''}`;
-        }
-        setBirthDate(formatted);
-        if (birthError && isValidBirthDate(formatted)) {
+        const digits = sanitizeDateDigits(v);
+        setBirthDate(digits);
+        if (birthError && isValidBirthDate(digits)) {
             setBirthError(undefined);
         }
     };
 
     const onBlurBirth = () => {
         if (birthDate && !isValidBirthDate(birthDate)) {
-            setBirthError('생년월일은 YYYY-MM-DD 형식으로 입력해 주세요.');
+            setBirthError(DATE_DIGITS_HELPER);
         }
     };
 
     const handleSubmit = async () => {
         if (!isReady) {
             if (name.trim().length < 2) {
-                AppToast.warn('이름을 2자 이상 입력해 주세요.');
+                AppToast.warn('이름은 2자 이상 입력해 주세요.');
             } else if (!isValidPhone(phone)) {
                 setPhoneError('010으로 시작하는 휴대폰 번호를 입력해 주세요.');
                 AppToast.warn('휴대폰 번호를 확인해 주세요.');
@@ -128,7 +125,7 @@ export default function ProfileBasicsScreen({navigation, route}: Props) {
             await userService.updateProfileBasics({
                 phone,
                 name: name.trim(),
-                birthDate: birthDate || undefined,
+                birthDate: birthDate ? dateDigitsToIso(birthDate) : undefined,
             });
 
             const nextUser: User = {
@@ -152,7 +149,8 @@ export default function ProfileBasicsScreen({navigation, route}: Props) {
     return (
         <ScreenContainer
             scroll
-            header={<AppHeader title="기본 정보" />}
+            // 뒤로가기 없는 필수 게이트 화면(무한루프 방지, AuthNavigator 참고) — 네비 헤더도
+            // 커스텀 헤더도 실질적 기능이 없어 작은 로고 하나로 대체하고 헤더 자체를 없앤다.
             footer={
                 <CtaStack bordered>
                     <AppButton
@@ -167,6 +165,9 @@ export default function ProfileBasicsScreen({navigation, route}: Props) {
                     </AppText>
                 </CtaStack>
             }>
+            <View style={styles.logoRow}>
+                <Image source={SODAM_LOGO} style={styles.logo} resizeMode="contain" accessibilityLabel="소담 로고" />
+            </View>
             <AppCard variant="warm" hero>
                 <AppText variant="headingMd">마지막 필수 설정이에요</AppText>
                 <AppText variant="bodyLg" tone="secondary" style={[styles.heroSub, {marginTop: titleMargin / 2}]}>
@@ -199,23 +200,23 @@ export default function ProfileBasicsScreen({navigation, route}: Props) {
                     value={birthDate}
                     onChangeText={onChangeBirth}
                     onBlur={onBlurBirth}
-                    placeholder="1990-01-01"
+                    placeholder="19900101"
                     keyboardType="number-pad"
-                    maxLength={10}
+                    maxLength={8}
                     error={birthError}
-                    helper="만 14세 이상 확인용으로만 사용합니다."
+                    helper={DATE_DIGITS_HELPER}
                 />
             </View>
 
             <Pressable
                 onPress={() =>
                     AppToast.show(
-                        '소담은 휴대폰 번호로 광고 메시지를 보내지 않습니다. 마케팅 수신은 별도 화면에서 변경할 수 있어요.',
+                        '저희는 전화번호로 연락하거나 메시지를 보내지 않아요. 원하실 때 알림 설정에서 변경할 수 있어요.',
                     )
                 }
                 style={({pressed}) => [styles.privacyRow, pressed && {opacity: 0.5}]}>
                 <AppText variant="caption" tone="brand" weight="700">
-                    개인정보 사용 방식 자세히 보기
+                    개인정보 사용 동의 안내 보기
                 </AppText>
             </Pressable>
         </ScreenContainer>
@@ -223,6 +224,8 @@ export default function ProfileBasicsScreen({navigation, route}: Props) {
 }
 
 const styles = StyleSheet.create({
+    logoRow: {alignItems: 'center', marginBottom: spacing.lg},
+    logo: {width: 56, height: 56},
     heroSub: {opacity: 0.85},
     form: {},
     privacyRow: {alignItems: 'center', paddingVertical: spacing.lg},

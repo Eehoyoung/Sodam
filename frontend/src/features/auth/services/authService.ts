@@ -176,6 +176,18 @@ const getWithFallback = async <T>(primary: string, fallback: string) => {
     }
 };
 
+const refreshStoredSession = async (refreshToken: string): Promise<boolean> => {
+    try {
+        const res = await api.post<RawAuthResponse>('/api/auth/refresh', {refreshToken});
+        await mapAuthResponse(res.data);
+        return true;
+    } catch (error) {
+        logger.error('refreshStoredSession failed', 'AUTH_SERVICE', error);
+        await TokenManager.clear();
+        return false;
+    }
+};
+
 const authService = {
     login: async (loginRequest: LoginRequest): Promise<AuthResponse> => {
         try {
@@ -285,7 +297,8 @@ const authService = {
         const tokens = await TokenManager.getTokens();
         const token = tokens?.accessToken ?? await TokenManager.getAccess();
         if (!token) {
-            return false;
+            const refreshToken = tokens?.refreshToken ?? await TokenManager.getRefresh();
+            return refreshToken ? await refreshStoredSession(refreshToken) : false;
         }
         // JWT 만료 시점 검증 — payload.exp(unix sec) 가 현재보다 작으면 false.
         // 만료된 토큰을 살아있다고 잘못 판정하면 메인 진입 후 첫 API 호출에서 401 → refresh 흐름.
@@ -302,7 +315,12 @@ const authService = {
                 return true;
             }
             const nowSec = Math.floor(Date.now() / 1000);
-            return payload.exp > nowSec;
+            if (payload.exp > nowSec) {
+                return true;
+            }
+
+            const refreshToken = tokens?.refreshToken ?? await TokenManager.getRefresh();
+            return refreshToken ? await refreshStoredSession(refreshToken) : false;
         } catch (_) {
             return true; // 파싱 실패 → 서버 판정에 위임
         }

@@ -88,6 +88,12 @@ export const authApi = {
     await Linking.openURL(url);
   },
 
+  /** 이메일 사용 가능 여부 확인. available=true 면 가입 가능. */
+  async checkEmail(email: string): Promise<{available: boolean}> {
+    const res = await api.get<{data: {available: boolean}}>('/api/auth/email-check', {params: {email}});
+    return res.data.data ?? {available: false};
+  },
+
   async setPurpose(userId: number, purpose: 'personal' | 'employee' | 'boss'): Promise<{ message: string; userGrade?: string }> {
     const grade = purpose === 'boss' ? 'MASTER' : purpose === 'employee' ? 'EMPLOYEE' : 'PERSONAL';
     const res = await api.post(`/api/users/${userId}/purpose`, { purpose, userGrade: grade });
