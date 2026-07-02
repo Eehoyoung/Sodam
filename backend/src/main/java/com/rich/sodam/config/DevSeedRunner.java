@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -22,8 +23,8 @@ import java.time.LocalDateTime;
  *
  * 에뮬레이터에서 즉시 로그인 가능하도록 다음 계정·매장을 생성한다:
  *   - 사장: owner@sodam.dev (MASTER, PRO 구독)
- *   - 직원: staff@sodam.dev (EMPLOYEE)
- *   - 매장: 소담 데모 매장 (서울 중구 좌표, 반경 500m, 시급 12,000)
+ *   - 직원: staff@sodam.dev (EMPLOYEE) + emp1~9@sodam.dev (총 10명, 다양한 시급/입사일)
+ *   - 매장: 소담 데모 카페 (서울 중구 좌표, 반경 500m, 시급 12,000)
  *
  * 보안 가드:
  *   - {@code @Profile("dev")} 로 운영(prod)에서는 절대 실행 안 됨.
@@ -62,8 +63,17 @@ public class DevSeedRunner implements CommandLineRunner {
         log.info("DevSeed: 데모 데이터 생성 시작");
 
         // saveAndFlush 로 ID 확정 + 영속성 컨텍스트 정리 (MapsId 의 detached 회피)
-        User owner = userRepository.saveAndFlush(buildUser("owner@sodam.dev", "사장님(데모)", UserGrade.MASTER));
-        User staff = userRepository.saveAndFlush(buildUser("staff@sodam.dev", "지훈(데모)", UserGrade.EMPLOYEE));
+        User owner = buildUser("owner@sodam.dev", "사장님(데모)", UserGrade.MASTER);
+        owner.setPhone("010-1234-5678");
+        owner.setBirthDate(java.time.LocalDate.of(1990, 1, 1));
+        owner.setProfileCompletedAt(LocalDateTime.now());
+        owner = userRepository.saveAndFlush(owner);
+
+        User staff = buildUser("staff@sodam.dev", "지훈(데모)", UserGrade.EMPLOYEE);
+        staff.setPhone("010-9999-0001");
+        staff.setBirthDate(java.time.LocalDate.of(1995, 5, 15));
+        staff.setProfileCompletedAt(LocalDateTime.now());
+        staff = userRepository.saveAndFlush(staff);
 
         // owner/staff 를 다시 fetch 해서 managed 상태 보장
         owner = userRepository.findById(owner.getId()).orElseThrow();
@@ -89,8 +99,13 @@ public class DevSeedRunner implements CommandLineRunner {
         store = storeRepository.save(store);
 
         masterStoreRelationRepository.save(new MasterStoreRelation(masterProfile, store));
-        employeeStoreRelationRepository.save(
-                new EmployeeStoreRelation(employeeProfile, store, 12_000));
+        EmployeeStoreRelation staffRel = new EmployeeStoreRelation(employeeProfile, store, 12_000);
+        staffRel.setHireDate(LocalDate.now().minusMonths(3));
+        staffRel.setContractedWeeklyDays(5);
+        employeeStoreRelationRepository.save(staffRel);
+
+        // 추가 더미 직원 9명 (다양한 시급·입사일·계약일수로 시연 경우의 수 극대화)
+        seedExtraEmployees(store);
 
         // 급여 정책 시드 (소득세 3.3% + 한국 노동법 기본값)
         com.rich.sodam.domain.PayrollPolicy policy = new com.rich.sodam.domain.PayrollPolicy();
@@ -117,6 +132,42 @@ public class DevSeedRunner implements CommandLineRunner {
 
         log.info("DevSeed: 완료 — owner=owner@sodam.dev / staff=staff@sodam.dev (비번=SODAM_DEV_SEED_PASSWORD), 매장 #{}",
                 store.getId());
+    }
+
+    /** emp1~9@sodam.dev: 시급/입사일/계약일수 다양화 */
+    private void seedExtraEmployees(Store store) {
+        record EmpSpec(String email, String name, String phone, Integer wage, long hiresMonthsAgo, int weeklyDays) {}
+
+        EmpSpec[] specs = {
+            new EmpSpec("emp1@sodam.dev",  "김민지", "010-2001-0001",  9_860, 6,  3),
+            new EmpSpec("emp2@sodam.dev",  "이서준", "010-2002-0002", 13_500, 12, 5),
+            new EmpSpec("emp3@sodam.dev",  "박아라", "010-2003-0003", 10_500, 3,  4),
+            new EmpSpec("emp4@sodam.dev",  "최태양", "010-2004-0004", 14_000, 24, 5),
+            new EmpSpec("emp5@sodam.dev",  "윤나은", "010-2005-0005",  9_860, 0,  3),
+            new EmpSpec("emp6@sodam.dev",  "정현우", "010-2006-0006", 12_500, 8,  5),
+            new EmpSpec("emp7@sodam.dev",  "강지수", "010-2007-0007",   null, 1,  4),  // 매장 기준시급
+            new EmpSpec("emp8@sodam.dev",  "조재원", "010-2008-0008", 15_000, 18, 6),
+            new EmpSpec("emp9@sodam.dev",  "한소희", "010-2009-0009", 11_000, 4,  4),
+        };
+
+        for (EmpSpec s : specs) {
+            User u = buildUser(s.email(), s.name(), UserGrade.EMPLOYEE);
+            u.setPhone(s.phone());
+            u.setProfileCompletedAt(LocalDateTime.now());
+            u = userRepository.saveAndFlush(u);
+            u = userRepository.findById(u.getId()).orElseThrow();
+
+            EmployeeProfile ep = new EmployeeProfile(u);
+            employeeProfileRepository.save(ep);
+
+            EmployeeStoreRelation rel = (s.wage() != null)
+                    ? new EmployeeStoreRelation(ep, store, s.wage())
+                    : new EmployeeStoreRelation(ep, store);
+            rel.setHireDate(LocalDate.now().minusMonths(s.hiresMonthsAgo()));
+            rel.setContractedWeeklyDays(s.weeklyDays());
+            employeeStoreRelationRepository.save(rel);
+        }
+        log.info("DevSeed: 더미 직원 9명 추가 완료 (emp1~9@sodam.dev, 비번=SODAM_DEV_SEED_PASSWORD)");
     }
 
     private User buildUser(String email, String name, UserGrade grade) {
