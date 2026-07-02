@@ -28,6 +28,10 @@ docs/
 *.html
 *.md
 !/README.md
+# 앱 빌드에 필요한 실제 에셋은 위 *.png 규칙에서 예외 처리 (로고/런처 아이콘 등)
+!frontend/src/assets/**/*.png
+!frontend/android/**/res/**/*.png
+!frontend/ios/**/*.png
 
 # Temporary scripts
 _*.ps1
