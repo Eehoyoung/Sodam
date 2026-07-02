@@ -7,6 +7,7 @@ import {queryKeys} from '../common/utils/queryClient';
 import AuthNavigator from './AuthNavigator';
 import HomeNavigator from './HomeNavigator';
 import Protected from '../components/Protected';
+import SodamLandingScreen from '../features/welcome/screens/SodamLandingScreen';
 import UsageSelectionScreen from '../features/welcome/screens/UsageSelectionScreen';
 import WelcomeMainScreen from '../features/welcome/screens/WelcomeMainScreen';
 import appHeaderOptions from './appHeaderOptions';
@@ -92,10 +93,16 @@ const AppNavigator: React.FC<Props> = ({appReady = true}) => {
                 initialRouteName={initialRoute.name}
                 screenOptions={appHeaderOptions}>
                 <Stack.Screen
+                    name="SodamLanding"
+                    component={SodamLandingScreen}
+                    initialParams={initialRoute.name === 'SodamLanding' ? initialRoute.params : undefined}
+                    options={{headerShown: false}}
+                />
+                <Stack.Screen
                     name="Welcome"
                     component={UsageSelectionScreen}
                     initialParams={initialRoute.name === 'Welcome' ? initialRoute.params : undefined}
-                    options={{title: '소담'}}
+                    options={{headerShown: false}}
                 />
                 <Stack.Screen
                     name="Auth"
@@ -109,7 +116,7 @@ const AppNavigator: React.FC<Props> = ({appReady = true}) => {
                     initialParams={initialRoute.name === 'HomeRoot' ? initialRoute.params : undefined}
                     options={{headerShown: false}}
                 />
-                <Stack.Screen name="WelcomeMain" component={WelcomeMainScreen} options={{title: '웰컴'}} />
+                <Stack.Screen name="WelcomeMain" component={WelcomeMainScreen} options={{headerShown: false}} />
                 <Stack.Screen name="SessionExpired" component={SessionExpiredRoute} options={{headerShown: false}} />
                 <Stack.Screen name="PermissionDenied" component={PermissionDeniedRoute} options={{title: '권한 안내'}} />
                 <Stack.Screen name="PaymentFailed" component={PaymentFailedRoute} options={{title: '결제'}} />

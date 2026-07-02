@@ -283,7 +283,7 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen
                 name="PayrollRun"
                 component={PayrollRunScreen}
-                options={{headerShown: true, title: '급여 정산'}}
+                options={{headerShown: false}}
             />
             <Stack.Screen
                 name="JoinStoreByCode"

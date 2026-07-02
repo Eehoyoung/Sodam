@@ -7,6 +7,7 @@ import type {HomeStackParamList} from './HomeNavigator';
 export type {HomeStackParamList};
 
 export type RootStackParamList = {
+    SodamLanding: undefined;
     Welcome: {selectedRole?: OnboardingRole; selectedPurpose?: AuthPurpose} | undefined;
     WelcomeMain: {selectedRole?: OnboardingRole; selectedPurpose?: AuthPurpose} | undefined;
     Auth: {screen?: keyof AuthStackParamList; params?: AuthStackParamList[keyof AuthStackParamList]};

@@ -22,7 +22,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   titleText: {
-    color: COLORS.WHITE,
+    color: COLORS.SODAM_BLUE,
     marginLeft: 8,
     fontSize: 16,
     fontWeight: '600',
