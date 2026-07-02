@@ -205,6 +205,47 @@ export function thisWeekRange(today: Date = new Date()): {from: string; to: stri
   return {from: toIso(monday), to: toIso(sunday)};
 }
 
+/** ISO 날짜에 n일 더한 ISO 날짜 반환. */
+export function addDays(iso: string, n: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  date.setDate(date.getDate() + n);
+  return toIso(date);
+}
+
+/** 'YYYY-MM-DD' 형식으로 오늘 날짜 반환. */
+export function todayIso(): string {
+  return toIso(new Date());
+}
+
+/** 현재 월 'YYYY-MM' 반환. */
+export function currentYearMonth(): string {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/** 'YYYY-MM' → {from: 첫날, to: 마지막날} ISO 날짜 범위 반환. */
+export function monthRange(yearMonth: string): {from: string; to: string} {
+  const [y, m] = yearMonth.split('-').map(Number);
+  return {
+    from: toIso(new Date(y, m - 1, 1)),
+    to: toIso(new Date(y, m, 0)),
+  };
+}
+
+/** ISO 날짜가 속한 주의 월요일(from) ~ 일요일(to) 반환. */
+export function weekRangeOf(iso: string): {from: string; to: string} {
+  const [y, m, d] = iso.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const day = date.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const monday = new Date(date);
+  monday.setDate(date.getDate() + diff);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return {from: toIso(monday), to: toIso(sunday)};
+}
+
 function toIso(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');

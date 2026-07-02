@@ -23,11 +23,18 @@ import {
     thisWeekRange,
     WorkShift,
 } from '../services/shiftService';
+import {
+    DATE_DIGITS_HELPER,
+    TIME_DIGITS_HELPER,
+    dateDigitsToIso,
+    isValidDateDigits,
+    isValidTimeDigits,
+    sanitizeDateDigits,
+    sanitizeTimeDigits,
+    timeDigitsToHHmm,
+} from '../../../common/utils/dateTimeInput';
 
 type Route = RouteProp<{E: {storeId: number; employeeId: number; employeeName?: string}}, 'E'>;
-
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /**
  * 근무 시프트 등록 (B10/E-NEW-05) — 사장이 특정 직원의 근무 일정 추가·조회·삭제.
@@ -40,9 +47,12 @@ const EditShiftScreen: React.FC = () => {
     const c = useThemeColors();
     const {storeId, employeeId, employeeName} = route.params;
 
-    const [shiftDate, setShiftDate] = useState('');
-    const [startTime, setStartTime] = useState('');
-    const [endTime, setEndTime] = useState('');
+    const [shiftDate, setShiftDateValue] = useState('');
+    const [startTime, setStartTimeValue] = useState('');
+    const [endTime, setEndTimeValue] = useState('');
+    const setShiftDate = (value: string) => setShiftDateValue(sanitizeDateDigits(value));
+    const setStartTime = (value: string) => setStartTimeValue(sanitizeTimeDigits(value));
+    const setEndTime = (value: string) => setEndTimeValue(sanitizeTimeDigits(value));
     const [memo, setMemo] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
@@ -64,19 +74,21 @@ const EditShiftScreen: React.FC = () => {
     }, [load]));
 
     const save = async () => {
-        if (!DATE_RE.test(shiftDate)) {
-            setError('근무 날짜를 YYYY-MM-DD 형식으로 입력해 주세요.');
+        if (!isValidDateDigits(shiftDate)) {
+            setError(DATE_DIGITS_HELPER);
             return;
         }
-        if (!TIME_RE.test(startTime)) {
-            setError('시작 시간을 HH:MM 형식으로 입력해 주세요.');
+        if (!isValidTimeDigits(startTime)) {
+            setError(TIME_DIGITS_HELPER);
             return;
         }
-        if (!TIME_RE.test(endTime)) {
-            setError('종료 시간을 HH:MM 형식으로 입력해 주세요.');
+        if (!isValidTimeDigits(endTime)) {
+            setError(TIME_DIGITS_HELPER);
             return;
         }
-        if (endTime <= startTime) {
+        const startTimeHHmm = timeDigitsToHHmm(startTime);
+        const endTimeHHmm = timeDigitsToHHmm(endTime);
+        if (endTimeHHmm <= startTimeHHmm) {
             setError('종료 시간은 시작 시간보다 늦어야 해요.');
             return;
         }
@@ -85,9 +97,9 @@ const EditShiftScreen: React.FC = () => {
         try {
             await createShift(storeId, {
                 employeeId,
-                shiftDate,
-                startTime,
-                endTime,
+                shiftDate: dateDigitsToIso(shiftDate),
+                startTime: startTimeHHmm,
+                endTime: endTimeHHmm,
                 memo: memo.trim() || undefined,
             });
             setShiftDate('');
@@ -137,8 +149,10 @@ const EditShiftScreen: React.FC = () => {
             <AppInput
                 value={shiftDate}
                 onChangeText={setShiftDate}
-                placeholder="YYYY-MM-DD"
-                keyboardType="numbers-and-punctuation"
+                placeholder="20260629"
+                keyboardType="number-pad"
+                maxLength={8}
+                helper={DATE_DIGITS_HELPER}
             />
 
             <View style={styles.timeRow}>
@@ -147,8 +161,10 @@ const EditShiftScreen: React.FC = () => {
                     <AppInput
                         value={startTime}
                         onChangeText={setStartTime}
-                        placeholder="HH:MM"
-                        keyboardType="numbers-and-punctuation"
+                        placeholder="1020"
+                        keyboardType="number-pad"
+                        maxLength={4}
+                        helper={TIME_DIGITS_HELPER}
                     />
                 </View>
                 <View style={styles.flex}>
@@ -156,8 +172,10 @@ const EditShiftScreen: React.FC = () => {
                     <AppInput
                         value={endTime}
                         onChangeText={setEndTime}
-                        placeholder="HH:MM"
-                        keyboardType="numbers-and-punctuation"
+                        placeholder="2330"
+                        keyboardType="number-pad"
+                        maxLength={4}
+                        helper={TIME_DIGITS_HELPER}
                     />
                 </View>
             </View>

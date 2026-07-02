@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+﻿import React, {useState} from 'react';
 import {StyleSheet} from 'react-native';
 import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
 import {
@@ -16,13 +16,12 @@ import {
     DOC_TYPE_ORDER,
     DocumentType,
 } from '../services/documentService';
+import {DATE_DIGITS_HELPER, dateDigitsToIso, isValidDateDigits, sanitizeDateDigits} from '../../../common/utils/dateTimeInput';
 
 type Route = RouteProp<{A: {storeId: number; employeeId: number}}, 'A'>;
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
 /**
- * A5 서류 추가 — 종류·제목·발급/만료일 입력 후 저장. 원본 파일은 저장하지 않음(메타만).
+ * A5 ?쒕쪟 異붽? ??醫낅쪟쨌?쒕ぉ쨌諛쒓툒/留뚮즺???낅젰 ????? ?먮낯 ?뚯씪? ??ν븯吏 ?딆쓬(硫뷀?留?.
  */
 const AddDocumentScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -31,8 +30,10 @@ const AddDocumentScreen: React.FC = () => {
 
     const [typeIdx, setTypeIdx] = useState(0);
     const [title, setTitle] = useState('');
-    const [issuedAt, setIssuedAt] = useState('');
-    const [expiresAt, setExpiresAt] = useState('');
+    const [issuedAt, setIssuedAtValue] = useState('');
+    const [expiresAt, setExpiresAtValue] = useState('');
+    const setIssuedAt = (value: string) => setIssuedAtValue(sanitizeDateDigits(value));
+    const setExpiresAt = (value: string) => setExpiresAtValue(sanitizeDateDigits(value));
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
 
@@ -40,15 +41,15 @@ const AddDocumentScreen: React.FC = () => {
 
     const save = async () => {
         if (!title.trim()) {
-            setError('서류 제목을 입력해 주세요.');
+            setError('?쒕쪟 ?쒕ぉ???낅젰??二쇱꽭??');
             return;
         }
-        if (issuedAt && !DATE_RE.test(issuedAt)) {
-            setError('발급일은 YYYY-MM-DD 형식으로 입력해 주세요.');
+        if (issuedAt && !isValidDateDigits(issuedAt)) {
+            setError(DATE_DIGITS_HELPER);
             return;
         }
-        if (expiresAt && !DATE_RE.test(expiresAt)) {
-            setError('만료일은 YYYY-MM-DD 형식으로 입력해 주세요.');
+        if (expiresAt && !isValidDateDigits(expiresAt)) {
+            setError(DATE_DIGITS_HELPER);
             return;
         }
         setSaving(true);
@@ -57,12 +58,12 @@ const AddDocumentScreen: React.FC = () => {
             await addDocument(storeId, employeeId, {
                 type,
                 title: title.trim(),
-                issuedAt: issuedAt || undefined,
-                expiresAt: expiresAt || undefined,
+                issuedAt: issuedAt ? dateDigitsToIso(issuedAt) : undefined,
+                expiresAt: expiresAt ? dateDigitsToIso(expiresAt) : undefined,
             });
             navigation.goBack();
         } catch {
-            setError('저장에 실패했어요. 잠시 후 다시 시도해 주세요.');
+            setError('??μ뿉 ?ㅽ뙣?덉뼱?? ?좎떆 ???ㅼ떆 ?쒕룄??二쇱꽭??');
             setSaving(false);
         }
     };
@@ -83,12 +84,12 @@ const AddDocumentScreen: React.FC = () => {
             <AppInput value={title} onChangeText={setTitle} placeholder="예: 2026년 보건증" />
 
             <AppText variant="caption" tone="secondary" style={styles.label}>발급일 (선택)</AppText>
-            <AppInput value={issuedAt} onChangeText={setIssuedAt} placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" />
+            <AppInput value={issuedAt} onChangeText={setIssuedAt} placeholder="20260629" keyboardType="number-pad" maxLength={8} helper={DATE_DIGITS_HELPER} />
 
             <AppText variant="caption" tone="secondary" style={styles.label}>만료일 (선택)</AppText>
-            <AppInput value={expiresAt} onChangeText={setExpiresAt} placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" />
+            <AppInput value={expiresAt} onChangeText={setExpiresAt} placeholder="20260629" keyboardType="number-pad" maxLength={8} helper={DATE_DIGITS_HELPER} />
             <AppText variant="caption" tone="tertiary" style={styles.hint}>
-                만료일을 넣으면 갱신 임박 시 알려드려요. (보건증 등)
+                만료일을 입력하면 갱신 전 알림을 보낼 수 있어요.
             </AppText>
 
             {error ? (

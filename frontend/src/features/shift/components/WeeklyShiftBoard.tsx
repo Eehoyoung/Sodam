@@ -1,5 +1,10 @@
+/**
+ * 드래그앤드롭 주간 스케줄 보드 (B10).
+ *
+ * 행 헤더 우측 "+" 탭 → onAddShift(date) 호출로 근무 추가 (fix: 보드에서도 추가 가능)
+ */
 import React from 'react';
-import {StyleSheet, View} from 'react-native';
+import {Pressable, StyleSheet, View} from 'react-native';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import Animated, {
     runOnJS,
@@ -14,25 +19,16 @@ import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {radius, spacing} from '../../../theme/tokens';
 import {isOvernight, shortTime, WorkShift} from '../services/shiftService';
 
-/**
- * 드래그앤드롭 주간 스케줄 보드 (B10).
- *
- * <p>요일별 고정 높이 행에 근무 칩을 배치하고, 칩을 길게 눌러 위/아래로 끌면 다른 요일로 이동한다.
- * 행 높이가 고정(ROW_HEIGHT)이라 translationY를 일(day) 단위로 결정적으로 환산 — 좌표 측정 불필요.
- * 이동(드롭) 시 onMoveShift로 새 날짜를 알리며, 실제 반영은 상위에서 updateShift 호출.
- *
- * <p>스코프: 기존 근무의 "요일 이동"만. 신규 생성·시각 변경은 폼/수정모드에서.
- */
-
 const ROW_HEIGHT = 84;
 const WEEKDAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
 
 interface Props {
-    weekDates: string[]; // 길이 7, 월~일 ISO(YYYY-MM-DD)
+    weekDates: string[];
     shifts: WorkShift[];
     employeeNameById: Record<number, string>;
     onMoveShift: (shift: WorkShift, newDate: string) => void;
     onPressShift?: (shift: WorkShift) => void;
+    onAddShift?: (date: string) => void; // 빈 행 "+" 탭 콜백
     disabled?: boolean;
 }
 
@@ -42,19 +38,16 @@ export default function WeeklyShiftBoard({
     employeeNameById,
     onMoveShift,
     onPressShift,
+    onAddShift,
     disabled,
 }: Props) {
     const c = useThemeColors();
-
-    // 드래그 중 강조할 대상 요일 인덱스(-1=없음). UI 스레드에서 행 강조에 사용.
     const targetIndex = useSharedValue(-1);
     const dragging = useSharedValue(0);
 
     const dateIndex = React.useMemo(() => {
         const map: Record<string, number> = {};
-        weekDates.forEach((d, i) => {
-            map[d] = i;
-        });
+        weekDates.forEach((d, i) => { map[d] = i; });
         return map;
     }, [weekDates]);
 
@@ -62,9 +55,7 @@ export default function WeeklyShiftBoard({
         const rows: WorkShift[][] = weekDates.map(() => []);
         shifts.forEach(s => {
             const idx = dateIndex[s.shiftDate];
-            if (idx !== undefined) {
-                rows[idx].push(s);
-            }
+            if (idx !== undefined) { rows[idx].push(s); }
         });
         rows.forEach(list =>
             list.sort((a, b) => shortTime(a.startTime).localeCompare(shortTime(b.startTime))),
@@ -86,6 +77,7 @@ export default function WeeklyShiftBoard({
                     dragging={dragging}
                     onMoveShift={onMoveShift}
                     onPressShift={onPressShift}
+                    onAddShift={onAddShift}
                     disabled={disabled}
                     colors={c}
                 />
@@ -104,6 +96,7 @@ interface DayRowProps {
     dragging: SharedValue<number>;
     onMoveShift: (shift: WorkShift, newDate: string) => void;
     onPressShift?: (shift: WorkShift) => void;
+    onAddShift?: (date: string) => void;
     disabled?: boolean;
     colors: ReturnType<typeof useThemeColors>;
 }
@@ -118,6 +111,7 @@ function DayRow({
     dragging,
     onMoveShift,
     onPressShift,
+    onAddShift,
     disabled,
     colors: c,
 }: DayRowProps) {
@@ -133,10 +127,21 @@ function DayRow({
 
     return (
         <Animated.View style={[styles.row, rowStyle]}>
+            {/* 날짜 헤더 + "+" 버튼 */}
             <View style={styles.rowHeader}>
                 <AppText variant="caption" tone="secondary">{WEEKDAY_LABELS[index]}</AppText>
                 <AppText variant="titleMd">{Number(month)}/{Number(day)}</AppText>
+                {onAddShift && (
+                    <Pressable
+                        hitSlop={8}
+                        onPress={() => onAddShift(date)}
+                        style={[styles.addBtn, {backgroundColor: c.surfaceMuted}]}>
+                        <Ionicons name="add" size={14} color={c.brandPrimary} />
+                    </Pressable>
+                )}
             </View>
+
+            {/* 근무 칩 목록 */}
             <View style={styles.rowBody}>
                 {rowShifts.length === 0 ? (
                     <AppText variant="caption" tone="tertiary">—</AppText>
@@ -177,12 +182,8 @@ interface ChipProps {
 
 function clampIndex(i: number): number {
     'worklet';
-    if (i < 0) {
-        return 0;
-    }
-    if (i > 6) {
-        return 6;
-    }
+    if (i < 0) { return 0; }
+    if (i > 6) { return 6; }
     return i;
 }
 
@@ -204,9 +205,7 @@ function DraggableChip({
 
     const handleDrop = React.useCallback(
         (newIndex: number) => {
-            if (newIndex !== dayIndex) {
-                onMoveShift(shift, weekDates[newIndex]);
-            }
+            if (newIndex !== dayIndex) { onMoveShift(shift, weekDates[newIndex]); }
         },
         [dayIndex, onMoveShift, shift, weekDates],
     );
@@ -243,9 +242,7 @@ function DraggableChip({
     const tap = Gesture.Tap()
         .enabled(!disabled && !!onPressShift)
         .maxDuration(220)
-        .onEnd(() => {
-            runOnJS(handleTap)();
-        });
+        .onEnd(() => { runOnJS(handleTap)(); });
 
     const gesture = Gesture.Exclusive(pan, tap);
 
@@ -283,9 +280,7 @@ function DraggableChip({
 }
 
 const styles = StyleSheet.create({
-    board: {
-        gap: spacing.xs,
-    },
+    board: {gap: spacing.xs},
     row: {
         minHeight: ROW_HEIGHT,
         height: ROW_HEIGHT,
@@ -297,7 +292,15 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     rowHeader: {
-        width: 48,
+        width: 52,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 2,
+    },
+    addBtn: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -320,7 +323,5 @@ const styles = StyleSheet.create({
         shadowRadius: 6,
         shadowOffset: {width: 0, height: 3},
     },
-    chipText: {
-        flexShrink: 1,
-    },
+    chipText: {flexShrink: 1},
 });

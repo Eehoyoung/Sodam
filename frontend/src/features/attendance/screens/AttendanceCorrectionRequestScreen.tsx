@@ -8,6 +8,14 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
+import {
+    TIME_DIGITS_HELPER,
+    compactDateFromApi,
+    compactTimeFromApi,
+    isValidTimeDigits,
+    localDateTimeFromDigits,
+    sanitizeTimeDigits,
+} from '../../../common/utils/dateTimeInput';
 
 type RouteParams = NonNullable<HomeStackParamList['AttendanceCorrectionRequest']>;
 
@@ -22,8 +30,10 @@ const AttendanceCorrectionRequestScreen: React.FC = () => {
     const c = useThemeColors();
     const params: RouteParams = route.params ?? {};
 
-    const [checkIn, setCheckIn] = useState(formatTime(params.currentCheckIn) ?? '09:00');
-    const [checkOut, setCheckOut] = useState(formatTime(params.currentCheckOut) ?? '18:00');
+    const [checkIn, setCheckInValue] = useState(formatTime(params.currentCheckIn) ?? '0900');
+    const [checkOut, setCheckOutValue] = useState(formatTime(params.currentCheckOut) ?? '1800');
+    const setCheckIn = (value: string) => setCheckInValue(sanitizeTimeDigits(value));
+    const setCheckOut = (value: string) => setCheckOutValue(sanitizeTimeDigits(value));
     const [reason, setReason] = useState('');
     const [loading, setLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
@@ -33,8 +43,8 @@ const AttendanceCorrectionRequestScreen: React.FC = () => {
             AppToast.warn('정정 사유를 5자 이상 적어주세요.\n사장님이 더 빠르게 검토해 주실 수 있어요.');
             return;
         }
-        if (!isValidTime(checkIn) || !isValidTime(checkOut)) {
-            AppToast.warn('시간을 HH:MM 형식으로 입력해 주세요.');
+        if (!isValidTimeDigits(checkIn) || !isValidTimeDigits(checkOut)) {
+            AppToast.warn(TIME_DIGITS_HELPER);
             return;
         }
         if (!params.attendanceId) {
@@ -44,12 +54,10 @@ const AttendanceCorrectionRequestScreen: React.FC = () => {
         setLoading(true);
         try {
             // 정정 대상 날짜(YYYY-MM-DD) + 입력 시각(HH:MM)을 LocalDateTime 으로 결합
-            const baseDate = /^\d{4}-\d{2}-\d{2}/.test(params.date ?? '')
-                ? (params.date as string).slice(0, 10)
-                : new Date().toISOString().slice(0, 10);
+            const baseDate = compactDateFromApi(params.date) || compactDateFromApi(new Date().toISOString());
             await api.post(`/api/attendance/${params.attendanceId}/correction-request`, {
-                proposedCheckIn: `${baseDate}T${checkIn}:00`,
-                proposedCheckOut: `${baseDate}T${checkOut}:00`,
+                proposedCheckIn: localDateTimeFromDigits(baseDate, checkIn),
+                proposedCheckOut: localDateTimeFromDigits(baseDate, checkOut),
                 reason: reason.trim(),
             });
             setSubmitted(true);
@@ -98,19 +106,23 @@ const AttendanceCorrectionRequestScreen: React.FC = () => {
 
             <View style={styles.form}>
                 <AppInput
-                    label="수정 출근 시간 (HH:MM)"
+                    label="수정 출근 시간"
                     value={checkIn}
                     onChangeText={setCheckIn}
-                    placeholder="09:00"
-                    keyboardType="numbers-and-punctuation"
+                    placeholder="1020"
+                    keyboardType="number-pad"
+                    maxLength={4}
+                    helper={TIME_DIGITS_HELPER}
                     editable={!loading}
                 />
                 <AppInput
-                    label="수정 퇴근 시간 (HH:MM)"
+                    label="수정 퇴근 시간"
                     value={checkOut}
                     onChangeText={setCheckOut}
-                    placeholder="18:00"
-                    keyboardType="numbers-and-punctuation"
+                    placeholder="2330"
+                    keyboardType="number-pad"
+                    maxLength={4}
+                    helper={TIME_DIGITS_HELPER}
                     editable={!loading}
                 />
                 <AppInput
@@ -136,21 +148,7 @@ const AttendanceCorrectionRequestScreen: React.FC = () => {
 };
 
 function formatTime(iso?: string): string | undefined {
-    if (!iso) {
-        return undefined;
-    }
-    try {
-        const d = new Date(iso);
-        return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    } catch (_) {
-        return undefined;
-    }
-}
-function pad(n: number): string {
-    return String(n).padStart(2, '0');
-}
-function isValidTime(s: string): boolean {
-    return /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
+    return compactTimeFromApi(iso);
 }
 
 const styles = StyleSheet.create({

@@ -1,5 +1,17 @@
-import React, {useCallback, useMemo, useState} from 'react';
-import {Pressable, StyleSheet, View} from 'react-native';
+/**
+ * 사장 스케줄 관리 화면 (B10 v2 — UX 개선).
+ *
+ * [수정 사항]
+ * 1. 날짜 입력 제거 → 캘린더 탭에서 날짜 탭 후 바텀시트 오픈. 폼 내 날짜 표시만.
+ * 2. 캘린더↔보드 탭 연결 → 보드 탭 진입 시 selectedDate 기준 주로 자동 이동.
+ * 3. 보드 월 이동이 calMonth를 건드리지 않음 → 달력 탭 뷰가 튀지 않음.
+ * 4. 로딩 2단계 → 초기 로드만 전체 스피너, 이후 월 변경은 달력 위 인디케이터만.
+ * 5. 직원 선택 칩 → 인라인 드롭다운으로 교체 (직원 수 많아도 정상 표시).
+ * 6. 확정·알림 버튼을 보드 주 헤더에 배치 → 항상 노출.
+ * 7. 보드 빈 칸 "+" → onAddShift로 바텀시트 오픈.
+ */
+import React, {useCallback, useMemo, useRef, useState} from 'react';
+import {ActivityIndicator, Pressable, StyleSheet, View} from 'react-native';
 import {RouteProp, useFocusEffect} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -10,84 +22,78 @@ import {
     AppInput,
     AppText,
     AppToast,
+    BottomSheet,
     EmptyState,
     ErrorState,
     LoadingState,
     ScreenContainer,
 } from '../../../common/components/ds';
+import AppCalendar from '../../../common/components/AppCalendar';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {radius, spacing} from '../../../theme/tokens';
+import {COLORS} from '../../../common/components/logo/Colors';
+import {
+    TIME_DIGITS_HELPER,
+    compactTimeFromApi,
+    isValidTimeDigits,
+    sanitizeTimeDigits,
+    timeDigitsToHHmm,
+} from '../../../common/utils/dateTimeInput';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import storeService, {DayOperatingHours, DayOfWeek, StoreEmployeeDto} from '../../store/services/storeService';
 import {
+    addDays,
     applyTemplate,
     confirmStoreWeekShifts,
     createShift,
     createTemplate,
+    currentYearMonth,
     deleteShift,
     deleteTemplate,
     fetchStoreShifts,
     fetchTemplates,
     isOvernight,
+    monthRange,
     ShiftTemplate,
     shiftDurationHours,
     shortTime,
-    thisWeekRange,
+    todayIso,
     updateShift,
+    weekRangeOf,
     WorkShift,
+    WorkShiftCreateBody,
+    WorkShiftUpdateBody,
 } from '../services/shiftService';
 import WeeklyShiftBoard from '../components/WeeklyShiftBoard';
 
 type StoreScheduleRouteProp = RouteProp<HomeStackParamList, 'StoreSchedule'>;
-type StoreScheduleNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'StoreSchedule'>;
+type StoreScheduleNavProp = NativeStackNavigationProp<HomeStackParamList, 'StoreSchedule'>;
 
 interface Props {
     route: StoreScheduleRouteProp;
-    navigation: StoreScheduleNavigationProp;
+    navigation: StoreScheduleNavProp;
 }
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
-const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
-// JS getDay()(0=일) → BE DayOfWeek enum.
-const DOW_ENUM: DayOfWeek[] = [
-    'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY',
-];
+type TabMode = 'calendar' | 'board' | 'template';
 
-type ViewMode = 'list' | 'employee' | 'board' | 'template';
-const VIEW_MODES: {mode: ViewMode; label: string; icon: string}[] = [
-    {mode: 'list', label: '목록', icon: 'list-outline'},
-    {mode: 'employee', label: '직원별', icon: 'people-outline'},
-    {mode: 'board', label: '보드', icon: 'grid-outline'},
-    {mode: 'template', label: '템플릿', icon: 'documents-outline'},
-];
+const EMP_COLORS = [COLORS.SODAM_ORANGE, COLORS.SODAM_BLUE, '#10B981', '#8B5CF6', '#F59E0B', '#EC4899'];
+const DOW_ENUM: DayOfWeek[] = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+const WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
 
-function parseIsoDate(iso: string): Date {
+function parseDate(iso: string): Date {
     const [y, m, d] = iso.split('-').map(Number);
     return new Date(y, (m || 1) - 1, d || 1);
 }
 
-function toIsoDate(date: Date): string {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+function formatDateLong(iso: string): string {
+    if (!iso) { return '—'; }
+    const d = parseDate(iso);
+    return `${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAY_KO[d.getDay()]})`;
 }
 
-function addDays(iso: string, days: number): string {
-    const date = parseIsoDate(iso);
-    date.setDate(date.getDate() + days);
-    return toIsoDate(date);
-}
-
-function formatDate(iso: string): string {
-    const date = parseIsoDate(iso);
-    return `${date.getMonth() + 1}/${date.getDate()} (${WEEKDAYS[date.getDay()]})`;
-}
-
-function shiftHours(shift: WorkShift): number {
-    // 야간(종료<=시작) 근무는 익일로 보고 랩어라운드 계산. (서비스 헬퍼 재사용)
-    return shiftDurationHours(shift.startTime, shift.endTime);
+function formatDateShort(iso: string): string {
+    const d = parseDate(iso);
+    return `${d.getMonth() + 1}/${d.getDate()} (${WEEKDAY_KO[d.getDay()]})`;
 }
 
 function timeToMin(t: string): number {
@@ -95,73 +101,49 @@ function timeToMin(t: string): number {
     return (Number.isNaN(h) ? 0 : h) * 60 + (Number.isNaN(m) ? 0 : m);
 }
 
-// 자정 넘김 고려한 [시작,종료] 분 구간. 야간(종료<=시작)이면 종료에 +24h.
 function shiftInterval(start: string, end: string): [number, number] {
     const s = timeToMin(start);
     let e = timeToMin(end);
-    if (e <= s) {
-        e += 24 * 60;
-    }
+    if (e <= s) { e += 24 * 60; }
     return [s, e];
 }
 
-/**
- * 저장 전 비차단 경고(시안 §"영업시간 밖·중복 근무·휴게 누락"). 입력 형식이 유효할 때만 계산.
- * 에러(차단)는 validate가 담당하고, 여기서는 "확인하세요" 수준의 경고만 반환한다.
- */
-function computeShiftWarnings(args: {
+function computeWarnings(args: {
     employeeId: number | null;
     date: string;
     start: string;
     end: string;
     shifts: WorkShift[];
     operatingHours: DayOperatingHours[];
-    excludeShiftId?: number | null;
-    employeeName?: string;
+    excludeId?: number | null;
+    empName?: string;
 }): string[] {
-    const {employeeId, date, start, end, shifts, operatingHours, excludeShiftId, employeeName} = args;
+    const {employeeId, date, start, end, shifts, operatingHours, excludeId, empName} = args;
     const out: string[] = [];
-    if (!employeeId || !DATE_RE.test(date) || !TIME_RE.test(start) || !TIME_RE.test(end) || start === end) {
-        return out;
-    }
+    if (!employeeId || !date || !start || !end || start === end) { return out; }
     const [s, e] = shiftInterval(start, end);
 
-    // 1) 중복 근무 — 같은 직원·같은 날, 시간 겹침
-    const overlaps = shifts.some(sh => {
-        if (sh.employeeId !== employeeId || sh.shiftDate !== date) {
-            return false;
-        }
-        if (sh.id === excludeShiftId) {
-            return false; // 수정 중인 자기 자신은 중복 비교 제외
-        }
+    const overlap = shifts.some(sh => {
+        if (sh.employeeId !== employeeId || sh.shiftDate !== date || sh.id === excludeId) { return false; }
         const [s2, e2] = shiftInterval(shortTime(sh.startTime), shortTime(sh.endTime));
         return s < e2 && s2 < e;
     });
-    if (overlaps) {
-        out.push(`${employeeName ?? '이 직원'}의 근무가 같은 날 다른 근무와 시간이 겹쳐요.`);
-    }
+    if (overlap) { out.push(`${empName ?? '이 직원'}의 근무가 같은 날 다른 근무와 겹쳐요.`); }
 
-    // 2) 휴게 누락 — 근로기준법 §54
     const hours = (e - s) / 60;
-    if (hours >= 8) {
-        out.push('8시간 이상 근무엔 1시간 이상 휴게가 필요해요 (근로기준법 §54).');
-    } else if (hours >= 4) {
-        out.push('4시간 이상 근무엔 30분 이상 휴게가 필요해요 (근로기준법 §54).');
-    }
+    if (hours >= 8) { out.push('8시간 이상 근무엔 1시간 이상 휴게가 필요해요 (§54).'); }
+    else if (hours >= 4) { out.push('4시간 이상 근무엔 30분 이상 휴게가 필요해요 (§54).'); }
 
-    // 3) 영업시간 밖 — 해당 요일 운영시간 대비
     if (operatingHours.length > 0) {
-        const dow = DOW_ENUM[parseIsoDate(date).getDay()];
+        const dow = DOW_ENUM[parseDate(date).getDay()];
         const day = operatingHours.find(d => d.dayOfWeek === dow);
         if (day?.isClosed) {
             out.push('휴무일에 근무가 잡혔어요. 운영시간을 확인해 주세요.');
         } else if (day?.openTime && day?.closeTime) {
             const open = timeToMin(day.openTime);
             const close = timeToMin(day.closeTime);
-            const overnightShift = e > 24 * 60;
-            const beforeOpen = timeToMin(start) < open;
-            const afterClose = !overnightShift && timeToMin(end) > close;
-            if (beforeOpen || afterClose) {
+            const isON = e > 24 * 60;
+            if (timeToMin(start) < open || (!isON && timeToMin(end) > close)) {
                 out.push(`영업시간(${day.openTime.slice(0, 5)}~${day.closeTime.slice(0, 5)}) 밖 근무예요.`);
             }
         }
@@ -169,277 +151,387 @@ function computeShiftWarnings(args: {
     return out;
 }
 
+// ── 메인 컴포넌트 ────────────────────────────────────────────────────────────
 export default function StoreScheduleScreen({route, navigation}: Props) {
     const {storeId} = route.params;
     const c = useThemeColors();
-    const [weekRange] = useState(() => thisWeekRange());
 
+    // ─ 화면 ─
+    const [tab, setTab] = useState<TabMode>('calendar');
+    const [calMonth, setCalMonth] = useState(currentYearMonth);
+    const [selectedDate, setSelectedDate] = useState<string | null>(todayIso);
+    const [boardWeekStart, setBoardWeekStart] = useState(() => weekRangeOf(todayIso()).from);
+
+    // ─ 데이터 ─
     const [employees, setEmployees] = useState<StoreEmployeeDto[]>([]);
     const [shifts, setShifts] = useState<WorkShift[]>([]);
-    const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
-    const [shiftDate, setShiftDate] = useState(weekRange.from);
-    const [startTime, setStartTime] = useState('09:00');
-    const [endTime, setEndTime] = useState('18:00');
-    const [memo, setMemo] = useState('');
-    const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [loadError, setLoadError] = useState<string | null>(null);
-    const [saving, setSaving] = useState(false);
-    const [copying, setCopying] = useState(false);
-    const [confirming, setConfirming] = useState(false);
-    const [editingShiftId, setEditingShiftId] = useState<number | null>(null);
-    const [viewMode, setViewMode] = useState<ViewMode>('list');
     const [operatingHours, setOperatingHours] = useState<DayOperatingHours[]>([]);
     const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
+    const loadedMonthsRef = useRef<Set<string>>(new Set()); // 이미 로드된 월 추적
+
+    // ─ 로딩 (분리) ─
+    const [pageLoading, setPageLoading] = useState(true);   // 최초 1회 전체 스피너
+    const [calLoading, setCalLoading] = useState(false);    // 달력 월 변경 시 인디케이터
+    const [loadError, setLoadError] = useState<string | null>(null);
+
+    // ─ 바텀시트 ─
+    const [sheetVisible, setSheetVisible] = useState(false);
+    const [editingShift, setEditingShift] = useState<WorkShift | null>(null);
+    const [formEmployee, setFormEmployee] = useState<number | null>(null);
+    const [formDateIso, setFormDateIso] = useState(''); // YYYY-MM-DD, 항상 유효값
+    const [formStart, setFormStartRaw] = useState('0900');
+    const [formEnd, setFormEndRaw] = useState('1800');
+    const [formMemo, setFormMemo] = useState('');
+    const [formError, setFormError] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
+    const [dropdownOpen, setDropdownOpen] = useState(false); // 직원 인라인 드롭다운
+
+    // ─ 보드 액션 ─
+    const [confirming, setConfirming] = useState(false);
+    const [copying, setCopying] = useState(false);
     const [templateName, setTemplateName] = useState('');
     const [templateBusy, setTemplateBusy] = useState(false);
 
-    // 보드(드래그)용 월~일 7일 ISO 배열.
-    const weekDates = useMemo(() => {
-        return Array.from({length: 7}, (_, i) => addDays(weekRange.from, i));
-    }, [weekRange.from]);
+    const setFormStart = (v: string) => setFormStartRaw(sanitizeTimeDigits(v));
+    const setFormEnd = (v: string) => setFormEndRaw(sanitizeTimeDigits(v));
 
-    const employeeNameById = useMemo(() => {
-        return employees.reduce<Record<number, string>>((acc, emp) => {
-            acc[emp.id] = emp.name;
-            return acc;
-        }, {});
-    }, [employees]);
+    // ── 데이터 로드 (3종) ────────────────────────────────────────────────────
 
-    const sortedShifts = useMemo(() => {
-        return [...shifts].sort((a, b) =>
-            `${a.shiftDate}${shortTime(a.startTime)}`.localeCompare(`${b.shiftDate}${shortTime(b.startTime)}`),
-        );
-    }, [shifts]);
-
-    const summary = useMemo(() => {
-        const employeeIds = new Set(shifts.map(item => item.employeeId));
-        const totalHours = shifts.reduce((sum, item) => sum + shiftHours(item), 0);
-        return {
-            shiftCount: shifts.length,
-            employeeCount: employeeIds.size,
-            totalHours,
-        };
-    }, [shifts]);
-
-    const shiftsByDate = useMemo(() => {
-        return sortedShifts.reduce<Record<string, WorkShift[]>>((acc, item) => {
-            acc[item.shiftDate] = acc[item.shiftDate] ? [...acc[item.shiftDate], item] : [item];
-            return acc;
-        }, {});
-    }, [sortedShifts]);
-
-    // 직원별 보기 — 직원 그룹별 시프트(이름순).
-    const shiftsByEmployee = useMemo(() => {
-        const groups = new Map<number, WorkShift[]>();
-        sortedShifts.forEach(item => {
-            const list = groups.get(item.employeeId) ?? [];
-            list.push(item);
-            groups.set(item.employeeId, list);
-        });
-        return Array.from(groups.entries())
-            .map(([employeeId, list]) => ({employeeId, list}))
-            .sort((a, b) =>
-                (employeeNameById[a.employeeId] ?? '').localeCompare(employeeNameById[b.employeeId] ?? ''),
-            );
-    }, [sortedShifts, employeeNameById]);
-
-    // 저장 전 비차단 경고 — 현재 폼 입력 기준.
-    const formWarnings = useMemo(
-        () => computeShiftWarnings({
-            employeeId: selectedEmployeeId,
-            date: shiftDate,
-            start: startTime,
-            end: endTime,
-            shifts,
-            operatingHours,
-            excludeShiftId: editingShiftId,
-            employeeName: selectedEmployeeId !== null ? employeeNameById[selectedEmployeeId] : undefined,
-        }),
-        [selectedEmployeeId, shiftDate, startTime, endTime, shifts, operatingHours, editingShiftId, employeeNameById],
+    /** 초기 전체 로드: 직원·운영시간·템플릿·시프트 */
+    const loadBase = useCallback(
+        async (ym: string) => {
+            setLoadError(null);
+            try {
+                const {from, to} = monthRange(ym);
+                const [empList, shiftList, hours, tpls] = await Promise.all([
+                    storeService.getStoreEmployees(storeId),
+                    fetchStoreShifts(storeId, from, to),
+                    storeService.getStoreOperatingHours(storeId).catch(() => [] as DayOperatingHours[]),
+                    fetchTemplates(storeId).catch(() => [] as ShiftTemplate[]),
+                ]);
+                setEmployees(empList);
+                setShifts(shiftList);
+                setOperatingHours(hours);
+                setTemplates(tpls);
+                loadedMonthsRef.current.add(ym);
+                setFormEmployee(prev => prev ?? empList[0]?.id ?? null);
+            } catch (e: unknown) {
+                const msg = e instanceof Error ? e.message : '스케줄 정보를 불러오지 못했어요.';
+                setLoadError(msg);
+            }
+        },
+        [storeId],
     );
 
-    const load = useCallback(async () => {
-        setLoading(true);
-        setLoadError(null);
-        try {
-            const [employeeList, shiftList, hours, tpls] = await Promise.all([
-                storeService.getStoreEmployees(storeId),
-                fetchStoreShifts(storeId, weekRange.from, weekRange.to),
-                // 영업시간 밖 근무 경고용 — 실패해도 화면은 정상(경고만 비활성).
-                storeService.getStoreOperatingHours(storeId).catch(() => [] as DayOperatingHours[]),
-                fetchTemplates(storeId).catch(() => [] as ShiftTemplate[]),
-            ]);
-            setEmployees(employeeList);
-            setShifts(shiftList);
-            setOperatingHours(hours);
-            setTemplates(tpls);
-            setSelectedEmployeeId(prev => prev ?? employeeList[0]?.id ?? null);
-        } catch (err: any) {
-            setLoadError(err?.message || '스케줄 정보를 불러오지 못했어요.');
-        } finally {
-            setLoading(false);
-        }
-    }, [storeId, weekRange.from, weekRange.to]);
+    /** 캘린더 월 이동: 시프트만 교체, 직원/운영시간은 유지 */
+    const loadShiftsForMonth = useCallback(
+        async (ym: string) => {
+            setCalLoading(true);
+            try {
+                const {from, to} = monthRange(ym);
+                const list = await fetchStoreShifts(storeId, from, to);
+                setShifts(list);
+                loadedMonthsRef.current.add(ym);
+            } catch {
+                AppToast.error('해당 월 스케줄을 불러오지 못했어요.');
+            } finally {
+                setCalLoading(false);
+            }
+        },
+        [storeId],
+    );
 
-    useFocusEffect(useCallback(() => {
-        load();
-    }, [load]));
+    /** 보드가 다른 월로 이동 시: 시프트 추가 병합 (calMonth 건드리지 않음) */
+    const loadShiftsAdditive = useCallback(
+        async (ym: string) => {
+            if (loadedMonthsRef.current.has(ym)) { return; }
+            try {
+                const {from, to} = monthRange(ym);
+                const list = await fetchStoreShifts(storeId, from, to);
+                setShifts(prev => {
+                    const filtered = prev.filter(s => !s.shiftDate.startsWith(ym));
+                    return [...filtered, ...list];
+                });
+                loadedMonthsRef.current.add(ym);
+            } catch { /* 보드 이동 중 오류는 무시 — 다음 주 이동 시 재시도 */ }
+        },
+        [storeId],
+    );
 
-    const validate = () => {
-        if (!selectedEmployeeId) {
-            return '직원을 선택해 주세요.';
+    useFocusEffect(
+        useCallback(() => {
+            loadedMonthsRef.current.clear(); // 포커스 복귀 시 캐시 초기화
+            setPageLoading(true);
+            loadBase(calMonth).finally(() => setPageLoading(false));
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [loadBase]),
+    );
+
+    // ── 캘린더 월 이동 ───────────────────────────────────────────────────────
+    const handleMonthChange = (ym: string) => {
+        setCalMonth(ym);
+        loadShiftsForMonth(ym);
+    };
+
+    // ── 탭 전환 (보드 탭 진입 시 selectedDate 기준 주 자동 이동) ──────────────
+    const handleTabChange = (newTab: TabMode) => {
+        if (newTab === 'board') {
+            const anchor = selectedDate ?? todayIso();
+            const weekFrom = weekRangeOf(anchor).from;
+            setBoardWeekStart(weekFrom);
+            const wm = weekFrom.slice(0, 7);
+            loadShiftsAdditive(wm);
         }
-        if (!DATE_RE.test(shiftDate)) {
-            return '날짜는 YYYY-MM-DD 형식으로 입력해 주세요.';
-        }
-        if (shiftDate < weekRange.from || shiftDate > weekRange.to) {
-            return '이번 주 범위 안의 날짜를 입력해 주세요.';
-        }
-        if (!TIME_RE.test(startTime)) {
-            return '시작 시간은 HH:MM 형식으로 입력해 주세요.';
-        }
-        if (!TIME_RE.test(endTime)) {
-            return '종료 시간은 HH:MM 형식으로 입력해 주세요.';
-        }
-        if (endTime === startTime) {
-            return '시작 시간과 종료 시간이 같을 수 없어요.';
-        }
-        // 종료 < 시작이면 야간 근무(익일 종료)로 허용 — 막지 않는다.
+        setTab(newTab);
+        setDropdownOpen(false);
+    };
+
+    // ── 파생 상태 ────────────────────────────────────────────────────────────
+    const employeeColorMap = useMemo<Record<number, string>>(() => {
+        const map: Record<number, string> = {};
+        employees.forEach((emp, i) => { map[emp.id] = EMP_COLORS[i % EMP_COLORS.length]; });
+        return map;
+    }, [employees]);
+
+    const employeeNameById = useMemo<Record<number, string>>(() => {
+        const map: Record<number, string> = {};
+        employees.forEach(emp => { map[emp.id] = emp.name; });
+        return map;
+    }, [employees]);
+
+    const calendarMarks = useMemo(() => {
+        const marks: Record<string, {dots: string[]}> = {};
+        shifts.forEach(s => {
+            if (!marks[s.shiftDate]) { marks[s.shiftDate] = {dots: []}; }
+            const color = employeeColorMap[s.employeeId] ?? COLORS.SODAM_ORANGE;
+            if (!marks[s.shiftDate].dots.includes(color) && marks[s.shiftDate].dots.length < 3) {
+                marks[s.shiftDate].dots.push(color);
+            }
+        });
+        return marks;
+    }, [shifts, employeeColorMap]);
+
+    const dayShifts = useMemo(() => {
+        if (!selectedDate) { return []; }
+        return shifts
+            .filter(s => s.shiftDate === selectedDate)
+            .sort((a, b) => shortTime(a.startTime).localeCompare(shortTime(b.startTime)));
+    }, [shifts, selectedDate]);
+
+    const boardWeekDates = useMemo(
+        () => Array.from({length: 7}, (_, i) => addDays(boardWeekStart, i)),
+        [boardWeekStart],
+    );
+
+    const boardSummary = useMemo(() => {
+        const weekShifts = shifts.filter(s => boardWeekDates.includes(s.shiftDate));
+        const empIds = new Set(weekShifts.map(s => s.employeeId));
+        const hrs = weekShifts.reduce((sum, s) => sum + shiftDurationHours(s.startTime, s.endTime), 0);
+        return {count: weekShifts.length, empCount: empIds.size, hours: hrs};
+    }, [shifts, boardWeekDates]);
+
+    const boardShifts = shifts.filter(s => boardWeekDates.includes(s.shiftDate));
+
+    // 폼에서 쓰는 HH:mm 값
+    const formStartHHmm = isValidTimeDigits(formStart) ? timeDigitsToHHmm(formStart) : '';
+    const formEndHHmm = isValidTimeDigits(formEnd) ? timeDigitsToHHmm(formEnd) : '';
+
+    const formWarnings = useMemo(
+        () =>
+            computeWarnings({
+                employeeId: formEmployee,
+                date: formDateIso,
+                start: formStartHHmm,
+                end: formEndHHmm,
+                shifts,
+                operatingHours,
+                excludeId: editingShift?.id ?? null,
+                empName: formEmployee !== null ? employeeNameById[formEmployee] : undefined,
+            }),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [formEmployee, formDateIso, formStartHHmm, formEndHHmm, shifts, operatingHours, editingShift],
+    );
+
+    // ── 바텀시트 열기/닫기 ────────────────────────────────────────────────────
+    const openAddSheet = (date: string) => {
+        setEditingShift(null);
+        setFormDateIso(date);
+        setFormStart('0900');
+        setFormEnd('1800');
+        setFormMemo('');
+        setFormError(null);
+        setDropdownOpen(false);
+        setFormEmployee(employees[0]?.id ?? null);
+        setSheetVisible(true);
+    };
+
+    const openEditSheet = (shift: WorkShift) => {
+        setEditingShift(shift);
+        setFormEmployee(shift.employeeId);
+        setFormDateIso(shift.shiftDate);
+        setFormStart(compactTimeFromApi(shift.startTime));
+        setFormEnd(compactTimeFromApi(shift.endTime));
+        setFormMemo(shift.memo ?? '');
+        setFormError(null);
+        setDropdownOpen(false);
+        setSheetVisible(true);
+    };
+
+    const closeSheet = () => {
+        setSheetVisible(false);
+        setEditingShift(null);
+        setFormError(null);
+        setDropdownOpen(false);
+    };
+
+    // ── 폼 검증 ───────────────────────────────────────────────────────────────
+    const validateForm = (): string | null => {
+        if (!formEmployee) { return '직원을 선택해 주세요.'; }
+        if (!formDateIso) { return '날짜가 없어요. 달력에서 날짜를 먼저 선택해 주세요.'; }
+        if (!isValidTimeDigits(formStart)) { return TIME_DIGITS_HELPER; }
+        if (!isValidTimeDigits(formEnd)) { return TIME_DIGITS_HELPER; }
+        if (formStart === formEnd) { return '시작 시간과 종료 시간이 같을 수 없어요.'; }
         return null;
     };
 
-    const resetForm = () => {
-        setEditingShiftId(null);
-        setShiftDate(weekRange.from);
-        setStartTime('09:00');
-        setEndTime('18:00');
-        setMemo('');
-        setError(null);
-    };
-
-    const startEdit = (shift: WorkShift) => {
-        setEditingShiftId(shift.id);
-        setSelectedEmployeeId(shift.employeeId);
-        setShiftDate(shift.shiftDate);
-        setStartTime(shortTime(shift.startTime));
-        setEndTime(shortTime(shift.endTime));
-        setMemo(shift.memo ?? '');
-        setError(null);
-    };
-
-    const submitShift = async () => {
-        const message = validate();
-        if (message) {
-            setError(message);
-            return;
-        }
+    // ── 근무 CRUD ─────────────────────────────────────────────────────────────
+    const handleSave = async () => {
+        const msg = validateForm();
+        if (msg) { setFormError(msg); return; }
         setSaving(true);
-        setError(null);
-        try {
-            if (editingShiftId) {
-                await updateShift(storeId, editingShiftId, {
-                    shiftDate,
-                    startTime,
-                    endTime,
-                    memo: memo.trim() || undefined,
-                });
+        setFormError(null);
+
+        if (editingShift) {
+            const body: WorkShiftUpdateBody = {
+                shiftDate: formDateIso,
+                startTime: formStartHHmm,
+                endTime: formEndHHmm,
+                memo: formMemo.trim() || undefined,
+            };
+            const prevShifts = shifts;
+            setShifts(curr =>
+                curr.map(s =>
+                    s.id === editingShift.id
+                        ? {...s, shiftDate: body.shiftDate, startTime: body.startTime + ':00', endTime: body.endTime + ':00', memo: body.memo}
+                        : s,
+                ),
+            );
+            closeSheet();
+            setSaving(false);
+            try {
+                const updated = await updateShift(storeId, editingShift.id, body);
+                setShifts(curr => curr.map(s => s.id === updated.id ? updated : s));
                 AppToast.success('근무를 수정했어요. 다시 확정·알림을 보내주세요.');
-            } else {
-                await createShift(storeId, {
-                    employeeId: selectedEmployeeId as number,
-                    shiftDate,
-                    startTime,
-                    endTime,
-                    memo: memo.trim() || undefined,
-                });
-                AppToast.success('근무가 추가됐어요.');
+            } catch {
+                setShifts(prevShifts);
+                AppToast.error('근무 수정에 실패했어요.');
             }
-            resetForm();
-            await load();
-        } catch {
-            setError(editingShiftId
-                ? '근무 수정에 실패했어요. 잠시 후 다시 시도해 주세요.'
-                : '근무 추가에 실패했어요. 잠시 후 다시 시도해 주세요.');
-        } finally {
+        } else {
+            const body: WorkShiftCreateBody = {
+                employeeId: formEmployee as number,
+                shiftDate: formDateIso,
+                startTime: formStartHHmm,
+                endTime: formEndHHmm,
+                memo: formMemo.trim() || undefined,
+            };
+            const tmpId = -Date.now();
+            const optimistic: WorkShift = {
+                id: tmpId,
+                employeeId: body.employeeId,
+                storeId,
+                shiftDate: body.shiftDate,
+                startTime: body.startTime + ':00',
+                endTime: body.endTime + ':00',
+                memo: body.memo,
+            };
+            setShifts(prev => [...prev, optimistic]);
+            closeSheet();
             setSaving(false);
+            try {
+                const created = await createShift(storeId, body);
+                setShifts(curr => curr.map(s => s.id === tmpId ? created : s));
+                AppToast.success('근무를 추가했어요.');
+            } catch {
+                setShifts(prev => prev.filter(s => s.id !== tmpId));
+                AppToast.error('근무 추가에 실패했어요.');
+            }
         }
     };
 
-    const removeShift = async () => {
-        if (!editingShiftId) {
-            return;
-        }
-        setSaving(true);
-        setError(null);
+    const handleDelete = async () => {
+        if (!editingShift) { return; }
+        const id = editingShift.id;
+        const prevShifts = shifts;
+        setShifts(prev => prev.filter(s => s.id !== id));
+        closeSheet();
         try {
-            await deleteShift(storeId, editingShiftId);
+            await deleteShift(storeId, id);
             AppToast.success('근무를 삭제했어요.');
-            resetForm();
-            await load();
         } catch {
-            setError('근무 삭제에 실패했어요. 잠시 후 다시 시도해 주세요.');
-        } finally {
-            setSaving(false);
+            setShifts(prevShifts);
+            AppToast.error('근무 삭제에 실패했어요.');
         }
     };
 
-    // 드래그앤드롭: 보드에서 다른 요일로 끌면 날짜만 바꿔 저장(시각·메모 유지).
-    const moveShift = async (shift: WorkShift, newDate: string) => {
-        if (newDate === shift.shiftDate) {
-            return;
-        }
-        // 낙관적 갱신 — 끌어놓은 즉시 새 요일에 반영, 실패 시 롤백.
-        const prev = shifts;
-        setShifts(curr => curr.map(s => (s.id === shift.id ? {...s, shiftDate: newDate} : s)));
-        try {
-            await updateShift(storeId, shift.id, {
-                shiftDate: newDate,
-                startTime: shortTime(shift.startTime),
-                endTime: shortTime(shift.endTime),
-                memo: shift.memo ?? undefined,
-            });
-            AppToast.success('근무 요일을 옮겼어요. 다시 확정·알림을 보내주세요.');
-            await load();
-        } catch {
-            setShifts(prev);
-            AppToast.error('요일 이동에 실패했어요.');
-        }
+    const moveShift = useCallback(
+        async (shift: WorkShift, newDate: string) => {
+            if (newDate === shift.shiftDate) { return; }
+            const prevShifts = shifts;
+            setShifts(curr => curr.map(s => s.id === shift.id ? {...s, shiftDate: newDate} : s));
+            try {
+                await updateShift(storeId, shift.id, {
+                    shiftDate: newDate,
+                    startTime: shortTime(shift.startTime),
+                    endTime: shortTime(shift.endTime),
+                    memo: shift.memo ?? undefined,
+                });
+                AppToast.success('요일을 옮겼어요. 다시 확정·알림을 보내주세요.');
+            } catch {
+                setShifts(prevShifts);
+                AppToast.error('요일 이동에 실패했어요.');
+            }
+        },
+        [storeId, shifts],
+    );
+
+    // ── 보드 주 이동 ──────────────────────────────────────────────────────────
+    const goBoardWeek = (delta: number) => {
+        const newStart = addDays(boardWeekStart, delta * 7);
+        setBoardWeekStart(newStart);
+        // calMonth는 건드리지 않음 — 달력 탭 뷰는 사용자가 직접 이동할 때만 바뀜
+        loadShiftsAdditive(newStart.slice(0, 7));
     };
 
+    // ── 지난주 복사 ───────────────────────────────────────────────────────────
     const copyLastWeek = async () => {
         setCopying(true);
-        setError(null);
         try {
-            const previousFrom = addDays(weekRange.from, -7);
-            const previousTo = addDays(weekRange.to, -7);
-            const lastWeekShifts = await fetchStoreShifts(storeId, previousFrom, previousTo);
-            if (lastWeekShifts.length === 0) {
-                AppToast.show('지난주에 복사할 근무가 없어요.');
-                return;
-            }
-            // 중복 복사 방지 — 이미 이번 주에 같은 근무(직원+날짜+시작시간)가 있으면 건너뛴다.
-            // (지난주 복사를 두 번 눌러도 동일 근무가 중복 생성되지 않게.)
+            const prevFrom = addDays(boardWeekStart, -7);
+            const prevTo = addDays(boardWeekStart, -1);
+            const lastWeekShifts = await fetchStoreShifts(storeId, prevFrom, prevTo);
+            if (lastWeekShifts.length === 0) { AppToast.show('지난주에 복사할 근무가 없어요.'); return; }
             const existingKeys = new Set(
                 shifts.map(s => `${s.employeeId}|${s.shiftDate}|${shortTime(s.startTime)}`),
             );
-            const toCreate = lastWeekShifts.filter(item => {
-                const key = `${item.employeeId}|${addDays(item.shiftDate, 7)}|${shortTime(item.startTime)}`;
+            const toCreate = lastWeekShifts.filter(it => {
+                const key = `${it.employeeId}|${addDays(it.shiftDate, 7)}|${shortTime(it.startTime)}`;
                 return !existingKeys.has(key);
             });
-            if (toCreate.length === 0) {
-                AppToast.show('이미 이번 주에 복사돼 있어요.');
-                return;
-            }
-            await Promise.all(toCreate.map(item => createShift(storeId, {
-                employeeId: item.employeeId,
-                shiftDate: addDays(item.shiftDate, 7),
-                startTime: shortTime(item.startTime),
-                endTime: shortTime(item.endTime),
-                memo: item.memo ?? undefined,
-            })));
+            if (toCreate.length === 0) { AppToast.show('이미 이번 주에 복사돼 있어요.'); return; }
+            await Promise.all(
+                toCreate.map(it =>
+                    createShift(storeId, {
+                        employeeId: it.employeeId,
+                        shiftDate: addDays(it.shiftDate, 7),
+                        startTime: shortTime(it.startTime),
+                        endTime: shortTime(it.endTime),
+                        memo: it.memo ?? undefined,
+                    }),
+                ),
+            );
             AppToast.success(`지난주 스케줄 ${toCreate.length}건을 복사했어요.`);
-            await load();
+            const {from, to} = monthRange(calMonth);
+            setShifts(await fetchStoreShifts(storeId, from, to));
         } catch {
             AppToast.error('지난주 복사에 실패했어요.');
         } finally {
@@ -447,42 +539,36 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
         }
     };
 
+    // ── 확정·알림 ─────────────────────────────────────────────────────────────
     const confirmAndNotify = async () => {
         setConfirming(true);
         try {
             const result = await confirmStoreWeekShifts(storeId, {
-                from: weekRange.from,
-                to: weekRange.to,
+                from: boardWeekStart,
+                to: addDays(boardWeekStart, 6),
             });
             AppToast.success(
-                `스케줄 ${result.confirmedCount}건을 확정하고 ${result.notifiedCount}명에게 알림을 보냈어요.`,
+                `${result.confirmedCount}건 확정, ${result.notifiedCount}명에게 알림 발송 완료.`,
             );
-        } catch (err: any) {
-            if (err?.response?.status === 404 || err?.response?.status === 405) {
-                AppToast.error('확정 알림 API가 아직 연결되지 않았어요.');
-            } else {
-                AppToast.error('스케줄 확정에 실패했어요.');
-            }
+        } catch {
+            AppToast.error('스케줄 확정에 실패했어요.');
         } finally {
             setConfirming(false);
         }
     };
 
-    // ─── 템플릿(매장 주간 패턴) ───
+    // ── 템플릿 ────────────────────────────────────────────────────────────────
     const saveTemplate = async () => {
         const name = templateName.trim();
-        if (!name) {
-            AppToast.error('템플릿 이름을 입력해 주세요.');
-            return;
-        }
+        if (!name) { AppToast.error('템플릿 이름을 입력해 주세요.'); return; }
         setTemplateBusy(true);
         try {
-            await createTemplate(storeId, {name, from: weekRange.from, to: weekRange.to});
+            await createTemplate(storeId, {name, from: boardWeekStart, to: addDays(boardWeekStart, 6)});
             setTemplateName('');
             AppToast.success('템플릿을 저장했어요.');
             setTemplates(await fetchTemplates(storeId));
         } catch {
-            AppToast.error('템플릿 저장에 실패했어요. 이번 주 근무가 있는지 확인해 주세요.');
+            AppToast.error('템플릿 저장에 실패했어요. 보드에 근무가 있는지 확인해 주세요.');
         } finally {
             setTemplateBusy(false);
         }
@@ -491,11 +577,12 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
     const applyTpl = async (t: ShiftTemplate) => {
         setTemplateBusy(true);
         try {
-            const res = await applyTemplate(storeId, t.id, weekRange.from);
-            const skipMsg = res.skippedCount > 0 ? ` (${res.skippedCount}건은 비활성 직원이라 제외)` : '';
-            AppToast.success(`${res.createdCount}건을 이번 주에 추가했어요.${skipMsg}`);
-            await load();
-            setViewMode('list');
+            const res = await applyTemplate(storeId, t.id, boardWeekStart);
+            const skip = res.skippedCount > 0 ? ` (${res.skippedCount}건 비활성 직원 제외)` : '';
+            AppToast.success(`${res.createdCount}건을 이번 주에 추가했어요.${skip}`);
+            const {from, to} = monthRange(calMonth);
+            setShifts(await fetchStoreShifts(storeId, from, to));
+            handleTabChange('calendar');
         } catch {
             AppToast.error('템플릿 적용에 실패했어요.');
         } finally {
@@ -503,7 +590,7 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
         }
     };
 
-    const removeTemplate = async (t: ShiftTemplate) => {
+    const removeTpl = async (t: ShiftTemplate) => {
         setTemplateBusy(true);
         try {
             await deleteTemplate(storeId, t.id);
@@ -516,551 +603,534 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
         }
     };
 
-    const renderHeader = (
-        <AppHeader title="스케줄" onBack={() => navigation.goBack()} />
-    );
-
-    if (loading) {
+    // ── 초기 로딩/에러 ────────────────────────────────────────────────────────
+    const header = <AppHeader title="스케줄 관리" onBack={() => navigation.goBack()} />;
+    if (pageLoading) {
         return (
-            <ScreenContainer header={renderHeader}>
-                <LoadingState title="스케줄 불러오는 중" description="직원과 이번 주 근무를 확인하고 있어요." />
+            <ScreenContainer header={header}>
+                <LoadingState title="스케줄 불러오는 중" />
             </ScreenContainer>
         );
     }
-
     if (loadError) {
         return (
-            <ScreenContainer header={renderHeader}>
+            <ScreenContainer header={header}>
                 <ErrorState
                     title="불러오지 못했어요"
                     description={loadError}
-                    primary={{label: '다시 시도', onPress: load}}
+                    primary={{label: '다시 시도', onPress: () => { setPageLoading(true); loadBase(calMonth).finally(() => setPageLoading(false)); }}}
                 />
             </ScreenContainer>
         );
     }
 
+    const boardWeekEnd = addDays(boardWeekStart, 6);
+    const boardWeekLabel = `${formatDateShort(boardWeekStart)} ~ ${formatDateShort(boardWeekEnd)}`;
+
+    // ── 선택된 직원 이름 (드롭다운 표시용) ───────────────────────────────────
+    const selectedEmpName =
+        formEmployee !== null ? (employeeNameById[formEmployee] ?? '직원 선택') : '직원 선택';
+
     return (
-        <ScreenContainer scroll header={renderHeader}>
-            <View style={styles.titleBlock}>
-                <AppText variant="headingSm">이번 주 스케줄</AppText>
-                <AppText variant="bodyMd" tone="secondary">
-                    {weekRange.from} ~ {weekRange.to}
-                </AppText>
-            </View>
-
-            <View style={styles.summaryRow}>
-                <SummaryItem label="근무" value={`${summary.shiftCount}건`} />
-                <SummaryItem label="직원" value={`${summary.employeeCount}명`} />
-                <SummaryItem label="총 시간" value={`${summary.totalHours.toFixed(1)}h`} />
-            </View>
-
-            <View style={styles.actionRow}>
-                <AppButton
-                    label="지난주 복사"
-                    variant="secondary"
-                    size="md"
-                    fullWidth={false}
-                    loading={copying}
-                    disabled={copying}
-                    leftIcon={<Ionicons name="copy-outline" size={18} color={c.brandSecondary} />}
-                    style={styles.actionButton}
-                    onPress={copyLastWeek}
-                />
-                <AppButton
-                    label="확정하고 알림"
-                    size="md"
-                    fullWidth={false}
-                    loading={confirming}
-                    disabled={confirming || shifts.length === 0}
-                    leftIcon={<Ionicons name="notifications-outline" size={18} color={c.textInverse} />}
-                    style={styles.actionButton}
-                    onPress={confirmAndNotify}
-                />
-            </View>
-
-            <AppCard variant="plain" style={styles.formCard}>
-                <View style={styles.cardTitleRow}>
-                    <Ionicons
-                        name={editingShiftId ? 'create-outline' : 'add-circle-outline'}
-                        size={22}
-                        color={c.brandPrimary}
-                    />
-                    <AppText variant="titleMd">{editingShiftId ? '근무 수정' : '근무 추가'}</AppText>
-                </View>
-
-                {employees.length === 0 ? (
-                    <EmptyState
-                        glyph={<Ionicons name="people-outline" size={36} color={c.textTertiary} />}
-                        markColor={c.surfaceMuted}
-                        title="등록된 직원이 없어요"
-                        description="직원을 먼저 초대하면 스케줄을 작성할 수 있어요."
-                    />
-                ) : (
-                    <>
-                        <AppText variant="caption" tone="secondary" style={styles.label}>
-                            직원{editingShiftId ? ' (수정 시 변경 불가 — 직원을 바꾸려면 삭제 후 재등록)' : ''}
-                        </AppText>
-                        <View style={styles.employeeChips}>
-                            {employees.map(emp => {
-                                const selected = emp.id === selectedEmployeeId;
-                                const locked = editingShiftId !== null && !selected;
-                                return (
-                                    <Pressable
-                                        key={emp.id}
-                                        accessibilityRole="button"
-                                        accessibilityState={{selected, disabled: locked}}
-                                        disabled={editingShiftId !== null}
-                                        onPress={() => setSelectedEmployeeId(emp.id)}
-                                        style={[
-                                            styles.employeeChip,
-                                            {borderColor: selected ? c.brandPrimary : c.border, backgroundColor: selected ? c.brandPrimarySoft : c.background},
-                                            locked && styles.employeeChipLocked,
-                                        ]}>
-                                        <AppText variant="caption" tone={selected ? 'brand' : 'secondary'} numberOfLines={1}>
-                                            {emp.name}
-                                        </AppText>
-                                    </Pressable>
-                                );
-                            })}
-                        </View>
-
-                        <AppInput
-                            label="날짜"
-                            value={shiftDate}
-                            onChangeText={setShiftDate}
-                            placeholder="YYYY-MM-DD"
-                            keyboardType="numbers-and-punctuation"
-                        />
-
-                        <View style={styles.timeRow}>
-                            <AppInput
-                                label="시작"
-                                value={startTime}
-                                onChangeText={setStartTime}
-                                placeholder="HH:MM"
-                                keyboardType="numbers-and-punctuation"
-                                containerStyle={styles.flex}
-                            />
-                            <AppInput
-                                label="종료"
-                                value={endTime}
-                                onChangeText={setEndTime}
-                                placeholder="HH:MM"
-                                keyboardType="numbers-and-punctuation"
-                                containerStyle={styles.flex}
-                            />
-                        </View>
-
-                        <AppInput
-                            label="메모"
-                            value={memo}
-                            onChangeText={setMemo}
-                            placeholder="마감, 교육, 요청사항 등"
-                            multiline
-                            multilineMinHeight={76}
-                        />
-
-                        {TIME_RE.test(startTime) && TIME_RE.test(endTime) && isOvernight(startTime, endTime) && startTime !== endTime ? (
-                            <View style={styles.overnightHint}>
-                                <Ionicons name="moon-outline" size={14} color={c.info} />
-                                <AppText variant="caption" tone="secondary">
-                                    야간 근무로 등록돼요 — 종료 {endTime}는 다음 날이에요.
-                                </AppText>
-                            </View>
-                        ) : null}
-
-                        {formWarnings.length > 0 ? (
-                            <View style={[styles.warnPanel, {backgroundColor: c.surfaceMuted, borderColor: c.warning}]}>
-                                {formWarnings.map(w => (
-                                    <View key={w} style={styles.warnRow}>
-                                        <Ionicons name="alert-circle-outline" size={14} color={c.warning} />
-                                        <AppText variant="caption" tone="warning" style={styles.flex}>{w}</AppText>
-                                    </View>
-                                ))}
-                                <AppText variant="caption" tone="tertiary">저장은 가능해요. 확인 후 진행하세요.</AppText>
-                            </View>
-                        ) : null}
-
-                        {error ? <AppText variant="caption" tone="error">{error}</AppText> : null}
-
-                        <AppButton
-                            label={editingShiftId ? '수정 저장' : '근무 추가'}
-                            loading={saving}
-                            disabled={saving}
-                            leftIcon={
-                                <Ionicons
-                                    name={editingShiftId ? 'checkmark-outline' : 'add-outline'}
-                                    size={20}
-                                    color={c.textInverse}
-                                />
-                            }
-                            onPress={submitShift}
-                        />
-                        {editingShiftId ? (
-                            <View style={styles.editActionRow}>
-                                <AppButton
-                                    label="취소"
-                                    variant="secondary"
-                                    fullWidth={false}
-                                    disabled={saving}
-                                    style={styles.flex}
-                                    onPress={resetForm}
-                                />
-                                <AppButton
-                                    label="삭제"
-                                    variant="destructive"
-                                    fullWidth={false}
-                                    disabled={saving}
-                                    style={styles.flex}
-                                    leftIcon={<Ionicons name="trash-outline" size={18} color={c.textInverse} />}
-                                    onPress={removeShift}
-                                />
-                            </View>
-                        ) : null}
-                    </>
-                )}
-            </AppCard>
-
-            <View style={styles.viewToggle}>
-                {VIEW_MODES.map(({mode, label, icon}) => {
-                    const active = viewMode === mode;
-                    return (
-                        <Pressable
-                            key={mode}
-                            accessibilityRole="button"
-                            accessibilityState={{selected: active}}
-                            onPress={() => setViewMode(mode)}
-                            style={[
-                                styles.viewToggleBtn,
-                                {backgroundColor: active ? c.brandPrimary : c.background, borderColor: active ? c.brandPrimary : c.border},
-                            ]}>
-                            <Ionicons name={icon} size={14} color={active ? c.textInverse : c.textTertiary} />
-                            <AppText variant="caption" tone={active ? 'inverse' : 'tertiary'}>{label}</AppText>
-                        </Pressable>
-                    );
-                })}
-            </View>
-
-            {viewMode === 'template' ? (
-                <View style={styles.scheduleList}>
-                    <AppCard variant="plain" style={styles.formCard}>
-                        <View style={styles.cardTitleRow}>
-                            <Ionicons name="save-outline" size={20} color={c.brandPrimary} />
-                            <AppText variant="titleMd">이번 주를 템플릿으로 저장</AppText>
-                        </View>
-                        <AppText variant="caption" tone="secondary">
-                            이번 주 근무를 요일 패턴으로 저장해, 다음 주에 한 번에 적용할 수 있어요.
-                        </AppText>
-                        <AppInput
-                            label="템플릿 이름"
-                            value={templateName}
-                            onChangeText={setTemplateName}
-                            placeholder="예: 평일 기본, 주말 강화"
-                        />
-                        <AppButton
-                            label="현재 주 저장"
-                            loading={templateBusy}
-                            disabled={templateBusy}
-                            leftIcon={<Ionicons name="save-outline" size={18} color={c.textInverse} />}
-                            onPress={saveTemplate}
-                        />
-                    </AppCard>
-
-                    {templates.length === 0 ? (
-                        <EmptyState
-                            glyph={<Ionicons name="documents-outline" size={40} color={c.textTertiary} />}
-                            markColor={c.surfaceMuted}
-                            title="저장된 템플릿이 없어요"
-                            description="이번 주 스케줄을 템플릿으로 저장하면 다음 주에 그대로 불러올 수 있어요."
-                        />
-                    ) : (
-                        templates.map(t => (
-                            <AppCard key={t.id} variant="flat" style={styles.shiftCard}>
-                                <View style={styles.shiftRow}>
-                                    <View style={[styles.shiftIcon, {backgroundColor: c.surfaceSky}]}>
-                                        <Ionicons name="documents-outline" size={18} color={c.info} />
-                                    </View>
-                                    <View style={styles.flex}>
-                                        <AppText variant="titleMd" numberOfLines={1}>{t.name}</AppText>
-                                        <AppText variant="caption" tone="secondary">근무 {t.entryCount}개</AppText>
-                                    </View>
-                                    <AppButton
-                                        label="적용"
-                                        size="sm"
-                                        fullWidth={false}
-                                        disabled={templateBusy}
-                                        onPress={() => applyTpl(t)}
-                                    />
-                                    <Pressable
-                                        accessibilityRole="button"
-                                        accessibilityLabel="템플릿 삭제"
-                                        disabled={templateBusy}
-                                        onPress={() => removeTemplate(t)}
-                                        hitSlop={8}>
-                                        <Ionicons name="trash-outline" size={20} color={c.textTertiary} />
-                                    </Pressable>
-                                </View>
-                            </AppCard>
-                        ))
-                    )}
-                </View>
-            ) : sortedShifts.length === 0 ? (
-                <EmptyState
-                    glyph={<Ionicons name="calendar-outline" size={40} color={c.textTertiary} />}
-                    markColor={c.surfaceMuted}
-                    title="이번 주 스케줄이 비어 있어요"
-                    description="근무를 추가하거나 지난주 스케줄을 복사해 시작해 보세요."
-                />
-            ) : viewMode === 'board' ? (
-                <View>
-                    <View style={styles.boardHint}>
-                        <Ionicons name="hand-left-outline" size={14} color={c.textTertiary} />
-                        <AppText variant="caption" tone="tertiary">
-                            근무를 길게 눌러 다른 요일로 끌면 일정이 옮겨져요. 탭하면 수정.
-                        </AppText>
-                    </View>
-                    <WeeklyShiftBoard
-                        weekDates={weekDates}
-                        shifts={shifts}
-                        employeeNameById={employeeNameById}
-                        onMoveShift={moveShift}
-                        onPressShift={startEdit}
-                        disabled={saving}
-                    />
-                </View>
-            ) : viewMode === 'employee' ? (
-                <View style={styles.scheduleList}>
-                    {shiftsByEmployee.map(({employeeId, list}) => {
-                        const empHours = list.reduce((sum, item) => sum + shiftHours(item), 0);
+        <>
+            <ScreenContainer scroll header={header}>
+                {/* ── 탭 바 ── */}
+                <View style={styles.tabBar}>
+                    {(['calendar', 'board', 'template'] as const).map(t => {
+                        const active = tab === t;
+                        const icon =
+                            t === 'calendar' ? 'calendar-outline'
+                            : t === 'board' ? 'grid-outline'
+                            : 'documents-outline';
+                        const label =
+                            t === 'calendar' ? '캘린더' : t === 'board' ? '보드' : '템플릿';
                         return (
-                            <View key={employeeId} style={styles.dayGroup}>
-                                <View style={styles.empHeaderRow}>
-                                    <AppText variant="titleMd" numberOfLines={1} style={styles.flex}>
-                                        {employeeNameById[employeeId] ?? '직원'}
-                                    </AppText>
-                                    <AppText variant="caption" tone="secondary">
-                                        {list.length}건 · {empHours.toFixed(1)}h
-                                    </AppText>
-                                </View>
-                                {list.map(item => {
-                                    const overnight = item.crossesMidnight ?? isOvernight(item.startTime, item.endTime);
-                                    const editing = item.id === editingShiftId;
-                                    return (
-                                        <Pressable key={item.id} onPress={() => startEdit(item)} accessibilityRole="button">
-                                            <AppCard
-                                                variant="flat"
-                                                style={[styles.shiftCard, editing && [styles.shiftCardEditing, {borderColor: c.brandPrimary}]]}>
-                                                <View style={styles.shiftRow}>
-                                                    <View style={[styles.shiftIcon, {backgroundColor: c.surfaceSky}]}>
-                                                        <Ionicons name="calendar-outline" size={18} color={c.info} />
-                                                    </View>
-                                                    <View style={styles.flex}>
-                                                        <AppText variant="titleMd" numberOfLines={1}>
-                                                            {formatDate(item.shiftDate)}
-                                                        </AppText>
-                                                        <AppText variant="caption" tone="secondary">
-                                                            {shortTime(item.startTime)} ~ {shortTime(item.endTime)}
-                                                            {overnight ? ' (익일)' : ''}
-                                                            {item.memo ? ` · ${item.memo}` : ''}
-                                                        </AppText>
-                                                    </View>
-                                                    <Ionicons name="create-outline" size={18} color={c.textTertiary} />
-                                                </View>
-                                            </AppCard>
-                                        </Pressable>
-                                    );
-                                })}
-                            </View>
+                            <Pressable
+                                key={t}
+                                onPress={() => handleTabChange(t)}
+                                style={[
+                                    styles.tabBtn,
+                                    {
+                                        backgroundColor: active ? c.brandPrimary : c.background,
+                                        borderColor: active ? c.brandPrimary : c.border,
+                                    },
+                                ]}>
+                                <Ionicons name={icon} size={16} color={active ? c.textInverse : c.textTertiary} />
+                                <AppText
+                                    variant="caption"
+                                    weight={active ? '700' : '400'}
+                                    style={{color: active ? c.textInverse : c.textTertiary}}>
+                                    {label}
+                                </AppText>
+                            </Pressable>
                         );
                     })}
                 </View>
-            ) : (
-                <View style={styles.scheduleList}>
-                    {Object.entries(shiftsByDate).map(([date, dateShifts]) => (
-                        <View key={date} style={styles.dayGroup}>
-                            <AppText variant="caption" tone="secondary" style={styles.dayLabel}>
-                                {formatDate(date)}
-                            </AppText>
-                            {dateShifts.map(item => {
-                                const overnight = item.crossesMidnight ?? isOvernight(item.startTime, item.endTime);
-                                const editing = item.id === editingShiftId;
-                                return (
-                                    <Pressable key={item.id} onPress={() => startEdit(item)} accessibilityRole="button">
-                                        <AppCard
-                                            variant="flat"
-                                            style={[styles.shiftCard, editing && [styles.shiftCardEditing, {borderColor: c.brandPrimary}]]}>
-                                            <View style={styles.shiftRow}>
-                                                <View style={[styles.shiftIcon, {backgroundColor: c.surfaceSky}]}>
-                                                    <Ionicons name="time-outline" size={18} color={c.info} />
-                                                </View>
-                                                <View style={styles.flex}>
-                                                    <AppText variant="titleMd" numberOfLines={1}>
-                                                        {employeeNameById[item.employeeId] ?? '직원'}
-                                                    </AppText>
-                                                    <AppText variant="caption" tone="secondary">
-                                                        {shortTime(item.startTime)} ~ {shortTime(item.endTime)}
-                                                        {overnight ? ' (익일)' : ''}
-                                                        {item.memo ? ` · ${item.memo}` : ''}
-                                                    </AppText>
-                                                </View>
-                                                <Ionicons name="create-outline" size={18} color={c.textTertiary} />
-                                            </View>
-                                        </AppCard>
-                                    </Pressable>
-                                );
-                            })}
+
+                {/* ════════ 캘린더 탭 ════════ */}
+                {tab === 'calendar' && (
+                    <View style={styles.section}>
+                        {/* 달력 + 로딩 인디케이터 (오버레이, 전체 스피너 아님) */}
+                        <View>
+                            <AppCalendar
+                                month={calMonth}
+                                onMonthChange={handleMonthChange}
+                                markedDates={calendarMarks}
+                                selectedDate={selectedDate}
+                                onDayPress={setSelectedDate}
+                            />
+                            {calLoading && (
+                                <View style={styles.calLoadingOverlay}>
+                                    <ActivityIndicator size="small" color={c.brandPrimary} />
+                                </View>
+                            )}
                         </View>
-                    ))}
+
+                        {/* 선택 날 근무 */}
+                        {selectedDate && (
+                            <View style={styles.daySection}>
+                                <View style={styles.daySectionHeader}>
+                                    <AppText variant="titleMd" weight="700">
+                                        {formatDateLong(selectedDate)}
+                                    </AppText>
+                                    <AppButton
+                                        label="+ 근무 추가"
+                                        size="sm"
+                                        fullWidth={false}
+                                        onPress={() => openAddSheet(selectedDate)}
+                                    />
+                                </View>
+
+                                {dayShifts.length === 0 ? (
+                                    <View style={[styles.emptyDay, {borderColor: c.border}]}>
+                                        <AppText variant="caption" tone="tertiary" center>
+                                            이 날 등록된 근무가 없어요
+                                        </AppText>
+                                    </View>
+                                ) : (
+                                    dayShifts.map(shift => {
+                                        const overnight =
+                                            shift.crossesMidnight ??
+                                            isOvernight(shift.startTime, shift.endTime);
+                                        const empColor = employeeColorMap[shift.employeeId] ?? COLORS.SODAM_ORANGE;
+                                        return (
+                                            <Pressable
+                                                key={shift.id}
+                                                onPress={() => openEditSheet(shift)}
+                                                style={({pressed}) => [{opacity: pressed ? 0.7 : 1}]}>
+                                                <AppCard variant="flat" style={styles.shiftCard}>
+                                                    <View style={styles.shiftRow}>
+                                                        <View style={[styles.empDot, {backgroundColor: empColor}]} />
+                                                        <View style={styles.flex}>
+                                                            <AppText variant="titleMd" numberOfLines={1}>
+                                                                {employeeNameById[shift.employeeId] ?? '직원'}
+                                                            </AppText>
+                                                            <AppText variant="caption" tone="secondary">
+                                                                {shortTime(shift.startTime)} ~ {shortTime(shift.endTime)}
+                                                                {overnight ? ' (익일)' : ''}
+                                                                {shift.memo ? ` · ${shift.memo}` : ''}
+                                                            </AppText>
+                                                        </View>
+                                                        <Ionicons name="create-outline" size={16} color={c.textTertiary} />
+                                                    </View>
+                                                </AppCard>
+                                            </Pressable>
+                                        );
+                                    })
+                                )}
+                            </View>
+                        )}
+                    </View>
+                )}
+
+                {/* ════════ 보드 탭 ════════ */}
+                {tab === 'board' && (
+                    <View style={styles.section}>
+                        {/* 주 이동 + 확정 버튼 (항상 노출) */}
+                        <View style={[styles.weekHeader, {backgroundColor: c.surfaceMuted}]}>
+                            <Pressable hitSlop={12} onPress={() => goBoardWeek(-1)}>
+                                <Ionicons name="chevron-back-outline" size={22} color={c.textPrimary} />
+                            </Pressable>
+                            <View style={styles.weekHeaderCenter}>
+                                <AppText variant="caption" tone="secondary">{boardWeekLabel}</AppText>
+                                <View style={styles.summaryPills}>
+                                    <SummaryPill value={`${boardSummary.count}건`} />
+                                    <SummaryPill value={`${boardSummary.empCount}명`} />
+                                    <SummaryPill value={`${boardSummary.hours.toFixed(1)}h`} />
+                                </View>
+                            </View>
+                            <Pressable hitSlop={12} onPress={() => goBoardWeek(1)}>
+                                <Ionicons name="chevron-forward-outline" size={22} color={c.textPrimary} />
+                            </Pressable>
+                        </View>
+
+                        {/* 확정·알림 + 지난주 복사 */}
+                        <View style={styles.actionRow}>
+                            <AppButton
+                                label="지난주 복사"
+                                variant="secondary"
+                                size="md"
+                                fullWidth={false}
+                                loading={copying}
+                                disabled={copying}
+                                style={styles.flex}
+                                onPress={copyLastWeek}
+                            />
+                            <AppButton
+                                label={confirming ? '발송 중...' : '확정·알림'}
+                                size="md"
+                                fullWidth={false}
+                                loading={confirming}
+                                disabled={confirming || boardShifts.length === 0}
+                                style={styles.flex}
+                                onPress={confirmAndNotify}
+                            />
+                        </View>
+
+                        {/* 힌트 */}
+                        <View style={styles.hintRow}>
+                            <Ionicons name="hand-left-outline" size={13} color={c.textTertiary} />
+                            <AppText variant="caption" tone="tertiary">
+                                근무를 길게 눌러 끌면 요일 이동 · 탭하면 수정 · "+" 탭하면 추가
+                            </AppText>
+                        </View>
+
+                        <WeeklyShiftBoard
+                            weekDates={boardWeekDates}
+                            shifts={boardShifts}
+                            employeeNameById={employeeNameById}
+                            onMoveShift={moveShift}
+                            onPressShift={openEditSheet}
+                            onAddShift={openAddSheet}
+                        />
+                    </View>
+                )}
+
+                {/* ════════ 템플릿 탭 ════════ */}
+                {tab === 'template' && (
+                    <View style={styles.section}>
+                        <AppCard variant="plain" style={styles.tplForm}>
+                            <View style={styles.rowSm}>
+                                <Ionicons name="save-outline" size={20} color={c.brandPrimary} />
+                                <AppText variant="titleMd">현재 보드 주를 템플릿으로 저장</AppText>
+                            </View>
+                            <AppText variant="caption" tone="secondary">
+                                보드 탭에 표시된 주({boardWeekLabel})를 요일 패턴으로 저장해요.
+                            </AppText>
+                            <AppInput
+                                label="템플릿 이름"
+                                value={templateName}
+                                onChangeText={setTemplateName}
+                                placeholder="예: 평일 기본, 주말 강화"
+                            />
+                            <AppButton
+                                label="이번 주 저장"
+                                loading={templateBusy}
+                                disabled={templateBusy}
+                                onPress={saveTemplate}
+                            />
+                        </AppCard>
+
+                        {templates.length === 0 ? (
+                            <EmptyState
+                                glyph={<Ionicons name="documents-outline" size={40} color={c.textTertiary} />}
+                                markColor={c.surfaceMuted}
+                                title="저장된 템플릿이 없어요"
+                                description="보드 탭에서 주를 세팅한 뒤 여기서 저장해 보세요."
+                            />
+                        ) : (
+                            templates.map(t => (
+                                <AppCard key={t.id} variant="flat" style={styles.shiftCard}>
+                                    <View style={styles.shiftRow}>
+                                        <View style={[styles.tplIcon, {backgroundColor: c.surfaceSky}]}>
+                                            <Ionicons name="documents-outline" size={18} color={c.info} />
+                                        </View>
+                                        <View style={styles.flex}>
+                                            <AppText variant="titleMd" numberOfLines={1}>{t.name}</AppText>
+                                            <AppText variant="caption" tone="secondary">근무 {t.entryCount}개</AppText>
+                                        </View>
+                                        <AppButton
+                                            label="적용"
+                                            size="sm"
+                                            fullWidth={false}
+                                            disabled={templateBusy}
+                                            onPress={() => applyTpl(t)}
+                                        />
+                                        <Pressable hitSlop={8} disabled={templateBusy} onPress={() => removeTpl(t)}>
+                                            <Ionicons name="trash-outline" size={20} color={c.textTertiary} />
+                                        </Pressable>
+                                    </View>
+                                </AppCard>
+                            ))
+                        )}
+                    </View>
+                )}
+            </ScreenContainer>
+
+            {/* ════════ 근무 추가/수정 바텀시트 ════════ */}
+            <BottomSheet
+                visible={sheetVisible}
+                onClose={closeSheet}
+                title={editingShift ? '근무 수정' : '근무 추가'}
+                scrollable
+                primary={{
+                    label: saving ? '저장 중...' : editingShift ? '수정 저장' : '근무 추가',
+                    onPress: handleSave,
+                    loading: saving,
+                }}
+                secondary={
+                    editingShift
+                        ? {label: '삭제', variant: 'destructive', onPress: handleDelete}
+                        : {label: '취소', variant: 'secondary', onPress: closeSheet}
+                }>
+                <View style={styles.sheetContent}>
+                    {/* ── 날짜 표시 (읽기 전용, 편집 불가) ── */}
+                    <View style={[styles.dateBadge, {backgroundColor: c.surfaceMuted}]}>
+                        <Ionicons name="calendar-outline" size={16} color={c.brandPrimary} />
+                        <View style={styles.flex}>
+                            <AppText variant="titleMd" weight="700">
+                                {formatDateLong(formDateIso)}
+                            </AppText>
+                            {editingShift && (
+                                <AppText variant="caption" tone="tertiary">
+                                    날짜 변경은 보드 탭에서 끌어서 이동하세요
+                                </AppText>
+                            )}
+                        </View>
+                    </View>
+
+                    {/* ── 직원 선택 드롭다운 ── */}
+                    <View>
+                        <AppText variant="caption" tone="secondary" style={styles.fieldLabel}>
+                            직원{editingShift ? ' (수정 시 변경 불가)' : ''}
+                        </AppText>
+                        <Pressable
+                            disabled={!!editingShift}
+                            onPress={() => setDropdownOpen(v => !v)}
+                            style={[
+                                styles.dropdownTrigger,
+                                {
+                                    borderColor: dropdownOpen ? c.brandPrimary : c.border,
+                                    backgroundColor: c.background,
+                                },
+                                !!editingShift && styles.lockedField,
+                            ]}>
+                            <AppText
+                                variant="titleMd"
+                                style={{color: formEmployee ? c.textPrimary : c.textTertiary}}>
+                                {selectedEmpName}
+                            </AppText>
+                            <Ionicons
+                                name={dropdownOpen ? 'chevron-up' : 'chevron-down'}
+                                size={18}
+                                color={c.textTertiary}
+                            />
+                        </Pressable>
+                        {dropdownOpen && (
+                            <View style={[styles.dropdown, {borderColor: c.border, backgroundColor: c.background}]}>
+                                {employees.map((emp, idx) => (
+                                    <React.Fragment key={emp.id}>
+                                        {idx > 0 && <View style={[styles.separator, {backgroundColor: c.border}]} />}
+                                        <Pressable
+                                            onPress={() => { setFormEmployee(emp.id); setDropdownOpen(false); }}
+                                            style={[
+                                                styles.dropdownItem,
+                                                emp.id === formEmployee && {backgroundColor: c.brandPrimarySoft},
+                                            ]}>
+                                            <View style={[styles.empColorDot, {backgroundColor: employeeColorMap[emp.id] ?? COLORS.SODAM_ORANGE}]} />
+                                            <AppText
+                                                variant="titleMd"
+                                                style={{color: emp.id === formEmployee ? c.brandPrimary : c.textPrimary}}>
+                                                {emp.name}
+                                            </AppText>
+                                            {emp.id === formEmployee && (
+                                                <Ionicons name="checkmark" size={16} color={c.brandPrimary} />
+                                            )}
+                                        </Pressable>
+                                    </React.Fragment>
+                                ))}
+                            </View>
+                        )}
+                    </View>
+
+                    {/* ── 시간 입력 ── */}
+                    <View style={styles.timeRow}>
+                        <AppInput
+                            label="시작"
+                            value={formStart}
+                            onChangeText={setFormStart}
+                            placeholder="0900"
+                            keyboardType="number-pad"
+                            maxLength={4}
+                            helper={TIME_DIGITS_HELPER}
+                            containerStyle={styles.flex}
+                        />
+                        <AppInput
+                            label="종료"
+                            value={formEnd}
+                            onChangeText={setFormEnd}
+                            placeholder="1800"
+                            keyboardType="number-pad"
+                            maxLength={4}
+                            helper={TIME_DIGITS_HELPER}
+                            containerStyle={styles.flex}
+                        />
+                    </View>
+
+                    {/* 야간 표시 */}
+                    {isValidTimeDigits(formStart) &&
+                    isValidTimeDigits(formEnd) &&
+                    formStart !== formEnd &&
+                    isOvernight(formStartHHmm, formEndHHmm) ? (
+                        <View style={styles.hintRow}>
+                            <Ionicons name="moon-outline" size={14} color={c.info} />
+                            <AppText variant="caption" tone="secondary">
+                                야간 근무 — {formEndHHmm}는 다음 날이에요.
+                            </AppText>
+                        </View>
+                    ) : null}
+
+                    <AppInput
+                        label="메모 (선택)"
+                        value={formMemo}
+                        onChangeText={setFormMemo}
+                        placeholder="마감, 교육, 특이사항 등"
+                        multiline
+                        multilineMinHeight={72}
+                    />
+
+                    {/* 경고 */}
+                    {formWarnings.length > 0 && (
+                        <View style={[styles.warnPanel, {backgroundColor: c.surfaceMuted, borderColor: c.warning}]}>
+                            {formWarnings.map(w => (
+                                <View key={w} style={styles.warnRow}>
+                                    <Ionicons name="alert-circle-outline" size={13} color={c.warning} />
+                                    <AppText variant="caption" tone="warning" style={styles.flex}>{w}</AppText>
+                                </View>
+                            ))}
+                            <AppText variant="caption" tone="tertiary">저장은 가능해요. 확인 후 진행하세요.</AppText>
+                        </View>
+                    )}
+
+                    {formError ? (
+                        <AppText variant="caption" tone="error">{formError}</AppText>
+                    ) : null}
                 </View>
-            )}
-        </ScreenContainer>
+            </BottomSheet>
+        </>
     );
 }
 
-function SummaryItem({label, value}: {label: string; value: string}) {
+// ── 보조 컴포넌트 ─────────────────────────────────────────────────────────────
+function SummaryPill({value}: {value: string}) {
+    const c = useThemeColors();
     return (
-        <AppCard variant="warm" style={styles.summaryItem}>
-            <AppText variant="caption" tone="secondary" center>{label}</AppText>
-            <AppText variant="headingSm" center numberOfLines={1} adjustsFontSizeToFit>{value}</AppText>
-        </AppCard>
+        <View style={[styles.pill, {backgroundColor: c.background}]}>
+            <AppText variant="caption" weight="700" tone="secondary">{value}</AppText>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    titleBlock: {
-        gap: spacing.xs,
-        marginBottom: spacing.lg,
-    },
-    summaryRow: {
-        flexDirection: 'row',
-        gap: spacing.sm,
-        marginBottom: spacing.lg,
-    },
-    summaryItem: {
+    // ─ 탭 ─
+    tabBar: {flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg},
+    tabBtn: {
         flex: 1,
-        paddingVertical: spacing.lg,
-        paddingHorizontal: spacing.sm,
-        gap: spacing.xs,
-    },
-    actionRow: {
         flexDirection: 'row',
-        gap: spacing.sm,
-        marginBottom: spacing.lg,
-    },
-    actionButton: {
-        flex: 1,
-    },
-    formCard: {
-        gap: spacing.md,
-        marginBottom: spacing.xl,
-    },
-    cardTitleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.sm,
-    },
-    label: {
-        marginTop: spacing.xs,
-    },
-    employeeChips: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: spacing.sm,
-    },
-    employeeChip: {
-        minHeight: 36,
-        maxWidth: '48%',
-        borderRadius: radius.pill,
-        borderWidth: 1,
-        paddingHorizontal: spacing.md,
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    timeRow: {
-        flexDirection: 'row',
-        gap: spacing.md,
-    },
-    flex: {
-        flex: 1,
-        minWidth: 0,
-    },
-    viewToggle: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
         gap: spacing.xs,
-        marginBottom: spacing.md,
-    },
-    viewToggleBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.xs,
-        paddingHorizontal: spacing.sm,
-        paddingVertical: spacing.xs,
+        paddingVertical: spacing.sm,
         borderRadius: radius.pill,
         borderWidth: 1,
     },
-    boardHint: {
+    // ─ 공통 ─
+    section: {gap: spacing.lg},
+    flex: {flex: 1, minWidth: 0},
+    rowSm: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
+    // ─ 캘린더 탭 ─
+    calLoadingOverlay: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+    },
+    daySection: {gap: spacing.sm},
+    daySectionHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: spacing.xs,
-        marginBottom: spacing.sm,
+        justifyContent: 'space-between',
+        marginTop: spacing.sm,
     },
-    overnightHint: {
+    emptyDay: {
+        borderWidth: 1,
+        borderRadius: radius.lg,
+        borderStyle: 'dashed',
+        paddingVertical: spacing.xl,
+    },
+    shiftCard: {paddingVertical: spacing.md},
+    shiftRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.md},
+    empDot: {width: 10, height: 10, borderRadius: 5, flexShrink: 0},
+    // ─ 보드 탭 ─
+    weekHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: spacing.xs,
+        justifyContent: 'space-between',
+        borderRadius: radius.lg,
+        padding: spacing.md,
     },
+    weekHeaderCenter: {flex: 1, alignItems: 'center', gap: spacing.xs},
+    summaryPills: {flexDirection: 'row', gap: spacing.xs},
+    pill: {
+        borderRadius: radius.pill,
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 2,
+    },
+    actionRow: {flexDirection: 'row', gap: spacing.sm},
+    hintRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.xs},
+    // ─ 템플릿 탭 ─
+    tplForm: {gap: spacing.md},
+    tplIcon: {width: 36, height: 36, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center'},
+    // ─ 바텀시트 ─
+    sheetContent: {gap: spacing.md, paddingTop: spacing.sm},
+    dateBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        borderRadius: radius.lg,
+        padding: spacing.md,
+    },
+    fieldLabel: {marginBottom: spacing.xs},
+    dropdownTrigger: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderWidth: 1,
+        borderRadius: radius.lg,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.md,
+    },
+    lockedField: {opacity: 0.5},
+    dropdown: {
+        borderWidth: 1,
+        borderRadius: radius.lg,
+        marginTop: spacing.xs,
+        overflow: 'hidden',
+    },
+    dropdownItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.md,
+    },
+    separator: {height: 1},
+    empColorDot: {width: 8, height: 8, borderRadius: 4},
+    timeRow: {flexDirection: 'row', gap: spacing.md},
     warnPanel: {
         gap: spacing.xs,
         padding: spacing.sm,
         borderRadius: radius.md,
         borderWidth: 1,
     },
-    warnRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: spacing.xs,
-    },
-    empHeaderRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: spacing.sm,
-        marginLeft: spacing.xs,
-    },
-    editActionRow: {
-        flexDirection: 'row',
-        gap: spacing.sm,
-    },
-    employeeChipLocked: {
-        opacity: 0.4,
-    },
-    scheduleList: {
-        gap: spacing.lg,
-    },
-    dayGroup: {
-        gap: spacing.sm,
-    },
-    dayLabel: {
-        marginLeft: spacing.xs,
-    },
-    shiftCard: {
-        paddingVertical: spacing.md,
-    },
-    shiftCardEditing: {
-        borderWidth: 1,
-    },
-    shiftRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.md,
-    },
-    shiftIcon: {
-        width: 36,
-        height: 36,
-        borderRadius: radius.lg,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
+    warnRow: {flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs},
 });

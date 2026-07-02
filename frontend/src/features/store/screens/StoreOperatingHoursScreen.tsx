@@ -18,6 +18,7 @@ import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
+import {TIME_DIGITS_HELPER, compactTimeFromApi, isValidTimeDigits, sanitizeTimeDigits, timeDigitsToHHmmss} from '../../../common/utils/dateTimeInput';
 
 type DayOfWeek =
     | 'MONDAY'
@@ -64,28 +65,23 @@ interface ApiDay {
 
 /** HH:mm:ss | HH:mm → HH:mm */
 function toHHmm(v?: string | null): string {
-    if (!v) {
-        return '';
-    }
-    return v.slice(0, 5);
+    return compactTimeFromApi(v);
 }
 
 /** HH:mm → HH:mm:ss (저장용). 빈 값/형식 이상은 null 처리. */
 function toHHmmss(v: string): string | null {
-    const m = /^(\d{1,2}):(\d{2})$/.exec(v.trim());
-    if (!m) {
+    const digits = sanitizeTimeDigits(v);
+    if (!isValidTimeDigits(digits)) {
         return null;
     }
-    const hh = Math.min(23, parseInt(m[1], 10));
-    const mm = Math.min(59, parseInt(m[2], 10));
-    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00`;
+    return timeDigitsToHHmmss(digits);
 }
 
 function defaultRows(): DayRow[] {
     return DAY_ORDER.map(d => ({
         dayOfWeek: d,
-        openTime: '09:00',
-        closeTime: '18:00',
+        openTime: '0900',
+        closeTime: '1800',
         isClosed: d === 'SUNDAY',
     }));
 }
@@ -125,8 +121,8 @@ const StoreOperatingHoursScreen: React.FC = () => {
                             const closed = d?.isClosed ?? false;
                             return {
                                 dayOfWeek: day,
-                                openTime: toHHmm(d?.openTime) || '09:00',
-                                closeTime: toHHmm(d?.closeTime) || '18:00',
+                                openTime: toHHmm(d?.openTime) || '0900',
+                                closeTime: toHHmm(d?.closeTime) || '1800',
                                 isClosed: closed,
                             };
                         }),
@@ -155,7 +151,7 @@ const StoreOperatingHoursScreen: React.FC = () => {
             const open = toHHmmss(r.openTime);
             const close = toHHmmss(r.closeTime);
             if (!open || !close) {
-                AppToast.warn(`${DAY_KOREAN[r.dayOfWeek]} 시간을 HH:mm 형식으로 입력해 주세요.`);
+                AppToast.warn(`${DAY_KOREAN[r.dayOfWeek]} 시간은 4자리 숫자로 입력해 주세요. 예: 0900`);
                 return;
             }
             if (open >= close) {
@@ -245,19 +241,21 @@ const StoreOperatingHoursScreen: React.FC = () => {
                                 <AppInput
                                     label="오픈"
                                     value={r.openTime}
-                                    onChangeText={v => updateRow(r.dayOfWeek, {openTime: v})}
-                                    placeholder="09:00"
-                                    keyboardType="numbers-and-punctuation"
-                                    maxLength={5}
+                                    onChangeText={v => updateRow(r.dayOfWeek, {openTime: sanitizeTimeDigits(v)})}
+                                    placeholder="0900"
+                                    keyboardType="number-pad"
+                                    maxLength={4}
+                                    helper={TIME_DIGITS_HELPER}
                                     containerStyle={styles.timeInput}
                                 />
                                 <AppInput
                                     label="마감"
                                     value={r.closeTime}
-                                    onChangeText={v => updateRow(r.dayOfWeek, {closeTime: v})}
-                                    placeholder="18:00"
-                                    keyboardType="numbers-and-punctuation"
-                                    maxLength={5}
+                                    onChangeText={v => updateRow(r.dayOfWeek, {closeTime: sanitizeTimeDigits(v)})}
+                                    placeholder="1800"
+                                    keyboardType="number-pad"
+                                    maxLength={4}
+                                    helper={TIME_DIGITS_HELPER}
                                     containerStyle={styles.timeInput}
                                 />
                             </View>

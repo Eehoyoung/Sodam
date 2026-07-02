@@ -24,6 +24,7 @@ import {
 } from '../../../common/components/ds';
 import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
+import {DATE_DIGITS_HELPER, compactDateFromApi, dateDigitsToIso, isValidDateDigits, sanitizeDateDigits} from '../../../common/utils/dateTimeInput';
 import purchaseService from '../services/purchaseService';
 import {
     PURCHASE_CATEGORY_LABELS,
@@ -69,7 +70,7 @@ const todayString = (): string => {
     const now = new Date();
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const dd = String(now.getDate()).padStart(2, '0');
-    return `${now.getFullYear()}-${mm}-${dd}`;
+    return `${now.getFullYear()}${mm}${dd}`;
 };
 
 export default function PurchaseConfirmScreen({route, navigation}: Props) {
@@ -83,7 +84,8 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
     const [saved, setSaved] = useState(false);
 
     const [vendorName, setVendorName] = useState(draft?.vendorName ?? '');
-    const [purchaseDate, setPurchaseDate] = useState(draft?.purchaseDate ?? todayString());
+    const [purchaseDate, setPurchaseDateValue] = useState(compactDateFromApi(draft?.purchaseDate) || todayString());
+    const setPurchaseDate = (value: string) => setPurchaseDateValue(sanitizeDateDigits(value));
     const [memo, setMemo] = useState('');
     const [categoryIndex, setCategoryIndex] = useState(() => {
         const i = draft ? PURCHASE_CATEGORY_ORDER.indexOf(draft.category) : 0;
@@ -170,9 +172,14 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
             return;
         }
 
+        if (!isValidDateDigits(purchaseDate)) {
+            AppToast.warn(DATE_DIGITS_HELPER);
+            return;
+        }
+
         const body: PurchaseSaveRequest = {
             vendorName: trimmedVendor,
-            purchaseDate,
+            purchaseDate: dateDigitsToIso(purchaseDate),
             category: PURCHASE_CATEGORY_ORDER[categoryIndex],
             memo: memo.trim() || undefined,
             imageRef: undefined,
@@ -252,11 +259,12 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
             <View style={styles.gap} />
             <AppInput
                 label="매입일자"
-                placeholder="YYYY-MM-DD"
+                placeholder="20260629"
                 value={purchaseDate}
                 onChangeText={setPurchaseDate}
-                keyboardType="numbers-and-punctuation"
-                helper="예: 2026-06-16"
+                keyboardType="number-pad"
+                maxLength={8}
+                helper={DATE_DIGITS_HELPER}
             />
 
             <AppText variant="titleMd" tone="secondary" style={styles.sectionLabel}>

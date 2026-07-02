@@ -1,4 +1,4 @@
-import React, {useCallback, useState} from 'react';
+﻿import React, {useCallback, useState} from 'react';
 import {Pressable, StyleSheet, View} from 'react-native';
 import {RouteProp, useFocusEffect, useNavigation, useRoute} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -22,29 +22,29 @@ import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {spacing} from '../../../theme/tokens';
 import {addBreak, BreakRecord, deleteBreak, fetchBreaks} from '../services/breakService';
+import {DATE_DIGITS_HELPER, dateDigitsToIso, isValidDateDigits, sanitizeDateDigits} from '../../../common/utils/dateTimeInput';
 
 type Route = RouteProp<
     {B: {storeId: number; employeeId: number; employeeName?: string}},
     'B'
 >;
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-// 흔한 휴게 부여 단위(분). §54: 4h↑ 30분, 8h↑ 60분.
+// ?뷀븳 ?닿쾶 遺???⑥쐞(遺?. 짠54: 4h??30遺? 8h??60遺?
 const MINUTE_OPTIONS = [30, 60, 90];
 
 function todayStr(): string {
     const d = new Date();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
-    return `${d.getFullYear()}-${m}-${day}`;
+    return `${d.getFullYear()}${m}${day}`;
 }
 
 /**
- * 휴게 부여 증빙(L-NEW-04, 근로기준법 §54) — 사장 전용.
+ * ?닿쾶 遺??利앸튃(L-NEW-04, 洹쇰줈湲곗?踰?짠54) ???ъ옣 ?꾩슜.
  *
- * 직원별로 "휴게를 실제로 줬다"는 기록을 남긴다. 임금 공제가 아니라 부여 의무라,
- * 증빙이 없으면 임금체불 진정 시 사장이 불리하다. 임금계산과는 독립된 기록.
+ * 吏곸썝蹂꾨줈 "?닿쾶瑜??ㅼ젣濡?以щ떎"??湲곕줉???④릿?? ?꾧툑 怨듭젣媛 ?꾨땲??遺???섎Т??
+ * 利앸튃???놁쑝硫??꾧툑泥대텋 吏꾩젙 ???ъ옣??遺덈━?섎떎. ?꾧툑怨꾩궛怨쇰뒗 ?낅┰??湲곕줉.
  */
 const BreakRecordScreen: React.FC = () => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
@@ -56,7 +56,8 @@ const BreakRecordScreen: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
 
-    const [workDate, setWorkDate] = useState(todayStr());
+    const [workDate, setWorkDateValue] = useState(todayStr());
+    const setWorkDate = (value: string) => setWorkDateValue(sanitizeDateDigits(value));
     const [minuteIdx, setMinuteIdx] = useState(0);
     const [granted, setGranted] = useState(true);
     const [memo, setMemo] = useState('');
@@ -85,24 +86,24 @@ const BreakRecordScreen: React.FC = () => {
         if (saving) {
             return;
         }
-        if (!DATE_RE.test(workDate)) {
-            setFormError('근무일은 YYYY-MM-DD 형식으로 입력해 주세요.');
+        if (!isValidDateDigits(workDate)) {
+            setFormError(DATE_DIGITS_HELPER);
             return;
         }
         setSaving(true);
         setFormError(null);
         try {
             await addBreak(storeId, employeeId, {
-                workDate,
+                workDate: dateDigitsToIso(workDate),
                 breakMinutes: MINUTE_OPTIONS[minuteIdx],
                 grantedConfirmed: granted,
                 memo: memo.trim() || undefined,
             });
             setMemo('');
-            AppToast.success('휴게 부여 기록을 추가했어요.');
+            AppToast.success('?닿쾶 遺??湲곕줉??異붽??덉뼱??');
             await load();
         } catch {
-            setFormError('저장에 실패했어요. 잠시 후 다시 시도해 주세요.');
+            setFormError('??μ뿉 ?ㅽ뙣?덉뼱?? ?좎떆 ???ㅼ떆 ?쒕룄??二쇱꽭??');
         } finally {
             setSaving(false);
         }
@@ -110,22 +111,22 @@ const BreakRecordScreen: React.FC = () => {
 
     const confirmDelete = (item: BreakRecord) =>
         ConfirmSheet.confirm({
-            title: '휴게 기록을 삭제할까요?',
-            description: `${item.workDate} · ${item.breakMinutes}분 기록이 삭제돼요. 증빙 자료가 사라지니 신중히 삭제해 주세요.`,
+            title: '?닿쾶 湲곕줉????젣?좉퉴??',
+            description: `${item.workDate} 쨌 ${item.breakMinutes}遺?湲곕줉????젣?쇱슂. 利앸튃 ?먮즺媛 ?щ씪吏???좎쨷????젣??二쇱꽭??`,
             primary: {
-                label: '삭제',
+                label: '??젣',
                 destructive: true,
                 onPress: async () => {
                     try {
                         await deleteBreak(storeId, employeeId, item.id);
-                        AppToast.success('휴게 기록을 삭제했어요.');
+                        AppToast.success('?닿쾶 湲곕줉????젣?덉뼱??');
                         await load();
                     } catch {
-                        AppToast.error('삭제에 실패했어요. 잠시 후 다시 시도해 주세요.');
+                        AppToast.error('??젣???ㅽ뙣?덉뼱?? ?좎떆 ???ㅼ떆 ?쒕룄??二쇱꽭??');
                     }
                 },
             },
-            secondary: {label: '취소'},
+            secondary: {label: '痍⑥냼'},
         });
 
     return (
@@ -137,12 +138,12 @@ const BreakRecordScreen: React.FC = () => {
                     onBack={() => navigation.goBack()}
                 />
             }
-            footer={<AppButton label="휴게 부여 기록 추가" onPress={save} loading={saving} />}>
+            footer={<AppButton label="휴게 기록 추가" onPress={save} loading={saving} />}>
             <View style={[styles.notice, {backgroundColor: c.surfaceMuted}]}>
                 <Ionicons name="information-circle-outline" size={20} color={c.textSecondary} />
                 <AppText variant="caption" tone="secondary" style={styles.noticeText}>
-                    휴게는 임금에서 빼는 것과 별개로 실제로 부여해야 하는 의무예요(근로기준법 §54).
-                    이 기록은 휴게 부여 증빙용이며 임금 계산에는 영향을 주지 않아요.
+                    휴게는 임금에서 빼는 것과 별개로 실제로 부여했다는 증빙이 필요해요.
+                    이 기록은 휴게 부여 증빙이며 임금 계산에는 영향을 주지 않아요.
                 </AppText>
             </View>
 
@@ -151,8 +152,10 @@ const BreakRecordScreen: React.FC = () => {
                 <AppInput
                     value={workDate}
                     onChangeText={setWorkDate}
-                    placeholder="YYYY-MM-DD"
-                    keyboardType="numbers-and-punctuation"
+                    placeholder="20260629"
+                    keyboardType="number-pad"
+                    maxLength={8}
+                    helper={DATE_DIGITS_HELPER}
                 />
 
                 <AppText variant="caption" tone="secondary" style={styles.label}>휴게시간(분)</AppText>
@@ -173,7 +176,7 @@ const BreakRecordScreen: React.FC = () => {
                 <AppInput
                     value={memo}
                     onChangeText={setMemo}
-                    placeholder="예: 점심 휴게 12:00~13:00"
+                    placeholder="예: 점심 휴게"
                     maxLength={300}
                 />
 
@@ -188,9 +191,9 @@ const BreakRecordScreen: React.FC = () => {
                 <LoadingState />
             ) : error ? (
                 <ErrorState
-                    title="휴게 기록을 불러오지 못했어요"
-                    description="잠시 후 다시 시도해 주세요."
-                    primary={{label: '다시 시도', onPress: load}}
+                    title="?닿쾶 湲곕줉??遺덈윭?ㅼ? 紐삵뻽?댁슂"
+                    description="?좎떆 ???ㅼ떆 ?쒕룄??二쇱꽭??"
+                    primary={{label: '?ㅼ떆 ?쒕룄', onPress: load}}
                 />
             ) : items.length === 0 ? (
                 <EmptyState

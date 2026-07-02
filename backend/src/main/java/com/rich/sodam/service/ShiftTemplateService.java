@@ -75,8 +75,8 @@ public class ShiftTemplateService {
         LocalDate monday = weekStart.with(DayOfWeek.MONDAY); // 비-월요일 입력 방어
         ShiftTemplate template = findOwned(storeId, templateId);
 
-        int created = 0;
         List<ApplyTemplateResponse.SkippedEntry> skipped = new ArrayList<>();
+        List<WorkShift> toSave = new ArrayList<>();
         for (ShiftTemplateEntry entry : template.getEntries()) {
             boolean active = relationRepository
                     .existsByEmployeeProfile_IdAndStore_IdAndIsActiveTrue(entry.getEmployeeId(), storeId);
@@ -86,12 +86,12 @@ public class ShiftTemplateService {
                 continue;
             }
             LocalDate date = monday.plusDays(entry.getDayOfWeek().getValue() - 1L); // MON=1→+0 ... SUN=7→+6
-            workShiftRepository.save(WorkShift.create(
+            toSave.add(WorkShift.create(
                     entry.getEmployeeId(), storeId, date,
                     entry.getStartTime(), entry.getEndTime(), entry.getMemo()));
-            created++;
         }
-        return new ApplyTemplateResponse(templateId, monday, created, skipped.size(), skipped);
+        workShiftRepository.saveAll(toSave); // N+1 → 1 배치 INSERT
+        return new ApplyTemplateResponse(templateId, monday, toSave.size(), skipped.size(), skipped);
     }
 
     @Transactional
