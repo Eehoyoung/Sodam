@@ -1,10 +1,12 @@
-/* eslint-disable react-native/no-color-literals -- this screen intentionally follows the approved blue/green employee-home mockup. */
+/* eslint-disable react-native/no-color-literals -- 그라디언트 카드 위 데코/디바이더(rgba) 고정값. MasterMyPageScreen과 동일 패턴. */
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
+import {Pressable, ScrollView, StyleSheet, TouchableOpacity, useWindowDimensions, View} from 'react-native';
 import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
+    AmountText,
     AppButton,
     AppCard,
     AppHeader,
@@ -15,8 +17,9 @@ import {
 } from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {useAuth} from '../../../contexts/AuthContext';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
-import {formatTimer, formatWage} from '../../../common/utils/format';
+import {formatTimer, formatWage, parseServerDateTime} from '../../../common/utils/format';
 import {
     fetchMyShifts,
     shortTime,
@@ -26,7 +29,12 @@ import {
 import storeService from '../../store/services/storeService';
 import {requestApproval} from '../services/attendanceApprovalService';
 import {useStoreLiveSync} from '../../../common/hooks/useStoreLiveSync';
-import {spacing, radius, shadow} from '../../../theme/tokens';
+import contractService from '../../contract/services/contractService';
+import {fetchMyNotices} from '../../notice/services/noticeService';
+import policyService from '../../info/services/policyService';
+import SectionCard from '../../../common/components/sections/SectionCard';
+import SectionHeader from '../../../common/components/sections/SectionHeader';
+import {gradient, radius, shadow, spacing} from '../../../theme/tokens';
 
 type AttendanceState = 'IDLE' | 'WORKING' | 'DONE' | 'LOADING';
 
@@ -48,24 +56,31 @@ interface TodayAttendance {
     dailyWage?: number;
 }
 
-const BLUE = '#1877F2';
-const BLUE_DARK = '#0F55B8';
-const GREEN = '#16A36A';
-const GREEN_SOFT = '#E7F7EF';
-const SKY = '#E8F3FF';
-const SURFACE = '#FFFFFF';
-const CANVAS = '#F6F7F9';
-const LINE = '#E1E6EE';
-const INK = '#17191F';
-const MUTED = '#6B7280';
-const AMBER_SOFT = '#FFF5DF';
-const AMBER_TEXT = '#9A5B00';
+interface PolicyInfo {
+    id: number;
+    title: string;
+    deadline: string;
+    isNew: boolean;
+}
 
-const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+interface QuickMenuItem {
+    key: string;
+    label: string;
+    icon: string;
+    onPress: () => void;
+    color: {bg: string; icon: string};
+    badge?: string;
+    isNew?: boolean;
+}
 
 const EmployeeAttendanceHome: React.FC = () => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const {user} = useAuth();
+    const c = useThemeColors();
+    const {width} = useWindowDimensions();
+
+    // 본문 좌우 여백(spacing.lg) + 퀵메뉴 2개 간격(spacing.sm) 제외 후 3등분
+    const QUICK_ITEM_W = (width - spacing.lg * 2 - spacing.sm * 2) / 3;
 
     const [state, setState] = useState<AttendanceState>('LOADING');
     const [stores, setStores] = useState<MyStore[]>([]);
@@ -75,6 +90,9 @@ const EmployeeAttendanceHome: React.FC = () => {
     const [monthlyAttendances, setMonthlyAttendances] = useState<TodayAttendance[]>([]);
     const [selectorOpen, setSelectorOpen] = useState(false);
     const [tick, setTick] = useState(0);
+    const [policies, setPolicies] = useState<PolicyInfo[]>([]);
+    const [pendingContractCount, setPendingContractCount] = useState(0);
+    const [unreadNoticeCount, setUnreadNoticeCount] = useState(0);
 
     const selectedStore = useMemo(
         () => stores.find(store => store.id === selectedStoreId) ?? stores[0] ?? null,
@@ -193,11 +211,60 @@ const EmployeeAttendanceHome: React.FC = () => {
         return () => clearInterval(id);
     }, [state]);
 
+    // 정부 지원 정책 — MasterMyPageScreen 과 동일 패턴(상위 3건만 요약 표시).
+    useFocusEffect(
+        useCallback(() => {
+            (async () => {
+                try {
+                    const policyDtos: any[] = await policyService.getPoliciesByCategory('ALL');
+                    setPolicies((policyDtos || []).slice(0, 3).map((dto: any) => {
+                        const createdAt = dto.publishDate || dto.createdAt || new Date().toISOString();
+                        const isNew = Date.now() - new Date(createdAt).getTime() < 7 * 24 * 60 * 60 * 1000;
+                        return {
+                            id: Number(dto.id),
+                            title: dto.title || '',
+                            deadline: (dto.updatedAt || createdAt).toString().slice(0, 10),
+                            isNew,
+                        };
+                    }));
+                } catch {/* 보조 정보 무시 */}
+            })();
+        }, []),
+    );
+
+    // 알림 스트립 — 이미 존재하는 서비스 함수(내 계약서/내 공지)로만 계산. 새 BE 엔드포인트 추가 없음.
+    useFocusEffect(
+        useCallback(() => {
+            let active = true;
+            (async () => {
+                try {
+                    const contracts = await contractService.getMyContracts();
+                    if (active) {
+                        setPendingContractCount(contracts.filter(item => !item.signed).length);
+                    }
+                } catch {
+                    if (active) {setPendingContractCount(0);}
+                }
+                try {
+                    const notices = await fetchMyNotices();
+                    if (active) {
+                        setUnreadNoticeCount(notices.filter(item => !item.readByMe).length);
+                    }
+                } catch {
+                    if (active) {setUnreadNoticeCount(0);}
+                }
+            })();
+            return () => {
+                active = false;
+            };
+        }, []),
+    );
+
     const workingDuration = useMemo(() => {
         if (state !== 'WORKING' || !todayRecord?.checkInTime) {
             return '00:00:00';
         }
-        const start = new Date(todayRecord.checkInTime).getTime();
+        const start = parseServerDateTime(todayRecord.checkInTime).getTime();
         return formatTimer(Math.max(0, Date.now() - start) / 1000);
     }, [state, todayRecord?.checkInTime, tick]);
 
@@ -230,7 +297,7 @@ const EmployeeAttendanceHome: React.FC = () => {
             estimatedWage += Math.round(hours * (item.appliedHourlyWage ?? selectedStore?.appliedHourlyWage ?? 0));
         }
         if (state === 'WORKING' && todayRecord?.checkInTime && selectedStore) {
-            const elapsedHours = Math.max(0, Date.now() - new Date(todayRecord.checkInTime).getTime()) / 3600000;
+            const elapsedHours = Math.max(0, Date.now() - parseServerDateTime(todayRecord.checkInTime).getTime()) / 3600000;
             estimatedWage += Math.round(elapsedHours * selectedStore.appliedHourlyWage);
             attendanceDays.add(todayRecord.checkInTime.slice(0, 10));
         }
@@ -240,11 +307,27 @@ const EmployeeAttendanceHome: React.FC = () => {
         };
     }, [monthlyAttendances, selectedStore, state, todayRecord]);
 
+    // 이번 달 근무시간(신규) — monthlySummary(estimatedWage/attendanceDays)는 그대로 두고 옆에 시간 합산만 추가.
+    const monthlyWorkedMinutes = useMemo(() => {
+        let minutes = 0;
+        for (const item of monthlyAttendances) {
+            if (typeof item.workingMinutes === 'number') {
+                minutes += item.workingMinutes;
+            } else if (typeof item.workingHours === 'number') {
+                minutes += item.workingHours * 60;
+            }
+        }
+        if (state === 'WORKING' && todayRecord?.checkInTime) {
+            minutes += Math.max(0, Date.now() - parseServerDateTime(todayRecord.checkInTime).getTime()) / 60000;
+        }
+        return minutes;
+    }, [monthlyAttendances, state, todayRecord?.checkInTime, tick]);
+    const monthlyWorkedHoursLabel = `${Math.round(monthlyWorkedMinutes / 60)}시간`;
+
     // 매장 헤더의 '시급'은 현재 적용 시급(wages 엔드포인트로 갱신된 selectedStore)을 우선 표시한다.
     // todayRecord.appliedHourlyWage 는 출근 시점에 고정된 값이라, 사장이 시급을 바꿔도 반영되지 않는다
     // (그래서 시급 변경이 직원 화면에 안 보이던 문제). 오늘 급여 계산엔 여전히 출근시점 시급을 쓴다.
     const currentWage = selectedStore?.appliedHourlyWage ?? todayRecord?.appliedHourlyWage ?? 0;
-    const hasPendingCorrection = false;
     const isWorking = state === 'WORKING';
 
     const [approvalBusy, setApprovalBusy] = useState(false);
@@ -287,6 +370,63 @@ const EmployeeAttendanceHome: React.FC = () => {
         navigation.navigate('Attendance');
     };
 
+    const nameInitial = (user?.name ?? '직원').charAt(0);
+    const today = new Date();
+    const dateLabel = today.toLocaleDateString('ko-KR', {
+        year: 'numeric', month: 'long', day: 'numeric', weekday: 'short',
+    });
+    const showAlertStrip = pendingContractCount > 0 || unreadNoticeCount > 0;
+
+    const quickMenus: QuickMenuItem[] = [
+        {
+            key: 'shift', label: '내 스케줄', icon: 'calendar-outline',
+            onPress: () => navigation.navigate('MyShift'),
+            color: {bg: c.brandPrimarySoft, icon: c.brandPrimary},
+        },
+        {
+            key: 'salary', label: '급여명세', icon: 'wallet-outline',
+            onPress: () => navigation.navigate('SalaryArchive'),
+            color: {bg: c.infoBg, icon: c.info},
+        },
+        {
+            key: 'contract', label: '계약서', icon: 'document-text-outline',
+            onPress: () => navigation.navigate('MyContract'),
+            color: {bg: c.warningBg, icon: c.warning},
+            badge: pendingContractCount > 0 ? (pendingContractCount > 9 ? '9+' : String(pendingContractCount)) : undefined,
+        },
+        {
+            key: 'leave', label: '내 연차', icon: 'umbrella-outline',
+            onPress: () => navigation.navigate('MyLeaveBalance'),
+            color: {bg: c.surfaceMint, icon: c.success},
+        },
+        {
+            key: 'request', label: '내 요청', icon: 'mail-outline',
+            onPress: () => navigation.navigate('RequestStatus'),
+            color: {bg: c.surfaceMuted, icon: c.textSecondary},
+        },
+        {
+            key: 'wage', label: '시급 이력', icon: 'trending-up-outline',
+            onPress: () => navigation.navigate('MyWageHistory'),
+            color: {bg: c.brandPrimarySoft, icon: c.brandPrimary},
+        },
+        {
+            key: 'notice', label: '공지사항', icon: 'megaphone-outline',
+            onPress: () => navigation.navigate('MyNotice'),
+            color: {bg: c.surfaceSky, icon: c.info},
+            isNew: unreadNoticeCount > 0,
+        },
+        {
+            key: 'joinStore', label: '매장 합류', icon: 'key-outline',
+            onPress: () => navigation.navigate('JoinStoreByCode'),
+            color: {bg: c.surfaceMuted, icon: c.textSecondary},
+        },
+        {
+            key: 'labor', label: '노무 정보', icon: 'scale-outline',
+            onPress: () => navigation.navigate('InfoList'),
+            color: {bg: c.warningBg, icon: c.warning},
+        },
+    ];
+
     if (state === 'LOADING' && stores.length === 0) {
         return (
             <ScreenContainer header={<AppHeader title={`${user?.name ?? '직원'}님`} />}>
@@ -296,215 +436,338 @@ const EmployeeAttendanceHome: React.FC = () => {
     }
 
     return (
-        <ScreenContainer
-            padded={false}
-            header={
-                <AppHeader
-                    title={`${user?.name ?? '직원'}님, 안녕하세요`}
-                    actions={[
-                        {label: '알림', icon: <Ionicons name="notifications-outline" size={20} color={BLUE} />, onPress: () => navigation.navigate('NotificationCenter')},
-                        {label: '설정', icon: <Ionicons name="settings-outline" size={20} color={BLUE} />, onPress: () => navigation.navigate('AccountSettings')},
-                    ]}
-                />
-            }>
+        <ScreenContainer padded={false}>
             <ScrollView
-                style={styles.scroll}
-                contentContainerStyle={styles.content}
+                style={[styles.scroll, {backgroundColor: c.surfaceCanvas}]}
+                contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}>
-                <View style={styles.dateBlock}>
-                    <AppText variant="caption" tone="secondary">{formatToday()}</AppText>
-                    <AppText variant="bodyMd" tone="secondary">오늘도 안전하게 근무하세요</AppText>
+
+                {/* ── 프로필 히어로 헤더 ── */}
+                <View style={[styles.topHeader, {backgroundColor: c.surface, borderBottomColor: c.divider}]}>
+                    <View style={styles.headerLeft}>
+                        <LinearGradient colors={gradient.brand} style={styles.avatar}>
+                            <AppText variant="titleMd" tone="inverse" weight="700">{nameInitial}</AppText>
+                        </LinearGradient>
+                        <View>
+                            <AppText variant="titleMd" weight="700">
+                                안녕하세요, {user?.name ?? '직원'}님 👋
+                            </AppText>
+                            <AppText variant="caption" tone="tertiary">{dateLabel}</AppText>
+                        </View>
+                    </View>
+                    <View style={styles.headerRight}>
+                        <TouchableOpacity
+                            style={[styles.iconBtn, {backgroundColor: c.surfaceCanvas, borderColor: c.border}]}
+                            onPress={() => navigation.navigate('NotificationCenter')}>
+                            <Ionicons name="notifications-outline" size={20} color={c.textSecondary} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.iconBtn, {backgroundColor: c.surfaceCanvas, borderColor: c.border}]}
+                            onPress={() => navigation.navigate('AccountSettings')}>
+                            <Ionicons name="settings-outline" size={20} color={c.textSecondary} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
-                <Pressable
-                    style={styles.storeSelector}
-                    onPress={() => setSelectorOpen(open => !open)}
-                    accessibilityRole="button"
-                    accessibilityLabel="매장 선택">
-                    <View style={styles.storeSelectorMain}>
-                        <Ionicons name="storefront-outline" size={18} color={BLUE} />
-                        <AppText variant="titleMd" numberOfLines={1} style={styles.storeName}>
-                            {selectedStore?.storeName ?? '소속 매장이 없어요'}
-                        </AppText>
-                    </View>
-                    <View style={styles.storeSelectorRight}>
-                        <AppText variant="caption" tone="secondary" numberOfLines={1}>
-                            시급 {formatWage(currentWage)}
-                        </AppText>
-                        <Ionicons name={selectorOpen ? 'chevron-up' : 'chevron-down'} size={18} color={MUTED} />
-                    </View>
-                </Pressable>
-
-                {selectorOpen && stores.length > 1 ? (
-                    <View style={styles.storeChips}>
-                        {stores.map(store => {
-                            const selected = store.id === selectedStore?.id;
-                            return (
-                                <Pressable
-                                    key={store.id}
-                                    style={[styles.storeChip, selected && styles.storeChipSelected]}
-                                    onPress={() => {
-                                        setSelectedStoreId(store.id);
-                                        setSelectorOpen(false);
-                                    }}>
-                                    <AppText
-                                        variant="caption"
-                                        tone={selected ? 'brand' : 'secondary'}
-                                        numberOfLines={1}>
-                                        {store.storeName}
-                                    </AppText>
-                                </Pressable>
-                            );
-                        })}
-                    </View>
+                {/* ── 알림 스트립(선택) — 서명 대기 계약서 / 안읽은 공지가 있을 때만 ── */}
+                {showAlertStrip ? (
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.alertStrip}
+                        style={styles.alertStripWrap}>
+                        {pendingContractCount > 0 ? (
+                            <TouchableOpacity
+                                style={[styles.alertChip, {backgroundColor: c.warningBg, borderColor: c.warning}]}
+                                onPress={() => navigation.navigate('MyContract')}>
+                                <Ionicons name="document-text-outline" size={13} color={c.warning} />
+                                <AppText variant="caption" weight="700" style={{color: c.warning}}>
+                                    계약서 서명 대기 {pendingContractCount}건
+                                </AppText>
+                            </TouchableOpacity>
+                        ) : null}
+                        {unreadNoticeCount > 0 ? (
+                            <TouchableOpacity
+                                style={[styles.alertChip, {backgroundColor: c.infoBg, borderColor: c.info}]}
+                                onPress={() => navigation.navigate('MyNotice')}>
+                                <Ionicons name="megaphone-outline" size={13} color={c.info} />
+                                <AppText variant="caption" weight="700" style={{color: c.info}}>
+                                    새 공지 {unreadNoticeCount}건
+                                </AppText>
+                            </TouchableOpacity>
+                        ) : null}
+                    </ScrollView>
                 ) : null}
 
-                <AppCard variant="plain" style={styles.punchCard}>
-                    <View style={styles.punchTop}>
-                        <View style={styles.flex}>
-                            <AppText variant="headingMd" style={styles.darkText}>
-                                {state === 'WORKING' ? '지금 근무 중이에요' : state === 'DONE' ? '오늘 근무 완료' : '출근 준비가 됐어요'}
-                            </AppText>
-                            <AppText variant="bodyMd" tone="secondary" style={styles.punchDesc}>
-                                {state === 'WORKING'
-                                    ? `${formatTime(todayRecord?.checkInTime)}에 출근했어요. 퇴근 전 휴게 기록도 확인해 주세요.`
-                                    : state === 'DONE'
-                                        ? `${formatTime(todayRecord?.checkOutTime)}에 퇴근했어요. 내일 스케줄을 확인해 주세요.`
-                                        : '출근 전 매장과 오늘 스케줄을 확인해 주세요.'}
+                <View style={styles.body}>
+                    <Pressable
+                        style={[styles.storeSelector, {borderColor: c.border, backgroundColor: c.surface}]}
+                        onPress={() => setSelectorOpen(open => !open)}
+                        accessibilityRole="button"
+                        accessibilityLabel="매장 선택">
+                        <View style={styles.storeSelectorMain}>
+                            <Ionicons name="storefront-outline" size={18} color={c.brandPrimary} />
+                            <AppText variant="titleMd" numberOfLines={1} style={styles.flex}>
+                                {selectedStore?.storeName ?? '소속 매장이 없어요'}
                             </AppText>
                         </View>
-                        <View style={[
-                            styles.statusBadge,
-                            state === 'DONE' && styles.statusBadgeDone,
-                            state === 'IDLE' && styles.statusBadgeIdle,
-                        ]}>
-                            <AppText variant="caption" weight="700" style={[
-                                styles.statusBadgeText,
-                                state === 'DONE' && styles.statusBadgeTextDone,
-                                state === 'IDLE' && styles.statusBadgeTextIdle,
-                            ]}>
-                                {state === 'WORKING' ? '정상 출근' : state === 'DONE' ? '퇴근 완료' : '출근 전'}
+                        <View style={styles.storeSelectorRight}>
+                            <AppText variant="caption" tone="secondary" numberOfLines={1}>
+                                시급 {formatWage(currentWage)}
                             </AppText>
+                            <Ionicons name={selectorOpen ? 'chevron-up' : 'chevron-down'} size={18} color={c.textSecondary} />
                         </View>
-                    </View>
+                    </Pressable>
 
-                    <View style={styles.timerPanel}>
-                        <AppText variant="caption" tone="inverse" style={styles.timerLabel}>
-                            {state === 'WORKING' ? '현재 근무 시간' : '오늘 누적 근무'}
-                        </AppText>
-                        <AppText style={styles.timerText}>
-                            {state === 'WORKING'
-                                ? workingDuration
-                                : formatTimer(todayWorkedSeconds(todayRecord))}
-                        </AppText>
-                        <View style={styles.timerMeta}>
-                            <AppText variant="caption" tone="inverse">출근 {formatTime(todayRecord?.checkInTime)}</AppText>
-                            <AppText variant="caption" tone="inverse">
-                                {todaySchedule ? `예정 퇴근 ${shortTime(todaySchedule.endTime)}` : '예정 없음'}
-                            </AppText>
-                        </View>
-                    </View>
-
-                    <AppButton
-                        label={state === 'WORKING' ? '퇴근하기' : state === 'DONE' ? '퇴근 완료' : '출근하기'}
-                        onPress={handlePunch}
-                        disabled={state === 'DONE'}
-                        leftIcon={<Ionicons name="timer-outline" size={20} color="#FFFFFF" />}
-                        style={styles.punchButton}
-                    />
-                    {state !== 'DONE' ? (
-                        <AppButton
-                            label={state === 'WORKING' ? '사장님 승인으로 퇴근 요청' : '사장님 승인으로 출근 요청'}
-                            variant="secondary"
-                            loading={approvalBusy}
-                            disabled={approvalBusy}
-                            leftIcon={<Ionicons name="checkmark-done-outline" size={18} color={BLUE} />}
-                            style={styles.approvalButton}
-                            onPress={requestApprovalPunch}
-                        />
-                    ) : null}
-                    <View style={styles.secondaryActions}>
-                        <AppButton
-                            label="휴게 기록"
-                            variant="secondary"
-                            size="md"
-                            fullWidth={false}
-                            style={styles.secondaryAction}
-                            onPress={() => {
-                                if (!selectedStore) {return;}
-                                navigation.navigate('BreakRecord', {
-                                    storeId: selectedStore.id,
-                                    employeeId: user?.id ?? 0,
-                                    employeeName: user?.name,
-                                });
-                            }}
-                        />
-                        <AppButton
-                            label="출퇴근 정정"
-                            variant="secondary"
-                            size="md"
-                            fullWidth={false}
-                            style={styles.secondaryAction}
-                            onPress={() => navigation.navigate('AttendanceCorrectionRequest', {
-                                attendanceId: todayRecord?.id,
-                                date: todayRecord?.checkInTime?.slice(0, 10),
-                                storeName: selectedStore?.storeName,
-                                currentCheckIn: todayRecord?.checkInTime,
-                                currentCheckOut: todayRecord?.checkOutTime,
+                    {selectorOpen && stores.length > 1 ? (
+                        <View style={styles.storeChips}>
+                            {stores.map(store => {
+                                const selected = store.id === selectedStore?.id;
+                                return (
+                                    <Pressable
+                                        key={store.id}
+                                        style={[
+                                            styles.storeChip,
+                                            {borderColor: c.border, backgroundColor: c.surface},
+                                            selected ? {borderColor: c.brandPrimary, backgroundColor: c.brandPrimarySoft} : null,
+                                        ]}
+                                        onPress={() => {
+                                            setSelectedStoreId(store.id);
+                                            setSelectorOpen(false);
+                                        }}>
+                                        <AppText
+                                            variant="caption"
+                                            tone={selected ? 'brand' : 'secondary'}
+                                            numberOfLines={1}>
+                                            {store.storeName}
+                                        </AppText>
+                                    </Pressable>
+                                );
                             })}
-                        />
+                        </View>
+                    ) : null}
+
+                    {/* ── 매장이 있을 때만: 그라디언트 KPI 히어로 카드 ── */}
+                    {selectedStore ? (
+                        <LinearGradient
+                            colors={gradient.brandStrong}
+                            style={styles.heroCard}
+                            start={{x: 0, y: 0}}
+                            end={{x: 1, y: 1}}>
+                            <View style={styles.heroDecor} />
+                            <AppText variant="caption" tone="inverse" style={styles.heroLabel}>이번 달 예상 급여</AppText>
+                            <AmountText size={28} tone="inverse">
+                                {monthlySummary.estimatedWage.toLocaleString('ko-KR')}원
+                            </AmountText>
+                            <View style={styles.heroDivider} />
+                            <View style={styles.heroStats}>
+                                <View style={styles.heroStat}>
+                                    <AppText variant="headingSm" tone="inverse">{monthlySummary.attendanceDays}일</AppText>
+                                    <AppText variant="caption" tone="inverse" style={styles.heroStatLbl}>출근 일수</AppText>
+                                </View>
+                                <View style={[styles.heroStat, styles.heroStatDivider]}>
+                                    <AppText variant="headingSm" tone="inverse">{monthlyWorkedHoursLabel}</AppText>
+                                    <AppText variant="caption" tone="inverse" style={styles.heroStatLbl}>이번 달 근무</AppText>
+                                </View>
+                                <View style={[styles.heroStat, styles.heroStatDivider]}>
+                                    <AppText variant="headingSm" tone="inverse">{formatWage(currentWage)}</AppText>
+                                    <AppText variant="caption" tone="inverse" style={styles.heroStatLbl}>적용 시급</AppText>
+                                </View>
+                            </View>
+                        </LinearGradient>
+                    ) : null}
+
+                    {/* ── 출퇴근 상태 카드(펀치 카드) ── */}
+                    {!selectedStore ? (
+                        <AppCard variant="plain" style={styles.punchCard}>
+                            <AppText variant="headingMd">출근 준비가 됐어요</AppText>
+                            <AppText variant="bodyMd" tone="secondary" style={styles.punchDesc}>
+                                합류한 매장이 없어요. 먼저 매장에 합류해 주세요.
+                            </AppText>
+                            <AppButton
+                                label="매장 합류하기"
+                                onPress={() => navigation.navigate('JoinStoreByCode')}
+                                leftIcon={<Ionicons name="key-outline" size={20} color={c.textInverse} />}
+                            />
+                        </AppCard>
+                    ) : (
+                        <AppCard variant="plain" style={styles.punchCard}>
+                            <View style={styles.punchTop}>
+                                <View style={styles.flex}>
+                                    <AppText variant="headingMd">
+                                        {state === 'WORKING' ? '지금 근무 중이에요' : state === 'DONE' ? '오늘 근무 완료' : '출근 준비가 됐어요'}
+                                    </AppText>
+                                    <AppText variant="bodyMd" tone="secondary" style={styles.punchDesc}>
+                                        {state === 'WORKING'
+                                            ? `${selectedStore.storeName} · ${formatTime(todayRecord?.checkInTime)}에 출근했어요. 퇴근 전 휴게 기록도 확인해 주세요.`
+                                            : state === 'DONE'
+                                                ? `${selectedStore.storeName} · ${formatTime(todayRecord?.checkOutTime)}에 퇴근했어요. 내일 스케줄을 확인해 주세요.`
+                                                : `${selectedStore.storeName} · 출근 전 오늘 스케줄을 확인해 주세요.`}
+                                    </AppText>
+                                </View>
+                                <View style={[
+                                    styles.statusBadge,
+                                    {backgroundColor: c.successBg},
+                                    state === 'DONE' ? {backgroundColor: c.infoBg} : null,
+                                    state === 'IDLE' ? {backgroundColor: c.warningBg} : null,
+                                ]}>
+                                    <AppText variant="caption" weight="700" style={{
+                                        color: state === 'DONE' ? c.info : state === 'IDLE' ? c.warning : c.success,
+                                    }}>
+                                        {state === 'WORKING' ? '정상 출근' : state === 'DONE' ? '퇴근 완료' : '출근 전'}
+                                    </AppText>
+                                </View>
+                            </View>
+
+                            <LinearGradient
+                                colors={gradient.brandStrong}
+                                style={styles.timerPanel}
+                                start={{x: 0, y: 0}}
+                                end={{x: 1, y: 1}}>
+                                <AppText variant="caption" tone="inverse" style={styles.timerLabel}>
+                                    {state === 'WORKING' ? '현재 근무 시간' : '오늘 누적 근무'}
+                                </AppText>
+                                <AppText tone="inverse" style={styles.timerText}>
+                                    {state === 'WORKING'
+                                        ? workingDuration
+                                        : formatTimer(todayWorkedSeconds(todayRecord))}
+                                </AppText>
+                                <View style={styles.timerMeta}>
+                                    <AppText variant="caption" tone="inverse">출근 {formatTime(todayRecord?.checkInTime)}</AppText>
+                                    <AppText variant="caption" tone="inverse">
+                                        {todaySchedule ? `예정 퇴근 ${shortTime(todaySchedule.endTime)}` : '예정 없음'}
+                                    </AppText>
+                                </View>
+                            </LinearGradient>
+
+                            <AppButton
+                                label={state === 'WORKING' ? '퇴근하기' : state === 'DONE' ? '퇴근 완료' : '출근하기'}
+                                onPress={handlePunch}
+                                disabled={state === 'DONE'}
+                                leftIcon={<Ionicons name="timer-outline" size={20} color={c.textInverse} />}
+                                style={styles.punchButton}
+                            />
+                            {state !== 'DONE' ? (
+                                <AppButton
+                                    label={state === 'WORKING' ? '사장님 승인으로 퇴근 요청' : '사장님 승인으로 출근 요청'}
+                                    variant="secondary"
+                                    loading={approvalBusy}
+                                    disabled={approvalBusy}
+                                    leftIcon={<Ionicons name="checkmark-done-outline" size={18} color={c.brandSecondary} />}
+                                    style={styles.approvalButton}
+                                    onPress={requestApprovalPunch}
+                                />
+                            ) : null}
+                            <View style={styles.secondaryActions}>
+                                <AppButton
+                                    label="휴게 기록"
+                                    variant="secondary"
+                                    size="md"
+                                    fullWidth={false}
+                                    style={styles.secondaryAction}
+                                    onPress={() => {
+                                        if (!selectedStore) {return;}
+                                        navigation.navigate('BreakRecord', {
+                                            storeId: selectedStore.id,
+                                            employeeId: user?.id ?? 0,
+                                            employeeName: user?.name,
+                                        });
+                                    }}
+                                />
+                                <AppButton
+                                    label="출퇴근 정정"
+                                    variant="secondary"
+                                    size="md"
+                                    fullWidth={false}
+                                    style={styles.secondaryAction}
+                                    onPress={() => navigation.navigate('AttendanceCorrectionRequest', {
+                                        attendanceId: todayRecord?.id,
+                                        date: todayRecord?.checkInTime?.slice(0, 10),
+                                        storeName: selectedStore?.storeName,
+                                        currentCheckIn: todayRecord?.checkInTime,
+                                        currentCheckOut: todayRecord?.checkOutTime,
+                                    })}
+                                />
+                            </View>
+                        </AppCard>
+                    )}
+
+                    {/* ── 매장이 있을 때만: 오늘 스케줄 ── */}
+                    {selectedStore ? (
+                        <>
+                            <SectionTitle title="오늘 스케줄" action="전체 보기" onPress={() => navigation.navigate('MyShift')} />
+                            <AppCard variant="plain" style={styles.scheduleCard}>
+                                <ScheduleRow label="오늘" shift={todaySchedule} fallback="오늘 확정된 스케줄이 없어요." />
+                                <ScheduleRow label="내일" shift={tomorrowSchedule} fallback="내일 스케줄은 아직 비어 있어요." />
+                            </AppCard>
+                        </>
+                    ) : null}
+
+                    {/* ── 빠른 메뉴(9칸) — 매장 유무와 무관하게 항상 표시 ── */}
+                    <SectionTitle title="빠른 메뉴" />
+                    <View style={styles.quickGrid}>
+                        {quickMenus.map(menu => (
+                            <TouchableOpacity
+                                key={menu.key}
+                                style={[styles.quickItem, {width: QUICK_ITEM_W, backgroundColor: c.surface, borderColor: c.border}]}
+                                onPress={menu.onPress}
+                                activeOpacity={0.75}>
+                                {menu.badge ? (
+                                    <View style={[styles.quickBadge, {backgroundColor: c.error}]}>
+                                        <AppText variant="caption" tone="inverse" weight="700" style={styles.quickBadgeText}>
+                                            {menu.badge}
+                                        </AppText>
+                                    </View>
+                                ) : null}
+                                {menu.isNew ? (
+                                    <View style={[styles.quickNewTag, {backgroundColor: c.info}]}>
+                                        <AppText variant="caption" tone="inverse" weight="800" style={styles.quickNewTagText}>N</AppText>
+                                    </View>
+                                ) : null}
+                                <View style={[styles.quickIconWrap, {backgroundColor: menu.color.bg}]}>
+                                    <Ionicons name={menu.icon} size={20} color={menu.color.icon} />
+                                </View>
+                                <AppText variant="caption" weight="600" tone="secondary" center numberOfLines={1}>
+                                    {menu.label}
+                                </AppText>
+                            </TouchableOpacity>
+                        ))}
                     </View>
-                </AppCard>
 
-                <SectionTitle title="오늘 스케줄" action="전체 보기" onPress={() => navigation.navigate('MyShift')} />
-                <AppCard variant="plain" style={styles.scheduleCard}>
-                    <ScheduleRow label="오늘" shift={todaySchedule} fallback="오늘 확정된 스케줄이 없어요." />
-                    <ScheduleRow label="내일" shift={tomorrowSchedule} fallback="내일 스케줄은 아직 비어 있어요." />
-                </AppCard>
-
-                <View style={styles.summaryGrid}>
-                    <SummaryCard
-                        label="이번 달 예상 급여"
-                        value={`${monthlySummary.estimatedWage.toLocaleString('ko-KR')}원`}
-                        sub={`확인된 근무 ${monthlySummary.attendanceDays}일 기준`}
-                    />
-                    <SummaryCard
-                        label="이번 달 출근"
-                        value={`${monthlySummary.attendanceDays}일`}
-                        sub={`정정 대기 ${hasPendingCorrection ? 1 : 0}건`}
-                    />
-                </View>
-
-                <SectionTitle title="빠른 메뉴" />
-                <View style={styles.quickGrid}>
-                    <QuickAction icon="calendar-outline" label="내 스케줄" onPress={() => navigation.navigate('MyShift')} />
-                    <QuickAction icon="wallet-outline" label="급여" onPress={() => navigation.navigate('SalaryArchive')} />
-                    <QuickAction icon="document-text-outline" label="계약서" onPress={() => navigation.navigate('MyContract')} />
-                    <QuickAction icon="key-outline" label="매장 합류" onPress={() => navigation.navigate('JoinStoreByCode')} />
-                </View>
-
-                <SectionTitle title="확인할 일" />
-                <View style={styles.alertList}>
-                    <AlertRow
-                        icon="create-outline"
-                        title="출퇴근 정정이 필요하면 바로 요청하세요"
-                        subtitle={isWorking ? '근무 중에도 요청 초안을 남길 수 있어요.' : '기록 이상이 있으면 사장님 확인 후 반영돼요.'}
-                        onPress={() => navigation.navigate('AttendanceCorrectionRequest', {
-                            attendanceId: todayRecord?.id,
-                            date: todayRecord?.checkInTime?.slice(0, 10),
-                            storeName: selectedStore?.storeName,
-                            currentCheckIn: todayRecord?.checkInTime,
-                            currentCheckOut: todayRecord?.checkOutTime,
-                        })}
-                    />
-                    <AlertRow
-                        icon="notifications-outline"
-                        title={todaySchedule ? '오늘 스케줄이 확정돼 있어요' : '새 스케줄 알림을 확인해 보세요'}
-                        subtitle={todaySchedule
-                            ? `${shortTime(todaySchedule.startTime)} - ${shortTime(todaySchedule.endTime)}`
-                            : '사장님이 확정한 근무 일정만 표시돼요.'}
-                        onPress={() => navigation.navigate('NotificationCenter')}
-                    />
+                    {/* ── 정부 지원 정책 — 매장 유무와 무관하게 항상 표시 ── */}
+                    <SectionCard>
+                        <SectionHeader
+                            title="정부 지원 정책"
+                            onPressAction={() => navigation.navigate('InfoList')}
+                            actionLabel="더보기"
+                        />
+                        <View style={styles.policyList}>
+                            {policies.map(policy => (
+                                <TouchableOpacity
+                                    key={policy.id}
+                                    style={styles.policyRow}
+                                    onPress={() => navigation.navigate('PolicyDetail', {policyId: policy.id})}>
+                                    <View style={[styles.policyDot, {backgroundColor: c.brandPrimary}]} />
+                                    <View style={styles.flex}>
+                                        <View style={styles.policyTitleRow}>
+                                            <AppText variant="titleMd" numberOfLines={1} style={styles.flex}>
+                                                {policy.title}
+                                            </AppText>
+                                            {policy.isNew ? (
+                                                <View style={[styles.policyNewBadge, {backgroundColor: c.infoBg}]}>
+                                                    <AppText variant="caption" weight="700" style={{color: c.info, fontSize: 10}}>
+                                                        NEW
+                                                    </AppText>
+                                                </View>
+                                            ) : null}
+                                        </View>
+                                        <AppText variant="caption" tone="tertiary">마감: {policy.deadline}</AppText>
+                                    </View>
+                                    <Ionicons name="chevron-forward" size={14} color={c.textTertiary} />
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </SectionCard>
                 </View>
             </ScrollView>
         </ScreenContainer>
@@ -540,11 +803,6 @@ function todayWorkedSeconds(record: TodayAttendance | null): number {
     return 0;
 }
 
-function formatToday(): string {
-    const d = new Date();
-    return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${WEEKDAYS[d.getDay()]}요일`;
-}
-
 function formatTime(value?: string): string {
     if (!value) {
         return '--:--';
@@ -566,7 +824,7 @@ function toIsoDate(date: Date): string {
 function SectionTitle({title, action, onPress}: {title: string; action?: string; onPress?: () => void}) {
     return (
         <View style={styles.sectionTitleRow}>
-            <AppText variant="titleMd" style={styles.darkText}>{title}</AppText>
+            <AppText variant="titleMd">{title}</AppText>
             {action && onPress ? (
                 <Pressable onPress={onPress} hitSlop={8}>
                     <AppText variant="caption" tone="brand" weight="700">{action}</AppText>
@@ -577,13 +835,14 @@ function SectionTitle({title, action, onPress}: {title: string; action?: string;
 }
 
 function ScheduleRow({label, shift, fallback}: {label: string; shift: WorkShift | null; fallback: string}) {
+    const c = useThemeColors();
     return (
         <View style={styles.scheduleRow}>
-            <View style={styles.dateBox}>
-                <AppText variant="caption" weight="700" style={styles.dateBoxText}>{label}</AppText>
+            <View style={[styles.dateBox, {backgroundColor: c.brandPrimarySoft}]}>
+                <AppText variant="caption" weight="700" style={{color: c.brandPrimaryDark}}>{label}</AppText>
             </View>
             <View style={styles.flex}>
-                <AppText variant="titleMd" numberOfLines={1} style={styles.darkText}>
+                <AppText variant="titleMd" numberOfLines={1}>
                     {shift ? `${shortTime(shift.startTime)} - ${shortTime(shift.endTime)}` : fallback}
                 </AppText>
                 <AppText variant="caption" tone="secondary" numberOfLines={1}>
@@ -591,81 +850,65 @@ function ScheduleRow({label, shift, fallback}: {label: string; shift: WorkShift 
                 </AppText>
             </View>
             {shift ? (
-                <View style={styles.confirmedChip}>
-                    <AppText variant="caption" weight="700" style={styles.confirmedChipText}>확정</AppText>
+                <View style={[styles.confirmedChip, {backgroundColor: c.successBg}]}>
+                    <AppText variant="caption" weight="700" style={{color: c.success}}>확정</AppText>
                 </View>
             ) : (
-                <Ionicons name="chevron-forward" size={18} color={MUTED} />
+                <Ionicons name="chevron-forward" size={18} color={c.textSecondary} />
             )}
         </View>
-    );
-}
-
-function SummaryCard({label, value, sub}: {label: string; value: string; sub: string}) {
-    return (
-        <AppCard variant="plain" style={styles.summaryCard}>
-            <AppText variant="caption" tone="secondary" weight="700">{label}</AppText>
-            <AppText variant="headingSm" style={styles.darkText} numberOfLines={1} adjustsFontSizeToFit>{value}</AppText>
-            <AppText variant="caption" tone="secondary">{sub}</AppText>
-        </AppCard>
-    );
-}
-
-function QuickAction({icon, label, onPress}: {icon: string; label: string; onPress: () => void}) {
-    return (
-        <Pressable style={styles.quickAction} onPress={onPress} accessibilityRole="button">
-            <View style={styles.quickIcon}>
-                <Ionicons name={icon} size={20} color={BLUE} />
-            </View>
-            <AppText variant="caption" weight="700" center style={styles.darkText}>{label}</AppText>
-        </Pressable>
-    );
-}
-
-function AlertRow({
-    icon,
-    title,
-    subtitle,
-    onPress,
-}: {
-    icon: string;
-    title: string;
-    subtitle: string;
-    onPress: () => void;
-}) {
-    return (
-        <Pressable style={styles.alertRow} onPress={onPress} accessibilityRole="button">
-            <View style={styles.alertIcon}>
-                <Ionicons name={icon} size={18} color={AMBER_TEXT} />
-            </View>
-            <View style={styles.flex}>
-                <AppText variant="titleMd" numberOfLines={1} style={styles.darkText}>{title}</AppText>
-                <AppText variant="caption" tone="secondary" numberOfLines={1}>{subtitle}</AppText>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={MUTED} />
-        </Pressable>
     );
 }
 
 const styles = StyleSheet.create({
     scroll: {
         flex: 1,
-        backgroundColor: CANVAS,
     },
-    content: {
-        padding: spacing.lg,
-        gap: spacing.md,
+    scrollContent: {
         paddingBottom: spacing.xxxl,
     },
-    dateBlock: {
-        gap: spacing.xs,
+    body: {
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.md,
+        gap: spacing.md,
     },
+
+    /* ── 헤더 ── */
+    topHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md,
+        borderBottomWidth: 1,
+    },
+    headerLeft: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1},
+    avatar: {
+        width: 40, height: 40, borderRadius: 20,
+        alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+    },
+    headerRight: {flexDirection: 'row', gap: spacing.sm},
+    iconBtn: {
+        width: 36, height: 36, borderRadius: 18,
+        alignItems: 'center', justifyContent: 'center',
+        borderWidth: 1,
+    },
+
+    /* ── 알림 스트립 ── */
+    alertStripWrap: {paddingVertical: spacing.sm},
+    alertStrip: {paddingHorizontal: spacing.lg, gap: spacing.sm},
+    alertChip: {
+        flexDirection: 'row', alignItems: 'center', gap: 5,
+        paddingHorizontal: spacing.md, paddingVertical: 7,
+        borderRadius: radius.pill, borderWidth: 1,
+    },
+
+    /* ── 매장 선택 ── */
     storeSelector: {
         minHeight: 48,
         borderRadius: radius.lg,
         borderWidth: 1,
-        borderColor: LINE,
-        backgroundColor: SURFACE,
         paddingHorizontal: spacing.md,
         flexDirection: 'row',
         alignItems: 'center',
@@ -686,10 +929,6 @@ const styles = StyleSheet.create({
         gap: spacing.xs,
         maxWidth: '45%',
     },
-    storeName: {
-        color: INK,
-        flex: 1,
-    },
     storeChips: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -701,16 +940,32 @@ const styles = StyleSheet.create({
         maxWidth: '48%',
         borderRadius: radius.pill,
         borderWidth: 1,
-        borderColor: LINE,
-        backgroundColor: SURFACE,
         paddingHorizontal: spacing.md,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    storeChipSelected: {
-        borderColor: BLUE,
-        backgroundColor: SKY,
+
+    /* ── 히어로 KPI 카드 ── */
+    heroCard: {
+        borderRadius: radius.xxl,
+        padding: spacing.xl,
+        overflow: 'hidden',
+        ...shadow.lg,
     },
+    heroDecor: {
+        position: 'absolute', top: -24, right: -24,
+        width: 120, height: 120,
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        borderRadius: 60,
+    },
+    heroLabel: {opacity: 0.85, marginBottom: spacing.xs},
+    heroDivider: {height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: spacing.md},
+    heroStats: {flexDirection: 'row'},
+    heroStat: {flex: 1, alignItems: 'center', gap: 3},
+    heroStatDivider: {borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.2)'},
+    heroStatLbl: {opacity: 0.8},
+
+    /* ── 펀치 카드 ── */
     punchCard: {
         gap: spacing.md,
         borderRadius: radius.lg,
@@ -726,28 +981,11 @@ const styles = StyleSheet.create({
     },
     statusBadge: {
         borderRadius: radius.pill,
-        backgroundColor: GREEN_SOFT,
         paddingHorizontal: spacing.sm,
         paddingVertical: spacing.xs,
     },
-    statusBadgeDone: {
-        backgroundColor: SKY,
-    },
-    statusBadgeIdle: {
-        backgroundColor: AMBER_SOFT,
-    },
-    statusBadgeText: {
-        color: GREEN,
-    },
-    statusBadgeTextDone: {
-        color: BLUE_DARK,
-    },
-    statusBadgeTextIdle: {
-        color: AMBER_TEXT,
-    },
     timerPanel: {
         borderRadius: radius.lg,
-        backgroundColor: BLUE,
         padding: spacing.lg,
         gap: spacing.sm,
     },
@@ -756,11 +994,9 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     timerText: {
-        color: '#FFFFFF',
         fontSize: 42,
         lineHeight: 48,
         fontWeight: '800',
-        letterSpacing: 0,
     },
     timerMeta: {
         flexDirection: 'row',
@@ -769,7 +1005,6 @@ const styles = StyleSheet.create({
     },
     punchButton: {
         borderRadius: radius.lg,
-        backgroundColor: BLUE,
     },
     approvalButton: {
         marginTop: spacing.sm,
@@ -782,12 +1017,16 @@ const styles = StyleSheet.create({
         flex: 1,
         borderRadius: radius.lg,
     },
+
+    /* ── 섹션 공통 ── */
     sectionTitleRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         marginTop: spacing.xs,
     },
+
+    /* ── 스케줄 ── */
     scheduleCard: {
         padding: spacing.md,
         gap: spacing.md,
@@ -803,85 +1042,66 @@ const styles = StyleSheet.create({
         width: 52,
         height: 52,
         borderRadius: radius.lg,
-        backgroundColor: SKY,
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    dateBoxText: {
-        color: BLUE_DARK,
     },
     confirmedChip: {
         borderRadius: radius.pill,
         paddingHorizontal: spacing.sm,
         paddingVertical: spacing.xs,
-        backgroundColor: AMBER_SOFT,
     },
-    confirmedChipText: {
-        color: AMBER_TEXT,
-    },
-    summaryGrid: {
-        flexDirection: 'row',
-        gap: spacing.sm,
-    },
-    summaryCard: {
-        flex: 1,
-        minHeight: 112,
-        borderRadius: radius.lg,
-        padding: spacing.md,
-        justifyContent: 'space-between',
-    },
+
+    /* ── 빠른 메뉴(3×3) ── */
     quickGrid: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: spacing.sm,
     },
-    quickAction: {
-        flex: 1,
+    quickItem: {
         minHeight: 82,
-        borderRadius: radius.lg,
-        backgroundColor: SURFACE,
+        borderRadius: radius.xl,
         borderWidth: 1,
-        borderColor: LINE,
         alignItems: 'center',
         justifyContent: 'center',
         gap: spacing.sm,
+        paddingVertical: spacing.md,
         paddingHorizontal: spacing.xs,
+        position: 'relative',
     },
-    quickIcon: {
-        width: 34,
-        height: 34,
+    quickIconWrap: {
+        width: 44,
+        height: 44,
         borderRadius: radius.lg,
-        backgroundColor: SKY,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    alertList: {
-        gap: spacing.sm,
+    quickBadge: {
+        position: 'absolute', top: 8, right: 8,
+        minWidth: 18, height: 18, borderRadius: 9,
+        alignItems: 'center', justifyContent: 'center',
+        paddingHorizontal: 3,
     },
-    alertRow: {
-        minHeight: 64,
-        borderRadius: radius.lg,
-        borderWidth: 1,
-        borderColor: LINE,
-        backgroundColor: SURFACE,
-        padding: spacing.md,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.sm,
+    quickBadgeText: {fontSize: 10, lineHeight: 14},
+    quickNewTag: {
+        position: 'absolute', top: 8, right: 8,
+        paddingHorizontal: 4, paddingVertical: 2,
+        borderRadius: 5,
     },
-    alertIcon: {
-        width: 36,
-        height: 36,
-        borderRadius: radius.lg,
-        backgroundColor: AMBER_SOFT,
-        alignItems: 'center',
-        justifyContent: 'center',
+    quickNewTagText: {fontSize: 9, lineHeight: 11},
+
+    /* ── 정책 ── */
+    policyList: {gap: 0},
+    policyRow: {
+        flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+        paddingVertical: spacing.sm,
     },
+    policyDot: {width: 6, height: 6, borderRadius: 3, flexShrink: 0},
+    policyTitleRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: 2},
+    policyNewBadge: {paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.pill, flexShrink: 0},
+
     flex: {
         flex: 1,
         minWidth: 0,
-    },
-    darkText: {
-        color: INK,
     },
 });
 
