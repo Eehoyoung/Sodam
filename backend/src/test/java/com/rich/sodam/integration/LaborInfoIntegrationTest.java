@@ -2,7 +2,6 @@ package com.rich.sodam.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rich.sodam.domain.LaborInfo;
-import com.rich.sodam.dto.response.LaborInfoResponseDto;
 import com.rich.sodam.repository.LaborInfoRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -206,9 +205,12 @@ class LaborInfoIntegrationTest {
                 .andReturn();
 
         // 생성된 노무 정보의 ID 추출
+        // 응답 DTO 전체를 LaborInfoResponseDto로 역직렬화하지 않고 id 필드만 읽는다:
+        // createdAt 등 LocalDateTime 필드는 응답 직렬화 시 "+09:00" 오프셋이 붙어 내려오는데
+        // (KstOffsetLocalDateTimeSerializer), 요청 바디 역직렬화기(FlexibleLocalDateTimeDeserializer)는
+        // 오프셋 없는 naive 문자열만 지원하도록 유지되어 있어 그대로 역직렬화하면 실패한다.
         String createResponseJson = createResult.getResponse().getContentAsString();
-        LaborInfoResponseDto createdDto = objectMapper.readValue(createResponseJson, LaborInfoResponseDto.class);
-        Long createdId = createdDto.getId();
+        Long createdId = objectMapper.readTree(createResponseJson).get("id").asLong();
 
         // then - 조회
         mockMvc.perform(get("/api/labor-info/{id}", createdId))

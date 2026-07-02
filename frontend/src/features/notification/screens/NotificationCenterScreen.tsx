@@ -8,6 +8,7 @@ import {AppHeader, AppText, EmptyState, ScreenContainer} from '../../../common/c
 import {spacing, tokens} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
+import {parseServerDateTime} from '../../../common/utils/format';
 
 const CATEGORY_ICON: Record<InboxItem['category'], string> = {
     ATTENDANCE: 'time-outline',
@@ -91,7 +92,7 @@ const NotificationCenterScreen: React.FC = () => {
     const filtered = filter === 'ALL' ? items : items.filter(i => i.category === filter);
 
     return (
-        <ScreenContainer padded={false} header={<AppHeader title="알림" actions={[{label: '설정', onPress: () => navigation.navigate('NotificationSettings')}]} />}>
+        <ScreenContainer padded={false} header={<AppHeader title="알림" onBack={() => navigation.goBack()} actions={[{label: '설정', onPress: () => navigation.navigate('NotificationSettings')}]} />}>
             <View style={styles.filters}>
                 {FILTERS.map(f => (
                     <Pressable
@@ -151,7 +152,8 @@ const NotificationCenterScreen: React.FC = () => {
 };
 
 function formatRel(iso: string): string {
-    const t = new Date(iso).getTime();
+    const d = parseServerDateTime(iso);
+    const t = d.getTime();
     const diff = Date.now() - t;
     if (diff < 60_000) {
         return '방금';
@@ -165,7 +167,6 @@ function formatRel(iso: string): string {
     if (diff < 7 * 86_400_000) {
         return `${Math.floor(diff / 86_400_000)}일 전`;
     }
-    const d = new Date(iso);
     return `${d.getMonth() + 1}월 ${d.getDate()}일`;
 }
 

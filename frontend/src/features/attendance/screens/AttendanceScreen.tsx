@@ -28,6 +28,7 @@ import { useNavigation } from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import { useThemeColors, ThemeColors } from '../../../common/hooks/useThemeColors';
+import {parseServerDateTime} from '../../../common/utils/format';
 
 type CheckInMethod = 'standard' | 'location' | 'nfc';
 const METHOD_ORDER: CheckInMethod[] = ['standard', 'location', 'nfc'];
@@ -50,6 +51,8 @@ const AttendanceScreen = () => {
     const [showNFCReader, setShowNFCReader] = useState(false);
     const [, setNfcTagId] = useState<string>('');
     const [checkInMethod, setCheckInMethod] = useState<CheckInMethod>('standard');
+    // 근무 중 경과 시간 표시를 매초 갱신하기 위한 더미 tick (실제 값은 항상 Date.now() 재계산 — drift 누적 방지)
+    const [tick, setTick] = useState(0);
 
     // Refs to track location services and component mount status for proper cleanup
     const locationWatchId = useRef<number | null>(null);
@@ -255,6 +258,16 @@ const AttendanceScreen = () => {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps -- 근무지 변경 시에만 재조회(fetchAttendanceRecords 는 selectedWorkplaceId 를 읽으므로 의도된 트리거)
     }, [selectedWorkplaceId]);
+
+    // 근무 중일 때만 1초마다 tick 을 올려 elapsedLabel 이 매초 재계산되도록 강제 리렌더
+    useEffect(() => {
+        const working = !!currentAttendance && !currentAttendance.checkOutTime;
+        if (!working) {
+            return;
+        }
+        const id = setInterval(() => setTick(t => t + 1), 1000);
+        return () => clearInterval(id);
+    }, [currentAttendance]);
 
     // 새로고침 처리
     const handleRefresh = () => {
@@ -574,17 +587,20 @@ const AttendanceScreen = () => {
     };
 
     // 현재 근무 시간(시:분) 계산 — WORKING 상태 보조 표기
-    const elapsedLabel = (): string => {
+    // tick 에 의존해 1초마다 재계산(위 useEffect 가 근무 중일 때 tick 을 올림). 값 자체는 항상
+    // Date.now() - checkInTime 실제 시각차를 재계산하므로 setInterval 지연/스로틀링에 drift 가 쌓이지 않음.
+    const elapsedLabel = useMemo((): string => {
         if (!currentAttendance) {
             return '';
         }
         // 음수 방지: 기기/서버 시간대 skew(예: 기기 UTC, 서버 KST)로 경과가 음수가 되면 "-9시간"처럼
         // 표기되던 것을 0으로 클램프. (실 운영은 기기·서버 모두 KST라 정상.)
-        const ms = Math.max(0, new Date().getTime() - new Date(currentAttendance.checkInTime).getTime());
+        const ms = Math.max(0, new Date().getTime() - parseServerDateTime(currentAttendance.checkInTime).getTime());
         const h = Math.floor(ms / (1000 * 60 * 60));
         const m = Math.floor(ms / (1000 * 60)) % 60;
         return `${h}시간 ${m}분`;
-    };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- tick 은 값 자체가 아니라 매초 재계산을 트리거하는 용도로만 필요
+    }, [currentAttendance, tick]);
 
     // 선택된 방식에 따른 출근 핸들러
     const onCheckInPress = () => {
@@ -714,7 +730,7 @@ const AttendanceScreen = () => {
     return (
         <ScreenContainer
             padded={false}
-            header={<AppHeader title="출퇴근" />}
+            header={<AppHeader title="출퇴근 관리" onBack={() => navigation.goBack()} />}
             footer={
                 <CtaStack bordered>
                     <AppButton
@@ -763,7 +779,7 @@ const AttendanceScreen = () => {
                             </Text>
                             {isWorking && currentAttendance ? (
                                 <>
-                                    <AmountText size={44} tone="primary">{elapsedLabel()}</AmountText>
+                                    <AmountText size={44} tone="primary">{elapsedLabel}</AmountText>
                                     <Text style={styles.heroSub}>
                                         {(() => { const d = new Date(currentAttendance.checkInTime); return isNaN(d.getTime()) ? '' : `${format(d, 'HH:mm')} 출근 · `; })()}퇴근하려면 아래 버튼을 눌러주세요
                                     </Text>

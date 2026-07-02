@@ -3,6 +3,18 @@
  * 금액/시급은 우측정렬 또는 큰 카드 중앙, 타이머는 tabular numeral 권장.
  */
 
+/**
+ * 서버가 내려주는 datetime 문자열을 안전하게 파싱한다.
+ * 이미 timezone 오프셋('Z' 또는 '+HH:MM'/'-HH:MM')이 있으면 그대로 파싱하고,
+ * 없으면(레거시 naive LocalDateTime 응답) 한국시간(KST, UTC+9)으로 간주해 오프셋을 붙여 파싱한다.
+ * 소담은 한국 국내 서비스이고 서버는 KST 기준으로 시각을 기록하므로, 기기 타임존이
+ * KST가 아니어도(예: 에뮬레이터 GMT 설정) 항상 올바른 절대시각을 계산하기 위함.
+ */
+export const parseServerDateTime = (value: string): Date => {
+    const hasOffset = /Z$|[+-]\d{2}:?\d{2}$/.test(value);
+    return new Date(hasOffset ? value : `${value}+09:00`);
+};
+
 /** 1234567 → "1,234,567원" */
 export const formatMoney = (won: number): string => `${Math.round(won).toLocaleString('ko-KR')}원`;
 
