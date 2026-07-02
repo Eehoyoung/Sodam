@@ -1,0 +1,44 @@
+# =============================================================================
+# Sodam monorepo root .gitignore
+# Backend and frontend keep their own scoped ignore rules.
+# This file only contains root-level common exclusions.
+# =============================================================================
+
+# Environment
+.env
+.env.local
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.junie/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Repository exclusions
+docs/
+**/docs/
+*.png
+*.html
+
+# Temporary scripts
+_*.ps1
+_*.py
+_*.sh
+
+# Logs
+*.log
+logs/
+backend/.gradle-user-home/
+
+# Backup / temporary files
+*.bak
+*.tmp
+*.swp
+.git.backup/

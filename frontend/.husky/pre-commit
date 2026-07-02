@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running JSI Safety Pre-commit Checks..."
+
+# Run ESLint with JSI safety rules on staged files
+echo "📋 Checking for JSI violations in staged files..."
+npx lint-staged --config .lintstagedrc.jsi-safety.json
+
+# Run JSI-specific tests on animation components
+echo "🧪 Running JSI safety tests..."
+npm run test:jsi-safety
+
+# Check for worklet safety patterns
+echo "⚡ Validating worklet implementations..."
+node scripts/validate-worklets.js
+
+echo "✅ Pre-commit JSI safety checks completed!"

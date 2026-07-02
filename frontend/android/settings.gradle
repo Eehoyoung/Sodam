@@ -1,0 +1,35 @@
+pluginManagement {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+        google()
+    }
+    includeBuild("../node_modules/@react-native/gradle-plugin")
+}
+
+plugins {
+    id("com.facebook.react.settings")
+}
+
+// RN CLI autolinking.json 생성
+extensions.configure(com.facebook.react.ReactSettingsExtension) { ext ->
+    ext.autolinkLibrariesFromCommand()
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+    repositories {
+        google()
+        mavenCentral()
+    }
+    versionCatalogs {
+        libs {
+            from(files("../node_modules/react-native/gradle/libs.versions.toml"))
+        }
+    }
+}
+
+rootProject.name = "Sodam_Front_End"
+include(":app")
+
+// Reanimated 수동 include 제거 (autolink에 위임)

@@ -1,0 +1,104 @@
+plugins {
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+    id "com.facebook.react"
+}
+
+android {
+    namespace "com.sodam_front_end"
+    compileSdkVersion 35
+    buildToolsVersion "35.0.0"
+    ndkVersion "27.1.12297006"
+
+    defaultConfig {
+        applicationId "com.sodam_front_end"
+        minSdkVersion 24
+        //noinspection OldTargetApi,EditedTargetSdkVersion
+        targetSdkVersion 35
+        versionCode 1
+        versionName "1.0"
+        missingDimensionStrategy "react-native-vision-camera", "mlkit"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'  // 변경
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            crunchPngs false
+            proguardFiles(
+                    getDefaultProguardFile("proguard-android.txt"),
+                    "proguard-rules.pro"
+            )
+        }
+    }
+
+    packagingOptions {
+        // 여러 .so 파일 중 첫 번째만 선택하여 충돌 방지
+        pickFirst '**/libc++_shared.so'
+        pickFirst '**/libreact_render_component_view.so'
+        pickFirst '**/libreact_render_core.so'
+        pickFirst '**/libreact_render_debug.so'
+        pickFirst '**/libreact_render_graphics.so'
+        pickFirst '**/libfb.so'
+        pickFirst '**/libglslang.so'
+        pickFirst '**/libgtest.so'
+        pickFirst '**/libgtest_main.so'
+        pickFirst '**/libjsi.so'
+        pickFirst '**/liblog.so'
+        pickFirst '**/libreact_codegen_rncore_generated.so'
+        pickFirst '**/libreact_nativemodule_core.so'
+        pickFirst '**/libreactnativejni.so'
+        pickFirst '**/libyoga.so'
+
+        // worklets-core 및 VisionCamera 관련 라이브러리가 빌드 과정에서 제거되지 않도록 방지
+        doNotStrip '**/libworklets.so'
+        doNotStrip '**/libVisionCamera.so'
+    }
+}
+
+// React Native Vector Icons font configuration - DISABLED
+// Autolinking is disabled for react-native-vector-icons in react-native.config.js
+// Therefore, fonts.gradle cannot be applied as it requires Android plugin configuration
+// project.ext.vectoricons = [
+//     iconFontNames: [ 'AntDesign.ttf', 'Entypo.ttf', 'EvilIcons.ttf', 'Feather.ttf', 'FontAwesome.ttf', 'FontAwesome5_Brands.ttf', 'FontAwesome5_Regular.ttf', 'FontAwesome5_Solid.ttf', 'Foundation.ttf', 'Ionicons.ttf', 'MaterialIcons.ttf', 'MaterialCommunityIcons.ttf', 'SimpleLineIcons.ttf', 'Octicons.ttf', 'Zocial.ttf' ]
+// ]
+
+// apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
+// Expo modules disabled due to gradle plugin dependency resolution issue
+// apply from: new File(["node", "--print", "require.resolve('expo/package.json')"].execute(null, rootDir).text.trim(), "../scripts/autolinking.gradle")
+// useExpoModules()
+
+// React Native autolinking is handled automatically by settings.gradle
+
+dependencies {
+    implementation "com.facebook.react:react-android"
+
+    // Hermes vs JSC 선택
+    if (project.hasProperty("hermesEnabled") && project.property("hermesEnabled") == "true") {
+        implementation "com.facebook.react:hermes-android"
+    } else {
+        implementation "io.github.react-native-community:jsc-android:2026004.+"
+    }
+
+    // Manual dependencies for packages with disabled autolinking
+    implementation project(':react-native-reanimated')
+    implementation project(':react-native-async-storage_async-storage')
+    implementation project(':react-native-community_datetimepicker')
+    implementation project(':react-native-geolocation-service')
+    implementation project(':react-native-gesture-handler')
+    implementation project(':react-native-permissions')
+    implementation project(':react-native-safe-area-context')
+    implementation project(':react-native-screens')
+    implementation project(':react-native-vector-icons')
+    implementation project(':react-native-vision-camera')
+    implementation project(':react-native-worklets-core')
+}

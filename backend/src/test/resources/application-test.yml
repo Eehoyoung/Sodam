@@ -1,0 +1,95 @@
+# 애플리케이션 테스트 설정
+# 외부 의존성(MySQL/Redis) 없이 H2 in-memory + ConcurrentMap 캐시로 동작.
+# dev 프로필과 동일한 인메모리 인프라 경로를 사용한다 (DevInfraConfig/InMemoryTokenStore 가 test 프로필에도 활성).
+app:
+  store:
+    default-radius: 50  # 테스트용 작은 반경
+  redis:
+    cache-database: 2   # 캐시 DB 번호 (인메모리 캐시에서는 미사용, 호환성 유지)
+
+sentry:
+  enabled: false
+
+spring:
+  application:
+    name: sodam-test
+
+  # H2 in-memory DB (MySQL 호환 모드) — 외부 MySQL 불필요
+  datasource:
+    url: jdbc:h2:mem:sodam-test;MODE=MySQL;DB_CLOSE_DELAY=-1;NON_KEYWORDS=USER
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        globally_quoted_identifiers: true  # 예약어(user) 테이블/컬럼 자동 인용 — 운영과 동일
+        format_sql: true
+        order_inserts: true
+        order_updates: true
+        jdbc.batch_size: 30
+        jdbc.batch_versioned_data: true
+        query.in_clause_parameter_padding: true
+        query.plan_cache_max_size: 2048
+        generate_statistics: false
+        cache:
+          use_second_level_cache: false
+          use_query_cache: false
+    open-in-view: false
+    show-sql: false
+
+  # 캐시는 인메모리 (DevInfraConfig 의 ConcurrentMapCacheManager 사용)
+  cache:
+    type: simple
+
+  # data.sql 시드 비활성 (H2 충돌 방지) — 테스트별로 직접 시드
+  sql:
+    init:
+      mode: never
+
+# JWT 테스트 설정 — dev 와 동일한 고정 시크릿 (테스트 전용)
+jwt:
+  secret: ${JWT_SECRET:dGVzdC1vbmx5LXNlY3JldC1rZXktY2hhbmdlLW1lLW11c3QtYmUtMzItYnl0ZXMtbG9uZw==}
+  token-validity-in-seconds: ${JWT_TOKEN_VALIDITY_SECONDS:3600}
+  refresh-token-validity-in-days: ${JWT_REFRESH_VALIDITY_DAYS:7}
+  cookie-name: ${JWT_COOKIE_NAME:sodam_jwt_test}
+  cookie-max-age: ${JWT_COOKIE_MAX_AGE:3600}
+
+# Kakao OAuth — 테스트 Mock 허용
+spring.security.oauth2.client.registration.kakao:
+  client-id: ${KAKAO_CLIENT_ID:test-mock-client-id}
+  client-secret: ${KAKAO_CLIENT_SECRET:test-mock-client-secret}
+
+# 외부 서비스 — 전부 mock/off (API 키 없이 부팅)
+sodam:
+  integration:
+    toss:
+      mode: mock
+      client-key: ${TOSS_CLIENT_KEY:test_ck_test}
+      secret-key: ${TOSS_SECRET_KEY:test_sk_test}
+      base-url: ${TOSS_BASE_URL:https://api.tosspayments.com}
+      webhook-secret: ${TOSS_WEBHOOK_SECRET:test-webhook}
+    fcm:
+      mode: mock
+      project-id: ${FCM_PROJECT_ID:sodam-test}
+    sentry:
+      mode: off
+      dsn: ${SENTRY_DSN:}
+      environment: test
+      traces-sample-rate: 0.0
+    kakao:
+      mode: mock
+      base-url: https://dapi.kakao.com
+    channel-talk:
+      mode: off
+      plugin-key: ""
+
+# 국세청 API 테스트 설정
+tax:
+  office:
+    api:
+      key: ${NTS_API_KEY:test_api_key}

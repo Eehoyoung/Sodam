@@ -1,0 +1,184 @@
+/* eslint-disable react-native/no-color-literals -- 미선택 토글 배경(transparent) 고정 */
+import {AppToast, ConfirmSheet, AppButton, AppCard, AppHeader, AppInput, AppText, ScreenContainer} from '../../../common/components/ds';
+import React, {useState} from 'react';
+import {Pressable, StyleSheet, View} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
+import type {RootNavigationProp} from '../../../navigation/types';
+import {spacing} from '../../../theme/tokens';
+import api from '../../../common/utils/api';
+import {useAuth} from '../../../contexts/AuthContext';
+import {useTheme, useThemeColors, ThemeMode} from '../../../common/hooks/useThemeColors';
+
+/**
+ * 42 AccountSettings — 확정 시안.
+ * 이름 변경 + 회원 탈퇴. saveName/withdraw 로직 보존.
+ */
+const AccountSettingsScreen: React.FC = () => {
+    const {user, logout} = useAuth();
+    const navigation = useNavigation<RootNavigationProp>();
+    const theme = useTheme();
+    const c = useThemeColors();
+    const [name, setName] = useState(user?.name ?? '');
+    const [saving, setSaving] = useState(false);
+    const [loggingOut, setLoggingOut] = useState(false);
+
+    const handleLogout = () => {
+        ConfirmSheet.confirm({
+            title: '로그아웃할까요?',
+            description: '저장하지 않은 작업은 사라져요. 언제든 다시 로그인할 수 있어요.',
+            primary: {
+                label: '로그아웃',
+                onPress: async () => {
+                    setLoggingOut(true);
+                    try {
+                        await logout?.();
+                        // AuthProvider 가 isAuthenticated=false 로 바뀌면 AuthNavigator 가 자동으로
+                        // Auth 스택으로 reset 한다. 추가 navigation 호출 없음.
+                        AppToast.success('로그아웃됐어요.');
+                    } catch (e: any) {
+                        AppToast.error('로그아웃에 실패했어요. 잠시 후 다시 시도해 주세요.');
+                    } finally {
+                        setLoggingOut(false);
+                    }
+                },
+            },
+            secondary: {label: '취소'},
+        });
+    };
+
+    const saveName = async () => {
+        if (!name || name.trim().length < 2) {
+            AppToast.warn('이름은 2자 이상이어야 해요.');
+            return;
+        }
+        setSaving(true);
+        try {
+            await api.put('/api/user/me', {name: name.trim()});
+            AppToast.success('이름이 변경됐어요.');
+        } catch (e: any) {
+            AppToast.error(e?.response?.data?.message ?? '변경에 실패했어요.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const withdraw = () => {
+        if (!user?.id) {
+            return;
+        }
+        ConfirmSheet.confirm({
+            title: '정말 탈퇴하시겠어요?',
+            description: '활성 구독이 있으면 차단돼요. 90일 후 개인정보가 자동 익명화되며, 이 작업은 되돌릴 수 없어요.',
+            primary: {
+                label: '탈퇴하기',
+                destructive: true,
+                onPress: async () => {
+                    try {
+                        await api.delete(`/api/user/${user.id}`);
+                        AppToast.success('탈퇴가 완료됐어요. 이용해 주셔서 감사해요.');
+                        try {
+                            await logout?.();
+                        } catch (_) {/* ignore */}
+                        navigation.reset({index: 0, routes: [{name: 'Auth'}]});
+                    } catch (e: any) {
+                        const msg =
+                            e?.response?.data?.message ??
+                            (e?.response?.status === 400 ? '활성 구독을 먼저 해지해 주세요.' : '탈퇴 처리에 실패했어요.');
+                        AppToast.error(msg);
+                    }
+                },
+            },
+            secondary: {label: '취소'},
+        });
+    };
+
+    return (
+        <ScreenContainer scroll header={<AppHeader title="계정 설정" onBack={() => navigation.goBack()} />}>
+            <AppCard variant="flat">
+                <AppInput label="이름" value={name} onChangeText={setName} placeholder="실명 또는 닉네임" helper="2~50자" />
+                <AppButton label="이름 변경" size="md" loading={saving} onPress={saveName} style={styles.cta} />
+            </AppCard>
+
+            <AppText variant="caption" tone="secondary" style={styles.sectionTitle}>이메일</AppText>
+            <AppCard variant="flat">
+                <AppText variant="bodyMd">{user?.email ?? '-'}</AppText>
+                <AppText variant="caption" tone="tertiary" style={styles.helper}>
+                    이메일 변경은 별도 인증이 필요해요 (출시 후 지원).
+                </AppText>
+            </AppCard>
+
+            <AppText variant="caption" tone="secondary" style={styles.sectionTitle}>화면 테마</AppText>
+            <AppCard variant="flat">
+                <AppText variant="bodyMd">밤 매장에서도 눈이 편하게 다크 모드를 켤 수 있어요.</AppText>
+                <View style={styles.themeRow}>
+                    {(['system', 'light', 'dark'] as ThemeMode[]).map(m => {
+                        const on = theme.mode === m;
+                        return (
+                            <Pressable
+                                key={m}
+                                onPress={() => theme.setMode(m)}
+                                accessibilityRole="radio"
+                                accessibilityState={{selected: on}}
+                                style={[
+                                    styles.themeChip,
+                                    {borderColor: on ? c.brandPrimary : c.border, backgroundColor: on ? c.brandPrimarySoft : 'transparent'},
+                                ]}>
+                                <AppText variant="caption" weight="800" tone={on ? 'brand' : 'secondary'}>
+                                    {m === 'system' ? '시스템' : m === 'light' ? '라이트' : '다크'}
+                                </AppText>
+                            </Pressable>
+                        );
+                    })}
+                </View>
+                <AppText variant="caption" tone="tertiary" style={styles.helper}>
+                    현재: {theme.resolved === 'dark' ? '다크' : '라이트'} (시스템 색상 자동 반영)
+                </AppText>
+            </AppCard>
+
+            <AppText variant="caption" tone="secondary" style={styles.sectionTitle}>세션</AppText>
+            <AppCard variant="flat">
+                <AppText variant="bodyMd">{user?.email ?? '계정'}으로 로그인됨</AppText>
+                <AppText variant="caption" tone="tertiary" style={styles.helper}>
+                    로그아웃하면 다음에 다시 이메일·비밀번호를 입력해 로그인해야 해요.
+                </AppText>
+                <AppButton
+                    label="로그아웃"
+                    variant="outline"
+                    size="md"
+                    loading={loggingOut}
+                    onPress={handleLogout}
+                    style={styles.cta}
+                />
+            </AppCard>
+
+            <AppText variant="caption" tone="secondary" style={styles.sectionTitle}>위험</AppText>
+            <AppCard variant="danger">
+                <AppText variant="titleMd">계정 탈퇴 전 확인</AppText>
+                <AppText variant="caption" tone="secondary" style={styles.helper}>
+                    탈퇴 후에는 출퇴근·급여 데이터를 다시 조회할 수 없어요.
+                </AppText>
+                <AppButton label="회원 탈퇴" variant="destructive" size="md" onPress={withdraw} style={styles.cta} />
+            </AppCard>
+            <View style={styles.bottomGap} />
+        </ScreenContainer>
+    );
+};
+
+const styles = StyleSheet.create({
+    cta: {marginTop: spacing.md},
+    sectionTitle: {marginTop: spacing.xl, marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.5},
+    helper: {marginTop: spacing.sm},
+    themeRow: {flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md},
+    themeChip: {
+        flex: 1,
+        minHeight: 44,
+        borderWidth: 1.5,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: spacing.sm,
+    },
+    bottomGap: {height: spacing.xl},
+});
+
+export default AccountSettingsScreen;

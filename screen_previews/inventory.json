@@ -1,0 +1,739 @@
+{
+  "generatedAt": "2026-05-29T03:19:50.843Z",
+  "counts": {
+    "total": 55,
+    "high": 1,
+    "medium": 8,
+    "low": 46,
+    "features": {
+      "attendance": 4,
+      "auth": 5,
+      "home": 2,
+      "info": 5,
+      "myPage": 6,
+      "notification": 1,
+      "qna": 1,
+      "referral": 1,
+      "salary": 5,
+      "settings": 2,
+      "store": 6,
+      "subscription": 1,
+      "system": 8,
+      "timeoff": 1,
+      "welcome": 5,
+      "workplace": 2
+    }
+  },
+  "screens": [
+    {
+      "name": "AttendanceCalendarScreen",
+      "title": "근무 기록",
+      "feature": "attendance",
+      "file": "frontend/src/features/attendance/screens/AttendanceCalendarScreen.tsx",
+      "kind": "standard",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 266
+    },
+    {
+      "name": "AttendanceCorrectionRequestScreen",
+      "title": "정정 요청",
+      "feature": "attendance",
+      "file": "frontend/src/features/attendance/screens/AttendanceCorrectionRequestScreen.tsx",
+      "kind": "form",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 163
+    },
+    {
+      "name": "AttendanceScreen",
+      "title": "출퇴근 관리",
+      "feature": "attendance",
+      "file": "frontend/src/features/attendance/screens/AttendanceScreen.tsx",
+      "kind": "hero",
+      "risk": "medium",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable",
+        "legacy COLORS"
+      ],
+      "lines": 1215
+    },
+    {
+      "name": "MissingAttendanceCenterScreen",
+      "title": "출퇴근 이상",
+      "feature": "attendance",
+      "file": "frontend/src/features/attendance/screens/MissingAttendanceCenterScreen.tsx",
+      "kind": "state",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 168
+    },
+    {
+      "name": "KakaoLoginScreen",
+      "title": "카카오 로그인",
+      "feature": "auth",
+      "file": "frontend/src/features/auth/screens/KakaoLoginScreen.tsx",
+      "kind": "hero",
+      "risk": "medium",
+      "flags": [
+        "SafeArea"
+      ],
+      "lines": 73
+    },
+    {
+      "name": "LoginScreen",
+      "title": "로그인",
+      "feature": "auth",
+      "file": "frontend/src/features/auth/screens/LoginScreen.tsx",
+      "kind": "hero",
+      "risk": "low",
+      "flags": [
+        "SafeArea",
+        "Scrollable",
+        "Keyboard"
+      ],
+      "lines": 236
+    },
+    {
+      "name": "PasswordResetScreen",
+      "title": "비밀번호 찾기",
+      "feature": "auth",
+      "file": "frontend/src/features/auth/screens/PasswordResetScreen.tsx",
+      "kind": "form",
+      "risk": "medium",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable",
+        "absolute"
+      ],
+      "lines": 460
+    },
+    {
+      "name": "ProfileScreen",
+      "title": "프로필",
+      "feature": "auth",
+      "file": "frontend/src/features/auth/screens/ProfileScreen.tsx",
+      "kind": "hero",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 92
+    },
+    {
+      "name": "SignupScreen",
+      "title": "회원가입",
+      "feature": "auth",
+      "file": "frontend/src/features/auth/screens/SignupScreen.tsx",
+      "kind": "form",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 181
+    },
+    {
+      "name": "HomeScreen",
+      "title": "오늘의 소담",
+      "feature": "home",
+      "file": "frontend/src/features/home/screens/HomeScreen.tsx",
+      "kind": "dashboard",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 35
+    },
+    {
+      "name": "OwnerDashboardScreen",
+      "title": "사장 대시보드",
+      "feature": "home",
+      "file": "frontend/src/features/home/screens/OwnerDashboardScreen.tsx",
+      "kind": "state",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 234
+    },
+    {
+      "name": "InfoListScreen",
+      "title": "노무 정보",
+      "feature": "info",
+      "file": "frontend/src/features/info/screens/InfoListScreen.tsx",
+      "kind": "list",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 211
+    },
+    {
+      "name": "LaborInfoDetailScreen",
+      "title": "노동 정보 상세",
+      "feature": "info",
+      "file": "frontend/src/features/info/screens/LaborInfoDetailScreen.tsx",
+      "kind": "state",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 173
+    },
+    {
+      "name": "PolicyDetailScreen",
+      "title": "정책 상세",
+      "feature": "info",
+      "file": "frontend/src/features/info/screens/PolicyDetailScreen.tsx",
+      "kind": "state",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 201
+    },
+    {
+      "name": "TaxInfoDetailScreen",
+      "title": "세무 정보 상세",
+      "feature": "info",
+      "file": "frontend/src/features/info/screens/TaxInfoDetailScreen.tsx",
+      "kind": "state",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 193
+    },
+    {
+      "name": "TipsDetailScreen",
+      "title": "팁 상세",
+      "feature": "info",
+      "file": "frontend/src/features/info/screens/TipsDetailScreen.tsx",
+      "kind": "state",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 190
+    },
+    {
+      "name": "AccountSettingsScreen",
+      "title": "계정 설정",
+      "feature": "myPage",
+      "file": "frontend/src/features/myPage/screens/AccountSettingsScreen.tsx",
+      "kind": "form",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 109
+    },
+    {
+      "name": "EmployeeMyPageRNScreen",
+      "title": "직원 홈",
+      "feature": "myPage",
+      "file": "frontend/src/features/myPage/screens/EmployeeMyPageRNScreen.tsx",
+      "kind": "dashboard",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 156
+    },
+    {
+      "name": "ManagerMyPageScreen",
+      "title": "매니저 홈",
+      "feature": "myPage",
+      "file": "frontend/src/features/myPage/screens/ManagerMyPageScreen.tsx",
+      "kind": "dashboard",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 173
+    },
+    {
+      "name": "MasterMyPageScreen",
+      "title": "사장 홈",
+      "feature": "myPage",
+      "file": "frontend/src/features/myPage/screens/MasterMyPageScreen.tsx",
+      "kind": "hero",
+      "risk": "medium",
+      "flags": [
+        "ScreenContainer",
+        "SafeArea",
+        "Scrollable",
+        "Dimensions.get",
+        "legacy COLORS"
+      ],
+      "lines": 787
+    },
+    {
+      "name": "PersonalUserScreen",
+      "title": "개인 기록장",
+      "feature": "myPage",
+      "file": "frontend/src/features/myPage/screens/PersonalUserScreen.tsx",
+      "kind": "hero",
+      "risk": "high",
+      "flags": [
+        "SafeArea",
+        "Scrollable",
+        "Dimensions.get",
+        "absolute"
+      ],
+      "lines": 1570
+    },
+    {
+      "name": "RequestStatusScreen",
+      "title": "내 요청",
+      "feature": "myPage",
+      "file": "frontend/src/features/myPage/screens/RequestStatusScreen.tsx",
+      "kind": "state",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 94
+    },
+    {
+      "name": "NotificationCenterScreen",
+      "title": "알림",
+      "feature": "notification",
+      "file": "frontend/src/features/notification/screens/NotificationCenterScreen.tsx",
+      "kind": "list",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 174
+    },
+    {
+      "name": "QnAScreen",
+      "title": "Q&A",
+      "feature": "qna",
+      "file": "frontend/src/features/qna/screens/QnAScreen.tsx",
+      "kind": "form",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 107
+    },
+    {
+      "name": "ReferralScreen",
+      "title": "친구 추천",
+      "feature": "referral",
+      "file": "frontend/src/features/referral/screens/ReferralScreen.tsx",
+      "kind": "standard",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 122
+    },
+    {
+      "name": "PayrollRunScreen",
+      "title": "급여 정산",
+      "feature": "salary",
+      "file": "frontend/src/features/salary/screens/PayrollRunScreen.tsx",
+      "kind": "hero",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 601
+    },
+    {
+      "name": "PdfPreviewScreen",
+      "title": "PDF 미리보기",
+      "feature": "salary",
+      "file": "frontend/src/features/salary/screens/PdfPreviewScreen.tsx",
+      "kind": "standard",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 44
+    },
+    {
+      "name": "SalaryArchiveScreen",
+      "title": "지난 급여명세",
+      "feature": "salary",
+      "file": "frontend/src/features/salary/screens/SalaryArchiveScreen.tsx",
+      "kind": "state",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 97
+    },
+    {
+      "name": "SalaryDetailScreen",
+      "title": "급여 상세",
+      "feature": "salary",
+      "file": "frontend/src/features/salary/screens/SalaryDetailScreen.tsx",
+      "kind": "state",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 154
+    },
+    {
+      "name": "SalaryListScreen",
+      "title": "급여",
+      "feature": "salary",
+      "file": "frontend/src/features/salary/screens/SalaryListScreen.tsx",
+      "kind": "form",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 898
+    },
+    {
+      "name": "NotificationSettingsScreen",
+      "title": "알림 설정",
+      "feature": "settings",
+      "file": "frontend/src/features/settings/screens/NotificationSettingsScreen.tsx",
+      "kind": "standard",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 280
+    },
+    {
+      "name": "SettingsScreen",
+      "title": "설정",
+      "feature": "settings",
+      "file": "frontend/src/features/settings/screens/SettingsScreen.tsx",
+      "kind": "standard",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 82
+    },
+    {
+      "name": "EmployeeDetailScreen",
+      "title": "직원 상세",
+      "feature": "store",
+      "file": "frontend/src/features/store/screens/EmployeeDetailScreen.tsx",
+      "kind": "form",
+      "risk": "medium",
+      "flags": [
+        "SafeArea",
+        "Scrollable"
+      ],
+      "lines": 511
+    },
+    {
+      "name": "JoinStoreByCodeScreen",
+      "title": "매장 가입",
+      "feature": "store",
+      "file": "frontend/src/features/store/screens/JoinStoreByCodeScreen.tsx",
+      "kind": "form",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 134
+    },
+    {
+      "name": "StoreDetailScreen",
+      "title": "매장 운영",
+      "feature": "store",
+      "file": "frontend/src/features/store/screens/StoreDetailScreen.tsx",
+      "kind": "state",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 135
+    },
+    {
+      "name": "StoreEditScreen",
+      "title": "매장 정보 수정",
+      "feature": "store",
+      "file": "frontend/src/features/store/screens/StoreEditScreen.tsx",
+      "kind": "form",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 115
+    },
+    {
+      "name": "StoreRegistraionScreen",
+      "title": "첫 매장 등록",
+      "feature": "store",
+      "file": "frontend/src/features/store/StoreRegistraionScreen.tsx",
+      "kind": "form",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 342
+    },
+    {
+      "name": "WageSettingsScreen",
+      "title": "시급 정책",
+      "feature": "store",
+      "file": "frontend/src/features/store/screens/WageSettingsScreen.tsx",
+      "kind": "form",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 134
+    },
+    {
+      "name": "SubscribeScreen",
+      "title": "구독",
+      "feature": "subscription",
+      "file": "frontend/src/features/subscription/screens/SubscribeScreen.tsx",
+      "kind": "standard",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 250
+    },
+    {
+      "name": "AppUpdateScreen",
+      "title": "앱 업데이트",
+      "feature": "system",
+      "file": "frontend/src/features/system/screens/AppUpdateScreen.tsx",
+      "kind": "state",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer"
+      ],
+      "lines": 28
+    },
+    {
+      "name": "LegalWebviewScreen",
+      "title": "약관",
+      "feature": "system",
+      "file": "frontend/src/features/system/screens/LegalWebviewScreen.tsx",
+      "kind": "state",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 42
+    },
+    {
+      "name": "MaintenanceScreen",
+      "title": "점검 안내",
+      "feature": "system",
+      "file": "frontend/src/features/system/screens/MaintenanceScreen.tsx",
+      "kind": "state",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer"
+      ],
+      "lines": 27
+    },
+    {
+      "name": "PaymentFailedScreen",
+      "title": "결제 실패",
+      "feature": "system",
+      "file": "frontend/src/features/system/screens/PaymentFailedScreen.tsx",
+      "kind": "hero",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer"
+      ],
+      "lines": 41
+    },
+    {
+      "name": "PaymentSuccessScreen",
+      "title": "결제 성공",
+      "feature": "system",
+      "file": "frontend/src/features/system/screens/PaymentSuccessScreen.tsx",
+      "kind": "state",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer"
+      ],
+      "lines": 25
+    },
+    {
+      "name": "PermissionDeniedScreen",
+      "title": "권한 안내",
+      "feature": "system",
+      "file": "frontend/src/features/system/screens/PermissionDeniedScreen.tsx",
+      "kind": "state",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer"
+      ],
+      "lines": 48
+    },
+    {
+      "name": "SessionExpiredScreen",
+      "title": "세션 만료",
+      "feature": "system",
+      "file": "frontend/src/features/system/screens/SessionExpiredScreen.tsx",
+      "kind": "state",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer"
+      ],
+      "lines": 26
+    },
+    {
+      "name": "SubscriptionGateScreen",
+      "title": "구독 안내",
+      "feature": "system",
+      "file": "frontend/src/features/system/screens/SubscriptionGateScreen.tsx",
+      "kind": "hero",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer"
+      ],
+      "lines": 59
+    },
+    {
+      "name": "TimeOffRequestScreen",
+      "title": "휴가 신청",
+      "feature": "timeoff",
+      "file": "frontend/src/features/timeoff/screens/TimeOffRequestScreen.tsx",
+      "kind": "form",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 116
+    },
+    {
+      "name": "HybridMainScreen",
+      "title": "개발용 placeholder",
+      "feature": "welcome",
+      "file": "frontend/src/features/welcome/screens/HybridMainScreen.tsx",
+      "kind": "hero",
+      "risk": "medium",
+      "flags": [],
+      "lines": 38
+    },
+    {
+      "name": "OnboardingCarouselScreen",
+      "title": "온보딩",
+      "feature": "welcome",
+      "file": "frontend/src/features/welcome/screens/OnboardingCarouselScreen.tsx",
+      "kind": "hero",
+      "risk": "low",
+      "flags": [
+        "SafeArea",
+        "Scrollable"
+      ],
+      "lines": 214
+    },
+    {
+      "name": "SplashScreen",
+      "title": "스플래시",
+      "feature": "welcome",
+      "file": "frontend/src/features/welcome/screens/SplashScreen.tsx",
+      "kind": "hero",
+      "risk": "medium",
+      "flags": [
+        "SafeArea"
+      ],
+      "lines": 89
+    },
+    {
+      "name": "UsageSelectionScreen",
+      "title": "사용 목적 선택",
+      "feature": "welcome",
+      "file": "frontend/src/features/welcome/screens/UsageSelectionScreen.tsx",
+      "kind": "hero",
+      "risk": "low",
+      "flags": [
+        "SafeArea",
+        "Scrollable"
+      ],
+      "lines": 98
+    },
+    {
+      "name": "WelcomeMainScreen",
+      "title": "웰컴",
+      "feature": "welcome",
+      "file": "frontend/src/features/welcome/screens/WelcomeMainScreen.tsx",
+      "kind": "hero",
+      "risk": "medium",
+      "flags": [
+        "SafeArea"
+      ],
+      "lines": 71
+    },
+    {
+      "name": "WorkplaceDetailScreen",
+      "title": "근무지 상세",
+      "feature": "workplace",
+      "file": "frontend/src/features/workplace/screens/WorkplaceDetailScreen.tsx",
+      "kind": "state",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 87
+    },
+    {
+      "name": "WorkplaceListScreen",
+      "title": "근무지",
+      "feature": "workplace",
+      "file": "frontend/src/features/workplace/screens/WorkplaceListScreen.tsx",
+      "kind": "state",
+      "risk": "low",
+      "flags": [
+        "ScreenContainer",
+        "Scrollable"
+      ],
+      "lines": 67
+    }
+  ]
+}

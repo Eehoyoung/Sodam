@@ -1,0 +1,227 @@
+package com.rich.sodam.domain;
+
+import com.rich.sodam.util.DateTimeUtils;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+/**
+ * 직원 출퇴근 기록 엔티티
+ * 직원들의 출근, 퇴근 시간 및 위치 정보를 저장합니다.
+ */
+@Entity
+@Table(name = "attendance", indexes = {
+        @Index(name = "idx_attendance_employee_id", columnList = "employee_id"),
+        @Index(name = "idx_attendance_store_id", columnList = "store_id"),
+        @Index(name = "idx_attendance_check_in_time", columnList = "checkInTime"),
+        @Index(name = "idx_attendance_check_out_time", columnList = "checkOutTime"),
+        @Index(name = "idx_attendance_employee_store", columnList = "employee_id, store_id"),
+        @Index(name = "idx_attendance_date_range", columnList = "checkInTime, checkOutTime")
+})
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Attendance {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "attendance_id")
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "employee_id", nullable = false)
+    private EmployeeProfile employeeProfile;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id", nullable = false)
+    private Store store;
+
+    @Column(nullable = false)
+    private LocalDateTime checkInTime;
+
+    private LocalDateTime checkOutTime;
+
+    // 위치 정보
+    // 수동 출퇴근 등록(manualCheckIn)은 GPS 좌표 없이 등록 가능하므로 nullable 허용.
+    // (checkOut 좌표는 이미 nullable — 일관성 유지)
+    @Column
+    private Double checkInLatitude;
+
+    @Column
+    private Double checkInLongitude;
+
+    private Double checkOutLatitude;
+
+    private Double checkOutLongitude;
+
+    // 주휴수당 정보
+    @Setter
+    private BigDecimal weeklyAllowance;
+
+    /**
+     * 휴일근로 여부(§56②). 약정휴일·공휴일 등 휴일에 근로한 경우 true.
+     * 사장이 수동 지정하며, true 면 급여계산 시 휴일가산(8h이내 50%·초과 100%)을 적용한다.
+     */
+    @Setter
+    @Column(name = "holiday_work", nullable = false)
+    private boolean holidayWork = false;
+
+
+    // 시급 정보 (당시 적용된 시급)
+    @Column(nullable = false)
+    private Integer appliedHourlyWage;
+
+    /**
+     * 출퇴근 기록 생성자
+     *
+     * @param employeeProfile 직원 프로필
+     * @param store           매장 정보
+     */
+    public Attendance(EmployeeProfile employeeProfile, Store store) {
+        this.employeeProfile = employeeProfile;
+        this.store = store;
+    }
+
+    /**
+     * 출근 처리
+     * 현재 시간을 출근 시간으로 기록하고 위치 정보와 시급을 저장합니다.
+     *
+     * @param latitude   위도
+     * @param longitude  경도
+     * @param hourlyWage 적용 시급
+     * @throws IllegalStateException 이미 출근 처리된 경우
+     */
+    public void checkIn(Double latitude, Double longitude, Integer hourlyWage) {
+        if (this.checkInTime != null) {
+            throw new IllegalStateException("이미 출근 처리가 되었습니다.");
+        }
+        this.checkInTime = LocalDateTime.now();
+        this.checkInLatitude = latitude;
+        this.checkInLongitude = longitude;
+        this.appliedHourlyWage = hourlyWage;
+    }
+
+    /**
+     * 퇴근 처리
+     * 현재 시간을 퇴근 시간으로 기록하고 위치 정보를 저장합니다.
+     *
+     * @param latitude  위도
+     * @param longitude 경도
+     * @throws IllegalStateException 출근 처리가 되지 않았거나 이미 퇴근 처리된 경우
+     */
+    public void checkOut(Double latitude, Double longitude) {
+        if (this.checkInTime == null) {
+            throw new IllegalStateException("출근 처리가 되어있지 않습니다.");
+        }
+        if (this.checkOutTime != null) {
+            throw new IllegalStateException("이미 퇴근 처리가 되었습니다.");
+        }
+        this.checkOutTime = LocalDateTime.now();
+        this.checkOutLatitude = latitude;
+        this.checkOutLongitude = longitude;
+    }
+
+    /**
+     * 수동 출근 처리
+     * 지정된 시간으로 출근 시간을 기록하고 위치 정보와 시급을 저장합니다.
+     *
+     * @param checkInTime 출근 시간
+     * @param latitude    위도 (null 허용)
+     * @param longitude   경도 (null 허용)
+     * @param hourlyWage  적용 시급
+     * @throws IllegalStateException 이미 출근 처리된 경우
+     */
+    public void manualCheckIn(LocalDateTime checkInTime, Double latitude, Double longitude, Integer hourlyWage) {
+        if (this.checkInTime != null) {
+            throw new IllegalStateException("이미 출근 처리가 되었습니다.");
+        }
+        this.checkInTime = checkInTime;
+        this.checkInLatitude = latitude;
+        this.checkInLongitude = longitude;
+        this.appliedHourlyWage = hourlyWage;
+    }
+
+    /**
+     * 수동 퇴근 처리
+     * 지정된 시간으로 퇴근 시간을 기록하고 위치 정보를 저장합니다.
+     *
+     * @param checkOutTime 퇴근 시간
+     * @param latitude     위도 (null 허용)
+     * @param longitude    경도 (null 허용)
+     * @throws IllegalStateException 출근 처리가 되지 않았거나 이미 퇴근 처리된 경우
+     */
+    public void manualCheckOut(LocalDateTime checkOutTime, Double latitude, Double longitude) {
+        if (this.checkInTime == null) {
+            throw new IllegalStateException("출근 처리가 되어있지 않습니다.");
+        }
+        if (this.checkOutTime != null) {
+            throw new IllegalStateException("이미 퇴근 처리가 되었습니다.");
+        }
+        if (checkOutTime.isBefore(this.checkInTime)) {
+            throw new IllegalArgumentException("퇴근 시간은 출근 시간보다 늦어야 합니다.");
+        }
+        this.checkOutTime = checkOutTime;
+        this.checkOutLatitude = latitude;
+        this.checkOutLongitude = longitude;
+    }
+
+    /**
+     * 근무 시간 계산 (분 단위)
+     *
+     * @return 근무 시간 (분)
+     */
+    public long getWorkingTimeInMinutes() {
+        if (checkInTime != null && checkOutTime != null) {
+            // DateTimeUtils 활용
+            return DateTimeUtils.getMinutesBetween(checkInTime, checkOutTime);
+        }
+        return 0;
+    }
+
+    /**
+     * 근무 시간 계산 (시간 단위, 소수점 한 자리까지)
+     *
+     * @return 근무 시간 (시간, 소수점 한 자리)
+     */
+    public double getWorkingTimeInHours() {
+        // DateTimeUtils 활용
+        long minutes = getWorkingTimeInMinutes();
+        return minutes / 60.0;
+    }
+
+
+    /**
+     * 일일 급여 계산
+     *
+     * @return 계산된 일일 급여
+     */
+    public int calculateDailyWage() {
+        double hours = getWorkingTimeInHours();
+        return (int) (hours * appliedHourlyWage);
+    }
+
+    @PostLoad
+    public void postLoad() {
+
+    }
+
+    /**
+     * 정정 요청 승인 후 시간 갱신 (사장 권한).
+     * 도메인 가드를 우회하지 않고 명시적 메서드로 제공.
+     * @throws IllegalArgumentException 퇴근 시간이 출근보다 빠른 경우
+     */
+    public void adjustTimes(LocalDateTime newCheckIn, LocalDateTime newCheckOut) {
+        if (newCheckIn == null) {
+            throw new IllegalArgumentException("출근 시간은 필수입니다.");
+        }
+        if (newCheckOut != null && newCheckOut.isBefore(newCheckIn)) {
+            throw new IllegalArgumentException("퇴근 시간은 출근 시간보다 늦어야 합니다.");
+        }
+        this.checkInTime = newCheckIn;
+        this.checkOutTime = newCheckOut;
+    }
+}

@@ -1,0 +1,112 @@
+plugins {
+    id 'java'
+    id 'jacoco'  // 테스트 커버리지 측정 (출시 직전 5계층 검증)
+    id 'org.springframework.boot' version '3.4.5'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'com.github.node-gradle.node' version '3.5.1'  // Node.js 플러그인 추가
+}
+
+group = 'com.rich'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    // Flyway DB 마이그레이션 (운영 전용 활성 — dev/test 는 ddl-auto create-drop)
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-mysql'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    // 실시간 인앱 동기화(STOMP over WebSocket) — 직원 입사·출퇴근 등 변경을 사장/직원 화면에 즉시 반영.
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.testng:testng:7.7.0'
+    testImplementation 'org.springframework.security:spring-security-test'
+    compileOnly 'org.projectlombok:lombok'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    runtimeOnly 'com.mysql:mysql-connector-j'
+    // H2 in-memory DB for dev profile (emulator) and tests
+    runtimeOnly 'com.h2database:h2:2.2.224'
+    annotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Firebase Admin SDK (FCM 푸시)
+    implementation 'com.google.firebase:firebase-admin:9.3.0'
+
+    // Sentry (BE 에러 추적)
+    implementation 'io.sentry:sentry-spring-boot-starter-jakarta:7.18.0'
+    implementation 'io.sentry:sentry-logback:7.18.0'
+
+    // Bucket4j (API Rate Limit)
+    implementation 'com.bucket4j:bucket4j-core:8.10.1'
+
+    // OpenPDF (급여 명세서 PDF 생성) — iText 호환, AGPL 회피 위해 OpenPDF 사용
+    implementation 'com.github.librepdf:openpdf:2.0.3'
+    // https://mvnrepository.com/artifact/com.auth0/auth0
+    implementation group: 'com.auth0', name: 'auth0', version: '2.17.0'
+    // https://mvnrepository.com/artifact/com.google.code.gson/gson
+    implementation group: 'com.google.code.gson', name: 'gson', version: '2.13.1'
+    // https://mvnrepository.com/artifact/jakarta.validation/jakarta.validation-api
+    implementation group: 'jakarta.validation', name: 'jakarta.validation-api', version: '3.1.1'
+    // Hibernate Validator - Bean Validation 구현체
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
+    // JJWT 의존성 버전 통일 (모두 같은 버전 사용)
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6' // 버전 업데이트 및 runtimeOnly로 변경
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    // Swagger/OpenAPI 문서화
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
+    // Hibernate JCache implementation
+    implementation 'org.hibernate:hibernate-jcache:6.6.13.Final'
+    implementation 'org.ehcache:ehcache:3.10.8'
+    implementation 'javax.cache:cache-api:1.1.1'
+    // DotEnv 라이브러리 - .env 파일 지원
+    implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+    implementation 'io.micrometer:micrometer-tracing'
+    implementation 'io.micrometer:micrometer-tracing-bridge-brave'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+    // 측정 대상에서 DTO/설정/엔티티 단순 구조는 제외(로직 커버리지에 집중)
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                'com/rich/sodam/dto/**',
+                'com/rich/sodam/config/**',
+                'com/rich/sodam/**/*Dto*',
+                'com/rich/sodam/SodamApplication*'
+            ])
+        }))
+    }
+}

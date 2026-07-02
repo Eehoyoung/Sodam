@@ -1,0 +1,49 @@
+# 빌드 산출물
+build/
+.gradle/
+out/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.junie/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+.gitmodules
+
+# 환경 시크릿 — 컨테이너는 env vars 로 받음
+.env
+.env.local
+.env.*
+!.env.example
+
+# 운영 시크릿 yml — 컨테이너에 절대 포함 안 함
+src/main/resources/application-prod.yml
+src/main/resources/application-staging.yml
+
+# 로그
+logs/
+*.log
+*.logcat
+
+# 테스트 산출물
+**/coverage/
+**/test-results/
+
+# Docker 자체
+Dockerfile
+.dockerignore
+
+# 문서
+*.md
+docs/
+
+# 임시 / Mac / Windows
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp

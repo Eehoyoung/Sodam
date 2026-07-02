@@ -1,0 +1,567 @@
+:root {
+  --sodam-brand: #FF6B35;
+  --sodam-brand-dark: #E85A2A;
+  --sodam-brand-soft: #FFF0E8;
+  --sodam-navy: #243B4A;
+  --sodam-canvas: #F7F4EF;
+  --sodam-warm: #FFFBF5;
+  --sodam-muted-surface: #F1EEE9;
+  --sodam-paper: #FFFFFF;
+  --sodam-ink: #201A17;
+  --sodam-secondary: #625B55;
+  --sodam-tertiary: #9A9189;
+  --sodam-line: #E8E0D8;
+  --sodam-line-strong: #D8CDC3;
+  --sodam-success: #12A87B;
+  --sodam-success-bg: #DFF6ED;
+  --sodam-warning: #F59E0B;
+  --sodam-warning-bg: #FEF3C7;
+  --sodam-error: #E5484D;
+  --sodam-error-bg: #FEE2E2;
+  --sodam-info: #3B82F6;
+  --sodam-info-bg: #DBEAFE;
+  --sodam-radius-md: 8px;
+  --sodam-radius-lg: 12px;
+  --sodam-radius-xl: 16px;
+  --sodam-radius-xxl: 24px;
+  --sodam-shadow-brand: 0 8px 16px rgba(255, 107, 53, .32);
+  --sodam-shadow-lg: 0 6px 14px rgba(36, 59, 74, .14);
+  --sodam-shadow-md: 0 2px 6px rgba(36, 59, 74, .08);
+  --bg: var(--sodam-canvas) !important;
+  --paper: var(--sodam-paper) !important;
+  --ink: var(--sodam-ink) !important;
+  --muted: var(--sodam-secondary) !important;
+  --line: var(--sodam-line) !important;
+  --brand: var(--sodam-brand) !important;
+  --brand-dark: var(--sodam-brand-dark) !important;
+  --dark: var(--sodam-navy) !important;
+  --radius: var(--sodam-radius-xl) !important;
+  --ok: var(--sodam-success) !important;
+  --warn: var(--sodam-warning) !important;
+  --danger: var(--sodam-error) !important;
+  --blue: var(--sodam-info) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Noto Sans KR", system-ui, sans-serif !important;
+}
+
+* {
+  box-sizing: border-box;
+  letter-spacing: 0 !important;
+}
+
+html,
+body {
+  min-height: 100%;
+  background: var(--sodam-canvas) !important;
+  color: var(--sodam-ink) !important;
+}
+
+body {
+  margin: 0 !important;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit !important;
+}
+
+button,
+.primary,
+.secondary,
+.ghost,
+.danger,
+.warn,
+.warnbtn,
+.kakao {
+  min-height: 54px !important;
+  border-radius: var(--sodam-radius-xl) !important;
+  padding: 0 16px !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform .15s ease, opacity .15s ease, box-shadow .15s ease;
+}
+
+button:active {
+  transform: scale(.97) !important;
+  opacity: .92;
+}
+
+.primary {
+  background: var(--sodam-brand) !important;
+  color: #fff !important;
+  box-shadow: var(--sodam-shadow-brand) !important;
+}
+
+.secondary {
+  background: var(--sodam-paper) !important;
+  color: var(--sodam-navy) !important;
+  border: 1px solid var(--sodam-line) !important;
+  box-shadow: none !important;
+}
+
+.ghost {
+  background: transparent !important;
+  color: var(--sodam-brand) !important;
+  border: 1px solid var(--sodam-line) !important;
+}
+
+.danger {
+  background: var(--sodam-paper) !important;
+  color: var(--sodam-error) !important;
+  border: 1px solid var(--sodam-line) !important;
+  box-shadow: none !important;
+}
+
+.warn,
+.warnbtn {
+  background: var(--sodam-warning-bg) !important;
+  color: var(--sodam-warning) !important;
+  border: 1px solid rgba(245, 158, 11, .25) !important;
+}
+
+.kakao {
+  background: #FEE500 !important;
+  color: #201A17 !important;
+}
+
+input,
+select,
+textarea {
+  min-height: 48px !important;
+  border-radius: var(--sodam-radius-xl) !important;
+  border: 1px solid var(--sodam-line) !important;
+  background: var(--sodam-paper) !important;
+  color: var(--sodam-ink) !important;
+  padding: 12px 14px !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--sodam-brand) !important;
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, .16) !important;
+  outline: none !important;
+}
+
+h1,
+h2,
+h3,
+p {
+  letter-spacing: 0 !important;
+}
+
+h1 {
+  font-size: 26px !important;
+  line-height: 34px !important;
+  font-weight: 700 !important;
+}
+
+h2 {
+  font-size: 22px !important;
+  line-height: 30px !important;
+  font-weight: 700 !important;
+}
+
+h3 {
+  font-size: 18px !important;
+  line-height: 26px !important;
+  font-weight: 700 !important;
+}
+
+p,
+.muted,
+.caption {
+  color: var(--sodam-secondary) !important;
+  line-height: 1.55 !important;
+}
+
+.caption {
+  font-size: 12px !important;
+  line-height: 16px !important;
+}
+
+.card,
+.item,
+a {
+  background: var(--sodam-paper) !important;
+  border: 1px solid var(--sodam-line) !important;
+  border-radius: var(--sodam-radius-xl) !important;
+  box-shadow: none !important;
+}
+
+.card {
+  padding: 16px !important;
+}
+
+.item {
+  padding: 12px !important;
+}
+
+.hero {
+  border-radius: var(--sodam-radius-xxl) !important;
+  border: 0 !important;
+  background:
+    linear-gradient(137deg, rgba(38, 63, 79, .96), rgba(23, 41, 50, .96), rgba(43, 32, 25, .9)),
+    radial-gradient(circle at 82% 18%, rgba(255, 107, 53, .24), transparent 34%) !important;
+  color: #fff !important;
+  box-shadow: var(--sodam-shadow-lg) !important;
+}
+
+.hero p,
+.hero .muted,
+.hero .caption {
+  color: rgba(255, 255, 255, .76) !important;
+}
+
+.pill {
+  min-height: 28px !important;
+  padding: 0 10px !important;
+  border-radius: 999px !important;
+  background: var(--sodam-muted-surface) !important;
+  color: var(--sodam-secondary) !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+.pill.ok,
+.ok {
+  background: var(--sodam-success-bg) !important;
+  color: var(--sodam-success) !important;
+}
+
+.pill.warn,
+.warn:not(button) {
+  background: var(--sodam-warning-bg) !important;
+  color: var(--sodam-warning) !important;
+}
+
+.pill.bad,
+.pill.danger,
+.bad {
+  background: var(--sodam-error-bg) !important;
+  color: var(--sodam-error) !important;
+}
+
+.pill.blue {
+  background: var(--sodam-info-bg) !important;
+  color: var(--sodam-info) !important;
+}
+
+.metric strong {
+  font-size: 28px !important;
+  line-height: 34px !important;
+  font-weight: 700 !important;
+  color: var(--sodam-ink) !important;
+}
+
+.app {
+  background: var(--sodam-canvas) !important;
+}
+
+body:has(.side),
+body:has(.rail),
+body:has(.phone) {
+  display: grid;
+  place-items: start center;
+  padding: 16px 0;
+}
+
+body:has(.side) .app,
+body:has(.rail) .app {
+  width: min(430px, 100vw) !important;
+  min-height: min(900px, 100vh - 32px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  border-radius: 30px !important;
+  border: 1px solid rgba(216, 205, 195, .9) !important;
+  background: var(--sodam-canvas) !important;
+  box-shadow: 0 18px 48px rgba(36, 59, 74, .18) !important;
+  position: relative;
+}
+
+.side,
+.rail {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+  height: auto !important;
+  min-height: 56px !important;
+  padding: 10px 16px !important;
+  background: rgba(255, 255, 255, .96) !important;
+  color: var(--sodam-ink) !important;
+  border-bottom: 1px solid var(--sodam-line) !important;
+  backdrop-filter: blur(10px);
+}
+
+.side > a,
+.rail a {
+  display: none !important;
+}
+
+.side h1,
+.rail .brand strong {
+  margin: 0 !important;
+  font-size: 18px !important;
+  line-height: 26px !important;
+  text-align: center;
+}
+
+.side > p,
+.rail .brand + p,
+.rail .state,
+.nav-title {
+  display: none !important;
+}
+
+.brand {
+  margin: 0 !important;
+}
+
+.mark {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 13px !important;
+  background: var(--sodam-brand-soft) !important;
+  color: var(--sodam-brand) !important;
+  box-shadow: none !important;
+}
+
+.role-tabs {
+  display: flex !important;
+  gap: 6px !important;
+  overflow-x: auto !important;
+  padding: 8px 0 0 !important;
+}
+
+.role-tabs button {
+  min-height: 36px !important;
+  flex: 0 0 auto !important;
+  padding: 0 12px !important;
+  background: var(--sodam-paper) !important;
+  color: var(--sodam-secondary) !important;
+  border: 1px solid var(--sodam-line) !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+}
+
+.role-tabs button.active {
+  background: var(--sodam-brand) !important;
+  color: #fff !important;
+  border-color: var(--sodam-brand) !important;
+}
+
+.side .nav,
+.rail .nav {
+  position: fixed !important;
+  left: 50% !important;
+  bottom: 14px !important;
+  transform: translateX(-50%) !important;
+  width: min(398px, calc(100vw - 24px)) !important;
+  height: 62px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0 !important;
+  margin: 0 !important;
+  padding: 0 8px !important;
+  z-index: 50 !important;
+  background: var(--sodam-paper) !important;
+  border: 1px solid var(--sodam-line) !important;
+  border-radius: var(--sodam-radius-xxl) !important;
+  box-shadow: var(--sodam-shadow-lg) !important;
+}
+
+.side .nav button,
+.rail .nav button {
+  flex: 1 !important;
+  min-height: 54px !important;
+  height: 54px !important;
+  padding: 0 4px !important;
+  background: transparent !important;
+  color: var(--sodam-tertiary) !important;
+  border: 0 !important;
+  border-radius: var(--sodam-radius-xl) !important;
+  box-shadow: none !important;
+  font-size: 10px !important;
+  line-height: 12px !important;
+  text-align: center !important;
+  white-space: normal !important;
+}
+
+.side .nav button.on,
+.rail .nav button.active {
+  color: var(--sodam-brand) !important;
+}
+
+.rail .nav button small {
+  display: none !important;
+}
+
+main,
+.main {
+  flex: 1 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  background: var(--sodam-canvas) !important;
+}
+
+.top {
+  height: 56px !important;
+  padding: 0 16px !important;
+  background: var(--sodam-paper) !important;
+  border-bottom: 1px solid var(--sodam-line) !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+}
+
+.title-block h1 {
+  font-size: 18px !important;
+  line-height: 26px !important;
+  text-align: center;
+}
+
+.title-block p,
+.toolbar {
+  display: none !important;
+}
+
+.page,
+main {
+  padding: 16px 16px 94px !important;
+  overflow: auto !important;
+}
+
+.grid,
+.grid.cols-2,
+.grid.cols-3,
+.grid.cols-4,
+.cols3 {
+  grid-template-columns: 1fr !important;
+  gap: 12px !important;
+}
+
+.row {
+  flex-wrap: wrap;
+}
+
+.row > button,
+.hero button,
+.card > button {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.toast {
+  left: 50% !important;
+  right: auto !important;
+  bottom: 94px !important;
+  transform: translateX(-50%) !important;
+  width: min(366px, calc(100vw - 48px)) !important;
+  min-height: 48px !important;
+  border-radius: var(--sodam-radius-xl) !important;
+  background: rgba(32, 26, 23, .92) !important;
+  color: #fff !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 12px 14px !important;
+}
+
+body:has(.phone) {
+  background:
+    linear-gradient(137deg, rgba(38, 63, 79, .96), rgba(23, 41, 50, .96), rgba(43, 32, 25, .92)) !important;
+}
+
+.shell {
+  width: min(1120px, 100vw) !important;
+}
+
+.phone {
+  width: min(390px, 100vw - 24px) !important;
+  height: min(844px, 100vh - 24px) !important;
+  min-height: 680px !important;
+  border-radius: 30px !important;
+  background: var(--sodam-canvas) !important;
+  border: 1px solid rgba(216, 205, 195, .85) !important;
+  box-shadow: 0 18px 48px rgba(36, 59, 74, .2) !important;
+}
+
+.status {
+  height: 28px !important;
+  background: var(--sodam-canvas) !important;
+  color: var(--sodam-ink) !important;
+}
+
+.content {
+  padding: 16px !important;
+}
+
+.bottom {
+  padding: 12px 16px max(22px, env(safe-area-inset-bottom)) !important;
+  background: rgba(255, 255, 255, .96) !important;
+  border-top: 1px solid var(--sodam-line) !important;
+}
+
+.dark {
+  background:
+    linear-gradient(137deg, rgba(38, 63, 79, .96), rgba(23, 41, 50, .96), rgba(43, 32, 25, .9)),
+    radial-gradient(circle at 76% 16%, rgba(255, 107, 53, .26), transparent 35%) !important;
+}
+
+.sim-panel {
+  background: var(--sodam-paper) !important;
+  border: 1px solid var(--sodam-line) !important;
+  border-radius: var(--sodam-radius-xxl) !important;
+}
+
+body:not(:has(.side)):not(:has(.rail)):not(:has(.phone)) main {
+  max-width: 1120px !important;
+  padding: 42px 22px !important;
+}
+
+body:not(:has(.side)):not(:has(.rail)):not(:has(.phone)) .grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+body:not(:has(.side)):not(:has(.rail)):not(:has(.phone)) a {
+  min-height: 150px !important;
+  padding: 20px !important;
+  text-decoration: none;
+  color: inherit;
+}
+
+@media (max-width: 760px) {
+  body {
+    padding: 0 !important;
+  }
+
+  body:has(.side) .app,
+  body:has(.rail) .app,
+  .phone {
+    width: 100vw !important;
+    min-height: 100vh !important;
+    height: 100vh !important;
+    border-radius: 0 !important;
+    border: 0 !important;
+  }
+
+  .side .nav,
+  .rail .nav {
+    width: calc(100vw - 24px) !important;
+  }
+
+  body:not(:has(.side)):not(:has(.rail)):not(:has(.phone)) .grid {
+    grid-template-columns: 1fr !important;
+  }
+}

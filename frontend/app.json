@@ -1,0 +1,7 @@
+{
+  "name": "Sodam_Front_End",
+  "displayName": "Sodam_Front_End",
+  "android": {
+    "package": "com.sodam_front_end"
+  }
+}

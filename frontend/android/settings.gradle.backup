@@ -1,0 +1,21 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        google()
+        mavenCentral()
+    }
+    // 이 한 줄이 생명입니다. 로컬에 설치된 @react-native/gradle-plugin을 include 시켜 줍니다.
+    includeBuild("../node_modules/@react-native/gradle-plugin")
+
+}
+
+// 이 플러그인은 settings 단계에서만 사용됩니다.
+plugins {
+    id("com.facebook.react.settings") version "0.80.0"
+}
+extensions.configure(com.facebook.react.ReactSettingsExtension) {
+    it.autolinkLibrariesFromCommand()
+}
+
+rootProject.name = "Sodam_Front_End"
+include(":app")

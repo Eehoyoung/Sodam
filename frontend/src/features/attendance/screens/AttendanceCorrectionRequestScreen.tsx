@@ -1,0 +1,161 @@
+import {AppToast, AppButton, AppCard, AppHeader, AppInput, AppText, CtaStack, ScreenContainer, SuccessState} from '../../../common/components/ds';
+import React, {useState} from 'react';
+import {StyleSheet, View} from 'react-native';
+import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
+import api from '../../../common/utils/api';
+import {
+    TIME_DIGITS_HELPER,
+    compactDateFromApi,
+    compactTimeFromApi,
+    isValidTimeDigits,
+    localDateTimeFromDigits,
+    sanitizeTimeDigits,
+} from '../../../common/utils/dateTimeInput';
+
+type RouteParams = NonNullable<HomeStackParamList['AttendanceCorrectionRequest']>;
+
+/**
+ * 24 CorrectionRequest — 확정 시안.
+ * 직원이 잘못 기록된 출퇴근을 사장에게 정정 요청.
+ * POST /api/attendance/{attendanceId}/correction-request 로 실제 제출(사장 승인 워크플로).
+ */
+const AttendanceCorrectionRequestScreen: React.FC = () => {
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
+    const route = useRoute<RouteProp<HomeStackParamList, 'AttendanceCorrectionRequest'>>();
+    const c = useThemeColors();
+    const params: RouteParams = route.params ?? {};
+
+    const [checkIn, setCheckInValue] = useState(formatTime(params.currentCheckIn) ?? '0900');
+    const [checkOut, setCheckOutValue] = useState(formatTime(params.currentCheckOut) ?? '1800');
+    const setCheckIn = (value: string) => setCheckInValue(sanitizeTimeDigits(value));
+    const setCheckOut = (value: string) => setCheckOutValue(sanitizeTimeDigits(value));
+    const [reason, setReason] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
+
+    const submit = async () => {
+        if (!reason.trim() || reason.trim().length < 5) {
+            AppToast.warn('정정 사유를 5자 이상 적어주세요.\n사장님이 더 빠르게 검토해 주실 수 있어요.');
+            return;
+        }
+        if (!isValidTimeDigits(checkIn) || !isValidTimeDigits(checkOut)) {
+            AppToast.warn(TIME_DIGITS_HELPER);
+            return;
+        }
+        if (!params.attendanceId) {
+            AppToast.warn('정정할 근무 기록을 먼저 선택해 주세요.');
+            return;
+        }
+        setLoading(true);
+        try {
+            // 정정 대상 날짜(YYYY-MM-DD) + 입력 시각(HH:MM)을 LocalDateTime 으로 결합
+            const baseDate = compactDateFromApi(params.date) || compactDateFromApi(new Date().toISOString());
+            await api.post(`/api/attendance/${params.attendanceId}/correction-request`, {
+                proposedCheckIn: localDateTimeFromDigits(baseDate, checkIn),
+                proposedCheckOut: localDateTimeFromDigits(baseDate, checkOut),
+                reason: reason.trim(),
+            });
+            setSubmitted(true);
+        } catch (e: any) {
+            AppToast.error(e?.response?.data?.message ?? '요청 전송에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (submitted) {
+        return (
+            <ScreenContainer header={<AppHeader title="정정 요청" onBack={() => navigation.goBack()} />}>
+                <SuccessState
+                    title="정정 요청을 보냈어요"
+                    description="사장님이 승인하면 기록에 반영됩니다."
+                    primary={{label: '근무 기록으로', onPress: () => navigation.goBack()}}
+                />
+            </ScreenContainer>
+        );
+    }
+
+    return (
+        <ScreenContainer
+            scroll
+            header={<AppHeader title="정정 요청" onBack={() => navigation.goBack()} />}
+            footer={
+                <CtaStack bordered>
+                    <AppButton label="정정 요청 보내기" loading={loading} onPress={submit} />
+                </CtaStack>
+            }>
+            <AppText variant="headingLg" style={styles.question}>어디를 바로잡을까요?</AppText>
+
+            <AppCard variant="warm">
+                <AppText variant="titleMd">현재 기록</AppText>
+                {params.date ? (
+                    <AppText variant="caption" tone="secondary" style={styles.sub}>
+                        {params.date}
+                        {params.storeName ? ` · ${params.storeName}` : ''}
+                    </AppText>
+                ) : null}
+                <AppText variant="caption" tone="warning" style={styles.sub}>
+                    출근 {params.currentCheckIn ?? '-'} · 퇴근 {params.currentCheckOut ?? '미체크'}
+                </AppText>
+            </AppCard>
+
+            <View style={styles.form}>
+                <AppInput
+                    label="수정 출근 시간"
+                    value={checkIn}
+                    onChangeText={setCheckIn}
+                    placeholder="1020"
+                    keyboardType="number-pad"
+                    maxLength={4}
+                    helper={TIME_DIGITS_HELPER}
+                    editable={!loading}
+                />
+                <AppInput
+                    label="수정 퇴근 시간"
+                    value={checkOut}
+                    onChangeText={setCheckOut}
+                    placeholder="2330"
+                    keyboardType="number-pad"
+                    maxLength={4}
+                    helper={TIME_DIGITS_HELPER}
+                    editable={!loading}
+                />
+                <AppInput
+                    label="정정 사유"
+                    value={reason}
+                    onChangeText={setReason}
+                    placeholder="예: NFC 인식이 안 돼서 사장님께 말씀드리고 일했어요."
+                    multiline
+                    editable={!loading}
+                    maxLength={200}
+                    helper={`${reason.length} / 200자`}
+                />
+            </View>
+
+            <View style={styles.disclaimer}>
+                <Ionicons name="lock-closed-outline" size={14} color={c.textTertiary} />
+                <AppText variant="caption" tone="tertiary">
+                    정정 사유는 사장님과 직원 본인만 볼 수 있어요.
+                </AppText>
+            </View>
+        </ScreenContainer>
+    );
+};
+
+function formatTime(iso?: string): string | undefined {
+    return compactTimeFromApi(iso);
+}
+
+const styles = StyleSheet.create({
+    question: {marginBottom: spacing.xl},
+    sub: {marginTop: 4},
+    form: {marginTop: spacing.xl, gap: spacing.lg},
+    disclaimer: {marginTop: spacing.xl, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs},
+});
+
+export default AttendanceCorrectionRequestScreen;
