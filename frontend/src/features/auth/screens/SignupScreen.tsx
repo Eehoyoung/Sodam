@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import {Image, StyleSheet, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {NavigationProp, RouteProp} from '@react-navigation/native';
 import {
     AppButton,
@@ -12,8 +12,8 @@ import {
     ScreenContainer,
     SegmentedControl,
 } from '../../../common/components/ds';
+import SodamLogo from '../../../common/components/logo/SodamLogo';
 import {spacing} from '../../../theme/tokens';
-import {SODAM_LOGO} from '../../../assets/images';
 import authApi from '../services/authApi';
 import ConsentBlock, {ConsentValue} from '../components/ConsentBlock';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
@@ -28,16 +28,17 @@ interface SignupScreenProps {
 type RoleId = AuthPurpose;
 
 const ROLES: {id: RoleId; label: string; hint: string}[] = [
-    {id: 'boss', label: '사장님', hint: '매장 등록과 직원 초대까지 이어서 준비할 수 있어요.'},
+    {id: 'boss', label: '사장님', hint: '매장 등록부터 직원 초대까지 이어서 준비할 수 있어요.'},
     {id: 'employee', label: '직원', hint: '매장 코드로 합류하고 출퇴근과 급여명세를 확인해요.'},
     {id: 'personal', label: '개인', hint: '매장 없이 근무 시간과 급여 기록을 직접 관리해요.'},
 ];
 
 const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-// 8자 이상, 대문자·소문자·숫자·특수문자 4종 중 3종 이상
 const isValidPassword = (pw: string): boolean => {
-    if (pw.length < 8) {return false;}
+    if (pw.length < 8) {
+        return false;
+    }
     const hasUpper = /[A-Z]/.test(pw);
     const hasLower = /[a-z]/.test(pw);
     const hasDigit = /[0-9]/.test(pw);
@@ -77,7 +78,9 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
     const role = ROLES[roleIndex];
 
     const handleEmailBlur = async () => {
-        if (!email) {return;}
+        if (!email) {
+            return;
+        }
         if (!isValidEmail(email)) {
             setEmailError('올바른 이메일 주소를 입력해 주세요.');
             return;
@@ -87,7 +90,7 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
             const {available} = await authApi.checkEmail(email.trim().toLowerCase());
             setEmailError(available ? undefined : '이미 사용 중인 이메일이에요.');
         } catch {
-            // 네트워크 오류 시 서버측 검증으로 fallback
+            setEmailError(undefined);
         } finally {
             setEmailChecking(false);
         }
@@ -131,14 +134,16 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
             );
 
             await unifiedStorage.setItem('pendingPurposeAfterSignup', purposeToPendingSlug(role.id));
-            AppToast.success('가입이 완료되었습니다. 로그인 후 전화번호 등 기본 정보를 마저 설정해 주세요.');
+            AppToast.success('가입이 완료되었습니다. 로그인 후 기본 정보를 설정해 주세요.');
             navigation.navigate('Login', {selectedPurpose: role.id, fromSignup: true});
             setName('');
             setEmail('');
             setPassword('');
         } catch (e: any) {
             const beMsg = e?.response?.data?.message;
-            AppToast.error(beMsg && typeof beMsg === 'string' ? beMsg : '회원가입에 실패했습니다. 입력값을 확인하고 다시 시도해 주세요.');
+            AppToast.error(beMsg && typeof beMsg === 'string'
+                ? beMsg
+                : '회원가입에 실패했습니다. 입력값을 확인하고 다시 시도해 주세요.');
         } finally {
             setIsLoading(false);
         }
@@ -162,11 +167,10 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
     return (
         <ScreenContainer
             scroll
-            // 큰 타이틀("소담을 시작할게요")이 이미 화면 목적을 말해주므로 헤더엔 뒤로가기만 남긴다.
             header={<AppHeader onBack={() => navigation.goBack()} />}
             footer={footer}>
             <View style={styles.logoRow}>
-                <Image source={SODAM_LOGO} style={styles.logo} resizeMode="contain" accessibilityLabel="소담 로고" />
+                <SodamLogo size={56} variant="default" />
             </View>
             <AppText variant="headingLg" style={styles.title}>
                 {'소담을\n시작할게요'}
@@ -187,7 +191,7 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
             <View style={styles.form}>
                 <AppInput
                     label="이름"
-                    placeholder="이름을 입력해 주세요 (2자 이상)"
+                    placeholder="이름을 입력해 주세요"
                     value={name}
                     onChangeText={setName}
                     helper="실명 또는 닉네임 2자 이상"
@@ -233,8 +237,7 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
 
 const styles = StyleSheet.create({
     logoRow: {alignItems: 'center', marginBottom: spacing.lg},
-    logo: {width: 56, height: 56},
-    title: {marginBottom: spacing.xxl, letterSpacing: -0.8},
+    title: {marginBottom: spacing.xxl},
     sectionLabel: {marginBottom: spacing.sm},
     hint: {marginTop: spacing.md},
     hintSub: {marginTop: 4},

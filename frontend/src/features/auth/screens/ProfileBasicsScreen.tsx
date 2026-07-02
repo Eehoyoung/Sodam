@@ -1,5 +1,5 @@
 import React, {useMemo, useState} from 'react';
-import {Image, Pressable, StyleSheet, View} from 'react-native';
+import {Pressable, StyleSheet, View} from 'react-native';
 import {NavigationProp, RouteProp} from '@react-navigation/native';
 import {useQueryClient} from '@tanstack/react-query';
 import {
@@ -11,8 +11,8 @@ import {
     CtaStack,
     ScreenContainer,
 } from '../../../common/components/ds';
+import SodamLogo from '../../../common/components/logo/SodamLogo';
 import {spacing} from '../../../theme/tokens';
-import {SODAM_LOGO} from '../../../assets/images';
 import {useResponsive} from '../../../common/hooks/useResponsive';
 import {useAuth} from '../../../contexts/AuthContext';
 import userService from '../services/userService';
@@ -109,6 +109,9 @@ export default function ProfileBasicsScreen({navigation, route}: Props) {
             } else if (!isValidPhone(phone)) {
                 setPhoneError('010으로 시작하는 휴대폰 번호를 입력해 주세요.');
                 AppToast.warn('휴대폰 번호를 확인해 주세요.');
+            } else if (!isValidBirthDate(birthDate)) {
+                setBirthError(DATE_DIGITS_HELPER);
+                AppToast.warn('생년월일을 확인해 주세요.');
             }
             return;
         }
@@ -149,8 +152,6 @@ export default function ProfileBasicsScreen({navigation, route}: Props) {
     return (
         <ScreenContainer
             scroll
-            // 뒤로가기 없는 필수 게이트 화면(무한루프 방지, AuthNavigator 참고) — 네비 헤더도
-            // 커스텀 헤더도 실질적 기능이 없어 작은 로고 하나로 대체하고 헤더 자체를 없앤다.
             footer={
                 <CtaStack bordered>
                     <AppButton
@@ -166,7 +167,7 @@ export default function ProfileBasicsScreen({navigation, route}: Props) {
                 </CtaStack>
             }>
             <View style={styles.logoRow}>
-                <Image source={SODAM_LOGO} style={styles.logo} resizeMode="contain" accessibilityLabel="소담 로고" />
+                <SodamLogo size={56} variant="default" />
             </View>
             <AppCard variant="warm" hero>
                 <AppText variant="headingMd">마지막 필수 설정이에요</AppText>
@@ -211,7 +212,7 @@ export default function ProfileBasicsScreen({navigation, route}: Props) {
             <Pressable
                 onPress={() =>
                     AppToast.show(
-                        '저희는 전화번호로 연락하거나 메시지를 보내지 않아요. 원하실 때 알림 설정에서 변경할 수 있어요.',
+                        '저희는 전화번호로 연락하거나 메시지를 보내지 않아요. 원하시면 알림 설정에서 변경할 수 있어요.',
                     )
                 }
                 style={({pressed}) => [styles.privacyRow, pressed && {opacity: 0.5}]}>
@@ -225,7 +226,6 @@ export default function ProfileBasicsScreen({navigation, route}: Props) {
 
 const styles = StyleSheet.create({
     logoRow: {alignItems: 'center', marginBottom: spacing.lg},
-    logo: {width: 56, height: 56},
     heroSub: {opacity: 0.85},
     form: {},
     privacyRow: {alignItems: 'center', paddingVertical: spacing.lg},
