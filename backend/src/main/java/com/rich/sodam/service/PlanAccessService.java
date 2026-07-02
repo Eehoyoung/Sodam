@@ -27,6 +27,7 @@ public class PlanAccessService {
 
     private final SubscriptionRepository subscriptionRepository;
     private final MasterStoreRelationRepository masterStoreRelationRepository;
+    private final com.rich.sodam.config.AbTestProperties abTestProperties;
 
     /** 현재 인증 사용자의 유효 플랜(활성 구독 없으면 FREE). */
     @Transactional(readOnly = true)
@@ -70,14 +71,45 @@ public class PlanAccessService {
         }
     }
 
+    /**
+     * 멀티매장 게이트. 사장이 이미 매장을 1개 이상 보유한 상태에서 추가 매장을 등록하려면
+     * MULTI_STORE 기능(PRO/PREMIUM)이 필요하다. 첫 매장 등록은 항상 허용.
+     *
+     * @param existingStoreCount 현재 보유 중인 매장 수
+     */
+    public void assertCanRegisterAdditionalStore(int existingStoreCount) {
+        if (existingStoreCount < 1) {
+            return; // 첫 매장은 무료 허용
+        }
+        PlanType plan = currentPlan();
+        if (!plan.hasFeature(PlanFeature.MULTI_STORE)) {
+            throw new PlanRequiredException(PlanType.PRO, plan,
+                    "매장은 1개까지 무료예요. 매장을 더 추가하려면 멀티매장 플랜(프로 이상)으로 올려주세요.");
+        }
+    }
+
     /** 직원 수 상한 검사(상한 초과 시 PlanRequiredException). */
     public void assertEmployeeCapacity(int currentEmployeeCount) {
         PlanType plan = currentPlan();
-        if (!plan.allowsEmployeeCount(currentEmployeeCount)) {
+        Integer effectiveLimit = effectiveEmployeeLimit(plan);
+        boolean allowed = effectiveLimit == null || currentEmployeeCount <= effectiveLimit;
+        if (!allowed) {
             throw new PlanRequiredException(PlanType.PRO, plan,
-                    plan.getDisplayName() + " 플랜은 직원 " + plan.getEmployeeLimit()
+                    plan.getDisplayName() + " 플랜은 직원 " + effectiveLimit
                             + "명까지 등록할 수 있어요. 상위 플랜으로 올려주세요.");
         }
+    }
+
+    /**
+     * 플랜의 유효 직원 상한. 기본은 {@link PlanType#getEmployeeLimit()}.
+     * FREE 한정 A/B override({@code sodam.ab.free-employee-limit})가 <b>설정된 경우에만</b> 덮어쓴다.
+     * 미설정이면 현행 default 그대로(과금·패키징 불변).
+     */
+    private Integer effectiveEmployeeLimit(PlanType plan) {
+        if (plan == PlanType.FREE && abTestProperties.hasFreeEmployeeLimitOverride()) {
+            return abTestProperties.getFreeEmployeeLimit();
+        }
+        return plan.getEmployeeLimit();
     }
 
     public boolean hasFeature(PlanFeature feature) {

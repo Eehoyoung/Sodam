@@ -1,10 +1,13 @@
 package com.rich.sodam.dto.request;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.List;
 
 @Getter
 @Setter
@@ -37,5 +40,12 @@ public class StoreRegistrationDto {
     private Integer radius;        // 출퇴근 인증 반경(미터)
 
     private Integer storeStandardHourWage; // 매장 기준 시급
+
+    @Valid
+    private List<OperatingHoursUpdateDto.DayOperatingHours> operatingHours;
+
+    // 급여 정산 주기(시작/마감/지급일) — 선택. 미전달 시 미설정.
+    @Valid
+    private PayrollCycleDto payrollCycle;
 
 }

@@ -1,5 +1,7 @@
-import React from 'react';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import React, {useMemo} from 'react';
 import {FlatList, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {ThemeColors, useThemeColors} from '../../../common/hooks/useThemeColors';
 
 // 세무 정보 데이터 타입 정의
 interface TaxInfo {
@@ -9,6 +11,9 @@ interface TaxInfo {
 }
 
 const TaxInfoBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
+
     // 예시 세무 정보 데이터
     const taxInfos: TaxInfo[] = [
         {id: 1, title: '2024년 세금신고 주요 변경사항 총정리', date: '2024-05-14'},
@@ -46,10 +51,10 @@ const TaxInfoBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
     container: {
         width: '100%',
-        backgroundColor: '#fff',
+        backgroundColor: c.surface,
         padding: 30,
         marginVertical: 10,
     },
@@ -62,16 +67,16 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#333',
+        color: c.textPrimary,
     },
     moreButton: {
-        backgroundColor: '#f1c40f',
+        backgroundColor: c.warning,
         paddingVertical: 6,
         paddingHorizontal: 15,
         borderRadius: 20,
     },
     moreButtonText: {
-        color: '#333',
+        color: c.textPrimary,
         fontSize: 14,
         fontWeight: '500',
     },
@@ -81,16 +86,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 15,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: c.divider,
     },
     taxTitle: {
         fontSize: 16,
-        color: '#333',
+        color: c.textPrimary,
         flex: 1,
     },
     taxDate: {
         fontSize: 14,
-        color: '#888',
+        color: c.textTertiary,
         marginLeft: 10,
     },
 });

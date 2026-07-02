@@ -1,3 +1,4 @@
+/* eslint-disable react-native/no-color-literals -- 선택 카드 흰 오버레이 고정 */
 import React from 'react';
 import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';

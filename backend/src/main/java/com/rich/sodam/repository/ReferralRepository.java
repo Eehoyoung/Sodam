@@ -13,4 +13,7 @@ public interface ReferralRepository extends JpaRepository<Referral, Long> {
     List<Referral> findByReferrer_IdOrderByRegisteredAtDesc(Long referrerId);
 
     boolean existsByReferralCodeAndReferee_Id(String code, Long refereeId);
+
+    /** 레퍼럴 보상(S2) — 전환 완료 건수(보상 요약용). */
+    long countByReferrer_IdAndStatus(Long referrerId, Referral.Status status);
 }

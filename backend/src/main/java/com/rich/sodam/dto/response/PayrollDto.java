@@ -44,6 +44,7 @@ public class PayrollDto {
     private Integer overtimeWage;
     private Integer nightWorkWage;
     private Integer weeklyAllowance;
+    private Integer bonusWage;
     private Integer grossWage;
 
     // 세금 및 공제
@@ -93,6 +94,7 @@ public class PayrollDto {
                 .overtimeWage(payroll.getOvertimeWage())
                 .nightWorkWage(payroll.getNightWorkWage())
                 .weeklyAllowance(payroll.getWeeklyAllowance())
+                .bonusWage(payroll.getBonusWage())
                 .grossWage(payroll.getGrossWage())
                 .taxRate(payroll.getTaxRate())
                 .taxAmount(payroll.getTaxAmount())

@@ -1,7 +1,9 @@
+/* eslint-disable react-native/no-color-literals -- 미선택 토글 배경(transparent) 고정 */
 import {AppToast, ConfirmSheet, AppButton, AppCard, AppHeader, AppInput, AppText, ScreenContainer} from '../../../common/components/ds';
 import React, {useState} from 'react';
 import {Pressable, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import type {RootNavigationProp} from '../../../navigation/types';
 import {spacing} from '../../../theme/tokens';
 import api from '../../../common/utils/api';
 import {useAuth} from '../../../contexts/AuthContext';
@@ -12,8 +14,8 @@ import {useTheme, useThemeColors, ThemeMode} from '../../../common/hooks/useThem
  * 이름 변경 + 회원 탈퇴. saveName/withdraw 로직 보존.
  */
 const AccountSettingsScreen: React.FC = () => {
-    const {user, logout} = useAuth() as any;
-    const navigation = useNavigation<any>();
+    const {user, logout} = useAuth();
+    const navigation = useNavigation<RootNavigationProp>();
     const theme = useTheme();
     const c = useThemeColors();
     const [name, setName] = useState(user?.name ?? '');
@@ -77,7 +79,7 @@ const AccountSettingsScreen: React.FC = () => {
                         try {
                             await logout?.();
                         } catch (_) {/* ignore */}
-                        navigation.reset({index: 0, routes: [{name: 'Auth' as never}]});
+                        navigation.reset({index: 0, routes: [{name: 'Auth'}]});
                     } catch (e: any) {
                         const msg =
                             e?.response?.data?.message ??

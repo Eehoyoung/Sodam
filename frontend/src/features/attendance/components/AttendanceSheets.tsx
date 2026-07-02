@@ -14,6 +14,16 @@ import {
 } from '../../../common/components/ds';
 import {formatMoney, formatTimer} from '../../../common/utils/format';
 import {spacing} from '../../../theme/tokens';
+import {
+    DATE_DIGITS_HELPER,
+    TIME_DIGITS_HELPER,
+    dateDigitsToIso,
+    isValidDateDigits,
+    isValidTimeDigits,
+    sanitizeDateDigits,
+    sanitizeTimeDigits,
+    timeDigitsToHHmm,
+} from '../../../common/utils/dateTimeInput';
 
 /* 58 Attendance Filter Sheet */
 const RANGES = ['오늘', '이번 주', '이번 달'];
@@ -72,9 +82,12 @@ export const ManualRecordSheet: React.FC<{
     onClose: () => void;
     onSave: (v: {date: string; checkIn: string; checkOut: string; breakMin: string}) => void;
 }> = ({visible, onClose, onSave}) => {
-    const [date, setDate] = useState('');
-    const [checkIn, setCheckIn] = useState('');
-    const [checkOut, setCheckOut] = useState('');
+    const [date, setDateValue] = useState('');
+    const [checkIn, setCheckInValue] = useState('');
+    const [checkOut, setCheckOutValue] = useState('');
+    const setDate = (value: string) => setDateValue(sanitizeDateDigits(value));
+    const setCheckIn = (value: string) => setCheckInValue(sanitizeTimeDigits(value));
+    const setCheckOut = (value: string) => setCheckOutValue(sanitizeTimeDigits(value));
     const [breakMin, setBreakMin] = useState('');
     return (
         <BottomSheet
@@ -83,11 +96,16 @@ export const ManualRecordSheet: React.FC<{
             scrollable
             title="수동 기록 추가"
             description="사장 승인 없이 내 기록장에만 저장됩니다."
-            primary={{label: '기록 추가', onPress: () => onSave({date, checkIn, checkOut, breakMin})}}>
+            primary={{label: '기록 추가', onPress: () => onSave({
+                date: isValidDateDigits(date) ? dateDigitsToIso(date) : date,
+                checkIn: isValidTimeDigits(checkIn) ? timeDigitsToHHmm(checkIn) : checkIn,
+                checkOut: isValidTimeDigits(checkOut) ? timeDigitsToHHmm(checkOut) : checkOut,
+                breakMin,
+            })}}>
             <View style={styles.form}>
-                <AppInput label="근무일" placeholder="2026-05-25" value={date} onChangeText={setDate} />
-                <AppInput label="출근" placeholder="10:00" value={checkIn} onChangeText={setCheckIn} />
-                <AppInput label="퇴근" placeholder="15:30" value={checkOut} onChangeText={setCheckOut} />
+                <AppInput label="근무일" placeholder="20260525" value={date} onChangeText={setDate} keyboardType="number-pad" maxLength={8} helper={DATE_DIGITS_HELPER} />
+                <AppInput label="출근" placeholder="1000" value={checkIn} onChangeText={setCheckIn} keyboardType="number-pad" maxLength={4} helper={TIME_DIGITS_HELPER} />
+                <AppInput label="퇴근" placeholder="1530" value={checkOut} onChangeText={setCheckOut} keyboardType="number-pad" maxLength={4} helper={TIME_DIGITS_HELPER} />
                 <AppInput label="휴게(분)" placeholder="30" value={breakMin} onChangeText={setBreakMin} keyboardType="number-pad" />
             </View>
         </BottomSheet>
@@ -102,9 +120,12 @@ export const PersonalRecordEditSheet: React.FC<{
     expectedPay?: number;
     onSave: (v: {date: string; checkIn: string; checkOut: string; wage: string}) => void;
 }> = ({visible, onClose, initial, expectedPay, onSave}) => {
-    const [date, setDate] = useState(initial?.date ?? '');
-    const [checkIn, setCheckIn] = useState(initial?.checkIn ?? '');
-    const [checkOut, setCheckOut] = useState(initial?.checkOut ?? '');
+    const [date, setDateValue] = useState(sanitizeDateDigits(initial?.date ?? ''));
+    const [checkIn, setCheckInValue] = useState(sanitizeTimeDigits(initial?.checkIn ?? ''));
+    const [checkOut, setCheckOutValue] = useState(sanitizeTimeDigits(initial?.checkOut ?? ''));
+    const setDate = (value: string) => setDateValue(sanitizeDateDigits(value));
+    const setCheckIn = (value: string) => setCheckInValue(sanitizeTimeDigits(value));
+    const setCheckOut = (value: string) => setCheckOutValue(sanitizeTimeDigits(value));
     const [wage, setWage] = useState(initial?.wage ?? '');
     return (
         <BottomSheet
@@ -114,11 +135,16 @@ export const PersonalRecordEditSheet: React.FC<{
             title="기록 수정"
             // eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined
             description={expectedPay != null ? `예상 급여 ${formatMoney(expectedPay)}` : undefined}
-            primary={{label: '수정 저장', onPress: () => onSave({date, checkIn, checkOut, wage})}}>
+            primary={{label: '수정 저장', onPress: () => onSave({
+                date: isValidDateDigits(date) ? dateDigitsToIso(date) : date,
+                checkIn: isValidTimeDigits(checkIn) ? timeDigitsToHHmm(checkIn) : checkIn,
+                checkOut: isValidTimeDigits(checkOut) ? timeDigitsToHHmm(checkOut) : checkOut,
+                wage,
+            })}}>
             <View style={styles.form}>
-                <AppInput label="근무일" placeholder="2026-05-24" value={date} onChangeText={setDate} />
-                <AppInput label="출근" placeholder="10:00" value={checkIn} onChangeText={setCheckIn} />
-                <AppInput label="퇴근" placeholder="15:30" value={checkOut} onChangeText={setCheckOut} />
+                <AppInput label="근무일" placeholder="20260524" value={date} onChangeText={setDate} keyboardType="number-pad" maxLength={8} helper={DATE_DIGITS_HELPER} />
+                <AppInput label="출근" placeholder="1000" value={checkIn} onChangeText={setCheckIn} keyboardType="number-pad" maxLength={4} helper={TIME_DIGITS_HELPER} />
+                <AppInput label="퇴근" placeholder="1530" value={checkOut} onChangeText={setCheckOut} keyboardType="number-pad" maxLength={4} helper={TIME_DIGITS_HELPER} />
                 <AppInput label="시급 (원)" placeholder="10500" value={wage} onChangeText={setWage} keyboardType="number-pad" />
             </View>
         </BottomSheet>

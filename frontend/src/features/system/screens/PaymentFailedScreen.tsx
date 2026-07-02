@@ -13,7 +13,7 @@ interface Props {
 
 /**
  * A4 결제 실패 / 재시도 결과 (갭분석 P0).
- * ⚠️ 표현/라우팅만 — 금액 계산·PG 트리거는 변경하지 않음 (CLAUDE.md 승인필수).
+ * ⚠️ 표현/라우팅만 — 금액 계산·PG 트리거는 변경하지 않음 (프로젝트 운영 기준 승인필수).
  * v3 토스식: 큰 Ionicons 일러스트 + 친근한 한 줄 + 단일 1차 CTA.
  */
 const PaymentFailedScreen: React.FC<Props> = ({onRetry, onChangeMethod, onSupport}) => {

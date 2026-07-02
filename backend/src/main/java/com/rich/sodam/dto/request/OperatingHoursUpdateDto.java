@@ -1,5 +1,6 @@
 package com.rich.sodam.dto.request;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -70,10 +71,12 @@ public class OperatingHoursUpdateDto {
         @Schema(description = "요일 (MONDAY, TUESDAY, ..., SUNDAY)", required = true, example = "MONDAY")
         private DayOfWeek dayOfWeek;
 
-        @Schema(description = "시작시간 (HH:mm 형식)", example = "09:00")
+        @Schema(description = "시작시간 (24시간 형식 4자리 숫자)", example = "0900")
+        @JsonDeserialize(using = FlexibleLocalTimeDeserializer.class)
         private LocalTime openTime;
 
-        @Schema(description = "종료시간 (HH:mm 형식)", example = "18:00")
+        @Schema(description = "종료시간 (24시간 형식 4자리 숫자)", example = "1800")
+        @JsonDeserialize(using = FlexibleLocalTimeDeserializer.class)
         private LocalTime closeTime;
 
         @Schema(description = "휴무 여부", example = "false")

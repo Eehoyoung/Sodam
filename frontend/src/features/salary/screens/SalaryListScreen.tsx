@@ -1,7 +1,7 @@
 import {AmountText, AppToast, AppBadge, AppButton, AppCard, AppHeader, AppText, CtaStack, EmptyState, ErrorState, LoadingState, ScreenContainer, SegmentedControl} from '../../../common/components/ds';
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {FlatList, RefreshControl, StyleSheet, View} from 'react-native';
-import {useNavigation} from '@react-navigation/native';
+import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {formatMoney} from '../../../common/utils/format';
@@ -89,6 +89,13 @@ const SalaryListScreen = () => {
         setLoading(true);
         fetchPayrolls(selectedStoreId);
     }, [selectedStoreId, fetchPayrolls]);
+
+    // 급여 생성(PayrollRun) 등 타 화면에서 돌아왔을 때 목록을 최신화한다.
+    useFocusEffect(
+        useCallback(() => {
+            fetchPayrolls(selectedStoreId);
+        }, [selectedStoreId, fetchPayrolls]),
+    );
 
     const handleRefresh = () => {
         setRefreshing(true);

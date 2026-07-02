@@ -67,6 +67,7 @@ export const useJSIHealthMonitoring = (
         return () => {
             stopMonitoring();
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- 마운트/플래그 변경 시에만 시작·정지. start/stopMonitoring 의존 추가 시 모니터링 반복 토글.
     }, [enableRealTimeMonitoring]);
 
     const refreshHealth = useCallback(() => {
@@ -117,6 +118,7 @@ export const useJSIHealthMonitoring = (
             setHealthStatus(criticalStatus);
             return criticalStatus;
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- shouldTriggerAlert/triggerHealthAlert 은 아래에서 정의되는 안정 콜백(정의 순서 순환 회피)
     }, [componentName, enableAlerts, onHealthChange, onCriticalIssue, crashReporting]);
 
     const startMonitoring = useCallback(() => {

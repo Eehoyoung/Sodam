@@ -52,7 +52,19 @@ const attendanceService = {
      */
     getAttendanceRecords: async (filter: AttendanceFilter): Promise<AttendanceRecord[]> => {
         try {
-            const response = await api.get<AttendanceRecord[]>('/api/attendance', filter);
+            // BE 실엔드포인트는 /api/attendance/employee/{employeeId}?startDate&endDate (ISO DATE_TIME).
+            // 과거엔 존재하지 않는 GET /api/attendance 를 호출해 404 가 났다.
+            const employeeIdNum = Number(filter.employeeId);
+            if (!Number.isFinite(employeeIdNum)) {
+                return [];
+            }
+            // yyyy-MM-dd → ISO LocalDateTime (하루 경계 포함)
+            const toStart = (d: string) => (d.includes('T') ? d : `${d}T00:00:00`);
+            const toEnd = (d: string) => (d.includes('T') ? d : `${d}T23:59:59`);
+            const response = await api.get<AttendanceRecord[]>(
+                `/api/attendance/employee/${employeeIdNum}`,
+                {startDate: toStart(filter.startDate), endDate: toEnd(filter.endDate)},
+            );
             return response.data;
         } catch (error) {
             logger.error('출퇴�?기록??가?�오??�??�류가 발생?�습?�다', 'ATTENDANCE_SERVICE', error);
@@ -151,15 +163,23 @@ const attendanceService = {
      * @param workplaceId 근무지 ID
      * @returns ?�재 출퇴�?기록 (?�으�?null)
      */
-    getCurrentAttendance: async (workplaceId: string): Promise<AttendanceRecord | null> => {
+    getCurrentAttendance: async (workplaceId: string, employeeId?: string | number): Promise<AttendanceRecord | null> => {
+        // BE 실엔드포인트: GET /api/attendance/employee/{employeeId}/today (오늘 기록 없으면 204).
+        // 과거엔 존재하지 않는 /api/attendance/current 를 호출해 404 가 났다.
+        const empId = Number(employeeId);
+        if (!Number.isFinite(empId)) {
+            return null;
+        }
         try {
-            const storeIdNum = Number(workplaceId);
-            const params: any = { storeId: storeIdNum };
-            // compatibility during migration: include workplaceId too
-            (params).workplaceId = workplaceId;
-            const response = await api.get<AttendanceRecord | null>('/api/attendance/current', params);
-            return response.data;
-        } catch (error) {
+            const response = await api.get<AttendanceRecord | null>(
+                `/api/attendance/employee/${empId}/today`,
+                { storeId: Number(workplaceId) },
+            );
+            return response.data ?? null; // 204 No Content → 빈 응답 → null
+        } catch (error: any) {
+            if (error?.response?.status === 404) {
+                return null; // 오늘 기록 없음
+            }
             logger.error('', 'ATTENDANCE_SERVICE', error);
             throw error;
         }

@@ -4,11 +4,12 @@ import {CanonicalGrade, normalizeUserGrade, purposeToGrade} from '../features/au
 export type OnboardingRole = 'owner' | 'employee' | 'personal';
 export type AuthPurpose = 'boss' | 'employee' | 'personal';
 export type PendingPurposeSlug = 'master' | 'employee' | 'user';
-export type HomeLandingScreen = 'UserMyPageScreen' | 'EmployeeMyPageScreen' | 'MasterMyPageScreen';
+export type HomeLandingScreen = 'UserMyPageScreen' | 'EmployeeMyPageScreen' | 'MasterMyPageScreen' | 'EmployeeAttendanceHome';
 export type AuthGateScreen = 'Login' | 'Signup' | 'KakaoLogin' | 'Consent' | 'ProfileBasics';
 export type AuthGateParams = {selectedPurpose?: AuthPurpose; fromSignup?: boolean};
 
 export type RootRoute =
+    | {name: 'SodamLanding'; params?: undefined}
     | {name: 'Welcome'; params?: {selectedRole?: OnboardingRole; selectedPurpose?: AuthPurpose}}
     | {name: 'Auth'; params: {screen?: AuthGateScreen; params?: AuthGateParams}}
     | {name: 'HomeRoot'; params: {screen?: HomeLandingScreen; params?: any}};
@@ -81,7 +82,9 @@ export const homeScreenForGrade = (grade: CanonicalGrade): HomeLandingScreen => 
         return 'MasterMyPageScreen';
     }
     if (grade === 'EMPLOYEE') {
-        return 'EmployeeMyPageScreen';
+        // 직원 랜딩 = 시안(employee-home-screen-mockup) 디자인 화면. 승인 출퇴근 버튼 포함.
+        // 마이페이지(급여·휴가·시급 이력)는 빠른 메뉴/설정으로 접근.
+        return 'EmployeeAttendanceHome';
     }
     return 'UserMyPageScreen';
 };
@@ -128,7 +131,7 @@ export const resolveInitialRootRoute = (
     if (isAuthenticated) {
         return {name: 'Auth', params: {screen: 'Login'}};
     }
-    return {name: 'Welcome'};
+    return {name: 'SodamLanding'};
 };
 
 export const resetToRootRoute = (navigation: any, route: RootRoute) => {

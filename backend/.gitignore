@@ -150,6 +150,8 @@ log/
 *.sqlite
 *.sqlite3
 *.sql
+# 단, Flyway 마이그레이션은 스키마 소스이므로 반드시 추적(*.sql 제외 규칙의 예외)
+!src/main/resources/db/migration/*.sql
 
 # =============================================================================
 # 테스트 관련
@@ -184,7 +186,6 @@ coverage/
 # Junie AI 도구
 .junie/
 .junie
-.aiignore
 
 # 코드 품질 도구
 .sonar/

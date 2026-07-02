@@ -1,6 +1,8 @@
-import React, {useState} from 'react';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import React, {useMemo, useState} from 'react';
 import {StyleSheet, View, TextInput, TouchableOpacity, Text, ActivityIndicator} from 'react-native';
-import {colors, spacing} from '../../../common/styles/theme';
+import {spacing} from '../../../common/styles/theme';
+import {ThemeColors, useThemeColors} from '../../../common/hooks/useThemeColors';
 
 interface LoginFormProps {
     onSubmit: (email: string, password: string) => Promise<void>;
@@ -13,6 +15,8 @@ interface LoginFormProps {
  * 사용자의 이메일과 비밀번호를 입력받아 로그인 요청을 처리합니다.
  */
 const LoginForm: React.FC<LoginFormProps> = ({onSubmit, isLoading = false}) => {
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
@@ -88,7 +92,7 @@ const LoginForm: React.FC<LoginFormProps> = ({onSubmit, isLoading = false}) => {
                 accessibilityLabel="로그인 버튼"
             >
                 {isLoading ? (
-                    <ActivityIndicator color="#ffffff"/>
+                    <ActivityIndicator color={c.textInverse}/>
                 ) : (
                     <Text style={styles.buttonText}>로그인</Text>
                 )}
@@ -97,7 +101,7 @@ const LoginForm: React.FC<LoginFormProps> = ({onSubmit, isLoading = false}) => {
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
     container: {
         width: '100%',
         padding: spacing.md,
@@ -109,19 +113,20 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '500',
         marginBottom: spacing.xs,
-        color: colors.text,
+        color: c.textPrimary,
     },
     input: {
         height: 48,
         borderWidth: 1,
-        borderColor: '#ddd',
+        borderColor: c.border,
         borderRadius: 8,
         paddingHorizontal: spacing.md,
         fontSize: 16,
-        backgroundColor: '#fff',
+        backgroundColor: c.surface,
+        color: c.textPrimary,
     },
     button: {
-        backgroundColor: colors.primary,
+        backgroundColor: c.brandPrimary,
         height: 48,
         borderRadius: 8,
         justifyContent: 'center',
@@ -129,15 +134,15 @@ const styles = StyleSheet.create({
         marginTop: spacing.md,
     },
     buttonDisabled: {
-        backgroundColor: '#cccccc',
+        backgroundColor: c.surfaceMuted,
     },
     buttonText: {
-        color: '#ffffff',
+        color: c.textInverse,
         fontSize: 16,
         fontWeight: '600',
     },
     errorText: {
-        color: '#ff3b30',
+        color: c.error,
         fontSize: 14,
         marginTop: spacing.xs,
     },

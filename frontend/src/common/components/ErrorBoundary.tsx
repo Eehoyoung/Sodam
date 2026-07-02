@@ -4,14 +4,72 @@
  * Provides fallback UI and error logging capabilities
  */
 
-import React, {Component, ReactNode} from 'react';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import React, {Component, ReactNode, useMemo} from 'react';
 import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {ThemeColors, useThemeColors} from '../hooks/useThemeColors';
 
 interface Props {
     children: ReactNode;
     fallback?: ReactNode;
     onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
 }
+
+interface FallbackProps {
+    error?: Error;
+    errorInfo?: React.ErrorInfo;
+    onRetry: () => void;
+    onReload: () => void;
+}
+
+/** 기본 폴백 UI — 클래스 ErrorBoundary 에서 훅(useThemeColors)을 쓰기 위한 함수 컴포넌트 분리 */
+const DefaultErrorFallback: React.FC<FallbackProps> = ({error, errorInfo, onRetry, onReload}) => {
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
+
+    return (
+        <View style={styles.container}>
+            <View style={styles.errorContainer}>
+                <Text style={styles.title}>앱에 문제가 발생했습니다</Text>
+                <Text style={styles.subtitle}>
+                    잠시 후 다시 시도해주세요
+                </Text>
+
+                {__DEV__ && error && (
+                    <View style={styles.debugContainer}>
+                        <Text style={styles.debugTitle}>Debug Information:</Text>
+                        <Text style={styles.debugText}>
+                            {error.message}
+                        </Text>
+                        {errorInfo && (
+                            <Text style={styles.debugText}>
+                                {errorInfo.componentStack}
+                            </Text>
+                        )}
+                    </View>
+                )}
+
+                <View style={styles.buttonContainer}>
+                    <TouchableOpacity
+                        style={styles.retryButton}
+                        onPress={onRetry}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={styles.retryButtonText}>다시 시도</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.reloadButton}
+                        onPress={onReload}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={styles.reloadButtonText}>새로고침</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </View>
+    );
+};
 
 interface State {
     hasError: boolean;
@@ -56,46 +114,12 @@ export class ErrorBoundary extends Component<Props, State> {
 
             // Default fallback UI
             return (
-                <View style={styles.container}>
-                    <View style={styles.errorContainer}>
-                        <Text style={styles.title}>앱에 문제가 발생했습니다</Text>
-                        <Text style={styles.subtitle}>
-                            잠시 후 다시 시도해주세요
-                        </Text>
-
-                        {__DEV__ && this.state.error && (
-                            <View style={styles.debugContainer}>
-                                <Text style={styles.debugTitle}>Debug Information:</Text>
-                                <Text style={styles.debugText}>
-                                    {this.state.error.message}
-                                </Text>
-                                {this.state.errorInfo && (
-                                    <Text style={styles.debugText}>
-                                        {this.state.errorInfo.componentStack}
-                                    </Text>
-                                )}
-                            </View>
-                        )}
-
-                        <View style={styles.buttonContainer}>
-                            <TouchableOpacity
-                                style={styles.retryButton}
-                                onPress={this.handleRetry}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={styles.retryButtonText}>다시 시도</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={styles.reloadButton}
-                                onPress={this.handleReload}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={styles.reloadButtonText}>새로고침</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
+                <DefaultErrorFallback
+                    error={this.state.error}
+                    errorInfo={this.state.errorInfo}
+                    onRetry={this.handleRetry}
+                    onReload={this.handleReload}
+                />
             );
         }
 
@@ -128,20 +152,20 @@ export class ErrorBoundary extends Component<Props, State> {
     };
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8f9fa',
+        backgroundColor: c.surfaceCanvas,
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
     },
     errorContainer: {
-        backgroundColor: '#ffffff',
+        backgroundColor: c.surface,
         borderRadius: 12,
         padding: 24,
         alignItems: 'center',
-        shadowColor: '#000',
+        shadowColor: c.shadowColor,
         shadowOffset: {
             width: 0,
             height: 2,
@@ -154,13 +178,13 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 20,
         fontWeight: '600',
-        color: '#343a40',
+        color: c.textPrimary,
         marginBottom: 8,
         textAlign: 'center',
     },
     subtitle: {
         fontSize: 16,
-        color: '#6c757d',
+        color: c.textSecondary,
         marginBottom: 24,
         textAlign: 'center',
         lineHeight: 24,
@@ -168,19 +192,19 @@ const styles = StyleSheet.create({
     debugContainer: {
         marginTop: 16,
         padding: 12,
-        backgroundColor: '#f8f9fa',
+        backgroundColor: c.surfaceMuted,
         borderRadius: 8,
         alignSelf: 'stretch',
     },
     debugTitle: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#dc3545',
+        color: c.error,
         marginBottom: 8,
     },
     debugText: {
         fontSize: 12,
-        color: '#6c757d',
+        color: c.textSecondary,
         fontFamily: 'monospace',
         lineHeight: 16,
     },
@@ -190,27 +214,27 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     retryButton: {
-        backgroundColor: '#007bff',
+        backgroundColor: c.brandPrimary,
         paddingHorizontal: 24,
         paddingVertical: 12,
         borderRadius: 8,
         minWidth: 100,
     },
     retryButtonText: {
-        color: '#ffffff',
+        color: c.textInverse,
         fontSize: 16,
         fontWeight: '600',
         textAlign: 'center',
     },
     reloadButton: {
-        backgroundColor: '#6c757d',
+        backgroundColor: c.textSecondary,
         paddingHorizontal: 24,
         paddingVertical: 12,
         borderRadius: 8,
         minWidth: 100,
     },
     reloadButtonText: {
-        color: '#ffffff',
+        color: c.textInverse,
         fontSize: 16,
         fontWeight: '600',
         textAlign: 'center',

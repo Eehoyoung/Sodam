@@ -1,6 +1,8 @@
-import React, {Component, ReactNode} from 'react';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import React, {Component, ReactNode, useMemo} from 'react';
 import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {safeLogger} from '../utils/safeLogger';
+import {ThemeColors, useThemeColors} from '../common/hooks/useThemeColors';
 
 /**
  * ErrorBoundary Props 인터페이스
@@ -19,6 +21,81 @@ interface ErrorBoundaryState {
     error?: Error;
     errorInfo?: React.ErrorInfo;
 }
+
+interface FallbackProps {
+    error?: Error;
+    showDetails: boolean;
+    onRetry: () => void;
+    onRestart: () => void;
+}
+
+/** 기본 폴백 UI — 클래스 ErrorBoundary 에서 훅(useThemeColors)을 쓰기 위한 함수 컴포넌트 분리 */
+const DefaultErrorFallback: React.FC<FallbackProps> = ({error, showDetails, onRetry, onRestart}) => {
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
+
+    return (
+        <View style={styles.container}>
+            <ScrollView contentContainerStyle={styles.scrollContent}>
+                <View style={styles.errorContainer}>
+                    {/* 에러 아이콘 */}
+                    <View style={styles.iconContainer}>
+                        <Text style={styles.errorIcon}>⚠️</Text>
+                    </View>
+
+                    {/* 에러 메시지 */}
+                    <Text style={styles.title}>문제가 발생했습니다</Text>
+                    <Text style={styles.message}>
+                        예상치 못한 오류가 발생했습니다.{'\n'}
+                        잠시 후 다시 시도해주세요.
+                    </Text>
+
+                    {/* 개발 환경에서만 상세 에러 정보 표시 */}
+                    {showDetails && error && (
+                        <View style={styles.errorDetails}>
+                            <Text style={styles.errorDetailsTitle}>개발자 정보:</Text>
+                            <Text style={styles.errorDetailsText}>
+                                {error.name}: {error.message}
+                            </Text>
+                            {error.stack && (
+                                <Text style={styles.errorStack}>
+                                    {error.stack}
+                                </Text>
+                            )}
+                        </View>
+                    )}
+
+                    {/* 액션 버튼들 */}
+                    <View style={styles.buttonContainer}>
+                        <TouchableOpacity
+                            style={[styles.button, styles.retryButton]}
+                            onPress={onRetry}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={styles.retryButtonText}>다시 시도</Text>
+                        </TouchableOpacity>
+
+                        {__DEV__ && (
+                            <TouchableOpacity
+                                style={[styles.button, styles.restartButton]}
+                                onPress={onRestart}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={styles.restartButtonText}>앱 재시작</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+
+                    {/* 도움말 텍스트 */}
+                    <Text style={styles.helpText}>
+                        문제가 계속 발생하면 앱을 재시작하거나{'\n'}
+                        고객센터에 문의해주세요.
+                    </Text>
+                </View>
+            </ScrollView>
+        </View>
+    );
+};
 
 /**
  * 전역 에러 바운더리 컴포넌트
@@ -76,65 +153,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
             // 기본 에러 UI 렌더링
             return (
-                <View style={styles.container}>
-                    <ScrollView contentContainerStyle={styles.scrollContent}>
-                        <View style={styles.errorContainer}>
-                            {/* 에러 아이콘 */}
-                            <View style={styles.iconContainer}>
-                                <Text style={styles.errorIcon}>⚠️</Text>
-                            </View>
-
-                            {/* 에러 메시지 */}
-                            <Text style={styles.title}>문제가 발생했습니다</Text>
-                            <Text style={styles.message}>
-                                예상치 못한 오류가 발생했습니다.{'\n'}
-                                잠시 후 다시 시도해주세요.
-                            </Text>
-
-                            {/* 개발 환경에서만 상세 에러 정보 표시 */}
-                            {this.shouldShowErrorDetails() && this.state.error && (
-                                <View style={styles.errorDetails}>
-                                    <Text style={styles.errorDetailsTitle}>개발자 정보:</Text>
-                                    <Text style={styles.errorDetailsText}>
-                                        {this.state.error.name}: {this.state.error.message}
-                                    </Text>
-                                    {this.state.error.stack && (
-                                        <Text style={styles.errorStack}>
-                                            {this.state.error.stack}
-                                        </Text>
-                                    )}
-                                </View>
-                            )}
-
-                            {/* 액션 버튼들 */}
-                            <View style={styles.buttonContainer}>
-                                <TouchableOpacity
-                                    style={[styles.button, styles.retryButton]}
-                                    onPress={this.handleRetry}
-                                    activeOpacity={0.7}
-                                >
-                                    <Text style={styles.retryButtonText}>다시 시도</Text>
-                                </TouchableOpacity>
-
-                                {__DEV__ && (
-                                    <TouchableOpacity
-                                        style={[styles.button, styles.restartButton]}
-                                        onPress={this.handleRestart}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Text style={styles.restartButtonText}>앱 재시작</Text>
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-
-                            {/* 도움말 텍스트 */}
-                            <Text style={styles.helpText}>
-                                문제가 계속 발생하면 앱을 재시작하거나{'\n'}
-                                고객센터에 문의해주세요.
-                            </Text>
-                        </View>
-                    </ScrollView>
-                </View>
+                <DefaultErrorFallback
+                    error={this.state.error}
+                    showDetails={this.shouldShowErrorDetails()}
+                    onRetry={this.handleRetry}
+                    onRestart={this.handleRestart}
+                />
             );
         }
 
@@ -216,10 +240,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 /**
  * 스타일 정의
  */
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8f9fa',
+        backgroundColor: c.surfaceCanvas,
     },
     scrollContent: {
         flexGrow: 1,
@@ -241,20 +265,20 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#212529',
+        color: c.textPrimary,
         marginBottom: 12,
         textAlign: 'center',
     },
     message: {
         fontSize: 16,
-        color: '#6c757d',
+        color: c.textSecondary,
         textAlign: 'center',
         lineHeight: 24,
         marginBottom: 30,
     },
     errorDetails: {
-        backgroundColor: '#f8d7da',
-        borderColor: '#f5c6cb',
+        backgroundColor: c.errorBg,
+        borderColor: c.error,
         borderWidth: 1,
         borderRadius: 8,
         padding: 16,
@@ -264,17 +288,17 @@ const styles = StyleSheet.create({
     errorDetailsTitle: {
         fontSize: 14,
         fontWeight: 'bold',
-        color: '#721c24',
+        color: c.error,
         marginBottom: 8,
     },
     errorDetailsText: {
         fontSize: 12,
-        color: '#721c24',
+        color: c.error,
         marginBottom: 8,
     },
     errorStack: {
         fontSize: 10,
-        color: '#721c24',
+        color: c.error,
         fontFamily: 'monospace',
     },
     buttonContainer: {
@@ -290,24 +314,24 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     retryButton: {
-        backgroundColor: '#007bff',
+        backgroundColor: c.brandPrimary,
     },
     retryButtonText: {
-        color: '#ffffff',
+        color: c.textInverse,
         fontSize: 16,
         fontWeight: '600',
     },
     restartButton: {
-        backgroundColor: '#6c757d',
+        backgroundColor: c.textSecondary,
     },
     restartButtonText: {
-        color: '#ffffff',
+        color: c.textInverse,
         fontSize: 16,
         fontWeight: '600',
     },
     helpText: {
         fontSize: 14,
-        color: '#6c757d',
+        color: c.textSecondary,
         textAlign: 'center',
         lineHeight: 20,
     },

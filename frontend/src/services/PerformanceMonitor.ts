@@ -56,7 +56,7 @@ export interface PerformanceIssue {
     severity: 'low' | 'medium' | 'high' | 'critical';
     message: string;
     timestamp: number;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
 }
 
 export interface OptimizationSuggestion {
@@ -72,7 +72,7 @@ class PerformanceMonitor {
     private isMonitoring: boolean = false;
     private metrics: PerformanceMetrics;
     private performanceObserver: PerformanceObserver | null = null;
-    private frameRateMonitor: any = null;
+    private frameRateMonitor: ReturnType<typeof requestAnimationFrame> | null = null;
     private memoryMonitor: ReturnType<typeof setInterval> | null = null;
     private issues: PerformanceIssue[] = [];
     private startTime: number = 0;
@@ -440,9 +440,10 @@ class PerformanceMonitor {
         this.memoryMonitor = setInterval(() => {
             try {
                 // For React Native, we'll estimate memory usage
-                if (typeof performance !== 'undefined' && (performance as any).memory) {
-                    const memory = (performance as any).memory;
-                    this.metrics.memoryUsage = memory.usedJSHeapSize / 1024 / 1024; // MB
+                // 비표준 Chrome/RN performance.memory — 일부 런타임에만 존재.
+                const perfMemory = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory;
+                if (typeof performance !== 'undefined' && perfMemory) {
+                    this.metrics.memoryUsage = perfMemory.usedJSHeapSize / 1024 / 1024; // MB
 
                     // Check for memory issues
                     if (this.metrics.memoryUsage > 150) {
@@ -530,18 +531,18 @@ export const performanceMonitor = PerformanceMonitor.getInstance();
 // Export performance optimization utilities
 export const performanceUtils = {
     // Debounce function for performance optimization
-    debounce: <T extends (...args: any[]) => any>(func: T, wait: number): T => {
+    debounce: <T extends (...args: never[]) => unknown>(func: T, wait: number): T => {
         let timeout: ReturnType<typeof setTimeout>;
-        return ((...args: any[]) => {
+        return ((...args: Parameters<T>) => {
             clearTimeout(timeout);
             timeout = setTimeout(() => func(...args), wait);
         }) as T;
     },
 
     // Throttle function for performance optimization
-    throttle: <T extends (...args: any[]) => any>(func: T, limit: number): T => {
+    throttle: <T extends (...args: never[]) => unknown>(func: T, limit: number): T => {
         let inThrottle: boolean;
-        return ((...args: any[]) => {
+        return ((...args: Parameters<T>) => {
             if (!inThrottle) {
                 func(...args);
                 inThrottle = true;

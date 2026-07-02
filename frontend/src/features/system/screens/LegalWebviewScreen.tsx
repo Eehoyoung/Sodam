@@ -1,6 +1,8 @@
 import React from 'react';
 import {StyleSheet} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {AppCard, AppHeader, AppText, ScreenContainer} from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 
@@ -15,7 +17,8 @@ const TITLES: Record<string, string> = {
 };
 
 const LegalWebviewScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 미등록 라우트: kind/body 파라미터가 ParamList 에 없음
     const route = useRoute<any>();
     const kind = route.params?.kind ?? 'privacy';
     const body: string = route.params?.body ??

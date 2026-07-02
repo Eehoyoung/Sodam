@@ -3,11 +3,15 @@ package com.rich.sodam.integration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rich.sodam.domain.EmployeeProfile;
 import com.rich.sodam.domain.EmployeeStoreRelation;
+import com.rich.sodam.domain.MasterProfile;
+import com.rich.sodam.domain.MasterStoreRelation;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.domain.type.UserGrade;
 import com.rich.sodam.repository.EmployeeProfileRepository;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
+import com.rich.sodam.repository.MasterProfileRepository;
+import com.rich.sodam.repository.MasterStoreRelationRepository;
 import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.repository.UserRepository;
 import com.rich.sodam.security.UserPrincipal;
@@ -67,6 +71,12 @@ class SmokeRestE2ETest {
     @Autowired
     private EmployeeStoreRelationRepository employeeStoreRelationRepository;
 
+    @Autowired
+    private MasterProfileRepository masterProfileRepository;
+
+    @Autowired
+    private MasterStoreRelationRepository masterStoreRelationRepository;
+
     private User masterUser;
     private User employeeUser;
     private Store store;
@@ -100,6 +110,10 @@ class SmokeRestE2ETest {
         );
         store.updateLocation(37.5665, 126.9780, "서울 중구", 100);
         store = storeRepository.save(store);
+
+        // 사장-매장 소유 관계 — BOLA 가드(assertMasterOwnsStore)가 검증하는 실제 소유권
+        MasterProfile masterProfile = masterProfileRepository.save(new MasterProfile(masterUser));
+        masterStoreRelationRepository.save(new MasterStoreRelation(masterProfile, store));
 
         // 직원-매장 관계
         EmployeeStoreRelation rel = new EmployeeStoreRelation(profile, store);

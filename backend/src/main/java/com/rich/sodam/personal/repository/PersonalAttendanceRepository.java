@@ -21,4 +21,7 @@ public interface PersonalAttendanceRepository extends JpaRepository<PersonalAtte
     Optional<PersonalAttendance> findFirstByUserIdAndCheckOutAtIsNullOrderByIdDesc(Long userId);
 
     Optional<PersonalAttendance> findByIdAndUserId(Long id, Long userId);
+
+    /** 연간 세무 집계용 — 기간 내 전체(비페이지). */
+    List<PersonalAttendance> findByUserIdAndCheckInAtBetween(Long userId, OffsetDateTime from, OffsetDateTime to);
 }

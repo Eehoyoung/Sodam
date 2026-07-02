@@ -57,6 +57,7 @@ public class User {
     /**
      * 사용자 비밀번호 (해시된 값)
      */
+    @com.fasterxml.jackson.annotation.JsonIgnore // 응답 직렬화 시 BCrypt 해시 노출 차단(광역 방어)
     @Column(length = 255)
     private String password;
 

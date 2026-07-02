@@ -4,6 +4,8 @@ import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {AuthStackParamList} from '../../../navigation/types';
 import {tokens} from '../../../theme/tokens';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import {
@@ -33,7 +35,7 @@ const useStyles = () => {
 };
 
 const PasswordResetScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
     const c = useThemeColors();
     const [step, setStep] = useState<Step>('EMAIL');
 
@@ -46,7 +48,7 @@ const PasswordResetScreen: React.FC = () => {
             {step === 'EMAIL' && <StepEmail onNext={() => setStep('OTP')} />}
             {step === 'OTP' && <StepOtp onNext={() => setStep('NEW_PWD')} onBack={() => setStep('EMAIL')} />}
             {step === 'NEW_PWD' && <StepNewPassword onDone={() => setStep('DONE')} />}
-            {step === 'DONE' && <DoneCard onClose={() => navigation.navigate('Login' as never)} />}
+            {step === 'DONE' && <DoneCard onClose={() => navigation.navigate('Login')} />}
         </ScreenContainer>
     );
 };

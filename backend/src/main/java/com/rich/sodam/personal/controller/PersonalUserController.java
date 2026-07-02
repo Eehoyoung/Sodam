@@ -36,14 +36,17 @@ public class PersonalUserController {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PersonalUserController.class);
 
     private final PersonalUserService service;
+    private final com.rich.sodam.personal.service.PersonalTaxService personalTaxService;
     private final JwtTokenProvider jwtTokenProvider;
     private final RedisTemplate<String, Object> cacheRedis;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public PersonalUserController(PersonalUserService service,
+                                  com.rich.sodam.personal.service.PersonalTaxService personalTaxService,
                                   JwtTokenProvider jwtTokenProvider,
                                   @Qualifier("cacheRedisTemplate") RedisTemplate<String, Object> cacheRedis) {
         this.service = service;
+        this.personalTaxService = personalTaxService;
         this.jwtTokenProvider = jwtTokenProvider;
         this.cacheRedis = cacheRedis;
     }
@@ -78,6 +81,17 @@ public class PersonalUserController {
         if (denied != null) return (ResponseEntity) denied;
         PersonalUserProfileDto profile = service.getOrCreateProfile(userId);
         return ResponseEntity.ok(ApiResponse.success("성공", profile));
+    }
+
+    /** B3 긱워커 연간 사업소득·환급 신호. 근무지별 소득 합산 + 3.3% 기납부 추정(참고용). */
+    @GetMapping("/annual-tax-summary")
+    public ResponseEntity<ApiResponse<com.rich.sodam.personal.dto.PersonalAnnualTaxDto>> annualTaxSummary(
+            @PathVariable Long userId,
+            @org.springframework.web.bind.annotation.RequestParam int year,
+            HttpServletRequest request) {
+        ResponseEntity<ApiResponse<?>> denied = verifyAccess(userId, request);
+        if (denied != null) return (ResponseEntity) denied;
+        return ResponseEntity.ok(ApiResponse.success("성공", personalTaxService.annualSummary(userId, year)));
     }
 
     @PutMapping

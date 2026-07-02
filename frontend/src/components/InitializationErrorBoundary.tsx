@@ -1,6 +1,8 @@
-import React, {Component, ReactNode} from 'react';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import React, {Component, ReactNode, useMemo} from 'react';
 import {View, Text, ScrollView, StyleSheet} from 'react-native';
 import {safeLogger} from '../utils/safeLogger';
+import {ThemeColors, useThemeColors} from '../common/hooks/useThemeColors';
 
 /**
  * InitializationErrorBoundary Props Interface
@@ -17,6 +19,26 @@ interface InitializationErrorBoundaryState {
     hasError: boolean;
     error?: Error;
 }
+
+/** 초기화 치명 오류 폴백 UI — 클래스 경계에서 훅(useThemeColors)을 쓰기 위한 함수 컴포넌트 분리 */
+const InitializationErrorFallback: React.FC<{error: Error}> = ({error}) => {
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
+
+    return (
+        <View style={styles.container}>
+            <Text style={styles.title}>Initialization Error</Text>
+            <Text style={styles.message}>A critical error occurred during app initialization.</Text>
+            {__DEV__ && (
+                <ScrollView style={styles.errorContainer}>
+                    <Text style={styles.errorText}>
+                        {error.message}
+                    </Text>
+                </ScrollView>
+            )}
+        </View>
+    );
+};
 
 /**
  * Specialized Error Boundary for React Native initialization timing issues
@@ -147,19 +169,7 @@ export class InitializationErrorBoundary extends Component<
     render() {
         // Only show error UI for non-timing issues
         if (this.state.hasError && this.state.error && !this.isTimingIssue(this.state.error)) {
-            return (
-                <View style={styles.container}>
-                    <Text style={styles.title}>Initialization Error</Text>
-                    <Text style={styles.message}>A critical error occurred during app initialization.</Text>
-                    {__DEV__ && (
-                        <ScrollView style={styles.errorContainer}>
-                            <Text style={styles.errorText}>
-                                {this.state.error.message}
-                            </Text>
-                        </ScrollView>
-                    )}
-                </View>
-            );
+            return <InitializationErrorFallback error={this.state.error} />;
         }
 
         // For timing issues and normal operation, render children
@@ -188,30 +198,30 @@ export function withInitializationErrorBoundary<P extends object>(
 /**
  * StyleSheet for InitializationErrorBoundary
  */
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
     container: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
-        backgroundColor: '#f8f9fa',
+        backgroundColor: c.surfaceCanvas,
     },
     title: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#721c24',
+        color: c.error,
         marginBottom: 12,
         textAlign: 'center',
     },
     message: {
         fontSize: 16,
-        color: '#721c24',
+        color: c.error,
         textAlign: 'center',
         marginBottom: 16,
         lineHeight: 24,
     },
     errorContainer: {
-        backgroundColor: '#f8d7da',
+        backgroundColor: c.errorBg,
         borderRadius: 8,
         padding: 16,
         maxHeight: 200,
@@ -219,7 +229,7 @@ const styles = StyleSheet.create({
     },
     errorText: {
         fontSize: 12,
-        color: '#721c24',
+        color: c.error,
         fontFamily: 'monospace',
         lineHeight: 16,
     },

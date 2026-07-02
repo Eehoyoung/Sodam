@@ -51,7 +51,7 @@ export const useJSICrashReporting = (
         const originalConsoleWarn = console.warn;
 
         // Override console.error to catch JSI-related errors
-        console.error = (...args: any[]) => {
+        console.error = (...args: unknown[]) => {
             const errorMessage = args.join(' ');
 
             // Check for JSI-related error patterns
@@ -66,7 +66,7 @@ export const useJSICrashReporting = (
         };
 
         // Override console.warn to catch JSI warnings
-        console.warn = (...args: any[]) => {
+        console.warn = (...args: unknown[]) => {
             const warningMessage = args.join(' ');
 
             // Check for JSI-related warning patterns
@@ -81,7 +81,7 @@ export const useJSICrashReporting = (
         };
 
         // Setup unhandled promise rejection handler
-        const handleUnhandledRejection = (event: any) => {
+        const handleUnhandledRejection = (event: {reason?: unknown}) => {
             const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
 
             if (isJSIRelatedError(error.message)) {
@@ -90,8 +90,8 @@ export const useJSICrashReporting = (
         };
 
         // Setup global error handler
-        const handleGlobalError = (event: any) => {
-            if (isJSIRelatedError(event.message)) {
+        const handleGlobalError = (event: {message?: string; filename?: string; lineno?: number; colno?: number}) => {
+            if (isJSIRelatedError(event.message ?? '')) {
                 const error = new Error(event.message);
                 error.stack = `${event.filename}:${event.lineno}:${event.colno}`;
                 handleCrashDetection(error, 'Global Error');
@@ -99,8 +99,12 @@ export const useJSICrashReporting = (
         };
 
         if (Platform.OS === 'web') {
-            (window as any).addEventListener('unhandledrejection', handleUnhandledRejection);
-            (window as any).addEventListener('error', handleGlobalError);
+            const win = window as unknown as {
+                addEventListener: (type: string, listener: (event: never) => void) => void;
+                removeEventListener: (type: string, listener: (event: never) => void) => void;
+            };
+            win.addEventListener('unhandledrejection', handleUnhandledRejection as (event: never) => void);
+            win.addEventListener('error', handleGlobalError as (event: never) => void);
         }
 
         // Cleanup function
@@ -109,10 +113,14 @@ export const useJSICrashReporting = (
             console.warn = originalConsoleWarn;
 
             if (Platform.OS === 'web') {
-                (window as any).removeEventListener('unhandledrejection', handleUnhandledRejection);
-                (window as any).removeEventListener('error', handleGlobalError);
+                const win = window as unknown as {
+                    removeEventListener: (type: string, listener: (event: never) => void) => void;
+                };
+                win.removeEventListener('unhandledrejection', handleUnhandledRejection as (event: never) => void);
+                win.removeEventListener('error', handleGlobalError as (event: never) => void);
             }
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- 설정 변경 시에만 핸들러 재설치. handleCrashDetection 은 ref 기반 안정 콜백이라 의존 추가 불필요.
     }, [componentName, enableAutoReporting, enableConsoleLogging]);
 
     const handleCrashDetection = useCallback((error: Error, context: string) => {

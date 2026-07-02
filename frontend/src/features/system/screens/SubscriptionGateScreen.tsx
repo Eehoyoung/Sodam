@@ -15,7 +15,7 @@ interface Props {
 
 /**
  * A5 구독 만료 / 결제 누락 차단 안내 (갭분석 P0).
- * ⚠️ 표현/라우팅만 — 결제 트리거·금액 로직 불변 (CLAUDE.md 승인필수).
+ * ⚠️ 표현/라우팅만 — 결제 트리거·금액 로직 불변 (프로젝트 운영 기준 승인필수).
  */
 const SubscriptionGateScreen: React.FC<Props> = ({mode = 'gate', featureName = '명세서 발급', onPrimary, onSecondary}) => {
     const expired = mode === 'expired';

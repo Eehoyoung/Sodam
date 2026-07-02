@@ -1,4 +1,5 @@
-import React, {useEffect} from 'react';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import React, {useEffect, useMemo} from 'react';
 import {
     Dimensions,
     Modal as RNModal,
@@ -11,6 +12,7 @@ import {
     ViewStyle,
 } from 'react-native';
 import {ENABLE_ANIMATIONS, stageAtLeast, ANIMATION_RECOVERY_STAGE} from '../../../navigation/config';
+import {ThemeColors, useThemeColors} from '../../hooks/useThemeColors';
 
 // Conditionally import Reanimated components only when needed
 let Animated: any;
@@ -70,6 +72,8 @@ const Modal: React.FC<ModalProps> = ({
                                          width = `80%`,
                                          height,
                                      }) => {
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
     const shouldUseAnimations = ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE);
 
     // Only use animated values when animations are enabled
@@ -152,17 +156,17 @@ const Modal: React.FC<ModalProps> = ({
 
 const {width: screenWidth} = Dimensions.get('window');
 
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
     backdrop: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
     },
     modalContainer: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: c.surface,
         borderRadius: 12,
         overflow: 'hidden',
-        shadowColor: '#000000',
+        shadowColor: c.shadowColor,
         shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
@@ -175,12 +179,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#F2F2F7',
+        borderBottomColor: c.divider,
     },
     title: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#000000',
+        color: c.textPrimary,
         flex: 1,
     },
     closeButton: {
@@ -191,7 +195,7 @@ const styles = StyleSheet.create({
     },
     closeButtonText: {
         fontSize: 18,
-        color: '#8E8E93',
+        color: c.textTertiary,
     },
     content: {
         padding: 16,
@@ -199,7 +203,7 @@ const styles = StyleSheet.create({
     footer: {
         padding: 16,
         borderTopWidth: 1,
-        borderTopColor: '#F2F2F7',
+        borderTopColor: c.divider,
         flexDirection: 'row',
         justifyContent: 'flex-end',
     },

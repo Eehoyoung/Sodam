@@ -1,7 +1,8 @@
 import {AppToast, ConfirmSheet, AppButton, AppCard, AppHeader, AppInput, AppListItem, AmountText, AppText, CtaStack, ScreenContainer} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
-import {useRoute} from '@react-navigation/native';
+import {RouteProp, useRoute} from '@react-navigation/native';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {spacing} from '../../../theme/tokens';
 import {formatWage} from '../../../common/utils/format';
 import api from '../../../common/utils/api';
@@ -12,8 +13,8 @@ import api from '../../../common/utils/api';
  * 최저임금 경고 + PUT /api/wages/store/{id}/standard + history GET 로직 보존.
  */
 const WageSettingsScreen: React.FC = () => {
-    const route = useRoute<any>();
-    const storeId = route.params?.storeId as number | undefined;
+    const route = useRoute<RouteProp<HomeStackParamList, 'WageSettings'>>();
+    const storeId = route.params.storeId;
 
     const [currentWage, setCurrentWage] = useState<number | null>(null);
     const [standardWage, setStandardWage] = useState('');

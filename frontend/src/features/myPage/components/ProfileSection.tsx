@@ -1,6 +1,8 @@
-import React from 'react';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import React, {useMemo} from 'react';
 import {StyleSheet, View, Text, TouchableOpacity, Image, ImageSourcePropType} from 'react-native';
 import {colors, spacing} from '../../../common/styles/theme';
+import {ThemeColors, useThemeColors} from '../../../common/hooks/useThemeColors';
 
 interface ProfileSectionProps {
     name: string;
@@ -26,6 +28,8 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({
                                                            onLogoutPress,
                                                            subscriptionStatus = 'free',
                                                        }) => {
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
     // 구독 상태에 따른 배지 텍스트 및 스타일
     const getBadgeInfo = () => {
         switch (subscriptionStatus) {
@@ -99,13 +103,13 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
     container: {
-        backgroundColor: '#ffffff',
+        backgroundColor: c.surface,
         borderRadius: 12,
         padding: spacing.md,
         marginBottom: spacing.lg,
-        shadowColor: '#000',
+        shadowColor: c.shadowColor,
         shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.1,
         shadowRadius: 4,
@@ -133,6 +137,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    // eslint-disable-next-line react-native/no-color-literals -- 브랜드색 아바타 위 흰 글자(라이트/다크 동일 의도)
     profileInitial: {
         fontSize: 32,
         fontWeight: 'bold',
@@ -146,6 +151,8 @@ const styles = StyleSheet.create({
         paddingVertical: spacing.xs / 2,
         borderRadius: 10,
     },
+    // 구독 티어 배지색은 고정 브랜드/티어 컬러 — 라이트/다크 동일하게 유지(테마 토큰 비대상)
+    /* eslint-disable react-native/no-color-literals -- 의도된 고정 티어 배지색 */
     freeBadge: {
         backgroundColor: '#8E8E93',
     },
@@ -160,6 +167,7 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontWeight: 'bold',
     },
+    /* eslint-enable react-native/no-color-literals */
     profileInfo: {
         flex: 1,
     },
@@ -192,12 +200,13 @@ const styles = StyleSheet.create({
         marginRight: spacing.sm,
         alignItems: 'center',
     },
+    // eslint-disable-next-line react-native/no-color-literals -- 브랜드색 버튼 위 흰 글자(라이트/다크 동일 의도)
     editButtonText: {
         color: '#ffffff',
         fontWeight: '600',
     },
     logoutButton: {
-        backgroundColor: '#f8f8f8',
+        backgroundColor: c.surfaceMuted,
         paddingVertical: spacing.sm,
         paddingHorizontal: spacing.md,
         borderRadius: 8,
@@ -205,7 +214,7 @@ const styles = StyleSheet.create({
         marginLeft: spacing.sm,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#e0e0e0',
+        borderColor: c.border,
     },
     logoutButtonText: {
         color: colors.text,

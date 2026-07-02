@@ -7,6 +7,7 @@ import {Pressable, StyleSheet, View} from 'react-native';
 import {AppBadge, AppInput, AppListItem, AppText, BottomSheet, SegmentedControl} from '../../../common/components/ds';
 import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
+import {DATE_DIGITS_HELPER, dateDigitsToIso, isValidDateDigits, sanitizeDateDigits} from '../../../common/utils/dateTimeInput';
 
 /* 54 Radius Selector Sheet — 출퇴근 인증 반경 */
 const RADII = ['50m', '80m', '120m'];
@@ -86,7 +87,8 @@ export const WageEditSheet: React.FC<{
     onSave: (wage: number, effectiveDate: string, reason: string) => void;
 }> = ({visible, onClose, employeeName, onSave}) => {
     const [wage, setWage] = useState('');
-    const [date, setDate] = useState('');
+    const [date, setDateValue] = useState('');
+    const setDate = (value: string) => setDateValue(sanitizeDateDigits(value));
     const [reason, setReason] = useState('');
     return (
         <BottomSheet
@@ -95,10 +97,10 @@ export const WageEditSheet: React.FC<{
             scrollable
             title={`${employeeName}님의 시급을 바꿔요`}
             description="적용 시작일 이후 급여 계산에 반영됩니다."
-            primary={{label: '시급 변경 저장', onPress: () => onSave(parseInt(wage.replace(/[^0-9]/g, ''), 10) || 0, date, reason)}}>
+            primary={{label: '시급 변경 저장', onPress: () => onSave(parseInt(wage.replace(/[^0-9]/g, ''), 10) || 0, isValidDateDigits(date) ? dateDigitsToIso(date) : date, reason)}}>
             <View style={styles.form}>
                 <AppInput label="적용 시급 (원)" placeholder="예: 10500" value={wage} onChangeText={setWage} keyboardType="number-pad" />
-                <AppInput label="적용 시작일" placeholder="2026-06-01" value={date} onChangeText={setDate} />
+                <AppInput label="적용 시작일" placeholder="20260601" value={date} onChangeText={setDate} keyboardType="number-pad" maxLength={8} helper={DATE_DIGITS_HELPER} />
                 <AppInput label="변경 사유" placeholder="예: 근속 인상" value={reason} onChangeText={setReason} multiline />
             </View>
         </BottomSheet>

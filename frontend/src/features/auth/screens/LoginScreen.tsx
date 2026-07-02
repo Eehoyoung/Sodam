@@ -1,11 +1,12 @@
 import React, {useState} from 'react';
 import {KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View} from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {NavigationProp, RouteProp} from '@react-navigation/native';
-import {AppButton, AppInput, AppText, AppToast, Brandmark} from '../../../common/components/ds';
-import {gradient, spacing} from '../../../theme/tokens';
+import {AppButton, AppInput, AppText, AppToast} from '../../../common/components/ds';
+import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {useResponsive} from '../../../common/hooks/useResponsive';
+import SodamLogo from '../../../common/components/logo/SodamLogo';
 import authApi from '../services/authApi';
 import {useAuth} from '../../../contexts/AuthContext';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
@@ -25,9 +26,15 @@ interface LoginScreenProps {
 
 const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
+/**
+ * 로그인 — 홈 화면과 같은 라이트 캔버스 톤. 네비 헤더는 끄고(headerShown:false,
+ * AuthNavigator 참고) 큰 마스코트 로고 하나만 브랜드 신호로 남긴다(작은 네비 로고와
+ * 중복되지 않도록). 뒤로가기는 하드웨어 back/스와이프 제스처로 충분 — 별도 버튼 불필요.
+ */
 export default function LoginScreen({navigation, route}: LoginScreenProps) {
+    const c = useThemeColors();
     const r = useResponsive();
-    const brandSize = r.pick({compact: 48, default: 56});
+    const logoSize = r.pick({compact: 88, default: 108});
     const scrollPadTop = r.isCompactHeight ? spacing.lg : spacing.xxl;
     const titleMargin = r.pick({compact: spacing.md, default: spacing.lg});
     const formMargin = r.pick({compact: spacing.lg, default: spacing.xl});
@@ -105,22 +112,28 @@ export default function LoginScreen({navigation, route}: LoginScreenProps) {
     };
 
     return (
-        <LinearGradient colors={gradient.darkScreen} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={styles.flex}>
-            <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
-                <ScrollGuard scrollPadTop={scrollPadTop}>
-                    <Brandmark size={brandSize} />
-                    <AppText variant="display" tone="inverse" style={[styles.title, {marginTop: titleMargin}]}>
-                        {'다시 오셨네요.\n바로 시작해요'}
-                    </AppText>
-                    <AppText variant="bodyLg" tone="inverse" style={styles.copy}>
-                        {route.params?.fromSignup
-                            ? '로그인하면 약관 동의와 기본 정보 설정을 이어서 진행해요.'
-                            : '로그인 후 남은 설정이 있으면 먼저 안내해 드릴게요.'}
-                    </AppText>
+        <SafeAreaView style={[styles.flex, {backgroundColor: c.surfaceCanvas}]} edges={['top', 'bottom']}>
+            <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                <ScrollView
+                    contentContainerStyle={[styles.scroll, {paddingTop: scrollPadTop}]}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}>
+                    <View style={styles.hero}>
+                        <SodamLogo size={logoSize} variant="default" />
+                        <AppText variant="headingLg" style={[styles.title, {marginTop: titleMargin}]}>
+                            {'다시 오셨네요.\n바로 시작해요'}
+                        </AppText>
+                        <AppText variant="bodyLg" tone="secondary" style={styles.copy}>
+                            {route.params?.fromSignup
+                                ? '로그인하면 약관 동의와 기본 정보 설정을 이어서 진행해요.'
+                                : '로그인 후 남은 설정이 있으면 먼저 안내해 드릴게요.'}
+                        </AppText>
+                    </View>
 
                     <View style={[styles.form, {marginTop: formMargin, gap: formGap}]}>
                         <AppInput
-                            placeholder="이메일"
+                            label="이메일"
+                            placeholder="example@sodam.dev"
                             value={email}
                             onChangeText={t => {
                                 setEmail(t);
@@ -135,6 +148,7 @@ export default function LoginScreen({navigation, route}: LoginScreenProps) {
                             error={emailError}
                         />
                         <AppInput
+                            label="비밀번호"
                             placeholder="비밀번호"
                             value={password}
                             onChangeText={setPassword}
@@ -142,7 +156,7 @@ export default function LoginScreen({navigation, route}: LoginScreenProps) {
                             autoCapitalize="none"
                         />
                         <Pressable onPress={() => setShowPassword(s => !s)} hitSlop={8} style={styles.toggle}>
-                            <AppText variant="caption" tone="inverse" style={styles.toggleText}>
+                            <AppText variant="caption" tone="brand" weight="700">
                                 {showPassword ? '비밀번호 숨기기' : '비밀번호 표시'}
                             </AppText>
                         </Pressable>
@@ -153,40 +167,28 @@ export default function LoginScreen({navigation, route}: LoginScreenProps) {
 
                     <View style={styles.footerRow}>
                         <Pressable onPress={() => navigation.navigate('PasswordReset')} hitSlop={8}>
-                            <AppText variant="caption" tone="inverse" style={styles.link}>비밀번호 찾기</AppText>
+                            <AppText variant="caption" tone="secondary" style={styles.link}>비밀번호 찾기</AppText>
                         </Pressable>
-                        <AppText variant="caption" tone="inverse" style={styles.dot}>·</AppText>
+                        <AppText variant="caption" tone="tertiary">·</AppText>
                         <Pressable onPress={() => navigation.navigate('Signup', {selectedPurpose})} hitSlop={8}>
-                            <AppText variant="caption" tone="inverse" style={styles.link}>회원가입</AppText>
+                            <AppText variant="caption" tone="brand" weight="800">회원가입</AppText>
                         </Pressable>
                     </View>
-                </ScrollGuard>
-            </SafeAreaView>
-        </LinearGradient>
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 }
 
-const ScrollGuard: React.FC<{children: React.ReactNode; scrollPadTop?: number}> = ({children, scrollPadTop}) => (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-            contentContainerStyle={[styles.scroll, scrollPadTop !== null && scrollPadTop !== undefined && {paddingTop: scrollPadTop}]}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}>
-            {children}
-        </ScrollView>
-    </KeyboardAvoidingView>
-);
-
 const styles = StyleSheet.create({
     flex: {flex: 1},
-    scroll: {flexGrow: 1, paddingHorizontal: spacing.xxl, paddingTop: spacing.xxl, paddingBottom: spacing.xl},
-    title: {marginTop: spacing.lg, letterSpacing: -1},
-    copy: {marginTop: spacing.md, opacity: 0.8},
-    form: {marginTop: spacing.xl, gap: spacing.md},
+    scroll: {flexGrow: 1, paddingHorizontal: spacing.xxl, paddingBottom: spacing.xl},
+    hero: {alignItems: 'center'},
+    title: {textAlign: 'center', letterSpacing: -0.6},
+    copy: {marginTop: spacing.md, textAlign: 'center'},
+    form: {marginTop: spacing.xl},
     toggle: {alignSelf: 'flex-end', marginTop: -spacing.xs},
-    toggleText: {opacity: 0.82},
     cta: {marginTop: spacing.sm},
     footerRow: {flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, marginTop: spacing.lg},
-    link: {opacity: 0.92, fontWeight: '800'},
-    dot: {opacity: 0.6},
+    link: {fontWeight: '700'},
 });

@@ -123,8 +123,8 @@ public class KakaoAuthService {
         ResponseEntity<KakaoProfile> responseEntity = restTemplate.exchange(
                 profileUrl, HttpMethod.GET, requestEntity, KakaoProfile.class);
 
-        log.debug("요청 헤더: {}", headers);
-        log.debug("응답 바디: {}", responseEntity.getBody());
+        // 보안: Authorization Bearer 토큰·프로필 응답 본문(PII)은 로깅하지 않는다.
+        log.debug("카카오 프로필 응답 수신 (status={})", responseEntity.getStatusCode());
 
         return responseEntity.getBody();
     }

@@ -29,6 +29,7 @@ public class NotificationController {
     private final DeviceTokenRepository deviceTokenRepository;
     private final UserRepository userRepository;
     private final NotificationInboxRepository inboxRepository;
+    private final com.rich.sodam.service.StoreAccessGuard storeAccessGuard;
 
     @Operation(summary = "FCM 토큰 등록", description = "앱 실행 시 토큰을 서버에 저장하여 푸시 발송 대상으로 등록.")
     @PostMapping("/token")
@@ -49,13 +50,19 @@ public class NotificationController {
     @Operation(summary = "FCM 토큰 해제", description = "로그아웃/앱 삭제 시 호출.")
     @DeleteMapping("/token")
     @Transactional
-    public ResponseEntity<Void> unregisterToken(@RequestParam String token) {
-        deviceTokenRepository.findByToken(token).ifPresent(deviceTokenRepository::delete);
+    public ResponseEntity<Void> unregisterToken(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam String token) {
+        // IDOR 차단: 본인 소유 토큰만 삭제(타인 토큰 삭제 → 푸시 차단 DoS 방지)
+        deviceTokenRepository.findByToken(token)
+                .filter(dt -> dt.getUser() != null && dt.getUser().getId().equals(principal.getId()))
+                .ifPresent(deviceTokenRepository::delete);
         return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "사장 → 직원 푸시 발송 (커스텀 메시지)",
             description = "사장이 직원에게 임의 메시지를 보냅니다. 알림 inbox 에 자동 적재.")
+    @com.rich.sodam.security.annotation.MasterOnly
     @PostMapping("/push-to-employee")
     @Transactional
     public ResponseEntity<java.util.Map<String, String>> pushToEmployee(
@@ -78,7 +85,8 @@ public class NotificationController {
         // 제목·본문 길이 가드 (NotificationInbox 컬럼 한도 = 100 / 300)
         if (title.length() > 100) title = title.substring(0, 100);
         if (message.length() > 300) message = message.substring(0, 300);
-        // TODO[보안]: 사장의 매장과 직원의 매장이 일치하는지 검증 (Phase 2)
+        // BOLA 차단: 사장의 매장에 소속된 직원에게만 발송(임의 사용자 푸시·사칭 방지)
+        storeAccessGuard.assertCanViewEmployee(principal.getId(), employeeId, true);
         com.rich.sodam.domain.User employee = userRepository.findById(employeeId).orElse(null);
         if (employee == null) {
             return ResponseEntity.badRequest()

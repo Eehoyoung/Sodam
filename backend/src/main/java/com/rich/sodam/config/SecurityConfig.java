@@ -1,5 +1,6 @@
 package com.rich.sodam.config;
 
+import com.rich.sodam.jwt.JwtAuthenticationEntryPoint;
 import com.rich.sodam.jwt.JwtAuthenticationFilter;
 import com.rich.sodam.jwt.JwtTokenProvider;
 import lombok.Getter;
@@ -27,9 +28,12 @@ public class SecurityConfig {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SecurityConfig.class);
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
-    public SecurityConfig(JwtTokenProvider jwtTokenProvider) {
+    public SecurityConfig(JwtTokenProvider jwtTokenProvider,
+                          JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint) {
         this.jwtTokenProvider = jwtTokenProvider;
+        this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
     }
 
     @Bean
@@ -64,7 +68,10 @@ public class SecurityConfig {
                                 // H2 콘솔 (dev 프로필에서만 노출됨)
                                 "/h2-console/**",
                                 // 플랜 카탈로그: 비인증 조회 허용
-                                "/api/billing/plans"
+                                "/api/billing/plans",
+                                // WebSocket 핸드셰이크: HTTP 업그레이드는 허용하고, 실제 인증은
+                                // STOMP CONNECT 단계에서 JWT 로 강제(WebSocketConfig 채널 인터셉터).
+                                "/ws/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
@@ -76,6 +83,10 @@ public class SecurityConfig {
                         .httpStrictTransportSecurity(hsts -> hsts.maxAgeInSeconds(31_536_000))
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // 인증 실패(토큰 만료·무효·누락)는 401 로 응답해야 FE 의 토큰 자동 갱신(401 트리거)이 동작한다.
+                // 미등록 시 Spring 기본 Http403ForbiddenEntryPoint 가 403 을 반환 → FE refresh 가 안 돌아
+                // 세션 만료 후 모든 화면이 403 으로 막혔다.
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 
         log.info("Spring Security 필터 체인 구성 완료");

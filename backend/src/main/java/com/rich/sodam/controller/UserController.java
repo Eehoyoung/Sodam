@@ -32,9 +32,12 @@ import java.util.Set;
 public class UserController {
 
     private final UserService userService;
+    private final com.rich.sodam.service.StoreAccessGuard storeAccessGuard;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService,
+                          com.rich.sodam.service.StoreAccessGuard storeAccessGuard) {
         this.userService = userService;
+        this.storeAccessGuard = storeAccessGuard;
     }
 
     /**
@@ -140,10 +143,15 @@ public class UserController {
             description = "직원의 기본 정보(이름, 이메일), 직책 등을 수정합니다. 사업주 권한이 필요합니다."
     )
     public ResponseEntity<ApiResponse<UserResponseDto>> updateEmployee(
+            @AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "수정할 직원 ID", required = true)
             @PathVariable Long employeeId,
             @Parameter(description = "수정할 직원 정보", required = true)
             @Valid @RequestBody EmployeeUpdateDto updateDto) {
+
+        // BOLA 차단: 본인 매장 소속 직원만 수정(임의 userId 조작·권한상승 방지).
+        // try 밖에 둬 AccessDeniedException 이 Security 핸들러로 전파되어 403 이 되게 한다.
+        storeAccessGuard.assertCanViewEmployee(principal.getId(), employeeId, true);
 
         try {
             User updatedEmployee = userService.updateEmployeeInfo(employeeId, updateDto);

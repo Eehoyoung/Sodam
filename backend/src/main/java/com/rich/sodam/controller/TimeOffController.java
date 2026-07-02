@@ -5,6 +5,8 @@ import com.rich.sodam.domain.type.TimeOffStatus;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.dto.response.MyLeaveBalanceDto;
+import com.rich.sodam.service.MyLeaveBalanceService;
 import com.rich.sodam.service.StoreAccessGuard;
 import com.rich.sodam.service.TimeOffService;
 import jakarta.validation.Valid;
@@ -24,11 +26,26 @@ public class TimeOffController {
 
     private final TimeOffService timeOffService;
     private final StoreAccessGuard guard;
+    private final MyLeaveBalanceService myLeaveBalanceService;
 
     @Autowired
-    public TimeOffController(TimeOffService timeOffService, StoreAccessGuard guard) {
+    public TimeOffController(TimeOffService timeOffService, StoreAccessGuard guard,
+                            MyLeaveBalanceService myLeaveBalanceService) {
         this.timeOffService = timeOffService;
         this.guard = guard;
+        this.myLeaveBalanceService = myLeaveBalanceService;
+    }
+
+    /**
+     * 직원 본인 잔여 연차 조회 (E-NEW-03). 본인 전용 — principal.getId() 기준.
+     */
+    @GetMapping("/my/leave-balance")
+    public ResponseEntity<MyLeaveBalanceDto> getMyLeaveBalance(
+            @AuthenticationPrincipal UserPrincipal principal) {
+        if (principal == null || principal.getId() == null) {
+            throw new IllegalStateException("로그인이 필요해요.");
+        }
+        return ResponseEntity.ok(myLeaveBalanceService.getMyLeaveBalance(principal.getId()));
     }
 
     /**

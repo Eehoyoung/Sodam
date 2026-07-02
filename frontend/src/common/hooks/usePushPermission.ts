@@ -1,17 +1,17 @@
 import {useEffect, useState} from 'react';
-import {Platform} from 'react-native';
+import {requestPushPermission} from '../services/fcm';
 
 /**
  * 푸시 알림 권한 요청 훅 (PRD_GUEST 후속 onboarding).
  *
- * 동작:
- *  - iOS: requestPermissions
+ * 동작 (fcm.requestPushPermission 위임):
+ *  - iOS: messaging().requestPermission()
  *  - Android 13+: POST_NOTIFICATIONS 런타임 권한
- *  - 기타: 즉시 granted=true
+ *  - Android <13: 권한 불필요 → granted
+ *  - FCM 네이티브 모듈/키 부재: denied (크래시 없이 자연스럽게 처리)
  *
- * TODO[CONFIRM-C-2 후]: `@react-native-firebase/messaging` 도입 시
- *   `await messaging().requestPermission()` 으로 실제 권한 요청 + 토큰 발급.
- *   현재는 stub — granted 항상 true 로 진행, 토큰 등록은 NotificationService 가 처리.
+ * key-ready: google-services.json·@react-native-firebase/messaging 주입 시
+ *   별도 코드 변경 없이 실제 권한 요청으로 전환된다.
  */
 export type PushPermissionStatus = 'unknown' | 'granted' | 'denied' | 'requesting';
 
@@ -26,23 +26,9 @@ export function usePushPermission(autoRequest = false): UsePushPermissionResult 
     const request = async (): Promise<boolean> => {
         setStatus('requesting');
         try {
-            // 실 SDK 도입 전 stub
-            if (Platform.OS === 'ios') {
-                // TODO: messaging().requestPermission()
-                setStatus('granted');
-                return true;
-            }
-            if (Platform.OS === 'android') {
-                if (Platform.Version >= 33) {
-                    // TODO: PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS)
-                    setStatus('granted');
-                    return true;
-                }
-                setStatus('granted');
-                return true;
-            }
-            setStatus('granted');
-            return true;
+            const granted = await requestPushPermission();
+            setStatus(granted ? 'granted' : 'denied');
+            return granted;
         } catch (_) {
             setStatus('denied');
             return false;

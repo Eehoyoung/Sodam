@@ -1,5 +1,7 @@
-import React, {useRef, useState} from 'react';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import React, {useMemo, useRef, useState} from 'react';
 import {FlatList, Modal, Platform, StyleSheet, Text, TextStyle, TouchableOpacity, View, ViewStyle,} from 'react-native';
+import {ThemeColors, useThemeColors} from '../../hooks/useThemeColors';
 
 export interface DropdownItem {
     label: string;
@@ -40,6 +42,8 @@ const Dropdown: React.FC<DropdownProps> = ({
                                                placeholderTextStyle,
                                                errorTextStyle,
                                            }) => {
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
     const [isVisible, setIsVisible] = useState(false);
     const [dropdownPosition, setDropdownPosition] = useState({
         top: 0,
@@ -188,7 +192,7 @@ const Dropdown: React.FC<DropdownProps> = ({
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
     container: {
         marginBottom: 16,
         width: '100%',
@@ -196,7 +200,7 @@ const styles = StyleSheet.create({
     label: {
         fontSize: 14,
         marginBottom: 6,
-        color: '#333',
+        color: c.textPrimary,
         fontWeight: '500',
     },
     dropdown: {
@@ -206,46 +210,46 @@ const styles = StyleSheet.create({
         height: 50,
         paddingHorizontal: 12,
         borderWidth: 1,
-        borderColor: '#ddd',
+        borderColor: c.border,
         borderRadius: 8,
-        backgroundColor: '#fff',
+        backgroundColor: c.surface,
     },
     errorDropdown: {
-        borderColor: '#e74c3c',
+        borderColor: c.error,
     },
     disabledDropdown: {
-        backgroundColor: '#f5f5f5',
+        backgroundColor: c.surfaceMuted,
         opacity: 0.7,
     },
     placeholderText: {
-        color: '#aaa',
+        color: c.textTertiary,
         fontSize: 16,
         flex: 1,
     },
     selectedText: {
-        color: '#333',
+        color: c.textPrimary,
         fontSize: 16,
         flex: 1,
     },
     disabledText: {
-        color: '#999',
+        color: c.textDisabled,
     },
     arrow: {
         fontSize: 12,
-        color: '#666',
+        color: c.textSecondary,
         marginLeft: 8,
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        backgroundColor: c.overlayDark,
     },
     dropdownList: {
         position: 'absolute',
         maxHeight: 200,
-        backgroundColor: '#fff',
+        backgroundColor: c.surface,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#ddd',
+        borderColor: c.border,
         ...Platform.select({
             ios: {
                 shadowColor: '#000',
@@ -262,28 +266,28 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: c.divider,
     },
     selectedItem: {
-        backgroundColor: '#f1f9ff',
+        backgroundColor: c.surfaceSky,
     },
     disabledItem: {
         opacity: 0.5,
     },
     itemText: {
         fontSize: 16,
-        color: '#333',
+        color: c.textPrimary,
     },
     selectedItemText: {
-        color: '#3498db',
+        color: c.brandPrimary,
         fontWeight: '500',
     },
     disabledItemText: {
-        color: '#999',
+        color: c.textDisabled,
     },
     errorText: {
         fontSize: 12,
-        color: '#e74c3c',
+        color: c.error,
         marginTop: 4,
         marginLeft: 2,
     },

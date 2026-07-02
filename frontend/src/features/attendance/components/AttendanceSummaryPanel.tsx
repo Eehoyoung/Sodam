@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { COLORS } from '../../../common/components/logo/Colors';
 import useAttendance, { CheckMethod } from '../hooks/useAttendance';
+import { requestApproval } from '../services/attendanceApprovalService';
 
 interface Props {
   workplaceId?: string;
@@ -16,16 +17,41 @@ const MethodChip: React.FC<{ label: string; active: boolean; onPress: () => void
 );
 
 export const AttendanceSummaryPanel: React.FC<Props> = ({ workplaceId, onPressViewDetails }) => {
-  const { method, setMethod, currentAttendance, loading, actions } = useAttendance({ workplaceId });
+  const { method, setMethod, workplaceId: resolvedWorkplaceId, currentAttendance, loading, actions } = useAttendance({ workplaceId });
+
+  // 근무 중 = 출근 기록 있고 아직 퇴근 안 함. (today 조회는 퇴근 후에도 기록을 주므로
+  // 존재만 보면 퇴근 후에도 '근무중'·'퇴근하기' 가 남는다.)
+  const isWorking = !!currentAttendance && !currentAttendance.checkOutTime;
 
   const onChangeMethod = (m: CheckMethod) => setMethod(m);
+
+  // 위치/NFC 없이 사장 승인으로 출퇴근 — 요청 버튼. 누르면 사장에게 알림이 가고, 승인 시 요청 시각으로 처리된다.
+  const [approvalBusy, setApprovalBusy] = React.useState(false);
+  const [approvalMsg, setApprovalMsg] = React.useState<string | null>(null);
+  const onRequestApproval = async () => {
+    const storeIdStr = workplaceId ?? resolvedWorkplaceId;
+    if (!storeIdStr) { setApprovalMsg('매장 정보가 없어요. 먼저 매장에 합류해 주세요.'); return; }
+    const type = isWorking ? 'CHECK_OUT' : 'CHECK_IN';
+    setApprovalBusy(true);
+    setApprovalMsg(null);
+    try {
+      await requestApproval(Number(storeIdStr), type);
+      setApprovalMsg(type === 'CHECK_IN'
+        ? '출근 승인을 요청했어요. 사장님 승인 대기 중…'
+        : '퇴근 승인을 요청했어요. 사장님 승인 대기 중…');
+    } catch (e: any) {
+      setApprovalMsg(e?.response?.data?.message || '요청에 실패했어요. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setApprovalBusy(false);
+    }
+  };
 
   return (
     <View style={styles.card}>
       <Text style={styles.title}>출퇴근 요약</Text>
 
       <View style={styles.statusBox}>
-        {currentAttendance ? (
+        {isWorking && currentAttendance ? (
           <>
             <View style={styles.rowBetween}>
               <Text style={styles.statusLabel}>상태</Text>
@@ -48,7 +74,7 @@ export const AttendanceSummaryPanel: React.FC<Props> = ({ workplaceId, onPressVi
       </View>
 
       <View style={styles.actions}>
-        {!currentAttendance ? (
+        {!isWorking ? (
           <TouchableOpacity style={[styles.primaryBtn, loading && styles.btnDisabled]} disabled={loading} onPress={actions.checkIn}>
             {loading ? <ActivityIndicator color={COLORS.WHITE}/> : <Text style={styles.primaryBtnText}>
               {method === 'standard' && '출근하기'}
@@ -65,6 +91,18 @@ export const AttendanceSummaryPanel: React.FC<Props> = ({ workplaceId, onPressVi
             </Text>}
           </TouchableOpacity>
         )}
+
+        <TouchableOpacity
+          style={[styles.approvalBtn, approvalBusy && styles.btnDisabled]}
+          disabled={approvalBusy}
+          onPress={onRequestApproval}>
+          {approvalBusy ? <ActivityIndicator color={COLORS.SODAM_BLUE}/> : (
+            <Text style={styles.approvalBtnText}>
+              {isWorking ? '사장님 승인으로 퇴근 요청' : '사장님 승인으로 출근 요청'}
+            </Text>
+          )}
+        </TouchableOpacity>
+        {approvalMsg ? <Text style={styles.approvalMsg}>{approvalMsg}</Text> : null}
 
         <TouchableOpacity style={styles.linkBtn} onPress={onPressViewDetails}>
           <Text style={styles.linkText}>자세히 보기</Text>
@@ -161,6 +199,25 @@ const styles = StyleSheet.create({
     color: COLORS.WHITE,
     fontSize: 16,
     fontWeight: '600',
+  },
+  approvalBtn: {
+    marginTop: 10,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.SODAM_BLUE,
+  },
+  approvalBtnText: {
+    color: COLORS.SODAM_BLUE,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  approvalMsg: {
+    marginTop: 8,
+    textAlign: 'center',
+    color: COLORS.GRAY_600,
+    fontSize: 13,
   },
   linkBtn: {
     marginTop: 10,

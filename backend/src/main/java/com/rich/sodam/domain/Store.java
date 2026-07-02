@@ -1,5 +1,6 @@
 package com.rich.sodam.domain;
 
+import com.rich.sodam.config.crypto.StringCryptoConverter;
 import com.rich.sodam.util.GeoUtils;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -7,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.UUID;
@@ -42,7 +44,8 @@ public class Store {
     @Column(nullable = false, unique = true)
     private String businessNumber; // 사업자등록번호
 
-    @Column(nullable = false)
+    @Convert(converter = StringCryptoConverter.class) // PII 암호화 저장(PIPA §29)
+    @Column(nullable = false, length = 255)
     private String storePhoneNumber;
 
     @Column(nullable = false)
@@ -73,6 +76,10 @@ public class Store {
     @Embedded
     private OperatingHours operatingHours;
 
+    // 급여 정산 주기(시작/마감/지급일) — 사장이 매장 생성/수정 시 지정. 미설정 가능.
+    @Embedded
+    private PayrollCycle payrollCycle;
+
     // Soft Delete 관련 필드
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
@@ -89,9 +96,54 @@ public class Store {
     @Column(name = "five_or_more_employees")
     private Boolean fiveOrMoreEmployees;
 
+    /**
+     * 활성(재직) 직원 수 — DB 영속 아님(@Transient). 조회 시 서비스가 채워 응답에 직렬화한다.
+     * (없으면 FE 가 undefined→0 으로 처리해 홈/매장카드 "직원 0명" 오표시가 났다.)
+     */
+    @Transient
+    private Integer employeeCount;
+
+    @Transient
+    private Long monthlyLaborCost;
+
+    @Transient
+    private Integer todayAttendance;
+
+    @Transient
+    private Long monthlyRevenue;
+
+    public void setEmployeeCount(Integer employeeCount) {
+        this.employeeCount = employeeCount;
+    }
+
+    public void setMonthlyLaborCost(Long monthlyLaborCost) {
+        this.monthlyLaborCost = monthlyLaborCost;
+    }
+
+    public void setTodayAttendance(Integer todayAttendance) {
+        this.todayAttendance = todayAttendance;
+    }
+
+    public void setMonthlyRevenue(Long monthlyRevenue) {
+        this.monthlyRevenue = monthlyRevenue;
+    }
+
     /** §56 가산수당 적용 여부 (5인 미만이 아니면 적용). */
     public boolean isPremiumApplicable() {
         return !Boolean.FALSE.equals(fiveOrMoreEmployees);
+    }
+
+    /**
+     * 상시근로자 수를 기준으로 5인 이상 여부를 산정·반영한다.
+     * <p>직원-매장 관계 변경(추가·해지) 시 호출되어 §56 가산 적용 여부를 정상화한다.
+     * 상시 5인 이상이면 true(가산 적용), 5인 미만이면 false(가산 제외).
+     * (시행령 §7의2 4주 평균 정교화는 향후 과제 — 현재는 활성 재직 인원 수 기준.)
+     *
+     * @param activeEmployeeCount 현재 활성(재직) 직원 수
+     */
+    public void applyEmployeeCount(int activeEmployeeCount) {
+        this.fiveOrMoreEmployees = activeEmployeeCount >= 5;
+        this.updatedAt = LocalDateTime.now();
     }
 
     /**
@@ -287,6 +339,16 @@ public class Store {
     }
 
     /**
+     * 급여 정산 주기 설정/변경. null 이면 미설정으로 둔다(부분 업데이트는 호출 측에서 판단).
+     *
+     * @param newPayrollCycle 새 정산 주기(검증·정규화는 {@link PayrollCycle#of}에서 수행)
+     */
+    public void updatePayrollCycle(PayrollCycle newPayrollCycle) {
+        this.payrollCycle = newPayrollCycle;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
      * 현재 시점에 매장이 운영 중인지 확인
      *
      * @return 운영 중이면 true, 아니면 false
@@ -328,6 +390,34 @@ public class Store {
 
         // 시간 범위 내에 있는지 확인
         return !time.isBefore(openTime) && !time.isAfter(closeTime);
+    }
+
+    public boolean isWithinAttendanceWindowAt(LocalDateTime dateTime) {
+        if (Boolean.TRUE.equals(isDeleted) || operatingHours == null || dateTime == null) {
+            return false;
+        }
+
+        LocalDate date = dateTime.toLocalDate();
+        return isWithinAttendanceWindowForBusinessDate(dateTime, date.minusDays(1))
+                || isWithinAttendanceWindowForBusinessDate(dateTime, date)
+                || isWithinAttendanceWindowForBusinessDate(dateTime, date.plusDays(1));
+    }
+
+    private boolean isWithinAttendanceWindowForBusinessDate(LocalDateTime dateTime, LocalDate businessDate) {
+        DayOfWeek dayOfWeek = businessDate.getDayOfWeek();
+        if (!operatingHours.isOpenOn(dayOfWeek)) {
+            return false;
+        }
+
+        LocalTime openTime = operatingHours.getOpenTime(dayOfWeek);
+        LocalTime closeTime = operatingHours.getCloseTime(dayOfWeek);
+        if (openTime == null || closeTime == null) {
+            return false;
+        }
+
+        LocalDateTime attendanceWindowStart = businessDate.atTime(openTime).minusHours(1);
+        LocalDateTime attendanceWindowEnd = businessDate.atTime(closeTime).plusHours(1);
+        return !dateTime.isBefore(attendanceWindowStart) && !dateTime.isAfter(attendanceWindowEnd);
     }
 
     // ==================== Soft Delete 관련 메서드 ====================

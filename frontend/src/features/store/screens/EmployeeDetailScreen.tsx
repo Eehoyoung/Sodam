@@ -6,6 +6,7 @@ import {
     AppButton,
     AppCard,
     AppHeader,
+    AppListItem,
     AmountText,
     AppText,
     CtaStack,
@@ -13,10 +14,12 @@ import {
     SegmentedControl,
     BadgeTone,
 } from '../../../common/components/ds';
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, TextInput as RNTextInput, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import {useNavigation, useRoute} from '@react-navigation/native';
+import {useNavigation, useRoute, useFocusEffect, type RouteProp} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {tokens} from '../../../theme/tokens';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
@@ -59,11 +62,20 @@ const useStyles = () => {
  * saveWage(POST /api/wages/employee)·toggleActive(PUT .../active)·memo 로직 보존.
  */
 const EmployeeDetailScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
-    const route = useRoute<any>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
+    const route = useRoute<RouteProp<HomeStackParamList, 'EmployeeDetail'>>();
     const styles = useStyles();
     const c = useThemeColors();
-    const {employeeId, storeId}: RouteParams = route.params ?? {};
+    const {employeeId, storeId}: RouteParams = route.params ?? ({} as RouteParams);
+
+    // 포커스마다 재조회 트리거 — 시급 변경/계약 발송 등 하위 화면에서 돌아왔을 때
+    // 직원 정보·시급이력·근태를 최신화한다(아래 모든 로딩 effect 의 deps 에 포함).
+    const [refreshKey, setRefreshKey] = useState(0);
+    useFocusEffect(
+        useCallback(() => {
+            setRefreshKey(k => k + 1);
+        }, []),
+    );
 
     const [tab, setTab] = useState<TabKey>('INFO');
     const [emp, setEmp] = useState<Employee | null>(null);
@@ -156,7 +168,8 @@ const EmployeeDetailScreen: React.FC = () => {
                 if (wage) {setEmp(e => (e ? {...e, appliedHourlyWage: wage} : e));}
             } catch (_) {/* ignore */}
         })();
-    }, [employeeId, storeId]);
+        // refreshKey: 포커스 복귀 시 재조회 트리거(아래 deps 에 포함)
+    }, [employeeId, storeId, refreshKey]);
 
     const initials = useMemo(() => (emp?.name ?? '?').slice(0, 1), [emp]);
     const tabIndex = TABS.findIndex(t => t.key === tab);
@@ -222,12 +235,100 @@ const EmployeeDetailScreen: React.FC = () => {
 
             <View style={styles.tabContent}>
                 {tab === 'INFO' && <InfoTab emp={emp} />}
-                {tab === 'ATTENDANCE' && <AttendanceTab employeeId={emp.id} storeId={storeId} />}
-                {tab === 'SALARY' && <SalaryTab employeeId={emp.id} navigation={navigation} />}
+                {/* key={refreshKey}: 포커스 복귀 시 탭을 remount 해 시급/근태 데이터를 재조회한다. */}
+                {tab === 'ATTENDANCE' && <AttendanceTab key={refreshKey} employeeId={emp.id} storeId={storeId} />}
+                {tab === 'SALARY' && <SalaryTab key={refreshKey} employeeId={emp.id} navigation={navigation} />}
                 {tab === 'TIMEOFF' && <TimeOffTab />}
             </View>
 
             <MemoEditor storeId={storeId} employeeId={emp.id} />
+
+            <View style={styles.contractRow}>
+                <AppListItem
+                    title="근로계약서 보내기"
+                    subtitle="근로조건을 작성해 직원에게 보내고 서명을 받을 수 있어요."
+                    right="›"
+                    onPress={() =>
+                        navigation.navigate('SendContract', {
+                            storeId,
+                            employeeId: emp.id,
+                            employeeName: emp.name,
+                        })
+                    }
+                />
+                <AppListItem
+                    title="서류함"
+                    subtitle="보건증 등 서류 보관 · 만료 임박 시 알림"
+                    right="›"
+                    onPress={() =>
+                        navigation.navigate('EmployeeDocuments', {
+                            storeId,
+                            employeeId: emp.id,
+                            employeeName: emp.name,
+                        })
+                    }
+                />
+                <AppListItem
+                    title="휴게 기록"
+                    subtitle="휴게를 실제로 부여한 기록을 남겨 임금체불 진정에 대비해요."
+                    right="›"
+                    onPress={() =>
+                        navigation.navigate('BreakRecord', {
+                            storeId,
+                            employeeId: emp.id,
+                            employeeName: emp.name,
+                        })
+                    }
+                />
+                <AppListItem
+                    title="연소근로자 확인"
+                    subtitle="만 18세 미만이면 근로시간·야간 제한·친권자 동의를 안내해 드려요."
+                    right="›"
+                    onPress={() =>
+                        navigation.navigate('MinorGuard', {
+                            storeId,
+                            employeeId: emp.id,
+                            employeeName: emp.name,
+                        })
+                    }
+                />
+                <AppListItem
+                    title="근무 시프트"
+                    subtitle="근무 일정을 등록하면 직원이 본인 일정을 확인할 수 있어요."
+                    right="›"
+                    onPress={() =>
+                        navigation.navigate('EditShift', {
+                            storeId,
+                            employeeId: emp.id,
+                            employeeName: emp.name,
+                        })
+                    }
+                />
+                <AppListItem
+                    title="온보딩 현황"
+                    subtitle="계약·시급·첫 출근 진행 상태를 확인해요."
+                    right="›"
+                    onPress={() =>
+                        navigation.navigate('Onboarding', {
+                            storeId,
+                            employeeId: emp.id,
+                            employeeName: emp.name,
+                        })
+                    }
+                />
+                <AppListItem
+                    title="증거 패키지"
+                    subtitle="근태·급여·계약·시급이력을 한 번에 묶어 분쟁 대비 자료로 보관해요."
+                    right="›"
+                    onPress={() =>
+                        navigation.navigate('EvidencePackage', {
+                            storeId,
+                            employeeId: emp.id,
+                            employeeName: emp.name,
+                        })
+                    }
+                />
+            </View>
 
             <WageEditSheet
                 visible={wageSheet}
@@ -352,7 +453,7 @@ const AttendanceTab: React.FC<{employeeId: number; storeId: number}> = ({employe
     );
 };
 
-const SalaryTab: React.FC<{employeeId: number; navigation: any}> = ({employeeId, navigation}) => {
+const SalaryTab: React.FC<{employeeId: number; navigation: NativeStackNavigationProp<HomeStackParamList>}> = ({employeeId, navigation}) => {
     const styles = useStyles();
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -471,6 +572,7 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
     wageSub: {marginTop: tokens.spacing.xs},
     segment: {marginTop: tokens.spacing.xxl},
     tabContent: {minHeight: 160, marginTop: tokens.spacing.md},
+    contractRow: {marginTop: tokens.spacing.lg},
     section: {paddingVertical: tokens.spacing.xs},
     kvRow: {
         flexDirection: 'row' as const,

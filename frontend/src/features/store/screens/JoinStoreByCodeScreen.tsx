@@ -3,6 +3,8 @@ import React, {useState} from 'react';
 import {Pressable, StyleSheet, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
@@ -12,7 +14,7 @@ import api from '../../../common/utils/api';
  * 직원이 사장 매장 코드로 가입. QR 은 추후 카메라 SDK. submit 로직 보존.
  */
 const JoinStoreByCodeScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const c = useThemeColors();
     const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);

@@ -1,3 +1,4 @@
+/* eslint-disable react-native/no-color-literals -- dev-only placeholder(라우터 미연결). 디자인 v2 시 제거/교체 예정이라 토큰화 비대상. */
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 

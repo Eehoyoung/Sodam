@@ -31,10 +31,13 @@ public class GlobalExceptionHandler {
 
     private final MessageSource messageSource;
     private final LocaleResolver localeResolver;
+    private final com.rich.sodam.config.SentryReporter sentryReporter;
 
-    public GlobalExceptionHandler(MessageSource messageSource, LocaleResolver localeResolver) {
+    public GlobalExceptionHandler(MessageSource messageSource, LocaleResolver localeResolver,
+                                  com.rich.sodam.config.SentryReporter sentryReporter) {
         this.messageSource = messageSource;
         this.localeResolver = localeResolver;
+        this.sentryReporter = sentryReporter;
     }
 
     /**
@@ -56,6 +59,10 @@ public class GlobalExceptionHandler {
     })
     public ResponseEntity<ApiResponse<Object>> handleAccessDenied(Exception e) {
         log.warn("권한 거부: {}", e.getMessage());
+        // RBAC 우회 시도 알람 — Sentry 캡처(비활성 시 no-op). 메시지엔 PII 미포함.
+        sentryReporter.captureException(
+                com.rich.sodam.config.SentryReporter.ALERT_RBAC_BYPASS, e,
+                java.util.Map.of("exception", e.getClass().getSimpleName()));
         ApiResponse<Object> response = ApiResponse.error("FORBIDDEN",
                 e.getMessage() != null && !e.getMessage().isBlank() ? e.getMessage() : "해당 작업에 대한 권한이 없어요.");
         return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
@@ -190,6 +197,19 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 필수 쿼리 파라미터 누락 — 500 이 아닌 400 으로 응답(클라이언트 입력 오류임을 명확히).
+     */
+    @ExceptionHandler(org.springframework.web.bind.MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiResponse<Object>> handleMissingParam(
+            org.springframework.web.bind.MissingServletRequestParameterException e) {
+        log.warn("MissingServletRequestParameter: {}", e.getMessage());
+        ApiResponse<Object> response = ApiResponse.error(
+                ErrorCode.INVALID_ARGUMENT.getCode(),
+                "필수 파라미터가 누락됐어요: " + e.getParameterName());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
      * Bean Validation 위반 (PathVariable/RequestParam @Valid 검증 실패)
      */
     @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
@@ -200,6 +220,27 @@ public class GlobalExceptionHandler {
                 ErrorCode.VALIDATION_ERROR.getCode(),
                 "입력값이 올바르지 않아요: " + e.getMessage());
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * DB 무결성 위반 (unique 제약 등) — 매장 사업자등록번호 중복 등을 친절한 409 로 안내.
+     * 미처리 시 generic 500 으로 떨어져 사용자가 원인을 알 수 없다(매장생성 시 실제 발생).
+     */
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleDataIntegrityViolation(
+            org.springframework.dao.DataIntegrityViolationException e) {
+        String detail = e.getMostSpecificCause() != null ? e.getMostSpecificCause().getMessage() : e.getMessage();
+        log.warn("DataIntegrityViolation: {}", detail);
+        String message;
+        if (detail != null && detail.toLowerCase().contains("business_number")) {
+            message = "이미 등록된 사업자등록번호예요. 번호를 다시 확인해 주세요.";
+        } else if (detail != null && detail.toLowerCase().contains("duplicate")) {
+            message = "이미 등록된 정보예요. 중복되지 않는 값으로 다시 시도해 주세요.";
+        } else {
+            message = "요청을 처리할 수 없어요. 입력값을 다시 확인해 주세요.";
+        }
+        ApiResponse<Object> response = ApiResponse.error(ErrorCode.INVALID_ARGUMENT.getCode(), message);
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
     /**

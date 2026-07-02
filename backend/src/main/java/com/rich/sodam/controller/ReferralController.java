@@ -37,6 +37,7 @@ public class ReferralController {
 
     private final ReferralRepository referralRepository;
     private final UserRepository userRepository;
+    private final com.rich.sodam.service.ReferralRewardService referralRewardService;
 
     @Operation(summary = "내 추천 코드 조회/발급",
             description = "사용자당 1개 고정 코드 발급. 영문+숫자 8자리.")
@@ -86,6 +87,14 @@ public class ReferralController {
         }
         referralRepository.save(Referral.register(req.getCode(), referrer, referee));
         return ResponseEntity.ok(Map.of("message", "추천 코드가 적용됐어요. 첫 결제 후 보상이 지급돼요."));
+    }
+
+    @Operation(summary = "내 레퍼럴 보상 요약(S2)",
+            description = "전환 완료 건수·적립 무료 개월. 읽기 전용(빌링 적용은 인간 승인 후).")
+    @GetMapping("/my-rewards")
+    public ResponseEntity<com.rich.sodam.service.ReferralRewardService.ReferralRewardSummary> myRewards(
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(referralRewardService.myRewards(principal.getId()));
     }
 
     @Operation(summary = "내가 추천한 친구 이력")

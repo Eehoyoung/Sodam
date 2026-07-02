@@ -36,11 +36,12 @@ apiClient.interceptors.request.use(
             // silent
         }
 
-        // 요청 URL과 메서드 로그
-        console.log(
-            `[API Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`,
-            config.params || config.data || ''
-        );
+        // 요청 로그 — 개발 빌드에서만, body 제외. (운영에서 로그인 비밀번호 등 PII 노출 방지)
+        if (__DEV__) {
+            console.log(
+                `[API Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`,
+            );
+        }
 
         return config;
     },
@@ -110,7 +111,12 @@ apiClient.interceptors.response.use(
         const status = error?.response?.status;
 
         // 402 PLAN_REQUIRED: 플랜 부족 → 페이월 콜백 호출 후 원본 에러 전파(로직 흐름 유지)
-        if (status === 402 && error?.response?.data?.code === 'PLAN_REQUIRED') {
+        // BE(ApiResponse)는 `errorCode` 필드로 내려준다. 과거 `code`만 검사해 페이월이 안 떴음.
+        if (
+            status === 402 &&
+            (error?.response?.data?.errorCode === 'PLAN_REQUIRED' ||
+                error?.response?.data?.code === 'PLAN_REQUIRED')
+        ) {
             if (onPlanRequired) {
                 const data = error.response.data;
                 onPlanRequired({

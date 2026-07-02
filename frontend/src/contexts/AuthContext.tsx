@@ -6,6 +6,7 @@ import {safeLogger} from '../utils/safeLogger';
 import { setOnUnauthorized } from '../common/utils/api';
 import {navigate} from '../navigation/navigationRef';
 import PaywallHost from '../features/subscription/components/PaywallHost';
+import {useFcmRegistration} from '../common/hooks/useFcmRegistration';
 
 /**
  * 인증 컨텍스트 타입 정의
@@ -128,6 +129,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
         })();
     }, []);
 
+    // FCM 디바이스 토큰 등록/해제를 인증 상태에 연결 (key-ready — 모듈 부재 시 no-op)
+    useFcmRegistration(isAuthenticated);
+
     // 직전 인증 여부 추적 — 세션 만료(A1) 안내를 "로그인 상태였다가 튕긴 경우"에만 노출
     const wasAuthedRef = useRef(false);
     useEffect(() => {
@@ -138,6 +142,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
     // 1회 등록 — refetchAuthRef 통해 항상 최신 함수 호출.
     useEffect(() => {
         setOnUnauthorized(() => {
+            // 여기서 user 를 비우면 Protected(!user → Login reset)가 의도된 SessionExpired 안내 화면을
+            // 건너뛰어 버린다. 그래서 캐시 정리는 SessionExpired 의 '다시 로그인'(onRelogin)에서 한다.
             refetchAuthRef.current();
             if (wasAuthedRef.current) {
                 navigate('SessionExpired');

@@ -236,6 +236,7 @@ export const JSISafeSlideAnimation: React.FC<SlideAnimationProps> = ({
                 }
             )
         );
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- translateX/translateY 는 reanimated 공유값(안정 ref), getInitialPosition 은 마운트 시 1회 계산값
     }, [isVisible, direction, config, onAnimationComplete]);
 
     const animatedStyle = useAnimatedStyle(() => ({
@@ -282,6 +283,7 @@ export const JSISafeScaleAnimation: React.FC<ScaleAnimationProps> = ({
                 }
             }
         );
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- scale 은 reanimated 공유값(안정 ref)
     }, [isVisible, config, onAnimationComplete]);
 
     const animatedStyle = useAnimatedStyle(() => ({
@@ -510,6 +512,7 @@ export const JSISafeCombinedAnimation: React.FC<CombinedAnimationProps> = ({
                 )
             );
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- opacity/scale/translateX/translateY 는 reanimated 공유값(안정 ref)
     }, [isVisible, animations, config, onAnimationComplete]);
 
     const animatedStyle = useAnimatedStyle(() => ({

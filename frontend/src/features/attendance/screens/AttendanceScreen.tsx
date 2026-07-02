@@ -19,11 +19,14 @@ import Geolocation from 'react-native-geolocation-service';
 import {PERMISSIONS, request, RESULTS} from 'react-native-permissions';
 import NfcManager from 'react-native-nfc-manager';
 import attendanceService from '../services/attendanceService';
+import storeService from '../../store/services/storeService';
 import {AttendanceRecord, AttendanceStatus, CheckInRequest, CheckOutRequest} from '../types';
 import {format} from 'date-fns';
 import {ko} from 'date-fns/locale';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import { useThemeColors, ThemeColors } from '../../../common/hooks/useThemeColors';
 
 type CheckInMethod = 'standard' | 'location' | 'nfc';
@@ -31,7 +34,7 @@ const METHOD_ORDER: CheckInMethod[] = ['standard', 'location', 'nfc'];
 const METHOD_LABELS = ['기본', '위치', 'NFC'];
 
 const AttendanceScreen = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const c = useThemeColors();
     const styles = useMemo(() => makeStyles(c), [c]);
     const { user } = useAuth();
@@ -108,18 +111,20 @@ const AttendanceScreen = () => {
             const filter = {
                 startDate,
                 endDate,
+                employeeId: Number.isFinite(employeeIdNum) ? String(employeeIdNum) : undefined,
                 workplaceId: selectedWorkplaceId || undefined
             };
 
-            // TODO(API): 출퇴근 기록 조회 API 연동 및 응답 스키마 반영
             const data = await attendanceService.getAttendanceRecords(filter);
             setAttendanceRecords(data);
 
-            // 현재 근무 상태 조회
+            // 현재 근무 상태 조회. null(오늘 기록 없음/일시 미수신)이면 기존 상태를 덮지 않는다.
+            // (출근 직후 이 재조회가 null 로 덮어 '아직 출근 전'으로 깜빡이던 것 방지)
             if (selectedWorkplaceId) {
-                // TODO(API): 현재 근무 상태 조회 API 연동
-                const currentData = await attendanceService.getCurrentAttendance(selectedWorkplaceId);
-                setCurrentAttendance(currentData);
+                const currentData = await attendanceService.getCurrentAttendance(selectedWorkplaceId, employeeIdNum);
+                if (currentData) {
+                    setCurrentAttendance(currentData);
+                }
             }
         } catch (error) {
             console.error('출퇴근 기록을 가져오는 중 오류가 생겼어요:', error);
@@ -130,21 +135,23 @@ const AttendanceScreen = () => {
         }
     };
 
-    // 근무지 목록 조회 (실제 구현에서는 API 호출)
+    // 근무지 목록 조회 — 직원 본인이 소속된 실제 매장 (GET /api/stores/employee/{userId})
     const fetchWorkplaces = async () => {
+        if (!Number.isFinite(employeeIdNum)) {
+            return;
+        }
         try {
-            // TODO(API): 근무지 목록 API 연동 (현재 임시 데이터 사용 중)
-            const data = [
-                {id: '1', name: '카페 소담'},
-                {id: '2', name: '레스토랑 소담'}
-            ];
+            const stores = await storeService.getEmployeeStores(employeeIdNum);
+            const data = stores.map(s => ({id: String(s.id), name: s.storeName}));
             setWorkplaces(data);
-
             if (data.length > 0) {
-                setSelectedWorkplaceId(data[0].id);
+                setSelectedWorkplaceId(prev => (prev && data.some(d => d.id === prev) ? prev : data[0].id));
+            } else {
+                setSelectedWorkplaceId('');
             }
         } catch (error) {
             console.error('근무지 목록을 가져오는 중 오류가 생겼어요:', error);
+            AppToast.error('근무지 목록을 불러오지 못했어요.');
         }
     };
 
@@ -238,6 +245,7 @@ const AttendanceScreen = () => {
     useEffect(() => {
         fetchWorkplaces();
         requestLocationPermission();
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- 마운트 1회 초기 로드(함수 의존 추가 시 반복 호출)
     }, []);
 
     // 선택된 근무지가 변경되면 출퇴근 기록 다시 조회
@@ -245,6 +253,7 @@ const AttendanceScreen = () => {
         if (selectedWorkplaceId) {
             fetchAttendanceRecords();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- 근무지 변경 시에만 재조회(fetchAttendanceRecords 는 selectedWorkplaceId 를 읽으므로 의도된 트리거)
     }, [selectedWorkplaceId]);
 
     // 새로고침 처리
@@ -569,7 +578,9 @@ const AttendanceScreen = () => {
         if (!currentAttendance) {
             return '';
         }
-        const ms = new Date().getTime() - new Date(currentAttendance.checkInTime).getTime();
+        // 음수 방지: 기기/서버 시간대 skew(예: 기기 UTC, 서버 KST)로 경과가 음수가 되면 "-9시간"처럼
+        // 표기되던 것을 0으로 클램프. (실 운영은 기기·서버 모두 KST라 정상.)
+        const ms = Math.max(0, new Date().getTime() - new Date(currentAttendance.checkInTime).getTime());
         const h = Math.floor(ms / (1000 * 60 * 60));
         const m = Math.floor(ms / (1000 * 60)) % 60;
         return `${h}시간 ${m}분`;
@@ -588,16 +599,25 @@ const AttendanceScreen = () => {
         else {openNFCReader();}
     };
 
-    const isWorking = !!currentAttendance;
+    // 근무 중 = 오늘 출근 기록이 있고 아직 퇴근 안 함. checkOutTime 을 봐야 한다.
+    // (today 엔드포인트는 퇴근 후에도 그 기록을 돌려주므로, 존재만 보면 퇴근 후에도 '근무중' 으로 남았다.)
+    const isWorking = !!currentAttendance && !currentAttendance.checkOutTime;
     const ctaLabel = isWorking
         ? checkInMethod === 'location' ? '위치 기반 퇴근하기' : checkInMethod === 'nfc' ? 'NFC 태그로 퇴근하기' : '퇴근하기'
         : checkInMethod === 'location' ? '위치 기반 출근하기' : checkInMethod === 'nfc' ? 'NFC 태그로 출근하기' : '출근하기';
 
     // 출퇴근 기록 항목 렌더링
     const renderAttendanceItem = ({item}: { item: AttendanceRecord }) => {
-        const date = format(new Date(item.date), 'M월 d일 (EEE)', {locale: ko});
-        const checkInTime = item.checkInTime ? format(new Date(item.checkInTime), 'HH:mm') : '-';
-        const checkOutTime = item.checkOutTime ? format(new Date(item.checkOutTime), 'HH:mm') : '-';
+        // BE는 date 필드 없이 checkInTime 만 줄 수 있다. 유효하지 않은 값으로 format() 하면
+        // 'Invalid time value' RangeError 로 렌더가 통째로 크래시(LogBox Render Error)했다.
+        const safeFmt = (v?: string, pattern = 'M월 d일 (EEE)'): string => {
+            if (!v) {return '-';}
+            const d = new Date(v);
+            return isNaN(d.getTime()) ? '-' : format(d, pattern, {locale: ko});
+        };
+        const date = safeFmt(item.date || item.checkInTime);
+        const checkInTime = safeFmt(item.checkInTime, 'HH:mm');
+        const checkOutTime = safeFmt(item.checkOutTime, 'HH:mm');
         const workHours = item.workHours ? `${item.workHours}시간` : '-';
 
         return (
@@ -745,7 +765,7 @@ const AttendanceScreen = () => {
                                 <>
                                     <AmountText size={44} tone="primary">{elapsedLabel()}</AmountText>
                                     <Text style={styles.heroSub}>
-                                        {format(new Date(currentAttendance.checkInTime), 'HH:mm')} 출근 · 퇴근하려면 아래 버튼을 눌러주세요
+                                        {(() => { const d = new Date(currentAttendance.checkInTime); return isNaN(d.getTime()) ? '' : `${format(d, 'HH:mm')} 출근 · `; })()}퇴근하려면 아래 버튼을 눌러주세요
                                     </Text>
                                 </>
                             ) : (

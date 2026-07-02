@@ -178,6 +178,13 @@ sodam:
   #  ※ 월 경계 주의 귀속월 규칙(주 종료일이 속한 월에 전액 귀속, 분할 금지)은 시스템 고정값 — 설정으로 열지 않음.
   payroll:
     week-start-policy: ${SODAM_PAYROLL_WEEK_START_POLICY:MONDAY}
+  # 영수증 OCR (env 설정 시 자동 활성, 미설정 시 수기입력 Noop)
+  #   provider 가 비어있으면 ClovaReceiptOcrClient 빈이 생성되지 않아 NoopReceiptOcrClient(빈 초안) 가 동작 → 외부호출 0.
+  #   provider 에 값(예: clova)을 넣으면 receiptOcrProvider 빈이 Noop 을 대체. api-url/secret-key 도 함께 설정해야 실제 호출.
+  # ocr:
+  #   provider: ${SODAM_OCR_PROVIDER:}      # 예: clova
+  #   api-url: ${SODAM_OCR_API_URL:}        # CLOVA OCR Receipt Invoke URL
+  #   secret-key: ${SODAM_OCR_SECRET_KEY:}  # X-OCR-SECRET
   integration:
     toss:
       mode: ${SODAM_INTEGRATION_TOSS_MODE:mock}
@@ -194,3 +201,15 @@ sodam:
       base-url: ${KAKAO_BASE_URL:https://dapi.kakao.com}
     channel:
       mode: ${SODAM_INTEGRATION_CHANNEL_MODE:off}
+
+---
+# 운영 프로파일: API 표면 정보유출 방지 — swagger/api-docs 비활성화(F-5)
+spring:
+  config:
+    activate:
+      on-profile: prod
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

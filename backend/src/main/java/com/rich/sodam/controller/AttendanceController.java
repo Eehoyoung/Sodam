@@ -8,9 +8,13 @@ import com.rich.sodam.dto.request.NfcVerifyRequest;
 import com.rich.sodam.dto.response.AttendanceResponseDto;
 import com.rich.sodam.dto.response.LocationVerifyResponse;
 import com.rich.sodam.dto.response.NfcVerifyResponse;
+import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.service.AttendanceService;
 import com.rich.sodam.service.LocationVerificationService;
 import com.rich.sodam.service.NfcVerificationService;
+import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.annotation.MasterOnly;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -43,6 +47,7 @@ public class AttendanceController {
     private final AttendanceService attendanceService;
     private final LocationVerificationService locationVerificationService;
     private final NfcVerificationService nfcVerificationService;
+    private final StoreAccessGuard guard;
 
     @PostMapping("/check-in")
     @Operation(summary = "직원 출근 처리", description = "직원 출근 정보를 기록하고 위치 인증을 수행합니다.")
@@ -53,12 +58,16 @@ public class AttendanceController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "403", description = "위치 인증 실패")
     })
-    public ResponseEntity<AttendanceResponseDto> checkIn(@RequestBody @Validated AttendanceRequestDto request) {
+    public ResponseEntity<AttendanceResponseDto> checkIn(@AuthenticationPrincipal UserPrincipal principal,
+                                                         @RequestBody @Validated AttendanceRequestDto request) {
+        // IDOR 차단: 출근은 본인만. 타인 employeeId 로 대리출근 불가.
+        guard.assertSelf(principal.getId(), request.getEmployeeId());
         Attendance attendance = attendanceService.checkInWithVerification(
                 request.getEmployeeId(),
                 request.getStoreId(),
                 request.getLatitude(),
-                request.getLongitude()
+                request.getLongitude(),
+                request.getQueuedAt()
         );
 
         return ResponseEntity.ok(AttendanceResponseDto.from(attendance));
@@ -75,12 +84,16 @@ public class AttendanceController {
             @ApiResponse(responseCode = "404", description = "해당 직원의 출근 기록이 없음")
     })
     @PostMapping("/check-out")
-    public ResponseEntity<AttendanceResponseDto> checkOut(@RequestBody @Validated AttendanceRequestDto request) {
+    public ResponseEntity<AttendanceResponseDto> checkOut(@AuthenticationPrincipal UserPrincipal principal,
+                                                          @RequestBody @Validated AttendanceRequestDto request) {
+        // IDOR 차단: 퇴근도 본인만.
+        guard.assertSelf(principal.getId(), request.getEmployeeId());
         Attendance attendance = attendanceService.checkOutWithVerification(
                 request.getEmployeeId(),
                 request.getStoreId(),
                 request.getLatitude(),
-                request.getLongitude()
+                request.getLongitude(),
+                request.getQueuedAt()
         );
 
         return ResponseEntity.ok(AttendanceResponseDto.from(attendance));
@@ -95,11 +108,14 @@ public class AttendanceController {
     })
     @GetMapping("/employee/{employeeId}")
     public ResponseEntity<List<AttendanceResponseDto>> getAttendancesByEmployee(
+            @AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "직원 ID", required = true) @PathVariable Long employeeId,
             @Parameter(description = "조회 시작일시 (ISO 형식: yyyy-MM-dd'T'HH:mm:ss)", required = true)
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @Parameter(description = "조회 종료일시 (ISO 형식: yyyy-MM-dd'T'HH:mm:ss)", required = true)
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+        // IDOR 차단: 본인 또는 그 직원의 매장 사장만 조회.
+        guard.assertCanViewEmployee(principal.getId(), employeeId, isMaster(principal));
 
         List<Attendance> attendances = attendanceService.getAttendancesByEmployeeAndPeriod(
                 employeeId, startDate, endDate);
@@ -118,13 +134,17 @@ public class AttendanceController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "404", description = "매장 정보를 찾을 수 없음")
     })
+    @MasterOnly
     @GetMapping("/store/{storeId}")
     public ResponseEntity<List<AttendanceResponseDto>> getAttendancesByStore(
+            @AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "매장 ID", required = true) @PathVariable Long storeId,
             @Parameter(description = "조회 시작일시 (ISO 형식: yyyy-MM-dd'T'HH:mm:ss)", required = true)
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @Parameter(description = "조회 종료일시 (ISO 형식: yyyy-MM-dd'T'HH:mm:ss)", required = true)
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+        // IDOR 차단: 매장 전체 기록은 그 매장 사장만.
+        guard.assertMasterOwnsStore(principal.getId(), storeId);
 
         List<Attendance> attendances = attendanceService.getAttendancesByStoreAndPeriod(
                 storeId, startDate, endDate);
@@ -140,12 +160,42 @@ public class AttendanceController {
             description = "직원의 오늘자 출퇴근 기록 1건 조회. 없으면 204. FE EmployeeAttendanceHome 진입 시 사용.")
     @GetMapping("/employee/{employeeId}/today")
     public ResponseEntity<AttendanceResponseDto> getTodayAttendance(
+            @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long employeeId) {
+        // IDOR 차단: 본인 또는 그 직원의 매장 사장만.
+        guard.assertCanViewEmployee(principal.getId(), employeeId, isMaster(principal));
         LocalDateTime startOfDay = java.time.LocalDate.now().atStartOfDay();
         LocalDateTime endOfDay = startOfDay.plusDays(1);
 
         List<Attendance> all = attendanceService.getAttendancesByEmployeeAndPeriod(
                 employeeId, startOfDay, endOfDay);
+        return all.stream()
+                .findFirst()
+                .map(AttendanceResponseDto::from)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    @Operation(summary = "직원 오늘 출퇴근 매장별 단건 조회",
+            description = "직원의 오늘자 출퇴근 기록을 선택한 매장 기준으로 1건 조회합니다. 없으면 204를 반환합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공",
+                    content = @Content(schema = @Schema(implementation = AttendanceResponseDto.class))),
+            @ApiResponse(responseCode = "204", description = "오늘 출퇴근 기록 없음"),
+            @ApiResponse(responseCode = "403", description = "해당 매장 소속 직원이 아님")
+    })
+    @GetMapping("/employee/{employeeId}/store/{storeId}/today")
+    public ResponseEntity<AttendanceResponseDto> getTodayAttendanceByStore(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long employeeId,
+            @PathVariable Long storeId) {
+        guard.assertSelf(principal.getId(), employeeId);
+        guard.assertEmployeeInStore(employeeId, storeId);
+        LocalDateTime startOfDay = java.time.LocalDate.now().atStartOfDay();
+        LocalDateTime endOfDay = startOfDay.plusDays(1);
+
+        List<Attendance> all = attendanceService.getAttendancesByEmployeeStoreAndPeriod(
+                employeeId, storeId, startOfDay, endOfDay);
         return all.stream()
                 .findFirst()
                 .map(AttendanceResponseDto::from)
@@ -162,9 +212,12 @@ public class AttendanceController {
     })
     @GetMapping("/employee/{employeeId}/monthly")
     public ResponseEntity<List<AttendanceResponseDto>> getMonthlyAttendancesByEmployee(
+            @AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "직원 ID", required = true) @PathVariable Long employeeId,
             @Parameter(description = "조회 연도", required = true, example = "2025") @RequestParam int year,
             @Parameter(description = "조회 월 (1-12)", required = true, example = "5") @RequestParam int month) {
+        // IDOR 차단: 본인 또는 그 직원의 매장 사장만.
+        guard.assertCanViewEmployee(principal.getId(), employeeId, isMaster(principal));
 
         List<Attendance> attendances = attendanceService.getMonthlyAttendancesByEmployee(
                 employeeId, year, month);
@@ -185,9 +238,13 @@ public class AttendanceController {
             @ApiResponse(responseCode = "403", description = "사업주 권한 필요"),
             @ApiResponse(responseCode = "404", description = "직원 또는 매장 정보를 찾을 수 없음")
     })
+    @MasterOnly
     @PostMapping("/manual-register")
     public ResponseEntity<AttendanceResponseDto> registerManualAttendance(
+            @AuthenticationPrincipal UserPrincipal principal,
             @RequestBody @Validated ManualAttendanceRequestDto request) {
+        // IDOR 차단: 수동 등록은 그 매장 사장만(타 매장 직원 기록 위조 방지).
+        guard.assertMasterOwnsStore(principal.getId(), request.getStoreId());
 
         Attendance attendance = attendanceService.registerManualAttendance(request);
 
@@ -231,5 +288,13 @@ public class AttendanceController {
                 .build();
 
         return ResponseEntity.ok(com.rich.sodam.dto.response.ApiResponse.success(body));
+    }
+
+    /** principal 이 사장(MASTER/MANAGER/BOSS) 권한인지. */
+    private boolean isMaster(UserPrincipal principal) {
+        return principal.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_MASTER")
+                        || a.getAuthority().equals("ROLE_MANAGER")
+                        || a.getAuthority().equals("ROLE_BOSS"));
     }
 }

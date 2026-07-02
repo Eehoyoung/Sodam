@@ -7,10 +7,34 @@ import 'react-native-reanimated';
 import {AppRegistry, LogBox} from 'react-native';
 import {name as appName} from './app.json';
 
+// FCM 백그라운드 메시지 핸들러 (컴포넌트 밖 최상위 등록 필수).
+// key-ready: @react-native-firebase/messaging·google-services.json 부재 시 skip.
+try {
+    // RNFirebase 모듈러 API(getMessaging/setBackgroundMessageHandler) 사용.
+    // 네임스페이스 messaging().setBackgroundMessageHandler() 는 deprecated 라
+    // 앱 부팅 시 콘솔 경고(→LogBox 배너가 하단 버튼을 가림)가 떠서 제거.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional native module, guarded require (FCM 키 주입 전에는 부재)
+    const messagingMod = require('@react-native-firebase/messaging');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional native module
+    const {getApp} = require('@react-native-firebase/app');
+    if (typeof messagingMod?.getMessaging === 'function' && typeof getApp === 'function') {
+        const m = messagingMod.getMessaging(getApp());
+        messagingMod.setBackgroundMessageHandler(m, async () => {
+            // 백그라운드 데이터 메시지 수신 시 처리 지점.
+            // 표시 알림(notification payload)은 OS 가 자동 표시한다.
+        });
+    }
+} catch (e) {
+    // 모듈 미배선 — 백그라운드 핸들러 등록 skip (정상 동작)
+}
+
 
 // 개발 환경에서만 불필요한 경고 숨기기
 if (__DEV__) {
     LogBox.ignoreLogs([
+        // RNFirebase v21→v22 네임스페이스 deprecation 경고(코드는 모듈러로 이관 완료, 라이브러리
+        // 내부 import 부수효과 잔여분 차단). 이 경고가 LogBox 배너로 떠 하단 CTA 를 가렸음.
+        /This method is deprecated.*React Native Firebase/,
         'ENOENT: no such file or directory',
         /DevTools.*/,
         'Launching DevTools',

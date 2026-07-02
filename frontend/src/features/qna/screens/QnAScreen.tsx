@@ -1,3 +1,4 @@
+/* eslint-disable react-native/no-color-literals -- 카카오 채널 버튼 브랜드 고정색(다크/라이트 무관) */
 import {AppButton, AppCard, AppHeader, AppInput, AppText, AppToast, ScreenContainer} from '../../../common/components/ds';
 import React, {useState} from 'react';
 import {Linking, Pressable, StyleSheet, View} from 'react-native';

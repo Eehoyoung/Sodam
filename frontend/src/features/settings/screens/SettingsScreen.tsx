@@ -34,6 +34,7 @@ const SettingsScreen: React.FC = () => {
         <AppListItem
             title={title}
             subtitle={subtitle}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 동적 routeName(string) 디스패치: 루트 네비게이터에서 중첩 라우트명을 런타임 결정
             onPress={() => (navigation as any).navigate(route)}
             right={<Ionicons name="chevron-forward" size={20} color={c.textTertiary} />}
             left={

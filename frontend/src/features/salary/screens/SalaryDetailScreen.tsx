@@ -1,6 +1,9 @@
 import {AppToast, AppButton, AppCard, AppHeader, AppText, CtaStack, ErrorState, HeroNumber, LoadingState, ScreenContainer} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
 import {Share, StyleSheet, View} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import payrollService, {PayrollDetails} from '../services/payrollService';
 import {formatMoney} from '../../../common/utils/format';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
@@ -21,6 +24,7 @@ interface Props {
 const SalaryDetailScreen: React.FC<Props> = ({route}) => {
     const payrollId = route?.params?.payrollId ?? null;
     const c = useThemeColors();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
 
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
@@ -100,6 +104,14 @@ const SalaryDetailScreen: React.FC<Props> = ({route}) => {
         }).catch(() => undefined);
     };
 
+    const openPreview = () => {
+        navigation.navigate('PdfPreview', {
+            title: `급여명세서_${details.employeeId}.pdf`,
+            sub: periodLabel,
+            onShare: handleShare,
+        });
+    };
+
     return (
         <ScreenContainer
             scroll
@@ -107,7 +119,8 @@ const SalaryDetailScreen: React.FC<Props> = ({route}) => {
             testID="salary-detail-success"
             footer={
                 <CtaStack bordered>
-                    <AppButton label="명세서 공유하기" onPress={handleShare} />
+                    <AppButton label="명세서 미리보기" onPress={openPreview} />
+                    <AppButton label="명세서 공유하기" variant="secondary" onPress={handleShare} />
                 </CtaStack>
             }>
             <View style={styles.heroBlock}>

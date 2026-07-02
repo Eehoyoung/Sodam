@@ -1,5 +1,21 @@
 import api from '../../../common/utils/api';
 
+export type DayOfWeek =
+  | 'MONDAY'
+  | 'TUESDAY'
+  | 'WEDNESDAY'
+  | 'THURSDAY'
+  | 'FRIDAY'
+  | 'SATURDAY'
+  | 'SUNDAY';
+
+export interface StoreOperatingHourPayload {
+  dayOfWeek: DayOfWeek;
+  openTime: string | null; // HH:mm:ss
+  closeTime: string | null; // HH:mm:ss
+  isClosed: boolean;
+}
+
 export interface StoreRegistrationPayload {
   storeName: string;
   businessNumber?: string; // 유선
@@ -10,8 +26,25 @@ export interface StoreRegistrationPayload {
   jibunAddress?: string;
   latitude?: number | null;
   longitude?: number | null;
+  operatingHours: StoreOperatingHourPayload[];
   radius?: number; // 출퇴근 인증 반경 (m)
   storeStandardHourWage: number; // 기준 시급
+  payrollCycle?: PayrollCyclePayload; // 급여 정산 주기(선택)
+}
+
+export type PayrollMonthOffset = 'PREV_MONTH' | 'CURRENT_MONTH' | 'NEXT_MONTH';
+
+/** 급여 정산 주기 — BE PayrollCycleDto 와 정합. day 는 정수(1~31), 말일이면 day=null + lastDay=true.
+ *  offset 의 허용값(시작=전월/당월, 마감·지급=당월/익월)은 BE 가 검증한다. */
+export interface PayrollCyclePayload {
+  startOffset: PayrollMonthOffset;
+  startDay: number;
+  endOffset: PayrollMonthOffset;
+  endDay: number | null;
+  endLastDay: boolean;
+  payOffset: PayrollMonthOffset;
+  payDay: number | null;
+  payDayLastDay: boolean;
 }
 
 export interface StoreSummaryDto {
@@ -65,6 +98,63 @@ const getStoreById = async (storeId: number): Promise<StoreDetailDto> => {
   throw new Error('Invalid store data received');
 };
 
+// [API Mapping] GET /api/stores/{storeId}/employees — 매장 소속 직원 명부 (BOLA: 자기 매장만)
+export interface StoreEmployeeDto {
+  id: number;
+  name: string;
+  email?: string;
+  phone?: string;
+  userGrade?: string;
+}
+
+// [API Mapping] GET /api/stores/employee/{userId} — 직원이 소속된 매장 목록 (BOLA: 본인만)
+const getEmployeeStores = async (userId: number): Promise<StoreSummaryDto[]> => {
+  const res = await api.get<StoreSummaryDto[]>(`/api/stores/employee/${userId}`);
+  const data: any = res.data as any;
+  if (Array.isArray(data)) {return data as StoreSummaryDto[];}
+  if (Array.isArray(data?.data)) {return data.data as StoreSummaryDto[];}
+  return [];
+};
+
+const getStoreEmployees = async (storeId: number): Promise<StoreEmployeeDto[]> => {
+  const res = await api.get<StoreEmployeeDto[]>(`/api/stores/${storeId}/employees`);
+  const data: any = res.data as any;
+  const list: any[] = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+  return list.map(u => ({
+    id: u.id,
+    name: u.name ?? '직원',
+    email: u.email ?? undefined,
+    phone: u.phone ?? undefined,
+    userGrade: u.userGrade ?? undefined,
+  }));
+};
+
+export interface DayOperatingHours {
+  dayOfWeek: DayOfWeek;
+  openTime?: string | null; // HH:mm:ss
+  closeTime?: string | null;
+  isClosed: boolean;
+}
+
+/** 매장 운영시간 조회(요일별). 실패는 호출자가 best-effort 처리. */
+const getStoreOperatingHours = async (storeId: number): Promise<DayOperatingHours[]> => {
+  const res = await api.get<{ operatingHours?: DayOperatingHours[] }>(
+    `/api/stores/${storeId}/operating-hours`,
+  );
+  const data: any = res.data as any;
+  const list: any[] = Array.isArray(data?.operatingHours)
+    ? data.operatingHours
+    : Array.isArray(data?.data?.operatingHours)
+    ? data.data.operatingHours
+    : [];
+  return list.map(d => ({
+    dayOfWeek: d.dayOfWeek,
+    openTime: d.openTime ?? null,
+    closeTime: d.closeTime ?? null,
+    isClosed: d.isClosed ?? false,
+  }));
+};
+
 async function createStore(payload: StoreRegistrationPayload): Promise<{ id: number }> {
     // ⚠️ FE↔BE 의미 정합 (P2 통합테스트로 발견·수정): BE `Store.businessNumber` 컬럼은
     //   '사업자등록번호'(NOT NULL·UNIQUE) 이나, FE 폼의 `businessNumber` 는 화면상 '매장 유선전화'.
@@ -78,37 +168,18 @@ async function createStore(payload: StoreRegistrationPayload): Promise<{ id: num
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- blank phone should fall back to businessNumber then '', so ?? would be wrong
         storePhoneNumber: payload.storePhoneNumber || payload.businessNumber || '',
     };
-    // 표준 엔드포인트 시도
-    try {
-        const res = await api.post<{ id: number }>(`/api/stores/registration`, bePayload);
-        const data: any = res.data;
-        if (typeof data?.id === 'number') {
-            return {id: data.id};
-        }
-        if (typeof data?.data?.id === 'number') {
-            return {id: data.data.id};
-        }
-    } catch (e: any) {
-        // 404/405면 대체 경로 시도
-        if (e?.response?.status === 404 || e?.response?.status === 405) {
-            try {
-                const res2 = await api.post<{ id: number }>(`/api/stores/registration`, bePayload);
-                const d2: any = res2.data;
-                if (typeof d2?.id === 'number') {
-                    return {id: d2.id};
-                }
-                if (typeof d2?.data?.id === 'number') {
-                    return {id: d2.data.id};
-                }
-            } catch (_) {
-                // pass to mock fallback
-            }
-        }
+    // 실패(402 플랜게이트·400·409·5xx)는 반드시 호출자에게 전파한다.
+    // 과거엔 에러를 삼키고 가짜 id를 반환해 "매장이 등록됐어요"라는 거짓 성공을 띄웠고,
+    // 그 탓에 플랜 업그레이드(402 PLAN_REQUIRED) 유도가 통째로 묻혔다.
+    const res = await api.post<{ id: number }>(`/api/stores/registration`, bePayload);
+    const data: any = res.data;
+    if (typeof data?.id === 'number') {
+        return {id: data.id};
     }
-
-    // 최후: 목킹 결과 반환 (네트워크 불가/엔드포인트 미정 상태 대비)
-    await new Promise(r => setTimeout(r, 600));
-    return {id: Math.floor(Math.random() * 100000) + 1};
+    if (typeof data?.data?.id === 'number') {
+        return {id: data.data.id};
+    }
+    throw new Error('Invalid store registration response: missing id');
 }
 
 // [API Mapping] PUT /api/stores/{storeId}/location — 매장 위치/반경 설정 업데이트
@@ -135,6 +206,9 @@ const storeService = {
   // 조회류
   getMasterStores,
   getStoreById,
+  getStoreEmployees,
+  getEmployeeStores,
+  getStoreOperatingHours,
   // 등록/설정류
   createStore,
   putLocation,

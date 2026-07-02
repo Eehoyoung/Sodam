@@ -1,6 +1,9 @@
+/* eslint-disable react-native/no-color-literals -- 빈 날짜 셀 스페이서(transparent) 고정 */
 import React, {useEffect, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {spacing, tokens} from '../../../theme/tokens';
 import {AppButton, AppCard, AppHeader, AppText, ScreenContainer} from '../../../common/components/ds';
@@ -24,7 +27,7 @@ type DayStatus = 'CHECKED_IN' | 'WORKING';
  * 월간 그리드(선택일 브랜드 채움) + 점 표시 + 선택일 상세 카드. 조회/이동 로직 보존.
  */
 const AttendanceCalendarScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const {user} = useAuth();
     const c = useThemeColors();
     const [year, setYear] = useState(() => new Date().getFullYear());

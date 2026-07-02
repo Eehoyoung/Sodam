@@ -15,5 +15,8 @@ public interface PersonalWorkplaceRepository extends JpaRepository<PersonalWorkp
 
     Optional<PersonalWorkplace> findByIdAndUserId(Long id, Long userId);
 
+    /** 연간 세무 집계용 — 사용자의 전 근무지(시급 매핑). */
+    List<PersonalWorkplace> findByUserId(Long userId);
+
     long deleteByIdAndUserId(Long id, Long userId);
 }

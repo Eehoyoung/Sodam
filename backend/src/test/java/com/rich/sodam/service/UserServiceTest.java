@@ -180,20 +180,16 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("직원 정보 수정 - 성공: 직책을 사업주로 변경")
-    void updateEmployeeInfo_ChangeToMaster_Success() {
-        // Given
+    @DisplayName("직원 정보 수정 - 권한상승 차단: 직원 수정 경로로는 사업주 승격 불가")
+    void updateEmployeeInfo_ChangeToMaster_Blocked() {
+        // Given — 직원 정보 수정 경로에서 MASTER 승격 시도(권한상승 공격)
         EmployeeUpdateDto updateDto = new EmployeeUpdateDto();
         updateDto.setUserGrade(UserGrade.MASTER);
 
-        // When
-        User result = userService.updateEmployeeInfo(testUser.getId(), updateDto);
-
-        // Then
-        assertNotNull(result);
-        assertEquals(UserGrade.MASTER, result.getUserGrade());
-        assertEquals("test@example.com", result.getEmail()); // 기존 정보 유지
-        assertEquals("테스트사용자", result.getName()); // 기존 정보 유지
+        // When / Then — 보안상 거부(사업주 전환은 별도 convertToOwner 경로만 허용)
+        assertThrows(IllegalArgumentException.class,
+                () -> userService.updateEmployeeInfo(testUser.getId(), updateDto));
+        assertEquals(UserGrade.Personal, testUser.getUserGrade()); // 등급 불변 확인
     }
 
     @Test

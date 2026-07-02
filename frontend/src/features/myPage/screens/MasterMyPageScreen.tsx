@@ -1,5 +1,5 @@
-import {AppToast, AppBadge, AppCard, AppHeader, AppText, AmountText, HeroNumber, ScreenContainer} from '../../../common/components/ds';
-import React, { useState, useEffect, useRef } from 'react';
+/* eslint-disable react-native/no-color-literals -- 히어로/그라디언트/데코 고정 색 */
+import React, {useState, useCallback, useRef} from 'react';
 import {
     View,
     ScrollView,
@@ -10,16 +10,20 @@ import {
     RefreshControl,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { NavigationProp } from '@react-navigation/native';
+import {NavigationProp, useFocusEffect} from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {gradient, radius, shadow, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
+import {AppToast, AppText, AmountText, ScreenContainer} from '../../../common/components/ds';
+import {useAuth} from '../../../contexts/AuthContext';
 import policyService from '../../info/services/policyService';
 import storeService from '../../store/services/storeService';
+import {useStoreLiveSync} from '../../../common/hooks/useStoreLiveSync';
 import laborInfoService from '../../../services/laborInfoService';
+import {InfoSlot} from '../components/RoleSlots';
 import SectionCard from '../../../common/components/sections/SectionCard';
 import SectionHeader from '../../../common/components/sections/SectionHeader';
-import { InfoSlot } from '../components/RoleSlots';
+import {fetchStoreApprovals} from '../../attendance/services/attendanceApprovalService';
 
 interface MasterMyPageScreenProps {
     navigation: NavigationProp<any>;
@@ -56,25 +60,30 @@ interface LaborInfo {
     overtimeRate: number;
 }
 
-interface QuickMenu {
-    key: string;
-    label: string;
-    icon: string;
-    onPress: () => void;
-}
+// 매장마다 다른 그라디언트 색으로 구분
+const STORE_GRADIENTS: Array<[string, string]> = [
+    ['#FF7A1A', '#FF5722'],   // 브랜드 오렌지
+    ['#263F4F', '#172932'],   // 네이비
+    ['#2563EB', '#1D4ED8'],   // 블루
+    ['#7C3AED', '#6D28D9'],   // 퍼플
+];
 
-export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenProps) {
+export default function MasterMyPageScreen({navigation}: MasterMyPageScreenProps) {
     const c = useThemeColors();
-    // 반응형: 회전/폴더블 대응 (모듈레벨 Dimensions.get 금지 — useWindowDimensions)
-    const { width } = useWindowDimensions();
-    const CARD_WIDTH = width * 0.85;
+    const {user} = useAuth();
+    const {width} = useWindowDimensions();
+
+    const CARD_WIDTH = width * 0.75;
+    // 퀵메뉴 3열 — 좌우 패딩(xl*2) + 간격(sm*2) 제외 후 3등분
+    const MENU_ITEM_W = (width - spacing.xl * 2 - spacing.sm * 2) / 3;
+
     const [stores, setStores] = useState<StoreInfo[]>([]);
     const [policies, setPolicies] = useState<PolicyInfo[]>([]);
     const [laborInfo, setLaborInfo] = useState<LaborInfo | null>(null);
     const [refreshing, setRefreshing] = useState(false);
+    const [pendingCount, setPendingCount] = useState(0);
     const [masterInfo, setMasterInfo] = useState({
-        name: '김소상',
-        businessLicenseNumber: '123-45-67890',
+        name: '',
         totalStores: 0,
         totalEmployees: 0,
         monthlyTotalLaborCost: 0,
@@ -82,19 +91,19 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
 
     const storeScrollRef = useRef<FlatList>(null);
 
-    useEffect(() => {
-        loadData();
-    }, []);
+    useFocusEffect(
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        useCallback(() => { loadData(); }, [user?.id]),
+    );
+
+    useStoreLiveSync(stores.map(s => s.id), () => loadData());
 
     const loadData = async () => {
         try {
-            // TODO: AuthContext에서 실제 userId 가져오기
-            const userId = 1; // 임시 하드코딩
+            const userId = user?.id;
+            if (!userId) {return;}
 
-            // Store API 호출
             const storeData = await storeService.getMasterStores(userId);
-
-            // StoreSummaryDto를 StoreInfo 형식으로 매핑
             const apiStores: StoreInfo[] = storeData.map(store => ({
                 id: store.id,
                 storeName: store.storeName,
@@ -103,7 +112,7 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
                 businessType: store.businessType ?? '',
                 storeCode: store.storeCode ?? '',
                 fullAddress: store.fullAddress ?? '',
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- wage of 0 should fall back to default minimum wage, so ?? would be wrong
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 storeStandardHourWage: store.storeStandardHourWage || 9620,
                 monthlyLaborCost: store.monthlyLaborCost ?? 0,
                 employeeCount: store.employeeCount ?? 0,
@@ -111,55 +120,50 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
                 monthlyRevenue: store.monthlyRevenue ?? 0,
             }));
 
-            // 정책 정보: info 서비스 연동 (상위 3개 노출)
-            const policyDtos: any[] = await policyService.getPoliciesByCategory('ALL');
-            const mockPolicies: PolicyInfo[] = (policyDtos || []).slice(0, 3).map((dto: any) => {
-                const createdAt = dto.publishDate || dto.createdAt || new Date().toISOString();
-                const updatedAt = dto.updatedAt || createdAt;
-                const isNew = (() => {
-                    try {
-                        const created = new Date(createdAt).getTime();
-                        return Date.now() - created < 7 * 24 * 60 * 60 * 1000; // 7일 이내
-                    } catch {
-                        return false;
-                    }
-                })();
-                const deadline = (updatedAt || '').toString().slice(0, 10);
-                return {
-                    id: Number(dto.id),
-                    title: dto.title || '',
-                    category: '국가정책',
-                    deadline,
-                    description: (dto.content ? String(dto.content).slice(0, 80) : '').trim(),
-                    isNew,
-                } as PolicyInfo;
-            });
-
-            // LaborInfo API 호출
-            const laborData = await laborInfoService.getCurrentLaborInfo();
-            const apiLaborInfo: LaborInfo = {
-                minimumWage: laborData.minimumWage,
-                year: laborData.year,
-                weeklyMaxHours: laborData.weeklyMaxHours,
-                overtimeRate: laborData.overtimeRate,
-            };
-
             setStores(apiStores);
-            setPolicies(mockPolicies);
-            setLaborInfo(apiLaborInfo);
-
-            // 마스터 정보 업데이트
-            const totalEmployees = apiStores.reduce((sum, store) => sum + store.employeeCount, 0);
-            const totalLaborCost = apiStores.reduce((sum, store) => sum + store.monthlyLaborCost, 0);
-
             setMasterInfo(prev => ({
                 ...prev,
+                name: user?.name ?? prev.name,
                 totalStores: apiStores.length,
-                totalEmployees,
-                monthlyTotalLaborCost: totalLaborCost,
+                totalEmployees: apiStores.reduce((s, st) => s + st.employeeCount, 0),
+                monthlyTotalLaborCost: apiStores.reduce((s, st) => s + st.monthlyLaborCost, 0),
             }));
 
-        } catch (error) {
+            // 대기 승인 건수 (첫 번째 매장)
+            if (apiStores.length > 0) {
+                try {
+                    const pending = await fetchStoreApprovals(apiStores[0].id, 'PENDING');
+                    setPendingCount(Array.isArray(pending) ? pending.length : 0);
+                } catch {setPendingCount(0);}
+            }
+
+            try {
+                const policyDtos: any[] = await policyService.getPoliciesByCategory('ALL');
+                setPolicies((policyDtos || []).slice(0, 3).map((dto: any) => {
+                    const createdAt = dto.publishDate || dto.createdAt || new Date().toISOString();
+                    const isNew = Date.now() - new Date(createdAt).getTime() < 7 * 24 * 60 * 60 * 1000;
+                    return {
+                        id: Number(dto.id),
+                        title: dto.title || '',
+                        category: '국가정책',
+                        deadline: (dto.updatedAt || createdAt).toString().slice(0, 10),
+                        description: (dto.content ? String(dto.content).slice(0, 80) : '').trim(),
+                        isNew,
+                    };
+                }));
+            } catch {/* 보조 정보 무시 */}
+
+            try {
+                const laborData = await laborInfoService.getCurrentLaborInfo();
+                setLaborInfo({
+                    minimumWage: laborData.minimumWage,
+                    year: laborData.year,
+                    weeklyMaxHours: laborData.weeklyMaxHours,
+                    overtimeRate: laborData.overtimeRate,
+                });
+            } catch {/* 보조 정보 무시 */}
+
+        } catch {
             AppToast.error('데이터를 불러오는데 실패했어요.');
         }
     };
@@ -170,450 +174,575 @@ export default function MasterMyPageScreen({ navigation }: MasterMyPageScreenPro
         setRefreshing(false);
     };
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('ko-KR').format(amount);
-    };
+    const fmt = (n: number) => new Intl.NumberFormat('ko-KR').format(n);
 
-    const handleStorePress = (store: StoreInfo) => {
-        navigation.navigate('StoreDetail', { storeId: store.id });
-    };
+    const today = new Date();
+    const dateLabel = today.toLocaleDateString('ko-KR', {
+        year: 'numeric', month: 'long', day: 'numeric', weekday: 'short',
+    });
 
-    const handlePolicyPress = (policy: PolicyInfo) => {
-        navigation.navigate('PolicyDetail', { policyId: policy.id });
-    };
+    // 오늘 출근 통계
+    const totalToday = stores.reduce((s, st) => s + st.todayAttendance, 0);
+    const totalEmp = masterInfo.totalEmployees;
+    const attendancePct = totalEmp > 0 ? Math.round((totalToday / totalEmp) * 100) : 0;
+    const absentCount = Math.max(0, totalEmp - totalToday);
 
-    const handleAddStore = () => {
-        // HomeNavigator에 등록된 라우트로 이동
-        navigation.navigate('StoreRegistration' as never);
-    };
-
-    // 빠른 메뉴 — 매장 의존 화면은 첫 매장 기준으로 진입. 매장이 없으면 등록 유도.
     const primaryStoreId = stores[0]?.id;
 
-    const handleQuickEmployee = () => {
-        if (primaryStoreId === undefined) {
+    const requireStore = (fn: () => void) => () => {
+        if (!primaryStoreId) {
             AppToast.show('먼저 매장을 등록해 주세요.');
-            handleAddStore();
+            navigation.navigate('StoreRegistration');
             return;
         }
-        navigation.navigate('StoreDetail', {storeId: primaryStoreId});
+        fn();
     };
 
-    const handleQuickAttendance = () => {
-        navigation.navigate('Attendance');
-    };
-
-    const handleQuickPayroll = () => {
-        if (primaryStoreId === undefined) {
-            AppToast.show('먼저 매장을 등록해 주세요.');
-            handleAddStore();
-            return;
-        }
-        navigation.navigate('PayrollRun', {storeId: primaryStoreId});
-    };
-
-    const handleQuickDashboard = () => {
-        navigation.navigate('OwnerDashboard');
-    };
-
-    const quickMenus: QuickMenu[] = [
-        {key: 'employee', label: '직원 관리', icon: 'people-outline', onPress: handleQuickEmployee},
-        {key: 'attendance', label: '근태 관리', icon: 'time-outline', onPress: handleQuickAttendance},
-        {key: 'payroll', label: '급여 관리', icon: 'card-outline', onPress: handleQuickPayroll},
-        {key: 'dashboard', label: '대시보드', icon: 'grid-outline', onPress: handleQuickDashboard},
+    const quickMenus = [
+        {
+            key: 'employee', label: '직원 관리', icon: 'people-outline',
+            onPress: requireStore(() => navigation.navigate('EmployeeManagement', {storeId: primaryStoreId})),
+            color: {bg: c.warningBg, icon: c.warning},
+        },
+        {
+            key: 'attendance', label: '근태 관리', icon: 'time-outline',
+            onPress: () => navigation.navigate('MissingAttendanceCenter'),
+            color: {bg: c.brandPrimarySoft, icon: c.brandPrimary},
+        },
+        {
+            key: 'payroll', label: '급여 관리', icon: 'card-outline',
+            onPress: requireStore(() => navigation.navigate('PayrollRun', {storeId: primaryStoreId})),
+            color: {bg: c.infoBg, icon: c.info},
+        },
+        {
+            key: 'dashboard', label: '대시보드', icon: 'grid-outline',
+            onPress: () => navigation.navigate('OwnerDashboard'),
+            color: {bg: c.brandPrimarySoft, icon: c.brandPrimary},
+        },
+        {
+            key: 'schedule', label: '스케줄', icon: 'calendar-outline',
+            onPress: requireStore(() => navigation.navigate('StoreSchedule', {storeId: primaryStoreId})),
+            color: {bg: c.surfaceMuted, icon: c.textSecondary},
+        },
+        {
+            key: 'approval', label: '출근 승인', icon: 'checkmark-done-outline',
+            onPress: requireStore(() => navigation.navigate('AttendanceApproval', {storeId: primaryStoreId})),
+            color: {bg: c.warningBg, icon: c.warning},
+            badge: pendingCount > 0 ? (pendingCount > 9 ? '9+' : String(pendingCount)) : undefined,
+        },
     ];
 
-    const renderStoreCard = ({ item: store }: { item: StoreInfo }) => (
-        <TouchableOpacity
-            style={[styles.storeCard, {width: CARD_WIDTH}]}
-            onPress={() => handleStorePress(store)}
-            activeOpacity={0.85}
-        >
-            <LinearGradient
-                colors={gradient.brand}
-                style={styles.storeCardGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-            >
-                <View style={styles.storeCardHeader}>
-                    <AppText variant="headingSm" tone="inverse" numberOfLines={1} style={styles.storeName}>{store.storeName}</AppText>
-                    <View style={styles.storeTypeTag}>
-                        <AppText variant="caption" tone="inverse" weight="600" numberOfLines={1}>{store.businessType}</AppText>
-                    </View>
-                </View>
+    const renderStoreCard = ({item: store, index}: {item: StoreInfo; index: number}) => {
+        const gradColors = STORE_GRADIENTS[index % STORE_GRADIENTS.length];
+        return (
+            <TouchableOpacity
+                style={[styles.storeCard, {width: CARD_WIDTH}]}
+                onPress={() => navigation.navigate('StoreDetail', {storeId: store.id})}
+                activeOpacity={0.88}>
+                <LinearGradient colors={gradColors} style={styles.storeGradient} start={{x: 0, y: 0}} end={{x: 1, y: 1}}>
+                    <View style={styles.storeDecor} />
 
-                <View style={styles.storeStats}>
-                    <View style={styles.statItem}>
-                        <AppText variant="caption" tone="inverse" style={styles.statLabel}>이번달 인건비</AppText>
-                        <AmountText size={18} tone="inverse">{formatCurrency(store.monthlyLaborCost)}원</AmountText>
+                    <View style={styles.storeTop}>
+                        <AppText variant="headingSm" tone="inverse" numberOfLines={1} style={styles.storeName}>
+                            {store.storeName}
+                        </AppText>
+                        <View style={styles.storeTypeTag}>
+                            <AppText variant="caption" tone="inverse" weight="600">{store.businessType || '기타'}</AppText>
+                        </View>
                     </View>
 
-                    <View style={styles.statItem}>
-                        <AppText variant="caption" tone="inverse" style={styles.statLabel}>직원 수</AppText>
-                        <AppText variant="headingSm" tone="inverse">{store.employeeCount}명</AppText>
+                    <View style={styles.storeStats}>
+                        <View style={styles.statItem}>
+                            <AppText variant="caption" tone="inverse" style={styles.statLabel}>이번달 인건비</AppText>
+                            <AmountText size={16} tone="inverse">{fmt(store.monthlyLaborCost)}원</AmountText>
+                        </View>
+                        <View style={styles.statItem}>
+                            <AppText variant="caption" tone="inverse" style={styles.statLabel}>직원 수</AppText>
+                            <AppText variant="headingSm" tone="inverse">{store.employeeCount}명</AppText>
+                        </View>
+                        <View style={styles.statItem}>
+                            <AppText variant="caption" tone="inverse" style={styles.statLabel}>오늘 출근</AppText>
+                            <AppText variant="headingSm" tone="inverse">{store.todayAttendance}명</AppText>
+                        </View>
                     </View>
-                </View>
 
-                <View style={styles.storeStats}>
-                    <View style={styles.statItem}>
-                        <AppText variant="caption" tone="inverse" style={styles.statLabel}>오늘 출근</AppText>
-                        <AppText variant="headingSm" tone="inverse">{store.todayAttendance}명</AppText>
+                    <View style={styles.storeFooter}>
+                        <AppText variant="caption" tone="inverse" numberOfLines={1} style={styles.storeAddr}>
+                            {store.fullAddress}
+                        </AppText>
+                        <View style={styles.storeQuickRow}>
+                            <TouchableOpacity
+                                style={styles.storeQuickBtn}
+                                onPress={() => navigation.navigate('EmployeeManagement', {storeId: store.id})}>
+                                <AppText variant="caption" tone="inverse" weight="700">직원</AppText>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.storeQuickBtn}
+                                onPress={() => navigation.navigate('PayrollRun', {storeId: store.id})}>
+                                <AppText variant="caption" tone="inverse" weight="700">급여</AppText>
+                            </TouchableOpacity>
+                        </View>
                     </View>
+                </LinearGradient>
+            </TouchableOpacity>
+        );
+    };
 
-                    <View style={styles.statItem}>
-                        <AppText variant="caption" tone="inverse" style={styles.statLabel}>이번달 매출</AppText>
-                        <AmountText size={18} tone="inverse">{formatCurrency(store.monthlyRevenue)}원</AmountText>
-                    </View>
-                </View>
-
-                <View style={styles.storeFooter}>
-                    <AppText variant="caption" tone="inverse" numberOfLines={1} style={styles.storeAddress}>{store.fullAddress}</AppText>
-                    <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.85)" />
-                </View>
-            </LinearGradient>
-        </TouchableOpacity>
-    );
-
-    const renderPolicyCard = (policy: PolicyInfo) => (
-        <AppCard
-            key={policy.id}
-            variant="plain"
-            onPress={() => handlePolicyPress(policy)}
-            style={styles.policyCard}
-        >
-            <View style={styles.policyTitleRow}>
-                <AppText variant="titleMd" numberOfLines={1} style={styles.policyTitle}>{policy.title}</AppText>
-                {policy.isNew && <AppBadge label="NEW" tone="info" />}
-            </View>
-            <View style={styles.policyCategoryTag}>
-                <AppText variant="caption" tone="secondary" weight="600">{policy.category}</AppText>
-            </View>
-
-            <AppText variant="bodyMd" tone="secondary" numberOfLines={2} style={styles.policyDescription}>{policy.description}</AppText>
-
-            <View style={styles.policyFooter}>
-                <AppText variant="caption" tone="tertiary">마감: {policy.deadline}</AppText>
-                <Ionicons name="chevron-forward" size={16} color={c.textTertiary} />
-            </View>
-        </AppCard>
-    );
+    const nameInitial = (user?.name ?? masterInfo.name ?? '사').charAt(0);
+    const showAlertStrip = pendingCount > 0;
 
     return (
-        <ScreenContainer
-            padded={false}
-            header={
-                <AppHeader
-                    title="내 정보"
-                    actions={[
-                        {label: '알림', onPress: () => navigation.navigate('NotificationCenter')},
-                        {label: '설정', onPress: () => navigation.navigate('AccountSettings')},
-                    ]}
-                />
-            }>
+        <ScreenContainer padded={false}>
             <ScrollView
                 style={styles.scrollView}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-                }
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
-            >
-                {/* 인사 */}
-                <View style={styles.header}>
-                    <AppText variant="headingMd">안녕하세요, {masterInfo.name}님</AppText>
-                    <AppText variant="bodyMd" tone="secondary" style={styles.subGreeting}>오늘도 화이팅하세요!</AppText>
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                showsVerticalScrollIndicator={false}>
+
+                {/* ── 커스텀 헤더 ── */}
+                <View style={[styles.topHeader, {backgroundColor: c.surface, borderBottomColor: c.divider}]}>
+                    <View style={styles.headerLeft}>
+                        <LinearGradient colors={gradient.brand} style={styles.avatar}>
+                            <AppText variant="titleMd" tone="inverse" weight="700">{nameInitial}</AppText>
+                        </LinearGradient>
+                        <View>
+                            <AppText variant="titleMd" weight="700">
+                                안녕하세요, {user?.name ?? masterInfo.name ?? '사장'}님 👋
+                            </AppText>
+                            <AppText variant="caption" tone="tertiary">{dateLabel}</AppText>
+                        </View>
+                    </View>
+                    <View style={styles.headerRight}>
+                        <TouchableOpacity
+                            style={[styles.iconBtn, {backgroundColor: c.surfaceCanvas, borderColor: c.border}]}
+                            onPress={() => navigation.navigate('NotificationCenter')}>
+                            <Ionicons name="notifications-outline" size={20} color={c.textSecondary} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.iconBtn, {backgroundColor: c.surfaceCanvas, borderColor: c.border}]}
+                            onPress={() => navigation.navigate('AccountSettings')}>
+                            <Ionicons name="settings-outline" size={20} color={c.textSecondary} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
-                {/* 전체 현황 — 히어로 숫자(이번달 총 인건비) */}
-                <View style={styles.sectionPadded}>
-                    <AppCard variant="hero">
-                        <HeroNumber
-                            label="이번달 총 인건비"
-                            value={`${formatCurrency(masterInfo.monthlyTotalLaborCost)}원`}
-                            sub={`운영 매장 ${masterInfo.totalStores}개 · 전체 직원 ${masterInfo.totalEmployees}명`}
-                            accent
-                        />
-                    </AppCard>
-                </View>
+                {/* ── 액션 알림 스트립 (승인 대기 있을 때만) ── */}
+                {showAlertStrip && (
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.alertStrip}
+                        style={styles.alertStripWrap}>
+                        <TouchableOpacity
+                            style={[styles.alertChip, {backgroundColor: c.warningBg, borderColor: c.warning}]}
+                            onPress={requireStore(() => navigation.navigate('AttendanceApproval', {storeId: primaryStoreId}))}>
+                            <Ionicons name="time-outline" size={13} color={c.warning} />
+                            <AppText variant="caption" weight="700" style={{color: c.warning}}>
+                                출근 승인 {pendingCount}건 대기
+                            </AppText>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.alertChip, {backgroundColor: c.errorBg, borderColor: c.error}]}
+                            onPress={() => navigation.navigate('MissingAttendanceCenter')}>
+                            <Ionicons name="warning-outline" size={13} color={c.error} />
+                            <AppText variant="caption" weight="700" style={{color: c.error}}>
+                                미처리 근태 확인
+                            </AppText>
+                        </TouchableOpacity>
+                    </ScrollView>
+                )}
 
-                {/* 매장 목록 */}
+                {/* ── 히어로 KPI 카드 ── */}
                 <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
+                    <LinearGradient
+                        colors={gradient.brandStrong}
+                        style={styles.heroCard}
+                        start={{x: 0, y: 0}}
+                        end={{x: 1, y: 1}}>
+                        <View style={styles.heroDecor} />
+                        <AppText variant="caption" tone="inverse" style={styles.heroLabel}>이번달 총 인건비</AppText>
+                        <AmountText size={28} tone="inverse">{fmt(masterInfo.monthlyTotalLaborCost)}원</AmountText>
+                        <View style={styles.heroDivider} />
+                        <View style={styles.heroStats}>
+                            <View style={styles.heroStat}>
+                                <AppText variant="headingSm" tone="inverse">{masterInfo.totalStores}</AppText>
+                                <AppText variant="caption" tone="inverse" style={styles.heroStatLbl}>운영 매장</AppText>
+                            </View>
+                            <View style={[styles.heroStat, styles.heroStatDivider]}>
+                                <AppText variant="headingSm" tone="inverse">{masterInfo.totalEmployees}명</AppText>
+                                <AppText variant="caption" tone="inverse" style={styles.heroStatLbl}>전체 직원</AppText>
+                            </View>
+                            <View style={[styles.heroStat, styles.heroStatDivider]}>
+                                <AppText variant="headingSm" tone="inverse">{totalToday}명</AppText>
+                                <AppText variant="caption" tone="inverse" style={styles.heroStatLbl}>오늘 출근</AppText>
+                            </View>
+                        </View>
+                    </LinearGradient>
+                </View>
+
+                {/* ── 오늘의 현황 ── */}
+                {totalEmp > 0 && (
+                    <View style={styles.section}>
+                        <View style={[styles.card, {backgroundColor: c.surface, borderColor: c.border}]}>
+                            <View style={styles.cardHeader}>
+                                <AppText variant="titleMd" weight="700">오늘의 현황</AppText>
+                                <TouchableOpacity onPress={() => navigation.navigate('MissingAttendanceCenter')}>
+                                    <AppText variant="caption" weight="600" style={{color: c.brandPrimary}}>전체 보기 →</AppText>
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={styles.todayGrid}>
+                                <View style={[styles.todayCell, {backgroundColor: c.surfaceMint, borderColor: c.successBg}]}>
+                                    <AppText variant="headingMd" style={{color: c.attendanceCheckedIn}}>{totalToday}</AppText>
+                                    <AppText variant="caption" tone="secondary" style={styles.todayCellLbl}>근무중</AppText>
+                                </View>
+                                <View style={[styles.todayCell, {backgroundColor: c.surfaceCanvas, borderColor: c.divider}]}>
+                                    <AppText variant="headingMd" style={{color: c.warning}}>–</AppText>
+                                    <AppText variant="caption" tone="secondary" style={styles.todayCellLbl}>지각</AppText>
+                                </View>
+                                <View style={[styles.todayCell, {backgroundColor: c.surfaceCanvas, borderColor: c.divider}]}>
+                                    <AppText variant="headingMd" tone="tertiary">{absentCount}</AppText>
+                                    <AppText variant="caption" tone="secondary" style={styles.todayCellLbl}>미출근</AppText>
+                                </View>
+                            </View>
+
+                            <View style={styles.barWrap}>
+                                <View style={styles.barLabelRow}>
+                                    <AppText variant="caption" tone="secondary">출근률 · {totalToday}/{totalEmp}명</AppText>
+                                    <AppText variant="caption" weight="700" style={{color: c.attendanceCheckedIn}}>{attendancePct}%</AppText>
+                                </View>
+                                <View style={[styles.bar, {backgroundColor: c.divider}]}>
+                                    <View
+                                        style={[styles.barFill, {
+                                            width: `${attendancePct}%` as any,
+                                            backgroundColor: c.attendanceCheckedIn,
+                                        }]}
+                                    />
+                                </View>
+                            </View>
+                        </View>
+                    </View>
+                )}
+
+                {/* ── 내 매장 ── */}
+                <View style={styles.storeSection}>
+                    <View style={styles.secRow}>
                         <AppText variant="headingSm">내 매장</AppText>
-                        <TouchableOpacity onPress={handleAddStore}>
-                            <AppText variant="titleMd" tone="brand">매장 추가</AppText>
+                        <TouchableOpacity onPress={() => navigation.navigate('StoreRegistration')}>
+                            <AppText variant="caption" weight="700" style={{color: c.brandPrimary}}>매장 추가 +</AppText>
                         </TouchableOpacity>
                     </View>
 
                     {stores.length === 0 ? (
-                        <View style={styles.sectionPadded}>
-                            <AppCard variant="plain" style={styles.emptyStateCard}>
+                        <View style={styles.section}>
+                            <View style={[styles.card, styles.emptyCard, {backgroundColor: c.surface, borderColor: c.border}]}>
                                 <Ionicons name="storefront-outline" size={40} color={c.textTertiary} />
-                                <AppText variant="titleMd" center style={styles.emptyStateTitle}>등록된 매장이 없어요</AppText>
-                                <AppText variant="bodyMd" tone="secondary" center style={styles.emptyStateDesc}>매장을 추가하고 직원과 급여를 관리해보세요</AppText>
-                                <TouchableOpacity style={[styles.addStoreButton, {backgroundColor: c.brandPrimary}]} onPress={handleAddStore}>
+                                <AppText variant="titleMd" weight="700" center style={{marginTop: spacing.md}}>등록된 매장이 없어요</AppText>
+                                <AppText variant="bodyMd" tone="secondary" center style={{marginTop: spacing.xs}}>
+                                    매장을 추가하고 직원과 급여를 관리해보세요
+                                </AppText>
+                                <TouchableOpacity
+                                    style={[styles.addStoreBtn, {backgroundColor: c.brandPrimary}]}
+                                    onPress={() => navigation.navigate('StoreRegistration')}>
                                     <AppText variant="titleMd" tone="inverse" weight="700">매장 추가하기</AppText>
                                 </TouchableOpacity>
-                            </AppCard>
+                            </View>
                         </View>
                     ) : (
                         <FlatList
                             ref={storeScrollRef}
                             data={stores}
                             renderItem={renderStoreCard}
-                            keyExtractor={(item) => item.id.toString()}
+                            keyExtractor={item => item.id.toString()}
                             horizontal
                             showsHorizontalScrollIndicator={false}
-                            snapToInterval={CARD_WIDTH + spacing.lg}
+                            snapToInterval={CARD_WIDTH + spacing.md}
                             decelerationRate="fast"
                             contentContainerStyle={styles.storeList}
                         />
                     )}
                 </View>
 
-                {/* 빠른 메뉴 */}
-                <View style={styles.sectionPadded}>
-                    <AppText variant="headingSm" style={styles.quickMenuTitle}>매장 관리</AppText>
-                    <View style={styles.quickMenuGrid}>
+                {/* ── 매장 관리 퀵메뉴 (3×2) ── */}
+                <View style={styles.section}>
+                    <AppText variant="headingSm" style={styles.secTitle}>매장 관리</AppText>
+                    <View style={styles.quickGrid}>
                         {quickMenus.map(menu => (
-                            <TouchableOpacity key={menu.key} style={styles.quickMenuItem} onPress={menu.onPress}>
-                                <View style={[styles.quickMenuIcon, {backgroundColor: c.brandPrimarySoft}]}>
-                                    <Ionicons name={menu.icon} size={24} color={c.brandPrimary} />
+                            <TouchableOpacity
+                                key={menu.key}
+                                style={[styles.quickItem, {width: MENU_ITEM_W, backgroundColor: c.surface, borderColor: c.border}]}
+                                onPress={menu.onPress}
+                                activeOpacity={0.75}>
+                                {menu.badge !== undefined && (
+                                    <View style={[styles.urgentBadge, {backgroundColor: c.error}]}>
+                                        <AppText
+                                            variant="caption"
+                                            tone="inverse"
+                                            weight="700"
+                                            style={styles.badgeText}>
+                                            {menu.badge}
+                                        </AppText>
+                                    </View>
+                                )}
+                                <View style={[styles.quickIconWrap, {backgroundColor: menu.color.bg}]}>
+                                    <Ionicons name={menu.icon} size={22} color={menu.color.icon} />
                                 </View>
-                                <AppText variant="caption" tone="secondary" center numberOfLines={1}>{menu.label}</AppText>
+                                <AppText variant="caption" weight="600" tone="secondary" center numberOfLines={1}>
+                                    {menu.label}
+                                </AppText>
                             </TouchableOpacity>
                         ))}
                     </View>
                 </View>
 
-                {/* 정부 정책 정보 */}
+                {/* ── 정부 지원 정책 ── */}
                 <InfoSlot testID="slotInfoPolicies">
-                <View style={styles.sectionPadded}>
-                    <SectionCard>
-                        <SectionHeader
-                          title="정부 지원 정책"
-                          onPressAction={() => navigation.navigate('InfoList')}
-                          actionLabel="더보기"
-                        />
-                        <View style={styles.policyList}>
-                            {policies.map(renderPolicyCard)}
-                        </View>
-                    </SectionCard>
-                </View>
-                </InfoSlot>
-
-                {/* 노무 정보 */}
-                {laborInfo && (
-                    <InfoSlot testID="slotInfoLabor">
-                    <View style={styles.sectionPadded}>
+                    <View style={styles.section}>
                         <SectionCard>
-                            <SectionHeader title={`${laborInfo.year}년 노무 정보`} onPressAction={() => navigation.navigate('InfoList')} actionLabel="자세히" />
-                            <View style={styles.laborInfoGrid}>
-                                <View style={styles.laborInfoItem}>
-                                    <AppText variant="caption" tone="secondary" center style={styles.laborInfoLabel}>최저임금</AppText>
-                                    <AppText variant="titleMd" numberOfLines={1} adjustsFontSizeToFit>{formatCurrency(laborInfo.minimumWage)}원</AppText>
-                                </View>
-                                <View style={styles.laborInfoItem}>
-                                    <AppText variant="caption" tone="secondary" center style={styles.laborInfoLabel}>주 최대 근무시간</AppText>
-                                    <AppText variant="titleMd">{laborInfo.weeklyMaxHours}시간</AppText>
-                                </View>
-                                <View style={styles.laborInfoItem}>
-                                    <AppText variant="caption" tone="secondary" center style={styles.laborInfoLabel}>연장근무 수당</AppText>
-                                    <AppText variant="titleMd">{laborInfo.overtimeRate}배</AppText>
-                                </View>
+                            <SectionHeader
+                                title="정부 지원 정책"
+                                onPressAction={() => navigation.navigate('InfoList')}
+                                actionLabel="더보기"
+                            />
+                            <View style={styles.policyList}>
+                                {policies.map(policy => (
+                                    <TouchableOpacity
+                                        key={policy.id}
+                                        style={styles.policyRow}
+                                        onPress={() => navigation.navigate('PolicyDetail', {policyId: policy.id})}>
+                                        <View style={[styles.policyDot, {backgroundColor: c.brandPrimary}]} />
+                                        <View style={styles.policyBody}>
+                                            <View style={styles.policyTitleRow}>
+                                                <AppText variant="titleMd" numberOfLines={1} style={styles.policyTitle}>
+                                                    {policy.title}
+                                                </AppText>
+                                                {policy.isNew && (
+                                                    <View style={[styles.newBadge, {backgroundColor: c.infoBg}]}>
+                                                        <AppText variant="caption" weight="700" style={{color: c.info, fontSize: 10}}>
+                                                            NEW
+                                                        </AppText>
+                                                    </View>
+                                                )}
+                                            </View>
+                                            <AppText variant="caption" tone="tertiary">마감: {policy.deadline}</AppText>
+                                        </View>
+                                        <Ionicons name="chevron-forward" size={14} color={c.textTertiary} />
+                                    </TouchableOpacity>
+                                ))}
                             </View>
-
-                            <TouchableOpacity style={[styles.laborInfoButton, {borderTopColor: c.divider}]} onPress={() => navigation.navigate('InfoList')}>
-                                <AppText variant="titleMd" tone="brand">근로기준법 자세히 보기</AppText>
-                                <Ionicons name="chevron-forward" size={16} color={c.brandPrimary} />
-                            </TouchableOpacity>
                         </SectionCard>
                     </View>
+                </InfoSlot>
+
+                {/* ── 노무 정보 ── */}
+                {laborInfo && (
+                    <InfoSlot testID="slotInfoLabor">
+                        <View style={styles.section}>
+                            <SectionCard>
+                                <SectionHeader
+                                    title={`${laborInfo.year}년 노무 정보`}
+                                    onPressAction={() => navigation.navigate('InfoList')}
+                                    actionLabel="자세히"
+                                />
+                                <View style={styles.laborGrid}>
+                                    {[
+                                        {label: '최저임금/시간', value: `${fmt(laborInfo.minimumWage)}원`},
+                                        {label: '주 최대 근무', value: `${laborInfo.weeklyMaxHours}시간`},
+                                        {label: '연장 수당', value: `×${laborInfo.overtimeRate}`},
+                                    ].map(item => (
+                                        <View
+                                            key={item.label}
+                                            style={[styles.laborCell, {backgroundColor: c.surfaceCanvas, borderColor: c.divider}]}>
+                                            <AppText variant="titleMd" weight="700">{item.value}</AppText>
+                                            <AppText variant="caption" tone="tertiary" center style={styles.laborLbl}>{item.label}</AppText>
+                                        </View>
+                                    ))}
+                                </View>
+                                <TouchableOpacity
+                                    style={[styles.laborMoreBtn, {borderTopColor: c.divider}]}
+                                    onPress={() => navigation.navigate('InfoList')}>
+                                    <AppText variant="titleMd" style={{color: c.brandPrimary}}>근로기준법 자세히 보기</AppText>
+                                    <Ionicons name="chevron-forward" size={16} color={c.brandPrimary} />
+                                </TouchableOpacity>
+                            </SectionCard>
+                        </View>
                     </InfoSlot>
                 )}
 
-                {/* 하단 여백 */}
-                <View style={styles.bottomSpacing} />
+                <View style={styles.bottomSpace} />
             </ScrollView>
         </ScreenContainer>
     );
 }
 
 const styles = StyleSheet.create({
-    scrollView: {
-        flex: 1,
-    },
-    scrollContent: {
-        paddingTop: spacing.sm,
-    },
-    header: {
-        paddingHorizontal: spacing.xxl,
-        paddingVertical: spacing.lg,
-    },
-    subGreeting: {
-        marginTop: spacing.xs,
-    },
-    section: {
-        marginBottom: spacing.xxl,
-    },
-    sectionPadded: {
-        paddingHorizontal: spacing.xxl,
-        marginBottom: spacing.xxl,
-    },
-    sectionHeader: {
+    scrollView: {flex: 1},
+
+    /* ── 헤더 ── */
+    topHeader: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: spacing.xxl,
-        marginBottom: spacing.lg,
+        justifyContent: 'space-between',
+        paddingHorizontal: spacing.xl,
+        paddingVertical: spacing.md,
+        borderBottomWidth: 1,
     },
-    storeList: {
-        paddingLeft: spacing.xxl,
+    headerLeft: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1},
+    avatar: {
+        width: 40, height: 40, borderRadius: 20,
+        alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
     },
-    storeCard: {
-        marginRight: spacing.lg,
+    headerRight: {flexDirection: 'row', gap: spacing.sm},
+    iconBtn: {
+        width: 36, height: 36, borderRadius: 18,
+        alignItems: 'center', justifyContent: 'center',
+        borderWidth: 1,
+    },
+
+    /* ── 알림 스트립 ── */
+    alertStripWrap: {paddingVertical: spacing.sm},
+    alertStrip: {paddingHorizontal: spacing.xl, gap: spacing.sm},
+    alertChip: {
+        flexDirection: 'row', alignItems: 'center', gap: 5,
+        paddingHorizontal: spacing.md, paddingVertical: 7,
+        borderRadius: radius.pill, borderWidth: 1,
+    },
+
+    /* ── 공통 섹션 ── */
+    section: {paddingHorizontal: spacing.xl, marginBottom: spacing.xl},
+    secRow: {
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        paddingHorizontal: spacing.xl, marginBottom: spacing.md,
+    },
+    secTitle: {marginBottom: spacing.md},
+
+    /* ── 히어로 카드 ── */
+    heroCard: {
         borderRadius: radius.xxl,
+        padding: spacing.xl,
         overflow: 'hidden',
         ...shadow.lg,
     },
-    storeCardGradient: {
-        padding: spacing.xl,
+    heroDecor: {
+        position: 'absolute', top: -24, right: -24,
+        width: 120, height: 120,
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        borderRadius: 60,
     },
-    storeCardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: spacing.lg,
+    heroLabel: {opacity: 0.8, marginBottom: spacing.xs},
+    heroDivider: {height: 1, backgroundColor: 'rgba(255,255,255,0.18)', marginVertical: spacing.md},
+    heroStats: {flexDirection: 'row'},
+    heroStat: {flex: 1, alignItems: 'center', gap: 3},
+    heroStatDivider: {borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.18)'},
+    heroStatLbl: {opacity: 0.75},
+
+    /* ── 카드 공통 ── */
+    card: {borderRadius: radius.xl, padding: spacing.lg, borderWidth: 1},
+    cardHeader: {
+        flexDirection: 'row', justifyContent: 'space-between',
+        alignItems: 'center', marginBottom: spacing.md,
     },
-    storeName: {
-        flex: 1,
-        marginRight: spacing.sm,
+
+    /* ── 오늘 현황 ── */
+    todayGrid: {flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md},
+    todayCell: {
+        flex: 1, borderRadius: radius.lg, paddingVertical: spacing.md,
+        alignItems: 'center', borderWidth: 1,
     },
+    todayCellLbl: {marginTop: 3},
+    barWrap: {gap: spacing.xs},
+    barLabelRow: {flexDirection: 'row', justifyContent: 'space-between'},
+    bar: {height: 8, borderRadius: radius.pill, overflow: 'hidden'},
+    barFill: {height: '100%', borderRadius: radius.pill},
+
+    /* ── 매장 카드 ── */
+    storeSection: {marginBottom: spacing.xl},
+    storeList: {paddingLeft: spacing.xl},
+    storeCard: {marginRight: spacing.md, borderRadius: radius.xxl, overflow: 'hidden', ...shadow.md},
+    storeGradient: {padding: spacing.lg},
+    storeDecor: {
+        position: 'absolute', bottom: -20, right: -20,
+        width: 90, height: 90,
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        borderRadius: 45,
+    },
+    storeTop: {
+        flexDirection: 'row', justifyContent: 'space-between',
+        alignItems: 'flex-start', marginBottom: spacing.md,
+    },
+    storeName: {flex: 1, marginRight: spacing.sm},
     storeTypeTag: {
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        paddingHorizontal: spacing.sm,
-        paddingVertical: spacing.xs,
-        borderRadius: radius.md,
-        flexShrink: 0,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: spacing.sm, paddingVertical: 3,
+        borderRadius: radius.pill, flexShrink: 0,
     },
-    storeStats: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        gap: spacing.lg,
-        marginBottom: spacing.md,
-    },
-    statItem: {
-        flex: 1,
-        minWidth: 0,
-    },
-    statLabel: {
-        opacity: 0.85,
-        marginBottom: spacing.xs,
-    },
+    storeStats: {flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md},
+    statItem: {flex: 1},
+    statLabel: {opacity: 0.8, marginBottom: 2},
     storeFooter: {
-        flexDirection: 'row',
+        flexDirection: 'row', alignItems: 'center',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: spacing.sm,
         paddingTop: spacing.md,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(255, 255, 255, 0.2)',
+        borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)',
     },
-    storeAddress: {
-        flex: 1,
-        opacity: 0.85,
-        marginRight: spacing.sm,
-    },
-    quickMenuTitle: {
-        marginBottom: spacing.lg,
-    },
-    quickMenuGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-    },
-    quickMenuItem: {
-        width: '25%',
-        alignItems: 'center',
-        marginBottom: spacing.xl,
-    },
-    quickMenuIcon: {
-        width: 56,
-        height: 56,
+    storeAddr: {flex: 1, opacity: 0.8, marginRight: spacing.sm},
+    storeQuickRow: {flexDirection: 'row', gap: 6},
+    storeQuickBtn: {
+        backgroundColor: 'rgba(255,255,255,0.2)',
         borderRadius: radius.pill,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: spacing.sm,
+        paddingHorizontal: 10, paddingVertical: 4,
     },
-    emptyStateCard: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: spacing.xxl,
+
+    /* ── 퀵메뉴 ── */
+    quickGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm},
+    quickItem: {
+        alignItems: 'center', gap: spacing.sm,
+        borderRadius: radius.xl, paddingVertical: spacing.md,
+        borderWidth: 1, position: 'relative',
     },
-    emptyStateTitle: {
-        marginTop: spacing.md,
-        marginBottom: spacing.xs,
+    quickIconWrap: {
+        width: 48, height: 48, borderRadius: radius.lg,
+        alignItems: 'center', justifyContent: 'center',
     },
-    emptyStateDesc: {
-        marginBottom: spacing.lg,
+    urgentBadge: {
+        position: 'absolute', top: 8, right: 8,
+        minWidth: 18, height: 18, borderRadius: 9,
+        alignItems: 'center', justifyContent: 'center',
+        paddingHorizontal: 3,
     },
-    addStoreButton: {
-        borderRadius: radius.lg,
-        paddingVertical: spacing.md,
-        paddingHorizontal: spacing.xl,
-        alignItems: 'center',
-        justifyContent: 'center',
-        minWidth: 140,
+    badgeText: {fontSize: 10, lineHeight: 14},
+
+    /* ── 빈 매장 ── */
+    emptyCard: {alignItems: 'center', paddingVertical: spacing.xxxl},
+    addStoreBtn: {
+        marginTop: spacing.lg,
+        paddingHorizontal: spacing.xl, paddingVertical: spacing.md,
+        borderRadius: radius.lg, alignItems: 'center',
     },
-    policyList: {
-        gap: spacing.md,
+
+    /* ── 정책 ── */
+    policyList: {gap: 0},
+    policyRow: {
+        flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+        paddingVertical: spacing.sm,
     },
-    policyCard: {
-        marginBottom: 0,
+    policyDot: {width: 6, height: 6, borderRadius: 3, flexShrink: 0},
+    policyBody: {flex: 1, minWidth: 0},
+    policyTitleRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: 2},
+    policyTitle: {flex: 1},
+    newBadge: {paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.pill, flexShrink: 0},
+
+    /* ── 노무 ── */
+    laborGrid: {flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md},
+    laborCell: {
+        flex: 1, borderRadius: radius.lg, padding: spacing.sm,
+        alignItems: 'center', borderWidth: 1,
     },
-    policyTitleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.sm,
-        marginBottom: spacing.sm,
+    laborLbl: {marginTop: 3},
+    laborMoreBtn: {
+        flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+        gap: spacing.xs, paddingTop: spacing.md, borderTopWidth: 1,
     },
-    policyTitle: {
-        flex: 1,
-    },
-    policyCategoryTag: {
-        alignSelf: 'flex-start',
-        marginBottom: spacing.sm,
-    },
-    policyDescription: {
-        marginBottom: spacing.md,
-    },
-    policyFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    laborInfoGrid: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        gap: spacing.md,
-        marginBottom: spacing.lg,
-    },
-    laborInfoItem: {
-        flex: 1,
-        alignItems: 'center',
-        minWidth: 0,
-    },
-    laborInfoLabel: {
-        marginBottom: spacing.xs,
-    },
-    laborInfoButton: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: spacing.xs,
-        paddingTop: spacing.lg,
-        borderTopWidth: 1,
-    },
-    bottomSpacing: {
-        height: spacing.huge,
-    },
+
+    bottomSpace: {height: spacing.huge},
 });

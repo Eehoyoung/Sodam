@@ -1,7 +1,7 @@
 import {AppToast, ConfirmSheet, AppBadge, AppButton, AppCard, AppHeader, AppListItem, AppText, ScreenContainer} from '../../../common/components/ds';
-import React, {useEffect, useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import {ScrollView, StyleSheet, View} from 'react-native';
-import {NavigationProp, useNavigation} from '@react-navigation/native';
+import {NavigationProp, useNavigation, useFocusEffect} from '@react-navigation/native';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {layout, spacing} from '../../../theme/tokens';
 import {HeroSlot, SummarySlot, ActionsSlot, InfoSlot} from '../components/RoleSlots';
@@ -30,9 +30,12 @@ const ManagerMyPageScreen: React.FC = () => {
     const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
     const [storeInfo] = useState({storeName: '소담 카페 강남점', todayAttendance: 6, totalEmployees: 8});
 
-    useEffect(() => {
-        loadManagerData();
-    }, []);
+    // 포커스마다 재조회 — 점장 담당 매장/직원 변경 후 복귀 시 최신 반영.
+    useFocusEffect(
+        useCallback(() => {
+            loadManagerData();
+        }, []),
+    );
 
     const loadManagerData = async () => {
         try {
@@ -81,8 +84,8 @@ const ManagerMyPageScreen: React.FC = () => {
                 <AppHeader
                     title="매니저 홈"
                     actions={[
-                        {label: '알림', onPress: () => navigation.navigate('NotificationCenter' as never)},
-                        {label: '설정', onPress: () => navigation.navigate('AccountSettings' as never)},
+                        {label: '알림', onPress: () => navigation.navigate('NotificationCenter')},
+                        {label: '설정', onPress: () => navigation.navigate('AccountSettings')},
                     ]}
                 />
             }>

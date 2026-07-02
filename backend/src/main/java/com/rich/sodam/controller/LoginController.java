@@ -187,6 +187,14 @@ public class LoginController {
         }
     }
 
+    /** 이메일 사용 가능 여부 — 가입 폼 blur 시 실시간 체크. 인증 불필요. */
+    @PublicEndpoint
+    @GetMapping("/api/auth/email-check")
+    public ResponseEntity<ApiResponse<Map<String, Boolean>>> emailCheck(@RequestParam String email) {
+        boolean available = userService.isEmailAvailable(email);
+        return ResponseEntity.ok(ApiResponse.success(Map.of("available", available)));
+    }
+
     @PostMapping("/api/join")
     public ResponseEntity<ApiResponse<Object>> join(@Valid @RequestBody JoinDto join, HttpServletResponse response, HttpServletRequest request) {
         Locale locale = localeResolver.resolveLocale(request);

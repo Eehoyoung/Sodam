@@ -1,3 +1,4 @@
+/* eslint-disable react-native/no-color-literals -- 브랜드 히어로 위 흰 오버레이 고정(레거시 화면, P2 재디자인 대상) */
 /* eslint-disable react-native/no-unused-styles -- styles built via createStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
 import {AppToast, AppButton, AppCard, AppText, AmountText} from '../../../common/components/ds';
 import React, { useState, useEffect, useMemo, useContext } from 'react';
@@ -612,7 +613,7 @@ const MultiStoreWorkScreen: React.FC = () => {
                 end={{ x: 1, y: 1 }}
                 style={styles.header}
             >
-                <AppText variant="headingMd" tone="inverse">김알바님</AppText>
+                <AppText variant="headingMd" tone="inverse">{user?.name ?? '회원'}님</AppText>
                 <AppText variant="bodyMd" tone="inverse" style={styles.currentTime}>{currentTime}</AppText>
 
                 {/* 매장 선택 버튼 */}

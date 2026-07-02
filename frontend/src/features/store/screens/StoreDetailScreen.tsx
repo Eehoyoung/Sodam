@@ -1,18 +1,21 @@
 import {AppToast, AppButton, AppCard, AppHeader, AppListItem, AmountText, AppText, CtaStack, ErrorState, LoadingState, ScreenContainer} from '../../../common/components/ds';
-import React, {useState, useEffect} from 'react';
+import React, {useState, useCallback} from 'react';
 import {Share, StyleSheet, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import {RouteProp, NavigationProp} from '@react-navigation/native';
+import {useFocusEffect, type RouteProp} from '@react-navigation/native';
+import {useStoreLiveSync} from '../../../common/hooks/useStoreLiveSync';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {InviteShareSheet} from '../components/StoreSheets';
 import storeService, {StoreDetailDto} from '../services/storeService';
 
-type StoreDetailScreenRouteProp = RouteProp<{StoreDetail: {storeId: number}}, 'StoreDetail'>;
+type StoreDetailScreenRouteProp = RouteProp<HomeStackParamList, 'StoreDetail'>;
 
 interface StoreDetailScreenProps {
     route: StoreDetailScreenRouteProp;
-    navigation: NavigationProp<any>;
+    navigation: NativeStackNavigationProp<HomeStackParamList>;
 }
 
 /**
@@ -41,10 +44,16 @@ export default function StoreDetailScreen({route, navigation}: StoreDetailScreen
 
     const copyCode = () => AppToast.show(`초대 코드: ${store?.storeCode ?? ''}`);
 
-    useEffect(() => {
-        loadStoreDetail();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [storeId]);
+    // 포커스마다 재조회 — 직원 입사/해고·매장 정보·운영시간 변경 후 복귀 시 상세 최신화.
+    useFocusEffect(
+        useCallback(() => {
+            loadStoreDetail();
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [storeId]),
+    );
+
+    // 실시간 동기화 — 이 매장의 직원 입사/해지·출퇴근 변경 시(보고 있는 동안) 상세 즉시 갱신.
+    useStoreLiveSync(storeId ? [storeId] : [], () => loadStoreDetail());
 
     const loadStoreDetail = async () => {
         try {
@@ -60,7 +69,7 @@ export default function StoreDetailScreen({route, navigation}: StoreDetailScreen
         }
     };
 
-    const header = <AppHeader title="매장 운영" onBack={() => navigation.goBack()} actions={[{label: '편집', onPress: () => (navigation as any).navigate('StoreEdit', {storeId})}]} />;
+    const header = <AppHeader title="매장 운영" onBack={() => navigation.goBack()} actions={[{label: '편집', onPress: () => navigation.navigate('StoreEdit', {storeId})}]} />;
 
     if (loading) {
         return (
@@ -110,14 +119,84 @@ export default function StoreDetailScreen({route, navigation}: StoreDetailScreen
                         icon="cash-outline"
                         title="직원 시급 정책"
                         subtitle="매장 기준 시급과 변경 이력"
-                        onPress={() => (navigation as any).navigate('WageSettings', {storeId})}
+                        onPress={() => navigation.navigate('WageSettings', {storeId})}
                     />
                     <ManageItem
                         c={c}
                         icon="time-outline"
                         title="운영시간 설정"
                         subtitle="요일별 영업·휴무 시간"
-                        onPress={() => (navigation as any).navigate('StoreOperatingHours', {storeId})}
+                        onPress={() => navigation.navigate('StoreOperatingHours', {storeId})}
+                    />
+                    <ManageItem
+                        c={c}
+                        icon="megaphone-outline"
+                        title="매장 공지"
+                        subtitle="공지를 올리고 누가 읽었는지 확인"
+                        onPress={() => navigation.navigate('StoreNoticeList', {storeId})}
+                    />
+                    <ManageItem
+                        c={c}
+                        icon="receipt-outline"
+                        title="매입장부"
+                        subtitle="영수증으로 매입 기록·가격 비교"
+                        onPress={() => navigation.navigate('PurchaseLedger', {storeId})}
+                    />
+                    <ManageItem
+                        c={c}
+                        icon="calculator-outline"
+                        title="급여 미리보기"
+                        subtitle="시급·근로시간으로 주휴 포함 예상급여"
+                        onPress={() => navigation.navigate('PayrollPreview', {storeId, hourlyWage: store.storeStandardHourWage})}
+                    />
+                    <ManageItem
+                        c={c}
+                        icon="bar-chart-outline"
+                        title="이번 주 인사이트"
+                        subtitle="최근 7일 매장 활동 요약"
+                        onPress={() => navigation.navigate('WeeklyInsights', {storeId})}
+                    />
+                    <ManageItem
+                        c={c}
+                        icon="document-text-outline"
+                        title="세무 자료"
+                        subtitle="간이지급명세서·원천징수 집계"
+                        onPress={() => navigation.navigate('WithholdingStatement', {storeId})}
+                    />
+                    <ManageItem
+                        c={c}
+                        icon="book-outline"
+                        title="법정 장부"
+                        subtitle="임금대장·근로자명부 (근로감독 대비)"
+                        onPress={() => navigation.navigate('LegalLedger', {storeId})}
+                    />
+                    <ManageItem
+                        c={c}
+                        icon="trending-up-outline"
+                        title="고용 공제 신호"
+                        subtitle="상시근로자 추이로 고용세액공제 가능성 확인"
+                        onPress={() => navigation.navigate('HeadcountTrend', {storeId})}
+                    />
+                    <ManageItem
+                        c={c}
+                        icon="gift-outline"
+                        title="지원금 자격"
+                        subtitle="두루누리 사회보험료 지원 가능 직원 확인"
+                        onPress={() => navigation.navigate('SubsidyEligibility', {storeId})}
+                    />
+                    <ManageItem
+                        c={c}
+                        icon="alarm-outline"
+                        title="세무 신고 기한"
+                        subtitle="원천세 월·부가세 분기 기한 알림"
+                        onPress={() => navigation.navigate('TaxDeadline', {storeId})}
+                    />
+                    <ManageItem
+                        c={c}
+                        icon="calculator-outline"
+                        title="세무 시뮬레이터"
+                        subtitle="매출·경비로 예상 종합소득세 계산"
+                        onPress={() => navigation.navigate('TaxSimulator')}
                     />
                     <ManageItem
                         c={c}
@@ -131,7 +210,7 @@ export default function StoreDetailScreen({route, navigation}: StoreDetailScreen
                         icon="create-outline"
                         title="매장 정보 편집"
                         subtitle="주소·연락처·업종 수정"
-                        onPress={() => (navigation as any).navigate('StoreEdit', {storeId})}
+                        onPress={() => navigation.navigate('StoreEdit', {storeId})}
                     />
                 </View>
             </View>

@@ -41,6 +41,9 @@ services:
       REDIS_PORT: 6379
       # JWT — 컨테이너 운영용 32바이트+ 시크릿 (운영은 Secrets Manager)
       JWT_SECRET: ${SODAM_JWT_SECRET:-Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1pcy0zMi1ieXRlcy1taW4=}
+      # PII 암호화 키(AES-256-GCM) — phone·사업자번호 등 개인정보 컬럼 암호화 저장(PIPA §29).
+      #   미설정 시 평문 모드(dev/test 허용, 운영 금지). 운영은 .env 에 SODAM_PII_KEY=<랜덤 32바이트 Base64> 주입.
+      SODAM_SECURITY_PII_ENCRYPTION_KEY: ${SODAM_PII_KEY:-sodam-dev-pii-key-change-in-production}
       # 단위: 초/일 (yaml token-validity-in-seconds / refresh-token-validity-in-days 와 일치)
       JWT_TOKEN_VALIDITY_SECONDS: 3600
       JWT_REFRESH_VALIDITY_DAYS: 7

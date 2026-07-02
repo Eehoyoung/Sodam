@@ -22,9 +22,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.security.annotation.MasterOnly;
 
 import java.util.List;
@@ -40,6 +42,7 @@ public class StoreController {
     private final GeocodingService geocodingService;
     private final StoreQueryService storeQueryService;
     private final StoreAccessGuard storeAccessGuard;
+    private final com.rich.sodam.service.DomainEventService domainEventService;
 
     @Operation(summary = "매장 등록", description = "새로운 매장을 등록하고 사용자를 해당 매장의 사장으로 지정합니다.")
     @ApiResponses(value = {
@@ -67,6 +70,8 @@ public class StoreController {
         }
         Long resolvedUserId = userId != null ? userId : getCurrentUserId();
         Store store = storeManagementService.registerStoreWithMaster(resolvedUserId, storeDto);
+        domainEventService.record(com.rich.sodam.domain.type.DomainEventType.STORE_CREATED,
+                resolvedUserId, store.getId(), null);
         return ResponseEntity.ok(store);
     }
 
@@ -103,6 +108,7 @@ public class StoreController {
             @PathVariable Long storeId,
             @PathVariable Long employeeId,
             @Valid @RequestBody java.util.Map<String, String> body) {
+        storeAccessGuard.assertMasterOwnsStore(getCurrentUserId(), storeId); // BOLA 차단: 본인 매장만
         String memo = body.getOrDefault("memo", "");
         storeManagementService.updateOwnerMemo(storeId, employeeId, memo);
         return ResponseEntity.ok(java.util.Map.of("memo", memo));
@@ -112,12 +118,14 @@ public class StoreController {
     public ResponseEntity<java.util.Map<String, String>> getEmployeeMemo(
             @PathVariable Long storeId,
             @PathVariable Long employeeId) {
+        storeAccessGuard.assertMasterOwnsStore(getCurrentUserId(), storeId); // BOLA 차단: 본인 매장만
         String memo = storeManagementService.getOwnerMemo(storeId, employeeId);
         return ResponseEntity.ok(java.util.Map.of("memo", memo == null ? "" : memo));
     }
 
     @Operation(summary = "매장 코드로 가입 (직원 셀프)",
             description = "사장이 공유한 매장 코드로 직원 본인이 매장에 가입. PRD_EMPLOYEE E-301.")
+    @EmployeeOrMaster // 클래스 @MasterOnly 오버라이드 — 직원 셀프 합류 엔드포인트(E-301)는 직원도 호출
     @PostMapping("/join-by-code")
     public ResponseEntity<Store> joinByCode(
             @org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -139,6 +147,7 @@ public class StoreController {
             @Parameter(description = "매장 ID", required = true) @PathVariable Long storeId,
             @Parameter(description = "사용자 ID", required = true) @RequestParam Long userId,
             @Parameter(description = "사용자 지정 시급") @RequestParam(required = false) Integer customHourlyWage) {
+        storeAccessGuard.assertMasterOwnsStore(getCurrentUserId(), storeId); // BOLA 차단: 본인 매장에만 직원 할당
         storeManagementService.assignUserToStoreAsEmployee(userId, storeId, customHourlyWage);
         return ResponseEntity.ok().build();
     }
@@ -161,6 +170,7 @@ public class StoreController {
     @GetMapping("/{storeId}/operating-hours")
     public ResponseEntity<com.rich.sodam.dto.response.OperatingHoursResponseDto> getOperatingHours(
             @PathVariable Long storeId) {
+        storeAccessGuard.assertMasterOwnsStore(getCurrentUserId(), storeId); // BOLA 차단: 본인 매장만
         return ResponseEntity.ok(storeManagementService.getOperatingHours(storeId));
     }
 
@@ -187,6 +197,7 @@ public class StoreController {
     public ResponseEntity<List<Store>> getStoresByMaster(
             @Parameter(description = "사용자 ID (사장) 또는 'current'", required = true) @PathVariable String userIdOrCurrent) {
         Long resolved = resolveUserId(userIdOrCurrent);
+        storeAccessGuard.assertSelf(getCurrentUserId(), resolved); // BOLA 차단: 본인 매장 목록만
         List<Store> stores = storeManagementService.getStoresByMaster(resolved);
         return ResponseEntity.ok(stores);
     }
@@ -198,9 +209,14 @@ public class StoreController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "404", description = "사용자 정보를 찾을 수 없음")
     })
+    // 직원 본인의 소속 매장 조회 — 클래스 @MasterOnly 를 메서드 단위로 완화.
+    // 직원/개인도 본인 매장 목록은 봐야 출퇴근이 가능하다. BOLA 는 아래 assertSelf 로 보장.
+    // (이 완화 전에는 @MasterOnly 때문에 직원 출퇴근 화면의 매장 로딩이 403 으로 막혔다.)
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/employee/{userId}")
     public ResponseEntity<List<Store>> getStoresByEmployee(
             @Parameter(description = "사용자 ID (직원)", required = true) @PathVariable Long userId) {
+        storeAccessGuard.assertSelf(getCurrentUserId(), userId); // BOLA 차단: 본인 소속 매장만
         List<Store> stores = storeManagementService.getStoresByEmployee(userId);
         return ResponseEntity.ok(stores);
     }
@@ -214,7 +230,10 @@ public class StoreController {
     })
     @GetMapping("/{storeId}/employees")
     public ResponseEntity<List<User>> getEmployeesByStore(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "매장 ID", required = true) @PathVariable Long storeId) {
+        // BOLA 차단: 본인 소유 매장의 직원 명부만 조회(타 매장 직원 PII 열람 방지)
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
         List<User> employees = storeManagementService.getEmployeesByStore(storeId);
         return ResponseEntity.ok(employees);
     }

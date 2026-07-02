@@ -1,10 +1,10 @@
 # =============================================================================
-# 소담(SODAM) Monorepo — Root .gitignore
-# backend/ 와 frontend/ 는 각자 자체 .gitignore 로 세부 규칙을 가진다.
-# 여기는 우산(루트) 레벨 공통 제외만 다룬다.
+# Sodam monorepo root .gitignore
+# Backend and frontend keep their own scoped ignore rules.
+# This file only contains root-level common exclusions.
 # =============================================================================
 
-# 시크릿
+# Environment
 .env
 .env.local
 .env.*
@@ -21,23 +21,23 @@
 Thumbs.db
 desktop.ini
 
-# 임시 스크립트 (Claude 작업 중 생성)
+# Repository exclusions
+docs/
+**/docs/
+*.png
+*.html
+
+# Temporary scripts
 _*.ps1
 _*.py
 _*.sh
 
-# 로그
+# Logs
 *.log
 logs/
+backend/.gradle-user-home/
 
-# Claude 런타임 캐시
-.claude/projects/
-.claude/shell-snapshots/
-.claude/todos/
-.claude/ide/
-.claude/scheduled_tasks.lock
-
-# 백업 / 임시
+# Backup / temporary files
 *.bak
 *.tmp
 *.swp

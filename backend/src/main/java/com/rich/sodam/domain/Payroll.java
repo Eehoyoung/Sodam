@@ -49,6 +49,7 @@ public class Payroll {
     private Integer nightWorkWage;        // 야간 근무 급여
     private Integer holidayWorkWage;      // 휴일 근무 급여(§56②)
     private Integer weeklyAllowance;      // 주휴수당
+    private Integer bonusWage;            // 즉시 보너스 합산액(PayrollBonus, INCLUDED_IN_PAYROLL 건만)
     private Integer grossWage;            // 총 급여 (세전)
 
     // 세금 및 공제
@@ -104,6 +105,7 @@ public class Payroll {
         if (this.nightWorkWage != null) total += this.nightWorkWage;
         if (this.holidayWorkWage != null) total += this.holidayWorkWage;
         if (this.weeklyAllowance != null) total += this.weeklyAllowance;
+        if (this.bonusWage != null) total += this.bonusWage;
 
         this.grossWage = total;
     }

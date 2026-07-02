@@ -4,10 +4,10 @@
  */
 
 import api from '../../../common/utils/api';
-import {TipsInfo, InfoCategory} from '../types';
+import {TipsInfo, InfoCategory, InfoDto} from '../types';
 
 // 공통 DTO -> UI 타입 매퍼
-const mapToTipInfo = (dto: any): TipsInfo => ({
+const mapToTipInfo = (dto: InfoDto): TipsInfo => ({
     id: String(dto.id),
     categoryId: 'TIPS',
     title: dto.title ?? '',
@@ -16,7 +16,7 @@ const mapToTipInfo = (dto: any): TipsInfo => ({
     publishDate: dto.createdAt ?? new Date().toISOString(),
     author: '소담 정보팀',
     tags: [],
-    imageUrl: dto.imagePath || undefined,
+    imageUrl: dto.imagePath ? dto.imagePath : undefined,
     difficulty: 'BEGINNER',
     estimatedTime: undefined,
 });
@@ -31,7 +31,7 @@ const tipsService = {
     /** 카테고리별(임시) 목록 */
     getTipsByCategory: async (_categoryId: string): Promise<TipsInfo[]> => {
         try {
-            const res = await api.get<any[]>(`/api/tip-info`);
+            const res = await api.get<InfoDto[]>(`/api/tip-info`);
             return (res.data || []).map(mapToTipInfo);
         } catch (error) {
             console.error('카테고리별 팁 정보를 가져오는 중 오류가 발생했습니다:', error);
@@ -42,7 +42,7 @@ const tipsService = {
     /** 상세 */
     getTipById: async (tipId: string): Promise<TipsInfo> => {
         try {
-            const res = await api.get<any>(`/api/tip-info/${tipId}`);
+            const res = await api.get<InfoDto>(`/api/tip-info/${tipId}`);
             return mapToTipInfo(res.data);
         } catch (error) {
             console.error('팁 정보 상세를 가져오는 중 오류가 발생했습니다:', error);
@@ -53,7 +53,7 @@ const tipsService = {
     /** 검색 (api.json에 title/content 검색 존재) */
     searchTips: async (searchTerm: string): Promise<TipsInfo[]> => {
         try {
-            const res = await api.get<any[]>(`/api/tip-info/search/title`, { keyword: searchTerm });
+            const res = await api.get<InfoDto[]>(`/api/tip-info/search/title`, { keyword: searchTerm });
             return (res.data || []).map(mapToTipInfo);
         } catch (error) {
             console.error('팁 정보 검색 중 오류가 발생했습니다:', error);
@@ -64,7 +64,7 @@ const tipsService = {
     /** 최근 (api.json 존재) */
     getRecentTips: async (limit: number = 5): Promise<TipsInfo[]> => {
         try {
-            const res = await api.get<any[]>(`/api/tip-info/recent`, { limit });
+            const res = await api.get<InfoDto[]>(`/api/tip-info/recent`, { limit });
             return (res.data || []).map(mapToTipInfo);
         } catch (error) {
             console.error('최근 팁 정보를 가져오는 중 오류가 발생했습니다:', error);
@@ -75,7 +75,7 @@ const tipsService = {
     /** 인기/난이도 (임의 경로) */
     getPopularTips: async (limit: number = 5): Promise<TipsInfo[]> => {
         try {
-            const res = await api.get<any[]>(`/api/tip-info/popular`, { limit });
+            const res = await api.get<InfoDto[]>(`/api/tip-info/popular`, { limit });
             return (res.data || []).map(mapToTipInfo);
         } catch (error) {
             console.error('인기 팁 정보를 가져오는 중 오류가 발생했습니다:', error);
@@ -84,7 +84,7 @@ const tipsService = {
     },
     getTipsByDifficulty: async (difficulty: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'): Promise<TipsInfo[]> => {
         try {
-            const res = await api.get<any[]>(`/api/tip-info/difficulty`, { difficulty });
+            const res = await api.get<InfoDto[]>(`/api/tip-info/difficulty`, { difficulty });
             return (res.data || []).map(mapToTipInfo);
         } catch (error) {
             console.error('난이도별 팁 정보를 가져오는 중 오류가 발생했습니다:', error);

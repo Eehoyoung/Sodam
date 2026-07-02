@@ -3,8 +3,10 @@ package com.rich.sodam.service;
 import com.rich.sodam.config.app.AppProperties;
 import com.rich.sodam.core.payroll.constant.MinimumWage;
 import com.rich.sodam.domain.*;
+import com.rich.sodam.domain.type.DomainEventType;
 import com.rich.sodam.dto.request.EmployeeWageUpdateDto;
 import com.rich.sodam.dto.request.LocationUpdateDto;
+import com.rich.sodam.dto.request.OperatingHoursUpdateDto.DayOperatingHours;
 import com.rich.sodam.dto.request.StoreRegistrationDto;
 import com.rich.sodam.dto.request.StoreUpdateDto;
 import com.rich.sodam.exception.EntityNotFoundException;
@@ -16,9 +18,14 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,6 +42,11 @@ public class StoreManagementServiceImpl implements StoreManagementService {
     private final ValidationService validationService;
     private final AppProperties appProperties;
     private final WageHistoryRepository wageHistoryRepository;
+    private final PlanAccessService planAccessService;
+    private final DomainEventService domainEventService;
+    private final LiveSyncPublisher liveSyncPublisher;
+    private final PayrollRepository payrollRepository;
+    private final AttendanceRepository attendanceRepository;
 
     @NotNull
     private Store getStore(StoreRegistrationDto storeDto) {
@@ -68,11 +80,71 @@ public class StoreManagementServiceImpl implements StoreManagementService {
         if (storeDto.getRadius() != null) {
             store.setRadius(storeDto.getRadius());
         }
+
+        if (storeDto.getOperatingHours() != null) {
+            store.updateOperatingHours(toOperatingHours(storeDto.getOperatingHours()));
+        }
+
+        if (storeDto.getPayrollCycle() != null) {
+            store.updatePayrollCycle(storeDto.getPayrollCycle().toDomain());
+        }
         return store;
+    }
+
+    private OperatingHours toOperatingHours(List<DayOperatingHours> dayOperatingHours) {
+        OperatingHours operatingHours = OperatingHours.createDefault();
+        if (dayOperatingHours == null) {
+            return operatingHours;
+        }
+
+        validateOperatingHoursRequest(dayOperatingHours);
+        for (DayOperatingHours dayHours : dayOperatingHours) {
+            boolean closed = Boolean.TRUE.equals(dayHours.getIsClosed());
+            operatingHours.setDayOperatingHours(
+                    dayHours.getDayOfWeek(),
+                    dayHours.getOpenTime(),
+                    dayHours.getCloseTime(),
+                    closed
+            );
+        }
+        return operatingHours;
+    }
+
+    private void validateOperatingHoursRequest(List<DayOperatingHours> dayOperatingHours) {
+        if (dayOperatingHours == null || dayOperatingHours.isEmpty()) {
+            throw new IllegalArgumentException("운영시간 정보는 필수입니다.");
+        }
+        if (dayOperatingHours.size() != 7) {
+            throw new IllegalArgumentException("모든 요일(7일)의 운영시간 정보가 필요합니다.");
+        }
+
+        Set<DayOfWeek> days = EnumSet.noneOf(DayOfWeek.class);
+        boolean allClosed = true;
+        for (DayOperatingHours dayHours : dayOperatingHours) {
+            if (dayHours.getDayOfWeek() == null) {
+                throw new IllegalArgumentException("요일은 필수입니다.");
+            }
+            if (!days.add(dayHours.getDayOfWeek())) {
+                throw new IllegalArgumentException("중복된 요일이 있습니다.");
+            }
+            dayHours.validate();
+            if (!Boolean.TRUE.equals(dayHours.getIsClosed())) {
+                allClosed = false;
+            }
+        }
+        if (days.size() != 7) {
+            throw new IllegalArgumentException("누락된 요일이 있습니다.");
+        }
+        if (allClosed) {
+            throw new IllegalArgumentException("최소 하루는 운영해야 합니다.");
+        }
     }
 
     @Override
     @Transactional
+    // 새 매장 등록 시 master의 캐시된 매장목록(getStoresByMaster)을 무효화해야 한다.
+    // 안 하면 방금 만든 매장이 홈/상세에서 누락되고 stale id로 StoreDetail 403이 난다.
+    @CacheEvict(value = "stores", key = "'master:' + #userId")
     public Store registerStoreWithMaster(Long userId, StoreRegistrationDto storeDto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
@@ -100,6 +172,10 @@ public class StoreManagementServiceImpl implements StoreManagementService {
             masterProfileRepository.save(masterProfile);
         }
 
+        // 멀티매장 게이트: 2번째 이상 매장은 MULTI_STORE(PRO 이상) 플랜에서만 등록 가능
+        int existingStoreCount = masterStoreRelationRepository.findByMasterProfile(masterProfile).size();
+        planAccessService.assertCanRegisterAdditionalStore(existingStoreCount);
+
         // 매장 생성
         Store store = getStore(storeDto);
 
@@ -114,6 +190,9 @@ public class StoreManagementServiceImpl implements StoreManagementService {
 
     @Override
     @Transactional
+    // 직원 배정 → 재직 인원 변동. 사장 매장목록 캐시 무효화(3-arg 는 자기호출이라 프록시 우회 →
+    // 진입점인 이 메서드에 둔다).
+    @CacheEvict(value = "stores", allEntries = true)
     public void assignUserToStoreAsEmployee(Long userId, Long storeId) {
         this.assignUserToStoreAsEmployee(userId, storeId, null);
     }
@@ -126,6 +205,9 @@ public class StoreManagementServiceImpl implements StoreManagementService {
      */
     @Override
     @Transactional
+    // 직원 입사 → 매장 재직 인원 변동. 사장 매장목록(getStoresByMaster, @Cacheable 'master:{id}')의
+    // employeeCount 가 stale 로 남지 않도록 stores 캐시 무효화(masterId 를 모르므로 allEntries).
+    @CacheEvict(value = "stores", allEntries = true)
     public Store joinStoreByCode(Long userId, String storeCode) {
         Store store = storeRepository.findActiveByStoreCode(storeCode)
                 .orElseThrow(() -> new EntityNotFoundException("매장 코드와 일치하는 매장을 찾을 수 없습니다."));
@@ -135,6 +217,8 @@ public class StoreManagementServiceImpl implements StoreManagementService {
                 .orElseThrow(() -> new EntityNotFoundException("직원 프로필이 없습니다."));
         employeeStoreRelationRepository.findByEmployeeProfileAndStore(profile, store)
                 .ifPresent(rel -> { if (Boolean.FALSE.equals(rel.getIsActive())) rel.setIsActive(true); });
+        // 사장(및 같은 매장 직원) 화면 라이브 동기화 — 인원수·직원목록 즉시 갱신.
+        liveSyncPublisher.publishStore(store.getId(), LiveSyncPublisher.SyncType.EMPLOYEES_CHANGED);
         return store;
     }
 
@@ -173,7 +257,8 @@ public class StoreManagementServiceImpl implements StoreManagementService {
                 .orElseThrow(() -> new EntityNotFoundException("매장을 찾을 수 없습니다. ID: " + storeId));
         com.rich.sodam.domain.OperatingHours oh = com.rich.sodam.domain.OperatingHours.createDefault();
         if (dto.getOperatingHours() != null) {
-            for (com.rich.sodam.dto.request.OperatingHoursUpdateDto.DayOperatingHours d : dto.getOperatingHours()) {
+            validateOperatingHoursRequest(dto.getOperatingHours());
+            for (DayOperatingHours d : dto.getOperatingHours()) {
                 boolean closed = Boolean.TRUE.equals(d.getIsClosed());
                 oh.setDayOperatingHours(d.getDayOfWeek(), d.getOpenTime(), d.getCloseTime(), closed);
             }
@@ -192,6 +277,8 @@ public class StoreManagementServiceImpl implements StoreManagementService {
 
     @Override
     @Transactional
+    // 직원 활성/비활성 → 재직 인원 변동. 사장 매장목록 employeeCount 캐시 무효화.
+    @CacheEvict(value = "stores", allEntries = true)
     public void setEmployeeActive(Long storeId, Long employeeId, boolean active) {
         if (storeId == null || employeeId == null) {
             throw new IllegalArgumentException("storeId 와 employeeId 는 필수입니다.");
@@ -202,6 +289,20 @@ public class StoreManagementServiceImpl implements StoreManagementService {
                         "직원-매장 관계를 찾을 수 없습니다. employeeId=" + employeeId + ", storeId=" + storeId));
         relation.setIsActive(active);
         employeeStoreRelationRepository.save(relation);
+        // 재직 인원 변동 → 5인 이상 여부 재산정(§56 가산 적용 정상화)
+        recountEmployeesAndApply(relation.getStore());
+        // 사장 화면 라이브 동기화 — 직원 활성/비활성 즉시 반영.
+        liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.EMPLOYEES_CHANGED);
+    }
+
+    /**
+     * 매장의 활성 재직 인원 수로 {@code fiveOrMoreEmployees} 플래그를 재산정·반영한다.
+     * 직원 추가/해지 등 재직 인원이 변하는 지점에서 호출한다.
+     */
+    private void recountEmployeesAndApply(Store store) {
+        long activeCount = employeeStoreRelationRepository.countByStoreAndIsActiveTrue(store);
+        store.applyEmployeeCount((int) activeCount);
+        storeRepository.save(store);
     }
 
     @Override
@@ -261,6 +362,7 @@ public class StoreManagementServiceImpl implements StoreManagementService {
                 employeeStoreRelationRepository.findByEmployeeProfileAndStore(employeeProfile, store);
 
         EmployeeStoreRelation relation;
+        boolean newJoin = existingRelation.isEmpty();
         if (existingRelation.isPresent()) {
             // 이미 관계가 있으면 시급 정보만 업데이트
             relation = existingRelation.get();
@@ -273,6 +375,12 @@ public class StoreManagementServiceImpl implements StoreManagementService {
             relation = new EmployeeStoreRelation(employeeProfile, store, customHourlyWage);
         }
         employeeStoreRelationRepository.save(relation);
+        // 재직 인원 변동 → 5인 이상 여부 재산정(§56 가산 적용 정상화)
+        recountEmployeesAndApply(store);
+        // 직원이 매장에 새로 합류한 경우 계측 이벤트 발화(전환·activation 분모)
+        if (newJoin) {
+            domainEventService.record(DomainEventType.EMPLOYEE_REGISTERED, userId, storeId, null);
+        }
     }
 
     @Override
@@ -352,14 +460,29 @@ public class StoreManagementServiceImpl implements StoreManagementService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "stores", key = "'master:' + #userId")
     public List<Store> getStoresByMaster(Long userId) {
         MasterProfile masterProfile = masterProfileRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사장 프로필을 찾을 수 없습니다."));
 
+        YearMonth thisMonth = YearMonth.now();
+        LocalDate monthStart = thisMonth.atDay(1);
+        LocalDate monthEnd = thisMonth.atEndOfMonth();
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+        LocalDateTime tomorrowStart = todayStart.plusDays(1);
+
         return masterStoreRelationRepository.findByMasterProfile(masterProfile)
                 .stream()
                 .map(MasterStoreRelation::getStore)
+                .peek(store -> {
+                    store.setEmployeeCount((int) employeeStoreRelationRepository.countByStoreAndIsActiveTrue(store));
+                    long laborCost = payrollRepository.findByStoreIdAndPeriod(store.getId(), monthStart, monthEnd)
+                            .stream()
+                            .mapToLong(payroll -> payroll.getGrossWage() == null ? 0L : payroll.getGrossWage())
+                            .sum();
+                    store.setMonthlyLaborCost(laborCost);
+                    store.setTodayAttendance(attendanceRepository.findByStoreAndDate(store, todayStart, tomorrowStart).size());
+                    store.setMonthlyRevenue(0L);
+                })
                 .collect(Collectors.toList());
     }
 
@@ -439,11 +562,18 @@ public class StoreManagementServiceImpl implements StoreManagementService {
             store.setStoreStandardHourWage(updateDto.getStoreStandardHourWage());
         }
 
+        // 급여 정산 주기 — 전달 시 전체 교체(검증·0 패딩은 PayrollCycle.of)
+        if (updateDto.getPayrollCycle() != null) {
+            store.updatePayrollCycle(updateDto.getPayrollCycle().toDomain());
+        }
+
         return storeRepository.save(store);
     }
 
     @Override
     @Transactional
+    // 매장 삭제는 드물고 어느 master 캐시인지 알기 어려우므로 stores 캐시 전체 무효화.
+    @CacheEvict(value = "stores", allEntries = true)
     public void deleteStore(Long storeId) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new EntityNotFoundException("매장을 찾을 수 없습니다."));

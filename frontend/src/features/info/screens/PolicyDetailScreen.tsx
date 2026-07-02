@@ -106,6 +106,11 @@ const PolicyDetailScreen = () => {
         if (!policy?.applicationLink) {
             return;
         }
+        // 보안: 서버 응답 변조 시 tel:/임의 스킴 실행 방지 — http(s) 만 허용
+        if (!/^https?:\/\//i.test(policy.applicationLink)) {
+            setToastMessage('안전하지 않은 링크예요.');
+            return;
+        }
         try {
             const supported = await Linking.canOpenURL(policy.applicationLink);
             if (supported) {

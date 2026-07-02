@@ -148,6 +148,9 @@ const Footer = () => {
     );
 };
 
+// 푸터는 고정 컬러 밴드(브랜드 블루 위 흰 텍스트) — 라이트/다크 동일하게 유지해야 시각 의미가 보존됨.
+// 마땅한 토큰이 없고 다크모드에서도 흰 텍스트가 의도이므로 색 리터럴을 그대로 둔다.
+/* eslint-disable react-native/no-color-literals -- 의도된 고정 컬러 밴드(흰 텍스트/투명 화이트 보더), 테마 토큰 비대상 */
 const styles = StyleSheet.create({
     footer: {
         width: '100%',
@@ -200,5 +203,6 @@ const styles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.8)',
     },
 });
+/* eslint-enable react-native/no-color-literals */
 
 export default Footer;

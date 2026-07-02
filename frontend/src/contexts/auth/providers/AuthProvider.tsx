@@ -112,6 +112,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
             clearTimeout(timeoutId);
             clearTimeout(maxTimeoutId);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- 마운트 1회 초기화(isMounted/hasInitialized 가드로 중복 방지). authActions/authState 포함 시 매 렌더 재초기화 루프.
     }, []); // 의존성 배열 제거 - 한 번만 실행
 
     // 액션 래퍼 - 기존 API와 호환성 유지

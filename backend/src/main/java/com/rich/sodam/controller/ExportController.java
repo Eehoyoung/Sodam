@@ -14,7 +14,12 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import com.rich.sodam.domain.type.PlanType;
+import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.security.annotation.RequirePlan;
+import com.rich.sodam.service.StoreAccessGuard;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -36,15 +41,20 @@ public class ExportController {
     private final AttendanceRepository attendanceRepository;
     private final PayrollRepository payrollRepository;
     private final StoreRepository storeRepository;
+    private final StoreAccessGuard storeAccessGuard;
 
     @Operation(summary = "매장 출퇴근 기록 CSV",
             description = "지정 기간의 매장 출퇴근 기록을 CSV 로 내보냅니다. Excel 호환 UTF-8 BOM 포함.")
+    @RequirePlan(min = PlanType.PRO) // CSV 내보내기 = PRO 비즈니스 기능
     @GetMapping("/attendance/store/{storeId}.csv")
     @Transactional(readOnly = true)
     public ResponseEntity<byte[]> exportAttendance(
+            @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        // BOLA 차단: 본인 소유 매장만 CSV 내보내기(타 매장 PII·급여 덤프 방지)
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
         var store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("매장을 찾을 수 없어요."));
         LocalDateTime start = from.atStartOfDay();
@@ -80,12 +90,16 @@ public class ExportController {
 
     @Operation(summary = "매장 급여 명세 CSV",
             description = "지정 기간의 매장 발급 급여 명세를 CSV 로 내보냅니다.")
+    @RequirePlan(min = PlanType.PRO) // CSV 내보내기 = PRO 비즈니스 기능
     @GetMapping("/payroll/store/{storeId}.csv")
     @Transactional(readOnly = true)
     public ResponseEntity<byte[]> exportPayroll(
+            @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        // BOLA 차단: 본인 소유 매장만 급여 CSV 내보내기
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
         List<Payroll> list = payrollRepository.findAll().stream()
                 .filter(p -> p.getStore() != null && storeId.equals(p.getStore().getId()))
                 .filter(p -> p.getStartDate() != null

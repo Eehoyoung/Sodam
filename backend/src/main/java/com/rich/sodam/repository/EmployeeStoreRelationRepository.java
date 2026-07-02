@@ -63,6 +63,11 @@ public interface EmployeeStoreRelationRepository extends JpaRepository<EmployeeS
     List<EmployeeStoreRelation> findByStoreAndIsActiveTrue(Store store);
 
     /**
+     * 활성 상태(isActive=true) 직원 수 — 상시근로자 5인 이상 여부 산정용(Store.applyEmployeeCount).
+     */
+    long countByStoreAndIsActiveTrue(Store store);
+
+    /**
      * 명시적 JPQL — @MapsId 매핑에서 파생 쿼리가 실패할 때를 대비한 안전 메서드.
      * employee_id / store_id 컬럼 기준 직접 매핑.
      */
@@ -76,4 +81,14 @@ public interface EmployeeStoreRelationRepository extends JpaRepository<EmployeeS
      * 직원이 해당 매장에 소속되어 있는지 검증 (StoreAccessGuard 용).
      */
     boolean existsByEmployeeProfile_IdAndStore_Id(Long employeeId, Long storeId);
+
+    /**
+     * 직원이 해당 매장에 활성 상태로 소속되어 있는지 검증.
+     */
+    boolean existsByEmployeeProfile_IdAndStore_IdAndIsActiveTrue(Long employeeId, Long storeId);
+
+    /**
+     * 직원 ID와 매장 ID로 활성 관계 조회.
+     */
+    Optional<EmployeeStoreRelation> findByEmployeeProfile_IdAndStore_IdAndIsActiveTrue(Long employeeId, Long storeId);
 }

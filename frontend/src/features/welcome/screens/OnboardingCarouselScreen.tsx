@@ -42,14 +42,15 @@ const SLIDES: Slide[] = [
         gradient: ['#FF9B63', '#FF5722'],
     },
     {
-        icon: 'receipt-outline',
-        headline: '종합소득세\n환급도 한 앱에서',
-        body: '세무사 부담 없이 환급 받으세요.\n환급 받은 만큼만 수수료 드릴게요.',
+        icon: 'shield-checkmark-outline',
+        headline: '출퇴근 기록이\n분쟁의 증거가 돼요',
+        body: 'NFC·GPS로 남는 출퇴근 기록.\n노무 분쟁 때 사장님을 지켜줘요.',
         gradient: ['#FF9B63', '#E5552A'],
     },
 ];
 
 const OnboardingCarouselScreen: React.FC = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 크로스 네비게이터: Auth 스택에서 루트(Welcome)로 reset
     const navigation = useNavigation<any>();
     const {width: WIDTH} = useWindowDimensions();
     const c = useThemeColors();

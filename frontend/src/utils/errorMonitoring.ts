@@ -8,6 +8,13 @@
 
 import {safeLogger} from './safeLogger';
 
+// 비표준 Chrome/RN performance.memory — 일부 런타임에만 존재.
+interface PerformanceWithMemory {
+    memory?: { usedJSHeapSize?: number };
+}
+const performanceMemory = (): PerformanceWithMemory['memory'] =>
+    (global.performance as PerformanceWithMemory | undefined)?.memory;
+
 // 분류를 위한 에러 타입
 export enum ErrorType {
     RENDER_ERROR = 'RENDER_ERROR',
@@ -43,7 +50,7 @@ interface ErrorContext {
         currentRoute?: string;
         memoryUsage?: number;
     };
-    additionalData?: Record<string, any>;
+    additionalData?: Record<string, unknown>;
 }
 
 // 에러 리포트 인터페이스
@@ -229,12 +236,12 @@ class ErrorMonitoringSystem {
 
         // 처리되지 않은 Promise 거부 처리
         if (typeof global !== 'undefined' && global.process) {
-            global.process.on?.('unhandledRejection', (reason: any, _promise: Promise<any>) => {
+            global.process.on?.('unhandledRejection', (reason: unknown, _promise: Promise<unknown>) => {
                 this.reportError({
                     type: ErrorType.ASYNC_ERROR,
                     severity: ErrorSeverity.HIGH,
-                    message: `Unhandled Promise Rejection: ${reason}`,
-                    stack: reason?.stack,
+                    message: `Unhandled Promise Rejection: ${String(reason)}`,
+                    stack: reason instanceof Error ? reason.stack : undefined,
                     context: this.getCurrentContext()
                 });
             });
@@ -260,8 +267,8 @@ class ErrorMonitoringSystem {
 
         // In Jest/test environment, skip starting intervals to avoid open handles
         try {
-            const g: any = typeof globalThis !== 'undefined' ? (globalThis as any) : {};
-            const isJest = !!g.jest || (typeof process !== 'undefined' && (process as any)?.env?.JEST_WORKER_ID);
+            const g = (typeof globalThis !== 'undefined' ? globalThis : {}) as { jest?: unknown };
+            const isJest = !!g.jest || (typeof process !== 'undefined' && !!process?.env?.JEST_WORKER_ID);
             if (isJest) {return;}
         } catch {
             // ignore env detection errors
@@ -269,9 +276,9 @@ class ErrorMonitoringSystem {
 
         // 메모리 사용량 모니터링 (React Native용 타입 단언 포함)
         setInterval(() => {
-            const performance = global.performance as any;
-            if (performance?.memory) {
-                const memoryUsage = performance.memory.usedJSHeapSize;
+            const memory = performanceMemory();
+            if (memory?.usedJSHeapSize !== undefined) {
+                const memoryUsage = memory.usedJSHeapSize;
                 this.recordPerformanceMetric('memoryUsage', memoryUsage);
 
                 // 메모리 사용량이 너무 높으면 알림 (>50MB)
@@ -291,7 +298,6 @@ class ErrorMonitoringSystem {
      * 현재 에러 컨텍스트 가져오기
      */
     private getCurrentContext(): ErrorContext {
-        const performance = global.performance as any;
         return {
             timestamp: new Date().toISOString(),
             deviceInfo: {
@@ -300,7 +306,7 @@ class ErrorMonitoringSystem {
             },
             appState: {
                 isAuthenticated: false, // AuthContext에서 채워질 값
-                memoryUsage: performance?.memory?.usedJSHeapSize
+                memoryUsage: performanceMemory()?.usedJSHeapSize
             }
         };
     }

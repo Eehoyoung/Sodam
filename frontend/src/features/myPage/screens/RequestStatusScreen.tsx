@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -8,11 +8,14 @@ import {
     AppHeader,
     AppText,
     EmptyState,
+    ErrorState,
+    LoadingState,
     ScreenContainer,
     SegmentedControl,
 } from '../../../common/components/ds';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {spacing} from '../../../theme/tokens';
+import {fetchMyRequests} from '../services/requestService';
 
 type ReqType = 'correction' | 'timeoff' | 'inquiry';
 type ReqStatus = 'pending' | 'approved' | 'rejected';
@@ -34,17 +37,42 @@ const STATUS: Record<ReqStatus, {label: string; tone: 'warning' | 'success' | 'e
 };
 
 /**
- * A14 정정/휴가/문의 처리 상태 추적 (갭분석 P1).
+ * A14 정정/휴가/문의 처리 상태 추적 (갭분석 P1 · S3).
  * 직원이 보낸 요청의 진행 상태를 한곳에서 확인. 반려 시 사유 표시.
- * TODO[BE]: GET /api/requests/my — 현재는 화면/상태 구조만 제공.
+ * BE: GET /api/requests/my (정정·휴가 통합).
  */
 const RequestStatusScreen: React.FC = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation();
     const c = useThemeColors();
     const [tab, setTab] = useState(0); // 0 전체 1 대기 2 처리됨
 
-    // 실데이터 연결 전 표시용 (BE 연동 시 교체)
-    const [items] = useState<RequestItem[]>([]);
+    const [items, setItems] = useState<RequestItem[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
+
+    const load = useCallback(async () => {
+        setLoading(true);
+        setError(false);
+        try {
+            const rows = await fetchMyRequests();
+            setItems(rows.map(r => ({
+                id: r.id,
+                type: r.type,
+                title: r.title,
+                date: r.date,
+                status: r.status,
+                rejectReason: r.rejectReason ?? undefined,
+            })));
+        } catch {
+            setError(true);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        load();
+    }, [load]);
 
     const filtered = items.filter(it =>
         tab === 0 ? true : tab === 1 ? it.status === 'pending' : it.status !== 'pending',
@@ -54,7 +82,15 @@ const RequestStatusScreen: React.FC = () => {
         <ScreenContainer scroll header={<AppHeader title="내 요청" onBack={() => navigation.goBack()} />}>
             <SegmentedControl options={['전체', '대기', '처리됨']} value={tab} onChange={setTab} />
 
-            {filtered.length === 0 ? (
+            {loading ? (
+                <LoadingState />
+            ) : error ? (
+                <ErrorState
+                    title="요청을 불러오지 못했어요"
+                    description="잠시 후 다시 시도해 주세요."
+                    primary={{label: '다시 시도', onPress: load}}
+                />
+            ) : filtered.length === 0 ? (
                 <EmptyState
                     glyph={<Ionicons name="file-tray-stacked-outline" size={40} color={c.textTertiary} />}
                     markColor={c.surfaceMuted}

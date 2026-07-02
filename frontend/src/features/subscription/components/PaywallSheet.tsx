@@ -19,6 +19,10 @@ export interface PaywallSheetProps {
     requiredPlanLabel: string;
     /** 서버가 내려준 사유 메시지 */
     message: string;
+    /** 맥락형 제목 override (예: 멀티매장). 없으면 기본 제목 사용 */
+    title?: string;
+    /** 시트 본문에 추가로 노출할 혜택 강조 한 줄 (선택) */
+    highlight?: string;
     onUpgrade: () => void;
     onClose: () => void;
 }
@@ -27,6 +31,8 @@ export const PaywallSheet: React.FC<PaywallSheetProps> = ({
     visible,
     requiredPlanLabel,
     message,
+    title,
+    highlight,
     onUpgrade,
     onClose,
 }) => {
@@ -36,7 +42,7 @@ export const PaywallSheet: React.FC<PaywallSheetProps> = ({
         <BottomSheet
             visible={visible}
             onClose={onClose}
-            title="잠깐, 이 기능은 잠겨 있어요"
+            title={title ?? '잠깐, 이 기능은 잠겨 있어요'}
             description={`이 기능은 ${requiredPlanLabel} 플랜에서 이용할 수 있어요.`}
             primary={{label: `${requiredPlanLabel} 플랜으로 업그레이드`, onPress: onUpgrade}}
             secondary={{label: '닫기', variant: 'ghost', onPress: onClose}}>
@@ -46,6 +52,11 @@ export const PaywallSheet: React.FC<PaywallSheetProps> = ({
                     {message}
                 </AppText>
             </View>
+            {highlight ? (
+                <AppText variant="caption" tone="brand" weight="700" style={styles.highlight}>
+                    {highlight}
+                </AppText>
+            ) : null}
             <AppText variant="caption" tone="tertiary" style={styles.hint}>
                 업그레이드하면 바로 이용할 수 있어요. 언제든 변경·해지할 수 있어요.
             </AppText>
@@ -65,6 +76,7 @@ const styles = StyleSheet.create({
     },
     lock: {fontSize: 18, lineHeight: 24},
     flex: {flex: 1},
+    highlight: {marginTop: spacing.sm},
     hint: {marginTop: spacing.sm},
 });
 

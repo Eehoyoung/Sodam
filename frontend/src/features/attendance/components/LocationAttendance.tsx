@@ -251,6 +251,7 @@ const LocationAttendance: React.FC<LocationAttendanceProps> = ({
     // 컴포넌트 마운트 시 위치 권한 요청
     useEffect(() => {
         requestLocationPermission();
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- 마운트 1회 위치권한 요청(권한 함수 의존 추가 시 반복 요청)
     }, []);
 
     return (

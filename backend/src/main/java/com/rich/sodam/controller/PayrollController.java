@@ -250,7 +250,11 @@ public class PayrollController {
     })
     @GetMapping("/{payrollId}/details")
     public ResponseEntity<List<PayrollDetailDto>> getPayrollDetails(
+            @AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "급여 ID", required = true) @PathVariable Long payrollId) {
+        // IDOR 차단: 본인 급여 또는 그 직원의 매장 사장만. (임의 payrollId 로 타인 명세 열람 방지)
+        Payroll payroll = payrollService.getPayrollById(payrollId);
+        guard.assertCanViewEmployee(principal.getId(), payroll.getEmployee().getId(), isMaster(principal));
         List<PayrollDetail> details = payrollService.getPayrollDetails(payrollId);
         List<PayrollDetailDto> dtos = details.stream()
                 .map(PayrollDetailDto::from)
@@ -268,7 +272,11 @@ public class PayrollController {
     })
     @GetMapping("/{payrollId}/pdf")
     public ResponseEntity<byte[]> generatePayrollPdf(
+            @AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "급여 ID", required = true) @PathVariable Long payrollId) {
+        // IDOR 차단: 본인 급여 또는 그 직원의 매장 사장만. (임의 payrollId 로 타인 명세서 PDF 열람 방지)
+        Payroll payrollForAuth = payrollService.getPayrollById(payrollId);
+        guard.assertCanViewEmployee(principal.getId(), payrollForAuth.getEmployee().getId(), isMaster(principal));
 
         byte[] pdfBytes = payrollService.generatePayrollPdf(payrollId);
 

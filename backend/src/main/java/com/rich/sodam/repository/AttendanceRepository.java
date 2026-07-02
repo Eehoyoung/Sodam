@@ -3,6 +3,7 @@ package com.rich.sodam.repository;
 import com.rich.sodam.domain.Attendance;
 import com.rich.sodam.domain.EmployeeProfile;
 import com.rich.sodam.domain.Store;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,15 +21,26 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
      * 특정 직원의 특정 기간 출퇴근 기록 조회
      * 최신 기록 순으로 정렬
      */
+    // employeeProfile.user 까지 fetch — DTO 매핑(employeeName) 시 LazyInitializationException 방지
+    @EntityGraph(attributePaths = {"employeeProfile", "employeeProfile.user", "store"})
     List<Attendance> findByEmployeeProfileAndCheckInTimeBetweenOrderByCheckInTimeDesc(
             EmployeeProfile employeeProfile, LocalDateTime startDate, LocalDateTime endDate);
+
+    @EntityGraph(attributePaths = {"employeeProfile", "employeeProfile.user", "store"})
+    List<Attendance> findByEmployeeProfileAndStoreAndCheckInTimeBetweenOrderByCheckInTimeDesc(
+            EmployeeProfile employeeProfile, Store store, LocalDateTime startDate, LocalDateTime endDate);
 
     /**
      * 특정 매장의 특정 기간 출퇴근 기록 조회
      * 최신 기록 순으로 정렬
      */
+    // employeeProfile.user 까지 fetch — 매장 전체 조회 시 LazyInitializationException 방지
+    @EntityGraph(attributePaths = {"employeeProfile", "employeeProfile.user", "store"})
     List<Attendance> findByStoreAndCheckInTimeBetweenOrderByCheckInTimeDesc(
             Store store, LocalDateTime startDate, LocalDateTime endDate);
+
+    /** 온보딩(첫 출근) 판정 — 해당 직원이 해당 매장에 출근 기록이 있는지. */
+    boolean existsByEmployeeProfile_IdAndStore_Id(Long employeeId, Long storeId);
 
     /**
      * 특정 직원의 아직 퇴근 처리되지 않은 출근 기록 조회

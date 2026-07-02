@@ -1,6 +1,9 @@
 package com.rich.sodam.core.payroll.constant;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.NavigableMap;
+import java.util.TreeMap;
 
 /**
  * 4대보험 근로자 부담 요율 (2026 적용).
@@ -28,10 +31,48 @@ public final class SocialInsuranceRates {
 
     /** 국민연금 근로자 부담률 (총 9.5%의 1/2). */
     public static final BigDecimal NATIONAL_PENSION_EMPLOYEE = new BigDecimal("0.0475");
-    /** 국민연금 기준소득월액 하한(원). ~2026.06.30. */
-    public static final BigDecimal PENSION_BASE_MIN = new BigDecimal("400000");
-    /** 국민연금 기준소득월액 상한(원). ~2026.06.30 (2026.07 갱신 주의). */
-    public static final BigDecimal PENSION_BASE_MAX = new BigDecimal("6370000");
+
+    /**
+     * 국민연금 기준소득월액 상·하한은 매년 7.1 갱신(적용기간 7.1~익년 6.30)되어 연도 분기가 필요하다.
+     * 적용 <b>시작일</b>을 키로, [하한, 상한] 캡을 값으로 보관한다. 갱신 시 추정 없이 공시값을 한 줄 추가만 하면 된다.
+     *
+     * <p>현재 등재: 2025.07.01~2026.06.30 (하한 40만 / 상한 637만, 공단 공시).
+     * 2026.07.01 갱신값은 공시 확정 후 별도 추가(값 추정 금지).
+     */
+    private static final NavigableMap<LocalDate, BigDecimal[]> PENSION_BASE_CAPS_BY_EFFECTIVE_DATE = buildPensionBaseCaps();
+
+    private static NavigableMap<LocalDate, BigDecimal[]> buildPensionBaseCaps() {
+        NavigableMap<LocalDate, BigDecimal[]> m = new TreeMap<>();
+        m.put(LocalDate.of(2025, 7, 1),
+                new BigDecimal[]{new BigDecimal("400000"), new BigDecimal("6370000")});
+        return m;
+    }
+
+    /**
+     * 주어진 일자에 적용되는 국민연금 기준소득월액 하한(원).
+     * 해당 일자 이전 가장 가까운 적용분을 사용(연도 분기). 등재 전 일자는 최초 등재분으로 폴백.
+     */
+    public static BigDecimal pensionBaseMin(LocalDate onDate) {
+        return capsFor(onDate)[0];
+    }
+
+    /** 주어진 일자에 적용되는 국민연금 기준소득월액 상한(원). {@link #pensionBaseMin(LocalDate)} 참고. */
+    public static BigDecimal pensionBaseMax(LocalDate onDate) {
+        return capsFor(onDate)[1];
+    }
+
+    private static BigDecimal[] capsFor(LocalDate onDate) {
+        var entry = PENSION_BASE_CAPS_BY_EFFECTIVE_DATE.floorEntry(onDate);
+        if (entry == null) {
+            entry = PENSION_BASE_CAPS_BY_EFFECTIVE_DATE.firstEntry();
+        }
+        return entry.getValue();
+    }
+
+    /** 국민연금 기준소득월액 하한(원). 현행 적용분(~2026.06.30). 연도 분기는 {@link #pensionBaseMin(LocalDate)}. */
+    public static final BigDecimal PENSION_BASE_MIN = pensionBaseMin(LocalDate.of(2025, 7, 1));
+    /** 국민연금 기준소득월액 상한(원). 현행 적용분(~2026.06.30, 2026.07 갱신 주의). 연도 분기는 {@link #pensionBaseMax(LocalDate)}. */
+    public static final BigDecimal PENSION_BASE_MAX = pensionBaseMax(LocalDate.of(2025, 7, 1));
 
     /** 건강보험 근로자 부담률 (총 7.19%의 1/2). */
     public static final BigDecimal HEALTH_EMPLOYEE = new BigDecimal("0.03595");

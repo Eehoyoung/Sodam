@@ -4,14 +4,18 @@ import api from '../../../common/utils/api';
 
 export interface QnAItem { id: number; title: string; content: string; createdAt?: string }
 
-async function unwrap<T = any>(promise: Promise<{ data: any }>): Promise<T> {
+// BE 응답은 {data: T} 래퍼이거나 곧바로 T — 둘 다 허용해 언래핑.
+interface ApiEnvelope<T> { data?: T }
+
+async function unwrap<T>(promise: Promise<{ data: unknown }>): Promise<T> {
   const res = await promise;
-  const body: any = res.data;
-  return (body?.data ?? body) as T;
+  const body = res.data as ApiEnvelope<T> | T;
+  const inner = (body as ApiEnvelope<T>)?.data;
+  return (inner ?? body) as T;
 }
 
 async function list(params?: { page?: number; size?: number; query?: string }): Promise<QnAItem[]> {
-  const data = await unwrap<any>(api.get(`/api/qna-info`, params as any));
+  const data = await unwrap<QnAItem[]>(api.get(`/api/qna-info`, params));
   return Array.isArray(data) ? data : [];
 }
 
@@ -25,16 +29,17 @@ async function create(payload: { title: string; content: string; attachments?: A
   form.append('content', payload.content);
   (payload.attachments ?? []).forEach((f, idx) => {
     // RN FormData accepts file descriptors but the TS lib types only allow string | Blob.
-    (form as any).append('files', {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RN FormData.append 파일 디스크립터: lib.dom 타입(string|Blob)에 미반영
+    (form as FormData & { append: (name: string, value: any) => void }).append('files', {
       uri: f.uri,
       name: f.name || `file_${idx}`,
       type: f.type || 'application/octet-stream',
     });
   });
 
-  return unwrap<{ id: number }>(api.post(`/api/qna-info`, form as any, {
+  return unwrap<{ id: number }>(api.post(`/api/qna-info`, form, {
     headers: { 'Content-Type': 'multipart/form-data' }
-  } as any));
+  }));
 }
 
 async function search(query: string): Promise<QnAItem[]> {

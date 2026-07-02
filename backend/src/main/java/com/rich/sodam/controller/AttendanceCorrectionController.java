@@ -7,7 +7,9 @@ import com.rich.sodam.repository.AttendanceCorrectionRequestRepository;
 import com.rich.sodam.repository.AttendanceRepository;
 import com.rich.sodam.repository.UserRepository;
 import com.rich.sodam.security.UserPrincipal;
+import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.service.NotificationService;
+import com.rich.sodam.service.StoreAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -43,6 +45,7 @@ public class AttendanceCorrectionController {
     private final AttendanceRepository attendanceRepo;
     private final UserRepository userRepo;
     private final NotificationService notificationService;
+    private final StoreAccessGuard storeAccessGuard;
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor
     public static class CorrectionRequest {
@@ -107,14 +110,22 @@ public class AttendanceCorrectionController {
 
     @Operation(summary = "정정 요청 승인 (사장)",
             description = "Attendance.adjustTimes 로 출퇴근 시간을 실제로 갱신하고 요청자에게 알림 발송.")
+    @MasterOnly
     @PostMapping("/correction-requests/{id}/approve")
     @Transactional
-    public ResponseEntity<Map<String, String>> approve(@PathVariable Long id) {
+    public ResponseEntity<Map<String, String>> approve(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long id) {
         AttendanceCorrectionRequest req = correctionRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("요청을 찾을 수 없어요."));
 
         Attendance att = req.getAttendance();
-        if (att != null && req.getProposedCheckIn() != null) {
+        // BOLA 차단: 정정 대상 출퇴근이 속한 매장의 사장만 승인(임금 조작 방지)
+        if (att == null || att.getStore() == null) {
+            throw new IllegalArgumentException("정정 대상 매장을 확인할 수 없어요.");
+        }
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), att.getStore().getId());
+        if (req.getProposedCheckIn() != null) {
             att.adjustTimes(req.getProposedCheckIn(), req.getProposedCheckOut());
             attendanceRepo.save(att);
         }
@@ -133,13 +144,20 @@ public class AttendanceCorrectionController {
     }
 
     @Operation(summary = "정정 요청 거절 (사장)")
+    @MasterOnly
     @PostMapping("/correction-requests/{id}/reject")
     @Transactional
     public ResponseEntity<Map<String, String>> reject(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long id,
             @RequestParam(defaultValue = "") String reason) {
         AttendanceCorrectionRequest req = correctionRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("요청을 찾을 수 없어요."));
+        // BOLA 차단: 정정 대상 매장의 사장만 거절
+        if (req.getAttendance() == null || req.getAttendance().getStore() == null) {
+            throw new IllegalArgumentException("정정 대상 매장을 확인할 수 없어요.");
+        }
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), req.getAttendance().getStore().getId());
         req.reject(reason);
 
         if (req.getRequester() != null) {

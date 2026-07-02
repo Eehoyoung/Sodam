@@ -1,6 +1,8 @@
 /**
- * usePushPermission 훅 — 현재 구현은 SDK 도입 전 stub.
- * Platform 별로 항상 granted=true 를 반환하고, autoRequest=true 면 마운트 시 자동 호출.
+ * usePushPermission 훅 — fcm.requestPushPermission 위임(key-ready).
+ * jest.setup.js 가 @react-native-firebase/messaging 를 mock(권한=AUTHORIZED) 하고
+ * PermissionsAndroid.request 를 granted 로 mock 하므로, 플랫폼별로 granted=true 가 된다.
+ * autoRequest=true 면 마운트 시 자동 호출.
  *
  * 테스트 전략:
  *  - jest.setup.js 가 react 모듈 자체를 모킹하지 않으므로 실제 React 의 useState/useEffect 동작을 사용.

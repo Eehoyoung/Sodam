@@ -1,5 +1,6 @@
 package com.rich.sodam.domain;
 
+import com.rich.sodam.config.crypto.StringCryptoConverter;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,6 +21,8 @@ public class MasterProfile {
     private User user;
 
     // 사장 추가 정보가 필요하다면 여기에 추가
+    @Convert(converter = StringCryptoConverter.class) // 사업자등록번호 PII 암호화 저장
+    @Column(length = 255)
     private String businessLicenseNumber;
 
     public MasterProfile(User user) {

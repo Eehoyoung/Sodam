@@ -4,6 +4,7 @@ import com.rich.sodam.domain.Attendance;
 import com.rich.sodam.domain.EmployeeProfile;
 import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.Store;
+import com.rich.sodam.domain.type.DomainEventType;
 import com.rich.sodam.dto.request.ManualAttendanceRequestDto;
 import com.rich.sodam.exception.EntityNotFoundException;
 import com.rich.sodam.exception.InvalidOperationException;
@@ -21,6 +22,7 @@ import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -32,6 +34,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AttendanceService {
 
+    /**
+     * 오프라인 큐 적재 시각(queuedAt) 수락 임계. 서버 수신 시각과의 차이가 이 값 이내면
+     * queuedAt 을 실제 출퇴근 시각으로 신뢰하고, 초과하면 서버시각으로 폴백한다(과거 시각 위조 방지).
+     */
+    private static final Duration OFFLINE_QUEUE_MAX_SKEW = Duration.ofHours(4);
+
     private final AttendanceRepository attendanceRepository;
     private final EmployeeProfileRepository employeeProfileRepository;
     private final StoreRepository storeRepository;
@@ -39,6 +47,8 @@ public class AttendanceService {
     private final LocationVerificationService locationService;
     private final UserService userService;
     private final UserRepository userRepository;
+    private final DomainEventService domainEventService;
+    private final LiveSyncPublisher liveSyncPublisher;
 
     /**
      * 위치정보 수집·이용 동의 여부를 강제한다(위치정보법 §18·§19, G-1).
@@ -59,6 +69,22 @@ public class AttendanceService {
      */
     @Transactional
     public Attendance checkInWithVerification(Long employeeId, Long storeId, Double latitude, Double longitude) {
+        return checkInWithVerification(employeeId, storeId, latitude, longitude, null);
+    }
+
+    /**
+     * 직원 출근 처리 (위치 검증 + 오프라인 큐 시각 수락).
+     *
+     * <p>{@code queuedAt} 이 주어지고 서버 수신 시각과의 차이가 임계({@link #OFFLINE_QUEUE_MAX_SKEW}) 이내면
+     * 그 시각을 출근시각으로 채택하고, 초과(또는 미래 시각)면 서버시각으로 폴백한다.
+     */
+    @Transactional
+    // 컨트롤러가 프록시로 호출하는 진입점에 캐시 무효화를 둔다. 내부에서 this.checkIn(...) 자기호출은
+    // AOP 프록시를 우회해 checkIn 의 @CacheEvict 가 발화하지 않으므로, 여기서 직접 evict 해야
+    // 출근 직후 attendance 조회(오늘/기간)가 stale 캐시를 반환하지 않는다.
+    @CacheEvict(value = "attendance", allEntries = true)
+    public Attendance checkInWithVerification(Long employeeId, Long storeId,
+                                              Double latitude, Double longitude, LocalDateTime queuedAt) {
         // 위치정보 동의 강제 (위치정보법 §18·§19) — GPS 좌표 수집·검증 전에 확인
         assertLocationConsent(employeeId);
 
@@ -67,7 +93,10 @@ public class AttendanceService {
             throw LocationVerificationException.outOfRange();
         }
 
-        return checkIn(employeeId, storeId, latitude, longitude);
+        Attendance result = checkIn(employeeId, storeId, latitude, longitude, resolveQueuedTime(queuedAt));
+        // 사장 대시보드·직원 홈 라이브 동기화 — 출근 인원·근무 상태 즉시 반영.
+        liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.ATTENDANCE_CHANGED);
+        return result;
     }
 
     /**
@@ -78,6 +107,19 @@ public class AttendanceService {
             @CacheEvict(value = "attendance", allEntries = true)
     })
     public Attendance checkIn(Long employeeId, Long storeId, Double latitude, Double longitude) {
+        return checkIn(employeeId, storeId, latitude, longitude, null);
+    }
+
+    /**
+     * 직원 출근 처리. {@code effectiveTime} 이 주어지면 그 시각을, null 이면 현재 시각을 출근시각으로 기록한다
+     * (오프라인 큐 적재분 보정용 — 임계 검증은 호출부에서 끝난다).
+     */
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "attendance", allEntries = true)
+    })
+    public Attendance checkIn(Long employeeId, Long storeId, Double latitude, Double longitude,
+                              LocalDateTime effectiveTime) {
         // 직원과 매장 조회
         EmployeeStoreRelationContext context = getEmployeeStoreContext(employeeId, storeId);
         EmployeeProfile employeeProfile = context.employeeProfile();
@@ -94,11 +136,26 @@ public class AttendanceService {
         // 시급 정보 가져오기
         Integer hourlyWage = context.employeeStoreRelation().getAppliedHourlyWage();
 
-        // 새 출근 기록 생성
-        Attendance attendance = new Attendance(employeeProfile, store);
-        attendance.checkIn(latitude, longitude, hourlyWage);
+        // 첫 출근(activation 계측) 판정 — 저장 전 기존 기록 유무로 판단
+        boolean isFirstCheckIn = !attendanceRepository
+                .existsByEmployeeProfile_IdAndStore_Id(employeeId, storeId);
 
-        return attendanceRepository.save(attendance);
+        // 새 출근 기록 생성. 오프라인 큐 시각이 있으면 그 시각으로, 없으면 현재 시각으로 기록.
+        Attendance attendance = new Attendance(employeeProfile, store);
+        if (effectiveTime != null) {
+            attendance.manualCheckIn(effectiveTime, latitude, longitude, hourlyWage);
+        } else {
+            attendance.checkIn(latitude, longitude, hourlyWage);
+        }
+
+        Attendance saved = attendanceRepository.save(attendance);
+
+        // 해당 직원-매장 최초 출근일 때만 1회 발화 (record 는 실패해도 흐름 영향 없음)
+        if (isFirstCheckIn) {
+            domainEventService.record(DomainEventType.FIRST_CHECK_IN, employeeId, storeId, null);
+        }
+
+        return saved;
     }
 
     /**
@@ -106,6 +163,18 @@ public class AttendanceService {
      */
     @Transactional
     public Attendance checkOutWithVerification(Long employeeId, Long storeId, Double latitude, Double longitude) {
+        return checkOutWithVerification(employeeId, storeId, latitude, longitude, null);
+    }
+
+    /**
+     * 직원 퇴근 처리 (위치 검증 + 오프라인 큐 시각 수락). 임계 검증은 {@link #resolveQueuedTime}.
+     */
+    @Transactional
+    // 진입점에 캐시 무효화 — this.checkOut(...) 자기호출은 프록시 우회로 checkOut 의 @CacheEvict 가
+    // 발화하지 않는다(퇴근 후에도 today 조회가 checkOutTime=null 인 stale 레코드 반환 → '근무중' 잔류).
+    @CacheEvict(value = "attendance", allEntries = true)
+    public Attendance checkOutWithVerification(Long employeeId, Long storeId,
+                                               Double latitude, Double longitude, LocalDateTime queuedAt) {
         // 위치정보 동의 강제 (위치정보법 §18·§19)
         assertLocationConsent(employeeId);
 
@@ -114,7 +183,9 @@ public class AttendanceService {
             throw LocationVerificationException.outOfRange();
         }
 
-        return checkOut(employeeId, storeId, latitude, longitude);
+        Attendance result = checkOut(employeeId, storeId, latitude, longitude, resolveQueuedTime(queuedAt));
+        liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.ATTENDANCE_CHANGED);
+        return result;
     }
 
     /**
@@ -125,6 +196,19 @@ public class AttendanceService {
             @CacheEvict(value = "attendance", allEntries = true)
     })
     public Attendance checkOut(Long employeeId, Long storeId, Double latitude, Double longitude) {
+        return checkOut(employeeId, storeId, latitude, longitude, null);
+    }
+
+    /**
+     * 직원 퇴근 처리. {@code effectiveTime} 이 주어지면 그 시각을 퇴근시각으로 기록한다(오프라인 큐 보정).
+     * 단, 출근시각보다 이른 시각은 엔티티가 거부하므로 그 경우 현재 시각으로 폴백한다.
+     */
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "attendance", allEntries = true)
+    })
+    public Attendance checkOut(Long employeeId, Long storeId, Double latitude, Double longitude,
+                               LocalDateTime effectiveTime) {
         // 직원과 매장 조회
         EmployeeStoreRelationContext context = getEmployeeStoreContext(employeeId, storeId);
         EmployeeProfile employeeProfile = context.employeeProfile();
@@ -140,8 +224,13 @@ public class AttendanceService {
         // 가장 최근 출근 기록 가져오기
         Attendance attendance = todayAttendances.get(0);
 
-        // 퇴근 정보 업데이트
-        attendance.checkOut(latitude, longitude);
+        // 퇴근 정보 업데이트. 오프라인 큐 시각이 출근시각 이후면 그 시각으로, 아니면 현재 시각으로.
+        if (effectiveTime != null && attendance.getCheckInTime() != null
+                && !effectiveTime.isBefore(attendance.getCheckInTime())) {
+            attendance.manualCheckOut(effectiveTime, latitude, longitude);
+        } else {
+            attendance.checkOut(latitude, longitude);
+        }
 
         return attendanceRepository.save(attendance);
     }
@@ -157,6 +246,16 @@ public class AttendanceService {
         EmployeeProfile employeeProfile = getEmployeeProfile(employeeId);
         return attendanceRepository.findByEmployeeProfileAndCheckInTimeBetweenOrderByCheckInTimeDesc(
                 employeeProfile, startDate, endDate);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Attendance> getAttendancesByEmployeeStoreAndPeriod(
+            Long employeeId, Long storeId, LocalDateTime startDate, LocalDateTime endDate) {
+
+        EmployeeProfile employeeProfile = getEmployeeProfile(employeeId);
+        Store store = getStore(storeId);
+        return attendanceRepository.findByEmployeeProfileAndStoreAndCheckInTimeBetweenOrderByCheckInTimeDesc(
+                employeeProfile, store, startDate, endDate);
     }
 
     /**
@@ -258,6 +357,26 @@ public class AttendanceService {
         }
 
         return attendance;
+    }
+
+    /**
+     * 오프라인 큐 적재 시각을 신뢰할지 판정한다.
+     * 미래 시각이거나 서버시각과의 차이가 임계를 초과하면 null 을 반환(서버시각 폴백) — 과거 시각 위조 차단.
+     *
+     * @return 채택할 출퇴근 시각, 또는 null(서버시각 사용)
+     */
+    private LocalDateTime resolveQueuedTime(LocalDateTime queuedAt) {
+        if (queuedAt == null) {
+            return null;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (queuedAt.isAfter(now)) {
+            return null; // 미래 시각 불허
+        }
+        if (Duration.between(queuedAt, now).compareTo(OFFLINE_QUEUE_MAX_SKEW) > 0) {
+            return null; // 임계 초과 → 서버시각 폴백
+        }
+        return queuedAt;
     }
 
     /**

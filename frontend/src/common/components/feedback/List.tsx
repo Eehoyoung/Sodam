@@ -1,5 +1,7 @@
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
 import React from 'react';
 import {FlatList, ListRenderItem, StyleSheet, Text, TextStyle, TouchableOpacity, View, ViewStyle} from 'react-native';
+import {ThemeColors, useThemeColors} from '../../hooks/useThemeColors';
 
 // 리스트 아이템의 기본 타입 정의
 export interface ListItemData {
@@ -56,6 +58,8 @@ function List<T extends ListItemData>({
                                           bordered = false,
                                           rounded = false,
                                       }: ListProps<T>): React.ReactElement {
+    const c = useThemeColors();
+    const styles = React.useMemo(() => makeStyles(c), [c]);
 
     // 기본 키 추출기
     const defaultKeyExtractor = React.useCallback((item: T): string => {
@@ -88,7 +92,7 @@ function List<T extends ListItemData>({
                 {item.rightIcon && <View style={styles.rightIcon}>{item.rightIcon}</View>}
             </TouchableOpacity>
         );
-    }, [itemStyle, onItemPress, titleStyle, subtitleStyle]);
+    }, [styles, itemStyle, onItemPress, titleStyle, subtitleStyle]);
 
     // 구분선 컴포넌트
     const Separator = React.useCallback(() => {
@@ -99,7 +103,7 @@ function List<T extends ListItemData>({
                 : ItemSeparatorComponent;
         }
         return <View style={styles.separator}/>;
-    }, [showSeparator, ItemSeparatorComponent]);
+    }, [styles, showSeparator, ItemSeparatorComponent]);
 
     // FlatList용 렌더 함수
     const memoizedRenderItem: ListRenderItem<T> = React.useCallback(({item, index}) => {
@@ -122,7 +126,7 @@ function List<T extends ListItemData>({
         <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>데이터가 없습니다.</Text>
         </View>
-    ), []);
+    ), [styles]);
 
     return (
         <View
@@ -154,15 +158,14 @@ function List<T extends ListItemData>({
     );
 }
 
-// styles는 동일하게 유지
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
     container: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: c.surface,
         width: '100%',
     },
     bordered: {
         borderWidth: 1,
-        borderColor: '#E5E5EA',
+        borderColor: c.border,
     },
     rounded: {
         borderRadius: 12,
@@ -186,11 +189,11 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 16,
         fontWeight: '500',
-        color: '#000000',
+        color: c.textPrimary,
     },
     subtitle: {
         fontSize: 14,
-        color: '#8E8E93',
+        color: c.textTertiary,
         marginTop: 4,
     },
     rightIcon: {
@@ -198,7 +201,7 @@ const styles = StyleSheet.create({
     },
     separator: {
         height: 1,
-        backgroundColor: '#F2F2F7',
+        backgroundColor: c.divider,
         marginLeft: 16,
     },
     emptyContainer: {
@@ -208,7 +211,7 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         fontSize: 16,
-        color: '#8E8E93',
+        color: c.textTertiary,
     },
 });
 

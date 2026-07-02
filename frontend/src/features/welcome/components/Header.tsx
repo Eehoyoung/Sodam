@@ -1,5 +1,7 @@
-import React from 'react';
+/* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+import React, {useMemo} from 'react';
 import {Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {ThemeColors, useThemeColors} from '../../../common/hooks/useThemeColors';
 
 interface HeaderProps {
     onLogin: () => void;
@@ -7,6 +9,9 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({onLogin, onSignup}) => {
+    const c = useThemeColors();
+    const styles = useMemo(() => makeStyles(c), [c]);
+
     return (
         <SafeAreaView style={styles.safeArea}>
             <View style={styles.container}>
@@ -36,12 +41,12 @@ const Header: React.FC<HeaderProps> = ({onLogin, onSignup}) => {
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (c: ThemeColors) => StyleSheet.create({
     safeArea: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: c.surface,
         ...Platform.select({
             ios: {
-                shadowColor: '#000',
+                shadowColor: c.shadowColor,
                 shadowOffset: {width: 0, height: 2},
                 shadowOpacity: 0.1,
                 shadowRadius: 4,
@@ -57,7 +62,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 20,
         paddingVertical: 12,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: c.surface,
     },
     logoContainer: {
         flex: 1,
@@ -65,7 +70,7 @@ const styles = StyleSheet.create({
     logo: {
         fontSize: 24,
         fontWeight: '800',
-        color: '#2196F3',
+        color: c.brandPrimary,
         letterSpacing: -0.5,
     },
     buttonContainer: {
@@ -77,25 +82,24 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 8,
-        backgroundColor: 'transparent',
         borderWidth: 1,
-        borderColor: '#2196F3',
+        borderColor: c.brandPrimary,
     },
     loginButtonText: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#2196F3',
+        color: c.brandPrimary,
     },
     signupButton: {
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 8,
-        backgroundColor: '#2196F3',
+        backgroundColor: c.brandPrimary,
     },
     signupButtonText: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#FFFFFF',
+        color: c.textInverse,
     },
 });
 

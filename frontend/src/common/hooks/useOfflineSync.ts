@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
 import {AppState, AppStateStatus} from 'react-native';
 import {queryKeys} from '../utils/queryClient';
@@ -60,7 +60,7 @@ export interface OfflineSyncState {
  */
 export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
     const queryClient = useQueryClient();
-    const finalConfig = {...defaultConfig, ...config};
+    const finalConfig = useMemo(() => ({...defaultConfig, ...config}), [config]);
 
     // 상태 관리
     const [networkState, setNetworkState] = useState<NetworkState>({

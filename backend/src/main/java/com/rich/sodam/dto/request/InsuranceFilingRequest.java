@@ -14,7 +14,7 @@ import java.time.LocalDate;
  * 4대보험 신고서 생성 요청.
  *
  * <p>⚠️ {@code residentNumber} 는 신고서 서식 채움에만 쓰이고 <b>절대 저장·로그하지 않는다</b>
- * (개인정보보호법·CLAUDE.md Hard-No). 응답 서식에 담겨 사장에게 반환된 뒤 서버 메모리에서 폐기된다.</p>
+ * (개인정보보호법·프로젝트 운영 기준 Hard-No). 응답 서식에 담겨 사장에게 반환된 뒤 서버 메모리에서 폐기된다.</p>
  */
 @Getter
 @Setter

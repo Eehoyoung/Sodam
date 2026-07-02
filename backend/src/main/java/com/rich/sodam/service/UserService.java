@@ -125,6 +125,14 @@ public class UserService {
         return userRepository.findByEmail(email);
     }
 
+    /** 이메일 중복 여부 — true 면 가입 가능. */
+    public boolean isEmailAvailable(String email) {
+        if (email == null || email.isBlank()) {
+            return false;
+        }
+        return userRepository.findByEmail(email.trim().toLowerCase()).isEmpty();
+    }
+
     @jakarta.transaction.Transactional
     @CacheEvict(value = "users", key = "#joinDto.email")
     public User joinUser(JoinDto joinDto, String grade) {
@@ -151,7 +159,7 @@ public class UserService {
         // 비밀번호 정책: PasswordResetService 와 동일 규칙
         if (!com.rich.sodam.service.PasswordResetService.isValidPassword(joinDto.getPassword())) {
             throw new IllegalArgumentException(
-                    "비밀번호는 8자 이상, 대소문자·숫자·특수문자를 각 1자 이상 포함해야 해요.");
+                    "비밀번호는 8자 이상, 대문자·소문자·숫자·특수문자 중 3가지 이상을 포함해야 해요.");
         }
 
         // 이메일 중복
@@ -324,9 +332,10 @@ public class UserService {
         }
 
         if (updateDto.getUserGrade() != null) {
-            // 직책 변경 시 적절한 메서드 사용
+            // 권한상승 차단: 직원 정보 수정 경로에서 사장(MASTER) 승격 금지.
+            // 사업주 전환은 별도 인가 플로우(convertToOwner)에서만 허용한다.
             if (updateDto.getUserGrade() == UserGrade.MASTER) {
-                employee.changeToMaster();
+                throw new IllegalArgumentException("직원 정보 수정에서는 사장 권한으로 변경할 수 없어요.");
             } else if (updateDto.getUserGrade() == UserGrade.EMPLOYEE) {
                 employee.changeToEmployee();
             } else {

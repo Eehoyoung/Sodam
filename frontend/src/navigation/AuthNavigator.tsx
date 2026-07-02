@@ -26,7 +26,14 @@ const AuthNavigator: React.FC = () => {
         if (!user) {
             return;
         }
-        resetToRootRoute(navigation, resolvePostAuthRoute(user, nestedParams?.selectedPurpose));
+        const target = resolvePostAuthRoute(user, nestedParams?.selectedPurpose);
+        // 미완료 게이트(Consent/ProfileBasics)면 target.name==='Auth' → 자기 자신으로 reset →
+        // 재마운트 무한루프(Maximum update depth·이중 렌더)가 된다. HomeRoot 졸업 시에만 reset.
+        // 게이트 간 전환은 각 화면 제출 핸들러(Login/Consent/ProfileBasics)가 직접 수행한다.
+        if (target.name === 'Auth') {
+            return;
+        }
+        resetToRootRoute(navigation, target);
     }, [user, navigation, nestedParams?.selectedPurpose]);
 
     return (
@@ -35,13 +42,16 @@ const AuthNavigator: React.FC = () => {
                 name="Login"
                 component={LoginScreen}
                 initialParams={route.params?.screen === 'Login' ? nestedParams : undefined}
-                options={{title: '로그인'}}
+                // 화면 안에 이미 큰 로고+카피가 있어 네비 헤더(작은 로고+"로그인" 타이틀)를 얹으면
+                // 로고가 두 번 보인다 → 네비 헤더는 끄고 화면 자체 구성만 사용.
+                options={{headerShown: false}}
             />
             <Stack.Screen
                 name="Signup"
                 component={SignupScreen}
                 initialParams={route.params?.screen === 'Signup' ? nestedParams : undefined}
-                options={{title: '회원가입'}}
+                // 화면이 자체 AppHeader(뒤로가기)를 렌더 → 네비 헤더 끄기(이중 헤더 제거, ProfileBasics와 동일 원칙)
+                options={{headerShown: false}}
             />
             <Stack.Screen name="PasswordReset" component={PasswordResetScreen} options={{title: '비밀번호 찾기'}} />
             <Stack.Screen name="OnboardingCarousel" component={OnboardingCarouselScreen} options={{headerShown: false}} />
@@ -61,7 +71,8 @@ const AuthNavigator: React.FC = () => {
                 name="ProfileBasics"
                 component={ProfileBasicsScreen}
                 initialParams={route.params?.screen === 'ProfileBasics' ? nestedParams : undefined}
-                options={{title: '기본 정보', headerBackVisible: false, gestureEnabled: false}}
+                // 화면이 자체 AppHeader("기본 정보")를 렌더 → 네비 헤더 끄기(이중 헤더·레이아웃 측정 충돌 제거)
+                options={{headerShown: false, gestureEnabled: false}}
             />
         </Stack.Navigator>
     );

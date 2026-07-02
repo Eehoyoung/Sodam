@@ -4,7 +4,10 @@ import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
+
+import java.util.Arrays;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
@@ -36,9 +39,22 @@ public class PiiCryptoKeyHolder {
     @Value("${sodam.security.pii.encryption-key:}")
     private String encryptionKey;
 
+    private final Environment environment;
+
+    public PiiCryptoKeyHolder(Environment environment) {
+        this.environment = environment;
+    }
+
     @PostConstruct
     void init() {
         if (encryptionKey == null || encryptionKey.isBlank()) {
+            // 운영(prod) 프로파일에서는 평문 PII 저장을 차단 — 키 없이는 부팅 거부(fail-fast, PIPA §29).
+            boolean isProd = Arrays.asList(environment.getActiveProfiles()).contains("prod");
+            if (isProd) {
+                throw new IllegalStateException(
+                        "운영 환경에서 PII 암호화 키(sodam.security.pii.encryption-key)가 미설정입니다. " +
+                                "평문 PII 저장 금지 — SODAM_PII_KEY 를 주입한 뒤 기동하세요.");
+            }
             log.warn("PII 암호화 키 미설정 — 평문 모드로 동작합니다 (dev/test 허용, 운영 금지).");
             return;
         }

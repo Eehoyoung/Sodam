@@ -15,7 +15,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.service.StoreAccessGuard;
 
 @MasterOnly
 @RestController
@@ -25,6 +28,7 @@ import com.rich.sodam.security.annotation.MasterOnly;
 public class PayrollPolicyController {
 
     private final PayrollPolicyService payrollPolicyService;
+    private final StoreAccessGuard storeAccessGuard;
 
     @Operation(summary = "매장 급여 정책 조회", description = "특정 매장의 급여 정책을 조회합니다.")
     @ApiResponses(value = {
@@ -35,7 +39,9 @@ public class PayrollPolicyController {
     })
     @GetMapping("/store/{storeId}")
     public ResponseEntity<PayrollPolicyDto> getStorePayrollPolicy(
+            @AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "매장 ID", required = true) @PathVariable Long storeId) {
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId); // BOLA 차단: 본인 매장만
         PayrollPolicy policy = payrollPolicyService.getPayrollPolicyByStore(storeId);
         return ResponseEntity.ok(PayrollPolicyDto.from(policy));
     }
@@ -50,10 +56,11 @@ public class PayrollPolicyController {
     })
     @PostMapping("/store/{storeId}")
     public ResponseEntity<PayrollPolicyDto> updateStorePayrollPolicy(
+            @AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "매장 ID", required = true) @PathVariable Long storeId,
             @Parameter(description = "급여 정책 업데이트 정보", required = true)
             @RequestBody @Valid PayrollPolicyUpdateDto updateDto) {
-
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId); // BOLA 차단: 본인 매장만(급여 계산 기준 조작 방지)
         PayrollPolicy policy = payrollPolicyService.updatePayrollPolicy(storeId, updateDto);
         return ResponseEntity.ok(PayrollPolicyDto.from(policy));
     }

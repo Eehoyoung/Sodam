@@ -1,6 +1,7 @@
 package com.rich.sodam.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -47,4 +48,8 @@ public class StoreUpdateDto {
 
     @Schema(description = "주소 지오코딩을 위한 쿼리(선택)", example = "서울시 강남구 테헤란로 123")
     private String query;
+
+    @Schema(description = "급여 정산 주기(시작/마감/지급일). 전달 시 전체 교체")
+    @Valid
+    private PayrollCycleDto payrollCycle;
 }

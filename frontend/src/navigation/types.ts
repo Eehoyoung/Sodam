@@ -1,8 +1,13 @@
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {RouteProp} from '@react-navigation/native';
 import type {AuthPurpose, OnboardingRole} from './authFlow';
+// HomeStackParamList 는 HomeNavigator(실 네비게이터에 배선된 정의)를 단일 출처로 재노출한다.
+// 과거 이 파일에 있던 부분 복제본은 실 정의와 어긋나 라우트 누락/타입 구멍을 만들었음 → 제거.
+import type {HomeStackParamList} from './HomeNavigator';
+
+export type {HomeStackParamList};
 
 export type RootStackParamList = {
+    SodamLanding: undefined;
     Welcome: {selectedRole?: OnboardingRole; selectedPurpose?: AuthPurpose} | undefined;
     WelcomeMain: {selectedRole?: OnboardingRole; selectedPurpose?: AuthPurpose} | undefined;
     Auth: {screen?: keyof AuthStackParamList; params?: AuthStackParamList[keyof AuthStackParamList]};
@@ -23,55 +28,7 @@ export type AuthStackParamList = {
     ProfileBasics: {selectedPurpose?: AuthPurpose} | undefined;
 };
 
-export type HomeStackParamList = {
-    Home: undefined;
-    Attendance: undefined;
-    WorkplaceList: undefined;
-    WorkplaceDetail: {workplaceId: string};
-    SalaryList: undefined;
-    InfoMain: undefined;
-    LaborInfoDetail: {laborInfoId: number};
-    TaxInfoDetail: {taxInfoId: number};
-    TipsDetail: {tipId: number};
-    PolicyDetail: {policyId: number};
-    QnA: undefined;
-    EmployeeMyPageScreen: undefined;
-    ManagerMyPageScreen: undefined;
-    MasterMyPageScreen: undefined;
-    UserMyPageScreen: undefined;
-    Subscribe: undefined;
-    Settings: undefined;
-    Profile: undefined;
-    OwnerDashboard: undefined;
-    EmployeeAttendanceHome: undefined;
-    EmployeeDetail: {employeeId: number; storeId: number};
-    PayrollRun: {storeId?: number} | undefined;
-    JoinStoreByCode: undefined;
-    AttendanceCorrectionRequest: {
-        attendanceId?: number;
-        date?: string;
-        storeName?: string;
-        currentCheckIn?: string;
-        currentCheckOut?: string;
-    } | undefined;
-    NotificationSettings: undefined;
-    NotificationCenter: undefined;
-    AttendanceCalendar: undefined;
-    WageSettings: {storeId: number};
-    StoreEdit: {storeId: number};
-    StoreOperatingHours: {storeId: number};
-    MissingAttendanceCenter: undefined;
-    AccountSettings: undefined;
-    TimeOffRequest: {storeId: number};
-    Referral: undefined;
-    TossBillingAuth: {plan: string; billingCycle: string};
-};
-
 export type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 export type SignupScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Signup'>;
 export type HomeScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'Home'>;
-export type WorkplaceListScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'WorkplaceList'>;
-export type WorkplaceDetailScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'WorkplaceDetail'>;
 export type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-export type WorkplaceDetailRouteProp = RouteProp<HomeStackParamList, 'WorkplaceDetail'>;
