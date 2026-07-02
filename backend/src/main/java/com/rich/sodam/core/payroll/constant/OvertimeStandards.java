@@ -11,7 +11,7 @@ package com.rich.sodam.core.payroll.constant;
  * 소담은 연장수당 금액은 계산하지만 이 한도 위반은 별도로 사장에게 경보한다(L-NEW-02).
  *
  * <p>출처: 근로기준법 §50·§53·§110 (국가법령정보센터).
- * 노동법 개정 대비해 계산 로직과 분리(CLAUDE.md 테스트 정책).
+ * 노동법 개정 대비해 계산 로직과 분리(프로젝트 운영 기준 테스트 정책).
  */
 public final class OvertimeStandards {
 
