@@ -82,7 +82,7 @@ const MissingAttendanceCenterScreen: React.FC = () => {
     };
 
     return (
-        <ScreenContainer padded={false} header={<AppHeader title="출퇴근 이상" />}>
+        <ScreenContainer padded={false} header={<AppHeader title="출퇴근 이상" onBack={() => navigation.goBack()} />}>
             <ScrollView
                 contentContainerStyle={styles.content}
                 refreshControl={

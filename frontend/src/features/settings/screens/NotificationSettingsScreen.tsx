@@ -1,6 +1,7 @@
 /* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
 import React, {useEffect, useMemo, useState} from 'react';
 import {Platform, Pressable, StyleSheet, Switch, Text, View} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import DateTimePicker, {DateTimePickerEvent} from '@react-native-community/datetimepicker';
 import {tokens} from '../../../theme/tokens';
@@ -46,6 +47,7 @@ const useStyles = () => {
 const NotificationSettingsScreen: React.FC = () => {
     const styles = useStyles();
     const c = useThemeColors();
+    const navigation = useNavigation();
     const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
     const [pickerOpenFor, setPickerOpenFor] = useState<null | 'start' | 'end'>(null);
 
@@ -81,7 +83,7 @@ const NotificationSettingsScreen: React.FC = () => {
     };
 
     return (
-        <ScreenContainer scroll header={<AppHeader title="알림 설정" />}>
+        <ScreenContainer scroll header={<AppHeader title="알림 설정" onBack={() => navigation.goBack()} />}>
             <AppText variant="headingSm" style={styles.title}>받고 싶은 알림만{'\n'}켜두세요</AppText>
             <AppText variant="bodyMd" tone="secondary" style={styles.subtitle}>
                 방해받기 싫은 시간대도 정할 수 있어요.

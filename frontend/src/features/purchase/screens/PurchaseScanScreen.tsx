@@ -10,6 +10,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import {RouteProp, NavigationProp} from '@react-navigation/native';
 import {
     AppButton,
+    AppHeader,
     AppText,
     AppToast,
     CtaStack,
@@ -93,6 +94,7 @@ export default function PurchaseScanScreen({route, navigation}: Props) {
     return (
         <ScreenContainer
             scroll
+            header={<AppHeader title="매입 추가" onBack={() => navigation.goBack()} />}
             footer={
                 <CtaStack>
                     <AppButton

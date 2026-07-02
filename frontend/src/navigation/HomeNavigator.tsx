@@ -54,6 +54,7 @@ import WithholdingStatementScreen from '../features/salary/screens/WithholdingSt
 import EmployeeDocumentsScreen from '../features/document/screens/EmployeeDocumentsScreen';
 import AddDocumentScreen from '../features/document/screens/AddDocumentScreen';
 import BreakRecordScreen from '../features/breakrecord/screens/BreakRecordScreen';
+import SendBonusScreen from '../features/bonus/screens/SendBonusScreen';
 import HeadcountTrendScreen from '../features/salary/screens/HeadcountTrendScreen';
 import MinorGuardScreen from '../features/minorguard/screens/MinorGuardScreen';
 import MyWageHistoryScreen from '../features/wage/screens/MyWageHistoryScreen';
@@ -132,6 +133,7 @@ export type HomeStackParamList = {
     MyContract: undefined;
     ContractSign: {contractId: number};
     SendContract: {storeId: number; employeeId?: number; employeeName?: string};
+    SendBonus: {storeId: number; employeeId: number; employeeName?: string};
     WithholdingStatement: {storeId: number};
     EmployeeDocuments: {storeId: number; employeeId: number; employeeName?: string};
     AddDocument: {storeId: number; employeeId: number};
@@ -185,28 +187,28 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
                 }}
             />
 
-            <Stack.Screen name="Subscribe" component={SubscribeScreen} options={{ title: '구독하기' }} />
-            <Stack.Screen name="QnA" component={QnAScreen} options={{ title: 'Q&A' }} />
-            <Stack.Screen name="InfoList" component={InfoListScreen} options={{ title: '정보 서비스' }} />
+            <Stack.Screen name="Subscribe" component={SubscribeScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="QnA" component={QnAScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="InfoList" component={InfoListScreen} options={{ headerShown: false }} />
 
-            <Stack.Screen name="LaborInfoDetail" component={LaborInfoDetailScreen} options={{ title: '노동 정보 상세' }} />
-            <Stack.Screen name="PolicyDetail" component={PolicyDetailScreen} options={{ title: '정책 상세' }} />
-            <Stack.Screen name="TaxInfoDetail" component={TaxInfoDetailScreen} options={{ title: '세무 정보 상세' }} />
-            <Stack.Screen name="TipsDetail" component={TipsDetailScreen} options={{ title: '팁 상세' }} />
+            <Stack.Screen name="LaborInfoDetail" component={LaborInfoDetailScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="PolicyDetail" component={PolicyDetailScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="TaxInfoDetail" component={TaxInfoDetailScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="TipsDetail" component={TipsDetailScreen} options={{ headerShown: false }} />
             <Stack.Screen
                 name="Attendance"
                 component={AttendanceScreen}
-                options={{ headerShown: true, title: '출퇴근 관리' }}
+                options={{ headerShown: false }}
             />
             <Stack.Screen
                 name="SalaryList"
                 component={SalaryListScreen}
-                options={{ headerShown: true, title: '급여 내역' }}
+                options={{ headerShown: false }}
             />
             <Stack.Screen
                 name="SalaryDetail"
                 component={SalaryDetailScreen}
-                options={{ headerShown: true, title: '급여 상세' }}
+                options={{ headerShown: false }}
             />
             <Stack.Screen
                 name="SalaryArchive"
@@ -222,58 +224,58 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen
                 name="Settings"
                 component={SettingsScreen}
-                options={{headerShown: true, title: '설정'}}
+                options={{headerShown: false}}
             />
             <Stack.Screen
                 name="Profile"
                 component={ProfileScreen}
-                options={{headerShown: true, title: '내 프로필'}}
+                options={{headerShown: false}}
             />
 
             <Stack.Screen
                 name="EmployeeMyPageScreen"
                 component={EmployeeMyPageRNScreen}
-                options={{headerShown: true, title: '사원 마이페이지'}}
+                options={{headerShown: false}}
             />
             <Stack.Screen
                 name="MasterMyPageScreen"
                 component={MasterMyPageScreen}
-                options={{headerShown: true, title: '사장 마이페이지'}}
+                options={{headerShown: false}}
             />
             <Stack.Screen
                 name="ManagerMyPageScreen"
                 component={ManagerMyPageScreen}
-                options={{headerShown: true, title: '매니저 마이페이지'}}
+                options={{headerShown: false}}
             />
             <Stack.Screen
                 name="UserMyPageScreen"
                 component={UserMyPageScreen}
-                options={{headerShown: true, title: '개인 마이페이지'}}
+                options={{headerShown: false}}
             />
             <Stack.Screen
                 name="StoreRegistration"
                 component={StoreRegistrationScreen}
-                options={{headerShown: true, title: '매장 등록'}}
+                options={{headerShown: false}}
             />
             <Stack.Screen
                 name="StoreDetail"
                 component={StoreDetailScreen}
-                options={{headerShown: true, title: '매장 상세'}}
+                options={{headerShown: false}}
             />
             <Stack.Screen
                 name="OwnerDashboard"
                 component={OwnerDashboardScreen}
-                options={{headerShown: true, title: '대시보드'}}
+                options={{headerShown: false}}
             />
             <Stack.Screen
                 name="EmployeeAttendanceHome"
                 component={EmployeeAttendanceHome}
-                options={{headerShown: true, title: '출퇴근'}}
+                options={{headerShown: false}}
             />
             <Stack.Screen
                 name="EmployeeDetail"
                 component={EmployeeDetailScreen}
-                options={{headerShown: true, title: '직원 상세'}}
+                options={{headerShown: false}}
             />
             <Stack.Screen
                 name="EmployeeManagement"
@@ -288,62 +290,63 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen
                 name="JoinStoreByCode"
                 component={JoinStoreByCodeScreen}
-                options={{headerShown: true, title: '매장 가입'}}
+                options={{headerShown: false}}
             />
             <Stack.Screen
                 name="AttendanceCorrectionRequest"
                 component={AttendanceCorrectionRequestScreen}
-                options={{headerShown: true, title: '정정 요청'}}
+                options={{headerShown: false}}
             />
             <Stack.Screen
                 name="NotificationSettings"
                 component={NotificationSettingsScreen}
-                options={{headerShown: true, title: '알림 설정'}}
+                options={{headerShown: false}}
             />
             <Stack.Screen
                 name="NotificationCenter"
                 component={NotificationCenterScreen}
-                options={{headerShown: true, title: '알림'}}
+                options={{headerShown: false}}
             />
             <Stack.Screen
                 name="AttendanceCalendar"
                 component={AttendanceCalendarScreen}
-                options={{headerShown: true, title: '근무 캘린더'}}
+                options={{headerShown: false}}
             />
-            <Stack.Screen name="WageSettings" component={WageSettingsScreen} options={{headerShown: true, title: '시급 설정'}} />
-            <Stack.Screen name="StoreEdit" component={StoreEditScreen} options={{headerShown: true, title: '매장 정보 편집'}} />
-            <Stack.Screen name="StoreOperatingHours" component={StoreOperatingHoursScreen} options={{headerShown: true, title: '운영시간 설정'}} />
-            <Stack.Screen name="MissingAttendanceCenter" component={MissingAttendanceCenterScreen} options={{headerShown: true, title: '출퇴근 이상'}} />
-            <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} options={{headerShown: true, title: '계정 설정'}} />
-            <Stack.Screen name="TimeOffRequest" component={TimeOffRequestScreen} options={{headerShown: true, title: '휴가 신청'}} />
-            <Stack.Screen name="Referral" component={ReferralScreen} options={{headerShown: true, title: '친구 추천'}} />
-            <Stack.Screen name="TossBillingAuth" component={TossBillingAuthScreen} options={{headerShown: true, title: '카드 등록'}} />
-            <Stack.Screen name="PurchaseLedger" component={PurchaseLedgerScreen} options={{headerShown: true, title: '매입장부'}} />
-            <Stack.Screen name="PurchaseScan" component={PurchaseScanScreen} options={{headerShown: true, title: '매입 추가'}} />
-            <Stack.Screen name="PurchaseConfirm" component={PurchaseConfirmScreen} options={{headerShown: true, title: '확인하고 저장'}} />
-            <Stack.Screen name="PriceTrend" component={PriceTrendScreen} options={{headerShown: true, title: '가격 추이'}} />
-            <Stack.Screen name="ReorderHint" component={ReorderHintScreen} options={{headerShown: true, title: '발주 참고'}} />
-            <Stack.Screen name="PayrollPreview" component={PayrollPreviewScreen} options={{headerShown: true, title: '급여 미리보기'}} />
-            <Stack.Screen name="WeeklyInsights" component={WeeklyInsightsScreen} options={{headerShown: true, title: '이번 주 인사이트'}} />
+            <Stack.Screen name="WageSettings" component={WageSettingsScreen} options={{headerShown: false}} />
+            <Stack.Screen name="StoreEdit" component={StoreEditScreen} options={{headerShown: false}} />
+            <Stack.Screen name="StoreOperatingHours" component={StoreOperatingHoursScreen} options={{headerShown: false}} />
+            <Stack.Screen name="MissingAttendanceCenter" component={MissingAttendanceCenterScreen} options={{headerShown: false}} />
+            <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} options={{headerShown: false}} />
+            <Stack.Screen name="TimeOffRequest" component={TimeOffRequestScreen} options={{headerShown: false}} />
+            <Stack.Screen name="Referral" component={ReferralScreen} options={{headerShown: false}} />
+            <Stack.Screen name="TossBillingAuth" component={TossBillingAuthScreen} options={{headerShown: false}} />
+            <Stack.Screen name="PurchaseLedger" component={PurchaseLedgerScreen} options={{headerShown: false}} />
+            <Stack.Screen name="PurchaseScan" component={PurchaseScanScreen} options={{headerShown: false}} />
+            <Stack.Screen name="PurchaseConfirm" component={PurchaseConfirmScreen} options={{headerShown: false}} />
+            <Stack.Screen name="PriceTrend" component={PriceTrendScreen} options={{headerShown: false}} />
+            <Stack.Screen name="ReorderHint" component={ReorderHintScreen} options={{headerShown: false}} />
+            <Stack.Screen name="PayrollPreview" component={PayrollPreviewScreen} options={{headerShown: false}} />
+            <Stack.Screen name="WeeklyInsights" component={WeeklyInsightsScreen} options={{headerShown: false}} />
             <Stack.Screen name="MyContract" component={MyContractScreen} options={{headerShown: false}} />
             <Stack.Screen name="ContractSign" component={ContractSignScreen} options={{headerShown: false}} />
             <Stack.Screen name="SendContract" component={SendContractScreen} options={{headerShown: false}} />
-            <Stack.Screen name="WithholdingStatement" component={WithholdingStatementScreen} options={{headerShown: true, title: '세무 자료'}} />
+            <Stack.Screen name="WithholdingStatement" component={WithholdingStatementScreen} options={{headerShown: false}} />
             <Stack.Screen name="EmployeeDocuments" component={EmployeeDocumentsScreen} options={{headerShown: false}} />
             <Stack.Screen name="AddDocument" component={AddDocumentScreen} options={{headerShown: false}} />
             <Stack.Screen name="BreakRecord" component={BreakRecordScreen} options={{headerShown: false}} />
-            <Stack.Screen name="HeadcountTrend" component={HeadcountTrendScreen} options={{headerShown: true, title: '고용 공제 신호'}} />
-            <Stack.Screen name="MinorGuard" component={MinorGuardScreen} options={{headerShown: true, title: '연소근로자 확인'}} />
+            <Stack.Screen name="SendBonus" component={SendBonusScreen} options={{headerShown: false}} />
+            <Stack.Screen name="HeadcountTrend" component={HeadcountTrendScreen} options={{headerShown: false}} />
+            <Stack.Screen name="MinorGuard" component={MinorGuardScreen} options={{headerShown: false}} />
             <Stack.Screen name="MyWageHistory" component={MyWageHistoryScreen} options={{headerShown: false}} />
             <Stack.Screen name="MyLeaveBalance" component={MyLeaveBalanceScreen} options={{headerShown: false}} />
-            <Stack.Screen name="SubsidyEligibility" component={SubsidyEligibilityScreen} options={{headerShown: true, title: '지원금 자격'}} />
-            <Stack.Screen name="TaxDeadline" component={TaxDeadlineScreen} options={{headerShown: true, title: '세무 신고 기한'}} />
-            <Stack.Screen name="LegalLedger" component={LegalLedgerScreen} options={{headerShown: true, title: '법정 장부'}} />
+            <Stack.Screen name="SubsidyEligibility" component={SubsidyEligibilityScreen} options={{headerShown: false}} />
+            <Stack.Screen name="TaxDeadline" component={TaxDeadlineScreen} options={{headerShown: false}} />
+            <Stack.Screen name="LegalLedger" component={LegalLedgerScreen} options={{headerShown: false}} />
             <Stack.Screen name="MyShift" component={MyShiftScreen} options={{headerShown: false}} />
             <Stack.Screen name="EditShift" component={EditShiftScreen} options={{headerShown: false}} />
             <Stack.Screen name="StoreSchedule" component={StoreScheduleScreen} options={{headerShown: false}} />
             <Stack.Screen name="AttendanceApproval" component={AttendanceApprovalScreen} options={{headerShown: false}} />
-            <Stack.Screen name="TaxSimulator" component={TaxSimulatorScreen} options={{headerShown: true, title: '세무 시뮬레이터'}} />
+            <Stack.Screen name="TaxSimulator" component={TaxSimulatorScreen} options={{headerShown: false}} />
             <Stack.Screen name="PersonalAnnualTax" component={PersonalAnnualTaxScreen} options={{headerShown: false}} />
             <Stack.Screen name="StoreNoticeList" component={StoreNoticeListScreen} options={{headerShown: false}} />
             <Stack.Screen name="WriteNotice" component={WriteNoticeScreen} options={{headerShown: false}} />

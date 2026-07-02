@@ -1,11 +1,13 @@
 import React, {useCallback, useMemo, useRef, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
     AppButton,
+    AppHeader,
     AppText,
     CtaStack,
     LoadingState,
@@ -187,6 +189,7 @@ const TossBillingAuthScreen: React.FC = () => {
     if (!WebViewImpl) {
         return (
             <ScreenContainer
+                header={<AppHeader title="카드 등록" onBack={() => navigation.goBack()} />}
                 footer={
                     <CtaStack>
                         <AppButton label="돌아가기" onPress={() => navigation.goBack()} />
@@ -209,7 +212,7 @@ const TossBillingAuthScreen: React.FC = () => {
 
     if (processing) {
         return (
-            <ScreenContainer>
+            <ScreenContainer header={<AppHeader title="카드 등록" />}>
                 <LoadingState title="결제 처리 중" description="결제를 처리하고 있어요…" />
             </ScreenContainer>
         );
@@ -217,7 +220,8 @@ const TossBillingAuthScreen: React.FC = () => {
 
     const WebView = WebViewImpl;
     return (
-        <View style={styles.flex}>
+        <SafeAreaView style={styles.flex} edges={['top']}>
+            <AppHeader title="카드 등록" onBack={() => navigation.goBack()} />
             <WebView
                 source={{html}}
                 // 카드사·은행·3DS 외부 인증 도메인 리다이렉트가 필요해 '*' 유지(좁히면 실결제 차단).
@@ -230,7 +234,7 @@ const TossBillingAuthScreen: React.FC = () => {
                 }}
                 style={styles.flex}
             />
-        </View>
+        </SafeAreaView>
     );
 };
 

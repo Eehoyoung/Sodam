@@ -1,7 +1,7 @@
 import {AppToast, ConfirmSheet, AppButton, AppCard, AppHeader, AppInput, AppListItem, AmountText, AppText, CtaStack, ScreenContainer} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
-import {RouteProp, useRoute} from '@react-navigation/native';
+import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {spacing} from '../../../theme/tokens';
 import {formatWage} from '../../../common/utils/format';
@@ -14,6 +14,7 @@ import api from '../../../common/utils/api';
  */
 const WageSettingsScreen: React.FC = () => {
     const route = useRoute<RouteProp<HomeStackParamList, 'WageSettings'>>();
+    const navigation = useNavigation();
     const storeId = route.params.storeId;
 
     const [currentWage, setCurrentWage] = useState<number | null>(null);
@@ -81,7 +82,7 @@ const WageSettingsScreen: React.FC = () => {
     return (
         <ScreenContainer
             scroll
-            header={<AppHeader title="시급 정책" />}
+            header={<AppHeader title="시급 정책" onBack={() => navigation.goBack()} />}
             footer={
                 <CtaStack>
                     <AppButton label="시급 변경하기" loading={loading} onPress={submit} />

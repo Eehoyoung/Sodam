@@ -12,6 +12,7 @@ import {
     AmountText,
     AppButton,
     AppCard,
+    AppHeader,
     AppInput,
     AppText,
     AppToast,
@@ -201,9 +202,11 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
         }
     };
 
+    const header = <AppHeader title="확인하고 저장" onBack={() => navigation.goBack()} />;
+
     if (loading) {
         return (
-            <ScreenContainer>
+            <ScreenContainer header={header}>
                 <LoadingState title="매입 정보 로딩 중" description="잠시만 기다려 주세요" />
             </ScreenContainer>
         );
@@ -211,7 +214,7 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
 
     if (loadError) {
         return (
-            <ScreenContainer>
+            <ScreenContainer header={header}>
                 <ErrorState
                     title="불러오지 못했어요"
                     description={loadError}
@@ -227,7 +230,7 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
 
     if (saved) {
         return (
-            <ScreenContainer>
+            <ScreenContainer header={header}>
                 <SuccessState
                     title={isEdit ? '매입을 수정했어요' : '매입을 저장했어요'}
                     description="매입장부에서 언제든 다시 볼 수 있어요."
@@ -240,6 +243,7 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
     return (
         <ScreenContainer
             scroll
+            header={header}
             footer={
                 <CtaStack>
                     <AppButton

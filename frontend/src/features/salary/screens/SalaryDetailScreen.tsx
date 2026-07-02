@@ -62,7 +62,7 @@ const SalaryDetailScreen: React.FC<Props> = ({route}) => {
         };
     }, [payrollId]);
 
-    const header = <AppHeader title="급여 상세" />;
+    const header = <AppHeader title="급여 상세" onBack={() => navigation.goBack()} />;
 
     if (loading) {
         return (
