@@ -50,6 +50,7 @@ public class PayrollService {
     private final com.rich.sodam.core.payroll.deduction.SocialInsuranceCalculator socialInsuranceCalculator;
     private final PlanAccessService planAccessService;
     private final PayslipFreeGrantService payslipFreeGrantService;
+    private final PayrollBonusService payrollBonusService;
 
     /** 미리보기 워터마크 문구(매장 사장 플랜이 명세서 PDF 발급 권한 미보유 시). */
     private static final String PAYSLIP_WATERMARK = "소담 미리보기 · STARTER 플랜에서 정식 발급";
@@ -593,9 +594,15 @@ public class PayrollService {
             weeklyAllowance = calculateTotalWeeklyAllowance(employeeId, storeId, startDate, endDate);
         }
 
+        // 즉시 보너스(급여합산형) 자동 합산 — "오늘 바빠서 1만원 더" 같은 비정기 포상금.
+        // 통상임금·최저임금 산정에는 영향 없음(PayrollBonus 클래스 정책 주석 참고), 급여 총액에는 합산해 원천징수한다.
+        List<PayrollBonus> unconsumedBonuses =
+                payrollBonusService.findUnconsumedForPeriod(employeeId, storeId, startDate, endDate);
+        int bonusWage = unconsumedBonuses.stream().mapToInt(PayrollBonus::getAmount).sum();
+
         // 총 급여 계산
         int grossWage = totalRegularWage + totalOvertimeWage + totalNightWorkWage
-                + totalHolidayWorkWage + weeklyAllowance;
+                + totalHolidayWorkWage + weeklyAllowance + bonusWage;
 
         // 세금 계산
         int taxAmount = calculateTax(grossWage, policy.getTaxPolicyType());
@@ -623,6 +630,7 @@ public class PayrollService {
         payroll.setNightWorkWage(totalNightWorkWage);
         payroll.setHolidayWorkWage(totalHolidayWorkWage);
         payroll.setWeeklyAllowance(weeklyAllowance);
+        payroll.setBonusWage(bonusWage);
         payroll.setGrossWage(grossWage);
         payroll.setTaxRate(policy.getTaxPolicyType() == TaxPolicyType.INCOME_TAX_3_3 ? 0.033 : 0.0916);
         payroll.setTaxAmount(taxAmount);
@@ -637,6 +645,12 @@ public class PayrollService {
         for (PayrollDetail detail : details) {
             detail.setPayroll(savedPayroll);
             payrollDetailRepository.save(detail);
+        }
+
+        // 이번 정산에 합산한 즉시 보너스를 소비 처리(멱등) — 재계산(recalculate) 시 기존 급여가
+        // 삭제/대체되는 흐름이 아니라 새 Payroll 이 또 생기므로, 소비 처리는 항상 이번 payroll 기준으로 남긴다.
+        if (!unconsumedBonuses.isEmpty()) {
+            payrollBonusService.markConsumed(unconsumedBonuses, savedPayroll.getId());
         }
 
         return savedPayroll;

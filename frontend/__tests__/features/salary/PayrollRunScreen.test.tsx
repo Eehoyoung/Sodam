@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactTestRenderer, {act} from 'react-test-renderer';
 
-// PayrollRunScreen 마법사 — Payroll 80% 커버리지 정책 (CLAUDE.md)
+// PayrollRunScreen 마법사 — Payroll 80% 커버리지 정책 (프로젝트 운영 기준)
 // 핵심 검증:
 //   1. PERIOD → goPreview 시 /api/payroll/calculate 정확한 payload 전송
 //   2. PREVIEW 가 totalNet 합계 + adjustment 가산

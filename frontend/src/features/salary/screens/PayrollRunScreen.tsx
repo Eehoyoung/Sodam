@@ -10,6 +10,7 @@ import {tokens} from '../../../theme/tokens';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import {useAuth} from '../../../contexts/AuthContext';
 import api from '../../../common/utils/api';
+import {DATE_DIGITS_HELPER, dateDigitsToIso, isValidDateDigits, sanitizeDateDigits} from '../../../common/utils/dateTimeInput';
 import storeService, {StoreSummaryDto} from '../../store/services/storeService';
 import {fetchOvertimeCheck, OvertimeCheck} from '../services/overtimeService';
 
@@ -66,8 +67,10 @@ const PayrollRunScreen: React.FC = () => {
     const [step, setStep] = useState<Step>('PERIOD');
     const [storeId, setStoreId] = useState<number | null>(storeIdParam ?? null);
     const [stores, setStores] = useState<StoreSummaryDto[]>([]);
-    const [startDate, setStartDate] = useState(getDefaultStart());
-    const [endDate, setEndDate] = useState(getDefaultEnd());
+    const [startDate, setStartDateValue] = useState(getDefaultStart());
+    const [endDate, setEndDateValue] = useState(getDefaultEnd());
+    const setStartDate = (value: string) => setStartDateValue(sanitizeDateDigits(value));
+    const setEndDate = (value: string) => setEndDateValue(sanitizeDateDigits(value));
     const [previews, setPreviews] = useState<PayrollPreview[]>([]);
     const [loading, setLoading] = useState(false);
     // 연장근로 한도(주 52h, §53) 위반 경보 — 정산 미리보기 시점에 조회(B5/L-NEW-02).
@@ -95,12 +98,18 @@ const PayrollRunScreen: React.FC = () => {
             AppToast.warn('매장을 선택해 주세요.');
             return;
         }
+        if (!isValidDateDigits(startDate) || !isValidDateDigits(endDate)) {
+            AppToast.warn(DATE_DIGITS_HELPER);
+            return;
+        }
+        const startDateIso = dateDigitsToIso(startDate);
+        const endDateIso = dateDigitsToIso(endDate);
         setLoading(true);
         try {
             const res = await api.post<any[]>('/api/payroll/calculate', {
                 storeId,
-                startDate,
-                endDate,
+                startDate: startDateIso,
+                endDate: endDateIso,
             });
             const data: any[] = res.data ?? [];
             setPreviews(
@@ -122,7 +131,7 @@ const PayrollRunScreen: React.FC = () => {
             );
             setStep('PREVIEW');
             // 연장근로 한도 경보는 정산을 막지 않는 부가 정보 — 실패해도 정산 흐름 유지.
-            loadOvertime(storeId, startDate);
+            loadOvertime(storeId, startDateIso);
         } catch (e: any) {
             AppToast.error(e?.response?.data?.message ?? '급여 계산 중 오류가 났어요. 잠시 후 다시 시도해 주세요.');
         } finally {
@@ -194,6 +203,7 @@ const PayrollRunScreen: React.FC = () => {
                 progress={1 / 3}
                 title="1단계: 기간 설정"
                 subtitle="정산할 매장과 기간을 골라 주세요. 기본은 이번 달 1일~말일이에요."
+                onBack={() => navigation.goBack()}
                 footer={
                     <CtaStack>
                         <AppButton label="다음: 미리보기" loading={loading} onPress={goPreview} />
@@ -217,6 +227,7 @@ const PayrollRunScreen: React.FC = () => {
             <StepScaffold
                 progress={2 / 3}
                 title="2단계: 미리보기"
+                onBack={() => setStep('PERIOD')}
                 footer={
                     <CtaStack>
                         <AppButton
@@ -246,6 +257,7 @@ const PayrollRunScreen: React.FC = () => {
             progress={1}
             title="3단계: 확인"
             subtitle="발급하면 직원 앱에 자동으로 알림이 전송돼요."
+            onBack={() => setStep('PREVIEW')}
             footer={
                 <CtaStack>
                     <AppButton label="명세서 발급하기" loading={loading} onPress={issuePayrolls} />
@@ -327,8 +339,8 @@ const PeriodForm: React.FC<any> = ({
     return (
         <View style={fieldStyles.gap}>
             <StoreSelector stores={storeList} storeId={storeId} setStoreId={setStoreId} />
-            <Input label="시작일 (YYYY-MM-DD)" value={startDate} onChangeText={setStartDate} />
-            <Input label="종료일 (YYYY-MM-DD)" value={endDate} onChangeText={setEndDate} />
+            <Input label="시작일" value={startDate} onChangeText={setStartDate} placeholder="20260601" keyboardType="number-pad" maxLength={8} helperText={DATE_DIGITS_HELPER} />
+            <Input label="종료일" value={endDate} onChangeText={setEndDate} placeholder="20260630" keyboardType="number-pad" maxLength={8} helperText={DATE_DIGITS_HELPER} />
         </View>
     );
 };
@@ -546,12 +558,12 @@ const KV: React.FC<{label: string; value: string; highlight?: boolean}> = ({
 
 function getDefaultStart(): string {
     const d = new Date();
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
+    return `${d.getFullYear()}${pad(d.getMonth() + 1)}01`;
 }
 function getDefaultEnd(): string {
     const d = new Date();
     const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(last)}`;
+    return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(last)}`;
 }
 function pad(n: number): string {
     return String(n).padStart(2, '0');

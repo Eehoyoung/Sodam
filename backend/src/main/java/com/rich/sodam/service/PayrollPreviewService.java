@@ -15,7 +15,7 @@ import java.math.RoundingMode;
  * 급여 미리보기 계산 (D0 aha, A1). 시급·주 근로시간만으로 주휴 포함 월 예상급여를 산정한다.
  *
  * <p>핵심: 영속화 없이 <b>기존 주휴 전략</b>({@link WeeklyAllowanceCalculatorResolver})을 재사용 —
- * 노동법 로직을 중복 구현하지 않는다(CLAUDE.md: 상수·계산 단일 출처). 추정치이므로 면책 동반.
+ * 노동법 로직을 중복 구현하지 않는다(프로젝트 운영 기준: 상수·계산 단일 출처). 추정치이므로 면책 동반.
  */
 @Service
 @RequiredArgsConstructor
