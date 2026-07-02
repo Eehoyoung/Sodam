@@ -34,10 +34,8 @@ cd backend
 ```
 Project_sodam/
 ├── README.md                    ← 이 문서 (진입점)
-├── CLAUDE.md                    ← Claude Code 자율 작업 헌법 (자동 로드)
 ├── docker-compose.yml           ← Docker 풀스택
 ├── .env.example                 ← 환경변수 템플릿
-├── .claude/                     ← Claude 설정·커스텀 명령
 │
 ├── backend/                       ← Backend (Spring Boot 3.4.5 / Java 17)
 │   ├── src/main/java/com/rich/sodam/
@@ -73,7 +71,6 @@ Project_sodam/
     ├── 01-prd/                  ← 역할별 PRD (사장/직원/운영자/비회원)
     ├── 02-runbook/              ← 실행·운영 (Docker, Emulator, Progress)
     ├── 03-backlog/              ← 백로그·사용자 컨펌 항목
-    ├── 04-claude/               ← 에이전트 정의·운영 가이드
     ├── 05-design/               ← 와이어프레임·브랜드 카피·디자인 감사
     └── legal/                   ← 약관·개인정보·마케팅 동의
 ```
@@ -91,7 +88,6 @@ Project_sodam/
 | **요구사항/기능** | `docs/00-master-plan/PRD.md` + `docs/01-prd/PRD_*.md` |
 | **남은 작업** | `docs/03-backlog/추가작업.md` |
 | **사용자가 직접 해야 할 일** | `docs/03-backlog/CONFIRM_REQUIRED.md` |
-| **Claude/에이전트 운영** | `CLAUDE.md` + `docs/04-claude/AGENTS.md` |
 | **디자인 시스템** | `frontend/src/theme/tokens.ts` + `docs/05-design/` |
 
 문서 카탈로그 전체: **`docs/README.md`**
@@ -138,5 +134,5 @@ docker compose down                  # 정지 (볼륨 유지)
 
 ## 📜 라이선스 / 운영
 
-1인 사업가 자체 운영. 외부 기여 없음.
+1인 사업가 자체 운영.
 문의: privacy@sodam.app (출시 후 활성)
