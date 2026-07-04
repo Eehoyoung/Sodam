@@ -3,14 +3,13 @@ import {
     AppCard,
     AppHeader,
     AppInput,
-    AppListItem,
     AppText,
     AppToast,
     CtaStack,
     ScreenContainer,
 } from '../../common/components/ds';
 import React, {useState} from 'react';
-import {Modal, Pressable, ScrollView, StyleSheet, View} from 'react-native';
+import {Pressable, StyleSheet, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -21,14 +20,8 @@ import {TIME_DIGITS_HELPER} from '../../common/utils/dateTimeInput';
 import useStoreRegistration from './hooks/useStoreRegistration';
 import type {DayOfWeek, StoreOperatingHourPayload} from './services/storeService';
 import PayrollCycleEditor, {PayrollCycleForm, defaultPayrollCycle, toPayrollCyclePayload} from './components/PayrollCycleEditor';
-
-interface AddressResult {
-    place_name: string;
-    road_address_name: string;
-    address_name: string;
-    x: string;
-    y: string;
-}
+import BusinessTypePicker from './components/BusinessTypePicker';
+import AddressSearchModal, {AddressSearchResult} from './components/AddressSearchModal';
 
 interface StoreData {
     storeName: string;
@@ -163,9 +156,8 @@ const StoreRegistrationScreen: React.FC = () => {
     const [sameOpenTime, setSameOpenTime] = useState('1000');
     const [sameCloseTime, setSameCloseTime] = useState('2200');
     const [weeklyHours, setWeeklyHours] = useState<OperatingHourDraft[]>(createDefaultWeeklyHours());
-    const [addressSearchQuery, setAddressSearchQuery] = useState('');
-    const [addressResults, setAddressResults] = useState<AddressResult[]>([]);
     const [showAddressModal, setShowAddressModal] = useState(false);
+    const [showBusinessTypeModal, setShowBusinessTypeModal] = useState(false);
 
     const validatePhoneNumbers = () => {
         const businessNumber = storeData.businessNumber.replace(/[^\d]/g, '');
@@ -173,52 +165,15 @@ const StoreRegistrationScreen: React.FC = () => {
         return businessNumber.length >= 9 || storePhoneNumber.length >= 10;
     };
 
-    const searchAddress = async (query: string) => {
-        if (!query.trim()) {
-            return;
-        }
-        try {
-            const dummyResults: AddressResult[] = [
-                {
-                    place_name: '서울특별시 강남구 테헤란로 123',
-                    road_address_name: '서울특별시 강남구 테헤란로 123',
-                    address_name: '서울특별시 강남구 역삼동 123-45',
-                    x: '127.0276',
-                    y: '37.4979',
-                },
-                {
-                    place_name: '서울특별시 강남구 테헤란로 456',
-                    road_address_name: '서울특별시 강남구 테헤란로 456',
-                    address_name: '서울특별시 강남구 역삼동 456-78',
-                    x: '127.0286',
-                    y: '37.4989',
-                },
-                {
-                    place_name: '서울특별시 서초구 강남대로 789',
-                    road_address_name: '서울특별시 서초구 강남대로 789',
-                    address_name: '서울특별시 서초구 서초동 789-12',
-                    x: '127.0296',
-                    y: '37.4999',
-                },
-            ];
-            setAddressResults(dummyResults);
-        } catch (error) {
-            AppToast.error('주소 검색 중 오류가 생겼어요.');
-        }
-    };
-
-    const selectAddress = (address: AddressResult) => {
+    const selectAddress = (address: AddressSearchResult) => {
         setStoreData(prev => ({
             ...prev,
-            query: address.place_name,
-            roadAddress: address.road_address_name,
-            jibunAddress: address.address_name,
-            latitude: parseFloat(address.y),
-            longitude: parseFloat(address.x),
+            query: address.query || address.roadAddress,
+            roadAddress: address.roadAddress,
+            jibunAddress: address.jibunAddress,
+            latitude: null,
+            longitude: null,
         }));
-        setShowAddressModal(false);
-        setAddressSearchQuery('');
-        setAddressResults([]);
     };
 
     const updateWeeklyHour = (dayOfWeek: DayOfWeek, patch: Partial<OperatingHourDraft>) => {
@@ -355,6 +310,7 @@ const StoreRegistrationScreen: React.FC = () => {
             storePhoneNumber: storeData.storePhoneNumber.replace(/[^\d]/g, ''),
             businessType: storeData.businessType.trim(),
             businessLicenseNumber: bizNoDigits,
+            query: storeData.query || storeData.roadAddress,
             roadAddress: storeData.roadAddress,
             jibunAddress: storeData.jibunAddress,
             latitude: storeData.latitude,
@@ -415,6 +371,7 @@ const StoreRegistrationScreen: React.FC = () => {
                     isWageBelowMinimum={isWageBelowMinimum}
                     phoneOk={phoneOk}
                     onOpenAddressModal={() => setShowAddressModal(true)}
+                    onOpenBusinessTypeModal={() => setShowBusinessTypeModal(true)}
                     cycle={cycle}
                     setCycle={setCycle}
                 />
@@ -444,30 +401,19 @@ const StoreRegistrationScreen: React.FC = () => {
                 />
             ) : null}
 
-            <Modal visible={showAddressModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowAddressModal(false)}>
-                <ScreenContainer header={<AppHeader title="주소 검색" actions={[{label: '닫기', onPress: () => setShowAddressModal(false)}]} />}>
-                    <View style={styles.searchRow}>
-                        <AppInput
-                            containerStyle={styles.flex}
-                            placeholder="주소를 입력해 주세요"
-                            value={addressSearchQuery}
-                            onChangeText={setAddressSearchQuery}
-                            onSubmitEditing={() => searchAddress(addressSearchQuery)}
-                        />
-                        <AppButton label="검색" size="md" fullWidth={false} onPress={() => searchAddress(addressSearchQuery)} style={styles.searchBtn} />
-                    </View>
-                    <ScrollView contentContainerStyle={styles.resultsList}>
-                        {addressResults.map((address, index) => (
-                            <AppListItem
-                                key={index}
-                                title={address.place_name}
-                                subtitle={`도로명 ${address.road_address_name}`}
-                                onPress={() => selectAddress(address)}
-                            />
-                        ))}
-                    </ScrollView>
-                </ScreenContainer>
-            </Modal>
+            <AddressSearchModal
+                visible={showAddressModal}
+                initialQuery={storeData.query || storeData.roadAddress}
+                onSelect={selectAddress}
+                onClose={() => setShowAddressModal(false)}
+            />
+
+            <BusinessTypePicker
+                visible={showBusinessTypeModal}
+                value={storeData.businessType}
+                onSelect={value => setStoreData(p => ({...p, businessType: value}))}
+                onClose={() => setShowBusinessTypeModal(false)}
+            />
         </ScreenContainer>
     );
 };
@@ -480,6 +426,7 @@ interface BasicInfoStepProps {
     isWageBelowMinimum: boolean;
     phoneOk: boolean;
     onOpenAddressModal: () => void;
+    onOpenBusinessTypeModal: () => void;
     cycle: PayrollCycleForm;
     setCycle: React.Dispatch<React.SetStateAction<PayrollCycleForm>>;
 }
@@ -492,6 +439,7 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
     isWageBelowMinimum,
     phoneOk,
     onOpenAddressModal,
+    onOpenBusinessTypeModal,
     cycle,
     setCycle,
 }) => (
@@ -499,7 +447,15 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
         <SectionLabel text="기본 정보" />
         <View style={styles.form}>
             <AppInput label="매장명 *" placeholder="매장명을 입력해 주세요" value={storeData.storeName} onChangeText={t => setStoreData(p => ({...p, storeName: t}))} />
-            <AppInput label="업종 *" placeholder="예: 카페, 한식당, 편의점" value={storeData.businessType} onChangeText={t => setStoreData(p => ({...p, businessType: t}))} />
+            <View>
+                <AppText variant="caption" tone="secondary" style={styles.fieldLabel}>업종 *</AppText>
+                <Pressable style={[styles.addressBtn, {borderColor: c.border, backgroundColor: c.background}]} onPress={onOpenBusinessTypeModal}>
+                    <AppText variant="bodyMd" tone={storeData.businessType ? 'primary' : 'tertiary'} numberOfLines={1} style={styles.flex}>
+                        {storeData.businessType || '업종을 선택해 주세요'}
+                    </AppText>
+                    <Ionicons name="chevron-forward" size={18} color={c.textTertiary} />
+                </Pressable>
+            </View>
             <AppInput
                 label="사업자등록번호 *"
                 placeholder="000-00-00000"
@@ -794,9 +750,6 @@ const styles = StyleSheet.create({
     },
     flex: {flex: 1},
     jibun: {marginTop: spacing.xs, marginLeft: 2},
-    searchRow: {flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm},
-    searchBtn: {marginTop: 0},
-    resultsList: {paddingTop: spacing.md, gap: spacing.sm},
     footerRow: {flexDirection: 'row', gap: spacing.sm},
     footerButton: {flex: 1},
     segmented: {

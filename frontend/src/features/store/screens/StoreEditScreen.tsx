@@ -1,15 +1,17 @@
 import {AppToast, AppButton, AppHeader, AppInput, AppText, CtaStack, ScreenContainer} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
-import {StyleSheet, View} from 'react-native';
+import {Pressable, StyleSheet, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
-import {spacing} from '../../../theme/tokens';
+import {radius as tokenRadius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
 import storeService from '../services/storeService';
 import PayrollCycleEditor, {PayrollCycleForm, defaultPayrollCycle, fromStorePayrollCycle, toPayrollCyclePayload} from '../components/PayrollCycleEditor';
+import BusinessTypePicker from '../components/BusinessTypePicker';
+import AddressSearchModal, {AddressSearchResult} from '../components/AddressSearchModal';
 
 /**
  * 14 StoreEdit — 확정 시안.
@@ -32,10 +34,11 @@ const StoreEditScreen: React.FC = () => {
     const [fullAddress, setFullAddress] = useState('');
     const [initialAddress, setInitialAddress] = useState('');
     const [coords, setCoords] = useState<{latitude: number; longitude: number} | null>(null);
-    const [geocoding, setGeocoding] = useState(false);
+    const [showAddressModal, setShowAddressModal] = useState(false);
 
     // 급여 정산 주기(시작/마감/지급일)
     const [cycle, setCycle] = useState<PayrollCycleForm>(defaultPayrollCycle());
+    const [showBusinessTypeModal, setShowBusinessTypeModal] = useState(false);
 
     useEffect(() => {
         (async () => {
@@ -63,22 +66,9 @@ const StoreEditScreen: React.FC = () => {
         })();
     }, [storeId]);
 
-    // 주소 검색(임시): 카카오 키 발급 전까지 좌표를 목으로 채워 위치 변경을 가능케 한다.
-    const searchAddress = async () => {
-        if (!fullAddress || fullAddress.trim().length < 2) {
-            AppToast.warn('주소를 입력한 뒤 검색해 주세요.');
-            return;
-        }
-        setGeocoding(true);
-        try {
-            // TODO[키 발급]: 카카오 로컬 API 연동. 현재는 서울시청 근처 좌표로 목 보정.
-            await new Promise(r => setTimeout(r, 400));
-            const jitter = () => (Math.random() - 0.5) * 0.01;
-            setCoords({latitude: 37.5663 + jitter(), longitude: 126.9779 + jitter()});
-            AppToast.success('주소 좌표를 확인했어요. 저장 시 위치가 반영돼요.');
-        } finally {
-            setGeocoding(false);
-        }
+    const selectAddress = (address: AddressSearchResult) => {
+        setFullAddress(address.roadAddress || address.query);
+        setCoords(null);
     };
 
     const submit = async () => {
@@ -131,7 +121,17 @@ const StoreEditScreen: React.FC = () => {
             <Section title="기본 정보">
                 <AppInput label="매장명" value={storeName} onChangeText={setStoreName} />
                 <AppInput label="전화번호" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-                <AppInput label="업종" value={businessType} onChangeText={setBusinessType} placeholder="예: 음식점" />
+                <View>
+                    <AppText variant="caption" tone="secondary" style={styles.fieldLabel}>업종</AppText>
+                    <Pressable
+                        style={[styles.businessTypeBtn, {borderColor: c.border, backgroundColor: c.background}]}
+                        onPress={() => setShowBusinessTypeModal(true)}>
+                        <AppText variant="bodyMd" tone={businessType ? 'primary' : 'tertiary'} numberOfLines={1} style={styles.flex}>
+                            {businessType || '업종을 선택해 주세요'}
+                        </AppText>
+                        <Ionicons name="chevron-forward" size={18} color={c.textTertiary} />
+                    </Pressable>
+                </View>
             </Section>
 
             <Section title="위치">
@@ -147,8 +147,7 @@ const StoreEditScreen: React.FC = () => {
                         label="주소 검색"
                         variant="outline"
                         size="md"
-                        loading={geocoding}
-                        onPress={searchAddress}
+                        onPress={() => setShowAddressModal(true)}
                         leftIcon={<Ionicons name="search-outline" size={16} color={c.brandPrimary} />}
                         style={styles.addressBtn}
                     />
@@ -170,6 +169,19 @@ const StoreEditScreen: React.FC = () => {
             <Section title="급여 정산 주기">
                 <PayrollCycleEditor value={cycle} onChange={setCycle} />
             </Section>
+
+            <BusinessTypePicker
+                visible={showBusinessTypeModal}
+                value={businessType}
+                onSelect={setBusinessType}
+                onClose={() => setShowBusinessTypeModal(false)}
+            />
+            <AddressSearchModal
+                visible={showAddressModal}
+                initialQuery={fullAddress}
+                onSelect={selectAddress}
+                onClose={() => setShowAddressModal(false)}
+            />
         </ScreenContainer>
     );
 };
@@ -188,6 +200,13 @@ const styles = StyleSheet.create({
     gap: {marginTop: spacing.xs},
     addressBlock: {gap: spacing.sm},
     addressBtn: {alignSelf: 'flex-start'},
+    fieldLabel: {marginBottom: spacing.xs},
+    businessTypeBtn: {
+        minHeight: 48, borderWidth: 1, borderRadius: tokenRadius.lg,
+        paddingHorizontal: spacing.md, flexDirection: 'row',
+        alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm,
+    },
+    flex: {flex: 1},
 });
 
 export default StoreEditScreen;
