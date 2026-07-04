@@ -18,6 +18,39 @@ import {logger} from '../../../utils/logger';
 
 // [API Mapping] Attendance verification standardized; legacy location-verify endpoint removed per Phase 0 AC (2025-10-02).
 
+export interface AttendanceWorkLogSummary {
+    attendanceDays: number;
+    totalWorkedMinutes: number;
+    totalDailyWage: number;
+    totalBonusAmount: number;
+    totalGrossWage: number;
+}
+
+export interface AttendanceWorkLogRow {
+    attendanceId?: number | null;
+    date: string;
+    checkInTime?: string | null;
+    checkOutTime?: string | null;
+    workedMinutes?: number | null;
+    workingHours?: number | null;
+    appliedHourlyWage?: number | null;
+    dailyWage?: number | null;
+    bonusAmount?: number | null;
+    bonusReason?: string | null;
+    memo?: string | null;
+    status: 'CONFIRMED' | 'WORKING' | 'BONUS_ONLY' | string;
+}
+
+export interface AttendanceWorkLogResponse {
+    employeeId: number;
+    storeId: number;
+    storeName?: string | null;
+    year: number;
+    month: number;
+    summary: AttendanceWorkLogSummary;
+    rows: AttendanceWorkLogRow[];
+}
+
 /**
  * BE AttendanceRequestDto 4필드(@NotNull) 매핑 헬퍼.
  * employeeId/storeId 는 Long, latitude/longitude 는 Double. 누락 시 400 발생하므로 fail-fast.
@@ -45,6 +78,19 @@ const toAttendancePayload = (data: CheckInRequest | CheckOutRequest) => {
 
 // 출퇴근 관련 서비스 객체
 const attendanceService = {
+    getMonthlyWorkLog: async (
+        employeeId: number,
+        storeId: number,
+        year: number,
+        month: number,
+    ): Promise<AttendanceWorkLogResponse> => {
+        const response = await api.get<AttendanceWorkLogResponse>(
+            `/api/attendance/employee/${employeeId}/work-log`,
+            {year, month, storeId},
+        );
+        return (response.data as any)?.data ?? response.data;
+    },
+
     /**
      * 출퇴�?기록 목록 조회
      * @param filter ?�터 조건

@@ -16,6 +16,9 @@ public interface PayrollBonusRepository extends JpaRepository<PayrollBonus, Long
     /** 사장: 특정 직원에게 준 보너스 이력(최신순). */
     List<PayrollBonus> findByEmployeeIdAndStoreIdOrderByBonusDateDesc(Long employeeId, Long storeId);
 
+    List<PayrollBonus> findByEmployeeIdAndStoreIdAndBonusDateBetweenOrderByBonusDateDesc(
+            Long employeeId, Long storeId, LocalDate from, LocalDate to);
+
     /** 직원 본인의 보너스 이력(최신순). */
     List<PayrollBonus> findByEmployeeIdOrderByBonusDateDesc(Long employeeId);
 }

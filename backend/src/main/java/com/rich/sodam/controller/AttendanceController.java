@@ -6,10 +6,12 @@ import com.rich.sodam.dto.request.LocationVerifyRequest;
 import com.rich.sodam.dto.request.ManualAttendanceRequestDto;
 import com.rich.sodam.dto.request.NfcVerifyRequest;
 import com.rich.sodam.dto.response.AttendanceResponseDto;
+import com.rich.sodam.dto.response.AttendanceWorkLogResponse;
 import com.rich.sodam.dto.response.LocationVerifyResponse;
 import com.rich.sodam.dto.response.NfcVerifyResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.service.AttendanceService;
+import com.rich.sodam.service.AttendanceWorkLogService;
 import com.rich.sodam.service.LocationVerificationService;
 import com.rich.sodam.service.NfcVerificationService;
 import com.rich.sodam.service.StoreAccessGuard;
@@ -47,6 +49,7 @@ public class AttendanceController {
     private final AttendanceService attendanceService;
     private final LocationVerificationService locationVerificationService;
     private final NfcVerificationService nfcVerificationService;
+    private final AttendanceWorkLogService attendanceWorkLogService;
     private final StoreAccessGuard guard;
 
     @PostMapping("/check-in")
@@ -227,6 +230,31 @@ public class AttendanceController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(responseDto);
+    }
+
+    @Operation(summary = "직원 월별 근무일지 조회",
+            description = "직원의 특정 매장 월별 출퇴근, 근무시간, 일급여(세전), 보너스 합계를 근무일지 화면용으로 조회합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공",
+                    content = @Content(schema = @Schema(implementation = AttendanceWorkLogResponse.class))),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "403", description = "조회 권한 없음")
+    })
+    @GetMapping("/employee/{employeeId}/work-log")
+    public ResponseEntity<AttendanceWorkLogResponse> getMonthlyWorkLog(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Parameter(description = "직원 ID", required = true) @PathVariable Long employeeId,
+            @Parameter(description = "조회 연도", required = true, example = "2026") @RequestParam int year,
+            @Parameter(description = "조회 월(1-12)", required = true, example = "7") @RequestParam int month,
+            @Parameter(description = "매장 ID", required = true) @RequestParam Long storeId) {
+        boolean master = isMaster(principal);
+        guard.assertCanViewEmployee(principal.getId(), employeeId, master);
+        if (master && !principal.getId().equals(employeeId)) {
+            guard.assertMasterOwnsStore(principal.getId(), storeId);
+        } else {
+            guard.assertEmployeeInStore(employeeId, storeId);
+        }
+        return ResponseEntity.ok(attendanceWorkLogService.getMonthlyWorkLog(employeeId, storeId, year, month));
     }
 
     @Operation(summary = "수동 출퇴근 등록", description = "사업주가 직원 대신 출퇴근 기록을 수동으로 등록합니다. ATTEND-004 기능입니다.")
