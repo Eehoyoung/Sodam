@@ -1,7 +1,6 @@
 import {User} from '../features/auth/services/authService';
 import {CanonicalGrade, normalizeUserGrade, purposeToGrade} from '../features/auth/utils/grade';
 
-export type OnboardingRole = 'owner' | 'employee' | 'personal';
 export type AuthPurpose = 'boss' | 'employee' | 'personal';
 export type PendingPurposeSlug = 'master' | 'employee' | 'user';
 export type HomeLandingScreen = 'UserMyPageScreen' | 'EmployeeMyPageScreen' | 'MasterMyPageScreen' | 'EmployeeAttendanceHome';
@@ -10,22 +9,8 @@ export type AuthGateParams = {selectedPurpose?: AuthPurpose; fromSignup?: boolea
 
 export type RootRoute =
     | {name: 'SodamLanding'; params?: undefined}
-    | {name: 'Welcome'; params?: {selectedRole?: OnboardingRole; selectedPurpose?: AuthPurpose}}
     | {name: 'Auth'; params: {screen?: AuthGateScreen; params?: AuthGateParams}}
     | {name: 'HomeRoot'; params: {screen?: HomeLandingScreen; params?: any}};
-
-export const roleToPurpose = (role?: OnboardingRole): AuthPurpose | undefined => {
-    if (role === 'owner') {
-        return 'boss';
-    }
-    if (role === 'employee') {
-        return 'employee';
-    }
-    if (role === 'personal') {
-        return 'personal';
-    }
-    return undefined;
-};
 
 export const purposeToPendingSlug = (purpose: AuthPurpose): PendingPurposeSlug => {
     if (purpose === 'boss') {

@@ -8,8 +8,6 @@ import AuthNavigator from './AuthNavigator';
 import HomeNavigator from './HomeNavigator';
 import Protected from '../components/Protected';
 import SodamLandingScreen from '../features/welcome/screens/SodamLandingScreen';
-import UsageSelectionScreen from '../features/welcome/screens/UsageSelectionScreen';
-import WelcomeMainScreen from '../features/welcome/screens/WelcomeMainScreen';
 import appHeaderOptions from './appHeaderOptions';
 import {navigationRef} from './navigationRef';
 import {RootStackParamList} from './types';
@@ -99,12 +97,6 @@ const AppNavigator: React.FC<Props> = ({appReady = true}) => {
                     options={{headerShown: false}}
                 />
                 <Stack.Screen
-                    name="Welcome"
-                    component={UsageSelectionScreen}
-                    initialParams={initialRoute.name === 'Welcome' ? initialRoute.params : undefined}
-                    options={{headerShown: false}}
-                />
-                <Stack.Screen
                     name="Auth"
                     component={AuthNavigator}
                     initialParams={initialRoute.name === 'Auth' ? initialRoute.params : undefined}
@@ -116,7 +108,6 @@ const AppNavigator: React.FC<Props> = ({appReady = true}) => {
                     initialParams={initialRoute.name === 'HomeRoot' ? initialRoute.params : undefined}
                     options={{headerShown: false}}
                 />
-                <Stack.Screen name="WelcomeMain" component={WelcomeMainScreen} options={{headerShown: false}} />
                 <Stack.Screen name="SessionExpired" component={SessionExpiredRoute} options={{headerShown: false}} />
                 <Stack.Screen name="PermissionDenied" component={PermissionDeniedRoute} options={{title: '권한 안내'}} />
                 <Stack.Screen name="PaymentFailed" component={PaymentFailedRoute} options={{title: '결제'}} />

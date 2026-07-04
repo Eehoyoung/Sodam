@@ -84,7 +84,7 @@ const OnboardingCarouselScreen: React.FC = () => {
         try {
             await unifiedStorage.setItem('onboardingSeen', '1');
         } catch (_) {/* ignore */}
-        navigation.reset({index: 0, routes: [{name: 'Welcome' as never}]});
+        navigation.reset({index: 0, routes: [{name: 'SodamLanding' as never}]});
     };
 
     return (

@@ -22,7 +22,7 @@ const SettingsScreen: React.FC = () => {
         setLogoutSheet(false);
         try {
             await logout();
-            navigation.reset({index: 0, routes: [{name: 'Welcome'}]});
+            navigation.reset({index: 0, routes: [{name: 'SodamLanding'}]});
         } catch (e) {
             AppToast.error('로그아웃 중 오류가 생겼어요.');
         }

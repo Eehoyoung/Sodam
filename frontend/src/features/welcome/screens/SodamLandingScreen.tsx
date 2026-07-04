@@ -46,7 +46,7 @@ export default function SodamLandingScreen({navigation}: Props) {
                 <View style={styles.buttons}>
                     <AppButton
                         label="소담 처음 시작해요"
-                        onPress={() => navigation.navigate('Welcome')}
+                        onPress={() => navigation.navigate('Auth', {screen: 'Signup'})}
                     />
                     <AppButton
                         label="이미 계정이 있어요"
