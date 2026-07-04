@@ -84,6 +84,7 @@ sodam:
     kakao:
       mode: mock
       base-url: https://dapi.kakao.com
+      rest-api-key: ${KAKAO_REST_API_KEY:}
     channel-talk:
       mode: off
       plugin-key: ""

@@ -4,7 +4,6 @@ import com.rich.sodam.config.integration.IntegrationProperties;
 import com.rich.sodam.dto.response.GeocodingResult;
 import com.rich.sodam.dto.response.KakaoApiResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -14,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.regex.Pattern;
 
@@ -24,10 +24,7 @@ public class GeocodingService {
     private final RestTemplate restTemplate;
     private final IntegrationProperties integrationProperties;
 
-    @Value("${spring.security.oauth2.client.registration.kakao.client-id:}")
-    private String kakaoApiKey;
-
-    private static final String KAKAO_GEOCODING_ENDPOINT = "https://dapi.kakao.com/v2/local/search/address.json";
+    private static final String KAKAO_GEOCODING_PATH = "/v2/local/search/address.json";
     // 주소 필드는 URL/프로토콜/제어문자 포함 불가, 한글/영문/숫자/공백/쉼표/점/하이픈만 허용 (최대 200자)
     private static final Pattern SAFE_ADDRESS_PATTERN = Pattern.compile("^[\\p{L}\\p{N}\\s,.-]{1,200}$");
 
@@ -63,19 +60,24 @@ public class GeocodingService {
     private GeocodingResult liveGeocode(String address) {
         try {
             String normalized = address;
+            String restApiKey = integrationProperties.getKakao().getRestApiKey();
+            if (restApiKey == null || restApiKey.isBlank()) {
+                throw new IllegalStateException("Kakao REST API key is required for live geocoding.");
+            }
 
-            String url = UriComponentsBuilder.fromHttpUrl(KAKAO_GEOCODING_ENDPOINT)
+            URI uri = UriComponentsBuilder.fromUriString(kakaoBaseUrl() + KAKAO_GEOCODING_PATH)
                     .queryParam("query", normalized)
                     .queryParam("analyze_type", "similar")
+                    .build()
                     .encode(StandardCharsets.UTF_8)
-                    .toUriString();
+                    .toUri();
 
             HttpHeaders headers = new HttpHeaders();
-            headers.set("Authorization", "KakaoAK " + kakaoApiKey);
+            headers.set("Authorization", "KakaoAK " + restApiKey);
 
             log.info("카카오 주소 검색 API 요청 시작");
             ResponseEntity<KakaoApiResponse> response = restTemplate.exchange(
-                    url, HttpMethod.GET, new HttpEntity<>(headers), KakaoApiResponse.class);
+                    uri, HttpMethod.GET, new HttpEntity<>(headers), KakaoApiResponse.class);
 
             KakaoApiResponse body = response.getBody();
             log.debug("카카오 API 응답: {}", body);
@@ -115,6 +117,14 @@ public class GeocodingService {
     /**
      * SSRF/XSS 방지를 위한 주소 입력 정규화 및 검증
      */
+    private String kakaoBaseUrl() {
+        String baseUrl = integrationProperties.getKakao().getBaseUrl();
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return "https://dapi.kakao.com";
+        }
+        return baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+    }
+
     private String normalizeAndValidateAddress(String address) {
         if (address == null) {
             throw new IllegalArgumentException("주소가 비어 있습니다.");

@@ -91,6 +91,7 @@ sodam:
     kakao:
       mode: live
       base-url: https://dapi.kakao.com
+      rest-api-key: ${KAKAO_REST_API_KEY}
     channel-talk:
       mode: live
       plugin-key: ${CHANNEL_TALK_PLUGIN_KEY}

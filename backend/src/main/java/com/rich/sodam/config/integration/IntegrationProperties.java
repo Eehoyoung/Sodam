@@ -86,6 +86,7 @@ public class IntegrationProperties {
     public static class Kakao {
         private String mode = "mock";
         private String baseUrl = "https://dapi.kakao.com";
+        private String restApiKey = "";
 
         public Mode resolvedMode() {
             return Mode.parse(mode);

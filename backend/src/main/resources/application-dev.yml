@@ -93,8 +93,9 @@ sodam:
       environment: dev
       traces-sample-rate: 0.0
     kakao:
-      mode: mock              # mock | live (geocoding)
-      base-url: https://dapi.kakao.com
+      mode: ${SODAM_INTEGRATION_KAKAO_MODE:mock} # mock | live (geocoding)
+      base-url: ${KAKAO_BASE_URL:https://dapi.kakao.com}
+      rest-api-key: ${KAKAO_REST_API_KEY:}
     channel-talk:
       mode: off
       plugin-key: ""

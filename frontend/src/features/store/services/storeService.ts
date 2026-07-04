@@ -22,6 +22,7 @@ export interface StoreRegistrationPayload {
   storePhoneNumber?: string; // 휴대폰
   businessType: string;
   businessLicenseNumber: string; // 사업자등록번호 (10자리)
+  query?: string;
   roadAddress: string;
   jibunAddress?: string;
   latitude?: number | null;

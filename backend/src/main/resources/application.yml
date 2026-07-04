@@ -199,6 +199,7 @@ sodam:
     kakao:
       mode: ${SODAM_INTEGRATION_KAKAO_MODE:mock}
       base-url: ${KAKAO_BASE_URL:https://dapi.kakao.com}
+      rest-api-key: ${KAKAO_REST_API_KEY:}
     channel:
       mode: ${SODAM_INTEGRATION_CHANNEL_MODE:off}
 
