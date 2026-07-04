@@ -88,6 +88,16 @@ public class WorkShift {
     }
 
     /**
+     * 배정 직원 교체(대타 승인). 날짜·시각은 그대로 두고 담당자만 바꾼다.
+     *
+     * <p>확정 상태를 유지하는 이유: 대타 승인 흐름에서는 새 담당자에게 "대타 확정" 푸시가
+     * 즉시 발송되므로(ShiftSwapService) 재확정·재알림 사이클이 불필요하다.
+     */
+    public void reassignTo(Long newEmployeeId) {
+        this.employeeId = newEmployeeId;
+    }
+
+    /**
      * 자정을 넘기는 야간 근무인지. 종료시각이 시작시각보다 같거나 빠르면 익일 종료(예 18:00~02:00).
      * (동일 시각은 서비스 검증에서 거부하므로 여기 도달 시 end&lt;start = 익일.)
      */

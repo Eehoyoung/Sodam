@@ -31,6 +31,7 @@ import JoinStoreByCodeScreen from '../features/store/screens/JoinStoreByCodeScre
 import AttendanceCorrectionRequestScreen from '../features/attendance/screens/AttendanceCorrectionRequestScreen';
 import NotificationSettingsScreen from '../features/settings/screens/NotificationSettingsScreen';
 import AttendanceCalendarScreen from '../features/attendance/screens/AttendanceCalendarScreen';
+import EmployeeWorkLogScreen from '../features/attendance/screens/EmployeeWorkLogScreen';
 import NotificationCenterScreen from '../features/notification/screens/NotificationCenterScreen';
 import WageSettingsScreen from '../features/store/screens/WageSettingsScreen';
 import StoreEditScreen from '../features/store/screens/StoreEditScreen';
@@ -74,6 +75,13 @@ import MyNoticeScreen from '../features/notice/screens/MyNoticeScreen';
 import OnboardingScreen from '../features/onboarding/screens/OnboardingScreen';
 import EvidencePackageScreen from '../features/evidence/screens/EvidencePackageScreen';
 import PdfPreviewScreen from '../features/salary/screens/PdfPreviewScreen';
+import DailySalesEntryScreen from '../features/sales/screens/DailySalesEntryScreen';
+import LaborCostRatioScreen from '../features/sales/screens/LaborCostRatioScreen';
+import MyCertificateScreen from '../features/certificate/screens/MyCertificateScreen';
+import LaborRiskDashboardScreen from '../features/risk/screens/LaborRiskDashboardScreen';
+import HiringCostSimulatorScreen from '../features/risk/screens/HiringCostSimulatorScreen';
+import SwapRequestsScreen from '../features/shift/screens/SwapRequestsScreen';
+import SwapBoardScreen from '../features/shift/screens/SwapBoardScreen';
 import type {ReceiptDraft} from '../features/purchase/types';
 import appHeaderOptions from './appHeaderOptions';
 
@@ -115,6 +123,7 @@ export type HomeStackParamList = {
     NotificationSettings: undefined;
     NotificationCenter: undefined;
     AttendanceCalendar: undefined;
+    EmployeeWorkLog: {storeId?: number} | undefined;
     WageSettings: {storeId: number};
     StoreEdit: {storeId: number};
     StoreOperatingHours: {storeId: number};
@@ -157,6 +166,13 @@ export type HomeStackParamList = {
     Onboarding: {storeId?: number; employeeId?: number; employeeName?: string} | undefined;
     EvidencePackage: {storeId: number; employeeId: number; employeeName?: string};
     PdfPreview: {title?: string; sub?: string; onDownload?: () => void; onShare?: () => void} | undefined;
+    DailySales: {storeId: number};
+    LaborCostRatio: {storeId: number};
+    MyCertificate: {storeId?: number} | undefined;
+    LaborRisk: {storeId: number};
+    SwapRequests: {storeId: number};
+    SwapBoard: {storeId?: number} | undefined;
+    HiringCost: undefined;
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -312,6 +328,7 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
                 component={AttendanceCalendarScreen}
                 options={{headerShown: false}}
             />
+            <Stack.Screen name="EmployeeWorkLog" component={EmployeeWorkLogScreen} options={{headerShown: false}} />
             <Stack.Screen name="WageSettings" component={WageSettingsScreen} options={{headerShown: false}} />
             <Stack.Screen name="StoreEdit" component={StoreEditScreen} options={{headerShown: false}} />
             <Stack.Screen name="StoreOperatingHours" component={StoreOperatingHoursScreen} options={{headerShown: false}} />
@@ -354,6 +371,13 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{headerShown: false}} />
             <Stack.Screen name="EvidencePackage" component={EvidencePackageScreen} options={{headerShown: false}} />
             <Stack.Screen name="PdfPreview" component={PdfPreviewScreen} options={{headerShown: false}} />
+            <Stack.Screen name="DailySales" component={DailySalesEntryScreen} options={{headerShown: false}} />
+            <Stack.Screen name="LaborCostRatio" component={LaborCostRatioScreen} options={{headerShown: false}} />
+            <Stack.Screen name="MyCertificate" component={MyCertificateScreen} options={{headerShown: false}} />
+            <Stack.Screen name="LaborRisk" component={LaborRiskDashboardScreen} options={{headerShown: false}} />
+            <Stack.Screen name="SwapRequests" component={SwapRequestsScreen} options={{headerShown: false}} />
+            <Stack.Screen name="SwapBoard" component={SwapBoardScreen} options={{headerShown: false}} />
+            <Stack.Screen name="HiringCost" component={HiringCostSimulatorScreen} options={{headerShown: false}} />
         </Stack.Navigator>
     );
 };

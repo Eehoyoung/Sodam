@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface LaborInfoRepository extends JpaRepository<LaborInfo, Long> {
@@ -23,4 +24,10 @@ public interface LaborInfoRepository extends JpaRepository<LaborInfo, Long> {
      * @return 검색 결과 목록
      */
     List<LaborInfo> findByTitleContaining(String keyword);
+
+    /**
+     * 특정 연도의 최저임금 기준값이 등록된 노무정보(최신 1건) 조회.
+     * 노무 리스크 대시보드의 차기년도 최저임금 미달 사전 경고용.
+     */
+    Optional<LaborInfo> findFirstByYearAndMinimumWageIsNotNullOrderByIdDesc(Integer year);
 }

@@ -20,6 +20,7 @@ import {
     ScreenContainer,
 } from '../../../common/components/ds';
 import AppCalendar from '../../../common/components/AppCalendar';
+import RoleTabBar from '../../../common/components/navigation/RoleTabBar';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {spacing} from '../../../theme/tokens';
 import {COLORS} from '../../../common/components/logo/Colors';
@@ -107,7 +108,8 @@ export default function MyShiftScreen() {
     return (
         <ScreenContainer
             scroll
-            header={<AppHeader title="내 근무 일정" onBack={() => navigation.goBack()} />}>
+            header={<AppHeader title="내 근무 일정" onBack={() => navigation.goBack()} />}
+            footer={<RoleTabBar active="schedule" />}>
             {loading ? (
                 <LoadingState />
             ) : error ? (

@@ -14,6 +14,7 @@ import {
     SegmentedControl,
 } from '../../../common/components/ds';
 import {formatMoney} from '../../../common/utils/format';
+import RoleTabBar from '../../../common/components/navigation/RoleTabBar';
 import {spacing} from '../../../theme/tokens';
 import {useAuth} from '../../../contexts/AuthContext';
 import payrollService, {ArchiveItem} from '../services/payrollService';
@@ -60,7 +61,10 @@ const SalaryArchiveScreen: React.FC = () => {
     }, [year, user?.id]);
 
     return (
-        <ScreenContainer scroll header={<AppHeader title="지난 급여명세" onBack={() => navigation.goBack()} />}>
+        <ScreenContainer
+            scroll
+            header={<AppHeader title="지난 급여명세" onBack={() => navigation.goBack()} />}
+            footer={<RoleTabBar active="salary" />}>
             <AppText variant="bodyMd" tone="secondary" style={styles.intro}>
                 퇴사·세무 목적의 과거 명세서를 다시 열어볼 수 있어요.
             </AppText>

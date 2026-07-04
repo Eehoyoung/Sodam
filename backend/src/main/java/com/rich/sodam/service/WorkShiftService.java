@@ -64,6 +64,22 @@ public class WorkShiftService {
         return WorkShiftResponse.from(shift);
     }
 
+    /**
+     * 시프트 배정 직원 교체(대타 승인 흐름 — ShiftSwapService 에서 재사용).
+     * 매장 소유 일관성 재확인 + 새 담당자의 재직 검증 후 담당자만 변경(날짜·시각 유지).
+     */
+    @Transactional
+    public WorkShift reassignEmployee(Long storeId, Long shiftId, Long newEmployeeId) {
+        WorkShift shift = repository.findById(shiftId)
+                .orElseThrow(() -> new IllegalArgumentException("근무 일정을 찾을 수 없어요: " + shiftId));
+        if (!shift.getStoreId().equals(storeId)) {
+            throw new AccessDeniedException("해당 매장의 근무 일정이 아니에요.");
+        }
+        assertActiveEmployeeInStore(newEmployeeId, storeId);
+        shift.reassignTo(newEmployeeId);
+        return shift;
+    }
+
     /** 매장 기간 조회(사장). */
     @Transactional(readOnly = true)
     public List<WorkShiftResponse> listForStore(Long storeId, LocalDate from, LocalDate to) {

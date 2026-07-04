@@ -146,6 +146,16 @@ public class GlobalExceptionHandler {
 
 
     /**
+     * 상태 충돌(409) — BusinessException(400) 보다 구체적인 핸들러가 우선 적용된다.
+     */
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiResponse<Object>> handleConflictException(ConflictException e) {
+        log.warn("ConflictException: {}", e.getMessage());
+        ApiResponse<Object> response = ApiResponse.error(e.getErrorCode(), e.getMessage());
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+    /**
      * IllegalArgumentException 처리
      */
     @ExceptionHandler(IllegalArgumentException.class)

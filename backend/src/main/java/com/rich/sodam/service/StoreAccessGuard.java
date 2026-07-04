@@ -51,6 +51,18 @@ public class StoreAccessGuard {
     }
 
     /**
+     * 매장 구성원(사장 소유 또는 직원 소속)인지 검증 — 사장·직원 공용 조회 API 용(대타 모집 목록 등).
+     */
+    public void assertMemberOfStore(Long userId, Long storeId) {
+        requireNonNull(userId, "userId");
+        requireNonNull(storeId, "storeId");
+        if (masterStoreRelationRepository.existsByMasterProfile_IdAndStore_Id(userId, storeId)) return;
+        if (employeeStoreRelationRepository.existsByEmployeeProfile_IdAndStore_Id(userId, storeId)) return;
+        log.warn("권한 거부: user {} 가 store {} 비구성원", userId, storeId);
+        throw new AccessDeniedException("해당 매장 구성원이 아니에요.");
+    }
+
+    /**
      * 사장이 해당 timeOff(휴가 신청) 가 속한 매장을 소유하는지 검증.
      * 휴가 승인/거부 같은 사장 권한 작업에 사용.
      */

@@ -21,6 +21,7 @@ import storeService from '../../store/services/storeService';
 import {useStoreLiveSync} from '../../../common/hooks/useStoreLiveSync';
 import laborInfoService from '../../../services/laborInfoService';
 import {InfoSlot} from '../components/RoleSlots';
+import RoleTabBar from '../../../common/components/navigation/RoleTabBar';
 import SectionCard from '../../../common/components/sections/SectionCard';
 import SectionHeader from '../../../common/components/sections/SectionHeader';
 import {fetchStoreApprovals} from '../../attendance/services/attendanceApprovalService';
@@ -230,6 +231,31 @@ export default function MasterMyPageScreen({navigation}: MasterMyPageScreenProps
             color: {bg: c.warningBg, icon: c.warning},
             badge: pendingCount > 0 ? (pendingCount > 9 ? '9+' : String(pendingCount)) : undefined,
         },
+        {
+            key: 'dailySales', label: '매출 입력', icon: 'cash-outline',
+            onPress: requireStore(() => navigation.navigate('DailySales', {storeId: primaryStoreId})),
+            color: {bg: c.surfaceMint, icon: c.attendanceCheckedIn},
+        },
+        {
+            key: 'laborRatio', label: '인건비율', icon: 'stats-chart-outline',
+            onPress: requireStore(() => navigation.navigate('LaborCostRatio', {storeId: primaryStoreId})),
+            color: {bg: c.infoBg, icon: c.info},
+        },
+        {
+            key: 'laborRisk', label: '노무 리스크', icon: 'shield-checkmark-outline',
+            onPress: requireStore(() => navigation.navigate('LaborRisk', {storeId: primaryStoreId})),
+            color: {bg: c.errorBg, icon: c.error},
+        },
+        {
+            key: 'swapRequests', label: '대타 구하기', icon: 'swap-horizontal-outline',
+            onPress: requireStore(() => navigation.navigate('SwapRequests', {storeId: primaryStoreId})),
+            color: {bg: c.brandPrimarySoft, icon: c.brandPrimary},
+        },
+        {
+            key: 'hiringCost', label: '채용 비용', icon: 'calculator-outline',
+            onPress: () => navigation.navigate('HiringCost'),
+            color: {bg: c.infoBg, icon: c.info},
+        },
     ];
 
     const renderStoreCard = ({item: store, index}: {item: StoreInfo; index: number}) => {
@@ -292,7 +318,7 @@ export default function MasterMyPageScreen({navigation}: MasterMyPageScreenProps
     const showAlertStrip = pendingCount > 0;
 
     return (
-        <ScreenContainer padded={false}>
+        <ScreenContainer padded={false} footer={<RoleTabBar active="home" />}>
             <ScrollView
                 style={styles.scrollView}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}

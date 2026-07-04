@@ -34,6 +34,7 @@ import {fetchMyNotices} from '../../notice/services/noticeService';
 import policyService from '../../info/services/policyService';
 import SectionCard from '../../../common/components/sections/SectionCard';
 import SectionHeader from '../../../common/components/sections/SectionHeader';
+import RoleTabBar from '../../../common/components/navigation/RoleTabBar';
 import {gradient, radius, shadow, spacing} from '../../../theme/tokens';
 
 type AttendanceState = 'IDLE' | 'WORKING' | 'DONE' | 'LOADING';
@@ -425,6 +426,21 @@ const EmployeeAttendanceHome: React.FC = () => {
             onPress: () => navigation.navigate('InfoList'),
             color: {bg: c.warningBg, icon: c.warning},
         },
+        {
+            key: 'certificate', label: '증명서 발급', icon: 'ribbon-outline',
+            onPress: () => navigation.navigate('MyCertificate', selectedStore ? {storeId: selectedStore.id} : undefined),
+            color: {bg: c.infoBg, icon: c.info},
+        },
+        {
+            key: 'workLog', label: '근무일지', icon: 'list-outline',
+            onPress: () => navigation.navigate('EmployeeWorkLog', selectedStore ? {storeId: selectedStore.id} : undefined),
+            color: {bg: c.surfaceMint, icon: c.success},
+        },
+        {
+            key: 'swap', label: '대타 지원', icon: 'swap-horizontal-outline',
+            onPress: () => navigation.navigate('SwapBoard' as never),
+            color: {bg: c.brandPrimarySoft, icon: c.brandPrimary},
+        },
     ];
 
     if (state === 'LOADING' && stores.length === 0) {
@@ -436,7 +452,7 @@ const EmployeeAttendanceHome: React.FC = () => {
     }
 
     return (
-        <ScreenContainer padded={false}>
+        <ScreenContainer padded={false} footer={<RoleTabBar active="home" />}>
             <ScrollView
                 style={[styles.scroll, {backgroundColor: c.surfaceCanvas}]}
                 contentContainerStyle={styles.scrollContent}

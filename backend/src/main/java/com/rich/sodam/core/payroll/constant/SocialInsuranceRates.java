@@ -84,4 +84,25 @@ public final class SocialInsuranceRates {
 
     /** 산재보험 근로자 부담률(없음 — 전액 사업주). */
     public static final BigDecimal INDUSTRIAL_ACCIDENT_EMPLOYEE = BigDecimal.ZERO;
+
+    /* ==================== 사업주 부담 요율 (채용 총비용 시뮬레이터용) ==================== */
+
+    /** 국민연금 사업주 부담률 (총 9.5%의 1/2 — 근로자와 동률). */
+    public static final BigDecimal NATIONAL_PENSION_EMPLOYER = new BigDecimal("0.0475");
+
+    /** 건강보험 사업주 부담률 (총 7.19%의 1/2 — 근로자와 동률). 장기요양은 건강보험료액 × {@link #LTC_ON_HEALTH_PREMIUM} 별도. */
+    public static final BigDecimal HEALTH_EMPLOYER = new BigDecimal("0.03595");
+
+    /**
+     * 고용보험 사업주 부담률 = 실업급여 0.9% + 고용안정·직업능력개발 0.25%(상시 150인 미만 사업장 기준).
+     * 근로자 부담(0.9%)과 다름에 주의 — 고용안정·직능개발분은 전액 사업주.
+     */
+    public static final BigDecimal EMPLOYMENT_EMPLOYER = new BigDecimal("0.0115");
+
+    /**
+     * 산재보험 사업주 부담률 — 전액 사업주. 요율은 업종별로 크게 다르므로(음식·소매 등 0.7~1%대,
+     * 건설·제조 수 %대) 전 업종 평균 요율(출퇴근재해 포함 1.47%)로 개략 추정한다.
+     * 시뮬레이터 전용 근사치 — 실제 고지액은 근로복지공단 업종요율이 최종.
+     */
+    public static final BigDecimal INDUSTRIAL_ACCIDENT_EMPLOYER_AVG = new BigDecimal("0.0147");
 }
