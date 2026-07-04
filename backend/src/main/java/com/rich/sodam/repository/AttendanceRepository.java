@@ -42,6 +42,10 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     /** 온보딩(첫 출근) 판정 — 해당 직원이 해당 매장에 출근 기록이 있는지. */
     boolean existsByEmployeeProfile_IdAndStore_Id(Long employeeId, Long storeId);
 
+    /** 지각·미출근 감지 배치용 — 해당 직원의 해당 매장 기간 내 출근(check-in) 기록 존재 여부. */
+    boolean existsByEmployeeProfile_IdAndStore_IdAndCheckInTimeBetween(
+            Long employeeId, Long storeId, LocalDateTime start, LocalDateTime end);
+
     /**
      * 특정 직원의 아직 퇴근 처리되지 않은 출근 기록 조회
      */

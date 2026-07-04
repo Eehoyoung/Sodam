@@ -28,4 +28,7 @@ public interface WorkShiftRepository extends JpaRepository<WorkShift, Long> {
 
     /** 출근 리마인드 스케줄러용 — 특정 일자 시프트 전체. */
     List<WorkShift> findByShiftDate(LocalDate shiftDate);
+
+    /** 지각·미출근 감지 배치용 — 특정 일자의 확정 시프트만. */
+    List<WorkShift> findByShiftDateAndConfirmedAtIsNotNull(LocalDate shiftDate);
 }
