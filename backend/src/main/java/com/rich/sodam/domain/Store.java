@@ -80,6 +80,10 @@ public class Store {
     @Embedded
     private PayrollCycle payrollCycle;
 
+    // 세무사(신고 대리인) 이메일 — 인건비 내역서 송부처. 미설정이면 발송 불가(400)
+    @Column(name = "tax_accountant_email")
+    private String taxAccountantEmail;
+
     // Soft Delete 관련 필드
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
@@ -114,6 +118,10 @@ public class Store {
 
     public void setEmployeeCount(Integer employeeCount) {
         this.employeeCount = employeeCount;
+    }
+
+    public void setTaxAccountantEmail(String taxAccountantEmail) {
+        this.taxAccountantEmail = taxAccountantEmail;
     }
 
     public void setMonthlyLaborCost(Long monthlyLaborCost) {

@@ -193,6 +193,13 @@ export default function StoreDetailScreen({route, navigation}: StoreDetailScreen
                     />
                     <ManageItem
                         c={c}
+                        icon="mail-outline"
+                        title="세무사 송부"
+                        subtitle="인건비 내역서(세전) 이메일 발송"
+                        onPress={() => navigation.navigate('TaxReport', {storeId})}
+                    />
+                    <ManageItem
+                        c={c}
                         icon="calculator-outline"
                         title="세무 시뮬레이터"
                         subtitle="매출·경비로 예상 종합소득세 계산"

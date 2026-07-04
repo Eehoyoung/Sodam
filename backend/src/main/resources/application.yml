@@ -202,6 +202,14 @@ sodam:
       rest-api-key: ${KAKAO_REST_API_KEY:}
     channel:
       mode: ${SODAM_INTEGRATION_CHANNEL_MODE:off}
+    mail:
+      mode: ${SODAM_INTEGRATION_MAIL_MODE:mock}
+      host: ${SODAM_MAIL_HOST:}
+      port: ${SODAM_MAIL_PORT:587}
+      username: ${SODAM_MAIL_USERNAME:}
+      password: ${SODAM_MAIL_PASSWORD:}
+      from: ${SODAM_MAIL_FROM:}
+      starttls: ${SODAM_MAIL_STARTTLS:true}
 
 ---
 # 운영 프로파일: API 표면 정보유출 방지 — swagger/api-docs 비활성화(F-5)

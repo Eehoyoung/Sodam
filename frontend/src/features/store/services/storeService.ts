@@ -76,6 +76,7 @@ export interface StoreDetailDto {
   radius?: number;
   storeStandardHourWage: number;
   employeeCount?: number;
+  taxAccountantEmail?: string;
   createdAt?: string;
   updatedAt?: string;
 }

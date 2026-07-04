@@ -26,6 +26,7 @@ public class IntegrationProperties {
     private Sentry sentry = new Sentry();
     private Kakao kakao = new Kakao();
     private ChannelTalk channelTalk = new ChannelTalk();
+    private Mail mail = new Mail();
 
     public enum Mode {
         MOCK, LIVE, OFF;
@@ -98,6 +99,22 @@ public class IntegrationProperties {
     public static class ChannelTalk {
         private String mode = "off";
         private String pluginKey = "";
+
+        public Mode resolvedMode() {
+            return Mode.parse(mode);
+        }
+    }
+
+    @Getter
+    @Setter
+    public static class Mail {
+        private String mode = "mock";
+        private String host = "";
+        private int port = 587;
+        private String username = "";
+        private String password = "";
+        private String from = "";
+        private boolean starttls = true;
 
         public Mode resolvedMode() {
             return Mode.parse(mode);

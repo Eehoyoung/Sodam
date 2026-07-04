@@ -62,6 +62,7 @@ import MyWageHistoryScreen from '../features/wage/screens/MyWageHistoryScreen';
 import MyLeaveBalanceScreen from '../features/timeoff/screens/MyLeaveBalanceScreen';
 import SubsidyEligibilityScreen from '../features/store/screens/SubsidyEligibilityScreen';
 import TaxDeadlineScreen from '../features/salary/screens/TaxDeadlineScreen';
+import TaxReportScreen from '../features/salary/screens/TaxReportScreen';
 import LegalLedgerScreen from '../features/salary/screens/LegalLedgerScreen';
 import MyShiftScreen from '../features/shift/screens/MyShiftScreen';
 import EditShiftScreen from '../features/shift/screens/EditShiftScreen';
@@ -153,6 +154,7 @@ export type HomeStackParamList = {
     MyLeaveBalance: undefined;
     SubsidyEligibility: {storeId: number};
     TaxDeadline: {storeId: number};
+    TaxReport: {storeId: number};
     LegalLedger: {storeId: number};
     MyShift: undefined;
     EditShift: {storeId: number; employeeId: number; employeeName?: string};
@@ -358,6 +360,7 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen name="MyLeaveBalance" component={MyLeaveBalanceScreen} options={{headerShown: false}} />
             <Stack.Screen name="SubsidyEligibility" component={SubsidyEligibilityScreen} options={{headerShown: false}} />
             <Stack.Screen name="TaxDeadline" component={TaxDeadlineScreen} options={{headerShown: false}} />
+            <Stack.Screen name="TaxReport" component={TaxReportScreen} options={{headerShown: false}} />
             <Stack.Screen name="LegalLedger" component={LegalLedgerScreen} options={{headerShown: false}} />
             <Stack.Screen name="MyShift" component={MyShiftScreen} options={{headerShown: false}} />
             <Stack.Screen name="EditShift" component={EditShiftScreen} options={{headerShown: false}} />

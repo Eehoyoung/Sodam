@@ -95,6 +95,15 @@ sodam:
     channel-talk:
       mode: live
       plugin-key: ${CHANNEL_TALK_PLUGIN_KEY}
+    # 세무사 인건비 내역서 송부·비밀번호 재설정 메일 — 발신 도메인 DKIM/SPF 설정 후 live 전환
+    mail:
+      mode: live
+      host: ${SODAM_MAIL_HOST}
+      port: ${SODAM_MAIL_PORT:587}
+      username: ${SODAM_MAIL_USERNAME}
+      password: ${SODAM_MAIL_PASSWORD}
+      from: ${SODAM_MAIL_FROM}
+      starttls: true
 
 logging:
   level:
