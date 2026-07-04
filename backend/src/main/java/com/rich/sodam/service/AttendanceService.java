@@ -12,15 +12,19 @@ import com.rich.sodam.exception.LocationVerificationException;
 import com.rich.sodam.repository.AttendanceRepository;
 import com.rich.sodam.repository.EmployeeProfileRepository;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
+import com.rich.sodam.repository.MasterStoreRelationRepository;
 import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.repository.UserRepository;
 import com.rich.sodam.util.DateTimeUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -30,6 +34,7 @@ import java.util.List;
  * 출퇴근 관리 서비스
  * 직원들의 출근/퇴근 기록을 처리하고 관리하는 비즈니스 로직을 제공합니다.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AttendanceService {
@@ -49,6 +54,8 @@ public class AttendanceService {
     private final UserRepository userRepository;
     private final DomainEventService domainEventService;
     private final LiveSyncPublisher liveSyncPublisher;
+    private final MasterStoreRelationRepository masterStoreRelationRepository;
+    private final NotificationService notificationService;
 
     /**
      * 위치정보 수집·이용 동의 여부를 강제한다(위치정보법 §18·§19, G-1).
@@ -96,6 +103,7 @@ public class AttendanceService {
         Attendance result = checkIn(employeeId, storeId, latitude, longitude, resolveQueuedTime(queuedAt));
         // 사장 대시보드·직원 홈 라이브 동기화 — 출근 인원·근무 상태 즉시 반영.
         liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.ATTENDANCE_CHANGED);
+        notifyOwnersAttendance(result, true);
         return result;
     }
 
@@ -185,7 +193,57 @@ public class AttendanceService {
 
         Attendance result = checkOut(employeeId, storeId, latitude, longitude, resolveQueuedTime(queuedAt));
         liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.ATTENDANCE_CHANGED);
+        notifyOwnersAttendance(result, false);
         return result;
+    }
+
+    /**
+     * 출/퇴근 등록을 매장 사장(들)에게 FCM 푸시.
+     *
+     * <p>발행은 트랜잭션 커밋 이후(afterCommit) — 롤백된 출퇴근으로 알림이 나가면 안 된다.
+     * 이름/ID 는 세션이 살아있는 지금 미리 풀어둔다(afterCommit 시점엔 lazy 로딩 불가).
+     * 실패는 삼킨다 — 알림이 출퇴근 본 트랜잭션을 깨지 않게.</p>
+     */
+    private void notifyOwnersAttendance(Attendance attendance, boolean isCheckIn) {
+        try {
+            if (attendance.getStore() == null) {
+                return;
+            }
+            Long storeId = attendance.getStore().getId();
+            String storeName = attendance.getStore().getStoreName() != null
+                    ? attendance.getStore().getStoreName() : "매장";
+            String employeeName = attendance.getEmployeeProfile() != null
+                    && attendance.getEmployeeProfile().getUser() != null
+                    && attendance.getEmployeeProfile().getUser().getName() != null
+                    ? attendance.getEmployeeProfile().getUser().getName() : "직원";
+            int workingMinutes = isCheckIn ? 0 : (int) attendance.getWorkingTimeInMinutes();
+            List<Long> masterUserIds = masterStoreRelationRepository.findByStore_Id(storeId).stream()
+                    .filter(r -> r.getMasterProfile() != null && r.getMasterProfile().getUser() != null)
+                    .map(r -> r.getMasterProfile().getUser().getId())
+                    .toList();
+            if (masterUserIds.isEmpty()) {
+                return;
+            }
+            Runnable send = () -> masterUserIds.forEach(masterUserId -> {
+                if (isCheckIn) {
+                    notificationService.notifyEmployeeCheckedIn(masterUserId, employeeName, storeName);
+                } else {
+                    notificationService.notifyEmployeeCheckedOut(masterUserId, employeeName, storeName, workingMinutes);
+                }
+            });
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        send.run();
+                    }
+                });
+            } else {
+                send.run();
+            }
+        } catch (Exception e) {
+            log.debug("출퇴근 사장 푸시 스킵: {}", e.getMessage());
+        }
     }
 
     /**

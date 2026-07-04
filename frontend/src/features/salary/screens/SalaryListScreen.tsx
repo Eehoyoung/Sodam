@@ -3,6 +3,7 @@ import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {FlatList, RefreshControl, StyleSheet, View} from 'react-native';
 import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {useStoreLiveSync} from '../../../common/hooks/useStoreLiveSync';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {formatMoney} from '../../../common/utils/format';
 import {spacing} from '../../../theme/tokens';
@@ -96,6 +97,13 @@ const SalaryListScreen = () => {
             fetchPayrolls(selectedStoreId);
         }, [selectedStoreId, fetchPayrolls]),
     );
+
+    // 화면을 보고 있는 동안 급여 생성/확정/지급이 일어나면 즉시 반영 (사장-직원 동시 조회 동기화)
+    useStoreLiveSync(selectedStoreId ? [selectedStoreId] : [], e => {
+        if (e.type === 'PAYROLL_CHANGED') {
+            fetchPayrolls(selectedStoreId);
+        }
+    });
 
     const handleRefresh = () => {
         setRefreshing(true);
