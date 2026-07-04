@@ -1,5 +1,6 @@
 package com.rich.sodam.domain;
 
+import com.rich.sodam.domain.type.EmploymentType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -65,6 +66,29 @@ public class EmployeeStoreRelation {
     @Column(name = "contracted_weekly_days")
     private Integer contractedWeeklyDays;
 
+    /**
+     * 고용(임금) 형태. 기본 HOURLY(시급제) — 기존 데이터·계산 경로와 하위호환.
+     * MONTHLY_SALARY(월급제)면 {@link #monthlySalary} 필수이며 급여 계산이 월급제 경로로 분기한다.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "employment_type", nullable = false, length = 20)
+    private EmploymentType employmentType = EmploymentType.HOURLY;
+
+    /** 월급(원, 세전 고정급). MONTHLY_SALARY 전용 — HOURLY 에서는 null 유지. */
+    @Column(name = "monthly_salary")
+    private Integer monthlySalary;
+
+    /**
+     * 개인별 4대보험 가입 여부 — 매장 정책({@code PayrollPolicy.taxPolicyType})의 개인 오버라이드.
+     * <ul>
+     *   <li>null = 매장 정책 따름 (기존 동작 그대로 — 회귀 없음)</li>
+     *   <li>true = 4대보험 근로자 부담분 공제</li>
+     *   <li>false = 3.3% 사업소득 원천징수</li>
+     * </ul>
+     */
+    @Column(name = "social_insurance_enrolled")
+    private Boolean socialInsuranceEnrolled;
+
     public EmployeeStoreRelation(EmployeeProfile employeeProfile, Store store) {
         this.employeeProfile = employeeProfile;
         this.store = store;
@@ -112,5 +136,10 @@ public class EmployeeStoreRelation {
     public void updateWageSettings(Integer customWage, boolean useStoreStandard) {
         this.customHourlyWage = customWage;
         this.useStoreStandardWage = useStoreStandard;
+    }
+
+    /** 월급제(월급 설정 완료) 여부. 급여 계산 분기 판정에 사용. */
+    public boolean isMonthlySalaried() {
+        return employmentType == EmploymentType.MONTHLY_SALARY && monthlySalary != null;
     }
 }

@@ -26,6 +26,10 @@ public interface WorkShiftRepository extends JpaRepository<WorkShift, Long> {
     List<WorkShift> findByEmployeeIdAndShiftDateBetweenAndConfirmedAtIsNotNullOrderByShiftDateAsc(
             Long employeeId, LocalDate from, LocalDate to);
 
+    /** 월급제 급여 계산용 — 직원×매장×기간의 확정 시프트(소정근로일 판정 근거). */
+    List<WorkShift> findByEmployeeIdAndStoreIdAndShiftDateBetweenAndConfirmedAtIsNotNull(
+            Long employeeId, Long storeId, LocalDate from, LocalDate to);
+
     /** 출근 리마인드 스케줄러용 — 특정 일자 시프트 전체. */
     List<WorkShift> findByShiftDate(LocalDate shiftDate);
 

@@ -7,8 +7,10 @@ import com.rich.sodam.core.payroll.weeklyallowance.WeeklyAllowanceContext;
 import com.rich.sodam.core.payroll.weeklyallowance.WeeklyAllowanceResult;
 import com.rich.sodam.core.payroll.weeklyallowance.WeeklyWorkPattern;
 import com.rich.sodam.domain.*;
+import com.rich.sodam.domain.type.EmploymentType;
 import com.rich.sodam.domain.type.PayrollStatus;
 import com.rich.sodam.domain.type.TaxPolicyType;
+import com.rich.sodam.domain.type.TimeOffStatus;
 import com.rich.sodam.dto.request.PayrollCalculationRequestDto;
 import com.rich.sodam.dto.response.EmployeeWageInfoDto;
 import com.rich.sodam.exception.BusinessException;
@@ -47,10 +49,15 @@ public class PayrollService {
     private final com.rich.sodam.core.payroll.wage.NightWorkCalculator nightWorkCalculator;
     private final com.rich.sodam.core.payroll.wage.DailyWageCalculator dailyWageCalculator;
     private final com.rich.sodam.core.payroll.wage.WorkHoursCalculator workHoursCalculator;
+    private final com.rich.sodam.core.payroll.wage.MonthlySalaryCalculator monthlySalaryCalculator;
     private final com.rich.sodam.core.payroll.deduction.SocialInsuranceCalculator socialInsuranceCalculator;
+    private final WorkShiftRepository workShiftRepository;
+    private final TimeOffRepository timeOffRepository;
     private final PlanAccessService planAccessService;
     private final PayslipFreeGrantService payslipFreeGrantService;
     private final PayrollBonusService payrollBonusService;
+    private final LiveSyncPublisher liveSyncPublisher;
+    private final NotificationService notificationService;
 
     /** 미리보기 워터마크 문구(매장 사장 플랜이 명세서 PDF 발급 권한 미보유 시). */
     private static final String PAYSLIP_WATERMARK = "소담 미리보기 · STARTER 플랜에서 정식 발급";
@@ -176,6 +183,10 @@ public class PayrollService {
         dto.setCustomHourlyWage(relation.getCustomHourlyWage());
         dto.setUseStoreStandardWage(relation.getUseStoreStandardWage());
         dto.setAppliedHourlyWage(relation.getAppliedHourlyWage());
+        // 고용형태(월급제) 정보 — 본인/해당 매장 사장만 접근하는 급여 DTO(급여 RBAC 유지)
+        dto.setEmploymentType(relation.getEmploymentType());
+        dto.setMonthlySalary(relation.getMonthlySalary());
+        dto.setSocialInsuranceEnrolled(relation.getSocialInsuranceEnrolled());
 
         return dto;
     }
@@ -489,8 +500,24 @@ public class PayrollService {
                         startDate.atStartOfDay(),
                         endDate.atTime(23, 59, 59));
 
-        // 적용 시급 계산
-        int hourlyWage = relation.getAppliedHourlyWage();
+        // 적용 단가 산정 — 고용형태 분기
+        //  · 시급제(HOURLY): 관계의 적용시급(개별 또는 매장 기준) — 기존 경로 그대로(회귀 없음)
+        //  · 월급제(MONTHLY_SALARY): 통상시급 = 월급 ÷ 월 통상임금 산정 기준시간(주40h 기준 209h,
+        //    근로기준법 시행령 §6②). §56 연장·야간·휴일 가산과 결근·지각 공제의 기준 단가.
+        boolean monthlySalaried = relation.isMonthlySalaried();
+        if (relation.getEmploymentType() == EmploymentType.MONTHLY_SALARY && !monthlySalaried) {
+            throw new BusinessException(
+                    "월급제 직원의 월급(monthlySalary)이 설정되지 않아 급여를 계산할 수 없습니다.",
+                    "MONTHLY_SALARY_REQUIRED");
+        }
+        int hourlyWage = monthlySalaried
+                ? monthlySalaryCalculator.ordinaryHourlyWage(relation.getMonthlySalary(),
+                relation.getContractedWeeklyDays(), policy.getRegularHoursPerDay())
+                : relation.getAppliedHourlyWage();
+
+        // 월급제: 일자별 실근로 집계 (시프트 대조로 결근·지각 공제/소정 외 추가 기본분 산정용)
+        Map<LocalDate, Double> paidHoursByDate = new HashMap<>();
+        Map<LocalDate, Double> regularHoursByDate = new HashMap<>();
 
         // 급여 엔티티 생성
         Payroll payroll = new Payroll();
@@ -552,6 +579,16 @@ public class PayrollService {
                 overtimeWage = wageResult.overtimeWage();
                 holidayWorkWage = 0;
             }
+            // 월급제: 소정근로 기본분(100%)은 월급에 이미 포함 — 일자별 기본급을 지급하면 이중지급.
+            // 연장·야간 가산과 휴일근로(소정 외)는 통상시급 기준으로 그대로 별도 지급(§56).
+            // 소정 외 근로의 기본 100%분·결근/지각 공제는 시프트 대조로 루프 종료 후 일괄 산정.
+            if (monthlySalaried) {
+                if (!holiday) {
+                    regularWage = 0;
+                    regularHoursByDate.merge(workDate, regularHours, Double::sum);
+                }
+                paidHoursByDate.merge(workDate, workHours.paidHours(), Double::sum);
+            }
             // 야간가산(0.5 가산분)은 평일·휴일 공통 적용
             int nightWorkWage = dailyWageCalculator.calculate(hourlyWage, 0, 0, nightWorkHours, premiumApplicable).nightWorkWage();
             int dailyWage = regularWage + overtimeWage + holidayWorkWage + nightWorkWage;
@@ -588,9 +625,22 @@ public class PayrollService {
             totalHolidayWorkWage += holidayWorkWage;
         }
 
-        // 주휴수당 계산
+        // ── 월급제 기본급 확정: 일할 기본급 − 근태 공제 + 소정 외 추가 기본분 ──
+        if (monthlySalaried) {
+            int proratedBase = monthlySalaryCalculator.proratedBaseSalary(
+                    relation.getMonthlySalary(), startDate, endDate, relation.getHireDate());
+            MonthlyAttendanceAdjustment adjustment = calculateMonthlyAttendanceAdjustment(
+                    relation, startDate, endDate, hourlyWage, policy.getRegularHoursPerDay(),
+                    paidHoursByDate, regularHoursByDate);
+            // 무노동 무임금 공제 — 단, 공제가 기본급을 초과하지 않도록 하한 0 (음수 급여 방지)
+            totalRegularWage = Math.max(0, proratedBase - adjustment.deduction()) + adjustment.extraBasePay();
+        }
+
+        // 주휴수당 계산.
+        // 월급제는 별도 가산하지 않는다 — 월 통상임금 산정 기준시간 209h 에 유급주휴 35h(8h×4.345주)가
+        // 포함되어 있어 월급 자체에 주휴수당이 내재(시행령 §6②). 별도 지급 시 이중지급이 된다.
         int weeklyAllowance = 0;
-        if (policy.getWeeklyAllowanceEnabled()) {
+        if (policy.getWeeklyAllowanceEnabled() && !monthlySalaried) {
             weeklyAllowance = calculateTotalWeeklyAllowance(employeeId, storeId, startDate, endDate);
         }
 
@@ -604,11 +654,13 @@ public class PayrollService {
         int grossWage = totalRegularWage + totalOvertimeWage + totalNightWorkWage
                 + totalHolidayWorkWage + weeklyAllowance + bonusWage;
 
-        // 세금 계산
-        int taxAmount = calculateTax(grossWage, policy.getTaxPolicyType());
+        // 세금 계산 — 개인별 4대보험 가입 여부(socialInsuranceEnrolled)가 매장 정책을 오버라이드.
+        // null(기본)이면 매장 PayrollPolicy.taxPolicyType 그대로 — 기존 동작과 동일(회귀 없음).
+        TaxPolicyType effectiveTaxPolicy = resolveTaxPolicy(relation, policy);
+        int taxAmount = calculateTax(grossWage, effectiveTaxPolicy);
 
         // 임금명세서(§48②) 항목별 공제내역 — 4대보험 정책일 때 항목별 저장
-        if (policy.getTaxPolicyType() == TaxPolicyType.FOUR_INSURANCES) {
+        if (effectiveTaxPolicy == TaxPolicyType.FOUR_INSURANCES) {
             com.rich.sodam.core.payroll.deduction.DeductionBreakdown b =
                     socialInsuranceCalculator.breakdown(grossWage);
             payroll.setNationalPensionDeduction(b.nationalPension());
@@ -632,7 +684,7 @@ public class PayrollService {
         payroll.setWeeklyAllowance(weeklyAllowance);
         payroll.setBonusWage(bonusWage);
         payroll.setGrossWage(grossWage);
-        payroll.setTaxRate(policy.getTaxPolicyType() == TaxPolicyType.INCOME_TAX_3_3 ? 0.033 : 0.0916);
+        payroll.setTaxRate(effectiveTaxPolicy == TaxPolicyType.INCOME_TAX_3_3 ? 0.033 : 0.0916);
         payroll.setTaxAmount(taxAmount);
         payroll.setDeductions(0); // 기타 공제액은 현재 없음
         payroll.setNetWage(netWage);
@@ -651,6 +703,12 @@ public class PayrollService {
         // 삭제/대체되는 흐름이 아니라 새 Payroll 이 또 생기므로, 소비 처리는 항상 이번 payroll 기준으로 남긴다.
         if (!unconsumedBonuses.isEmpty()) {
             payrollBonusService.markConsumed(unconsumedBonuses, savedPayroll.getId());
+        }
+
+        // 급여 생성 라이브 동기화 — 사장 급여 목록·직원 급여 화면 즉시 반영 (afterCommit 은 publisher 내부 처리)
+        if (savedPayroll.getStore() != null) {
+            liveSyncPublisher.publishStore(savedPayroll.getStore().getId(),
+                    LiveSyncPublisher.SyncType.PAYROLL_CHANGED);
         }
 
         return savedPayroll;
@@ -728,7 +786,52 @@ public class PayrollService {
             payroll.setCancelReason(cancelReason);
         }
 
-        return payrollRepository.save(payroll);
+        Payroll saved = payrollRepository.save(payroll);
+
+        // 상태 전이 라이브 동기화 — 확정/지급/취소가 사장·직원 급여 화면에 즉시 반영
+        if (saved.getStore() != null) {
+            liveSyncPublisher.publishStore(saved.getStore().getId(),
+                    LiveSyncPublisher.SyncType.PAYROLL_CHANGED);
+        }
+
+        // 지급 완료 → 직원에게 FCM. 커밋 후 발송(롤백된 지급으로 알림 금지),
+        // 이름/금액은 세션이 살아있는 지금 미리 풀어둔다. issuePayroll 의 DRAFT→CONFIRMED→PAID
+        // 원자 전이에서도 직원 알림은 PAID 1회만 나간다.
+        if (newStatus == PayrollStatus.PAID) {
+            notifyEmployeePaidAfterCommit(saved);
+        }
+
+        return saved;
+    }
+
+    /** 급여 지급 완료를 직원에게 커밋 후 푸시. 실패는 삼킨다(알림이 정산 트랜잭션을 깨지 않게). */
+    private void notifyEmployeePaidAfterCommit(Payroll payroll) {
+        try {
+            if (payroll.getEmployee() == null || payroll.getEmployee().getUser() == null) {
+                return;
+            }
+            Long employeeUserId = payroll.getEmployee().getUser().getId();
+            String storeName = payroll.getStore() != null && payroll.getStore().getStoreName() != null
+                    ? payroll.getStore().getStoreName() : "매장";
+            int netWage = payroll.getNetWage() != null ? payroll.getNetWage() : 0;
+            String monthLabel = payroll.getStartDate() != null
+                    ? payroll.getStartDate().getMonthValue() + "월분" : "이번 달";
+            Runnable send = () ->
+                    notificationService.notifyPayrollPaid(employeeUserId, storeName, netWage, monthLabel);
+            if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+                org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                        new org.springframework.transaction.support.TransactionSynchronization() {
+                            @Override
+                            public void afterCommit() {
+                                send.run();
+                            }
+                        });
+            } else {
+                send.run();
+            }
+        } catch (Exception e) {
+            log.debug("급여 지급 직원 푸시 스킵: {}", e.getMessage());
+        }
     }
 
     /**
@@ -1049,6 +1152,127 @@ public class PayrollService {
     /** 3.3% 사업소득 원천징수 정책 여부(세율로 판별). */
     private boolean isWithholdingPolicy(Payroll payroll) {
         return payroll.getTaxRate() != null && Math.abs(payroll.getTaxRate() - 0.033) < 1e-9;
+    }
+
+    /**
+     * 개인 오버라이드를 반영한 실효 세금(공제) 정책.
+     * socialInsuranceEnrolled: null=매장 정책 따름(기존 동작), true=4대보험, false=3.3% 원천징수.
+     */
+    private TaxPolicyType resolveTaxPolicy(EmployeeStoreRelation relation, PayrollPolicy policy) {
+        Boolean enrolled = relation.getSocialInsuranceEnrolled();
+        if (enrolled == null) {
+            return policy.getTaxPolicyType();
+        }
+        return enrolled ? TaxPolicyType.FOUR_INSURANCES : TaxPolicyType.INCOME_TAX_3_3;
+    }
+
+    /** 월급제 근태 조정 결과. deduction=결근·지각/조퇴 공제(원), extraBasePay=소정 외 근로 기본 100%분(원). */
+    private record MonthlyAttendanceAdjustment(int deduction, int extraBasePay) {
+    }
+
+    /**
+     * 월급제 근태 공제·소정 외 기본분 산정 — <b>확정된 시프트(WorkShift)</b>를 소정근로일로 삼아
+     * 실제 출근기록과 대조한다.
+     *
+     * <p><b>공제 방식(무노동 무임금 원칙)</b>: 통상시급 × 미근무 소정근로시간.
+     * 고용노동부 행정해석(근기 68207-690 계열)이 인정하는 결근 공제 방식 중
+     * "월급 ÷ 209시간 × 8시간 × 결근일수"(시간급 환산 공제)를 실제 시프트 길이로 일반화한 것이다.
+     * 지각·조퇴(부분 미근무)와 결근(전일 미근무)을 동일 단가로 일관 공제하고,
+     * 단시간 시프트 결근 시 8h 일급을 통째로 공제하는 과공제를 막는다.</p>
+     *
+     * <p><b>안전장치(임금체불 방지 방향)</b>:
+     * <ul>
+     *   <li>확정(confirmedAt) 시프트만 소정근로일로 인정 — 미확정 초안으로 공제하지 않는다</li>
+     *   <li>승인된 휴가(TimeOff APPROVED) 일자는 결근 공제에서 제외 — 유·무급 구분이 없어
+     *       무급휴가도 공제하지 않는다(과지급 방향 안전. 무급휴직 공제는 노무사 확인 항목)</li>
+     *   <li>입사일 이전 시프트 제외 (월중 입사 시 일할 기본급과 이중 반영 방지)</li>
+     *   <li>기간 내 확정 시프트가 없으면(스케줄 미사용 매장) 공제·추가분 모두 0 —
+     *       소정근로일을 판정할 수 없으므로 출근기록의 소정근로는 월급에 포함된 것으로 간주</li>
+     *   <li>결근 주(週)의 주휴 상실분 추가 공제(시행령 §30① 개근 요건)는 자동 적용하지 않는다
+     *       (과지급 방향 안전 — 결근 시에도 월급 내재 주휴분은 남는다. 노무사 확인 항목)</li>
+     * </ul></p>
+     *
+     * <p><b>소정 외 추가 기본분</b>: 시프트 없는 날의 근무 또는 시프트를 초과한 근무의
+     * "기본 100%"는 209h 월급에 포함되어 있지 않으므로 통상시급 × 초과시간(일 소정 8h 한도 내)으로
+     * 지급한다. 일 8h 초과분의 연장가산(§56)·야간가산은 기존 경로가 별도 지급하므로 여기서는 기본분만.</p>
+     */
+    private MonthlyAttendanceAdjustment calculateMonthlyAttendanceAdjustment(
+            EmployeeStoreRelation relation, LocalDate startDate, LocalDate endDate,
+            int ordinaryHourlyWage, double regularHoursPerDay,
+            Map<LocalDate, Double> paidHoursByDate, Map<LocalDate, Double> regularHoursByDate) {
+
+        List<WorkShift> confirmedShifts = workShiftRepository
+                .findByEmployeeIdAndStoreIdAndShiftDateBetweenAndConfirmedAtIsNotNull(
+                        relation.getEmployeeProfile().getId(), relation.getStore().getId(), startDate, endDate);
+        if (confirmedShifts.isEmpty()) {
+            return new MonthlyAttendanceAdjustment(0, 0);
+        }
+
+        LocalDate hireDate = relation.getHireDate();
+
+        // 일자별 소정근로시간 — 휴게(§54) 공제 후, 일 소정(보통 8h) 캡.
+        // 캡 이유: 시프트가 8h를 넘겨도 월급이 커버하는 것은 소정근로분까지이고,
+        // 초과분은 연장근로로서 출근 시 별도 지급·미출근 시 미발생(공제 대상 아님)이기 때문.
+        Map<LocalDate, Double> scheduledByDate = new HashMap<>();
+        for (WorkShift shift : confirmedShifts) {
+            if (hireDate != null && shift.getShiftDate().isBefore(hireDate)) {
+                continue;
+            }
+            LocalDateTime shiftStart = shift.getShiftDate().atTime(shift.getStartTime());
+            LocalDateTime shiftEnd = shift.crossesMidnight()
+                    ? shift.getShiftDate().plusDays(1).atTime(shift.getEndTime())   // 야간 시프트: 익일 종료
+                    : shift.getShiftDate().atTime(shift.getEndTime());
+            double netHours = workHoursCalculator
+                    .calculate(shiftStart, shiftEnd, regularHoursPerDay).paidHours();
+            scheduledByDate.merge(shift.getShiftDate(), netHours, Double::sum);
+        }
+        scheduledByDate.replaceAll((date, hours) -> Math.min(hours, regularHoursPerDay));
+
+        Set<LocalDate> approvedTimeOffDates = approvedTimeOffDates(relation, startDate, endDate);
+
+        // 결근·지각·조퇴 공제 (일자별 상계 — 다른 날의 초과근무가 미근무를 상쇄하지 못하게 max(0,·))
+        long deduction = 0;
+        for (Map.Entry<LocalDate, Double> scheduled : scheduledByDate.entrySet()) {
+            if (approvedTimeOffDates.contains(scheduled.getKey())) {
+                continue;
+            }
+            double actual = paidHoursByDate.getOrDefault(scheduled.getKey(), 0.0);
+            double shortfallHours = Math.max(0, scheduled.getValue() - actual);
+            if (shortfallHours > 0) {
+                deduction += Math.round(ordinaryHourlyWage * shortfallHours);
+            }
+        }
+
+        // 소정 외 근로의 기본 100%분 (시프트 외 근무일·시프트 초과 소정 내 근무)
+        long extraBasePay = 0;
+        for (Map.Entry<LocalDate, Double> worked : regularHoursByDate.entrySet()) {
+            double covered = scheduledByDate.getOrDefault(worked.getKey(), 0.0);
+            double extraHours = Math.max(0, worked.getValue() - covered);
+            if (extraHours > 0) {
+                extraBasePay += Math.round(ordinaryHourlyWage * extraHours);
+            }
+        }
+        return new MonthlyAttendanceAdjustment((int) deduction, (int) extraBasePay);
+    }
+
+    /** 기간 내 승인(APPROVED)된 휴가 일자 집합 — 월급제 결근 공제 제외용. */
+    private Set<LocalDate> approvedTimeOffDates(EmployeeStoreRelation relation, LocalDate startDate, LocalDate endDate) {
+        Set<LocalDate> dates = new HashSet<>();
+        List<TimeOff> approved = timeOffRepository
+                .findByEmployeeAndStatus(relation.getEmployeeProfile(), TimeOffStatus.APPROVED);
+        for (TimeOff timeOff : approved) {
+            if (timeOff.getStore() == null
+                    || !timeOff.getStore().getId().equals(relation.getStore().getId())
+                    || timeOff.getStartDate() == null || timeOff.getEndDate() == null) {
+                continue;
+            }
+            LocalDate from = timeOff.getStartDate().isAfter(startDate) ? timeOff.getStartDate() : startDate;
+            LocalDate to = timeOff.getEndDate().isBefore(endDate) ? timeOff.getEndDate() : endDate;
+            for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
+                dates.add(d);
+            }
+        }
+        return dates;
     }
 
     /**

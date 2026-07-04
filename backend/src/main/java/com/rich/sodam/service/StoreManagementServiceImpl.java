@@ -2,13 +2,16 @@ package com.rich.sodam.service;
 
 import com.rich.sodam.config.app.AppProperties;
 import com.rich.sodam.core.payroll.constant.MinimumWage;
+import com.rich.sodam.core.payroll.wage.MonthlySalaryCalculator;
 import com.rich.sodam.domain.*;
 import com.rich.sodam.domain.type.DomainEventType;
+import com.rich.sodam.domain.type.EmploymentType;
 import com.rich.sodam.dto.request.EmployeeWageUpdateDto;
 import com.rich.sodam.dto.request.LocationUpdateDto;
 import com.rich.sodam.dto.request.OperatingHoursUpdateDto.DayOperatingHours;
 import com.rich.sodam.dto.request.StoreRegistrationDto;
 import com.rich.sodam.dto.request.StoreUpdateDto;
+import com.rich.sodam.exception.BusinessException;
 import com.rich.sodam.exception.EntityNotFoundException;
 import com.rich.sodam.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -18,12 +21,14 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -47,6 +52,8 @@ public class StoreManagementServiceImpl implements StoreManagementService {
     private final LiveSyncPublisher liveSyncPublisher;
     private final PayrollRepository payrollRepository;
     private final AttendanceRepository attendanceRepository;
+    private final EmploymentTypeChangeLogRepository employmentTypeChangeLogRepository;
+    private final MonthlySalaryCalculator monthlySalaryCalculator;
 
     @NotNull
     private Store getStore(StoreRegistrationDto storeDto) {
@@ -386,7 +393,7 @@ public class StoreManagementServiceImpl implements StoreManagementService {
     @Override
     @Transactional
     @CacheEvict(value = "stores", key = "'wage:' + #wageDto.employeeId + ':' + #wageDto.storeId")
-    public void updateEmployeeWage(EmployeeWageUpdateDto wageDto) {
+    public void updateEmployeeWage(EmployeeWageUpdateDto wageDto, Long changedBy) {
         EmployeeProfile employeeProfile = employeeProfileRepository.findById(wageDto.getEmployeeId())
                 .orElseThrow(() -> new EntityNotFoundException("사원 프로필을 찾을 수 없습니다."));
 
@@ -398,6 +405,11 @@ public class StoreManagementServiceImpl implements StoreManagementService {
                 .orElseThrow(() -> new EntityNotFoundException("사원-매장 관계를 찾을 수 없습니다."));
 
         assertAtLeastMinimumWage(wageDto.getCustomHourlyWage());
+
+        // 고용형태(월급제) 설정 — employmentType 제공 시에만 적용 (null=변경 없음, 기존 FE 호환)
+        if (wageDto.getEmploymentType() != null) {
+            applyEmploymentTypeChange(relation, wageDto, changedBy);
+        }
 
         // 시급 정보 업데이트
         Integer oldCustom = relation.getCustomHourlyWage();
@@ -418,6 +430,57 @@ public class StoreManagementServiceImpl implements StoreManagementService {
             wageHistoryRepository.save(WageHistory.employeeOverride(
                     store, employeeProfile, wageDto.getCustomHourlyWage(),
                     null, "직원 개별 시급 변경"));
+        }
+    }
+
+    /**
+     * 고용형태(시급제↔월급제)·월급·개인 4대보험 설정 적용 + 전환 이력 기록.
+     *
+     * <p>전환 이력({@link EmploymentTypeChangeLog})은 "언제부터 월급제였는지"의 증빙으로,
+     * 이미 확정·지급된 과거 정산분에 새 형태가 소급 적용되지 않았음을 입증한다(분쟁 대비).</p>
+     */
+    private void applyEmploymentTypeChange(EmployeeStoreRelation relation,
+                                           EmployeeWageUpdateDto wageDto, Long changedBy) {
+        EmploymentType fromType = relation.getEmploymentType();
+        EmploymentType toType = wageDto.getEmploymentType();
+        // 시급제로 (재)설정하면 월급은 비운다 — HOURLY + monthlySalary 잔존은 상태 모순
+        Integer newSalary = (toType == EmploymentType.MONTHLY_SALARY) ? wageDto.getMonthlySalary() : null;
+
+        if (toType == EmploymentType.MONTHLY_SALARY) {
+            if (newSalary == null) {
+                // DTO Bean Validation(@AssertTrue)이 1차 차단 — 서비스 직접 호출 대비 방어선
+                throw new BusinessException("월급제(MONTHLY_SALARY)는 monthlySalary가 필수입니다.",
+                        "MONTHLY_SALARY_REQUIRED");
+            }
+            assertMonthlySalaryAtLeastMinimum(newSalary, relation.getContractedWeeklyDays());
+        }
+
+        boolean changed = fromType != toType || !Objects.equals(relation.getMonthlySalary(), newSalary);
+
+        relation.setEmploymentType(toType);
+        relation.setMonthlySalary(newSalary);
+        relation.setSocialInsuranceEnrolled(wageDto.getSocialInsuranceEnrolled());
+
+        if (changed) {
+            employmentTypeChangeLogRepository.save(EmploymentTypeChangeLog.of(
+                    relation.getId(), fromType, toType, newSalary, changedBy));
+        }
+    }
+
+    /**
+     * 월급이 최저임금 월 환산액 이상인지 검증(최저임금법 §6, 미달 설정은 §28 형사처벌 리스크라 저장 시점 차단).
+     * 기준: 최저시급 × 월 통상임금 산정 기준시간(주40h=209h, 약정 소정근로일이 있으면 비례 축소 —
+     * 단시간 월급제의 과차단 방지). 일 소정근로시간은 표준 8h 가정.
+     */
+    private void assertMonthlySalaryAtLeastMinimum(int monthlySalary, Integer contractedWeeklyDays) {
+        int year = LocalDate.now().getYear();
+        BigDecimal minMonthly = MinimumWage.hourlyFor(year)
+                .multiply(monthlySalaryCalculator.monthlyStandardHours(contractedWeeklyDays, 8.0));
+        if (BigDecimal.valueOf(monthlySalary).compareTo(minMonthly) < 0) {
+            throw new BusinessException(String.format(
+                    "%d년 최저임금 월 환산액(%,d원) 미만으로는 월급을 설정할 수 없습니다. 입력값: %,d원",
+                    year, minMonthly.intValue(), monthlySalary),
+                    "WAGE_BELOW_MINIMUM");
         }
     }
 

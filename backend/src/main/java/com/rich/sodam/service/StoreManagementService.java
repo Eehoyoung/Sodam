@@ -23,7 +23,12 @@ public interface StoreManagementService {
 
     Store updateStoreLocation(Long storeId, LocationUpdateDto locationDto);
 
-    void updateEmployeeWage(EmployeeWageUpdateDto wageDto);
+    /**
+     * 직원 임금 설정 변경 — 시급/고용형태(월급제)/개인 4대보험.
+     *
+     * @param changedBy 변경 수행 사장 userId (고용형태 전환 이력 기록용)
+     */
+    void updateEmployeeWage(EmployeeWageUpdateDto wageDto, Long changedBy);
 
     void updateStoreStandardWage(Long storeId, Integer standardHourlyWage);
 

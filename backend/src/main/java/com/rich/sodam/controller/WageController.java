@@ -45,7 +45,7 @@ public class WageController {
         // 사장이 자기 매장에 소속된 직원의 시급만 변경 가능
         guard.assertMasterOwnsStore(principal.getId(), wageDto.getStoreId());
         guard.assertEmployeeInStore(wageDto.getEmployeeId(), wageDto.getStoreId());
-        storeManagementService.updateEmployeeWage(wageDto);
+        storeManagementService.updateEmployeeWage(wageDto, principal.getId());
         return ResponseEntity.ok().build();
     }
 
