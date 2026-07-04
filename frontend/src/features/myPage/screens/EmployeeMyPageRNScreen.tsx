@@ -133,6 +133,13 @@ const EmployeeMyPageRNScreen: React.FC = () => {
                             onPress={() => navigation.navigate('SalaryArchive')}
                         />
                         <AppListItem
+                            title="내 환급"
+                            subtitle="여러 근무지 3.3% 원천징수 합산으로 환급 가능성을 확인해요."
+                            right="›"
+                            testID="rowPersonalAnnualTax"
+                            onPress={() => navigation.navigate('PersonalAnnualTax')}
+                        />
+                        <AppListItem
                             title="내 요청"
                             subtitle="정정·휴가 신청의 처리 상태를 확인해요."
                             right="›"
