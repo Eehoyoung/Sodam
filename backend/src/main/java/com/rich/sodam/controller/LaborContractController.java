@@ -55,7 +55,8 @@ public class LaborContractController {
             @Valid @RequestBody LaborContractCreateRequest body) {
         guard.assertMasterOwnsStore(principal.getId(), storeId);
         guard.assertEmployeeInStore(body.employeeId(), storeId);
-        LaborContract saved = laborContractService.save(body.toEntity(storeId));
+        // principal = 계약 작성 사장 — 임금형태 전환 이력(EmploymentTypeChangeLog)의 수행자로 기록
+        LaborContract saved = laborContractService.save(body.toEntity(storeId), principal.getId());
         return ResponseEntity.ok(LaborContractResponse.from(saved));
     }
 

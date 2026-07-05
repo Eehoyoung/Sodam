@@ -1,18 +1,26 @@
 package com.rich.sodam.service;
 
+import com.rich.sodam.domain.EmployeeStoreRelation;
+import com.rich.sodam.domain.EmploymentTypeChangeLog;
 import com.rich.sodam.domain.LaborContract;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.domain.type.ContractPeriodType;
+import com.rich.sodam.domain.type.EmploymentType;
+import com.rich.sodam.domain.type.LaborContractPayType;
+import com.rich.sodam.domain.type.SalaryPayUnit;
 import com.rich.sodam.domain.type.WagePaymentMethod;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
+import com.rich.sodam.repository.EmploymentTypeChangeLogRepository;
 import com.rich.sodam.repository.LaborContractRepository;
 import com.rich.sodam.repository.PayrollPolicyRepository;
 import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -25,6 +33,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,8 +51,17 @@ class LaborContractServiceTest {
     StoreRepository storeRepository;
     @Mock
     PayrollPolicyRepository payrollPolicyRepository;
+    @Mock
+    EmploymentTypeChangeLogRepository employmentTypeChangeLogRepository;
     @InjectMocks
     LaborContractService service;
+
+    @BeforeEach
+    void setUp() {
+        Store store = new Store("소담매장", "1234567890", "02-1234-5678", "카페", 10_320, 100);
+        store.applyEmployeeCount(5);
+        lenient().when(storeRepository.findById(2L)).thenReturn(Optional.of(store));
+    }
 
     private LaborContract valid() {
         LaborContract c = new LaborContract();
@@ -182,6 +202,35 @@ class LaborContractServiceTest {
 
         assertThat(saved.getWeeklyHolidayDay()).isEqualTo("SUNDAY");
         assertThat(saved.getAnnualLeaveNote()).isNull();
+    }
+
+    @Test
+    @DisplayName("월급제 계약은 월 기본급에서 통상시급과 고정수당을 정규화해 저장한다")
+    void normalizesSalaryContractTerms() {
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        LaborContract c = valid();
+        c.setPayType(LaborContractPayType.SALARY);
+        c.setSalaryPayUnit(SalaryPayUnit.MONTHLY);
+        c.setHourlyWage(null);
+        // 2024년 계약(최저 9,860원) — 통상시급 10,000원의 라운드 넘버 시나리오 유지 목적.
+        // startDate 미지정이면 당해(2026, 최저 10,320원) 기준이라 최저임금 검증에 걸린다.
+        c.setStartDate(LocalDate.of(2024, 1, 1));
+        c.setMonthlyBaseSalary(2_090_000);
+        c.setFixedOvertimeHoursPerMonth(10.0);
+        c.setFixedNightHoursPerMonth(10.0);
+        c.setFixedHolidayHoursWithin8PerMonth(8.0);
+        c.setFixedHolidayHoursOver8PerMonth(0.0);
+
+        LaborContract saved = service.save(c);
+
+        assertThat(saved.getOrdinaryHourlyWage()).isEqualTo(10_000);
+        assertThat(saved.getHourlyWage()).isEqualTo(10_000);
+        assertThat(saved.getAnnualSalary()).isEqualTo(25_080_000);
+        assertThat(saved.getFixedOvertimePay()).isEqualTo(150_000);
+        assertThat(saved.getFixedNightPay()).isEqualTo(50_000);
+        assertThat(saved.getFixedHolidayPay()).isEqualTo(120_000);
+        assertThat(saved.getExpectedMonthlyWage()).isEqualTo(2_410_000);
+        assertThat(saved.getFiveOrMoreEmployeesSnapshot()).isTrue();
     }
 
     @Test
@@ -363,5 +412,204 @@ class LaborContractServiceTest {
         LaborContract saved = service.save(c);
 
         assertThat(saved.isNationalPension()).isFalse();
+    }
+
+    // ── 수정 1: 계약 저장 → 직원-매장 관계 급여 설정(고용형태) 동기화 ─────────────
+
+    private EmployeeStoreRelation hourlyRelation() {
+        EmployeeStoreRelation relation = new EmployeeStoreRelation();
+        relation.setId(77L);
+        when(employeeStoreRelationRepository.findRelation(1L, 2L)).thenReturn(Optional.of(relation));
+        return relation;
+    }
+
+    private LaborContract validSalary(int monthlyBase) {
+        LaborContract c = valid();
+        c.setPayType(LaborContractPayType.SALARY);
+        c.setSalaryPayUnit(SalaryPayUnit.MONTHLY);
+        c.setHourlyWage(null);
+        c.setMonthlyBaseSalary(monthlyBase);
+        return c;
+    }
+
+    @Test
+    @DisplayName("SALARY 계약 저장 → 관계가 월급제로 전환되고 전환 이력에 작성 사장이 기록된다")
+    void salaryContractSwitchesRelationToMonthly() {
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        EmployeeStoreRelation relation = hourlyRelation();
+
+        service.save(validSalary(3_000_000), 99L);
+
+        assertThat(relation.getEmploymentType()).isEqualTo(EmploymentType.MONTHLY_SALARY);
+        assertThat(relation.getMonthlySalary()).isEqualTo(3_000_000);
+        verify(employeeStoreRelationRepository).save(relation);
+
+        ArgumentCaptor<EmploymentTypeChangeLog> captor = ArgumentCaptor.forClass(EmploymentTypeChangeLog.class);
+        verify(employmentTypeChangeLogRepository).save(captor.capture());
+        assertThat(captor.getValue().getRelationId()).isEqualTo(77L);
+        assertThat(captor.getValue().getFromType()).isEqualTo(EmploymentType.HOURLY);
+        assertThat(captor.getValue().getToType()).isEqualTo(EmploymentType.MONTHLY_SALARY);
+        assertThat(captor.getValue().getMonthlySalary()).isEqualTo(3_000_000);
+        assertThat(captor.getValue().getChangedBy()).isEqualTo(99L);
+    }
+
+    @Test
+    @DisplayName("연봉제 계약은 /12 정규화된 월 환산액이 관계 월급으로 전파된다")
+    void annualSalaryContractPropagatesMonthlyEquivalent() {
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        EmployeeStoreRelation relation = hourlyRelation();
+        LaborContract c = valid();
+        c.setPayType(LaborContractPayType.SALARY);
+        c.setSalaryPayUnit(SalaryPayUnit.ANNUAL);
+        c.setHourlyWage(null);
+        c.setAnnualSalary(36_000_000);
+
+        service.save(c, 99L);
+
+        assertThat(relation.getEmploymentType()).isEqualTo(EmploymentType.MONTHLY_SALARY);
+        assertThat(relation.getMonthlySalary()).isEqualTo(3_000_000); // 36,000,000 / 12
+    }
+
+    @Test
+    @DisplayName("HOURLY 재계약 저장 → 월급제였던 관계가 시급제로 역전환(월급 null)되고 이력이 남는다")
+    void hourlyContractRevertsMonthlyRelation() {
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        EmployeeStoreRelation relation = hourlyRelation();
+        relation.applyEmploymentType(EmploymentType.MONTHLY_SALARY, 3_000_000);
+
+        service.save(valid(), 99L);
+
+        assertThat(relation.getEmploymentType()).isEqualTo(EmploymentType.HOURLY);
+        assertThat(relation.getMonthlySalary()).isNull();
+
+        ArgumentCaptor<EmploymentTypeChangeLog> captor = ArgumentCaptor.forClass(EmploymentTypeChangeLog.class);
+        verify(employmentTypeChangeLogRepository).save(captor.capture());
+        assertThat(captor.getValue().getFromType()).isEqualTo(EmploymentType.MONTHLY_SALARY);
+        assertThat(captor.getValue().getToType()).isEqualTo(EmploymentType.HOURLY);
+        assertThat(captor.getValue().getMonthlySalary()).isNull();
+    }
+
+    @Test
+    @DisplayName("동일 형태·동일 월급 재저장 → 전환 이력을 기록하지 않는다")
+    void sameStateResaveDoesNotLog() {
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        EmployeeStoreRelation relation = hourlyRelation();
+        relation.applyEmploymentType(EmploymentType.MONTHLY_SALARY, 3_000_000);
+
+        service.save(validSalary(3_000_000), 99L);
+
+        assertThat(relation.getEmploymentType()).isEqualTo(EmploymentType.MONTHLY_SALARY);
+        verify(employmentTypeChangeLogRepository, never()).save(any());
+        verify(employeeStoreRelationRepository).save(relation); // 소정근로시간 등 나머지 전파는 수행
+    }
+
+    @Test
+    @DisplayName("직원-매장 관계가 없으면(퇴사 등) 계약서만 저장하고 전파는 건너뛴다")
+    void missingRelationSkipsPropagation() {
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(employeeStoreRelationRepository.findRelation(1L, 2L)).thenReturn(Optional.empty());
+
+        assertThatCode(() -> service.save(validSalary(3_000_000), 99L)).doesNotThrowAnyException();
+        verify(employmentTypeChangeLogRepository, never()).save(any());
+    }
+
+    // ── 수정 2: 주 소정근로시간 전파 → 계약서 통상시급 == 정산 통상시급 ──────────
+
+    @Test
+    @DisplayName("주 20h 월급제 계약 저장 → 관계에 주 소정근로시간이 전파되고 정산 통상시급(104h)이 계약서와 일치한다")
+    void weeklyHoursPropagatedAndOrdinaryWageConsistent() {
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        EmployeeStoreRelation relation = hourlyRelation();
+        LaborContract c = validSalary(1_200_000);
+        c.setContractedHoursPerWeek(20.0); // 일 4h × 주 5일 단시간 월급제
+
+        LaborContract saved = service.save(c, 99L);
+
+        // 계약서: 1,200,000 ÷ 104h(= (20+주휴4)×4.345238) = 11,538원
+        assertThat(saved.getOrdinaryHourlyWage()).isEqualTo(11_538);
+        assertThat(relation.getContractedWeeklyHours()).isEqualTo(20.0);
+        // 정산(PayrollService 경로)이 쓰는 계산기 결과와 반드시 일치 — 분모 불일치(209h) 회귀 방지
+        assertThat(new com.rich.sodam.core.payroll.wage.MonthlySalaryCalculator()
+                .ordinaryHourlyWage(1_200_000, relation.getContractedWeeklyHours(),
+                        relation.getContractedWeeklyDays(), 8.0))
+                .isEqualTo(saved.getOrdinaryHourlyWage());
+    }
+
+    // ── 수정 3: 계약 저장 경로 최저임금 검증 ─────────────────────────────────
+
+    @Test
+    @DisplayName("최저임금 미달 월급 계약은 거부된다 — 메시지에 환산 통상시급·최저시급 명시")
+    void rejectsSalaryContractBelowMinimumWage() {
+        // 2,000,000 ÷ 209h = 9,569원 < 2026년 최저 10,320원
+        LaborContract c = validSalary(2_000_000);
+        c.setStartDate(LocalDate.of(2026, 1, 1));
+
+        assertThatThrownBy(() -> service.save(c))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("9,569")
+                .hasMessageContaining("10,320");
+    }
+
+    @Test
+    @DisplayName("수습 감액 요건 충족 시 월급 통상시급은 최저임금 90% 하한(9,288원)까지 허용된다")
+    void allowsSalaryDownToProbationFloor() {
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        // 통상시급 9,569원 — 일반 하한(10,320) 미달이지만 수습 하한(10,320×0.9=9,288) 이상
+        LaborContract c = validSalary(2_000_000);
+        c.setPeriodType(ContractPeriodType.FIXED_TERM);
+        c.setStartDate(LocalDate.of(2026, 1, 1));
+        c.setEndDate(LocalDate.of(2026, 12, 31));
+        c.setProbation(true);
+        c.setProbationMonths(3);
+        c.setProbationWageRate(0.9);
+        c.setSimpleLabor(false);
+
+        assertThatCode(() -> service.save(c)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("수습 감액을 적용해도 90% 하한 미만 월급(통상시급 9,091원 < 9,288원)은 거부된다")
+    void rejectsSalaryBelowProbationFloor() {
+        // 1,900,000 ÷ 209h = 9,091원 < 9,288원(수습 하한)
+        LaborContract c = validSalary(1_900_000);
+        c.setPeriodType(ContractPeriodType.FIXED_TERM);
+        c.setStartDate(LocalDate.of(2026, 1, 1));
+        c.setEndDate(LocalDate.of(2026, 12, 31));
+        c.setProbation(true);
+        c.setProbationMonths(3);
+        c.setProbationWageRate(0.9);
+        c.setSimpleLabor(false);
+
+        assertThatThrownBy(() -> service.save(c))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("9,288");
+    }
+
+    @Test
+    @DisplayName("최저임금 미달 시급 계약도 동일하게 거부된다 (일관성)")
+    void rejectsHourlyContractBelowMinimumWage() {
+        LaborContract c = valid();
+        c.setHourlyWage(10_000); // < 2026년 최저 10,320
+        c.setStartDate(LocalDate.of(2026, 1, 1));
+
+        assertThatThrownBy(() -> service.save(c))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("10,000")
+                .hasMessageContaining("10,320");
+    }
+
+    @Test
+    @DisplayName("시급 계약도 수습 감액 요건 충족 시 90% 하한까지 허용된다")
+    void allowsHourlyDownToProbationFloor() {
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        LaborContract c = valid();
+        c.setHourlyWage(10_000); // ≥ 9,288(수습 하한)
+        c.setStartDate(LocalDate.of(2026, 1, 1));
+        c.setProbation(true); // 기간 미정(PERMANENT 취급) → 1년 이상 요건 충족
+        c.setProbationMonths(3);
+        c.setProbationWageRate(0.9);
+        c.setSimpleLabor(false);
+
+        assertThatCode(() -> service.save(c)).doesNotThrowAnyException();
     }
 }

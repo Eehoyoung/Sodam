@@ -28,7 +28,6 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -467,13 +466,12 @@ public class StoreManagementServiceImpl implements StoreManagementService {
                 throw new BusinessException("월급제(MONTHLY_SALARY)는 monthlySalary가 필수입니다.",
                         "MONTHLY_SALARY_REQUIRED");
             }
-            assertMonthlySalaryAtLeastMinimum(newSalary, relation.getContractedWeeklyDays());
+            assertMonthlySalaryAtLeastMinimum(newSalary, relation);
         }
 
-        boolean changed = fromType != toType || !Objects.equals(relation.getMonthlySalary(), newSalary);
-
-        relation.setEmploymentType(toType);
-        relation.setMonthlySalary(newSalary);
+        // 변경 발생 판정·적용은 관계 도메인 단일 소스 — 근로계약서 저장 경로(LaborContractService)와
+        // 공유해 어느 경로로 전환돼도 "실제 변경 시에만 1건" 이력이 남는다.
+        boolean changed = relation.applyEmploymentType(toType, newSalary);
         relation.setSocialInsuranceEnrolled(wageDto.getSocialInsuranceEnrolled());
 
         if (changed) {
@@ -484,13 +482,15 @@ public class StoreManagementServiceImpl implements StoreManagementService {
 
     /**
      * 월급이 최저임금 월 환산액 이상인지 검증(최저임금법 §6, 미달 설정은 §28 형사처벌 리스크라 저장 시점 차단).
-     * 기준: 최저시급 × 월 통상임금 산정 기준시간(주40h=209h, 약정 소정근로일이 있으면 비례 축소 —
-     * 단시간 월급제의 과차단 방지). 일 소정근로시간은 표준 8h 가정.
+     * 기준: 최저시급 × 월 통상임금 산정 기준시간 — 주 소정근로시간 약정(근로계약서 전파값)이 있으면
+     * 그 기준시간(정산 통상시급 분모와 동일, 예: 주 20h→104h), 없으면 약정 소정근로일 비례
+     * (주40h=209h), 일 소정근로시간은 표준 8h 가정. 단시간 월급제의 과차단 방지.
      */
-    private void assertMonthlySalaryAtLeastMinimum(int monthlySalary, Integer contractedWeeklyDays) {
+    private void assertMonthlySalaryAtLeastMinimum(int monthlySalary, EmployeeStoreRelation relation) {
         int year = LocalDate.now().getYear();
         BigDecimal minMonthly = MinimumWage.hourlyFor(year)
-                .multiply(monthlySalaryCalculator.monthlyStandardHours(contractedWeeklyDays, 8.0));
+                .multiply(monthlySalaryCalculator.monthlyStandardHours(
+                        relation.getContractedWeeklyHours(), relation.getContractedWeeklyDays(), 8.0));
         if (BigDecimal.valueOf(monthlySalary).compareTo(minMonthly) < 0) {
             throw new BusinessException(String.format(
                     "%d년 최저임금 월 환산액(%,d원) 미만으로는 월급을 설정할 수 없습니다. 입력값: %,d원",

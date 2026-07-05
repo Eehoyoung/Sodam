@@ -45,8 +45,11 @@ public class EmploymentTypeChangeLog {
     @Column(name = "monthly_salary")
     private Integer monthlySalary;
 
-    /** 변경 수행자(사장 userId). */
-    @Column(name = "changed_by", nullable = false)
+    /**
+     * 변경 수행자(사장 userId). API 경로는 항상 principal 을 기록하고,
+     * 근로계약서 저장 경유 등 내부 전파로 주체가 명시되지 않으면 null (V37에서 완화).
+     */
+    @Column(name = "changed_by")
     private Long changedBy;
 
     @Column(name = "changed_at", nullable = false)

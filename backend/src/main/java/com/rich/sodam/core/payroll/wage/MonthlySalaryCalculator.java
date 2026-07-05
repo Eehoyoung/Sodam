@@ -1,5 +1,6 @@
 package com.rich.sodam.core.payroll.wage;
 
+import com.rich.sodam.core.payroll.weeklyallowance.LaborLawConstants;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -38,6 +39,14 @@ public class MonthlySalaryCalculator {
     /** 월평균 주수 = 365일 ÷ 7일 ÷ 12개월 ≈ 4.345 (고용노동부 산정 관행). */
     private static final BigDecimal AVG_WEEKS_PER_MONTH = new BigDecimal("4.345");
 
+    /**
+     * 월평균 주수 정밀값(365÷7÷12 = 4.345238…). 주 소정근로시간 약정 경로 전용 —
+     * 근로계약서 정규화({@code LaborContractService.SALARY_WEEKS_PER_MONTH}와 동일)와
+     * 산식을 비트 단위로 일치시켜 계약서 통상시급 == 명세서 통상시급을 보장한다.
+     * (소정근로일수 폴백 경로는 기존 관행값 4.345 유지 — 209h 회귀 금지)
+     */
+    private static final double EXACT_AVG_WEEKS_PER_MONTH = 365.0 / 7.0 / 12.0;
+
     private static final BigDecimal STATUTORY_WEEKLY_HOURS = new BigDecimal("40");
     private static final BigDecimal STATUTORY_DAILY_HOURS = new BigDecimal("8");
 
@@ -52,6 +61,62 @@ public class MonthlySalaryCalculator {
         return BigDecimal.valueOf(monthlySalary)
                 .divide(monthlyStandardHours(contractedWeeklyDays, regularHoursPerDay), 0, RoundingMode.HALF_UP)
                 .intValue();
+    }
+
+    /**
+     * 통상시급(원, HALF_UP) — 주 소정근로시간 약정(근로계약서 전파값) 우선.
+     *
+     * <p>단시간 월급제(예: 주 5일·일 4h=주 20h)에서 소정근로일수 폴백은 일 8h를 가정해
+     * 기준시간이 209h로 과대해지고 통상시급이 계약서의 절반이 되는 버그가 있었다(§56 가산·
+     * 결근 공제 과소). 주 소정근로시간이 있으면 계약서와 동일 산식(주 20h → 104h)을 쓴다.</p>
+     *
+     * @param contractedWeeklyHours 1주 소정근로시간 약정(null/0 이하면 weeklyDays 폴백)
+     */
+    public int ordinaryHourlyWage(int monthlySalary, Double contractedWeeklyHours,
+                                  Integer contractedWeeklyDays, double regularHoursPerDay) {
+        return BigDecimal.valueOf(monthlySalary)
+                .divide(monthlyStandardHours(contractedWeeklyHours, contractedWeeklyDays, regularHoursPerDay),
+                        0, RoundingMode.HALF_UP)
+                .intValue();
+    }
+
+    /**
+     * 월 통상임금 산정 기준시간 — 주 소정근로시간 약정 우선, 없으면 소정근로일수 폴백.
+     * {@link #monthlyStandardHoursForWeeklyHours(double)} 참고.
+     */
+    public BigDecimal monthlyStandardHours(Double contractedWeeklyHours,
+                                           Integer contractedWeeklyDays, double regularHoursPerDay) {
+        if (contractedWeeklyHours != null && contractedWeeklyHours > 0) {
+            return BigDecimal.valueOf(monthlyStandardHoursForWeeklyHours(contractedWeeklyHours));
+        }
+        return monthlyStandardHours(contractedWeeklyDays, regularHoursPerDay);
+    }
+
+    /**
+     * 주 소정근로시간 약정 기반 월 통상임금 산정 기준시간(시간 단위 반올림).
+     *
+     * <p><b>근로계약서 정규화와 단일 산식</b> — {@code LaborContractService} 의 월급제 정규화가
+     * 이 메서드에 위임하므로, 계약서에 기재되는 통상시급과 정산(명세서)의 통상시급이 항상 일치한다.
+     * 산식: (주 소정 + 주휴) × 4.345238주(365÷7÷12), Math.round.
+     * 예) 주 20h → (20 + 4) × 4.345238 = 104.29 → 104h / 주 40h → 48 × 4.345238 = 208.57 → 209h.</p>
+     *
+     * <p><b>15시간 미만 주휴 0 (§18③)</b>: 1주 소정근로시간 15시간 미만 단시간 근로자는
+     * §55(주휴일)가 적용되지 않으므로 주휴시간을 0으로 둔다 — 계약서 경로
+     * ({@code LaborContractService.weeklyAllowanceHours})와 동일 규칙. 소정근로일수 폴백 경로
+     * ({@link #monthlyStandardHours(Integer, double)})는 비례 주휴만 두고 15h 컷이 없지만,
+     * 새 경로는 계약↔명세서 일치를 우선해 계약서 규칙을 따른다(회귀 방지 위해 폴백은 불변).</p>
+     */
+    public static int monthlyStandardHoursForWeeklyHours(double contractedWeeklyHours) {
+        // 주 소정 = min(약정, 법정 40h) — §50 상한
+        double weekly = Math.min(contractedWeeklyHours,
+                LaborLawConstants.STATUTORY_WEEKLY_HOURS.doubleValue());
+        // 주휴 = 15h 미만 0 (§18③) / 이상 min(주 소정/40 × 8, 8h) (§55·§18① 비례)
+        double holiday = weekly < LaborLawConstants.MIN_WEEKLY_HOURS_FOR_ALLOWANCE.doubleValue()
+                ? 0.0
+                : Math.min(LaborLawConstants.MAX_WEEKLY_ALLOWANCE_HOURS.doubleValue(),
+                weekly / LaborLawConstants.STATUTORY_WEEKLY_HOURS.doubleValue()
+                        * LaborLawConstants.STATUTORY_DAILY_HOURS.doubleValue());
+        return (int) Math.round((weekly + holiday) * EXACT_AVG_WEEKS_PER_MONTH);
     }
 
     /**

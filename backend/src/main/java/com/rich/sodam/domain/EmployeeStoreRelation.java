@@ -67,6 +67,14 @@ public class EmployeeStoreRelation {
     private Integer contractedWeeklyDays;
 
     /**
+     * 1주 소정근로시간 약정(근로계약서 {@code contractedHoursPerWeek} 전파, V37).
+     * 월급제 통상시급 분모(월 통상임금 산정 기준시간)를 계약서와 동일 산식으로 맞추는 데 사용.
+     * null 이면 미설정 — {@link #contractedWeeklyDays} × 일 소정시간 폴백(기존 경로 유지).
+     */
+    @Column(name = "contracted_weekly_hours")
+    private Double contractedWeeklyHours;
+
+    /**
      * 고용(임금) 형태. 기본 HOURLY(시급제) — 기존 데이터·계산 경로와 하위호환.
      * MONTHLY_SALARY(월급제)면 {@link #monthlySalary} 필수이며 급여 계산이 월급제 경로로 분기한다.
      */
@@ -141,5 +149,23 @@ public class EmployeeStoreRelation {
     /** 월급제(월급 설정 완료) 여부. 급여 계산 분기 판정에 사용. */
     public boolean isMonthlySalaried() {
         return employmentType == EmploymentType.MONTHLY_SALARY && monthlySalary != null;
+    }
+
+    /**
+     * 고용형태·월급을 적용하고, 실제 값 변경이 발생했는지 반환한다.
+     *
+     * <p>"변경 발생" 판정의 단일 소스 — WageEditSheet 경로(StoreManagementServiceImpl)와
+     * 근로계약서 저장 경로(LaborContractService)가 모두 이 반환값으로만
+     * {@link EmploymentTypeChangeLog} 기록 여부를 결정해, 동일 형태 재저장 시
+     * 중복 이력이 남지 않는다.</p>
+     *
+     * @return 형태 또는 월급이 실제로 바뀌었으면 true (전환 이력 기록 트리거)
+     */
+    public boolean applyEmploymentType(EmploymentType toType, Integer newMonthlySalary) {
+        boolean changed = this.employmentType != toType
+                || !java.util.Objects.equals(this.monthlySalary, newMonthlySalary);
+        this.employmentType = toType;
+        this.monthlySalary = newMonthlySalary;
+        return changed;
     }
 }

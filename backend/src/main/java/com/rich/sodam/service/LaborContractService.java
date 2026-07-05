@@ -3,15 +3,21 @@ package com.rich.sodam.service;
 import com.rich.sodam.core.payroll.constant.MinimumWage;
 import com.rich.sodam.core.payroll.constant.MinorLaborStandards;
 import com.rich.sodam.core.payroll.constant.SocialInsuranceRates;
+import com.rich.sodam.core.payroll.wage.MonthlySalaryCalculator;
 import com.rich.sodam.core.payroll.weeklyallowance.LaborLawConstants;
 import com.rich.sodam.domain.EmployeeStoreRelation;
+import com.rich.sodam.domain.EmploymentTypeChangeLog;
 import com.rich.sodam.domain.LaborContract;
 import com.rich.sodam.domain.PayrollPolicy;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.domain.type.ContractPeriodType;
+import com.rich.sodam.domain.type.EmploymentType;
+import com.rich.sodam.domain.type.LaborContractPayType;
+import com.rich.sodam.domain.type.SalaryPayUnit;
 import com.rich.sodam.dto.response.LaborContractContextResponse;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
+import com.rich.sodam.repository.EmploymentTypeChangeLogRepository;
 import com.rich.sodam.repository.LaborContractRepository;
 import com.rich.sodam.repository.PayrollPolicyRepository;
 import com.rich.sodam.repository.StoreRepository;
@@ -21,6 +27,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
@@ -49,6 +57,16 @@ public class LaborContractService {
     private final UserRepository userRepository;
     private final StoreRepository storeRepository;
     private final PayrollPolicyRepository payrollPolicyRepository;
+    private final EmploymentTypeChangeLogRepository employmentTypeChangeLogRepository;
+
+    /**
+     * 근로계약서를 저장한다(변경 수행자 미상 — 내부·테스트 경로).
+     * API 경로는 {@link #save(LaborContract, Long)} 로 작성 주체를 함께 넘길 것.
+     */
+    @Transactional
+    public LaborContract save(LaborContract contract) {
+        return save(contract, null);
+    }
 
     /**
      * 근로계약서를 저장한다. §17 필수 기재사항(임금 3요소·소정근로시간·휴일·연차·취업장소·업무) 누락 시 거부.
@@ -56,17 +74,26 @@ public class LaborContractService {
      * <p>주 소정근로시간이 {@link LaborLawConstants#MIN_WEEKLY_HOURS_FOR_ALLOWANCE}(15시간) 미만이면
      * §18③ 에 따라 §55 휴일과 §60 연차유급휴가가 적용되지 않으므로, 입력값과 무관하게 저장 시 강제로 비운다.
      *
-     * <p>소정근로일(contractedWeeklyDays)이 지정되면 직원-매장 관계에 전달한다.
-     * 이 값이 설정되면 주휴수당 산정 시 폴백("출근≥1=개근") 대신 결근까지 정확 판정한다.
+     * <p>임금(시급 또는 월급 환산 통상시급)이 최저임금(§6) 미만이면 저장을 거부한다 —
+     * 수습 감액 요건 충족 시에만 최저임금의 90%까지 허용({@link #assertAtLeastMinimumWage}).
+     *
+     * <p>저장 성공 시 계약 조건(소정근로일·주 소정근로시간·임금형태/월급)을 직원-매장 관계에 전파해
+     * 정산이 계약과 동일 기준으로 계산되게 한다({@link #propagateContractTermsToRelation}).
+     * 전파 시점은 서명 완료가 아니라 <b>저장 시점</b> — 기존 소정근로일 전파 선례와 동일하며,
+     * sign() 은 직원 동의 기록(markSigned)만 수행하는 별도 흐름이다.
+     *
+     * @param changedBy 계약 작성 주체(사장 userId). 고용형태 전환 이력의 수행자로 기록. null 허용(내부 경로).
      */
     @Transactional
-    public LaborContract save(LaborContract contract) {
+    public LaborContract save(LaborContract contract, Long changedBy) {
+        normalizeCompensation(contract);
         applyLaborLawExclusions(contract);
         normalizeProbation(contract);
         applySocialInsuranceEligibility(contract);
         assertRequiredFields(contract);
+        assertAtLeastMinimumWage(contract);
         LaborContract saved = laborContractRepository.save(contract);
-        propagateContractedWeeklyDays(saved);
+        propagateContractTermsToRelation(saved, changedBy);
         return saved;
     }
 
@@ -89,6 +116,106 @@ public class LaborContractService {
     public static boolean isWeeklyAllowanceEligible(Double contractedHoursPerWeek) {
         return contractedHoursPerWeek != null
                 && contractedHoursPerWeek >= LaborLawConstants.MIN_WEEKLY_HOURS_FOR_ALLOWANCE.doubleValue();
+    }
+
+    private void normalizeCompensation(LaborContract c) {
+        if (c.getPayType() == null) {
+            c.setPayType(LaborContractPayType.HOURLY);
+        }
+
+        Store store = null;
+        if (c.getStoreId() != null) {
+            store = storeRepository.findById(c.getStoreId())
+                    .orElseThrow(() -> new IllegalArgumentException("매장을 찾을 수 없어요."));
+            c.setFiveOrMoreEmployeesSnapshot(store.isPremiumApplicable());
+        }
+
+        if (c.getPayType() == LaborContractPayType.HOURLY) {
+            clearSalaryTerms(c);
+            return;
+        }
+
+        normalizeSalaryTerms(c, store != null ? store.isPremiumApplicable() : !Boolean.FALSE.equals(c.getFiveOrMoreEmployeesSnapshot()));
+    }
+
+    private void clearSalaryTerms(LaborContract c) {
+        c.setSalaryPayUnit(null);
+        c.setMonthlyBaseSalary(null);
+        c.setAnnualSalary(null);
+        c.setOrdinaryHourlyWage(null);
+        c.setFixedOvertimeHoursPerMonth(null);
+        c.setFixedOvertimePay(null);
+        c.setFixedNightHoursPerMonth(null);
+        c.setFixedNightPay(null);
+        c.setFixedHolidayHoursWithin8PerMonth(null);
+        c.setFixedHolidayHoursOver8PerMonth(null);
+        c.setFixedHolidayPay(null);
+        c.setExpectedMonthlyWage(null);
+    }
+
+    private void normalizeSalaryTerms(LaborContract c, boolean premiumApplicable) {
+        if (c.getSalaryPayUnit() == null) {
+            c.setSalaryPayUnit(c.getAnnualSalary() != null ? SalaryPayUnit.ANNUAL : SalaryPayUnit.MONTHLY);
+        }
+
+        Integer monthlyBase = c.getMonthlyBaseSalary();
+        Integer annual = c.getAnnualSalary();
+        if (c.getSalaryPayUnit() == SalaryPayUnit.ANNUAL && annual != null) {
+            monthlyBase = roundWon(annual / 12.0);
+        } else if (monthlyBase != null) {
+            annual = monthlyBase * 12;
+        } else if (annual != null) {
+            monthlyBase = roundWon(annual / 12.0);
+        }
+
+        c.setMonthlyBaseSalary(monthlyBase);
+        c.setAnnualSalary(annual);
+        c.setFixedOvertimeHoursPerMonth(nz(c.getFixedOvertimeHoursPerMonth()));
+        c.setFixedNightHoursPerMonth(nz(c.getFixedNightHoursPerMonth()));
+        c.setFixedHolidayHoursWithin8PerMonth(nz(c.getFixedHolidayHoursWithin8PerMonth()));
+        c.setFixedHolidayHoursOver8PerMonth(nz(c.getFixedHolidayHoursOver8PerMonth()));
+
+        int standardHours = monthlyStandardHoursForSalary(c.getContractedHoursPerWeek());
+        if (monthlyBase == null || standardHours <= 0) {
+            return;
+        }
+
+        int ordinaryHourlyWage = roundWon((double) monthlyBase / standardHours);
+        int overtimePay = roundWon(ordinaryHourlyWage * c.getFixedOvertimeHoursPerMonth()
+                * (premiumApplicable ? 1.5 : 1.0));
+        int nightPay = roundWon(ordinaryHourlyWage * c.getFixedNightHoursPerMonth()
+                * (premiumApplicable ? 0.5 : 0.0));
+        int holidayPay = roundWon(ordinaryHourlyWage
+                * (c.getFixedHolidayHoursWithin8PerMonth() * (premiumApplicable ? 1.5 : 1.0)
+                + c.getFixedHolidayHoursOver8PerMonth() * (premiumApplicable ? 2.0 : 1.0)));
+
+        c.setOrdinaryHourlyWage(ordinaryHourlyWage);
+        c.setHourlyWage(ordinaryHourlyWage);
+        c.setFixedOvertimePay(overtimePay);
+        c.setFixedNightPay(nightPay);
+        c.setFixedHolidayPay(holidayPay);
+        c.setExpectedMonthlyWage(monthlyBase + overtimePay + nightPay + holidayPay);
+    }
+
+    /**
+     * 월급제 통상시급 분모(월 통상임금 산정 기준시간). 산식은
+     * {@link MonthlySalaryCalculator#monthlyStandardHoursForWeeklyHours(double)} 에 위임 —
+     * 정산(PayrollService)과 단일 소스를 공유해 계약서 통상시급과 명세서 통상시급의
+     * 불일치(주 20h 계약이 정산에서 209h 분모로 절반 계산되던 버그)를 구조적으로 차단한다.
+     */
+    private static int monthlyStandardHoursForSalary(Double contractedHoursPerWeek) {
+        if (contractedHoursPerWeek == null || contractedHoursPerWeek <= 0) {
+            return 0;
+        }
+        return MonthlySalaryCalculator.monthlyStandardHoursForWeeklyHours(contractedHoursPerWeek);
+    }
+
+    private static double nz(Double value) {
+        return value == null ? 0.0 : Math.max(0.0, value);
+    }
+
+    private static int roundWon(double value) {
+        return (int) Math.round(value);
     }
 
     private void normalizeProbation(LaborContract c) {
@@ -201,6 +328,9 @@ public class LaborContractService {
     }
 
     public static double estimatedMonthlyWage(LaborContract c) {
+        if (c != null && c.getPayType() == LaborContractPayType.SALARY && c.getExpectedMonthlyWage() != null) {
+            return c.getExpectedMonthlyWage();
+        }
         if (c == null || c.getHourlyWage() == null || c.getContractedHoursPerWeek() == null) {
             return 0.0;
         }
@@ -221,20 +351,81 @@ public class LaborContractService {
     }
 
     /**
-     * 계약의 소정근로일을 직원-매장 관계에 반영해 주휴 개근 판정 분모로 사용되게 한다.
-     * 값이 없으면(미설정) 관계의 기존 값을 보존한다(폴백 동작 유지).
+     * 계약 조건을 직원-매장 관계(급여 설정)에 전파한다 — 계약서 따로, 정산 따로가 되지 않게.
+     *
+     * <ul>
+     *   <li><b>소정근로일</b>: 주휴 개근 판정 분모(기존 동작). 값이 없으면 관계 기존 값 보존.</li>
+     *   <li><b>주 소정근로시간</b>: 월급제 통상시급 분모 정교화(V37). 값이 없으면 기존 값 보존.</li>
+     *   <li><b>임금형태·월급</b>: SALARY 계약 → MONTHLY_SALARY + 월 기본급(연봉제는 정규화된
+     *       월 환산액), HOURLY 계약 → HOURLY + 월급 null. 실제 전환이 발생했을 때만
+     *       {@link EmploymentTypeChangeLog} 기록(판정은 {@link EmployeeStoreRelation#applyEmploymentType}
+     *       단일 소스 — WageEditSheet 경로와 중복·이중 기록 없음).</li>
+     * </ul>
+     *
+     * <p>관계가 없으면(퇴사 등) 계약서만 저장하고 조용히 건너뛴다 — 기존 소정근로일 전파와 동일한 관용.</p>
      */
-    private void propagateContractedWeeklyDays(LaborContract contract) {
-        Integer weeklyDays = contract.getContractedWeeklyDays();
-        if (weeklyDays == null) {
-            return;
-        }
+    private void propagateContractTermsToRelation(LaborContract contract, Long changedBy) {
         employeeStoreRelationRepository
                 .findRelation(contract.getEmployeeId(), contract.getStoreId())
                 .ifPresent((EmployeeStoreRelation relation) -> {
-                    relation.setContractedWeeklyDays(weeklyDays);
+                    if (contract.getContractedWeeklyDays() != null) {
+                        relation.setContractedWeeklyDays(contract.getContractedWeeklyDays());
+                    }
+                    if (contract.getContractedHoursPerWeek() != null) {
+                        relation.setContractedWeeklyHours(contract.getContractedHoursPerWeek());
+                    }
+
+                    boolean salaryContract = contract.getPayType() == LaborContractPayType.SALARY;
+                    EmploymentType fromType = relation.getEmploymentType();
+                    EmploymentType toType = salaryContract ? EmploymentType.MONTHLY_SALARY : EmploymentType.HOURLY;
+                    // SALARY 는 normalizeSalaryTerms 가 월 기본급을 보장(연봉제도 /12 정규화 완료)
+                    Integer toSalary = salaryContract ? contract.getMonthlyBaseSalary() : null;
+
+                    boolean changed = relation.applyEmploymentType(toType, toSalary);
+                    if (changed) {
+                        employmentTypeChangeLogRepository.save(EmploymentTypeChangeLog.of(
+                                relation.getId(), fromType, toType, toSalary, changedBy));
+                    }
                     employeeStoreRelationRepository.save(relation);
                 });
+    }
+
+    /**
+     * 임금이 최저임금(최저임금법 §6) 이상인지 저장 시점에 검증한다.
+     *
+     * <p>미달 계약은 §28 형사처벌 대상이고 사법상으로도 미달 부분이 무효(§6③ — 최저임금액으로
+     * 자동 대체)이므로 체결 자체를 차단한다. WageEditSheet 경로(StoreManagementServiceImpl 의
+     * WAGE_BELOW_MINIMUM)와 동일 정책 — 계약서 저장 경로만 검증이 없던 갭을 메운다.
+     * 시급제·월급제(환산 통상시급) 모두 동일 적용(일관성).</p>
+     *
+     * <p>기준 연도는 계약 시작일 연도(미입력 시 당해 연도 — {@link MinimumWage#hourlyFor} 는
+     * 미등록 연도를 최신 고시값으로 폴백). 수습 감액 요건(§5②·시행령 §3: 1년 이상 계약·수습
+     * 3개월 이내·비단순노무·감액률 90% 이상)을 충족하면 최저임금 × probationWageRate 까지 허용
+     * — 판정은 {@link #isProbationWageReductionAllowed} 재사용.</p>
+     */
+    private void assertAtLeastMinimumWage(LaborContract c) {
+        boolean salaryContract = c.getPayType() == LaborContractPayType.SALARY;
+        Integer effectiveHourly = salaryContract ? c.getOrdinaryHourlyWage() : c.getHourlyWage();
+        if (effectiveHourly == null) {
+            return; // 존재 여부는 assertRequiredFields 가 이미 차단
+        }
+        int year = (c.getStartDate() != null ? c.getStartDate() : LocalDate.now()).getYear();
+        BigDecimal minimum = MinimumWage.hourlyFor(year);
+        boolean probationReduced = isProbationWageReductionAllowed(c);
+        BigDecimal floor = probationReduced
+                ? minimum.multiply(BigDecimal.valueOf(c.getProbationWageRate())).setScale(0, RoundingMode.HALF_UP)
+                : minimum;
+        if (BigDecimal.valueOf(effectiveHourly).compareTo(floor) < 0) {
+            String wageLabel = salaryContract
+                    ? String.format("월 기본급 환산 통상시급 %,d원", effectiveHourly)
+                    : String.format("시급 %,d원", effectiveHourly);
+            String floorLabel = probationReduced
+                    ? String.format("%d년 최저임금 %,d원의 수습 감액 하한 %,d원", year, minimum.intValue(), floor.intValue())
+                    : String.format("%d년 최저임금 %,d원", year, minimum.intValue());
+            throw new IllegalArgumentException(String.format(
+                    "%s이(가) %s 미만입니다. 최저임금 미달 계약은 저장할 수 없습니다(최저임금법 §6).",
+                    wageLabel, floorLabel));
+        }
     }
 
     @Transactional(readOnly = true)
@@ -333,7 +524,9 @@ public class LaborContractService {
         if (c.getEmployeeId() == null || c.getStoreId() == null) {
             throw new IllegalArgumentException("직원·매장 정보는 필수입니다.");
         }
-        if (c.getHourlyWage() == null || c.getHourlyWage() <= 0) {
+        if (c.getPayType() == LaborContractPayType.SALARY) {
+            validateSalaryRequired(c);
+        } else if (c.getHourlyWage() == null || c.getHourlyWage() <= 0) {
             throw new IllegalArgumentException("임금(시급)은 필수 기재사항입니다(§17).");
         }
         if (c.getWagePaymentMethod() == null) {
@@ -365,6 +558,24 @@ public class LaborContractService {
         }
         if (c.isProbation()) {
             validateProbation(c);
+        }
+    }
+
+    private void validateSalaryRequired(LaborContract c) {
+        if (c.getSalaryPayUnit() == null) {
+            throw new IllegalArgumentException("월급/연봉제 계약은 급여 입력 단위가 필수입니다.");
+        }
+        if (c.getMonthlyBaseSalary() == null || c.getMonthlyBaseSalary() <= 0) {
+            throw new IllegalArgumentException("월급/연봉제 계약은 월 기본급 또는 연봉 월 환산액이 필수입니다.");
+        }
+        if (c.getAnnualSalary() == null || c.getAnnualSalary() <= 0) {
+            throw new IllegalArgumentException("월급/연봉제 계약은 연봉 금액 또는 월급 연 환산액이 필수입니다.");
+        }
+        if (c.getOrdinaryHourlyWage() == null || c.getOrdinaryHourlyWage() <= 0) {
+            throw new IllegalArgumentException("월급/연봉제 계약은 통상시급 산정값이 필수입니다.");
+        }
+        if (c.getExpectedMonthlyWage() == null || c.getExpectedMonthlyWage() <= 0) {
+            throw new IllegalArgumentException("월급/연봉제 계약은 예상 월 지급액 산정값이 필수입니다.");
         }
     }
 

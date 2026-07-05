@@ -504,6 +504,9 @@ public class PayrollService {
         //  · 시급제(HOURLY): 관계의 적용시급(개별 또는 매장 기준) — 기존 경로 그대로(회귀 없음)
         //  · 월급제(MONTHLY_SALARY): 통상시급 = 월급 ÷ 월 통상임금 산정 기준시간(주40h 기준 209h,
         //    근로기준법 시행령 §6②). §56 연장·야간·휴일 가산과 결근·지각 공제의 기준 단가.
+        //    분모는 주 소정근로시간 약정(근로계약서 전파값) 우선 — 계약서 통상시급과 일치 보장
+        //    (예: 주 5일·일 4h 단시간 월급제 = 104h. 소정근로일수 폴백은 일 8h 가정이라 209h 로
+        //    과대 → 통상시급이 계약의 절반이 되던 버그). 약정 없으면 기존 weeklyDays 폴백.
         boolean monthlySalaried = relation.isMonthlySalaried();
         if (relation.getEmploymentType() == EmploymentType.MONTHLY_SALARY && !monthlySalaried) {
             throw new BusinessException(
@@ -512,7 +515,8 @@ public class PayrollService {
         }
         int hourlyWage = monthlySalaried
                 ? monthlySalaryCalculator.ordinaryHourlyWage(relation.getMonthlySalary(),
-                relation.getContractedWeeklyDays(), policy.getRegularHoursPerDay())
+                relation.getContractedWeeklyHours(), relation.getContractedWeeklyDays(),
+                policy.getRegularHoursPerDay())
                 : relation.getAppliedHourlyWage();
 
         // 월급제: 일자별 실근로 집계 (시프트 대조로 결근·지각 공제/소정 외 추가 기본분 산정용)

@@ -61,6 +61,62 @@ class MonthlySalaryCalculatorTest {
     }
 
     @Nested
+    @DisplayName("주 소정근로시간 약정 경로 (근로계약서와 동일 산식 — V37)")
+    class WeeklyHoursPath {
+
+        @Test
+        @DisplayName("주 20h(일 4h·주 5일) → 기준시간 104h — 계약서와 동일, 209h 아님")
+        void twentyHoursGives104() {
+            // (20 + 주휴 4) × 4.345238 = 104.2857 → 104
+            assertThat(MonthlySalaryCalculator.monthlyStandardHoursForWeeklyHours(20.0)).isEqualTo(104);
+            assertThat(calculator.monthlyStandardHours(20.0, 5, 8.0))
+                    .isEqualByComparingTo(new BigDecimal("104"));
+        }
+
+        @Test
+        @DisplayName("주 20h 월급 100만 → 통상시급 9,615원 (100만÷104h) — 종전 209h 분모(4,785원)의 2배 정상화")
+        void twentyHoursOrdinaryWageMatchesContract() {
+            // 1,000,000 / 104 = 9,615.38 → 9,615
+            assertThat(calculator.ordinaryHourlyWage(1_000_000, 20.0, 5, 8.0)).isEqualTo(9_615);
+        }
+
+        @Test
+        @DisplayName("주 40h → 209h — 법정 관행값과 일치(전일제 회귀 없음)")
+        void fortyHoursGives209() {
+            // (40 + 8) × 4.345238 = 208.57 → 209
+            assertThat(MonthlySalaryCalculator.monthlyStandardHoursForWeeklyHours(40.0)).isEqualTo(209);
+            assertThat(calculator.ordinaryHourlyWage(2_200_000, 40.0, null, 8.0)).isEqualTo(10_526);
+        }
+
+        @Test
+        @DisplayName("주 48h 약정도 법정 40h 캡 → 209h (§50)")
+        void cappedAtStatutory40() {
+            assertThat(MonthlySalaryCalculator.monthlyStandardHoursForWeeklyHours(48.0)).isEqualTo(209);
+        }
+
+        @Test
+        @DisplayName("15h 경계: 15h는 주휴 3h 포함(78h), 14.9h는 주휴 0(65h) — §18③, 계약서 규칙과 동일")
+        void fifteenHourBoundary() {
+            // 15h: (15 + 15/40×8=3) × 4.345238 = 78.21 → 78
+            assertThat(MonthlySalaryCalculator.monthlyStandardHoursForWeeklyHours(15.0)).isEqualTo(78);
+            // 14.9h: 주휴 0 → 14.9 × 4.345238 = 64.74 → 65
+            assertThat(MonthlySalaryCalculator.monthlyStandardHoursForWeeklyHours(14.9)).isEqualTo(65);
+            // 14h: 주휴 0 → 14 × 4.345238 = 60.83 → 61
+            assertThat(MonthlySalaryCalculator.monthlyStandardHoursForWeeklyHours(14.0)).isEqualTo(61);
+        }
+
+        @Test
+        @DisplayName("주 소정근로시간 미설정(null/0)이면 기존 weeklyDays 폴백 — 회귀 없음")
+        void fallsBackToWeeklyDaysPath() {
+            assertThat(calculator.monthlyStandardHours(null, null, 8.0))
+                    .isEqualByComparingTo(new BigDecimal("209"));
+            assertThat(calculator.monthlyStandardHours(0.0, 3, 8.0))
+                    .isEqualByComparingTo(new BigDecimal("125"));
+            assertThat(calculator.ordinaryHourlyWage(2_200_000, null, null, 8.0)).isEqualTo(10_526);
+        }
+    }
+
+    @Nested
     @DisplayName("일할계산 (중도 입사·부분 기간)")
     class Proration {
 
