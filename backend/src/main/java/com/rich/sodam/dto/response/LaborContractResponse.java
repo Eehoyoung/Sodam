@@ -5,16 +5,17 @@ import com.rich.sodam.core.payroll.weeklyallowance.LaborLawConstants;
 import com.rich.sodam.domain.LaborContract;
 import com.rich.sodam.domain.type.ContractPeriodType;
 import com.rich.sodam.domain.type.WagePaymentMethod;
+import com.rich.sodam.service.LaborContractService;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 /**
- * 근로계약서 응답 DTO. 엔티티 전체 필드 + 서명 상태 + 파생 판정값(주휴 적용 여부·최저임금 준수 여부)을 노출한다.
+ * 근로계약서 응답 DTO. 엔티티 전체 필드 + 서명 상태 + 파생 판정값(휴일·연차 적용 여부·최저임금 준수 여부)을 노출한다.
  *
- * @param weeklyAllowanceApplicable 주 소정근로시간이 15시간 이상이라 주휴(§18③)가 적용되는지
- * @param minimumWageCompliant      시급이 계약연도(또는 올해) 최저임금 이상인지(수습 감액 미고려)
+ * @param weeklyAllowanceApplicable 주 소정근로시간이 15시간 이상이라 §55 휴일과 §60 연차가 적용되는지
+ * @param minimumWageCompliant      시급이 계약연도(또는 올해) 최저임금 이상인지(합법 수습 감액은 반영)
  * @param minimumWageReferenceYear  준수 여부 판정에 사용한 연도
  * @param minimumWageReferenceValue 판정에 사용한 해당 연도 시간급 최저임금(원)
  * @param signed                    직원 서명 완료 여부(employeeSignedAt != null)
@@ -52,6 +53,7 @@ public record LaborContractResponse(
         boolean probation,
         Integer probationMonths,
         Double probationWageRate,
+        boolean simpleLabor,
         boolean employmentInsurance,
         boolean industrialAccidentInsurance,
         boolean nationalPension,
@@ -69,8 +71,12 @@ public record LaborContractResponse(
     public static LaborContractResponse from(LaborContract c) {
         int refYear = c.getStartDate() != null ? c.getStartDate().getYear() : LocalDate.now().getYear();
         int refValue = MinimumWage.hourlyFor(refYear).intValue();
+        double wageThresholdRate = LaborContractService.isProbationWageReductionAllowed(c)
+                ? c.getProbationWageRate()
+                : 1.0;
+        int requiredHourlyWage = (int) Math.ceil(refValue * wageThresholdRate);
         boolean minWageOk = c.getHourlyWage() == null
-                || MinimumWage.isAtLeastMinimum(c.getHourlyWage(), refYear);
+                || c.getHourlyWage() >= requiredHourlyWage;
         boolean weeklyAllowanceApplicable = c.getContractedHoursPerWeek() != null
                 && c.getContractedHoursPerWeek() >= LaborLawConstants.MIN_WEEKLY_HOURS_FOR_ALLOWANCE.doubleValue();
 
@@ -105,6 +111,7 @@ public record LaborContractResponse(
                 c.isProbation(),
                 c.getProbationMonths(),
                 c.getProbationWageRate(),
+                c.isSimpleLabor(),
                 c.isEmploymentInsurance(),
                 c.isIndustrialAccidentInsurance(),
                 c.isNationalPension(),

@@ -40,6 +40,7 @@ export interface LaborContract extends WeeklySchedule {
     probation: boolean;
     probationMonths: number | null;
     probationWageRate: number | null;
+    simpleLabor: boolean;
     employmentInsurance: boolean;
     industrialAccidentInsurance: boolean;
     nationalPension: boolean;
@@ -77,6 +78,7 @@ export interface LaborContractCreatePayload extends Partial<WeeklySchedule> {
     probation?: boolean;
     probationMonths?: number;
     probationWageRate?: number;
+    simpleLabor?: boolean;
     employmentInsurance?: boolean;
     industrialAccidentInsurance?: boolean;
     nationalPension?: boolean;
@@ -98,5 +100,7 @@ export interface LaborContractContext {
     nightWorkRate: number;
     overtimeRate: number;
     weeklyAllowanceThreshold: number;
+    fiveOrMoreEmployees: boolean;
+    employeeCount: number | null;
     suggestedWageComponents: string;
 }

@@ -75,6 +75,9 @@ export const ContractTermsCard: React.FC<{contract: LaborContract}> = ({contract
     const holiday = contract.weeklyAllowanceApplicable
         ? (contract.weeklyHolidayDay ? (WEEKDAY_KO[contract.weeklyHolidayDay] ?? contract.weeklyHolidayDay) : '-')
         : '주 15시간 미만 — 주휴 미적용';
+    const annualLeave = contract.weeklyAllowanceApplicable
+        ? dash(contract.annualLeaveNote)
+        : '주 15시간 미만 — 연차유급휴가 미적용';
 
     const scheduleEntries = WEEKDAY_SCHEDULE.map(d => ({...d, value: contract[d.key]}))
         .filter(d => d.value !== null && d.value !== undefined);
@@ -119,7 +122,7 @@ export const ContractTermsCard: React.FC<{contract: LaborContract}> = ({contract
                 <TermRow label="소정근로시간" value={hours} />
                 <TermRow label="근무시간(시업~종업)" value={workTime} />
                 <TermRow label="주휴일" value={holiday} />
-                <TermRow label="연차휴가" value={dash(contract.annualLeaveNote)} last={scheduleEntries.length === 0} />
+                <TermRow label="연차휴가" value={annualLeave} last={scheduleEntries.length === 0} />
                 {scheduleEntries.length > 0 ? (
                     <View style={styles.scheduleWrap}>
                         <AppText variant="caption" tone="secondary" style={styles.scheduleLabel}>
@@ -144,8 +147,8 @@ export const ContractTermsCard: React.FC<{contract: LaborContract}> = ({contract
                     <TermRow
                         label="수습 중 임금"
                         value={contract.probationWageRate ? `최저임금의 ${Math.round(contract.probationWageRate * 100)}%` : '-'}
-                        last
                     />
+                    <TermRow label="업무 구분" value={contract.simpleLabor ? '단순노무직' : '비단순노무직'} last />
                 </AppCard>
             ) : null}
 

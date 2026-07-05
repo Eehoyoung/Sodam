@@ -21,6 +21,8 @@ public record LaborContractContextResponse(
         double nightWorkRate,
         double overtimeRate,
         double weeklyAllowanceThreshold,
+        boolean fiveOrMoreEmployees,
+        Integer employeeCount,
         String suggestedWageComponents
 ) {
 }

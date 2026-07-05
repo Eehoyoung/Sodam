@@ -18,11 +18,12 @@ import java.time.LocalTime;
  * <ol>
  *   <li>임금(구성항목·계산방법·지급방법) — {@link #hourlyWage}, {@link #wagePaymentMethod}, {@link #wageComponents}, {@link #wagePaymentDay}</li>
  *   <li>소정근로시간 — {@link #contractedHoursPerWeek}, {@link #workStartTime}, {@link #workEndTime}, {@link #breakMinutes}</li>
- *   <li>휴일(§55) — {@link #weeklyHolidayDay} (주 15시간 미만은 §18③ 에 따라 주휴 미적용 — null 강제)</li>
- *   <li>연차유급휴가(§60) — {@link #annualLeaveNote}</li>
+ *   <li>휴일(§55) — {@link #weeklyHolidayDay} (주 15시간 미만은 §18③ 에 따라 미적용 — null 강제)</li>
+ *   <li>연차유급휴가(§60) — {@link #annualLeaveNote} (주 15시간 미만은 §18③ 에 따라 미적용 — null 강제)</li>
  *   <li>취업의 장소·종사 업무 — {@link #workLocation}, {@link #jobDescription}</li>
  * </ol>
- * 추가로 기간제법 §17(단시간근로자 근로일·근로일별 근로시간), §35(수습), §66/§69/§70(연소근로자 안내),
+ * 추가로 기간제법 §17(단시간근로자 근로일·근로일별 근로시간), 수습 감액 요건(최저임금법 §5②),
+ * §66/§69/§70(연소근로자 안내),
  * 4대보험 적용여부, 전자서명 이미지(교부 증빙)를 보관한다.
  * 계약 본문 법률 문구가 아닌 합의된 근로조건(사장-직원 간) 데이터이므로 시스템이 보관·교부할 수 있다.</p>
  */
@@ -112,12 +113,12 @@ public class LaborContract {
 
     /**
      * 주휴일 요일(예: SUNDAY). 주 소정근로시간이 15시간 미만이면 §18③ 에 따라
-     * 주휴가 발생하지 않으므로 저장 시 강제로 null 처리한다(LaborContractService).
+     * §55 휴일이 적용되지 않으므로 저장 시 강제로 null 처리한다(LaborContractService).
      */
     @Column(name = "weekly_holiday_day", length = 16)
     private String weeklyHolidayDay;
 
-    /** 연차유급휴가 안내(§60 적용 여부·산정 기준). */
+    /** 연차유급휴가 안내(§60 적용 여부·산정 기준). 주 15시간 미만은 §18③ 에 따라 null 처리한다. */
     @Column(name = "annual_leave_note", length = 500)
     private String annualLeaveNote;
 
@@ -129,7 +130,7 @@ public class LaborContract {
     @Column(name = "job_description", length = 500)
     private String jobDescription;
 
-    /** 수습 적용 여부(§35). */
+    /** 수습 적용 여부. 근로기준법은 수습기간 자체를 직접 정하지 않고, 최저임금법이 감액 요건을 둔다. */
     @Column(name = "is_probation", nullable = false)
     private boolean probation = false;
 
@@ -143,6 +144,13 @@ public class LaborContract {
      */
     @Column(name = "probation_wage_rate")
     private Double probationWageRate;
+
+    /**
+     * 최저임금법 §5② 단서의 단순노무업무 해당 여부. 단순노무업무 근로자는 수습 중이어도
+     * 최저임금 감액 대상에서 제외된다. 미확인/구버전 요청은 보수적으로 true 로 본다.
+     */
+    @Column(name = "simple_labor", nullable = false)
+    private boolean simpleLabor = true;
 
     /** 고용보험 적용 여부(4대보험). */
     @Column(name = "employment_insurance", nullable = false)

@@ -14,7 +14,8 @@ import java.time.LocalTime;
  * 근로계약서 작성 요청(사장). 근로기준법 §17 필수 기재사항 + 근로형태별 추가 사항을 포함한다.
  *
  * <p>service.save() 가 §17 누락(임금·소정근로시간·휴일·연차·취업장소·업무·지급방법·구성항목)을
- * 한 번 더 검증하고, 주 15시간 미만 근로자는 주휴일을 강제로 비운다(§18③).
+ * 한 번 더 검증한다. 주 15시간 미만 근로자는 §18③ 에 따라 휴일·연차가 적용되지 않아
+ * 주휴일과 연차 안내를 강제로 비운다.
  *
  * @param employeeId              대상 직원 id
  * @param periodType              계약기간 구분(정함없음/기간제). null 이면 PERMANENT.
@@ -31,6 +32,7 @@ import java.time.LocalTime;
  * @param probation               수습 적용 여부
  * @param probationMonths         수습기간(개월)
  * @param probationWageRate       수습 중 임금 비율(예: 0.90)
+ * @param simpleLabor             단순노무업무 해당 여부. true 이면 수습 최저임금 감액 불가.
  * @param employmentInsurance     고용보험 적용 여부
  * @param industrialAccidentInsurance 산재보험 적용 여부
  * @param nationalPension         국민연금 적용 여부
@@ -64,6 +66,7 @@ public record LaborContractCreateRequest(
         Boolean probation,
         Integer probationMonths,
         Double probationWageRate,
+        Boolean simpleLabor,
         Boolean employmentInsurance,
         Boolean industrialAccidentInsurance,
         Boolean nationalPension,
@@ -102,6 +105,7 @@ public record LaborContractCreateRequest(
         c.setProbation(probation != null && probation);
         c.setProbationMonths(probationMonths);
         c.setProbationWageRate(probationWageRate);
+        c.setSimpleLabor(simpleLabor == null || simpleLabor);
         c.setEmploymentInsurance(employmentInsurance == null || employmentInsurance);
         c.setIndustrialAccidentInsurance(industrialAccidentInsurance == null || industrialAccidentInsurance);
         c.setNationalPension(nationalPension == null || nationalPension);
