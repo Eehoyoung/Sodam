@@ -23,8 +23,8 @@ import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {tokens} from '../../../theme/tokens';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import api from '../../../common/utils/api';
-import {WageEditSheet} from '../components/StoreSheets';
-import wageService from '../../wage/services/wageService';
+import {WageEditSheet, WageEditValues} from '../components/StoreSheets';
+import wageService, {EmploymentType} from '../../wage/services/wageService';
 
 type TabKey = 'INFO' | 'ATTENDANCE' | 'SALARY' | 'TIMEOFF';
 
@@ -34,6 +34,12 @@ interface Employee {
     email: string;
     role: string;
     appliedHourlyWage?: number;
+    /** 고용형태 — 미설정(구 데이터)이면 undefined = 시급제 취급 */
+    employmentType?: EmploymentType;
+    /** 월급(원, 세전) — 월급제 전용 */
+    monthlySalary?: number;
+    /** null/undefined = 매장 정책 따름 */
+    socialInsuranceEnrolled?: boolean | null;
     hireDate?: string;
     isActive?: boolean;
     memo?: string;
@@ -58,7 +64,7 @@ const useStyles = () => {
 
 /**
  * 사장 직원 상세 (PRD_OWNER S-201) — v3 토스식.
- * 히어로: 직원명 + 적용 시급(AmountText) + 활성 배지. 하단 CTA: 시급 변경.
+ * 히어로: 직원명 + 적용 시급/월급(AmountText) + 활성 배지. 하단 CTA: 급여 설정(시급제·월급제·4대보험).
  * saveWage(POST /api/wages/employee)·toggleActive(PUT .../active)·memo 로직 보존.
  */
 const EmployeeDetailScreen: React.FC = () => {
@@ -83,27 +89,57 @@ const EmployeeDetailScreen: React.FC = () => {
     const [wageSheet, setWageSheet] = useState(false);
     const [savingWage, setSavingWage] = useState(false);
 
-    // 직원별 시급 변경 — POST /api/wages/employee (customHourlyWage; 0/빈값이면 매장 기본 사용)
-    const saveWage = async (wage: number) => {
+    // 직원별 급여 설정 — POST /api/wages/employee
+    // (시급제: customHourlyWage, 0/빈값이면 매장 기본 사용 · 월급제: employmentType+monthlySalary 일괄)
+    const saveWage = async (values: WageEditValues) => {
         if (savingWage) {
+            return;
+        }
+        const isMonthly = values.employmentType === 'MONTHLY_SALARY';
+        if (isMonthly && values.monthlySalary < 1) {
+            AppToast.error('월급제를 선택하면 월급을 입력해야 해요.');
             return;
         }
         setSavingWage(true);
         try {
-            const useStoreStandard = !wage || wage < 1;
+            const useStoreStandard = !values.hourlyWage || values.hourlyWage < 1;
             const res = await wageService.upsertEmployeeWage({
                 employeeId,
                 storeId,
-                hourlyWage: useStoreStandard ? undefined : wage,
-                useStoreStandardWage: useStoreStandard,
+                hourlyWage: isMonthly || useStoreStandard ? undefined : values.hourlyWage,
+                useStoreStandardWage: isMonthly ? true : useStoreStandard,
+                employmentType: values.employmentType,
+                monthlySalary: isMonthly ? values.monthlySalary : undefined,
+                socialInsuranceEnrolled: values.socialInsuranceEnrolled,
             });
-            setEmp(e => (e ? {...e, appliedHourlyWage: res.hourlyWage} : e));
+            setEmp(e => (e ? {
+                ...e,
+                appliedHourlyWage: isMonthly || useStoreStandard
+                    ? undefined
+                    : (res.hourlyWage ?? values.hourlyWage),
+                employmentType: values.employmentType,
+                monthlySalary: isMonthly ? values.monthlySalary : undefined,
+                socialInsuranceEnrolled: values.socialInsuranceEnrolled,
+            } : e));
             setWageSheet(false);
             AppToast.success(
-                useStoreStandard ? '매장 기본 시급을 사용하도록 변경했어요.' : '직원 시급이 변경됐어요.',
+                isMonthly
+                    ? '월급제로 급여 설정이 저장됐어요.'
+                    : useStoreStandard
+                        ? '매장 기본 시급을 사용하도록 변경했어요.'
+                        : '직원 시급이 변경됐어요.',
             );
-        } catch (_) {
-            AppToast.error('시급 변경에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        } catch (err: any) {
+            const data = err?.response?.data;
+            if (data?.errorCode === 'WAGE_BELOW_MINIMUM') {
+                AppToast.error(
+                    data?.message || '최저임금 월 환산액보다 낮은 월급은 설정할 수 없어요. 금액을 확인해 주세요.',
+                );
+            } else if (data?.errorCode === 'MONTHLY_SALARY_REQUIRED') {
+                AppToast.error('월급제를 선택하면 월급을 입력해야 해요.');
+            } else {
+                AppToast.error('급여 설정에 실패했어요. 잠시 후 다시 시도해 주세요.');
+            }
         } finally {
             setSavingWage(false);
         }
@@ -160,12 +196,21 @@ const EmployeeDetailScreen: React.FC = () => {
                 });
             } catch (_) {/* fallback to placeholder */}
             try {
-                const wageRes = await api.get<{appliedHourlyWage?: number}>(
-                    `/api/wages/employee/${employeeId}/store/${storeId}`,
-                );
-                const wage = (wageRes.data as any)?.appliedHourlyWage
-                    ?? (wageRes.data as any)?.customHourlyWage;
-                if (wage) {setEmp(e => (e ? {...e, appliedHourlyWage: wage} : e));}
+                // 고용형태·월급·4대보험까지 포함된 EmployeeWageInfoDto 사용
+                // (GET /api/wages/employee/... 는 적용 시급 숫자만 반환)
+                const info = await wageService.getEmployeeWageInfo(employeeId, storeId);
+                if (info) {
+                    setEmp(e => (e ? {
+                        ...e,
+                        // 매장 기본 시급 사용 중이면 히어로에 '매장 기본'을 유지(기존 표기 의미 보존)
+                        appliedHourlyWage: info.useStoreStandardWage
+                            ? undefined
+                            : (info.customHourlyWage ?? info.appliedHourlyWage ?? undefined),
+                        employmentType: info.employmentType ?? undefined,
+                        monthlySalary: info.monthlySalary ?? undefined,
+                        socialInsuranceEnrolled: info.socialInsuranceEnrolled ?? null,
+                    } : e));
+                }
             } catch (_) {/* ignore */}
         })();
         // refreshKey: 포커스 복귀 시 재조회 트리거(아래 deps 에 포함)
@@ -174,6 +219,7 @@ const EmployeeDetailScreen: React.FC = () => {
     const initials = useMemo(() => (emp?.name ?? '?').slice(0, 1), [emp]);
     const tabIndex = TABS.findIndex(t => t.key === tab);
     const isInactive = emp?.isActive === false;
+    const isMonthlyEmp = emp?.employmentType === 'MONTHLY_SALARY' && !!emp?.monthlySalary;
 
     if (!emp) {
         return (
@@ -191,7 +237,7 @@ const EmployeeDetailScreen: React.FC = () => {
             header={<AppHeader title="직원 상세" onBack={() => navigation.goBack()} />}
             footer={
                 <CtaStack>
-                    <AppButton label="시급 변경" onPress={() => setWageSheet(true)} loading={savingWage} />
+                    <AppButton label="급여 설정" onPress={() => setWageSheet(true)} loading={savingWage} />
                     <AppButton
                         label={isInactive ? '직원 활성화' : '직원 비활성화'}
                         variant={isInactive ? 'secondary' : 'destructive'}
@@ -215,14 +261,22 @@ const EmployeeDetailScreen: React.FC = () => {
             </View>
 
             <AppCard variant="hero" style={styles.wageCard}>
-                <AppText variant="caption" tone="secondary">적용 시급</AppText>
+                <AppText variant="caption" tone="secondary">
+                    {isMonthlyEmp ? '적용 월급' : '적용 시급'}
+                </AppText>
                 <AmountText size={40} tone="brand" style={styles.wageAmount}>
-                    {emp.appliedHourlyWage
-                        ? `${emp.appliedHourlyWage.toLocaleString('ko-KR')}원`
-                        : '매장 기본'}
+                    {isMonthlyEmp
+                        ? wageService.formatMonthlyPay(emp.monthlySalary ?? 0)
+                        : emp.appliedHourlyWage
+                            ? `${emp.appliedHourlyWage.toLocaleString('ko-KR')}원`
+                            : '매장 기본'}
                 </AmountText>
                 <AppText variant="caption" tone="tertiary" style={styles.wageSub}>
-                    {emp.appliedHourlyWage ? '직원 개별 시급이 적용 중이에요.' : '매장 기준 시급을 따라요.'}
+                    {isMonthlyEmp
+                        ? '월급제(세전 기준)가 적용 중이에요.'
+                        : emp.appliedHourlyWage
+                            ? '직원 개별 시급이 적용 중이에요.'
+                            : '매장 기준 시급을 따라요.'}
                 </AppText>
             </AppCard>
 
@@ -346,7 +400,10 @@ const EmployeeDetailScreen: React.FC = () => {
                 visible={wageSheet}
                 onClose={() => setWageSheet(false)}
                 employeeName={emp.name}
-                onSave={wage => saveWage(wage)}
+                initialEmploymentType={emp.employmentType}
+                initialMonthlySalary={emp.monthlySalary}
+                initialSocialInsuranceEnrolled={emp.socialInsuranceEnrolled}
+                onSave={saveWage}
             />
         </ScreenContainer>
     );
@@ -411,18 +468,23 @@ const MemoEditor: React.FC<{storeId: number; employeeId: number}> = ({storeId, e
 
 const InfoTab: React.FC<{emp: Employee}> = ({emp}) => {
     const styles = useStyles();
+    const isMonthly = emp.employmentType === 'MONTHLY_SALARY' && !!emp.monthlySalary;
     return (
         <View style={styles.section}>
             <KV label="이메일" value={emp.email || '-'} />
             <KV label="역할" value={roleLabel(emp.role)} />
+            <KV label="고용형태" value={isMonthly ? '월급제' : '시급제'} />
             <KV
-                label="시급"
+                label={isMonthly ? '월급' : '시급'}
                 value={
-                    emp.appliedHourlyWage
-                        ? `${emp.appliedHourlyWage.toLocaleString('ko-KR')}원/시간`
-                        : '매장 기본 시급 사용'
+                    isMonthly
+                        ? wageService.formatMonthlyPay(emp.monthlySalary ?? 0)
+                        : emp.appliedHourlyWage
+                            ? `${emp.appliedHourlyWage.toLocaleString('ko-KR')}원/시간`
+                            : '매장 기본 시급 사용'
                 }
             />
+            <KV label="4대보험" value={insuranceLabel(emp.socialInsuranceEnrolled)} />
             <KV label="입사일" value={emp.hireDate ?? '-'} last />
         </View>
     );
@@ -525,6 +587,10 @@ const KV: React.FC<{label: string; value: string; last?: boolean}> = ({label, va
     );
 };
 
+function insuranceLabel(enrolled?: boolean | null): string {
+    if (enrolled === null || enrolled === undefined) {return '매장 정책 따름';}
+    return enrolled ? '4대보험 가입' : '3.3% 원천징수';
+}
 function roleLabel(role: string): string {
     if (role === 'MASTER') {return '사장';}
     if (role === 'EMPLOYEE') {return '직원';}
