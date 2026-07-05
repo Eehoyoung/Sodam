@@ -29,6 +29,27 @@ const WEEKDAY_SCHEDULE: Array<{key: keyof Pick<LaborContract, 'monHours' | 'tueH
     {key: 'sunHours', label: '일'},
 ];
 
+const WEEKDAY_SHORT_KO: Record<string, string> = {
+    MONDAY: '월',
+    TUESDAY: '화',
+    WEDNESDAY: '수',
+    THURSDAY: '목',
+    FRIDAY: '금',
+    SATURDAY: '토',
+    SUNDAY: '일',
+};
+
+/** 요일 정렬(월→일) — BE 응답 순서에 의존하지 않는다. */
+const WEEKDAY_ORDER: Record<string, number> = {
+    MONDAY: 0,
+    TUESDAY: 1,
+    WEDNESDAY: 2,
+    THURSDAY: 3,
+    FRIDAY: 4,
+    SATURDAY: 5,
+    SUNDAY: 6,
+};
+
 function dash(v: string | null | undefined): string {
     return v && v.trim().length > 0 ? v : '-';
 }
@@ -93,6 +114,11 @@ export const ContractTermsCard: React.FC<{contract: LaborContract}> = ({contract
 
     const scheduleEntries = WEEKDAY_SCHEDULE.map(d => ({...d, value: contract[d.key]}))
         .filter(d => d.value !== null && d.value !== undefined);
+    // 스케줄 자동 산출 계약 — 요일별 출퇴근·휴게를 상세 표시(요일 시간 칩과 중복 방지 위해 대체)
+    const workScheduleEntries = (contract.workSchedule ?? [])
+        .slice()
+        .sort((a, b) => (WEEKDAY_ORDER[a.day] ?? 7) - (WEEKDAY_ORDER[b.day] ?? 7));
+    const hasWorkSchedule = workScheduleEntries.length > 0;
 
     const insuranceOn: string[] = [];
     if (contract.employmentInsurance) {insuranceOn.push('고용보험');}
@@ -126,6 +152,12 @@ export const ContractTermsCard: React.FC<{contract: LaborContract}> = ({contract
                 <TermRow label="임금 유형" value={payType} />
                 {isSalary ? (
                     <>
+                        {contract.scheduleDerivedSalary ? (
+                            <TermRow label="산출 방식" value="근무 스케줄 자동 산출" />
+                        ) : null}
+                        {contract.salaryBaseHourlyWage !== null && contract.salaryBaseHourlyWage !== undefined ? (
+                            <TermRow label="급여 기준시급" value={won(contract.salaryBaseHourlyWage)} />
+                        ) : null}
                         <TermRow label="월 기본급" value={won(contract.monthlyBaseSalary)} />
                         <TermRow label="연봉 환산" value={won(contract.annualSalary)} />
                         <TermRow label="통상시급" value={won(contract.ordinaryHourlyWage)} />
@@ -148,8 +180,28 @@ export const ContractTermsCard: React.FC<{contract: LaborContract}> = ({contract
                 <TermRow label="소정근로시간" value={hours} />
                 <TermRow label="근무시간(시업~종업)" value={workTime} />
                 <TermRow label="주휴일" value={holiday} />
-                <TermRow label="연차휴가" value={annualLeave} last={scheduleEntries.length === 0} />
-                {scheduleEntries.length > 0 ? (
+                <TermRow label="연차휴가" value={annualLeave} last={scheduleEntries.length === 0 && !hasWorkSchedule} />
+                {hasWorkSchedule ? (
+                    <View style={styles.scheduleWrap}>
+                        <AppText variant="caption" tone="secondary" style={styles.scheduleLabel}>
+                            요일별 근무 스케줄{contract.scheduleDerivedSalary ? '(급여 산출 기준)' : ''}
+                        </AppText>
+                        {workScheduleEntries.map(d => (
+                            <View key={d.day} style={styles.workScheduleRow}>
+                                <AppText variant="caption" tone="secondary">
+                                    {WEEKDAY_SHORT_KO[d.day] ?? d.day}
+                                </AppText>
+                                <AppText variant="bodyMd" weight="700" style={styles.value}>
+                                    {`${fmtTime(d.startTime)}~${fmtTime(d.endTime)}${
+                                        d.breakStartTime && d.breakEndTime
+                                            ? ` (휴게 ${fmtTime(d.breakStartTime)}~${fmtTime(d.breakEndTime)})`
+                                            : ''
+                                    }`}
+                                </AppText>
+                            </View>
+                        ))}
+                    </View>
+                ) : scheduleEntries.length > 0 ? (
                     <View style={styles.scheduleWrap}>
                         <AppText variant="caption" tone="secondary" style={styles.scheduleLabel}>
                             요일별 근로시간(단시간근로자)
@@ -210,6 +262,13 @@ const styles = StyleSheet.create({
     value: {flexShrink: 1, textAlign: 'right'},
     scheduleWrap: {marginTop: spacing.sm},
     scheduleLabel: {marginBottom: spacing.xs},
+    workScheduleRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: spacing.xs,
+        gap: spacing.md,
+    },
     scheduleRow: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs},
     scheduleChip: {
         alignItems: 'center',

@@ -36,9 +36,11 @@ import {
     isValidTimeDigits,
     sanitizeDateDigits,
     sanitizeTimeDigits,
+    timeDigitsToHHmm,
     timeDigitsToHHmmss,
 } from '../../../common/utils/dateTimeInput';
 import contractService, {contractErrorMessage} from '../services/contractService';
+import storeService from '../../store/services/storeService';
 import {ContractTermsCard} from '../components/ContractTermsCard';
 import type {
     ContractPeriodType,
@@ -46,6 +48,8 @@ import type {
     LaborContractContext,
     LaborContractCreatePayload,
     WagePaymentMethod,
+    WorkScheduleDayCode,
+    WorkScheduleDayDto,
 } from '../types';
 import {
     buildSalaryWageComponents,
@@ -54,6 +58,13 @@ import {
     formatWon,
     type SalaryPayUnit,
 } from '../core/salaryContractCalculator';
+import {
+    breakMinutesOfDay,
+    buildSchedulePreviewLines,
+    buildSchedulePreviewWageComponents,
+    calculateScheduleSalary,
+    type ScheduleSalaryBreakdown,
+} from '../core/scheduleSalaryCalculator';
 
 interface StoreEmployee {
     id: number;
@@ -61,7 +72,7 @@ interface StoreEmployee {
     email: string;
 }
 
-const WEEKDAYS: Array<{code: string; label: string; field: 'monHours' | 'tueHours' | 'wedHours' | 'thuHours' | 'friHours' | 'satHours' | 'sunHours'}> = [
+const WEEKDAYS: Array<{code: WorkScheduleDayCode; label: string; field: 'monHours' | 'tueHours' | 'wedHours' | 'thuHours' | 'friHours' | 'satHours' | 'sunHours'}> = [
     {code: 'MONDAY', label: '월', field: 'monHours'},
     {code: 'TUESDAY', label: '화', field: 'tueHours'},
     {code: 'WEDNESDAY', label: '수', field: 'wedHours'},
@@ -89,6 +100,7 @@ type HelpTopic =
     | 'headcount'
     | 'wage'
     | 'monthlySalary'
+    | 'scheduleSalary'
     | 'standardHours'
     | 'weeklyHoliday'
     | 'annualLeave'
@@ -115,6 +127,11 @@ const HELP_TOPICS: Record<HelpTopic, {title: string; description: string}> = {
         title: '월급/연봉 환산',
         description:
             '월급제는 월 기본급을 월 통상임금 산정 기준시간으로 나눠 통상시급을 계산합니다. 주 40시간 근로자는 보통 주휴 포함 209시간을 기준으로 봅니다.\n\n연봉제는 입력한 연봉을 12개월로 나눈 금액을 월 기본급으로 보고 같은 방식으로 통상시급을 산정합니다.',
+    },
+    scheduleSalary: {
+        title: '스케줄로 월급 자동 계산',
+        description:
+            '요일별 출퇴근·휴게 시각과 급여 기준시급을 입력하면 근로기준법 산식으로 월 기본급과 고정 연장·야간수당을 자동 계산해요.\n\n주 소정근로는 최대 40시간(주휴 포함 월 209시간)이고, 일 8시간 또는 주 40시간 초과분은 고정 연장으로, 22시~06시 근무는 야간가산으로 계산합니다. 5인 미만 사업장은 연장 1.5배·야간 0.5배 가산이 적용되지 않아요.\n\n여기 표시되는 금액은 미리보기이고, 최종 금액·산출근거는 발급 시 서버가 동일 산식으로 다시 계산해 확정합니다.',
     },
     standardHours: {
         title: '주 소정근로시간',
@@ -143,6 +160,22 @@ const HELP_TOPICS: Record<HelpTopic, {title: string; description: string}> = {
     },
 };
 
+/** 월급제 급여 입력 방식 — 스케줄 자동 산출(기본) vs 월급 직접 입력(기존 폼). 시급제와 무관. */
+type SalaryInputMode = 'SCHEDULE' | 'DIRECT';
+
+/** 요일 1개의 시각 입력 초안(4자리 숫자 문자열). 휴게는 쌍으로만 유효, 둘 다 비우면 휴게 없음. */
+type DayTimeDraft = {start: string; end: string; breakStart: string; breakEnd: string};
+
+const EMPTY_DAY_TIME: DayTimeDraft = {start: '', end: '', breakStart: '', breakEnd: ''};
+
+/** 주 연장 12h(= 주 52시간, §53) 초과 경고 기준 — 경고만 표시하고 저장은 차단하지 않는다. */
+const WEEKLY_OVERTIME_LIMIT_HOURS = 12;
+
+type ScheduleFormState =
+    | {status: 'incomplete'; message: string}
+    | {status: 'invalid'; message: string}
+    | {status: 'ready'; days: WorkScheduleDayDto[]};
+
 type ToggleChipProps = {label: string; on: boolean; onPress: () => void; disabled?: boolean};
 const ToggleChip: React.FC<ToggleChipProps> = ({label, on, onPress, disabled}) => (
     <AppButton
@@ -153,6 +186,55 @@ const ToggleChip: React.FC<ToggleChipProps> = ({label, on, onPress, disabled}) =
         disabled={disabled}
         style={styles.toggleChip}
     />
+);
+
+/** 요일 1개의 출근/퇴근/휴게 시각 입력 세트 — 기존 시업·종업 4자리 숫자 입력 패턴과 동일. */
+const DayTimeFields: React.FC<{
+    value: DayTimeDraft;
+    onChange: (field: keyof DayTimeDraft, v: string) => void;
+}> = ({value, onChange}) => (
+    <View style={styles.dayTimeGroup}>
+        <View style={styles.timeRow}>
+            <AppInput
+                label="출근 시각"
+                placeholder="1700"
+                keyboardType="number-pad"
+                maxLength={4}
+                value={value.start}
+                onChangeText={v => onChange('start', v)}
+                containerStyle={styles.timeField}
+            />
+            <AppInput
+                label="퇴근 시각"
+                placeholder="2200"
+                keyboardType="number-pad"
+                maxLength={4}
+                value={value.end}
+                onChangeText={v => onChange('end', v)}
+                containerStyle={styles.timeField}
+            />
+        </View>
+        <View style={styles.timeRow}>
+            <AppInput
+                label="휴게 시작(선택)"
+                placeholder="1500"
+                keyboardType="number-pad"
+                maxLength={4}
+                value={value.breakStart}
+                onChangeText={v => onChange('breakStart', v)}
+                containerStyle={styles.timeField}
+            />
+            <AppInput
+                label="휴게 종료(선택)"
+                placeholder="1600"
+                keyboardType="number-pad"
+                maxLength={4}
+                value={value.breakEnd}
+                onChangeText={v => onChange('breakEnd', v)}
+                containerStyle={styles.timeField}
+            />
+        </View>
+    </View>
 );
 
 const SectionTitle: React.FC<{children: string}> = ({children}) => (
@@ -283,6 +365,16 @@ const SendContractScreen: React.FC = () => {
     const [payDay, setPayDay] = useState('');
     const [wageComponents, setWageComponents] = useState('');
 
+    // 월급제 — 스케줄 자동 산출(기본) / 직접 입력. 시급제(HOURLY) 경로와 완전 분리.
+    const [salaryInputMode, setSalaryInputMode] = useState<SalaryInputMode>('SCHEDULE');
+    const [scheduleDayOn, setScheduleDayOn] = useState<Partial<Record<WorkScheduleDayCode, boolean>>>({});
+    const [scheduleSameDaily, setScheduleSameDaily] = useState(true);
+    const [uniformDayTime, setUniformDayTime] = useState<DayTimeDraft>(EMPTY_DAY_TIME);
+    const [perDayTime, setPerDayTime] = useState<Partial<Record<WorkScheduleDayCode, DayTimeDraft>>>({});
+    const [salaryBaseWage, setSalaryBaseWageValue] = useState('');
+    const setSalaryBaseWage = (v: string) => setSalaryBaseWageValue(sanitizeIntegerInput(v));
+    const [storeStandardWage, setStoreStandardWage] = useState<number | null>(null);
+
     // 근로시간·휴일
     const [hoursPerWeek, setHoursPerWeek] = useState('');
     const [workStart, setWorkStartValue] = useState('');
@@ -353,18 +445,97 @@ const SendContractScreen: React.FC = () => {
         };
     }, [employeeId, storeId]);
 
+    // 스케줄 모드 급여 기준시급 기본값 = 매장 기준시급(사장이 수정 가능). 실패해도 직접 입력으로 진행.
+    useEffect(() => {
+        let cancelled = false;
+        storeService
+            .getStoreById(storeId)
+            .then(store => {
+                if (cancelled || !store.storeStandardHourWage || store.storeStandardHourWage <= 0) {
+                    return;
+                }
+                setStoreStandardWage(store.storeStandardHourWage);
+                setSalaryBaseWageValue(prev =>
+                    prev.trim().length > 0 ? prev : String(store.storeStandardHourWage),
+                );
+            })
+            .catch(() => {});
+        return () => {
+            cancelled = true;
+        };
+    }, [storeId]);
+
     const selectedName =
         employees.find(e => e.id === employeeId)?.name ?? params.employeeName ?? '직원';
 
-    const weeklyAllowanceEligible = (() => {
-        const h = Number(hoursPerWeek);
-        return hoursPerWeek.trim() !== '' && !Number.isNaN(h) && h >= WEEKLY_ALLOWANCE_THRESHOLD;
+    const isSalaryContract = contractPayType === 'SALARY';
+
+    // ── 월급제 스케줄 자동 산출 (SALARY 전용 — 시급제 HOURLY 는 이 블록을 전혀 타지 않는다) ──
+    const isScheduleMode = isSalaryContract && salaryInputMode === 'SCHEDULE';
+    const selectedScheduleDays = WEEKDAYS.filter(d => !!scheduleDayOn[d.code]);
+    const scheduleForm: ScheduleFormState = (() => {
+        if (selectedScheduleDays.length === 0) {
+            return {status: 'incomplete', message: '근무요일을 1개 이상 선택해 주세요.'};
+        }
+        const days: WorkScheduleDayDto[] = [];
+        for (const d of selectedScheduleDays) {
+            const t = scheduleSameDaily ? uniformDayTime : perDayTime[d.code] ?? EMPTY_DAY_TIME;
+            if (!t.start.trim() || !t.end.trim()) {
+                return {status: 'incomplete', message: `${d.label}요일 출근·퇴근 시각을 입력해 주세요.`};
+            }
+            if (!isValidTimeDigits(t.start) || !isValidTimeDigits(t.end)) {
+                return {status: 'invalid', message: `${d.label}요일 시각이 올바르지 않아요. ${TIME_DIGITS_HELPER}`};
+            }
+            const hasBreak = t.breakStart.trim() !== '' || t.breakEnd.trim() !== '';
+            if (hasBreak && (t.breakStart.trim() === '' || t.breakEnd.trim() === '')) {
+                return {status: 'invalid', message: `${d.label}요일 휴게는 시작·종료 시각을 함께 입력해 주세요.`};
+            }
+            if (hasBreak && (!isValidTimeDigits(t.breakStart) || !isValidTimeDigits(t.breakEnd))) {
+                return {status: 'invalid', message: `${d.label}요일 휴게 시각이 올바르지 않아요. ${TIME_DIGITS_HELPER}`};
+            }
+            days.push({
+                day: d.code,
+                startTime: timeDigitsToHHmm(t.start),
+                endTime: timeDigitsToHHmm(t.end),
+                breakStartTime: hasBreak ? timeDigitsToHHmm(t.breakStart) : null,
+                breakEndTime: hasBreak ? timeDigitsToHHmm(t.breakEnd) : null,
+            });
+        }
+        return {status: 'ready', days};
     })();
+
+    const salaryBaseWageValue = Number(salaryBaseWage);
+    const validBaseWage =
+        salaryBaseWage.trim() !== '' && !Number.isNaN(salaryBaseWageValue) && salaryBaseWageValue > 0;
+    let scheduleBreakdown: ScheduleSalaryBreakdown | null = null;
+    let scheduleCalcError: string | null = null;
+    if (isScheduleMode && scheduleForm.status === 'ready' && validBaseWage) {
+        try {
+            scheduleBreakdown = calculateScheduleSalary({
+                schedule: scheduleForm.days,
+                baseHourlyWage: salaryBaseWageValue,
+                fiveOrMoreEmployees,
+                minimumHourlyWage: context?.minimumWageHourly,
+                probationWageRate: probation && probationWageRate < 1 ? probationWageRate : 1,
+            });
+        } catch (e) {
+            scheduleCalcError = e instanceof Error ? e.message : '스케줄 급여 계산에 실패했어요.';
+        }
+    }
+    /** 주 연장 12h 초과(= 주 52시간, §53) — 경고만, 저장은 차단하지 않는다(노무 리스크 대시보드 연동). */
+    const scheduleOvertimeExceeded =
+        scheduleBreakdown !== null && scheduleBreakdown.weeklyOvertimeHours > WEEKLY_OVERTIME_LIMIT_HOURS;
+
+    const weeklyAllowanceEligible = isScheduleMode
+        ? (scheduleBreakdown?.weeklyContractedHours ?? 0) >= WEEKLY_ALLOWANCE_THRESHOLD
+        : (() => {
+              const h = Number(hoursPerWeek);
+              return hoursPerWeek.trim() !== '' && !Number.isNaN(h) && h >= WEEKLY_ALLOWANCE_THRESHOLD;
+          })();
 
     const weeklyHoursValue = Number(hoursPerWeek);
     const wageValue = Number(hourlyWage);
     const salaryValue = Number(salaryAmount);
-    const isSalaryContract = contractPayType === 'SALARY';
     const salaryBreakdown = calculateSalaryContract({
         salaryAmount: numberOrZero(salaryAmount),
         salaryPayUnit,
@@ -382,9 +553,11 @@ const SendContractScreen: React.FC = () => {
     const validWage = isSalaryContract
         ? salaryAmount.trim() !== '' && !Number.isNaN(salaryValue) && salaryValue > 0 && salaryBreakdown.ordinaryHourlyWage > 0
         : hourlyWage.trim() !== '' && !Number.isNaN(wageValue) && wageValue > 0;
-    const monthlyContractedHours = validWeeklyHours ? weeklyHoursValue * WEEKS_PER_MONTH : 0;
+    const monthlyContractedHours = isScheduleMode
+        ? (scheduleBreakdown?.weeklyContractedHours ?? 0) * WEEKS_PER_MONTH
+        : validWeeklyHours ? weeklyHoursValue * WEEKS_PER_MONTH : 0;
     const estimatedMonthlyWage = isSalaryContract
-        ? salaryBreakdown.totalMonthlyWage
+        ? (isScheduleMode ? scheduleBreakdown?.expectedMonthlyWage ?? 0 : salaryBreakdown.totalMonthlyWage)
         : (validWeeklyHours && validWage
             ? wageValue * (weeklyHoursValue + weeklyAllowanceHours(weeklyHoursValue)) * WEEKS_PER_MONTH
             : 0);
@@ -452,7 +625,26 @@ const SendContractScreen: React.FC = () => {
             AppToast.warn('직원을 선택해 주세요.');
             return null;
         }
-        if (isSalaryContract && (!salaryAmount.trim() || Number.isNaN(salaryValue) || salaryValue <= 0)) {
+        // 스케줄 자동 산출 모드(월급제 전용) — 스케줄·기준시급만 검증하고 금액 필드는 서버가 산출.
+        if (isScheduleMode) {
+            if (scheduleForm.status !== 'ready') {
+                AppToast.warn(scheduleForm.message);
+                return null;
+            }
+            if (!validBaseWage) {
+                AppToast.warn('급여 기준시급을 올바르게 입력해 주세요.');
+                return null;
+            }
+            if (!scheduleBreakdown) {
+                AppToast.warn(scheduleCalcError ?? '스케줄 급여 계산에 실패했어요. 입력을 확인해 주세요.');
+                return null;
+            }
+            if (context?.minimumWageHourly && !scheduleBreakdown.minimumWageCompliant) {
+                AppToast.warn('급여 기준시급이 최저임금보다 낮아요.');
+                return null;
+            }
+        }
+        if (!isScheduleMode && isSalaryContract && (!salaryAmount.trim() || Number.isNaN(salaryValue) || salaryValue <= 0)) {
             AppToast.warn(`${salaryPayUnit === 'ANNUAL' ? '연봉' : '월급'}을 올바르게 입력해 주세요.`);
             return null;
         }
@@ -460,15 +652,15 @@ const SendContractScreen: React.FC = () => {
             AppToast.warn('시급을 올바르게 입력해 주세요.');
             return null;
         }
-        if (!wageComponentText.trim()) {
+        if (!isScheduleMode && !wageComponentText.trim()) {
             AppToast.warn('임금 구성항목·계산방법을 입력해 주세요.');
             return null;
         }
-        if (!hoursPerWeek.trim() || Number.isNaN(hours) || hours <= 0) {
+        if (!isScheduleMode && (!hoursPerWeek.trim() || Number.isNaN(hours) || hours <= 0)) {
             AppToast.warn('주 소정근로시간을 입력해 주세요.');
             return null;
         }
-        if (!workStart.trim() || !isValidTimeDigits(workStart) || !workEnd.trim() || !isValidTimeDigits(workEnd)) {
+        if (!isScheduleMode && (!workStart.trim() || !isValidTimeDigits(workStart) || !workEnd.trim() || !isValidTimeDigits(workEnd))) {
             AppToast.warn(`시업·종업 시각을 입력해 주세요. ${TIME_DIGITS_HELPER}`);
             return null;
         }
@@ -480,7 +672,7 @@ const SendContractScreen: React.FC = () => {
             AppToast.warn('연차유급휴가 안내를 입력해 주세요.');
             return null;
         }
-        if (isSalaryContract && context?.minimumWageHourly && !salaryBreakdown.minimumWageCompliant) {
+        if (!isScheduleMode && isSalaryContract && context?.minimumWageHourly && !salaryBreakdown.minimumWageCompliant) {
             AppToast.warn('월급/연봉 환산 통상시급이 최저임금보다 낮아요.');
             return null;
         }
@@ -506,6 +698,36 @@ const SendContractScreen: React.FC = () => {
         if (probation && probationWageRate < 1 && !probationReductionAllowed) {
             AppToast.warn('최저임금 90% 감액은 1년 이상 계약, 비단순노무직, 수습 3개월 이내일 때만 가능해요.');
             return null;
+        }
+
+        // 스케줄 모드 페이로드 — 금액·시간 필드(monthlyBaseSalary/fixed*/workStartTime 등)는
+        // 보내지 않는다. 서버가 workSchedule + salaryBaseHourlyWage 로 재계산(서버 권위)하고
+        // wageComponents(산출근거)도 서버 자동 생성이 단일 소스다.
+        if (isScheduleMode && scheduleForm.status === 'ready') {
+            return {
+                employeeId,
+                periodType,
+                payType: 'SALARY',
+                salaryBaseHourlyWage: salaryBaseWageValue,
+                workSchedule: scheduleForm.days,
+                fiveOrMoreEmployeesSnapshot: fiveOrMoreEmployees,
+                wagePaymentMethod,
+                wagePaymentDay: payDayNum,
+                weeklyHolidayDay: weeklyAllowanceEligible ? holiday : undefined,
+                workLocation: workLocation.trim(),
+                jobDescription: jobDescription.trim(),
+                annualLeaveNote: annualLeaveApplicable ? annualLeaveNote.trim() : undefined,
+                startDate: startDate.trim() ? dateDigitsToIso(startDate) : undefined,
+                endDate: periodType === 'FIXED_TERM' && endDate.trim() ? dateDigitsToIso(endDate) : undefined,
+                probation,
+                probationMonths: probationMonthsNum,
+                probationWageRate: probation ? probationWageRate : undefined,
+                simpleLabor: probation ? simpleLabor : undefined,
+                employmentInsurance,
+                industrialAccidentInsurance,
+                nationalPension,
+                healthInsurance,
+            };
         }
 
         const weeklySchedule = useWeeklySchedule
@@ -569,7 +791,86 @@ const SendContractScreen: React.FC = () => {
         }
     };
 
+    /** 스케줄 모드 4단계 미리보기 — FE 로컬 산출값으로 구성(발급 시 서버가 동일 산식으로 확정). */
+    const buildSchedulePreviewContract = (
+        days: WorkScheduleDayDto[],
+        breakdown: ScheduleSalaryBreakdown,
+    ): LaborContract => {
+        const round2 = (n: number) => Math.round(n * 100) / 100;
+        const first = days[0]; // WEEKDAYS(월→일) 순으로 구성되므로 첫 근무요일 — BE firstByDayOrder 와 동일
+        return {
+            id: 0,
+            employeeId: employeeId ?? 0,
+            storeId,
+            periodType,
+            startDate: startDate.trim() && isValidDateDigits(startDate) ? dateDigitsToIso(startDate) : null,
+            endDate: periodType === 'FIXED_TERM' && endDate.trim() && isValidDateDigits(endDate) ? dateDigitsToIso(endDate) : null,
+            hourlyWage: breakdown.ordinaryHourlyWage,
+            payType: 'SALARY',
+            salaryPayUnit: 'MONTHLY',
+            monthlyBaseSalary: breakdown.monthlyBaseSalary,
+            annualSalary: breakdown.annualizedWage, // 스케줄 모드 연봉 = 예상 월 지급액 × 12
+            ordinaryHourlyWage: breakdown.ordinaryHourlyWage,
+            fixedOvertimeHoursPerMonth: round2(breakdown.monthlyOvertimeHours),
+            fixedOvertimePay: breakdown.overtimePay,
+            fixedNightHoursPerMonth: round2(breakdown.monthlyNightHours),
+            fixedNightPay: breakdown.nightPremiumPay,
+            fixedHolidayHoursWithin8PerMonth: 0,
+            fixedHolidayHoursOver8PerMonth: 0,
+            fixedHolidayPay: 0,
+            expectedMonthlyWage: breakdown.expectedMonthlyWage,
+            fiveOrMoreEmployeesSnapshot: fiveOrMoreEmployees,
+            wagePaymentDay: payDay.trim() ? Number(payDay) : null,
+            wagePaymentMethod,
+            wageComponents: buildSchedulePreviewWageComponents(
+                breakdown,
+                fiveOrMoreEmployees,
+                breakdown.ordinaryHourlyWage,
+            ),
+            contractedHoursPerWeek: breakdown.weeklyContractedHours,
+            workStartTime: `${first.startTime}:00`,
+            workEndTime: `${first.endTime}:00`,
+            breakMinutes: breakMinutesOfDay(first),
+            contractedWeeklyDays: breakdown.workingDays,
+            weeklyHolidayDay: weeklyAllowanceEligible ? holiday : null,
+            weeklyAllowanceApplicable: weeklyAllowanceEligible,
+            annualLeaveNote: annualLeaveApplicable ? (annualLeaveNote.trim() || null) : null,
+            workLocation: workLocation.trim() || null,
+            jobDescription: jobDescription.trim() || null,
+            probation,
+            probationMonths: probation && probationMonths.trim() ? Number(probationMonths) : null,
+            probationWageRate: probation ? probationWageRate : null,
+            simpleLabor,
+            employmentInsurance,
+            industrialAccidentInsurance,
+            nationalPension,
+            healthInsurance,
+            minimumWageCompliant: breakdown.minimumWageCompliant,
+            minimumWageReferenceYear: new Date().getFullYear(),
+            minimumWageReferenceValue: context?.minimumWageHourly ?? 0,
+            monHours: breakdown.dailyWorkedHours.MONDAY ?? null,
+            tueHours: breakdown.dailyWorkedHours.TUESDAY ?? null,
+            wedHours: breakdown.dailyWorkedHours.WEDNESDAY ?? null,
+            thuHours: breakdown.dailyWorkedHours.THURSDAY ?? null,
+            friHours: breakdown.dailyWorkedHours.FRIDAY ?? null,
+            satHours: breakdown.dailyWorkedHours.SATURDAY ?? null,
+            sunHours: breakdown.dailyWorkedHours.SUNDAY ?? null,
+            signed: false,
+            signedAt: null,
+            hasSignatureImage: false,
+            employeeSignatureImage: null,
+            createdAt: null,
+            updatedAt: null,
+            workSchedule: days,
+            salaryBaseHourlyWage: breakdown.ordinaryHourlyWage,
+            scheduleDerivedSalary: true,
+        };
+    };
+
     const previewContract = (): LaborContract => {
+        if (isScheduleMode && scheduleForm.status === 'ready' && scheduleBreakdown) {
+            return buildSchedulePreviewContract(scheduleForm.days, scheduleBreakdown);
+        }
         const wage = isSalaryContract ? salaryBreakdown.ordinaryHourlyWage : Number(hourlyWage);
         const wageComponentText = isSalaryContract ? salaryWageComponents : wageComponents.trim();
         const hours = Number(hoursPerWeek);
@@ -863,6 +1164,143 @@ const SendContractScreen: React.FC = () => {
                             <View>
                                 <View style={styles.inlineLabelRow}>
                                     <AppText variant="caption" tone="secondary" style={styles.fieldLabel}>
+                                        급여 입력 방식
+                                    </AppText>
+                                    <HelpButton topic="scheduleSalary" />
+                                </View>
+                                <SegmentedControl
+                                    options={['스케줄로 자동 계산', '월급 직접 입력']}
+                                    value={salaryInputMode === 'DIRECT' ? 1 : 0}
+                                    onChange={i => setSalaryInputMode(i === 1 ? 'DIRECT' : 'SCHEDULE')}
+                                />
+                            </View>
+                            {salaryInputMode === 'SCHEDULE' ? (
+                                <>
+                                    <AppInput
+                                        label="급여 기준시급(원)"
+                                        placeholder="예: 10320"
+                                        keyboardType="number-pad"
+                                        value={salaryBaseWage}
+                                        onChangeText={setSalaryBaseWage}
+                                        helper={
+                                            [
+                                                storeStandardWage
+                                                    ? `매장 기준시급 ${storeStandardWage.toLocaleString('ko-KR')}원이 기본 적용돼요.`
+                                                    : undefined,
+                                                context
+                                                    ? `${context.minimumWageYear}년 최저임금 ${context.minimumWageHourly.toLocaleString('ko-KR')}원`
+                                                    : undefined,
+                                            ]
+                                                .filter(Boolean)
+                                                .join(' ') || undefined
+                                        }
+                                    />
+                                    <View>
+                                        <AppText variant="caption" tone="secondary" style={styles.fieldLabel}>
+                                            근무요일
+                                        </AppText>
+                                        <View style={styles.weekRow}>
+                                            {WEEKDAYS.map(d => (
+                                                <ToggleChip
+                                                    key={d.code}
+                                                    label={d.label}
+                                                    on={!!scheduleDayOn[d.code]}
+                                                    onPress={() =>
+                                                        setScheduleDayOn(prev => ({...prev, [d.code]: !prev[d.code]}))
+                                                    }
+                                                />
+                                            ))}
+                                        </View>
+                                    </View>
+                                    <SegmentedControl
+                                        options={['매일 동일', '요일별 다름']}
+                                        value={scheduleSameDaily ? 0 : 1}
+                                        onChange={i => setScheduleSameDaily(i === 0)}
+                                    />
+                                    {scheduleSameDaily ? (
+                                        <DayTimeFields
+                                            value={uniformDayTime}
+                                            onChange={(field, v) =>
+                                                setUniformDayTime(prev => ({...prev, [field]: sanitizeTimeDigits(v)}))
+                                            }
+                                        />
+                                    ) : selectedScheduleDays.length === 0 ? (
+                                        <AppCard variant="outlined">
+                                            <AppText variant="caption" tone="secondary">
+                                                근무요일을 먼저 선택하면 요일별 시간을 입력할 수 있어요.
+                                            </AppText>
+                                        </AppCard>
+                                    ) : (
+                                        selectedScheduleDays.map(d => (
+                                            <View key={d.code} style={styles.scheduleDayBlock}>
+                                                <AppText variant="caption" tone="tertiary" weight="800">
+                                                    {d.label}요일
+                                                </AppText>
+                                                <DayTimeFields
+                                                    value={perDayTime[d.code] ?? EMPTY_DAY_TIME}
+                                                    onChange={(field, v) =>
+                                                        setPerDayTime(prev => ({
+                                                            ...prev,
+                                                            [d.code]: {
+                                                                ...(prev[d.code] ?? EMPTY_DAY_TIME),
+                                                                [field]: sanitizeTimeDigits(v),
+                                                            },
+                                                        }))
+                                                    }
+                                                />
+                                            </View>
+                                        ))
+                                    )}
+                                    <AppText variant="caption" tone="tertiary">
+                                        {TIME_DIGITS_HELPER} 퇴근이 출근보다 이르면 익일(자정 넘김)로 계산해요. 휴게가
+                                        없으면 휴게 시각을 비워 두세요.
+                                    </AppText>
+                                    <AppCard variant="flat">
+                                        <View style={styles.inlineLabelRow}>
+                                            <AppText variant="titleMd">스케줄 산출 미리보기</AppText>
+                                            <HelpButton topic="scheduleSalary" />
+                                        </View>
+                                        <View style={styles.diffList}>
+                                            {scheduleBreakdown ? (
+                                                <>
+                                                    {buildSchedulePreviewLines(scheduleBreakdown, fiveOrMoreEmployees).map(line => (
+                                                        <AppText key={line} variant="caption" tone="secondary">
+                                                            {line}
+                                                        </AppText>
+                                                    ))}
+                                                    <AppText variant="caption" tone="tertiary">
+                                                        최종 금액·산출근거는 발급 시 서버가 동일 산식으로 확정해요.
+                                                    </AppText>
+                                                </>
+                                            ) : (
+                                                <AppText variant="caption" tone="secondary">
+                                                    {scheduleCalcError
+                                                        ?? (scheduleForm.status !== 'ready'
+                                                            ? scheduleForm.message
+                                                            : '급여 기준시급을 입력하면 월급이 자동 계산돼요.')}
+                                                </AppText>
+                                            )}
+                                        </View>
+                                        {scheduleOvertimeExceeded && scheduleBreakdown ? (
+                                            <View style={styles.scheduleWarnBlock}>
+                                                <AppBadge label="주 52시간 한도 초과" tone="warning" />
+                                                <AppText variant="caption" tone="warning" style={styles.scheduleWarnText}>
+                                                    주 52시간 한도 초과 스케줄이에요(연장{' '}
+                                                    {scheduleBreakdown.weeklyOvertimeHours.toFixed(1)}h {'>'} 12h, §53).
+                                                    노무 리스크 대시보드에 경고로 표시돼요.
+                                                </AppText>
+                                            </View>
+                                        ) : null}
+                                        {scheduleBreakdown && !scheduleBreakdown.minimumWageCompliant ? (
+                                            <AppBadge label="최저임금 미달 가능" tone="error" style={styles.scheduleMwBadge} />
+                                        ) : null}
+                                    </AppCard>
+                                </>
+                            ) : (
+                                <>
+                            <View>
+                                <View style={styles.inlineLabelRow}>
+                                    <AppText variant="caption" tone="secondary" style={styles.fieldLabel}>
                                         급여 기준
                                     </AppText>
                                     <HelpButton topic="monthlySalary" />
@@ -948,6 +1386,8 @@ const SendContractScreen: React.FC = () => {
                                 multiline
                                 multilineMinHeight={120}
                             />
+                                </>
+                            )}
                         </>
                     ) : (
                         <>
@@ -992,6 +1432,16 @@ const SendContractScreen: React.FC = () => {
                     />
 
                     <HelpSectionTitle topic="standardHours">근로시간·휴일</HelpSectionTitle>
+                    {isScheduleMode ? (
+                        <AppCard variant="outlined">
+                            <AppText variant="caption" tone="secondary">
+                                {scheduleBreakdown
+                                    ? `근무 스케줄에서 자동 반영돼요 — 주 근무일 ${scheduleBreakdown.workingDays}일 · 주 소정근로 ${scheduleBreakdown.weeklyContractedHours.toFixed(1)}시간(시업·종업·휴게 포함).`
+                                    : '위 근무 스케줄을 입력하면 주 소정근로시간과 시업·종업·휴게 시각이 자동 반영돼요.'}
+                            </AppText>
+                        </AppCard>
+                    ) : (
+                        <>
                     <AppInput
                         label="주 소정근로시간"
                         placeholder="예: 40"
@@ -1027,6 +1477,8 @@ const SendContractScreen: React.FC = () => {
                         value={breakMinutes}
                         onChangeText={setBreakMinutes}
                     />
+                        </>
+                    )}
 
                     {weeklyAllowanceEligible ? (
                         <View>
@@ -1062,6 +1514,9 @@ const SendContractScreen: React.FC = () => {
                         </AppCard>
                     )}
 
+                    {/* 스케줄 자동 산출 모드에서는 요일별 근로시간이 스케줄에서 유도되므로 별도 입력을 숨긴다 */}
+                    {!isScheduleMode ? (
+                        <>
                     <AppCard
                         variant="outlined"
                         selected={useWeeklySchedule}
@@ -1087,6 +1542,8 @@ const SendContractScreen: React.FC = () => {
                                 />
                             ))}
                         </View>
+                    ) : null}
+                        </>
                     ) : null}
 
                     <SectionTitle>취업 장소·업무</SectionTitle>
@@ -1254,6 +1711,11 @@ const styles = StyleSheet.create({
     weekHourField: {width: 64},
     timeRow: {flexDirection: 'row', gap: spacing.sm},
     timeField: {flex: 1},
+    dayTimeGroup: {gap: spacing.sm},
+    scheduleDayBlock: {gap: spacing.xs},
+    scheduleWarnBlock: {marginTop: spacing.sm, gap: spacing.xs, alignItems: 'flex-start'},
+    scheduleWarnText: {alignSelf: 'stretch'},
+    scheduleMwBadge: {marginTop: spacing.sm},
     toggleHint: {marginTop: spacing.xs},
     toggleChip: {minWidth: 0},
     insuranceRow: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs},
