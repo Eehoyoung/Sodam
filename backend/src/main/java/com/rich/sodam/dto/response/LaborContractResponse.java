@@ -1,6 +1,7 @@
 package com.rich.sodam.dto.response;
 
 import com.rich.sodam.core.payroll.constant.MinimumWage;
+import com.rich.sodam.core.payroll.wage.WorkScheduleDay;
 import com.rich.sodam.core.payroll.weeklyallowance.LaborLawConstants;
 import com.rich.sodam.domain.LaborContract;
 import com.rich.sodam.domain.type.ContractPeriodType;
@@ -12,10 +13,14 @@ import com.rich.sodam.service.LaborContractService;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 
 /**
  * 근로계약서 응답 DTO. 엔티티 전체 필드 + 서명 상태 + 파생 판정값(휴일·연차 적용 여부·최저임금 준수 여부)을 노출한다.
  *
+ * @param workSchedule              요일별 근무 스케줄(V38). null = 스케줄 미사용
+ * @param salaryBaseHourlyWage      스케줄 자동 산출 기준시급(원). 스케줄 모드에서만 값 존재
+ * @param scheduleDerivedSalary     월급·연봉이 스케줄에서 자동 산출되었는지(SALARY + 스케줄 존재)
  * @param weeklyAllowanceApplicable 주 소정근로시간이 15시간 이상이라 §55 휴일과 §60 연차가 적용되는지
  * @param minimumWageCompliant      시급이 계약연도(또는 올해) 최저임금 이상인지(합법 수습 감액은 반영)
  * @param minimumWageReferenceYear  준수 여부 판정에 사용한 연도
@@ -45,6 +50,9 @@ public record LaborContractResponse(
         Double fixedHolidayHoursOver8PerMonth,
         Integer fixedHolidayPay,
         Integer expectedMonthlyWage,
+        List<WorkScheduleDay> workSchedule,
+        Integer salaryBaseHourlyWage,
+        boolean scheduleDerivedSalary,
         Boolean fiveOrMoreEmployeesSnapshot,
         Integer wagePaymentDay,
         WagePaymentMethod wagePaymentMethod,
@@ -117,6 +125,9 @@ public record LaborContractResponse(
                 c.getFixedHolidayHoursOver8PerMonth(),
                 c.getFixedHolidayPay(),
                 c.getExpectedMonthlyWage(),
+                c.getWorkSchedule(),
+                c.getSalaryBaseHourlyWage(),
+                c.isScheduleDerivedSalary(),
                 c.getFiveOrMoreEmployeesSnapshot(),
                 c.getWagePaymentDay(),
                 c.getWagePaymentMethod(),

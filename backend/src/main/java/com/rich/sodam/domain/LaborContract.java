@@ -1,5 +1,7 @@
 package com.rich.sodam.domain;
 
+import com.rich.sodam.config.converter.WorkScheduleListConverter;
+import com.rich.sodam.core.payroll.wage.WorkScheduleDay;
 import com.rich.sodam.domain.type.ContractPeriodType;
 import com.rich.sodam.domain.type.LaborContractPayType;
 import com.rich.sodam.domain.type.SalaryPayUnit;
@@ -12,6 +14,7 @@ import lombok.Setter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 
 /**
  * 근로계약서 (근로기준법 §17 — 서면 명시·교부 의무).
@@ -110,6 +113,25 @@ public class LaborContract {
     /** 월 기본급 + 고정 연장·야간·휴일수당. */
     @Column(name = "expected_monthly_wage")
     private Integer expectedMonthlyWage;
+
+    /**
+     * 요일별 근무 스케줄(V38, 단일 JSON 컬럼). 월급제(SALARY)에서 스케줄이 존재하면
+     * <b>스케줄 자동 산출 모드</b> — 서비스가 기준시급({@link #salaryBaseHourlyWage})과 함께
+     * 주 실근로/소정/연장/야간을 산출해 월 기본급·고정수당·예상 월급/연봉을 채운다.
+     * 비어 있으면 기존 월급 직접 입력 모드(하위호환).
+     */
+    @Convert(converter = WorkScheduleListConverter.class)
+    @Column(name = "work_schedule_json", length = 2000)
+    private List<WorkScheduleDay> workSchedule;
+
+    /** 스케줄 자동 산출 기준시급(원). 스케줄 모드에서 필수·최저임금 검증 대상. */
+    @Column(name = "salary_base_hourly_wage")
+    private Integer salaryBaseHourlyWage;
+
+    /** 스케줄 자동 산출 모드 여부 — 월급제 + 스케줄 존재. */
+    public boolean isScheduleDerivedSalary() {
+        return payType == LaborContractPayType.SALARY && workSchedule != null && !workSchedule.isEmpty();
+    }
 
     /** 계약 작성 시점 상시근로자 5인 이상 여부. */
     @Column(name = "five_or_more_employees_snapshot")

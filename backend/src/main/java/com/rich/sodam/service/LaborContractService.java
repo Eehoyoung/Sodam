@@ -4,6 +4,8 @@ import com.rich.sodam.core.payroll.constant.MinimumWage;
 import com.rich.sodam.core.payroll.constant.MinorLaborStandards;
 import com.rich.sodam.core.payroll.constant.SocialInsuranceRates;
 import com.rich.sodam.core.payroll.wage.MonthlySalaryCalculator;
+import com.rich.sodam.core.payroll.wage.WorkScheduleCalculator;
+import com.rich.sodam.core.payroll.wage.WorkScheduleDay;
 import com.rich.sodam.core.payroll.weeklyallowance.LaborLawConstants;
 import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.EmploymentTypeChangeLog;
@@ -131,11 +133,131 @@ public class LaborContractService {
         }
 
         if (c.getPayType() == LaborContractPayType.HOURLY) {
+            if (c.getWorkSchedule() != null && !c.getWorkSchedule().isEmpty()) {
+                // 시급제는 스케줄로 급여를 산출하지 않지만(§17 기록용 보존) 구조 오류는 저장 전에 차단
+                WorkScheduleCalculator.weeklyStats(c.getWorkSchedule());
+            }
             clearSalaryTerms(c);
             return;
         }
 
-        normalizeSalaryTerms(c, store != null ? store.isPremiumApplicable() : !Boolean.FALSE.equals(c.getFiveOrMoreEmployeesSnapshot()));
+        boolean premiumApplicable = store != null
+                ? store.isPremiumApplicable()
+                : !Boolean.FALSE.equals(c.getFiveOrMoreEmployeesSnapshot());
+
+        // 스케줄 자동 산출 모드(스케줄 존재) — 주 실근로/소정/연장/야간을 산출해
+        // 월급제 필드를 선(先)기입한 뒤 기존 정규화(통상시급·고정수당 금액)를 태운다.
+        WorkScheduleCalculator.WeeklyStats stats = applyScheduleDerivedSalaryTerms(c);
+        normalizeSalaryTerms(c, premiumApplicable);
+        if (stats != null) {
+            // 직접 입력 모드의 연봉(= 월 기본급 × 12)과 달리, 스케줄 모드 연봉은
+            // 예상 월 지급액(기본급 + 고정연장 + 야간가산) × 12 — 자동 산출 사양.
+            if (c.getExpectedMonthlyWage() != null) {
+                c.setAnnualSalary(c.getExpectedMonthlyWage() * 12);
+            }
+            // §17① 임금 구성·계산방법 — 비어 있으면 산출근거를 자동 생성(사장 입력값은 존중).
+            // 산출 실패(월 기준시간 0 등)로 예상 월급이 없으면 생성하지 않고 §17 검증이 거부하게 둔다.
+            if (c.getExpectedMonthlyWage() != null && isBlank(c.getWageComponents())) {
+                c.setWageComponents(buildScheduleWageComponents(c, stats, premiumApplicable));
+            }
+        }
+    }
+
+    /**
+     * 스케줄 자동 산출 모드(월급제 + 요일별 스케줄 존재) — 스케줄을 단일 소스로
+     * 주 단위 근로시간을 집계해 월급제 필드를 유도한다. 스케줄이 없으면 null(직접 입력 모드).
+     *
+     * <p>유도 대상: 주 소정근로시간(=min(실근로, 40h)) → {@code contractedHoursPerWeek},
+     * 근무일 수 → {@code contractedWeeklyDays}(주휴 개근 판정 분모), 요일별 실근로 →
+     * {@code monHours~sunHours}(기간제법 §17 근로일별 근로시간), 월 기본급 = 기준시급 ×
+     * {@link MonthlySalaryCalculator#monthlyStandardHoursForWeeklyHours}(주 소정 — 주휴 포함,
+     * 15h 미만 주휴 0 §18③), 월 고정 연장·야간 약정시간 = 주 시간 × 365/7/12.
+     * 금액(통상시급·수당·예상 월급)은 이어지는 {@link #normalizeSalaryTerms} 가 계산 —
+     * 월 기본급이 기준시급 × 월 기준시간의 정수곱이므로 환산 통상시급 == 기준시급이 보장되고,
+     * 최저임금 검증({@link #assertAtLeastMinimumWage})도 기준시급에 그대로 적용된다.</p>
+     *
+     * <p>사장이 함께 보낸 월급·고정수당 직접 입력값은 무시하고 산출값으로 덮어쓴다(서버 권위).
+     * §17 대표 시업·종업·휴게가 비어 있으면 첫 근무요일(월→일 순) 값으로 채운다 —
+     * 요일별 상이 스케줄의 정확한 명시는 스케줄 JSON·요일별 시간 컬럼이 담당.</p>
+     */
+    private WorkScheduleCalculator.WeeklyStats applyScheduleDerivedSalaryTerms(LaborContract c) {
+        List<WorkScheduleDay> schedule = c.getWorkSchedule();
+        if (schedule == null || schedule.isEmpty()) {
+            return null; // 기존 월급 직접 입력 모드 — 하위호환
+        }
+        if (c.getSalaryBaseHourlyWage() == null || c.getSalaryBaseHourlyWage() <= 0) {
+            throw new IllegalArgumentException("스케줄 기반 월급 산출에는 급여 기준시급(원)이 필수입니다.");
+        }
+
+        WorkScheduleCalculator.WeeklyStats stats = WorkScheduleCalculator.weeklyStats(schedule);
+        double contractedWeekly = stats.weeklyContractedHours();
+        int standardHours = MonthlySalaryCalculator.monthlyStandardHoursForWeeklyHours(contractedWeekly);
+
+        c.setSalaryPayUnit(SalaryPayUnit.MONTHLY);
+        c.setContractedHoursPerWeek(contractedWeekly);
+        c.setContractedWeeklyDays(stats.workingDays());
+        c.setMonthlyBaseSalary(c.getSalaryBaseHourlyWage() * standardHours);
+        c.setAnnualSalary(null); // normalizeSalaryTerms → 이후 예상 월급 × 12 로 확정
+        c.setFixedOvertimeHoursPerMonth(WorkScheduleCalculator.monthlyHours(stats.weeklyOvertimeHours()));
+        c.setFixedNightHoursPerMonth(WorkScheduleCalculator.monthlyHours(stats.weeklyNightHours()));
+        c.setFixedHolidayHoursWithin8PerMonth(0.0); // 휴일근로는 스케줄 산출 범위 밖 — 정산에서 실적 반영
+        c.setFixedHolidayHoursOver8PerMonth(0.0);
+
+        c.setMonHours(stats.dailyWorkedHours().get(java.time.DayOfWeek.MONDAY));
+        c.setTueHours(stats.dailyWorkedHours().get(java.time.DayOfWeek.TUESDAY));
+        c.setWedHours(stats.dailyWorkedHours().get(java.time.DayOfWeek.WEDNESDAY));
+        c.setThuHours(stats.dailyWorkedHours().get(java.time.DayOfWeek.THURSDAY));
+        c.setFriHours(stats.dailyWorkedHours().get(java.time.DayOfWeek.FRIDAY));
+        c.setSatHours(stats.dailyWorkedHours().get(java.time.DayOfWeek.SATURDAY));
+        c.setSunHours(stats.dailyWorkedHours().get(java.time.DayOfWeek.SUNDAY));
+
+        WorkScheduleDay first = WorkScheduleCalculator.firstByDayOrder(schedule);
+        if (c.getWorkStartTime() == null) {
+            c.setWorkStartTime(first.startTime());
+        }
+        if (c.getWorkEndTime() == null) {
+            c.setWorkEndTime(first.endTime());
+        }
+        if (c.getBreakMinutes() == null) {
+            c.setBreakMinutes(WorkScheduleCalculator.breakMinutesOf(first));
+        }
+        return stats;
+    }
+
+    /**
+     * §17① 임금 구성항목·계산방법 자동 생성(스케줄 모드, 사장 미입력 시).
+     * 주 단위 집계 → 월 환산 근거와 항목별 금액, 5인 미만 가산 미적용 사유를 명시한다.
+     */
+    private static String buildScheduleWageComponents(
+            LaborContract c, WorkScheduleCalculator.WeeklyStats stats, boolean premiumApplicable) {
+        int standardHours = MonthlySalaryCalculator.monthlyStandardHoursForWeeklyHours(stats.weeklyContractedHours());
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format(
+                "[스케줄 자동 산출] 기준시급 %,d원 · 주 근무일 %d일 · 주 실근로 %.1fh · 주 소정 %.1fh(월 %dh, 주휴 포함)",
+                c.getSalaryBaseHourlyWage(), stats.workingDays(),
+                stats.weeklyActualHours(), stats.weeklyContractedHours(), standardHours));
+        if (stats.weeklyOvertimeHours() > 0) {
+            sb.append(String.format(" · 주 연장 %.1fh(월 %.2fh)",
+                    stats.weeklyOvertimeHours(), c.getFixedOvertimeHoursPerMonth()));
+        }
+        if (stats.weeklyNightHours() > 0) {
+            sb.append(String.format(" · 주 야간 %.1fh(월 %.2fh)",
+                    stats.weeklyNightHours(), c.getFixedNightHoursPerMonth()));
+        }
+        sb.append(String.format(" — 기본급 %,d원", c.getMonthlyBaseSalary()));
+        if (stats.weeklyOvertimeHours() > 0) {
+            sb.append(String.format(" + 고정연장수당 %,d원(%.1f배)",
+                    c.getFixedOvertimePay(), premiumApplicable ? 1.5 : 1.0));
+        }
+        if (stats.weeklyNightHours() > 0) {
+            sb.append(String.format(" + 야간가산수당 %,d원", c.getFixedNightPay()));
+        }
+        sb.append(String.format(" = 월 %,d원 · 연 %,d원", c.getExpectedMonthlyWage(),
+                c.getExpectedMonthlyWage() * 12));
+        if (!premiumApplicable) {
+            sb.append(" · 상시 5인 미만 사업장 — 근로기준법 §56 연장·야간 가산 미적용(연장 1.0배, 야간가산 0원)");
+        }
+        return sb.toString();
     }
 
     private void clearSalaryTerms(LaborContract c) {
@@ -151,6 +273,9 @@ public class LaborContractService {
         c.setFixedHolidayHoursOver8PerMonth(null);
         c.setFixedHolidayPay(null);
         c.setExpectedMonthlyWage(null);
+        // 기준시급은 스케줄 자동 산출(월급제) 전용 — 시급제는 hourlyWage 가 단일 소스.
+        // workSchedule 자체는 §17 근로일·시각 기록으로서 payType 무관하게 보존한다.
+        c.setSalaryBaseHourlyWage(null);
     }
 
     private void normalizeSalaryTerms(LaborContract c, boolean premiumApplicable) {

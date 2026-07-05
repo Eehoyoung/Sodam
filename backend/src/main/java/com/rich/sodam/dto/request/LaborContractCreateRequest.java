@@ -1,16 +1,21 @@
 package com.rich.sodam.dto.request;
 
+import com.rich.sodam.core.payroll.wage.WorkScheduleDay;
 import com.rich.sodam.domain.LaborContract;
 import com.rich.sodam.domain.type.ContractPeriodType;
 import com.rich.sodam.domain.type.LaborContractPayType;
 import com.rich.sodam.domain.type.SalaryPayUnit;
 import com.rich.sodam.domain.type.WagePaymentMethod;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 /**
  * 근로계약서 작성 요청(사장). 근로기준법 §17 필수 기재사항 + 근로형태별 추가 사항을 포함한다.
@@ -22,6 +27,12 @@ import java.time.LocalTime;
  * @param employeeId              대상 직원 id
  * @param periodType              계약기간 구분(정함없음/기간제). null 이면 PERMANENT.
  * @param hourlyWage              시급(원). 0 이상.
+ * @param workSchedule            요일별 근무 스케줄(V38). payType=SALARY 에서 존재하면 <b>스케줄 자동 산출
+ *                                모드</b> — 서버가 salaryBaseHourlyWage 와 함께 월급·연봉·고정수당을 산출하고,
+ *                                함께 보낸 monthlyBaseSalary/annualSalary/fixed* 직접 입력값은 무시한다.
+ *                                비우면 기존 직접 입력 모드(하위호환).
+ * @param salaryBaseHourlyWage    급여 기준시급(원). 스케줄 모드 필수(FE 기본값 = 매장 기준시급),
+ *                                최저임금 이상. 스케줄이 없으면 무시.
  * @param wagePaymentMethod       임금 지급방법(BANK_TRANSFER/CASH) — §17① 필수기재
  * @param wageComponents          임금 구성항목·계산방법 명시 — §17① 필수기재
  * @param contractedHoursPerWeek  주 소정근로시간
@@ -59,6 +70,14 @@ public record LaborContractCreateRequest(
         @PositiveOrZero Double fixedHolidayHoursOver8PerMonth,
         @PositiveOrZero Integer fixedHolidayPay,
         @PositiveOrZero Integer expectedMonthlyWage,
+        @ArraySchema(arraySchema = @Schema(
+                description = "요일별 근무 스케줄 — SALARY 에서 존재하면 스케줄 자동 산출 모드. "
+                        + "퇴근 ≤ 출근이면 익일(야간) 해석, 요일 중복 불가",
+                example = "[{\"day\":\"MONDAY\",\"startTime\":\"17:00\",\"endTime\":\"22:00\","
+                        + "\"breakStartTime\":null,\"breakEndTime\":null}]"))
+        List<WorkScheduleDay> workSchedule,
+        @Schema(description = "급여 기준시급(원) — 스케줄 자동 산출 모드 필수, 최저임금 이상", example = "10320")
+        @Positive Integer salaryBaseHourlyWage,
         Boolean fiveOrMoreEmployeesSnapshot,
         Integer wagePaymentDay,
         WagePaymentMethod wagePaymentMethod,
@@ -112,6 +131,8 @@ public record LaborContractCreateRequest(
         c.setFixedHolidayHoursOver8PerMonth(fixedHolidayHoursOver8PerMonth);
         c.setFixedHolidayPay(fixedHolidayPay);
         c.setExpectedMonthlyWage(expectedMonthlyWage);
+        c.setWorkSchedule(workSchedule);
+        c.setSalaryBaseHourlyWage(salaryBaseHourlyWage);
         c.setFiveOrMoreEmployeesSnapshot(fiveOrMoreEmployeesSnapshot);
         c.setWagePaymentDay(wagePaymentDay);
         c.setWagePaymentMethod(wagePaymentMethod);
