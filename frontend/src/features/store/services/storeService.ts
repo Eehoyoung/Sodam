@@ -81,6 +81,20 @@ export interface StoreDetailDto {
   updatedAt?: string;
 }
 
+/** 정산주기 해석 결과 — 미설정 매장은 configured=false, 날짜 null. */
+export interface PayrollCyclePeriodDto {
+  configured: boolean;
+  startDate: string | null;
+  endDate: string | null;
+  paymentDate: string | null;
+}
+
+// [API Mapping] GET /api/stores/{storeId}/payroll-cycle/period — 정산주기를 실제 날짜로 해석
+const getPayrollCyclePeriod = async (storeId: number): Promise<PayrollCyclePeriodDto> => {
+  const res = await api.get<PayrollCyclePeriodDto>(`/api/stores/${storeId}/payroll-cycle/period`);
+  return res.data;
+};
+
 const getMasterStores = async (userId: number): Promise<StoreSummaryDto[]> => {
   const res = await api.get<StoreSummaryDto[]>(`/api/stores/master/${userId}`);
   // 일부 백엔드가 {data: T} 래핑일 수 있어 방어적 파싱
@@ -211,6 +225,7 @@ const storeService = {
   getStoreEmployees,
   getEmployeeStores,
   getStoreOperatingHours,
+  getPayrollCyclePeriod,
   // 등록/설정류
   createStore,
   putLocation,

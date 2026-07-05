@@ -257,6 +257,21 @@ public class StoreManagementServiceImpl implements StoreManagementService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public com.rich.sodam.dto.response.PayrollCyclePeriodDto resolvePayrollCyclePeriod(
+            Long storeId, java.time.YearMonth month) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new EntityNotFoundException("매장을 찾을 수 없습니다. ID: " + storeId));
+        com.rich.sodam.domain.PayrollCycle cycle = store.getPayrollCycle();
+        if (cycle == null || !cycle.isConfigured()) {
+            return com.rich.sodam.dto.response.PayrollCyclePeriodDto.notConfigured();
+        }
+        java.time.YearMonth base = month != null ? month : cycle.cycleMonthContaining(java.time.LocalDate.now());
+        return new com.rich.sodam.dto.response.PayrollCyclePeriodDto(
+                true, cycle.resolveStart(base), cycle.resolveEnd(base), cycle.resolvePayDate(base));
+    }
+
+    @Override
     @Transactional
     public com.rich.sodam.dto.response.OperatingHoursResponseDto updateOperatingHours(
             Long storeId, com.rich.sodam.dto.request.OperatingHoursUpdateDto dto) {

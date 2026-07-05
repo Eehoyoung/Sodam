@@ -63,6 +63,14 @@ public interface StoreManagementService {
 
     /** 매장 시급 변경 이력(기본/개별) 최신순. */
     java.util.List<com.rich.sodam.dto.response.WageHistoryDto> getStoreWageHistory(Long storeId);
+
+    /**
+     * 매장 정산주기를 실제 날짜로 해석한다 — 정산 마법사 기간 기본값·지급 예정일.
+     *
+     * @param month 기준월. null 이면 오늘이 속한 정산주기의 기준월을 자동 판정.
+     */
+    com.rich.sodam.dto.response.PayrollCyclePeriodDto resolvePayrollCyclePeriod(
+            Long storeId, java.time.YearMonth month);
 }
 
 

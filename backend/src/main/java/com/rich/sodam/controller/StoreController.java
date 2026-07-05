@@ -166,6 +166,18 @@ public class StoreController {
         return ResponseEntity.ok(java.util.Map.of("employeeId", employeeId, "active", active));
     }
 
+    @Operation(summary = "매장 정산주기 기간 해석",
+            description = "정산주기 설정을 실제 날짜(시작·마감·지급일)로 해석합니다. "
+                    + "month(YYYY-MM) 미지정 시 오늘이 속한 주기를 반환. 미설정 매장은 configured=false.")
+    @GetMapping("/{storeId}/payroll-cycle/period")
+    public ResponseEntity<com.rich.sodam.dto.response.PayrollCyclePeriodDto> getPayrollCyclePeriod(
+            @PathVariable Long storeId,
+            @RequestParam(required = false)
+            @org.springframework.format.annotation.DateTimeFormat(pattern = "yyyy-MM") java.time.YearMonth month) {
+        storeAccessGuard.assertMasterOwnsStore(getCurrentUserId(), storeId); // BOLA 차단: 본인 매장만
+        return ResponseEntity.ok(storeManagementService.resolvePayrollCyclePeriod(storeId, month));
+    }
+
     @Operation(summary = "매장 운영시간 조회", description = "요일별 영업 시작/종료/휴무를 반환합니다.")
     @GetMapping("/{storeId}/operating-hours")
     public ResponseEntity<com.rich.sodam.dto.response.OperatingHoursResponseDto> getOperatingHours(

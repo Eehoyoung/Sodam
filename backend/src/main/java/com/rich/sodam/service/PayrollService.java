@@ -738,15 +738,44 @@ public class PayrollService {
         switch (payroll.getStatus()) {
             case DRAFT -> {
                 updatePayrollStatus(payrollId, PayrollStatus.CONFIRMED);
-                return updatePayrollStatus(payrollId, PayrollStatus.PAID);
+                return updatePayrollStatus(payrollId, PayrollStatus.PAID, resolveCyclePayDate(payroll), null);
             }
             case CONFIRMED -> {
-                return updatePayrollStatus(payrollId, PayrollStatus.PAID);
+                return updatePayrollStatus(payrollId, PayrollStatus.PAID, resolveCyclePayDate(payroll), null);
             }
             case PAID -> {
                 return payroll; // 멱등: 이미 발급됨
             }
             default -> throw new InvalidOperationException("취소된 급여는 발급할 수 없습니다.");
+        }
+    }
+
+    /**
+     * 발급 시 지급일을 매장 정산주기의 지급일로 해석한다(임금명세서 §48② 지급일 정합).
+     * 급여 기간 마감일이 주기 마감일과 정확히 일치하는 기준월을 찾았을 때만 적용 —
+     * 임의 기간 정산이면 null 을 반환해 기존 동작(오늘 날짜)으로 폴백한다.
+     */
+    private LocalDate resolveCyclePayDate(Payroll payroll) {
+        try {
+            if (payroll.getStore() == null || payroll.getEndDate() == null) {
+                return null;
+            }
+            com.rich.sodam.domain.PayrollCycle cycle = payroll.getStore().getPayrollCycle();
+            if (cycle == null || !cycle.isConfigured()) {
+                return null;
+            }
+            YearMonth endMonth = YearMonth.from(payroll.getEndDate());
+            for (YearMonth candidate : List.of(endMonth.minusMonths(1), endMonth, endMonth.plusMonths(1))) {
+                if (payroll.getEndDate().equals(cycle.resolveEnd(candidate))
+                        && payroll.getStartDate() != null
+                        && payroll.getStartDate().equals(cycle.resolveStart(candidate))) {
+                    return cycle.resolvePayDate(candidate);
+                }
+            }
+            return null;
+        } catch (Exception e) {
+            log.debug("정산주기 지급일 해석 실패 — 오늘 날짜로 폴백: {}", e.getMessage());
+            return null;
         }
     }
 
