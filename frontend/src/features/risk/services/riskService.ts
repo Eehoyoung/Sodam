@@ -9,7 +9,8 @@ export type LaborRiskType =
     | 'WEEKLY_52H_NEAR'
     | 'CONTRACT_UNSIGNED'
     | 'MIN_WAGE_RISK'
-    | 'SEVERANCE_UPCOMING';
+    | 'SEVERANCE_UPCOMING'
+    | 'CONTRACT_OVER_52H';
 
 export type LaborRiskSeverity = 'WARN' | 'DANGER';
 

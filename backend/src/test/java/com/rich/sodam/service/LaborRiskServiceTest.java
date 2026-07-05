@@ -202,4 +202,56 @@ class LaborRiskServiceTest {
 
         assertThat(service.analyze(store.getId(), MONDAY).items()).isEmpty();
     }
+
+    /** 월급제 스케줄 계약 저장(요일별 근무 스케줄 + 기준시급). 일 11h × days.length 근무. */
+    private void salaryScheduleContract(EmployeeProfile emp, java.time.DayOfWeek... days) {
+        LaborContract c = new LaborContract();
+        c.setEmployeeId(emp.getId());
+        c.setStoreId(store.getId());
+        c.setPayType(com.rich.sodam.domain.type.LaborContractPayType.SALARY);
+        c.setSalaryBaseHourlyWage(11_000);
+        c.setWorkSchedule(java.util.Arrays.stream(days)
+                .map(d -> new com.rich.sodam.core.payroll.wage.WorkScheduleDay(
+                        d, LocalTime.of(11, 0), LocalTime.of(23, 0), LocalTime.of(15, 0), LocalTime.of(16, 0)))
+                .toList());
+        c.markSigned(LocalDateTime.now(), null);
+        contractRepo.save(c);
+    }
+
+    @Test
+    @DisplayName("CONTRACT_OVER_52H — 월급제 스케줄 주 연장 12h 초과(주 6일×11h=연장 26h) 계약 경고")
+    void detectsContractOver52h() {
+        EmployeeProfile emp = employee("risk52c@t.co", "과로계약직원");
+        relate(emp, 11_000, MONDAY.minusMonths(1));
+        salaryScheduleContract(emp, java.time.DayOfWeek.MONDAY, java.time.DayOfWeek.TUESDAY,
+                java.time.DayOfWeek.WEDNESDAY, java.time.DayOfWeek.THURSDAY,
+                java.time.DayOfWeek.FRIDAY, java.time.DayOfWeek.SATURDAY);
+
+        List<Item> items = itemsOf(RiskType.CONTRACT_OVER_52H);
+        assertThat(items).hasSize(1);
+        assertThat(items.get(0).employeeId()).isEqualTo(emp.getId());
+        assertThat(items.get(0).severity()).isEqualTo(Severity.WARN);
+        assertThat(items.get(0).value()).isEqualByComparingTo(new BigDecimal("26"));
+    }
+
+    @Test
+    @DisplayName("CONTRACT_OVER_52H — 주 연장 12h 이내(주 4일×11h=연장 12h) 월급제 계약은 미검출")
+    void noOver52hWhenWithinLimit() {
+        EmployeeProfile emp = employee("risk52ok@t.co", "적법계약직원");
+        relate(emp, 11_000, MONDAY.minusMonths(1));
+        salaryScheduleContract(emp, java.time.DayOfWeek.MONDAY, java.time.DayOfWeek.TUESDAY,
+                java.time.DayOfWeek.WEDNESDAY, java.time.DayOfWeek.THURSDAY);
+
+        assertThat(itemsOf(RiskType.CONTRACT_OVER_52H)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("CONTRACT_OVER_52H — 시급제(HOURLY) 계약은 스케줄 산출 대상이 아니므로 미검출")
+    void hourlyContractNotFlaggedForOver52h() {
+        EmployeeProfile emp = employee("risk52h@t.co", "시급제직원");
+        relate(emp, 11_000, MONDAY.minusMonths(1));
+        signedContract(emp); // payType 기본 HOURLY
+
+        assertThat(itemsOf(RiskType.CONTRACT_OVER_52H)).isEmpty();
+    }
 }

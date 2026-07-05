@@ -59,6 +59,8 @@ public class LaborRiskService {
     private static final BigDecimal NEAR_52H_THRESHOLD = new BigDecimal("48");
     /** 퇴직금 채권 발생(1년 근속) 임박 판정 — 입사 후 경과 개월 수. */
     private static final long SEVERANCE_WARN_MONTHS = 11;
+    /** 주 연장근로 법정 한도(§53) — 초과 약정 계약은 대시보드 경고. */
+    private static final double MAX_WEEKLY_OVERTIME_HOURS = 12.0;
 
     private final StoreRepository storeRepository;
     private final EmployeeStoreRelationRepository relationRepository;
@@ -159,6 +161,31 @@ public class LaborRiskService {
         } else if (!latest.get().isSigned()) {
             items.add(new Item(RiskType.CONTRACT_UNSIGNED, Severity.DANGER, employeeId, name,
                     "근로계약서가 아직 서명되지 않았어요. 직원 서명을 받아 교부를 완료해 주세요.", null));
+        }
+        // (6) 월급제 스케줄 약정 주 52h 초과 — 저장은 허용하되 대시보드 경고(사용자 결정, 2026-07-05)
+        latest.ifPresent(contract -> collectContractOver52hRisk(items, employeeId, name, contract));
+    }
+
+    /**
+     * (6) 월급제 계약 스케줄의 주 연장이 12시간 초과(= 주 52시간 한도 초과 약정, §53).
+     * 계약 저장 시 차단하지 않는 대신 여기서 경고한다. 시급제(HOURLY) 계약은 스케줄 산출
+     * 대상이 아니므로 자연히 제외된다.
+     */
+    private void collectContractOver52hRisk(List<Item> items, Long employeeId, String name, LaborContract contract) {
+        if (!contract.isScheduleDerivedSalary()) {
+            return;
+        }
+        try {
+            double weeklyOvertime = com.rich.sodam.core.payroll.wage.WorkScheduleCalculator
+                    .weeklyStats(contract.getWorkSchedule()).weeklyOvertimeHours();
+            if (weeklyOvertime > MAX_WEEKLY_OVERTIME_HOURS) {
+                items.add(new Item(RiskType.CONTRACT_OVER_52H, Severity.WARN, employeeId, name,
+                        String.format("월급제 계약 스케줄의 주 연장근로가 %s시간이에요 — 주 52시간 한도(연장 12시간, §53) 초과 약정입니다. 계약 조정을 검토해 주세요.",
+                                stripZeros(BigDecimal.valueOf(weeklyOvertime))),
+                        BigDecimal.valueOf(weeklyOvertime)));
+            }
+        } catch (IllegalArgumentException e) {
+            // 저장된 스케줄이 구조 오류면 리스크 산정만 건너뛴다(대시보드가 계약 조회를 깨지 않게)
         }
     }
 
