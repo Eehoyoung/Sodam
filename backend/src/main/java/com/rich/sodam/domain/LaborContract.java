@@ -1,6 +1,8 @@
 package com.rich.sodam.domain;
 
 import com.rich.sodam.domain.type.ContractPeriodType;
+import com.rich.sodam.domain.type.LaborContractPayType;
+import com.rich.sodam.domain.type.SalaryPayUnit;
 import com.rich.sodam.domain.type.WagePaymentMethod;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -58,6 +60,60 @@ public class LaborContract {
     /** 임금: 시급(원). 계산방법·지급방법은 아래 항목과 함께 명시. */
     @Column(name = "hourly_wage")
     private Integer hourlyWage;
+
+    /** 임금 유형(시급제/월급·연봉제). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "pay_type", length = 20, nullable = false)
+    private LaborContractPayType payType = LaborContractPayType.HOURLY;
+
+    /** 월급제 급여 입력 단위(월급/연봉). payType=SALARY 일 때 의미. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "salary_pay_unit", length = 20)
+    private SalaryPayUnit salaryPayUnit;
+
+    /** 월 기본급 또는 연봉 월 환산액(주휴 포함). */
+    @Column(name = "monthly_base_salary")
+    private Integer monthlyBaseSalary;
+
+    /** 연봉 금액 또는 월급 연 환산액. */
+    @Column(name = "annual_salary")
+    private Integer annualSalary;
+
+    /** 월급/연봉 환산 통상시급. */
+    @Column(name = "ordinary_hourly_wage")
+    private Integer ordinaryHourlyWage;
+
+    /** 월 고정 연장근로 약정시간과 산출 수당. */
+    @Column(name = "fixed_overtime_hours_per_month")
+    private Double fixedOvertimeHoursPerMonth;
+
+    @Column(name = "fixed_overtime_pay")
+    private Integer fixedOvertimePay;
+
+    /** 월 고정 야간근로 약정시간과 야간가산수당. */
+    @Column(name = "fixed_night_hours_per_month")
+    private Double fixedNightHoursPerMonth;
+
+    @Column(name = "fixed_night_pay")
+    private Integer fixedNightPay;
+
+    /** 월 고정 휴일근로 약정시간(8시간 이내/초과분)과 산출 수당. */
+    @Column(name = "fixed_holiday_hours_within_8_per_month")
+    private Double fixedHolidayHoursWithin8PerMonth;
+
+    @Column(name = "fixed_holiday_hours_over_8_per_month")
+    private Double fixedHolidayHoursOver8PerMonth;
+
+    @Column(name = "fixed_holiday_pay")
+    private Integer fixedHolidayPay;
+
+    /** 월 기본급 + 고정 연장·야간·휴일수당. */
+    @Column(name = "expected_monthly_wage")
+    private Integer expectedMonthlyWage;
+
+    /** 계약 작성 시점 상시근로자 5인 이상 여부. */
+    @Column(name = "five_or_more_employees_snapshot")
+    private Boolean fiveOrMoreEmployeesSnapshot;
 
     /** 임금 지급일(매월 N일). */
     @Column(name = "wage_payment_day")

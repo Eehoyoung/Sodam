@@ -2,6 +2,8 @@ package com.rich.sodam.dto.request;
 
 import com.rich.sodam.domain.LaborContract;
 import com.rich.sodam.domain.type.ContractPeriodType;
+import com.rich.sodam.domain.type.LaborContractPayType;
+import com.rich.sodam.domain.type.SalaryPayUnit;
 import com.rich.sodam.domain.type.WagePaymentMethod;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -44,6 +46,20 @@ public record LaborContractCreateRequest(
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
         @PositiveOrZero Integer hourlyWage,
+        LaborContractPayType payType,
+        SalaryPayUnit salaryPayUnit,
+        @PositiveOrZero Integer monthlyBaseSalary,
+        @PositiveOrZero Integer annualSalary,
+        @PositiveOrZero Integer ordinaryHourlyWage,
+        @PositiveOrZero Double fixedOvertimeHoursPerMonth,
+        @PositiveOrZero Integer fixedOvertimePay,
+        @PositiveOrZero Double fixedNightHoursPerMonth,
+        @PositiveOrZero Integer fixedNightPay,
+        @PositiveOrZero Double fixedHolidayHoursWithin8PerMonth,
+        @PositiveOrZero Double fixedHolidayHoursOver8PerMonth,
+        @PositiveOrZero Integer fixedHolidayPay,
+        @PositiveOrZero Integer expectedMonthlyWage,
+        Boolean fiveOrMoreEmployeesSnapshot,
         Integer wagePaymentDay,
         WagePaymentMethod wagePaymentMethod,
         String wageComponents,
@@ -83,6 +99,20 @@ public record LaborContractCreateRequest(
         c.setStartDate(startDate);
         c.setEndDate(endDate);
         c.setHourlyWage(hourlyWage);
+        c.setPayType(payType != null ? payType : LaborContractPayType.HOURLY);
+        c.setSalaryPayUnit(salaryPayUnit);
+        c.setMonthlyBaseSalary(monthlyBaseSalary);
+        c.setAnnualSalary(annualSalary);
+        c.setOrdinaryHourlyWage(ordinaryHourlyWage);
+        c.setFixedOvertimeHoursPerMonth(fixedOvertimeHoursPerMonth);
+        c.setFixedOvertimePay(fixedOvertimePay);
+        c.setFixedNightHoursPerMonth(fixedNightHoursPerMonth);
+        c.setFixedNightPay(fixedNightPay);
+        c.setFixedHolidayHoursWithin8PerMonth(fixedHolidayHoursWithin8PerMonth);
+        c.setFixedHolidayHoursOver8PerMonth(fixedHolidayHoursOver8PerMonth);
+        c.setFixedHolidayPay(fixedHolidayPay);
+        c.setExpectedMonthlyWage(expectedMonthlyWage);
+        c.setFiveOrMoreEmployeesSnapshot(fiveOrMoreEmployeesSnapshot);
         c.setWagePaymentDay(wagePaymentDay);
         c.setWagePaymentMethod(wagePaymentMethod);
         c.setWageComponents(wageComponents);

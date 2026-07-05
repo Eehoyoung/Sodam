@@ -5,6 +5,8 @@
 
 export type ContractPeriodType = 'PERMANENT' | 'FIXED_TERM';
 export type WagePaymentMethod = 'BANK_TRANSFER' | 'CASH';
+export type LaborContractPayType = 'HOURLY' | 'SALARY';
+export type SalaryPayUnit = 'MONTHLY' | 'ANNUAL';
 
 export interface WeeklySchedule {
     monHours: number | null;
@@ -24,6 +26,20 @@ export interface LaborContract extends WeeklySchedule {
     startDate: string | null;
     endDate: string | null;
     hourlyWage: number | null;
+    payType: LaborContractPayType;
+    salaryPayUnit: SalaryPayUnit | null;
+    monthlyBaseSalary: number | null;
+    annualSalary: number | null;
+    ordinaryHourlyWage: number | null;
+    fixedOvertimeHoursPerMonth: number | null;
+    fixedOvertimePay: number | null;
+    fixedNightHoursPerMonth: number | null;
+    fixedNightPay: number | null;
+    fixedHolidayHoursWithin8PerMonth: number | null;
+    fixedHolidayHoursOver8PerMonth: number | null;
+    fixedHolidayPay: number | null;
+    expectedMonthlyWage: number | null;
+    fiveOrMoreEmployeesSnapshot: boolean | null;
     wagePaymentDay: number | null;
     wagePaymentMethod: WagePaymentMethod | null;
     wageComponents: string | null;
@@ -63,6 +79,20 @@ export interface LaborContractCreatePayload extends Partial<WeeklySchedule> {
     startDate?: string;
     endDate?: string;
     hourlyWage?: number;
+    payType?: LaborContractPayType;
+    salaryPayUnit?: SalaryPayUnit;
+    monthlyBaseSalary?: number;
+    annualSalary?: number;
+    ordinaryHourlyWage?: number;
+    fixedOvertimeHoursPerMonth?: number;
+    fixedOvertimePay?: number;
+    fixedNightHoursPerMonth?: number;
+    fixedNightPay?: number;
+    fixedHolidayHoursWithin8PerMonth?: number;
+    fixedHolidayHoursOver8PerMonth?: number;
+    fixedHolidayPay?: number;
+    expectedMonthlyWage?: number;
+    fiveOrMoreEmployeesSnapshot?: boolean;
     wagePaymentDay?: number;
     wagePaymentMethod?: WagePaymentMethod;
     wageComponents?: string;

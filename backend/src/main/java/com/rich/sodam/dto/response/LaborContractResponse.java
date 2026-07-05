@@ -4,6 +4,8 @@ import com.rich.sodam.core.payroll.constant.MinimumWage;
 import com.rich.sodam.core.payroll.weeklyallowance.LaborLawConstants;
 import com.rich.sodam.domain.LaborContract;
 import com.rich.sodam.domain.type.ContractPeriodType;
+import com.rich.sodam.domain.type.LaborContractPayType;
+import com.rich.sodam.domain.type.SalaryPayUnit;
 import com.rich.sodam.domain.type.WagePaymentMethod;
 import com.rich.sodam.service.LaborContractService;
 
@@ -30,6 +32,20 @@ public record LaborContractResponse(
         LocalDate startDate,
         LocalDate endDate,
         Integer hourlyWage,
+        LaborContractPayType payType,
+        SalaryPayUnit salaryPayUnit,
+        Integer monthlyBaseSalary,
+        Integer annualSalary,
+        Integer ordinaryHourlyWage,
+        Double fixedOvertimeHoursPerMonth,
+        Integer fixedOvertimePay,
+        Double fixedNightHoursPerMonth,
+        Integer fixedNightPay,
+        Double fixedHolidayHoursWithin8PerMonth,
+        Double fixedHolidayHoursOver8PerMonth,
+        Integer fixedHolidayPay,
+        Integer expectedMonthlyWage,
+        Boolean fiveOrMoreEmployeesSnapshot,
         Integer wagePaymentDay,
         WagePaymentMethod wagePaymentMethod,
         String wageComponents,
@@ -88,6 +104,20 @@ public record LaborContractResponse(
                 c.getStartDate(),
                 c.getEndDate(),
                 c.getHourlyWage(),
+                c.getPayType(),
+                c.getSalaryPayUnit(),
+                c.getMonthlyBaseSalary(),
+                c.getAnnualSalary(),
+                c.getOrdinaryHourlyWage(),
+                c.getFixedOvertimeHoursPerMonth(),
+                c.getFixedOvertimePay(),
+                c.getFixedNightHoursPerMonth(),
+                c.getFixedNightPay(),
+                c.getFixedHolidayHoursWithin8PerMonth(),
+                c.getFixedHolidayHoursOver8PerMonth(),
+                c.getFixedHolidayPay(),
+                c.getExpectedMonthlyWage(),
+                c.getFiveOrMoreEmployeesSnapshot(),
                 c.getWagePaymentDay(),
                 c.getWagePaymentMethod(),
                 c.getWageComponents(),

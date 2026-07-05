@@ -39,6 +39,10 @@ function fmtTime(v: string | null): string {
     return v.slice(0, 5);
 }
 
+function won(v: number | null | undefined): string {
+    return v !== null && v !== undefined ? `${v.toLocaleString('ko-KR')}원` : '-';
+}
+
 const TermRow: React.FC<{label: string; value: string; last?: boolean}> = ({label, value, last}) => {
     const c = useThemeColors();
     return (
@@ -63,7 +67,13 @@ export const ContractTermsCard: React.FC<{contract: LaborContract}> = ({contract
         contract.startDate
             ? `${periodLabel} · ${contract.startDate} ~ ${contract.periodType === 'FIXED_TERM' ? (contract.endDate ?? '-') : '계속'}`
             : periodLabel;
+    const isSalary = contract.payType === 'SALARY';
+    const payType = isSalary
+        ? contract.salaryPayUnit === 'ANNUAL' ? '연봉제' : '월급제'
+        : '시급제';
     const wage = contract.hourlyWage !== null ? `${contract.hourlyWage.toLocaleString('ko-KR')}원` : '-';
+    const fixedAllowanceTotal =
+        (contract.fixedOvertimePay ?? 0) + (contract.fixedNightPay ?? 0) + (contract.fixedHolidayPay ?? 0);
     const payDay = contract.wagePaymentDay !== null ? `매월 ${contract.wagePaymentDay}일` : '-';
     const payMethod = contract.wagePaymentMethod === 'CASH' ? '현금'
         : contract.wagePaymentMethod === 'BANK_TRANSFER' ? '계좌이체' : '-';
@@ -76,7 +86,9 @@ export const ContractTermsCard: React.FC<{contract: LaborContract}> = ({contract
         ? (contract.weeklyHolidayDay ? (WEEKDAY_KO[contract.weeklyHolidayDay] ?? contract.weeklyHolidayDay) : '-')
         : '주 15시간 미만 — 주휴 미적용';
     const annualLeave = contract.weeklyAllowanceApplicable
-        ? dash(contract.annualLeaveNote)
+        ? contract.fiveOrMoreEmployeesSnapshot === false
+            ? '5인 미만 — 연차유급휴가 미적용'
+            : dash(contract.annualLeaveNote)
         : '주 15시간 미만 — 연차유급휴가 미적용';
 
     const scheduleEntries = WEEKDAY_SCHEDULE.map(d => ({...d, value: contract[d.key]}))
@@ -111,7 +123,21 @@ export const ContractTermsCard: React.FC<{contract: LaborContract}> = ({contract
 
             <AppCard variant="flat">
                 <SectionTitle>임금</SectionTitle>
-                <TermRow label="시급" value={wage} />
+                <TermRow label="임금 유형" value={payType} />
+                {isSalary ? (
+                    <>
+                        <TermRow label="월 기본급" value={won(contract.monthlyBaseSalary)} />
+                        <TermRow label="연봉 환산" value={won(contract.annualSalary)} />
+                        <TermRow label="통상시급" value={won(contract.ordinaryHourlyWage)} />
+                        <TermRow label="고정 연장수당" value={won(contract.fixedOvertimePay)} />
+                        <TermRow label="고정 야간수당" value={won(contract.fixedNightPay)} />
+                        <TermRow label="고정 휴일수당" value={won(contract.fixedHolidayPay)} />
+                        <TermRow label="고정수당 합계" value={won(fixedAllowanceTotal)} />
+                        <TermRow label="예상 월 지급액" value={won(contract.expectedMonthlyWage)} />
+                    </>
+                ) : (
+                    <TermRow label="시급" value={wage} />
+                )}
                 <TermRow label="지급방법" value={payMethod} />
                 <TermRow label="지급일" value={payDay} />
                 <TermRow label="구성항목·계산방법" value={dash(contract.wageComponents)} last />

@@ -520,6 +520,24 @@ const SendContractScreen: React.FC = () => {
             employeeId,
             periodType,
             hourlyWage: wage,
+            payType: contractPayType,
+            salaryPayUnit: isSalaryContract ? salaryPayUnit : undefined,
+            monthlyBaseSalary: isSalaryContract ? salaryBreakdown.monthlyBaseSalary : undefined,
+            annualSalary: isSalaryContract
+                ? salaryPayUnit === 'ANNUAL'
+                    ? numberOrZero(salaryAmount)
+                    : salaryBreakdown.monthlyBaseSalary * 12
+                : undefined,
+            ordinaryHourlyWage: isSalaryContract ? salaryBreakdown.ordinaryHourlyWage : undefined,
+            fixedOvertimeHoursPerMonth: isSalaryContract ? numberOrZero(fixedOvertimeHours) : undefined,
+            fixedOvertimePay: isSalaryContract ? salaryBreakdown.overtimePay : undefined,
+            fixedNightHoursPerMonth: isSalaryContract ? numberOrZero(fixedNightHours) : undefined,
+            fixedNightPay: isSalaryContract ? salaryBreakdown.nightPremiumPay : undefined,
+            fixedHolidayHoursWithin8PerMonth: isSalaryContract ? numberOrZero(fixedHolidayHoursWithin8) : undefined,
+            fixedHolidayHoursOver8PerMonth: isSalaryContract ? numberOrZero(fixedHolidayHoursOver8) : undefined,
+            fixedHolidayPay: isSalaryContract ? salaryBreakdown.holidayPay : undefined,
+            expectedMonthlyWage: isSalaryContract ? salaryBreakdown.totalMonthlyWage : undefined,
+            fiveOrMoreEmployeesSnapshot: fiveOrMoreEmployees,
             wagePaymentMethod,
             wageComponents: wageComponentText,
             wagePaymentDay: payDayNum,
@@ -569,6 +587,24 @@ const SendContractScreen: React.FC = () => {
             startDate: startDate.trim() && isValidDateDigits(startDate) ? dateDigitsToIso(startDate) : null,
             endDate: periodType === 'FIXED_TERM' && endDate.trim() && isValidDateDigits(endDate) ? dateDigitsToIso(endDate) : null,
             hourlyWage: Number.isNaN(wage) ? null : wage,
+            payType: contractPayType,
+            salaryPayUnit: isSalaryContract ? salaryPayUnit : null,
+            monthlyBaseSalary: isSalaryContract ? salaryBreakdown.monthlyBaseSalary : null,
+            annualSalary: isSalaryContract
+                ? salaryPayUnit === 'ANNUAL'
+                    ? numberOrZero(salaryAmount)
+                    : salaryBreakdown.monthlyBaseSalary * 12
+                : null,
+            ordinaryHourlyWage: isSalaryContract ? salaryBreakdown.ordinaryHourlyWage : null,
+            fixedOvertimeHoursPerMonth: isSalaryContract ? numberOrZero(fixedOvertimeHours) : null,
+            fixedOvertimePay: isSalaryContract ? salaryBreakdown.overtimePay : null,
+            fixedNightHoursPerMonth: isSalaryContract ? numberOrZero(fixedNightHours) : null,
+            fixedNightPay: isSalaryContract ? salaryBreakdown.nightPremiumPay : null,
+            fixedHolidayHoursWithin8PerMonth: isSalaryContract ? numberOrZero(fixedHolidayHoursWithin8) : null,
+            fixedHolidayHoursOver8PerMonth: isSalaryContract ? numberOrZero(fixedHolidayHoursOver8) : null,
+            fixedHolidayPay: isSalaryContract ? salaryBreakdown.holidayPay : null,
+            expectedMonthlyWage: isSalaryContract ? salaryBreakdown.totalMonthlyWage : null,
+            fiveOrMoreEmployeesSnapshot: fiveOrMoreEmployees,
             wagePaymentDay: payDay.trim() ? Number(payDay) : null,
             wagePaymentMethod,
             wageComponents: wageComponentText || null,
