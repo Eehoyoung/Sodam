@@ -1,5 +1,6 @@
 package com.rich.sodam.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.rich.sodam.config.converter.WorkScheduleListConverter;
 import com.rich.sodam.core.payroll.wage.WorkScheduleDay;
 import com.rich.sodam.domain.type.EmploymentType;
@@ -9,6 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -35,6 +37,12 @@ public class EmployeeStoreRelation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** 낙관적 락(DB_OPTIMIZATION_PLAN.md §2.8) — 시급·고용형태 동시 변경 시 lost update 감지용. */
+    @Version
+    @JsonIgnore
+    @Column(nullable = false)
+    private Long version;
+
     @ManyToOne
     @JoinColumn(name = "employee_id")
     private EmployeeProfile employeeProfile;
@@ -56,6 +64,14 @@ public class EmployeeStoreRelation {
     // 직원-매장 관계의 활성 상태 (퇴사/비활성화 처리 시 false)
     @Column(nullable = false)
     private Boolean isActive = true;
+
+    /**
+     * 비활성화(퇴사) 시각(DB_OPTIMIZATION_PLAN.md §2.2(b)) — 근로관계 기록 3년 보존기간의 기산점.
+     * {@code isActive}만 있고 "언제" 바뀌었는지 알 방법이 없던 갭을 메운다. 활성 상태면 null.
+     * 직접 setter로 건드리지 말고 {@link #changeActive}로만 변경 — 두 필드가 항상 함께 움직여야 함.
+     */
+    @Column(name = "deactivated_at")
+    private LocalDateTime deactivatedAt;
 
     /** 사장만 보이는 직원 메모 (직원에게 절대 노출 X — DTO 분리 필수) */
     @Column(name = "owner_memo", length = 500)
@@ -129,6 +145,16 @@ public class EmployeeStoreRelation {
         this.customHourlyWage = customHourlyWage;
         this.useStoreStandardWage = (customHourlyWage == null);
         this.hireDate = LocalDate.now(); // 현재 날짜를 기본 입사일로 설정
+    }
+
+    /**
+     * 활성/비활성 상태를 전환한다(§2.2(b)). {@code isActive}와 {@code deactivatedAt}이 항상 함께
+     * 움직이도록 이 메서드로만 변경한다 — Lombok {@code setIsActive}를 직접 호출하면 타임스탬프가
+     * 누락돼 보존기간 기산이 불가능해진다.
+     */
+    public void changeActive(boolean active) {
+        this.isActive = active;
+        this.deactivatedAt = active ? null : LocalDateTime.now();
     }
 
     // 실제 적용되는 시급 계산

@@ -4,6 +4,7 @@ import com.rich.sodam.domain.EmployeeProfile;
 import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.Store;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -66,6 +67,17 @@ public interface EmployeeStoreRelationRepository extends JpaRepository<EmployeeS
      * 활성 상태(isActive=true) 직원 수 — 상시근로자 5인 이상 여부 산정용(Store.applyEmployeeCount).
      */
     long countByStoreAndIsActiveTrue(Store store);
+
+    /**
+     * 위와 동일하지만 잠금 읽기({@code FOR UPDATE})로 조회한다(DB_OPTIMIZATION_PLAN.md §2.8(a)).
+     * REPEATABLE READ 하에서는 일반 읽기가 트랜잭션 시작 시점의 스냅샷을 보므로, 매장 행을 이미
+     * 비관적으로 잠근 뒤라도 이 카운트는 여전히 다른 트랜잭션의 최신 커밋을 놓칠 수 있다 — 잠금 읽기만
+     * 스냅샷을 무시하고 항상 최신 커밋 데이터를 본다. {@link StoreManagementServiceImpl#recountEmployeesAndApply}
+     * 에서 매장 행 락 이후 이 메서드로 재계산해야 lost update가 완전히 차단된다.
+     */
+    @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT COUNT(r) FROM EmployeeStoreRelation r WHERE r.store = :store AND r.isActive = true")
+    long countByStoreAndIsActiveTrueForUpdate(@Param("store") Store store);
 
     /**
      * 명시적 JPQL — @MapsId 매핑에서 파생 쿼리가 실패할 때를 대비한 안전 메서드.

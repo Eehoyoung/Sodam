@@ -87,6 +87,10 @@ dependencies {
     implementation 'io.micrometer:micrometer-tracing'
     implementation 'io.micrometer:micrometer-tracing-bridge-brave'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    // 동시성 정합성(DB_OPTIMIZATION_PLAN.md Phase 2) — 낙관적 락 충돌 시 자동 재시도.
+    // @Retryable 은 AOP 프록시 기반이라 spring-boot-starter-aop(AspectJ 런타임)가 함께 필요.
+    implementation 'org.springframework.retry:spring-retry'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
 }
 
 tasks.named('test') {
