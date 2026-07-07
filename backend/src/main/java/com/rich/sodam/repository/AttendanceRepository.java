@@ -53,6 +53,14 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     List<Attendance> findIncompleteAttendances(@Param("employeeProfile") EmployeeProfile employeeProfile);
 
     /**
+     * 특정 직원의 특정 매장에서 아직 퇴근 처리되지 않은 출근 기록 조회(DB_OPTIMIZATION_PLAN.md Phase 2.5).
+     * {@code checkOut}이 "직원의 가장 최근 기록"이 아니라 "그 매장에서 진행 중인 기록"을 정확히
+     * 특정하기 위해 사용 — 여러 매장에서 근무한 날, 엉뚱한 매장의 진행중 기록이 잘못 종료되는 것을 방지.
+     */
+    List<Attendance> findByEmployeeProfileAndStoreAndCheckOutTimeIsNullOrderByCheckInTimeDesc(
+            EmployeeProfile employeeProfile, Store store);
+
+    /**
      * 특정 매장의 특정 날짜의 모든 출퇴근 기록 조회
      * 인덱스 활용을 위해 날짜 범위로 조회
      */

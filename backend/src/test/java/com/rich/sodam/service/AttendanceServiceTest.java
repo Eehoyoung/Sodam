@@ -182,7 +182,7 @@ class AttendanceServiceTest {
         assertThatThrownBy(() -> attendanceService.checkIn(
                 testEmployee.getId(), testStore.getId(), latitude, longitude))
                 .isInstanceOf(InvalidOperationException.class)
-                .hasMessageContaining("이미 오늘 출근 기록이 있습니다");
+                .hasMessageContaining("이미 해당 시간대에 출퇴근 기록이 있습니다");
 
         System.out.println("[DEBUG_LOG] 중복 출근 처리 실패 테스트 완료");
     }
@@ -227,7 +227,7 @@ class AttendanceServiceTest {
         assertThatThrownBy(() -> attendanceService.checkOut(
                 testEmployee.getId(), testStore.getId(), latitude, longitude))
                 .isInstanceOf(InvalidOperationException.class)
-                .hasMessageContaining("오늘 출근 기록이 없습니다");
+                .hasMessageContaining("해당 매장에 진행 중인 출근 기록이 없습니다");
 
         System.out.println("[DEBUG_LOG] 출근 기록 없이 퇴근 시도 실패 테스트 완료");
     }
@@ -431,7 +431,7 @@ class AttendanceServiceTest {
         // When & Then
         assertThatThrownBy(() -> attendanceService.registerManualAttendance(request))
                 .isInstanceOf(InvalidOperationException.class)
-                .hasMessageContaining("이미 출퇴근 기록이 존재합니다");
+                .hasMessageContaining("이미 해당 시간대에 출퇴근 기록이 있습니다");
 
         System.out.println("[DEBUG_LOG] 중복 기록 존재 실패 테스트 완료");
     }

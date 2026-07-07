@@ -45,6 +45,9 @@ public class AttendanceService {
      */
     private static final Duration OFFLINE_QUEUE_MAX_SKEW = Duration.ofHours(4);
 
+    /** 진행 중(퇴근 전) 근무·미확정 종료시각을 "사실상 무한대"로 취급하기 위한 상한값(§2.8(d)). */
+    private static final LocalDateTime FAR_FUTURE = LocalDateTime.MAX;
+
     private final AttendanceRepository attendanceRepository;
     private final EmployeeProfileRepository employeeProfileRepository;
     private final StoreRepository storeRepository;
@@ -133,13 +136,13 @@ public class AttendanceService {
         EmployeeProfile employeeProfile = context.employeeProfile();
         Store store = context.store();
 
-        // 오늘의 출퇴근 기록 조회
+        // 오늘의 출퇴근 기록 조회(매장 무관 — 다른 매장 근무와의 시간 겹침을 판정해야 하므로 유지)
         List<Attendance> todayAttendances = getTodayAttendances(employeeProfile);
 
-        // 이미 출근 기록이 있는지 확인
-        if (!todayAttendances.isEmpty()) {
-            throw new InvalidOperationException("이미 오늘 출근 기록이 있습니다.");
-        }
+        // 같은 날 다른 매장 근무는 허용하되 시간대 겹침은 차단(§2.8(d) 정책, Phase 2.5).
+        // 과거에는 "당일 기록이 하나라도 있으면 무조건 차단"이라 매장 무관 전면 차단 버그였다.
+        LocalDateTime newCheckInTime = effectiveTime != null ? effectiveTime : LocalDateTime.now();
+        assertNoOverlappingAttendance(todayAttendances, storeId, newCheckInTime, null);
 
         // 시급 정보 가져오기
         Integer hourlyWage = context.employeeStoreRelation().getAppliedHourlyWage();
@@ -270,17 +273,18 @@ public class AttendanceService {
         // 직원과 매장 조회
         EmployeeStoreRelationContext context = getEmployeeStoreContext(employeeId, storeId);
         EmployeeProfile employeeProfile = context.employeeProfile();
+        Store store = context.store();
 
-        // 오늘의 출퇴근 기록 조회
-        List<Attendance> todayAttendances = getTodayAttendances(employeeProfile);
-
-        // 출근 기록이 없는지 확인
-        if (todayAttendances.isEmpty()) {
-            throw new InvalidOperationException("오늘 출근 기록이 없습니다.");
+        // 이 매장에서 진행 중인(퇴근 전) 기록을 정확히 특정한다(Phase 2.5) — 과거에는 "직원의 가장
+        // 최근 기록"을 가져와, 다른 매장에서 아직 퇴근 전이면 그 기록이 엉뚱하게 종료될 수 있었다.
+        List<Attendance> openAttendancesAtStore = attendanceRepository
+                .findByEmployeeProfileAndStoreAndCheckOutTimeIsNullOrderByCheckInTimeDesc(employeeProfile, store);
+        if (openAttendancesAtStore.isEmpty()) {
+            throw new InvalidOperationException("해당 매장에 진행 중인 출근 기록이 없습니다.");
         }
 
         // 가장 최근 출근 기록 가져오기
-        Attendance attendance = todayAttendances.get(0);
+        Attendance attendance = openAttendancesAtStore.get(0);
 
         // 퇴근 정보 업데이트. 오프라인 큐 시각이 출근시각 이후면 그 시각으로, 아니면 현재 시각으로.
         if (effectiveTime != null && attendance.getCheckInTime() != null
@@ -368,8 +372,9 @@ public class AttendanceService {
         EmployeeStoreRelationContext context = getEmployeeStoreContext(
                 request.getEmployeeId(), request.getStoreId());
 
-        // 3. 해당 날짜의 기존 출퇴근 기록 확인
-        validateNoDuplicateAttendance(context.employeeProfile(), request.getCheckInTime());
+        // 3. 해당 날짜의 기존 출퇴근 기록과 시간대 겹침 확인(매장 무관 전면 차단 버그 수정, Phase 2.5)
+        validateNoDuplicateAttendance(context.employeeProfile(), request.getStoreId(),
+                request.getCheckInTime(), request.getCheckOutTime());
 
         // 4. 출퇴근 기록 생성
         Attendance attendance = createManualAttendance(context, request);
@@ -378,9 +383,14 @@ public class AttendanceService {
     }
 
     /**
-     * 해당 날짜에 중복된 출퇴근 기록이 있는지 검증
+     * 사장 대리등록 시간대가 같은 날 기존 기록과 겹치는지 검증한다.
+     *
+     * <p>과거에는 "해당 날짜에 기록이 하나라도 있으면 무조건 거부"였다 — {@link #checkIn}과 완전히 같은
+     * 매장-무관 전면 차단 버그였다(사장이 대신 등록하는 경로라 실사용자 체크인보다 드물게 호출되지만
+     * 정책 위반은 동일). {@link #assertNoOverlappingAttendance}로 통일한다.</p>
      */
-    private void validateNoDuplicateAttendance(EmployeeProfile employeeProfile, LocalDateTime checkInTime) {
+    private void validateNoDuplicateAttendance(EmployeeProfile employeeProfile, Long storeId,
+                                               LocalDateTime checkInTime, LocalDateTime checkOutTime) {
         LocalDateTime startOfDay = checkInTime.toLocalDate().atStartOfDay();
         LocalDateTime endOfDay = checkInTime.toLocalDate().atTime(23, 59, 59);
 
@@ -388,11 +398,7 @@ public class AttendanceService {
                 .findByEmployeeProfileAndCheckInTimeBetweenOrderByCheckInTimeDesc(
                         employeeProfile, startOfDay, endOfDay);
 
-        if (!existingAttendances.isEmpty()) {
-            throw new InvalidOperationException(
-                    String.format("해당 날짜(%s)에 이미 출퇴근 기록이 존재합니다.",
-                            checkInTime.toLocalDate()));
-        }
+        assertNoOverlappingAttendance(existingAttendances, storeId, checkInTime, checkOutTime);
     }
 
     /**
@@ -463,6 +469,41 @@ public class AttendanceService {
 
         return attendanceRepository.findByEmployeeProfileAndCheckInTimeBetweenOrderByCheckInTimeDesc(
                 employeeProfile, startOfDay, endOfDay);
+    }
+
+    /**
+     * 신규(또는 백필) 출퇴근 구간이 같은 날의 기존 기록과 시간대가 겹치는지 검증한다
+     * (DB_OPTIMIZATION_PLAN.md §2.8(d), Phase 2.5).
+     *
+     * <p>정책: 같은 날 서로 다른 매장 근무는 허용하되, 시간대가 겹치면 안 된다 — 매장이 같든 다르든
+     * "겹침" 자체만 차단한다(예: 아직 퇴근 안 한 매장이 있는데 다른 매장에 새로 출근하려는 시도,
+     * 또는 사장이 수동 등록한 시간대가 이미 있는 다른 기록과 겹치는 경우).</p>
+     *
+     * <p>진행 중(퇴근 전) 기록은 끝을 모르므로 {@link #FAR_FUTURE}(사실상 무한대)로 취급한다 — 그래서
+     * 어느 매장이든 퇴근 안 한 기록이 하나라도 있으면, 새 시작 시각이 그 기록의 시작 이후인 한 항상
+     * 겹침으로 판정된다("두 곳에서 동시에 근무 중일 수 없다"는 규칙이 별도 분기 없이 자연스럽게 성립).
+     * {@code newEnd} 가 null 이면(일반 실시간 체크인) 신규 쪽도 열린 구간으로 같은 방식으로 취급한다.</p>
+     *
+     * @param todayAttendances 오늘의 기존 출퇴근 기록(매장 무관 전체)
+     * @param storeId          이번에 등록하려는 매장 ID(겹침 시 안내 메시지 분기용)
+     * @param newStart         신규 구간 시작
+     * @param newEnd           신규 구간 종료(모르면 null — 열린 구간으로 취급)
+     */
+    private void assertNoOverlappingAttendance(List<Attendance> todayAttendances, Long storeId,
+                                                LocalDateTime newStart, LocalDateTime newEnd) {
+        LocalDateTime effectiveNewEnd = newEnd != null ? newEnd : FAR_FUTURE;
+        for (Attendance existing : todayAttendances) {
+            LocalDateTime existingStart = existing.getCheckInTime();
+            LocalDateTime effectiveExistingEnd = existing.getCheckOutTime() != null
+                    ? existing.getCheckOutTime() : FAR_FUTURE;
+            boolean overlaps = newStart.isBefore(effectiveExistingEnd) && existingStart.isBefore(effectiveNewEnd);
+            if (overlaps) {
+                boolean sameStore = existing.getStore() != null && existing.getStore().getId().equals(storeId);
+                throw new InvalidOperationException(sameStore
+                        ? "이미 해당 시간대에 출퇴근 기록이 있습니다."
+                        : "해당 시간대는 다른 매장 근무 기록과 겹쳐요. 먼저 퇴근한 뒤 다시 시도해주세요.");
+            }
+        }
     }
 
 
