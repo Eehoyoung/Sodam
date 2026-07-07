@@ -187,19 +187,24 @@ jest.mock('react-native-nfc-manager', () => ({
     NfcEvents: {DiscoverTag: 'DiscoverTag'},
 }));
 
-// Mock @react-native-firebase/messaging (FCM key-ready 래퍼는 optional-require 로
+// Mock @react-native-firebase/messaging + /app (FCM key-ready 래퍼는 optional-require 로
 // 이미 부재를 막지만, 모듈이 설치된 환경에서 깔끔히 동작하도록 명시 mock).
+// src/common/services/fcm.ts 는 RNFirebase v22+ 모듈러 API(getMessaging/getToken/...)를
+// 우선 사용한다 — 네임스페이스 API(default 팩토리)는 deprecated 폴백일 뿐이므로, 여기서도
+// 모듈러 API 모양으로 mock 해야 실제로 검증하는 코드 경로와 일치한다.
 try {
-    jest.mock('@react-native-firebase/messaging', () => {
-        const messaging = jest.fn(() => ({
-            requestPermission: jest.fn(() => Promise.resolve(1)),
-            getToken: jest.fn(() => Promise.resolve('test-fcm-token')),
-            onMessage: jest.fn(() => jest.fn()),
-            onTokenRefresh: jest.fn(() => jest.fn()),
-            setBackgroundMessageHandler: jest.fn(),
-        }));
-        return {__esModule: true, default: messaging};
-    }, {virtual: true}); // 패키지 미설치 상태에서도 mock 등록 (key-ready 검증용)
+    jest.mock('@react-native-firebase/messaging', () => ({
+        __esModule: true,
+        getMessaging: jest.fn(() => ({})),
+        getToken: jest.fn(() => Promise.resolve('test-fcm-token')),
+        requestPermission: jest.fn(() => Promise.resolve(1)),
+        onMessage: jest.fn(() => jest.fn()),
+        onTokenRefresh: jest.fn(() => jest.fn()),
+    }), {virtual: true}); // 패키지 미설치 상태에서도 mock 등록 (key-ready 검증용)
+    jest.mock('@react-native-firebase/app', () => ({
+        __esModule: true,
+        getApp: jest.fn(() => ({})),
+    }), {virtual: true});
 } catch (e) {
     // 모듈 미설치 — optional-require 가 fallback 처리
 }
@@ -273,23 +278,30 @@ jest.mock('react-native-chart-kit', () => ({
     StackedBarChart: 'StackedBarChart',
 }));
 
-// Mock react-native-reanimated with official mock to avoid native crashes in Jest
-try {
-    jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
-} catch (e) {
-    // if module resolution fails, provide a minimal fallback
-    jest.mock('react-native-reanimated', () => ({
-        Easing: {linear: jest.fn(), ease: jest.fn()},
-        useSharedValue: jest.fn(() => ({value: 0})),
-        useAnimatedStyle: jest.fn(() => ({})),
-        withTiming: jest.fn((v) => v),
-        withSpring: jest.fn((v) => v),
-        withDelay: jest.fn((_, v) => v),
-        runOnJS: (fn) => fn,
-        runOnUI: (fn) => fn,
-        createAnimatedComponent: (c) => c,
-    }));
-}
+// Mock react-native-reanimated with official mock to avoid native crashes in Jest.
+// jest.mock's factory is lazy — it only runs the first time a test actually requires the
+// module, so a try/catch wrapped around the jest.mock(...) call itself never sees an error
+// thrown from inside the factory. The try/catch must be INSIDE the factory to fall back
+// correctly when the official mock's own require chain breaks (e.g. reanimated 4.x mock
+// incompatibility).
+jest.mock('react-native-reanimated', () => {
+    try {
+        return require('react-native-reanimated/mock');
+    } catch (e) {
+        // module resolution failed — minimal fallback
+        return {
+            Easing: {linear: jest.fn(), ease: jest.fn()},
+            useSharedValue: jest.fn(() => ({value: 0})),
+            useAnimatedStyle: jest.fn(() => ({})),
+            withTiming: jest.fn((v) => v),
+            withSpring: jest.fn((v) => v),
+            withDelay: jest.fn((_, v) => v),
+            runOnJS: (fn) => fn,
+            runOnUI: (fn) => fn,
+            createAnimatedComponent: (c) => c,
+        };
+    }
+});
 
 // Lightweight mock for @testing-library/react-native to avoid adding a dev dependency
 try {

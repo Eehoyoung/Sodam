@@ -46,3 +46,66 @@ describe('myLeaveService.getMyLeaveBalance (E-NEW-03)', () => {
         expect(result.disclaimer).toBeTruthy();
     });
 });
+
+describe('myLeaveService.createTimeOffRequest (직원 셀프 신청)', () => {
+    beforeEach(() => jest.clearAllMocks());
+
+    it('POST /api/timeoff/self 로 payload 그대로 전달하고 TimeOffResponse 반환', async () => {
+        const responseBody = {
+            id: 1,
+            employeeId: 5,
+            employeeName: '홍길동',
+            storeId: 2,
+            leaveType: 'ANNUAL',
+            unit: 'FULL_DAY',
+            startDate: '2026-07-10',
+            endDate: '2026-07-11',
+            startTime: null,
+            endTime: null,
+            consumedDays: 2,
+            reason: '가족 행사',
+            rejectReason: null,
+            status: 'PENDING',
+        };
+        (api.post as jest.Mock).mockResolvedValue({data: responseBody});
+
+        const payload = {
+            storeId: 2,
+            startDate: '2026-07-10',
+            endDate: '2026-07-11',
+            reason: '가족 행사',
+            leaveType: 'ANNUAL' as const,
+            unit: 'FULL_DAY' as const,
+        };
+        const result = await myLeaveService.createTimeOffRequest(payload);
+
+        expect(api.post).toHaveBeenCalledWith('/api/timeoff/self', payload);
+        expect(result.id).toBe(1);
+        expect(result.status).toBe('PENDING');
+    });
+
+    it('시간단위(unit=HOURS) 신청은 startTime/endTime 을 함께 전달', async () => {
+        (api.post as jest.Mock).mockResolvedValue({
+            data: {
+                id: 2, employeeId: 5, employeeName: '홍길동', storeId: 2,
+                leaveType: 'ANNUAL', unit: 'HOURS',
+                startDate: '2026-07-10', endDate: '2026-07-10',
+                startTime: '09:00:00', endTime: '12:00:00',
+                consumedDays: 0.5, reason: '병원', rejectReason: null, status: 'PENDING',
+            },
+        });
+
+        const payload = {
+            storeId: 2,
+            startDate: '2026-07-10',
+            endDate: '2026-07-10',
+            reason: '병원',
+            unit: 'HOURS' as const,
+            startTime: '09:00:00',
+            endTime: '12:00:00',
+        };
+        await myLeaveService.createTimeOffRequest(payload);
+
+        expect(api.post).toHaveBeenCalledWith('/api/timeoff/self', payload);
+    });
+});

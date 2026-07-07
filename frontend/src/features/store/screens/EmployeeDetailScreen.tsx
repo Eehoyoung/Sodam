@@ -25,6 +25,7 @@ import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors'
 import api from '../../../common/utils/api';
 import {WageEditSheet, WageEditValues} from '../components/StoreSheets';
 import wageService, {EmploymentType} from '../../wage/services/wageService';
+import contractService from '../../contract/services/contractService';
 
 type TabKey = 'INFO' | 'ATTENDANCE' | 'SALARY' | 'TIMEOFF';
 
@@ -88,6 +89,7 @@ const EmployeeDetailScreen: React.FC = () => {
     const [togglingActive, setTogglingActive] = useState(false);
     const [wageSheet, setWageSheet] = useState(false);
     const [savingWage, setSavingWage] = useState(false);
+    const [draftContractCount, setDraftContractCount] = useState(0);
 
     // 직원별 급여 설정 — POST /api/wages/employee
     // (시급제: customHourlyWage, 0/빈값이면 매장 기본 사용 · 월급제: employmentType+monthlySalary 일괄)
@@ -216,6 +218,15 @@ const EmployeeDetailScreen: React.FC = () => {
         // refreshKey: 포커스 복귀 시 재조회 트리거(아래 deps 에 포함)
     }, [employeeId, storeId, refreshKey]);
 
+    useEffect(() => {
+        (async () => {
+            try {
+                const drafts = await contractService.getDrafts(storeId, employeeId);
+                setDraftContractCount(drafts.length);
+            } catch (_) {/* ignore */}
+        })();
+    }, [employeeId, storeId, refreshKey]);
+
     const initials = useMemo(() => (emp?.name ?? '?').slice(0, 1), [emp]);
     const tabIndex = TABS.findIndex(t => t.key === tab);
     const isInactive = emp?.isActive === false;
@@ -322,6 +333,20 @@ const EmployeeDetailScreen: React.FC = () => {
                         })
                     }
                 />
+                {draftContractCount > 0 && (
+                    <AppListItem
+                        title={`임시저장된 근로계약서 ${draftContractCount}건`}
+                        subtitle="아직 발송되지 않았어요. 이어서 발송하거나 삭제할 수 있어요."
+                        right="›"
+                        onPress={() =>
+                            navigation.navigate('DraftContracts', {
+                                storeId,
+                                employeeId: emp.id,
+                                employeeName: emp.name,
+                            })
+                        }
+                    />
+                )}
                 <AppListItem
                     title="서류함"
                     subtitle="보건증 등 서류 보관 · 만료 임박 시 알림"

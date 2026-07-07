@@ -401,9 +401,31 @@ const EmployeeAttendanceHome: React.FC = () => {
             color: {bg: c.surfaceMint, icon: c.success},
         },
         {
+            key: 'timeOffRequest', label: '휴가 신청', icon: 'calendar-clear-outline',
+            onPress: () => {
+                if (!selectedStore) {
+                    AppToast.show('먼저 소속 매장을 선택해 주세요.');
+                    return;
+                }
+                navigation.navigate('TimeOffRequest', {storeId: selectedStore.id});
+            },
+            color: {bg: c.brandPrimarySoft, icon: c.brandPrimary},
+        },
+        {
             key: 'request', label: '내 요청', icon: 'mail-outline',
             onPress: () => navigation.navigate('RequestStatus'),
             color: {bg: c.surfaceMuted, icon: c.textSecondary},
+        },
+        {
+            key: 'attendanceNotice', label: '지각/조퇴/결근 알리기', icon: 'alert-circle-outline',
+            onPress: () => {
+                if (!selectedStore) {
+                    AppToast.show('먼저 소속 매장을 선택해 주세요.');
+                    return;
+                }
+                navigation.navigate('AttendanceNotice', {storeId: selectedStore.id});
+            },
+            color: {bg: c.warningBg, icon: c.warning},
         },
         {
             key: 'wage', label: '시급 이력', icon: 'trending-up-outline',

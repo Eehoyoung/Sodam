@@ -1,4 +1,5 @@
 import {
+    EXACT_AVG_WEEKS_PER_MONTH,
     calculateScheduleSalary,
     weeklyStatsFromSchedule,
 } from '../scheduleSalaryCalculator';
@@ -22,6 +23,83 @@ const ELEVEN_HOUR_DAYS_5: WorkScheduleDayDto[] = [
     day('THURSDAY', '10:00', '21:00'),
     day('FRIDAY', '10:00', '21:00'),
 ];
+
+const CASE_COUNT = 5000;
+const MINIMUM_WAGE_2026 = 10_320;
+const DAY_CODES: WorkScheduleDayCode[] = [
+    'MONDAY',
+    'TUESDAY',
+    'WEDNESDAY',
+    'THURSDAY',
+    'FRIDAY',
+    'SATURDAY',
+    'SUNDAY',
+];
+
+function clock(totalMinutes: number): string {
+    const minuteOfDay = ((totalMinutes % 1440) + 1440) % 1440;
+    const hour = Math.floor(minuteOfDay / 60);
+    const minute = minuteOfDay % 60;
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function nightOverlap(from: number, to: number): number {
+    const windows: Array<[number, number]> = [[0, 360], [1320, 1800], [2760, 2880]];
+    return windows.reduce((sum, [start, end]) => sum + Math.max(0, Math.min(to, end) - Math.max(from, start)), 0);
+}
+
+function generatedCase(caseNo: number): {
+    schedule: WorkScheduleDayDto[];
+    expectedActual: number;
+    expectedOvertime: number;
+    expectedNight: number;
+} {
+    const workingDays = (caseNo % 7) + 1;
+    const firstDay = (caseNo * 3) % DAY_CODES.length;
+    let actualMinutes = 0;
+    let dailyOvertimeMinutes = 0;
+    let nightMinutes = 0;
+    const schedule: WorkScheduleDayDto[] = [];
+
+    for (let idx = 0; idx < workingDays; idx += 1) {
+        const start = ((caseNo * 37 + idx * 97) % 48) * 30;
+        const duration = 240 + (((caseNo * 11 + idx * 5) % 18) * 30); // 4h~12.5h
+        const breakMinutes = ((caseNo + idx) % 4) * 30; // 0/30/60/90m
+        const worked = duration - breakMinutes;
+        const end = start + duration;
+        let breakStart: number | null = null;
+        let breakEnd: number | null = null;
+
+        if (breakMinutes > 0) {
+            const latestBreakStart = duration - breakMinutes - 30;
+            const breakOffset = Math.min(240, Math.max(60, latestBreakStart));
+            breakStart = start + breakOffset;
+            breakEnd = breakStart + breakMinutes;
+        }
+
+        actualMinutes += worked;
+        dailyOvertimeMinutes += Math.max(0, worked - 480);
+        nightMinutes += nightOverlap(start, end);
+        if (breakStart !== null && breakEnd !== null) {
+            nightMinutes -= nightOverlap(breakStart, breakEnd);
+        }
+
+        schedule.push({
+            day: DAY_CODES[(firstDay + idx) % DAY_CODES.length],
+            startTime: clock(start),
+            endTime: clock(end),
+            breakStartTime: breakStart === null ? null : clock(breakStart),
+            breakEndTime: breakEnd === null ? null : clock(breakEnd),
+        });
+    }
+
+    return {
+        schedule,
+        expectedActual: actualMinutes / 60,
+        expectedOvertime: Math.max(dailyOvertimeMinutes, actualMinutes - 2400) / 60,
+        expectedNight: nightMinutes / 60,
+    };
+}
 
 describe('scheduleSalaryCalculator', () => {
     it('기준시급 10,320·5인 미만·주5일·일 11h — BE 수용 테스트 수치와 일치한다', () => {
@@ -104,5 +182,72 @@ describe('scheduleSalaryCalculator', () => {
         expect(() =>
             weeklyStatsFromSchedule([day('MONDAY', '10:00', '12:00', '13:00', '14:00')]),
         ).toThrow(/휴게시간.*밖에 있습니다/);
+    });
+
+    it('정규직 월급제 스케줄 5,000개 조합을 검증한다', () => {
+        let legalCases = 0;
+        let illegalCases = 0;
+
+        for (let caseNo = 0; caseNo < CASE_COUNT; caseNo += 1) {
+            const {schedule, expectedActual, expectedOvertime, expectedNight} = generatedCase(caseNo);
+            const baseHourlyWage = 9_000 + ((caseNo * 137) % 8_000);
+            const fiveOrMoreEmployees = caseNo % 2 === 0;
+            const probationWageRate = caseNo % 5 === 0 ? 0.9 : 1;
+            const result = calculateScheduleSalary({
+                schedule,
+                baseHourlyWage,
+                fiveOrMoreEmployees,
+                minimumHourlyWage: MINIMUM_WAGE_2026,
+                probationWageRate,
+            });
+
+            const expectedContracted = Math.min(expectedActual, 40);
+            const expectedMonthlyStandardHours = (() => {
+                const weeklyHoliday = expectedContracted < 15
+                    ? 0
+                    : Math.min(8, (expectedContracted / 40) * 8);
+                return Math.round((expectedContracted + weeklyHoliday) * EXACT_AVG_WEEKS_PER_MONTH);
+            })();
+            const expectedMonthlyOvertime = expectedOvertime * EXACT_AVG_WEEKS_PER_MONTH;
+            const expectedMonthlyNight = expectedNight * EXACT_AVG_WEEKS_PER_MONTH;
+            const expectedOvertimePay = Math.round(
+                baseHourlyWage * expectedMonthlyOvertime * (fiveOrMoreEmployees ? 1.5 : 1.0),
+            );
+            const expectedNightPremiumPay = Math.round(
+                baseHourlyWage * expectedMonthlyNight * (fiveOrMoreEmployees ? 0.5 : 0),
+            );
+            const expectedMonthlyBaseSalary = baseHourlyWage * expectedMonthlyStandardHours;
+            const expectedMonthlyWage = expectedMonthlyBaseSalary + expectedOvertimePay + expectedNightPremiumPay;
+            const requiredMonthlyBaseSalary = Math.ceil(
+                MINIMUM_WAGE_2026 * probationWageRate * expectedMonthlyStandardHours,
+            );
+            const legallyCompliant = expectedMonthlyBaseSalary >= requiredMonthlyBaseSalary;
+
+            if (legallyCompliant) {
+                legalCases += 1;
+            } else {
+                illegalCases += 1;
+            }
+
+            expect(result.workingDays).toBe(schedule.length);
+            expect(result.weeklyActualHours).toBeCloseTo(expectedActual, 10);
+            expect(result.weeklyContractedHours).toBeCloseTo(expectedContracted, 10);
+            expect(result.weeklyOvertimeHours).toBeCloseTo(expectedOvertime, 10);
+            expect(result.weeklyNightHours).toBeCloseTo(expectedNight, 10);
+            expect(result.monthlyStandardHours).toBe(expectedMonthlyStandardHours);
+            expect(result.monthlyOvertimeHours).toBeCloseTo(expectedMonthlyOvertime, 10);
+            expect(result.monthlyNightHours).toBeCloseTo(expectedMonthlyNight, 10);
+            expect(result.monthlyBaseSalary).toBe(expectedMonthlyBaseSalary);
+            expect(result.ordinaryHourlyWage).toBe(baseHourlyWage);
+            expect(result.overtimePay).toBe(expectedOvertimePay);
+            expect(result.nightPremiumPay).toBe(expectedNightPremiumPay);
+            expect(result.expectedMonthlyWage).toBe(expectedMonthlyWage);
+            expect(result.annualizedWage).toBe(expectedMonthlyWage * 12);
+            expect(result.minimumWageCompliant).toBe(legallyCompliant);
+        }
+
+        expect(legalCases).toBeGreaterThan(0);
+        expect(illegalCases).toBeGreaterThan(0);
+        expect(legalCases + illegalCases).toBe(CASE_COUNT);
     });
 });

@@ -16,21 +16,15 @@ import com.facebook.soloader.SoLoader
 import com.oblador.vectoricons.VectorIconsPackage
 import com.swmansion.reanimated.ReanimatedPackage;
 import com.BV.LinearGradient.LinearGradientPackage;
-import com.reactnativecommunity.webview.RNCWebViewPackage
 
 class MainApplication : Application(), ReactApplication {
 
-
-    private fun reactPackages(host: ReactNativeHost): List<ReactPackage> =
-        PackageList(host).packages.toMutableList().apply {
-            add(RNCWebViewPackage())
-        }
 
     private val mReactNativeHost: ReactNativeHost? by lazy {
         if (!BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
             object : DefaultReactNativeHost(this) {
                 override fun getPackages(): List<ReactPackage> =
-                    reactPackages(this)
+                    PackageList(this).packages
 
                 override fun getJSMainModuleName(): String = "index"
 
@@ -55,7 +49,7 @@ class MainApplication : Application(), ReactApplication {
             if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
                 object : DefaultReactNativeHost(this) {
                     override fun getPackages(): List<ReactPackage> =
-                        reactPackages(this)
+                        PackageList(this).packages
 
                     override fun getJSMainModuleName(): String = "index"
 

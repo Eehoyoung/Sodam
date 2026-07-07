@@ -19,10 +19,15 @@ jest.mock('react-native', () => ({
 }));
 
 const mockNavigate = jest.fn();
-jest.mock('@react-navigation/native', () => ({
-    useNavigation: () => ({navigate: mockNavigate, goBack: jest.fn()}),
-    NavigationContainer: ({children}: any) => children,
-}));
+jest.mock('@react-navigation/native', () => {
+    // 실제 useFocusEffect 처럼 콜백을 렌더 중이 아닌 effect 로 실행해야 무한 렌더를 막을 수 있다.
+    const React = jest.requireActual('react');
+    return {
+        useNavigation: () => ({navigate: mockNavigate, goBack: jest.fn()}),
+        useFocusEffect: (cb: () => void) => React.useEffect(cb, []),
+        NavigationContainer: ({children}: any) => children,
+    };
+});
 
 jest.mock('react-native-safe-area-context', () => ({
     SafeAreaView: ({children}: any) => children,

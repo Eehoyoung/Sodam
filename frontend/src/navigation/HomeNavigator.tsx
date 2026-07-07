@@ -39,6 +39,7 @@ import StoreOperatingHoursScreen from '../features/store/screens/StoreOperatingH
 import MissingAttendanceCenterScreen from '../features/attendance/screens/MissingAttendanceCenterScreen';
 import AccountSettingsScreen from '../features/myPage/screens/AccountSettingsScreen';
 import TimeOffRequestScreen from '../features/timeoff/screens/TimeOffRequestScreen';
+import TimeOffApprovalScreen from '../features/timeoff/screens/TimeOffApprovalScreen';
 import ReferralScreen from '../features/referral/screens/ReferralScreen';
 import TossBillingAuthScreen from '../features/subscription/screens/TossBillingAuthScreen';
 import PurchaseLedgerScreen from '../features/purchase/screens/PurchaseLedgerScreen';
@@ -51,6 +52,7 @@ import WeeklyInsightsScreen from '../features/store/screens/WeeklyInsightsScreen
 import MyContractScreen from '../features/contract/screens/MyContractScreen';
 import ContractSignScreen from '../features/contract/screens/ContractSignScreen';
 import SendContractScreen from '../features/contract/screens/SendContractScreen';
+import DraftContractsScreen from '../features/contract/screens/DraftContractsScreen';
 import WithholdingStatementScreen from '../features/salary/screens/WithholdingStatementScreen';
 import EmployeeDocumentsScreen from '../features/document/screens/EmployeeDocumentsScreen';
 import AddDocumentScreen from '../features/document/screens/AddDocumentScreen';
@@ -80,6 +82,8 @@ import DailySalesEntryScreen from '../features/sales/screens/DailySalesEntryScre
 import LaborCostRatioScreen from '../features/sales/screens/LaborCostRatioScreen';
 import MyCertificateScreen from '../features/certificate/screens/MyCertificateScreen';
 import LaborRiskDashboardScreen from '../features/risk/screens/LaborRiskDashboardScreen';
+import AttendanceIrregularitiesScreen from '../features/attendance/screens/AttendanceIrregularitiesScreen';
+import AttendanceNoticeScreen from '../features/attendance/screens/AttendanceNoticeScreen';
 import HiringCostSimulatorScreen from '../features/risk/screens/HiringCostSimulatorScreen';
 import SwapRequestsScreen from '../features/shift/screens/SwapRequestsScreen';
 import SwapBoardScreen from '../features/shift/screens/SwapBoardScreen';
@@ -143,6 +147,7 @@ export type HomeStackParamList = {
     MyContract: undefined;
     ContractSign: {contractId: number};
     SendContract: {storeId: number; employeeId?: number; employeeName?: string};
+    DraftContracts: {storeId: number; employeeId: number; employeeName?: string};
     SendBonus: {storeId: number; employeeId: number; employeeName?: string};
     WithholdingStatement: {storeId: number};
     EmployeeDocuments: {storeId: number; employeeId: number; employeeName?: string};
@@ -160,6 +165,7 @@ export type HomeStackParamList = {
     EditShift: {storeId: number; employeeId: number; employeeName?: string};
     StoreSchedule: {storeId: number};
     AttendanceApproval: {storeId: number};
+    TimeOffApproval: undefined;
     TaxSimulator: undefined;
     PersonalAnnualTax: undefined;
     StoreNoticeList: {storeId: number};
@@ -172,6 +178,8 @@ export type HomeStackParamList = {
     LaborCostRatio: {storeId: number};
     MyCertificate: {storeId?: number} | undefined;
     LaborRisk: {storeId: number};
+    AttendanceIrregularities: {storeId: number};
+    AttendanceNotice: {storeId: number};
     SwapRequests: {storeId: number};
     SwapBoard: {storeId?: number} | undefined;
     HiringCost: undefined;
@@ -349,6 +357,7 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen name="MyContract" component={MyContractScreen} options={{headerShown: false}} />
             <Stack.Screen name="ContractSign" component={ContractSignScreen} options={{headerShown: false}} />
             <Stack.Screen name="SendContract" component={SendContractScreen} options={{headerShown: false}} />
+            <Stack.Screen name="DraftContracts" component={DraftContractsScreen} options={{headerShown: false}} />
             <Stack.Screen name="WithholdingStatement" component={WithholdingStatementScreen} options={{headerShown: false}} />
             <Stack.Screen name="EmployeeDocuments" component={EmployeeDocumentsScreen} options={{headerShown: false}} />
             <Stack.Screen name="AddDocument" component={AddDocumentScreen} options={{headerShown: false}} />
@@ -366,6 +375,7 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen name="EditShift" component={EditShiftScreen} options={{headerShown: false}} />
             <Stack.Screen name="StoreSchedule" component={StoreScheduleScreen} options={{headerShown: false}} />
             <Stack.Screen name="AttendanceApproval" component={AttendanceApprovalScreen} options={{headerShown: false}} />
+            <Stack.Screen name="TimeOffApproval" component={TimeOffApprovalScreen} options={{headerShown: false}} />
             <Stack.Screen name="TaxSimulator" component={TaxSimulatorScreen} options={{headerShown: false}} />
             <Stack.Screen name="PersonalAnnualTax" component={PersonalAnnualTaxScreen} options={{headerShown: false}} />
             <Stack.Screen name="StoreNoticeList" component={StoreNoticeListScreen} options={{headerShown: false}} />
@@ -378,6 +388,8 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen name="LaborCostRatio" component={LaborCostRatioScreen} options={{headerShown: false}} />
             <Stack.Screen name="MyCertificate" component={MyCertificateScreen} options={{headerShown: false}} />
             <Stack.Screen name="LaborRisk" component={LaborRiskDashboardScreen} options={{headerShown: false}} />
+            <Stack.Screen name="AttendanceIrregularities" component={AttendanceIrregularitiesScreen} options={{headerShown: false}} />
+            <Stack.Screen name="AttendanceNotice" component={AttendanceNoticeScreen} options={{headerShown: false}} />
             <Stack.Screen name="SwapRequests" component={SwapRequestsScreen} options={{headerShown: false}} />
             <Stack.Screen name="SwapBoard" component={SwapBoardScreen} options={{headerShown: false}} />
             <Stack.Screen name="HiringCost" component={HiringCostSimulatorScreen} options={{headerShown: false}} />

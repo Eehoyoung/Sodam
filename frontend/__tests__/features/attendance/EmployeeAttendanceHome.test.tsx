@@ -9,6 +9,7 @@ jest.mock('react-native', () => ({
     Text: 'Text',
     ScrollView: 'ScrollView',
     Pressable: 'Pressable',
+    TouchableOpacity: 'TouchableOpacity',
     ActivityIndicator: 'ActivityIndicator',
     // DS v2: ScreenContainer→KeyboardAvoidingView/StatusBar, PunchButton→useWindowDimensions(useResponsive)
     KeyboardAvoidingView: 'KeyboardAvoidingView',
@@ -20,10 +21,15 @@ jest.mock('react-native', () => ({
 }));
 
 const mockNavigate = jest.fn();
-jest.mock('@react-navigation/native', () => ({
-    useNavigation: () => ({navigate: mockNavigate, goBack: jest.fn()}),
-    NavigationContainer: ({children}: any) => children,
-}));
+jest.mock('@react-navigation/native', () => {
+    // 실제 useFocusEffect 처럼 콜백을 렌더 중이 아닌 effect 로 실행해야 무한 렌더를 막을 수 있다.
+    const React = jest.requireActual('react');
+    return {
+        useNavigation: () => ({navigate: mockNavigate, goBack: jest.fn()}),
+        useFocusEffect: (cb: () => void) => React.useEffect(cb, []),
+        NavigationContainer: ({children}: any) => children,
+    };
+});
 
 jest.mock('react-native-safe-area-context', () => ({
     SafeAreaView: ({children}: any) => children,
@@ -86,7 +92,7 @@ describe('EmployeeAttendanceHome', () => {
             if (url.endsWith('/today')) {
                 return Promise.resolve({data: null}) as any;
             }
-            return Promise.resolve({data: null}) as any;
+            return Promise.resolve({data: []}) as any;
         });
 
         let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
@@ -99,7 +105,7 @@ describe('EmployeeAttendanceHome', () => {
         expect(urls).toEqual(
             expect.arrayContaining([
                 '/api/stores/employee/42',
-                '/api/attendance/employee/42/today',
+                '/api/attendance/employee/42/store/1/today',
             ]),
         );
         expect(renderer).toBeTruthy();
@@ -112,7 +118,10 @@ describe('EmployeeAttendanceHome', () => {
                     data: [{id: 1, storeName: '소담카페', storeStandardHourWage: 10000}],
                 }) as any;
             }
-            return Promise.resolve({data: null}) as any;
+            if (url.endsWith('/today')) {
+                return Promise.resolve({data: null}) as any;
+            }
+            return Promise.resolve({data: []}) as any;
         });
 
         let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
@@ -125,7 +134,7 @@ describe('EmployeeAttendanceHome', () => {
         expect(texts).toContain('출근하기');
     });
 
-    test('WORKING 상태에서 "근무 중" 표시', async () => {
+    test('WORKING 상태에서 "지금 근무 중이에요" 표시', async () => {
         apiMock.get.mockImplementation((url: string) => {
             if (url.startsWith('/api/stores/employee/')) {
                 return Promise.resolve({
@@ -144,7 +153,7 @@ describe('EmployeeAttendanceHome', () => {
                     },
                 }) as any;
             }
-            return Promise.resolve({data: null}) as any;
+            return Promise.resolve({data: []}) as any;
         });
 
         let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
@@ -154,8 +163,7 @@ describe('EmployeeAttendanceHome', () => {
         });
 
         const texts = renderer!.root.findAllByType('Text').map(t => t.props.children);
-        // DS v2: WORKING 상태는 PunchButton 의 subtitle 로 표현 (title 은 카운트업 타이머)
-        expect(texts).toContain('퇴근하려면 눌러주세요');
+        expect(texts).toContain('지금 근무 중이에요');
     });
 
     test('DONE 상태에서 "오늘 근무 완료" 표시', async () => {
@@ -178,7 +186,7 @@ describe('EmployeeAttendanceHome', () => {
                     },
                 }) as any;
             }
-            return Promise.resolve({data: null}) as any;
+            return Promise.resolve({data: []}) as any;
         });
 
         let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
@@ -198,7 +206,10 @@ describe('EmployeeAttendanceHome', () => {
                     data: [{id: 7, storeName: '소담카페', storeStandardHourWage: 10000}],
                 }) as any;
             }
-            return Promise.resolve({data: null}) as any;
+            if (url.endsWith('/today')) {
+                return Promise.resolve({data: null}) as any;
+            }
+            return Promise.resolve({data: []}) as any;
         });
 
         // 운영 시간 내 (handleAction 의 isLikelyOutside 회피)

@@ -22,6 +22,7 @@ export interface SalaryContractInput {
 export interface SalaryContractBreakdown {
     monthlyBaseSalary: number;
     monthlyStandardHours: number;
+    minimumRequiredMonthlyBaseSalary: number;
     weeklyPaidHolidayHours: number;
     ordinaryHourlyWage: number;
     overtimePay: number;
@@ -73,10 +74,14 @@ export function calculateSalaryContract(input: SalaryContractInput): SalaryContr
     const minimumWageRate = input.probationWageRate && input.probationWageRate > 0
         ? input.probationWageRate
         : 1;
+    const minimumRequiredMonthlyBaseSalary = minimumHourlyWage
+        ? Math.ceil(minimumHourlyWage * minimumWageRate * monthlyStandardHours)
+        : 0;
 
     return {
         monthlyBaseSalary,
         monthlyStandardHours,
+        minimumRequiredMonthlyBaseSalary,
         weeklyPaidHolidayHours: calculateWeeklyPaidHolidayHours(input.contractedHoursPerWeek),
         ordinaryHourlyWage,
         overtimePay,
@@ -84,7 +89,7 @@ export function calculateSalaryContract(input: SalaryContractInput): SalaryContr
         holidayPay,
         totalMonthlyWage,
         annualizedWage: totalMonthlyWage * 12,
-        minimumWageCompliant: !minimumHourlyWage || ordinaryHourlyWage >= Math.ceil(minimumHourlyWage * minimumWageRate),
+        minimumWageCompliant: !minimumHourlyWage || monthlyBaseSalary >= minimumRequiredMonthlyBaseSalary,
     };
 }
 

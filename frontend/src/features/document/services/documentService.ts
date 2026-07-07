@@ -32,6 +32,9 @@ export interface EmployeeDocument {
   expiresAt?: string | null;
   expiryStatus: ExpiryStatus;
   daysUntilExpiry?: number | null;
+  contractId?: number | null;
+  contractSigned?: boolean | null;
+  contractSignedAt?: string | null;
 }
 
 export interface DocumentCreateBody {

@@ -71,6 +71,7 @@
         maybeImpl(":react-native-gesture-handler")
         maybeImpl(":react-native-vector-icons")
         maybeImpl(":react-native-linear-gradient")
+        maybeImpl(":react-native-webview")
         maybeImpl(":react-native-community_datetimepicker")
         // FCM — @react-native-firebase 설치 후 autolinking 으로 잡힌다 (key-ready)
         maybeImpl(":react-native-firebase_app")

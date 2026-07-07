@@ -8,7 +8,7 @@
  * → 취업장소·업무 → 연차 → 수습(선택) → 4대보험 순으로 섹션화했다.
  */
 import React, {useCallback, useEffect, useState} from 'react';
-import {Pressable, StyleSheet, View} from 'react-native';
+import {Pressable, Share, StyleSheet, View} from 'react-native';
 import {NavigationProp, RouteProp, useNavigation, useRoute, useFocusEffect} from '@react-navigation/native';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {
@@ -65,6 +65,7 @@ import {
     calculateScheduleSalary,
     type ScheduleSalaryBreakdown,
 } from '../core/scheduleSalaryCalculator';
+import {autoBreakDigitsFromTimeDigits} from '../core/breakTimeCalculator';
 
 interface StoreEmployee {
     id: number;
@@ -87,7 +88,6 @@ const PROBATION_REDUCTION_MAX_MONTHS = 3;
 const PROBATION_REDUCTION_RATE = 0.9;
 const WEEKS_PER_MONTH = 52 / 12;
 const HEALTH_INSURANCE_MONTHLY_HOURS_THRESHOLD = 60;
-const NATIONAL_PENSION_MIN_MONTHLY_INCOME = 410000; // 2026.07.01~2027.06.30 기준소득월액 하한
 const NATIONAL_PENSION_MIN_AGE = 18;
 const NATIONAL_PENSION_MAX_EXCLUSIVE_AGE = 60;
 const DEFAULT_ANNUAL_LEAVE_NOTE =
@@ -168,6 +168,25 @@ type DayTimeDraft = {start: string; end: string; breakStart: string; breakEnd: s
 
 const EMPTY_DAY_TIME: DayTimeDraft = {start: '', end: '', breakStart: '', breakEnd: ''};
 
+/**
+ * 출근/퇴근 시각 입력 필드 변경을 반영하고, 휴게 시각이 아직 비어 있으면(사용자가 손댄 적
+ * 없으면) §54 법정 최소 휴게를 자동 산출해 채운다. 휴게 필드를 직접 입력한 요일은 이후
+ * 출퇴근 시각을 바꿔도 자동 산출이 덮어쓰지 않는다(수동 입력 우선).
+ */
+function applyDayTimeChange(prevDraft: DayTimeDraft, field: keyof DayTimeDraft, rawValue: string): DayTimeDraft {
+    const next: DayTimeDraft = {...prevDraft, [field]: sanitizeTimeDigits(rawValue)};
+    const isStartOrEnd = field === 'start' || field === 'end';
+    const breakUntouched = next.breakStart.trim() === '' && next.breakEnd.trim() === '';
+    if (isStartOrEnd && breakUntouched) {
+        const auto = autoBreakDigitsFromTimeDigits(next.start, next.end);
+        if (auto) {
+            next.breakStart = auto.breakStart;
+            next.breakEnd = auto.breakEnd;
+        }
+    }
+    return next;
+}
+
 /** 주 연장 12h(= 주 52시간, §53) 초과 경고 기준 — 경고만 표시하고 저장은 차단하지 않는다. */
 const WEEKLY_OVERTIME_LIMIT_HOURS = 12;
 
@@ -216,7 +235,7 @@ const DayTimeFields: React.FC<{
         </View>
         <View style={styles.timeRow}>
             <AppInput
-                label="휴게 시작(선택)"
+                label="휴게 시작(자동입력)"
                 placeholder="1500"
                 keyboardType="number-pad"
                 maxLength={4}
@@ -225,7 +244,7 @@ const DayTimeFields: React.FC<{
                 containerStyle={styles.timeField}
             />
             <AppInput
-                label="휴게 종료(선택)"
+                label="휴게 종료(자동입력)"
                 placeholder="1600"
                 keyboardType="number-pad"
                 maxLength={4}
@@ -407,6 +426,12 @@ const SendContractScreen: React.FC = () => {
 
     const [sending, setSending] = useState(false);
     const [done, setDone] = useState(false);
+    const [sentContractId, setSentContractId] = useState<number | null>(null);
+    const [downloadingPdf, setDownloadingPdf] = useState(false);
+    // create() 는 성공했는데 이어지는 send()가 실패한 경우(네트워크 순단 등) 재시도 시 그대로
+    // 두면 buildPayload()를 다시 태워 계약서를 중복 생성한다. 이미 만든 계약 id를 기억해 두고
+    // 재시도는 send()만 다시 호출한다.
+    const [createdContractId, setCreatedContractId] = useState<number | null>(null);
 
     const loadEmployees = useCallback(async () => {
         try {
@@ -576,7 +601,9 @@ const SendContractScreen: React.FC = () => {
         employeeAge !== null
         && employeeAge >= NATIONAL_PENSION_MIN_AGE
         && employeeAge < NATIONAL_PENSION_MAX_EXCLUSIVE_AGE
-        && estimatedMonthlyWage >= NATIONAL_PENSION_MIN_MONTHLY_INCOME;
+        // 기준소득월액 하한은 매년 7.1 갱신 — 서버 context 값을 그대로 쓴다(하드코딩 금지).
+        && !!context
+        && estimatedMonthlyWage >= context.nationalPensionMinMonthlyIncome;
 
     useEffect(() => {
         setIndustrialAccidentInsurance(true);
@@ -673,7 +700,7 @@ const SendContractScreen: React.FC = () => {
             return null;
         }
         if (!isScheduleMode && isSalaryContract && context?.minimumWageHourly && !salaryBreakdown.minimumWageCompliant) {
-            AppToast.warn('월급/연봉 환산 통상시급이 최저임금보다 낮아요.');
+            AppToast.warn('월급/연봉의 월 기본급이 법정 최저액보다 낮아요.');
             return null;
         }
         const payDayNum = payDay.trim() ? Number(payDay) : undefined;
@@ -855,6 +882,8 @@ const SendContractScreen: React.FC = () => {
             friHours: breakdown.dailyWorkedHours.FRIDAY ?? null,
             satHours: breakdown.dailyWorkedHours.SATURDAY ?? null,
             sunHours: breakdown.dailyWorkedHours.SUNDAY ?? null,
+            sent: false,
+            sentAt: null,
             signed: false,
             signedAt: null,
             hasSignatureImage: false,
@@ -939,6 +968,8 @@ const SendContractScreen: React.FC = () => {
             friHours: useWeeklySchedule && weeklyHours.friHours ? Number(weeklyHours.friHours) : null,
             satHours: useWeeklySchedule && weeklyHours.satHours ? Number(weeklyHours.satHours) : null,
             sunHours: useWeeklySchedule && weeklyHours.sunHours ? Number(weeklyHours.sunHours) : null,
+            sent: false,
+            sentAt: null,
             signed: false,
             signedAt: null,
             hasSignatureImage: false,
@@ -949,19 +980,52 @@ const SendContractScreen: React.FC = () => {
     };
 
     const send = async () => {
-        const payload = buildPayload();
-        if (!payload) {
-            return;
-        }
         setSending(true);
         try {
-            const created = await contractService.create(storeId, payload);
-            await contractService.send(storeId, created.id);
+            // create()는 이미 성공했는데 send()만 실패했던 재시도라면, 새 계약을 또 만들지 않고
+            // 저장된 id로 발송만 다시 시도한다(중복 계약 생성 방지).
+            let contractId = createdContractId;
+            if (contractId === null) {
+                const payload = buildPayload();
+                if (!payload) {
+                    setSending(false);
+                    return;
+                }
+                const created = await contractService.create(storeId, payload);
+                contractId = created.id;
+                setCreatedContractId(contractId);
+            }
+            await contractService.send(storeId, contractId);
+            setSentContractId(contractId);
             setDone(true);
         } catch (e: unknown) {
             AppToast.error(contractErrorMessage(e, '발송에 실패했어요. 잠시 후 다시 시도해 주세요.'));
         } finally {
             setSending(false);
+        }
+    };
+
+    const downloadContractPdf = async () => {
+        if (!sentContractId || downloadingPdf) {
+            return;
+        }
+        setDownloadingPdf(true);
+        try {
+            await contractService.downloadPdfForMaster(storeId, sentContractId);
+            AppToast.success('근로계약서 PDF가 발급됐어요.');
+            navigation.navigate('PdfPreview', {
+                title: `근로계약서_${selectedName}.pdf`,
+                sub: `발급일 ${new Date().toISOString().slice(0, 10)}`,
+                onShare: () => {
+                    Share.share({
+                        message: `[소담] 근로계약서\n${selectedName}님\n발급일 ${new Date().toISOString().slice(0, 10)}`,
+                    }).catch(() => undefined);
+                },
+            });
+        } catch {
+            AppToast.error('PDF 발급에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        } finally {
+            setDownloadingPdf(false);
         }
     };
 
@@ -972,6 +1036,7 @@ const SendContractScreen: React.FC = () => {
                     title="근로계약서를 보냈어요"
                     description={`${selectedName}님에게 근로계약서를 보냈어요. 서명하면 알려드릴게요.`}
                     primary={{label: '직원 상세로 돌아가기', onPress: () => navigation.goBack()}}
+                    secondary={{label: downloadingPdf ? '발급 중…' : '근로계약서 PDF 발급', onPress: downloadContractPdf}}
                 />
             </ScreenContainer>
         );
@@ -1221,7 +1286,7 @@ const SendContractScreen: React.FC = () => {
                                         <DayTimeFields
                                             value={uniformDayTime}
                                             onChange={(field, v) =>
-                                                setUniformDayTime(prev => ({...prev, [field]: sanitizeTimeDigits(v)}))
+                                                setUniformDayTime(prev => applyDayTimeChange(prev, field, v))
                                             }
                                         />
                                     ) : selectedScheduleDays.length === 0 ? (
@@ -1241,10 +1306,11 @@ const SendContractScreen: React.FC = () => {
                                                     onChange={(field, v) =>
                                                         setPerDayTime(prev => ({
                                                             ...prev,
-                                                            [d.code]: {
-                                                                ...(prev[d.code] ?? EMPTY_DAY_TIME),
-                                                                [field]: sanitizeTimeDigits(v),
-                                                            },
+                                                            [d.code]: applyDayTimeChange(
+                                                                prev[d.code] ?? EMPTY_DAY_TIME,
+                                                                field,
+                                                                v,
+                                                            ),
                                                         }))
                                                     }
                                                 />
@@ -1252,8 +1318,9 @@ const SendContractScreen: React.FC = () => {
                                         ))
                                     )}
                                     <AppText variant="caption" tone="tertiary">
-                                        {TIME_DIGITS_HELPER} 퇴근이 출근보다 이르면 익일(자정 넘김)로 계산해요. 휴게가
-                                        없으면 휴게 시각을 비워 두세요.
+                                        {TIME_DIGITS_HELPER} 퇴근이 출근보다 이르면 익일(자정 넘김)로 계산해요. 휴게시간은
+                                        근로기준법 §54 기준(4시간 이상 30분·8시간 이상 1시간)으로 자동 입력돼요 —
+                                        직접 수정할 수 있어요.
                                     </AppText>
                                     <AppCard variant="flat">
                                         <View style={styles.inlineLabelRow}>
@@ -1319,7 +1386,7 @@ const SendContractScreen: React.FC = () => {
                                 onChangeText={setSalaryAmount}
                                 helper={
                                     context
-                                        ? `${context.minimumWageYear}년 최저임금 ${context.minimumWageHourly.toLocaleString('ko-KR')}원 기준으로 환산 시급을 확인해요.`
+                                        ? `${context.minimumWageYear}년 최저임금 ${context.minimumWageHourly.toLocaleString('ko-KR')}원 기준 월 기본급 하한을 확인해요.`
                                         : undefined
                                 }
                             />
@@ -1660,17 +1727,23 @@ const SendContractScreen: React.FC = () => {
     }
 
     // ④ 확인 후 발송
+    // 확인 화면에서 조건을 다시 바꾸러 돌아가면, create()까지는 성공했던 이전 시도의 계약 id를
+    // 그대로 재사용하면 안 된다(수정된 내용이 반영 안 된 계약이 발송될 수 있음) — 초기화한다.
+    const backToEdit = () => {
+        setCreatedContractId(null);
+        setStep(2);
+    };
     const preview = previewContract();
     return (
         <StepScaffold
             progress={1}
             title="내용을 확인해 주세요"
             subtitle={`${selectedName}님에게 아래 근로계약서를 보낼게요.`}
-            onBack={() => setStep(2)}
+            onBack={backToEdit}
             footer={
                 <CtaStack>
                     <AppButton label="근로계약서 보내기" onPress={send} loading={sending} />
-                    <AppButton label="이전" variant="secondary" onPress={() => setStep(2)} />
+                    <AppButton label="이전" variant="secondary" onPress={backToEdit} />
                 </CtaStack>
             }>
             {!preview.minimumWageCompliant ? (

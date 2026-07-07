@@ -85,6 +85,9 @@ export interface LaborContract extends WeeklySchedule {
     minimumWageCompliant: boolean;
     minimumWageReferenceYear: number;
     minimumWageReferenceValue: number;
+    /** 사장이 실제로 발송했는지(sentAt != null). false면 아직 작성(임시저장) 단계 — 직원에겐 안 보임. */
+    sent: boolean;
+    sentAt: string | null;
     signed: boolean;
     signedAt: string | null;
     hasSignatureImage: boolean;
@@ -168,4 +171,6 @@ export interface LaborContractContext {
     fiveOrMoreEmployees: boolean;
     employeeCount: number | null;
     suggestedWageComponents: string;
+    /** 국민연금 기준소득월액 하한(원, 오늘 날짜 기준) — 매년 7.1 갱신되므로 하드코딩 금지. */
+    nationalPensionMinMonthlyIncome: number;
 }

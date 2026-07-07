@@ -1,51 +1,35 @@
 import api from '../../../common/utils/api';
+import type {TimeOffResponse} from '../../timeoff/types';
 
-// [API Mapping] TimeOff APIs — Phase 2 minimal integration
+/**
+ * 사장 연차/휴가 승인 API (TimeOffApprovalScreen).
+ *
+ * BE: MasterController — 전부 principal.getId() 기준 본인 소유 매장의 신청만 조회/처리하고,
+ * approve/reject 는 StoreAccessGuard.assertMasterOwnsTimeOff 로 BOLA 를 차단한다.
+ * 거부는 사유(reason)가 없으면 400 — §60⑤ 시기변경권이 유일한 법적 거부 근거라 입력을 강제한다.
+ *
+ * 재작성 사유: 이 파일의 기존 구현은 아무 화면에서도 import 되지 않는 죽은 코드였고,
+ * 경로(`/api/timeoff/{id}/approve` 등 옛 계약)·응답 타입(엔티티 그대로)이 현재 BE 계약과
+ * 전혀 맞지 않아 폐기하고 `/api/master/timeoff/*` 계약에 맞춰 새로 작성했다.
+ */
 
-// BE TimeOffCreateRequest 와 매핑: startDate/endDate/reason 모두 @NotNull
-export interface TimeOffRequestPayload { employeeId: number; storeId: number; startDate: string; endDate: string; reason: string }
-export interface TimeOffItem { id: number; employeeId: number; storeId: number; status: string; startDate: string; endDate: string }
-
-async function unwrap<T = any>(promise: Promise<{ data: any }>): Promise<T> {
-  const res = await promise;
-  const body: any = res.data;
-  return (body?.data ?? body) as T;
+async function fetchPendingTimeOffs(): Promise<TimeOffResponse[]> {
+  const res = await api.get<TimeOffResponse[]>('/api/master/timeoff/pending');
+  return Array.isArray(res.data) ? res.data : [];
 }
 
-async function create(payload: TimeOffRequestPayload): Promise<{ id: number }> {
-  return unwrap<{ id: number }>(api.post(`/api/timeoff`, payload));
+async function approveTimeOff(timeOffId: number): Promise<TimeOffResponse> {
+  const res = await api.put<TimeOffResponse>(`/api/master/timeoff/${timeOffId}/approve`, {});
+  return res.data;
 }
 
-async function getStoreAll(storeId: number): Promise<TimeOffItem[]> {
-  const data = await unwrap<any>(api.get(`/api/timeoff/store/${storeId}`));
-  return Array.isArray(data) ? data : [];
+async function rejectTimeOff(timeOffId: number, reason: string): Promise<TimeOffResponse> {
+  // 거부 사유는 본문(JSON)으로 보낸다 — 개인정보를 담을 수 있어 쿼리스트링·서버 로그 노출을 피한다.
+  const res = await api.put<TimeOffResponse>(`/api/master/timeoff/${timeOffId}/reject`, {reason});
+  return res.data;
 }
 
-async function getByStatus(storeId: number, status: 'PENDING' | 'APPROVED' | 'REJECTED'): Promise<TimeOffItem[]> {
-  const data = await unwrap<any>(api.get(`/api/timeoff/store/${storeId}/status/${status}`));
-  return Array.isArray(data) ? data : [];
-}
-
-async function getEmployeeAll(employeeId: number): Promise<TimeOffItem[]> {
-  const data = await unwrap<any>(api.get(`/api/timeoff/employee/${employeeId}`));
-  return Array.isArray(data) ? data : [];
-}
-
-async function approve(requestId: number): Promise<{ success: boolean }> {
-  return unwrap<{ success: boolean }>(api.put(`/api/timeoff/${requestId}/approve`));
-}
-
-async function reject(requestId: number): Promise<{ success: boolean }> {
-  return unwrap<{ success: boolean }>(api.put(`/api/timeoff/${requestId}/reject`));
-}
-
-const timeOffService = {
-  create,
-  getStoreAll,
-  getByStatus,
-  getEmployeeAll,
-  approve,
-  reject,
-};
+const timeOffService = {fetchPendingTimeOffs, approveTimeOff, rejectTimeOff};
 
 export default timeOffService;
+export {fetchPendingTimeOffs, approveTimeOff, rejectTimeOff};

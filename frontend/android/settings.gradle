@@ -31,5 +31,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "Sodam_Front_End"
 include(":app")
+include(":react-native-webview")
+project(":react-native-webview").projectDir = file("../node_modules/react-native-webview/android")
 
 // Reanimated 수동 include 제거 (autolink에 위임)
