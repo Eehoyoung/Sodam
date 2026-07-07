@@ -72,6 +72,18 @@ sodam:
   security:
     pii:
       encryption-key: ${SODAM_PII_ENCRYPTION_KEY}
+      # 블라인드 인덱스(§2.6) HMAC 페퍼 — encryption-key 와 반드시 별도 시크릿(키 분리).
+      # business_number 처럼 암호화(비결정적)된 컬럼도 이 해시로 동등검색·중복 가입 방지가 가능해진다.
+      # 미설정 시 부팅 거부(fail-fast, dev/test 는 고정 폴백 페퍼로 대체).
+      search-pepper: ${SODAM_PII_SEARCH_PEPPER}
+      # Phase 0 PII 핫픽스 백필(1회성) — 기본 false. 배포 후 한 번만 true로 켜고 로그에서
+      # "N건 처리" 확인되면 즉시 false로 되돌릴 것(매 재기동마다 반복 실행되지 않도록).
+      backfill-business-number-hash: false
+  retention:
+    purge:
+      # Phase 6 보존기간 파기 배치(§2.2(c)) — scan(스케줄 등록)은 항상 실행되지만 실제 파기(삭제)는
+      # 기본 비활성. 스테이징에서 유예·고지 동작을 먼저 검증한 뒤에만 true로 전환할 것 — 되돌릴 수 없다.
+      execute-enabled: false
   integration:
     toss:
       mode: live

@@ -1,5 +1,6 @@
 package com.rich.sodam.service;
 
+import com.rich.sodam.config.crypto.PiiSearchHashSupport;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.repository.StoreRepository;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +35,8 @@ public class StoreQueryService {
     }
 
     public Optional<Store> findActiveByBusinessNumber(String businessNumber) {
-        return storeRepository.findActiveByBusinessNumber(businessNumber);
+        return storeRepository.findActiveByBusinessNumberSearchHash(
+                PiiSearchHashSupport.hashBusinessNumber(businessNumber));
     }
 
     public List<Store> findAllDeleted() {

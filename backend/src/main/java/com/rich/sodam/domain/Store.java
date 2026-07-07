@@ -1,5 +1,7 @@
 package com.rich.sodam.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.rich.sodam.config.crypto.PiiSearchHashSupport;
 import com.rich.sodam.config.crypto.StringCryptoConverter;
 import com.rich.sodam.util.GeoUtils;
 import jakarta.persistence.*;
@@ -37,12 +39,33 @@ public class Store {
     @Column(name = "store_id")
     private Long id;
 
+    /** 낙관적 락(DB_OPTIMIZATION_PLAN.md §2.8) — 직원수·시급 등 동시 갱신 시 lost update 감지용. */
+    @Version
+    @JsonIgnore // 컨트롤러 일부가 Store 엔티티를 직접 반환 — 내부 락 카운터를 응답에 노출하지 않음
+    @Column(nullable = false)
+    private Long version;
+
     @Column(nullable = false)
     private String storeName;
 
 
-    @Column(nullable = false, unique = true)
+    @Convert(converter = StringCryptoConverter.class) // PII 암호화 저장(PIPA §29) — Phase 0 핫픽스
+    @Column(nullable = false, unique = true, length = 255)
     private String businessNumber; // 사업자등록번호
+
+    /**
+     * 사업자등록번호 블라인드 인덱스(HMAC-SHA256, DB_OPTIMIZATION_PLAN.md §2.6).
+     * businessNumber가 AES-GCM(비결정적 암호화)이라 동등검색이 불가능해진 대신,
+     * 이 컬럼으로 "이미 등록된 사업자등록번호인가"를 조회·유니크 검증한다.
+     */
+    @JsonIgnore // 내부 검색 토큰 — 컨트롤러가 Store 엔티티를 직접 반환하는 경로가 있어 응답 노출 차단
+    @Column(name = "business_number_search_hash", unique = true, length = 64)
+    private String businessNumberSearchHash;
+
+    /** 위 해시를 계산한 페퍼 버전(로테이션 시 이중 조회 전환 기간 판별용, §2.6.6). */
+    @JsonIgnore
+    @Column(name = "business_number_pepper_version")
+    private Integer businessNumberPepperVersion;
 
     @Convert(converter = StringCryptoConverter.class) // PII 암호화 저장(PIPA §29)
     @Column(nullable = false, length = 255)
@@ -136,6 +159,19 @@ public class Store {
         this.monthlyRevenue = monthlyRevenue;
     }
 
+    /**
+     * 기존(암호화 전환 이전) 평문 로우의 블라인드 인덱스 백필 전용(Phase 6 배치, §2.6.5).
+     * 이미 해시가 있으면 아무 것도 하지 않는다(멱등). 저장 시 businessNumber 도
+     * {@link com.rich.sodam.config.crypto.StringCryptoConverter}를 거쳐 자동으로 암호화 전환된다.
+     */
+    public void backfillBusinessNumberSearchHash() {
+        if (this.businessNumberSearchHash != null) {
+            return;
+        }
+        this.businessNumberSearchHash = PiiSearchHashSupport.hashBusinessNumber(this.businessNumber);
+        this.businessNumberPepperVersion = PiiSearchHashSupport.currentVersion();
+    }
+
     /** §56 가산수당 적용 여부 (5인 미만이 아니면 적용). */
     public boolean isPremiumApplicable() {
         return !Boolean.FALSE.equals(fiveOrMoreEmployees);
@@ -171,6 +207,8 @@ public class Store {
 
         this.storeName = storeName;
         this.businessNumber = businessNumber;
+        this.businessNumberSearchHash = PiiSearchHashSupport.hashBusinessNumber(businessNumber);
+        this.businessNumberPepperVersion = PiiSearchHashSupport.currentVersion();
         this.storePhoneNumber = storePhoneNumber;
         this.businessType = businessType;
         this.storeCode = generateStoreCode();

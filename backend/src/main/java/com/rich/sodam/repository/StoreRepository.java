@@ -12,12 +12,20 @@ import java.util.Optional;
 public interface StoreRepository extends JpaRepository<Store, Long> {
 
     /**
-     * 사업자등록번호로 매장을 조회합니다.
+     * 사업자등록번호 블라인드 인덱스(HMAC)로 매장을 조회합니다.
+     * businessNumber 자체는 AES-GCM 암호화(비결정적)라 평문 동등검색이 불가능해
+     * {@link com.rich.sodam.config.crypto.PiiSearchHashSupport}로 계산한 해시로 조회한다(§2.6).
      *
-     * @param businessNumber 사업자등록번호
+     * @param businessNumberSearchHash 사업자등록번호 검색 해시
      * @return 매장 정보 (Optional)
      */
-    Optional<Store> findByBusinessNumber(String businessNumber);
+    Optional<Store> findByBusinessNumberSearchHash(String businessNumberSearchHash);
+
+    /**
+     * 암호화 전환 이전(§-1) 평문 상태로 남아있어 아직 블라인드 인덱스가 없는 로우 —
+     * {@code BusinessNumberSearchHashBackfillRunner}(Phase 6 백필 배치)가 사용한다.
+     */
+    List<Store> findAllByBusinessNumberSearchHashIsNull();
 
     /**
      * 매장 코드(storeCode)로 활성 매장 조회 — 직원 코드 가입 시 사용.
@@ -46,13 +54,13 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
     Optional<Store> findActiveById(@Param("id") Long id);
 
     /**
-     * 사업자등록번호로 활성 상태인 매장을 조회합니다.
+     * 사업자등록번호 블라인드 인덱스(HMAC)로 활성 상태인 매장을 조회합니다(§2.6).
      *
-     * @param businessNumber 사업자등록번호
+     * @param businessNumberSearchHash 사업자등록번호 검색 해시
      * @return 활성 매장 정보 (Optional)
      */
-    @Query("SELECT s FROM Store s WHERE s.businessNumber = :businessNumber AND (s.isDeleted = false OR s.isDeleted IS NULL)")
-    Optional<Store> findActiveByBusinessNumber(@Param("businessNumber") String businessNumber);
+    @Query("SELECT s FROM Store s WHERE s.businessNumberSearchHash = :hash AND (s.isDeleted = false OR s.isDeleted IS NULL)")
+    Optional<Store> findActiveByBusinessNumberSearchHash(@Param("hash") String businessNumberSearchHash);
 
     /**
      * 삭제된 모든 매장을 조회합니다.
