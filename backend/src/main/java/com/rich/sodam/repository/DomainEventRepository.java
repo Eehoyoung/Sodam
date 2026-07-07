@@ -13,4 +13,7 @@ public interface DomainEventRepository extends JpaRepository<DomainEvent, Long> 
 
     /** 전체 퍼널 카운트용(관리자) — 기간 내 전 이벤트. */
     List<DomainEvent> findByOccurredAtGreaterThanEqual(LocalDateTime since);
+
+    /** 보존기간 만료 스캔용(Phase 6, §2.5) — 기산 시각(occurredAt)이 cutoff 이전인 만료 대상. */
+    List<DomainEvent> findByOccurredAtLessThan(LocalDateTime cutoff);
 }
