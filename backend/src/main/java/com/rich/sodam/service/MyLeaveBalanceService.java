@@ -79,7 +79,7 @@ public class MyLeaveBalanceService {
 
     /** 해당 매장 활성 직원 수 기준 5인 이상 여부(연차 적용 대상, §11). */
     private boolean isFiveOrMore(Store store) {
-        return relationRepository.findByStoreAndIsActiveTrue(store).size()
+        return relationRepository.countByStoreAndIsActiveTrue(store)
                 >= LaborStandards.SMALL_BUSINESS_THRESHOLD;
     }
 

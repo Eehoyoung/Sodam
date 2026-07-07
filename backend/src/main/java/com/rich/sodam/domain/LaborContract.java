@@ -33,8 +33,11 @@ import java.util.List;
  * 계약 본문 법률 문구가 아닌 합의된 근로조건(사장-직원 간) 데이터이므로 시스템이 보관·교부할 수 있다.</p>
  */
 @Entity
-@Table(name = "labor_contract",
-        indexes = @Index(name = "idx_labor_contract_emp_store", columnList = "employee_id, store_id"))
+@Table(name = "labor_contract", indexes = {
+        @Index(name = "idx_labor_contract_emp_store", columnList = "employee_id, store_id"),
+        // 매장별 계약서 목록 조회(store_id 단독 필터)는 위 복합 인덱스의 선두 컬럼이 아니라 못 씀 — 별도 추가(§2.1)
+        @Index(name = "idx_labor_contract_store_id", columnList = "store_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor

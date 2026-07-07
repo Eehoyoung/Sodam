@@ -20,7 +20,9 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "shift_swap_request", indexes = {
         @Index(name = "idx_ssr_store_status", columnList = "store_id, status"),
-        @Index(name = "idx_ssr_shift", columnList = "shift_id")
+        @Index(name = "idx_ssr_shift", columnList = "shift_id"),
+        @Index(name = "idx_shift_swap_request_original_employee_id", columnList = "original_employee_id"),
+        @Index(name = "idx_shift_swap_request_approved_employee_id", columnList = "approved_employee_id")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

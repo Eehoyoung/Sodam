@@ -19,7 +19,8 @@ import java.time.temporal.ChronoUnit;
 @Entity
 @Table(name = "employee_document", indexes = {
         @Index(name = "idx_emp_doc_emp_store", columnList = "employee_id, store_id"),
-        @Index(name = "idx_emp_doc_expires", columnList = "expires_at")
+        @Index(name = "idx_emp_doc_expires", columnList = "expires_at"),
+        @Index(name = "idx_employee_document_store_id", columnList = "store_id")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

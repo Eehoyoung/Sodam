@@ -62,7 +62,7 @@ public class MasterProfileService {
 
     /** 매장 활성 직원 수. */
     private int activeEmployeeCountOf(Store store) {
-        return employeeStoreRelationRepository.findByStoreAndIsActiveTrue(store).size();
+        return (int) employeeStoreRelationRepository.countByStoreAndIsActiveTrue(store);
     }
 
     /**

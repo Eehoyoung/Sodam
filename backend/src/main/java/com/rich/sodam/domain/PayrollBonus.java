@@ -23,8 +23,10 @@ import java.time.LocalDateTime;
  * </p>
  */
 @Entity
-@Table(name = "payroll_bonus",
-        indexes = @Index(name = "idx_payroll_bonus_emp_store_date", columnList = "employee_id, store_id, bonus_date"))
+@Table(name = "payroll_bonus", indexes = {
+        @Index(name = "idx_payroll_bonus_emp_store_date", columnList = "employee_id, store_id, bonus_date"),
+        @Index(name = "idx_payroll_bonus_store_id", columnList = "store_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor
