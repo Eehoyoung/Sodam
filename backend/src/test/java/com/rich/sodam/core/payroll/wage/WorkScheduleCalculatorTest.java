@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -17,6 +18,9 @@ import static org.assertj.core.api.Assertions.within;
  */
 class WorkScheduleCalculatorTest {
 
+    private static final int CASE_COUNT = 5000;
+    private static final DayOfWeek[] DAYS = DayOfWeek.values();
+
     private static WorkScheduleDay day(DayOfWeek d, String start, String end) {
         return new WorkScheduleDay(d, LocalTime.parse(start), LocalTime.parse(end), null, null);
     }
@@ -24,6 +28,75 @@ class WorkScheduleCalculatorTest {
     private static WorkScheduleDay day(DayOfWeek d, String start, String end, String bs, String be) {
         return new WorkScheduleDay(d, LocalTime.parse(start), LocalTime.parse(end),
                 LocalTime.parse(bs), LocalTime.parse(be));
+    }
+
+    private static String clock(int totalMinutes) {
+        int minuteOfDay = Math.floorMod(totalMinutes, 24 * 60);
+        return String.format("%02d:%02d", minuteOfDay / 60, minuteOfDay % 60);
+    }
+
+    private static int nightOverlap(int from, int to) {
+        int[][] windows = {{0, 360}, {1320, 1800}, {2760, 2880}};
+        int sum = 0;
+        for (int[] window : windows) {
+            sum += Math.max(0, Math.min(to, window[1]) - Math.max(from, window[0]));
+        }
+        return sum;
+    }
+
+    private record GeneratedCase(
+            List<WorkScheduleDay> schedule,
+            double expectedActualHours,
+            double expectedOvertimeHours,
+            double expectedNightHours
+    ) {
+    }
+
+    private static GeneratedCase generatedCase(int caseNo) {
+        int workingDays = (caseNo % 7) + 1;
+        int firstDay = (caseNo * 3) % DAYS.length;
+        int actualMinutes = 0;
+        int dailyOvertimeMinutes = 0;
+        int nightMinutes = 0;
+        List<WorkScheduleDay> schedule = new ArrayList<>();
+
+        for (int idx = 0; idx < workingDays; idx++) {
+            int start = ((caseNo * 37 + idx * 97) % 48) * 30;
+            int duration = 240 + (((caseNo * 11 + idx * 5) % 18) * 30); // 4h~12.5h
+            int breakMinutes = ((caseNo + idx) % 4) * 30; // 0/30/60/90m
+            int worked = duration - breakMinutes;
+            int end = start + duration;
+
+            LocalTime breakStart = null;
+            LocalTime breakEnd = null;
+            if (breakMinutes > 0) {
+                int latestBreakStart = duration - breakMinutes - 30;
+                int breakOffset = Math.min(240, Math.max(60, latestBreakStart));
+                int breakStartMinutes = start + breakOffset;
+                int breakEndMinutes = breakStartMinutes + breakMinutes;
+                breakStart = LocalTime.parse(clock(breakStartMinutes));
+                breakEnd = LocalTime.parse(clock(breakEndMinutes));
+                nightMinutes -= nightOverlap(breakStartMinutes, breakEndMinutes);
+            }
+
+            actualMinutes += worked;
+            dailyOvertimeMinutes += Math.max(0, worked - 480);
+            nightMinutes += nightOverlap(start, end);
+            schedule.add(new WorkScheduleDay(
+                    DAYS[(firstDay + idx) % DAYS.length],
+                    LocalTime.parse(clock(start)),
+                    LocalTime.parse(clock(end)),
+                    breakStart,
+                    breakEnd
+            ));
+        }
+
+        return new GeneratedCase(
+                schedule,
+                actualMinutes / 60.0,
+                Math.max(dailyOvertimeMinutes, actualMinutes - 2400) / 60.0,
+                nightMinutes / 60.0
+        );
     }
 
     @Test
@@ -180,5 +253,46 @@ class WorkScheduleCalculatorTest {
                 .containsEntry(DayOfWeek.SATURDAY, 11.0)
                 .doesNotContainKey(DayOfWeek.TUESDAY);
         assertThat(stats.workingDays()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("정규직 월급제 스케줄 5,000개 조합을 검증한다")
+    void generatedMonthlySalaryScheduleCases() {
+        for (int caseNo = 0; caseNo < CASE_COUNT; caseNo++) {
+            GeneratedCase generated = generatedCase(caseNo);
+            var stats = WorkScheduleCalculator.weeklyStats(generated.schedule());
+            int baseHourlyWage = 9_000 + ((caseNo * 137) % 8_000);
+            boolean fiveOrMoreEmployees = caseNo % 2 == 0;
+
+            double expectedContracted = Math.min(generated.expectedActualHours(), 40.0);
+            int expectedMonthlyStandardHours =
+                    MonthlySalaryCalculator.monthlyStandardHoursForWeeklyHours(expectedContracted);
+            double expectedMonthlyOvertime =
+                    WorkScheduleCalculator.monthlyHours(generated.expectedOvertimeHours());
+            double expectedMonthlyNight =
+                    WorkScheduleCalculator.monthlyHours(generated.expectedNightHours());
+            int expectedMonthlyBaseSalary = baseHourlyWage * expectedMonthlyStandardHours;
+            int expectedOvertimePay = (int) Math.round(
+                    baseHourlyWage * expectedMonthlyOvertime * (fiveOrMoreEmployees ? 1.5 : 1.0));
+            int expectedNightPremiumPay = (int) Math.round(
+                    baseHourlyWage * expectedMonthlyNight * (fiveOrMoreEmployees ? 0.5 : 0.0));
+            int expectedMonthlyWage =
+                    expectedMonthlyBaseSalary + expectedOvertimePay + expectedNightPremiumPay;
+
+            assertThat(stats.workingDays()).isEqualTo(generated.schedule().size());
+            assertThat(stats.weeklyActualHours()).isCloseTo(generated.expectedActualHours(), within(1.0e-10));
+            assertThat(stats.weeklyContractedHours()).isCloseTo(expectedContracted, within(1.0e-10));
+            assertThat(stats.weeklyOvertimeHours()).isCloseTo(generated.expectedOvertimeHours(), within(1.0e-10));
+            assertThat(stats.weeklyNightHours()).isCloseTo(generated.expectedNightHours(), within(1.0e-10));
+            assertThat(expectedMonthlyStandardHours).isBetween(1, 209);
+            assertThat(expectedMonthlyBaseSalary).isEqualTo(baseHourlyWage * expectedMonthlyStandardHours);
+            assertThat(expectedMonthlyWage)
+                    .isEqualTo(expectedMonthlyBaseSalary + expectedOvertimePay + expectedNightPremiumPay);
+            if (fiveOrMoreEmployees) {
+                assertThat(expectedNightPremiumPay).isGreaterThanOrEqualTo(0);
+            } else {
+                assertThat(expectedNightPremiumPay).isZero();
+            }
+        }
     }
 }

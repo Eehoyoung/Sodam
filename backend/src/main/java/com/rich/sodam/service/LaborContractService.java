@@ -521,7 +521,9 @@ public class LaborContractService {
      * <p>미달 계약은 §28 형사처벌 대상이고 사법상으로도 미달 부분이 무효(§6③ — 최저임금액으로
      * 자동 대체)이므로 체결 자체를 차단한다. WageEditSheet 경로(StoreManagementServiceImpl 의
      * WAGE_BELOW_MINIMUM)와 동일 정책 — 계약서 저장 경로만 검증이 없던 갭을 메운다.
-     * 시급제·월급제(환산 통상시급) 모두 동일 적용(일관성).</p>
+     * 시급제는 시급, 월급제는 월 기본급이 기준시간 × 최저임금 이상인지로 적용한다. 월급제에서
+     * 환산 통상시급을 원 단위 반올림한 값만 보면 1원 부족한 기본급이 통과할 수 있으므로,
+     * 저장 차단 기준은 반올림 전 월 기본급 하한을 사용한다.</p>
      *
      * <p>기준 연도는 계약 시작일 연도(미입력 시 당해 연도 — {@link MinimumWage#hourlyFor} 는
      * 미등록 연도를 최신 고시값으로 폴백). 수습 감액 요건(§5②·시행령 §3: 1년 이상 계약·수습
@@ -531,21 +533,45 @@ public class LaborContractService {
     private void assertAtLeastMinimumWage(LaborContract c) {
         boolean salaryContract = c.getPayType() == LaborContractPayType.SALARY;
         Integer effectiveHourly = salaryContract ? c.getOrdinaryHourlyWage() : c.getHourlyWage();
-        if (effectiveHourly == null) {
+        if (!salaryContract && effectiveHourly == null) {
             return; // 존재 여부는 assertRequiredFields 가 이미 차단
         }
         int year = (c.getStartDate() != null ? c.getStartDate() : LocalDate.now()).getYear();
         BigDecimal minimum = MinimumWage.hourlyFor(year);
         boolean probationReduced = isProbationWageReductionAllowed(c);
-        BigDecimal floor = probationReduced
-                ? minimum.multiply(BigDecimal.valueOf(c.getProbationWageRate())).setScale(0, RoundingMode.HALF_UP)
+        BigDecimal exactHourlyFloor = probationReduced
+                ? minimum.multiply(BigDecimal.valueOf(c.getProbationWageRate()))
                 : minimum;
-        if (BigDecimal.valueOf(effectiveHourly).compareTo(floor) < 0) {
-            String wageLabel = salaryContract
-                    ? String.format("월 기본급 환산 통상시급 %,d원", effectiveHourly)
-                    : String.format("시급 %,d원", effectiveHourly);
+
+        if (salaryContract) {
+            int standardHours = monthlyStandardHoursForSalary(c.getContractedHoursPerWeek());
+            if (c.getMonthlyBaseSalary() == null || standardHours <= 0) {
+                return; // 존재 여부는 assertRequiredFields 가 이미 차단
+            }
+            BigDecimal requiredMonthlyBase = exactHourlyFloor
+                    .multiply(BigDecimal.valueOf(standardHours))
+                    .setScale(0, RoundingMode.CEILING);
+            if (BigDecimal.valueOf(c.getMonthlyBaseSalary()).compareTo(requiredMonthlyBase) >= 0) {
+                return;
+            }
+            String wageLabel = String.format("월 기본급 %,d원(환산 통상시급 %,d원)",
+                    c.getMonthlyBaseSalary(), effectiveHourly);
             String floorLabel = probationReduced
-                    ? String.format("%d년 최저임금 %,d원의 수습 감액 하한 %,d원", year, minimum.intValue(), floor.intValue())
+                    ? String.format("%d년 최저임금 %,d원의 수습 감액 기준 월 최저액 %,d원(%d시간)",
+                    year, minimum.intValue(), requiredMonthlyBase.intValue(), standardHours)
+                    : String.format("%d년 최저임금 %,d원 기준 월 최저액 %,d원(%d시간)",
+                    year, minimum.intValue(), requiredMonthlyBase.intValue(), standardHours);
+            throw new IllegalArgumentException(String.format(
+                    "%s이(가) %s 미만입니다. 최저임금 미달 계약은 저장할 수 없습니다(최저임금법 §6).",
+                    wageLabel, floorLabel));
+        }
+
+        BigDecimal hourlyFloor = exactHourlyFloor.setScale(0, RoundingMode.CEILING);
+        if (BigDecimal.valueOf(effectiveHourly).compareTo(hourlyFloor) < 0) {
+            String wageLabel = String.format("시급 %,d원", effectiveHourly);
+            String floorLabel = probationReduced
+                    ? String.format("%d년 최저임금 %,d원의 수습 감액 하한 %,d원",
+                    year, minimum.intValue(), hourlyFloor.intValue())
                     : String.format("%d년 최저임금 %,d원", year, minimum.intValue());
             throw new IllegalArgumentException(String.format(
                     "%s이(가) %s 미만입니다. 최저임금 미달 계약은 저장할 수 없습니다(최저임금법 §6).",
@@ -559,11 +585,35 @@ public class LaborContractService {
     }
 
     /**
-     * 직원 본인의 모든 근로계약서를 최신순으로 조회한다.
+     * 사장의 임시저장(미발송) 계약서 관리 화면용 — create() 는 성공했는데 send() 가 아직/영영
+     * 호출되지 않은 초안만 조회한다(예: 발송 API 실패 후 화면을 벗어나 방치된 계약).
+     */
+    @Transactional(readOnly = true)
+    public List<LaborContract> findDrafts(Long employeeId, Long storeId) {
+        return laborContractRepository.findByEmployeeIdAndStoreIdAndSentAtIsNullOrderByCreatedAtDesc(employeeId, storeId);
+    }
+
+    /**
+     * 임시저장(미발송) 계약서를 삭제한다. 이미 발송된 계약은 직원이 이미 열람·서명했을 수 있어
+     * 삭제를 거부한다(교부 기록 보존 — §17 서면 명시·교부 의무).
+     */
+    @Transactional
+    public void deleteDraft(Long contractId) {
+        LaborContract contract = findById(contractId);
+        if (contract.isSent()) {
+            throw new IllegalStateException("이미 발송된 근로계약서는 삭제할 수 없어요.");
+        }
+        laborContractRepository.delete(contract);
+    }
+
+    /**
+     * 직원 본인의 근로계약서를 최신순으로 조회한다 — 아직 발송 전(임시저장) 계약은 제외한다.
+     * 사장이 create() 만 호출하고 send() 를 아직/영영 호출하지 않은 초안이 직원 화면에
+     * 노출되면 안 된다({@link #sign}·PDF 조회도 동일 게이트).
      */
     @Transactional(readOnly = true)
     public List<LaborContract> findByEmployee(Long employeeId) {
-        return laborContractRepository.findByEmployeeIdOrderByCreatedAtDesc(employeeId);
+        return laborContractRepository.findByEmployeeIdAndSentAtIsNotNullOrderByCreatedAtDesc(employeeId);
     }
 
     @Transactional(readOnly = true)
@@ -573,10 +623,22 @@ public class LaborContractService {
     }
 
     /**
+     * 사장이 작성한 근로계약서를 발송한다 — 멱등(재발송해도 최초 발송 시각을 보존한다).
+     * 발송 전에는 직원 목록·서명·PDF 조회에서 보이지 않는다({@link #findByEmployee}).
+     */
+    @Transactional
+    public LaborContract markSent(Long contractId) {
+        LaborContract contract = findById(contractId);
+        contract.markSent(LocalDateTime.now());
+        return laborContractRepository.save(contract);
+    }
+
+    /**
      * 직원 본인이 근로계약서에 서명(동의)한다.
      *
-     * <p>본인 계약이 아니면 {@link AccessDeniedException}. 이미 서명된 경우 멱등하게
-     * 기존 계약을 그대로 반환한다(최초 서명 시각 보존).
+     * <p>본인 계약이 아니면 {@link AccessDeniedException}. 아직 발송 전(임시저장)이면
+     * 거부한다 — 사장이 검토를 마치고 명시적으로 발송해야만 서명 대상이 된다. 이미 서명된
+     * 경우 멱등하게 기존 계약을 그대로 반환한다(최초 서명 시각 보존).
      *
      * @param contractId     서명 대상 계약 id
      * @param employeeId     서명 주체(principal) — 계약의 employeeId 와 일치해야 함
@@ -587,6 +649,9 @@ public class LaborContractService {
         LaborContract contract = findById(contractId);
         if (!contract.getEmployeeId().equals(employeeId)) {
             throw new AccessDeniedException("본인 근로계약서만 서명할 수 있어요.");
+        }
+        if (!contract.isSent()) {
+            throw new IllegalStateException("아직 발송되지 않은 근로계약서예요.");
         }
         // markSigned 는 멱등 — 이미 서명돼 있으면 시각 보존하고 false 반환
         contract.markSigned(LocalDateTime.now(), signatureImage);
@@ -633,7 +698,8 @@ public class LaborContractService {
                 LaborLawConstants.MIN_WEEKLY_HOURS_FOR_ALLOWANCE.doubleValue(),
                 fiveOrMoreEmployees,
                 employeeCount,
-                suggestedWageComponents
+                suggestedWageComponents,
+                SocialInsuranceRates.pensionBaseMin(LocalDate.now()).intValue()
         );
     }
 
@@ -744,5 +810,235 @@ public class LaborContractService {
 
     private boolean isBlank(String s) {
         return s == null || s.isBlank();
+    }
+
+    /**
+     * 근로계약서 PDF 생성 (§17 서면 명시·교부 의무의 전자 문서 구현).
+     *
+     * <p>증명서·급여명세서 PDF 파이프라인({@link CertificateService}, {@code PayrollService#generatePayrollPdf})과
+     * 동일하게 OpenPDF 로 바이트 배열을 생성한다. 접근 제어(사장 소유 매장·직원 본인)는
+     * 호출 측 컨트롤러가 수행한다.
+     */
+    @Transactional(readOnly = true)
+    public byte[] generateContractPdf(Long contractId) {
+        LaborContract c = findById(contractId);
+        Store store = storeRepository.findById(c.getStoreId()).orElse(null);
+        User employee = userRepository.findById(c.getEmployeeId()).orElse(null);
+        return renderContractPdf(c, store, employee);
+    }
+
+    private byte[] renderContractPdf(LaborContract c, Store store, User employee) {
+        try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream()) {
+            com.lowagie.text.Document document = new com.lowagie.text.Document(com.lowagie.text.PageSize.A4, 40, 40, 40, 40);
+            com.lowagie.text.pdf.PdfWriter.getInstance(document, baos);
+
+            com.lowagie.text.pdf.BaseFont bf;
+            try {
+                bf = com.lowagie.text.pdf.BaseFont.createFont(
+                        "HYSMyeongJoStd-Medium", "UniKS-UCS2-H",
+                        com.lowagie.text.pdf.BaseFont.NOT_EMBEDDED);
+            } catch (Exception ignored) {
+                bf = com.lowagie.text.pdf.BaseFont.createFont();
+            }
+            com.lowagie.text.Font fontTitle = new com.lowagie.text.Font(bf, 18, com.lowagie.text.Font.BOLD);
+            com.lowagie.text.Font fontH = new com.lowagie.text.Font(bf, 12, com.lowagie.text.Font.BOLD);
+            com.lowagie.text.Font fontN = new com.lowagie.text.Font(bf, 10);
+            com.lowagie.text.Font fontSection = new com.lowagie.text.Font(bf, 12, com.lowagie.text.Font.BOLD);
+
+            document.open();
+            com.lowagie.text.Paragraph titleP = new com.lowagie.text.Paragraph("근 로 계 약 서", fontTitle);
+            titleP.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+            document.add(titleP);
+            document.add(blank(fontN));
+
+            String storeName = store != null ? nvl(store.getStoreName()) : "-";
+            String employeeName = employee != null ? nvl(employee.getName()) : "-";
+            document.add(new com.lowagie.text.Paragraph(
+                    String.format("%s(이하 \"사업주\")과(와) %s(이하 \"근로자\")은 다음과 같이 근로계약을 체결한다.",
+                            storeName, employeeName), fontN));
+            document.add(blank(fontN));
+
+            addSection(document, "당사자", fontSection);
+            com.lowagie.text.pdf.PdfPTable parties = kvTable();
+            addKv(parties, "사업장명", storeName, fontH, fontN);
+            if (store != null && store.getBusinessNumber() != null && !store.getBusinessNumber().isBlank()) {
+                addKv(parties, "사업자등록번호", store.getBusinessNumber(), fontH, fontN);
+            }
+            if (store != null && store.getFullAddress() != null && !store.getFullAddress().isBlank()) {
+                addKv(parties, "사업장 주소", store.getFullAddress(), fontH, fontN);
+            }
+            addKv(parties, "근로자 성명", employeeName, fontH, fontN);
+            document.add(parties);
+            document.add(blank(fontN));
+
+            addSection(document, "계약기간·근무조건", fontSection);
+            com.lowagie.text.pdf.PdfPTable basic = kvTable();
+            String period = c.getPeriodType() == ContractPeriodType.FIXED_TERM
+                    ? String.format("%s (%s ~ %s)", c.getPeriodType().getDisplayName(),
+                        strOf(c.getStartDate()), strOf(c.getEndDate()))
+                    : String.format("%s (개시일 %s)", c.getPeriodType().getDisplayName(), strOf(c.getStartDate()));
+            addKv(basic, "계약기간", period, fontH, fontN);
+            addKv(basic, "취업 장소", nvl(c.getWorkLocation()), fontH, fontN);
+            addKv(basic, "종사 업무", nvl(c.getJobDescription()), fontH, fontN);
+            addKv(basic, "소정근로시간", String.format("주 %.1f시간 (%s ~ %s, 휴게 %d분)",
+                    nz2(c.getContractedHoursPerWeek()), strOf(c.getWorkStartTime()), strOf(c.getWorkEndTime()),
+                    c.getBreakMinutes() != null ? c.getBreakMinutes() : 0), fontH, fontN);
+            addKv(basic, "휴일(주휴일)", c.getWeeklyHolidayDay() != null ? c.getWeeklyHolidayDay() : "해당 없음(§18③)", fontH, fontN);
+            addKv(basic, "연차유급휴가", c.getAnnualLeaveNote() != null ? c.getAnnualLeaveNote() : "해당 없음(§18③)", fontH, fontN);
+            document.add(basic);
+            document.add(blank(fontN));
+
+            if (c.getWorkSchedule() != null && !c.getWorkSchedule().isEmpty()) {
+                addSection(document, "요일별 근무 스케줄", fontSection);
+                document.add(buildScheduleTable(c.getWorkSchedule(), fontH, fontN));
+                document.add(blank(fontN));
+            }
+
+            addSection(document, "임금", fontSection);
+            com.lowagie.text.pdf.PdfPTable wage = kvTable();
+            if (c.getPayType() == LaborContractPayType.SALARY) {
+                String unit = c.getSalaryPayUnit() == SalaryPayUnit.ANNUAL ? "연봉제" : "월급제";
+                addKv(wage, "임금 형태", unit, fontH, fontN);
+                addKv(wage, "월 기본급", wonOf(c.getMonthlyBaseSalary()), fontH, fontN);
+                if (c.getFixedOvertimeHoursPerMonth() != null && c.getFixedOvertimeHoursPerMonth() > 0) {
+                    addKv(wage, "고정연장수당", String.format("월 %.2f시간 · %s",
+                            c.getFixedOvertimeHoursPerMonth(), wonOf(c.getFixedOvertimePay())), fontH, fontN);
+                }
+                if (c.getFixedNightHoursPerMonth() != null && c.getFixedNightHoursPerMonth() > 0) {
+                    addKv(wage, "고정야간수당", String.format("월 %.2f시간 · %s",
+                            c.getFixedNightHoursPerMonth(), wonOf(c.getFixedNightPay())), fontH, fontN);
+                }
+                addKv(wage, "예상 월 지급액", wonOf(c.getExpectedMonthlyWage()), fontH, fontN);
+                addKv(wage, "연봉(환산)", wonOf(c.getAnnualSalary()), fontH, fontN);
+                addKv(wage, "통상시급(환산)", wonOf(c.getOrdinaryHourlyWage()), fontH, fontN);
+            } else {
+                addKv(wage, "임금 형태", "시급제", fontH, fontN);
+                addKv(wage, "시급", wonOf(c.getHourlyWage()), fontH, fontN);
+            }
+            addKv(wage, "지급방법", c.getWagePaymentMethod() != null ? c.getWagePaymentMethod().getDisplayName() : "-", fontH, fontN);
+            addKv(wage, "지급일", c.getWagePaymentDay() != null ? "매월 " + c.getWagePaymentDay() + "일" : "-", fontH, fontN);
+            document.add(wage);
+            document.add(blank(fontN));
+
+            if (!isBlank(c.getWageComponents())) {
+                addSection(document, "임금 구성항목·계산방법", fontSection);
+                document.add(new com.lowagie.text.Paragraph(c.getWageComponents(), fontN));
+                document.add(blank(fontN));
+            }
+
+            if (c.isProbation()) {
+                addSection(document, "수습", fontSection);
+                com.lowagie.text.pdf.PdfPTable probation = kvTable();
+                addKv(probation, "수습기간", c.getProbationMonths() + "개월", fontH, fontN);
+                addKv(probation, "수습 중 임금 비율", c.getProbationWageRate() != null
+                        ? String.format("%.0f%%", c.getProbationWageRate() * 100) : "-", fontH, fontN);
+                document.add(probation);
+                document.add(blank(fontN));
+            }
+
+            addSection(document, "사회보험 적용 여부", fontSection);
+            document.add(new com.lowagie.text.Paragraph(String.format(
+                    "고용보험 %s · 산재보험 %s · 국민연금 %s · 건강보험 %s",
+                    yn(c.isEmploymentInsurance()), yn(c.isIndustrialAccidentInsurance()),
+                    yn(c.isNationalPension()), yn(c.isHealthInsurance())), fontN));
+            document.add(blank(fontN));
+            document.add(blank(fontN));
+
+            addSection(document, "서명", fontSection);
+            com.lowagie.text.pdf.PdfPTable sign = kvTable();
+            addKv(sign, "사업주", storeName, fontH, fontN);
+            addKv(sign, "근로자 서명 상태", c.isSigned()
+                    ? "서명 완료 (" + strOf(c.getEmployeeSignedAt()) + ")" : "서명 대기", fontH, fontN);
+            document.add(sign);
+            document.add(blank(fontN));
+            document.add(new com.lowagie.text.Paragraph("발급일: " + LocalDate.now(), fontN));
+            document.add(new com.lowagie.text.Paragraph(
+                    "발급: 소담(SODAM) — 본 계약서는 전자 문서로 유효합니다.", fontN));
+            document.close();
+            return baos.toByteArray();
+        } catch (Exception e) {
+            throw new IllegalStateException("근로계약서 PDF 생성에 실패했어요. 잠시 후 다시 시도해 주세요.");
+        }
+    }
+
+    private static com.lowagie.text.pdf.PdfPTable buildScheduleTable(
+            List<WorkScheduleDay> schedule, com.lowagie.text.Font fontH, com.lowagie.text.Font fontN) {
+        com.lowagie.text.pdf.PdfPTable table = new com.lowagie.text.pdf.PdfPTable(4);
+        table.setWidthPercentage(100);
+        for (String header : new String[]{"요일", "출근", "퇴근", "휴게"}) {
+            com.lowagie.text.pdf.PdfPCell cell = new com.lowagie.text.pdf.PdfPCell(new com.lowagie.text.Phrase(header, fontH));
+            cell.setBackgroundColor(new java.awt.Color(245, 245, 245));
+            table.addCell(cell);
+        }
+        List<WorkScheduleDay> sorted = schedule.stream()
+                .sorted(java.util.Comparator.comparing(WorkScheduleDay::day))
+                .toList();
+        for (WorkScheduleDay day : sorted) {
+            table.addCell(new com.lowagie.text.Phrase(dayLabel(day.day()), fontN));
+            table.addCell(new com.lowagie.text.Phrase(strOf(day.startTime()), fontN));
+            table.addCell(new com.lowagie.text.Phrase(strOf(day.endTime()), fontN));
+            String breakLabel = day.breakStartTime() != null && day.breakEndTime() != null
+                    ? strOf(day.breakStartTime()) + " ~ " + strOf(day.breakEndTime()) : "-";
+            table.addCell(new com.lowagie.text.Phrase(breakLabel, fontN));
+        }
+        return table;
+    }
+
+    private static String dayLabel(java.time.DayOfWeek day) {
+        return switch (day) {
+            case MONDAY -> "월";
+            case TUESDAY -> "화";
+            case WEDNESDAY -> "수";
+            case THURSDAY -> "목";
+            case FRIDAY -> "금";
+            case SATURDAY -> "토";
+            case SUNDAY -> "일";
+        };
+    }
+
+    private static void addSection(com.lowagie.text.Document document, String title, com.lowagie.text.Font font)
+            throws com.lowagie.text.DocumentException {
+        document.add(new com.lowagie.text.Paragraph(title, font));
+    }
+
+    private static com.lowagie.text.pdf.PdfPTable kvTable() {
+        com.lowagie.text.pdf.PdfPTable t = new com.lowagie.text.pdf.PdfPTable(2);
+        t.setWidthPercentage(100);
+        try {
+            t.setWidths(new float[]{1f, 2f});
+        } catch (com.lowagie.text.DocumentException ignored) {
+            // 열 개수 불일치는 발생하지 않음(2열 고정)
+        }
+        return t;
+    }
+
+    private static void addKv(com.lowagie.text.pdf.PdfPTable t, String k, String v,
+                               com.lowagie.text.Font fh, com.lowagie.text.Font fn) {
+        t.addCell(new com.lowagie.text.Phrase(k, fh));
+        t.addCell(new com.lowagie.text.Phrase(v, fn));
+    }
+
+    private static com.lowagie.text.Paragraph blank(com.lowagie.text.Font font) {
+        return new com.lowagie.text.Paragraph(" ", font);
+    }
+
+    private static String nvl(String s) {
+        return s == null ? "-" : s;
+    }
+
+    private static String strOf(Object o) {
+        return o == null ? "-" : o.toString();
+    }
+
+    private static double nz2(Double d) {
+        return d == null ? 0.0 : d;
+    }
+
+    private static String wonOf(Integer amount) {
+        return amount == null ? "-" : String.format("%,d원", amount);
+    }
+
+    private static String yn(boolean b) {
+        return b ? "적용" : "미적용";
     }
 }

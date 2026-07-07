@@ -35,4 +35,7 @@ public interface WorkShiftRepository extends JpaRepository<WorkShift, Long> {
 
     /** 지각·미출근 감지 배치용 — 특정 일자의 확정 시프트만. */
     List<WorkShift> findByShiftDateAndConfirmedAtIsNotNull(LocalDate shiftDate);
+
+    /** 고정 스케줄 자동 생성용 — 해당 날짜에 이미 시프트가 있으면(수동 등록 포함) 중복 생성을 건너뛴다. */
+    boolean existsByEmployeeIdAndStoreIdAndShiftDate(Long employeeId, Long storeId, LocalDate shiftDate);
 }

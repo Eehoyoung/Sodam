@@ -246,6 +246,14 @@ public class LaborContract {
     @Column(name = "health_insurance", nullable = false)
     private boolean healthInsurance = true;
 
+    /**
+     * 사장이 실제로 "발송"한 일시 — null 이면 아직 작성(임시저장) 단계다.
+     * 이 값이 없으면 직원 목록·서명·PDF 조회에서 보이지 않아야 한다({@code create()}만
+     * 호출되고 {@code send()}가 아직/영영 호출되지 않은 상태를 "발송 전"으로 명확히 구분).
+     */
+    @Column(name = "sent_at")
+    private LocalDateTime sentAt;
+
     /** 직원 서명(동의) 일시 — 교부·동의 입증. */
     @Column(name = "employee_signed_at")
     private LocalDateTime employeeSignedAt;
@@ -277,6 +285,23 @@ public class LaborContract {
 
     public boolean isSigned() {
         return this.employeeSignedAt != null;
+    }
+
+    public boolean isSent() {
+        return this.sentAt != null;
+    }
+
+    /**
+     * 발송 처리 — 멱등(재발송해도 최초 발송 시각을 보존한다).
+     *
+     * @return 이번 호출로 처음 발송됐으면 true, 이미 발송돼 있었으면 false
+     */
+    public boolean markSent(LocalDateTime sentAt) {
+        if (this.sentAt != null) {
+            return false;
+        }
+        this.sentAt = sentAt;
+        return true;
     }
 
     @PrePersist

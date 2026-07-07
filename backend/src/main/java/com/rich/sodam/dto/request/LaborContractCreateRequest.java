@@ -1,5 +1,6 @@
 package com.rich.sodam.dto.request;
 
+import com.rich.sodam.core.payroll.wage.BreakTimeCalculator;
 import com.rich.sodam.core.payroll.wage.WorkScheduleDay;
 import com.rich.sodam.domain.LaborContract;
 import com.rich.sodam.domain.type.ContractPeriodType;
@@ -131,7 +132,9 @@ public record LaborContractCreateRequest(
         c.setFixedHolidayHoursOver8PerMonth(fixedHolidayHoursOver8PerMonth);
         c.setFixedHolidayPay(fixedHolidayPay);
         c.setExpectedMonthlyWage(expectedMonthlyWage);
-        c.setWorkSchedule(workSchedule);
+        // 요일에 휴게 시각이 비어 있으면 §54 법정 최소 휴게를 근무 구간 중앙에 자동 배치한다.
+        // 이미 입력된 휴게는 그대로 둔다(사장의 수동 입력 우선).
+        c.setWorkSchedule(BreakTimeCalculator.autoFillMissingBreaks(workSchedule));
         c.setSalaryBaseHourlyWage(salaryBaseHourlyWage);
         c.setFiveOrMoreEmployeesSnapshot(fiveOrMoreEmployeesSnapshot);
         c.setWagePaymentDay(wagePaymentDay);

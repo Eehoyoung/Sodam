@@ -1,5 +1,7 @@
 package com.rich.sodam.domain;
 
+import com.rich.sodam.config.converter.WorkScheduleListConverter;
+import com.rich.sodam.core.payroll.wage.WorkScheduleDay;
 import com.rich.sodam.domain.type.EmploymentType;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -7,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 왜 EmployeeStoreRelation에 입사일을 저장해야 하는가?
@@ -96,6 +99,23 @@ public class EmployeeStoreRelation {
      */
     @Column(name = "social_insurance_enrolled")
     private Boolean socialInsuranceEnrolled;
+
+    /**
+     * 월급제 정규직 고정 스케줄(근로계약서 workSchedule 원본, V41). null = 고정 스케줄 없음(시급제·
+     * 기간제·직접입력 월급제 등). 근로계약서가 발송될 때 {@code FixedScheduleService}가 채우고,
+     * 이후 이 패턴을 기준으로 근무 시프트(WorkShift)를 입사일부터 지속적으로 자동 생성한다.
+     */
+    @Convert(converter = WorkScheduleListConverter.class)
+    @Column(name = "fixed_weekly_schedule_json", length = 2000)
+    private List<WorkScheduleDay> fixedWeeklySchedule;
+
+    /**
+     * 고정 스케줄이 실제 근무 시프트(WorkShift)로 생성 완료된 마지막 날짜(포함). null = 미초기화.
+     * 이 날짜 이전/이후 구분으로 "이미 다뤄진 날짜"(사장이 이동·삭제했어도 그대로 존중)와
+     * "아직 생성 안 된 미래"를 나누어, 사장의 수동 수정을 자동 생성이 절대 덮어쓰지 않는다.
+     */
+    @Column(name = "fixed_schedule_generated_through")
+    private LocalDate fixedScheduleGeneratedThrough;
 
     public EmployeeStoreRelation(EmployeeProfile employeeProfile, Store store) {
         this.employeeProfile = employeeProfile;

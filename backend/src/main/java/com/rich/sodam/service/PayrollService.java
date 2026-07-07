@@ -58,6 +58,7 @@ public class PayrollService {
     private final PayrollBonusService payrollBonusService;
     private final LiveSyncPublisher liveSyncPublisher;
     private final NotificationService notificationService;
+    private final AttendanceIrregularityService attendanceIrregularityService;
 
     /** 미리보기 워터마크 문구(매장 사장 플랜이 명세서 PDF 발급 권한 미보유 시). */
     private static final String PAYSLIP_WATERMARK = "소담 미리보기 · STARTER 플랜에서 정식 발급";
@@ -1262,6 +1263,11 @@ public class PayrollService {
         scheduledByDate.replaceAll((date, hours) -> Math.min(hours, regularHoursPerDay));
 
         Set<LocalDate> approvedTimeOffDates = approvedTimeOffDates(relation, startDate, endDate);
+        // 사장이 "공제 없이 처리"(WAIVED)한 근태 이상 — 해당 건의 미근무시간만큼 공제에서 제외한다.
+        // CONVERTED_TO_LEAVE 는 별도 처리 불필요(연차 전환 시 생성되는 APPROVED TimeOff 가 위
+        // approvedTimeOffDates 로 이미 공제 대상에서 빠진다).
+        Map<LocalDate, Integer> waivedMinutesByDate = attendanceIrregularityService.waivedMinutesByDate(
+                relation.getEmployeeProfile().getId(), relation.getStore().getId(), startDate, endDate);
 
         // 결근·지각·조퇴 공제 (일자별 상계 — 다른 날의 초과근무가 미근무를 상쇄하지 못하게 max(0,·))
         long deduction = 0;
@@ -1270,7 +1276,8 @@ public class PayrollService {
                 continue;
             }
             double actual = paidHoursByDate.getOrDefault(scheduled.getKey(), 0.0);
-            double shortfallHours = Math.max(0, scheduled.getValue() - actual);
+            double waivedHours = waivedMinutesByDate.getOrDefault(scheduled.getKey(), 0) / 60.0;
+            double shortfallHours = Math.max(0, scheduled.getValue() - actual - waivedHours);
             if (shortfallHours > 0) {
                 deduction += Math.round(ordinaryHourlyWage * shortfallHours);
             }

@@ -551,10 +551,154 @@ class LaborContractServiceTest {
     }
 
     @Test
-    @DisplayName("수습 감액 요건 충족 시 월급 통상시급은 최저임금 90% 하한(9,288원)까지 허용된다")
+    @DisplayName("주40 월급제는 2026년 법정 월 최저 기본급 2,156,880원부터 저장된다")
+    void allowsSalaryAtMinimumMonthlyBase() {
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        LaborContract c = validSalary(2_156_880);
+        c.setStartDate(LocalDate.of(2026, 1, 1));
+
+        LaborContract saved = service.save(c);
+
+        assertThat(saved.getMonthlyBaseSalary()).isEqualTo(2_156_880);
+        assertThat(saved.getOrdinaryHourlyWage()).isEqualTo(10_320);
+        assertThat(saved.getExpectedMonthlyWage()).isEqualTo(2_156_880);
+    }
+
+    @Test
+    @DisplayName("월 기본급이 법정 월 최저액보다 1원 부족하면 반올림 통상시급이 10,320원이어도 거부된다")
+    void rejectsSalaryOneWonBelowMinimumMonthlyBase() {
+        LaborContract c = validSalary(2_156_879);
+        c.setStartDate(LocalDate.of(2026, 1, 1));
+
+        assertThatThrownBy(() -> service.save(c))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("2,156,879")
+                .hasMessageContaining("10,320")
+                .hasMessageContaining("2,156,880");
+    }
+
+    @Test
+    @DisplayName("5인 이상 월급제는 연장 1.5배·야간 0.5배·휴일 1.5/2.0배 법정 가산수당을 더한다")
+    void calculatesPremiumPayForFiveOrMoreSalaryContract() {
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        LaborContract c = validSalary(2_156_880);
+        c.setStartDate(LocalDate.of(2026, 1, 1));
+        c.setFixedOvertimeHoursPerMonth(10.0);
+        c.setFixedNightHoursPerMonth(8.0);
+        c.setFixedHolidayHoursWithin8PerMonth(4.0);
+        c.setFixedHolidayHoursOver8PerMonth(2.0);
+
+        LaborContract saved = service.save(c);
+
+        assertThat(saved.getFixedOvertimePay()).isEqualTo(154_800);
+        assertThat(saved.getFixedNightPay()).isEqualTo(41_280);
+        assertThat(saved.getFixedHolidayPay()).isEqualTo(103_200);
+        assertThat(saved.getExpectedMonthlyWage()).isEqualTo(2_456_160);
+    }
+
+    @Test
+    @DisplayName("5인 미만 월급제는 연장 기본임금만 더하고 야간·휴일 가산분은 적용하지 않는다")
+    void calculatesNonPremiumPayForUnderFiveSalaryContract() {
+        Store store = new Store("소담매장", "1234567890", "02-1234-5678", "카페", 10_320, 100);
+        store.applyEmployeeCount(4);
+        when(storeRepository.findById(2L)).thenReturn(Optional.of(store));
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        LaborContract c = validSalary(2_156_880);
+        c.setStartDate(LocalDate.of(2026, 1, 1));
+        c.setFixedOvertimeHoursPerMonth(10.0);
+        c.setFixedNightHoursPerMonth(8.0);
+        c.setFixedHolidayHoursWithin8PerMonth(4.0);
+        c.setFixedHolidayHoursOver8PerMonth(2.0);
+
+        LaborContract saved = service.save(c);
+
+        assertThat(saved.getFixedOvertimePay()).isEqualTo(103_200);
+        assertThat(saved.getFixedNightPay()).isZero();
+        assertThat(saved.getFixedHolidayPay()).isEqualTo(61_920);
+        assertThat(saved.getExpectedMonthlyWage()).isEqualTo(2_322_000);
+    }
+
+    @Test
+    @DisplayName("월급제 5,000개 조합은 법정 월 최저액 이상만 저장되고 미달은 거부된다")
+    void validatesSalaryMinimumWageLegalityAcrossFiveThousandCases() {
+        Store underFiveStore = new Store("소담매장2", "2234567890", "02-2222-2222", "카페", 10_320, 100);
+        underFiveStore.applyEmployeeCount(4);
+        when(storeRepository.findById(3L)).thenReturn(Optional.of(underFiveStore));
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        int legalCases = 0;
+        int illegalCases = 0;
+        for (int caseNo = 0; caseNo < 5_000; caseNo++) {
+            double contractedHoursPerWeek = 1 + ((caseNo * 7) % 520) / 10.0;
+            int monthlyStandardHours = com.rich.sodam.core.payroll.wage.MonthlySalaryCalculator
+                    .monthlyStandardHoursForWeeklyHours(contractedHoursPerWeek);
+            boolean probationReduced = caseNo % 5 == 0;
+            double wageRate = probationReduced ? 0.9 : 1.0;
+            int requiredMonthlyBaseSalary = (int) Math.ceil(10_320 * wageRate * monthlyStandardHours);
+            boolean shouldSave = caseNo % 4 != 0;
+            int monthlyBaseSalary = shouldSave
+                    ? requiredMonthlyBaseSalary + ((caseNo * 31) % 300_000)
+                    : Math.max(1, requiredMonthlyBaseSalary - 1 - ((caseNo * 17) % 5_000));
+            boolean fiveOrMoreEmployees = caseNo % 2 == 0;
+            double fixedOvertimeHours = (caseNo * 3) % 40;
+            double fixedNightHours = (caseNo * 5) % 30;
+            double fixedHolidayWithin8Hours = caseNo % 9;
+            double fixedHolidayOver8Hours = caseNo % 4;
+
+            LaborContract c = validSalary(monthlyBaseSalary);
+            c.setStoreId(fiveOrMoreEmployees ? 2L : 3L);
+            c.setStartDate(LocalDate.of(2026, 1, 1));
+            c.setContractedHoursPerWeek(contractedHoursPerWeek);
+            c.setFixedOvertimeHoursPerMonth(fixedOvertimeHours);
+            c.setFixedNightHoursPerMonth(fixedNightHours);
+            c.setFixedHolidayHoursWithin8PerMonth(fixedHolidayWithin8Hours);
+            c.setFixedHolidayHoursOver8PerMonth(fixedHolidayOver8Hours);
+            if (probationReduced) {
+                c.setPeriodType(ContractPeriodType.FIXED_TERM);
+                c.setEndDate(LocalDate.of(2026, 12, 31));
+                c.setProbation(true);
+                c.setProbationMonths(3);
+                c.setProbationWageRate(0.9);
+                c.setSimpleLabor(false);
+            }
+
+            if (shouldSave) {
+                legalCases++;
+                LaborContract saved = service.save(c);
+                int ordinaryHourlyWage = (int) Math.round((double) monthlyBaseSalary / monthlyStandardHours);
+                int expectedOvertimePay = (int) Math.round(ordinaryHourlyWage * fixedOvertimeHours
+                        * (fiveOrMoreEmployees ? 1.5 : 1.0));
+                int expectedNightPay = (int) Math.round(ordinaryHourlyWage * fixedNightHours
+                        * (fiveOrMoreEmployees ? 0.5 : 0.0));
+                int expectedHolidayPay = (int) Math.round(ordinaryHourlyWage
+                        * (fixedHolidayWithin8Hours * (fiveOrMoreEmployees ? 1.5 : 1.0)
+                        + fixedHolidayOver8Hours * (fiveOrMoreEmployees ? 2.0 : 1.0)));
+
+                assertThat(saved.getMonthlyBaseSalary()).isEqualTo(monthlyBaseSalary);
+                assertThat(saved.getOrdinaryHourlyWage()).isEqualTo(ordinaryHourlyWage);
+                assertThat(saved.getFixedOvertimePay()).isEqualTo(expectedOvertimePay);
+                assertThat(saved.getFixedNightPay()).isEqualTo(expectedNightPay);
+                assertThat(saved.getFixedHolidayPay()).isEqualTo(expectedHolidayPay);
+                assertThat(saved.getExpectedMonthlyWage()).isEqualTo(
+                        monthlyBaseSalary + expectedOvertimePay + expectedNightPay + expectedHolidayPay);
+            } else {
+                illegalCases++;
+                assertThatThrownBy(() -> service.save(c))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("최저임금");
+            }
+        }
+
+        assertThat(legalCases).isGreaterThan(0);
+        assertThat(illegalCases).isGreaterThan(0);
+        assertThat(legalCases + illegalCases).isEqualTo(5_000);
+    }
+
+    @Test
+    @DisplayName("수습 감액 요건 충족 시 월 기본급은 최저임금 90% 월 하한까지 허용된다")
     void allowsSalaryDownToProbationFloor() {
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
-        // 통상시급 9,569원 — 일반 하한(10,320) 미달이지만 수습 하한(10,320×0.9=9,288) 이상
+        // 월 기본급 2,000,000원 — 일반 월 하한(2,156,880) 미달이지만 수습 월 하한(1,941,192) 이상
         LaborContract c = validSalary(2_000_000);
         c.setPeriodType(ContractPeriodType.FIXED_TERM);
         c.setStartDate(LocalDate.of(2026, 1, 1));
@@ -568,9 +712,9 @@ class LaborContractServiceTest {
     }
 
     @Test
-    @DisplayName("수습 감액을 적용해도 90% 하한 미만 월급(통상시급 9,091원 < 9,288원)은 거부된다")
+    @DisplayName("수습 감액을 적용해도 90% 월 하한 미만 월급은 거부된다")
     void rejectsSalaryBelowProbationFloor() {
-        // 1,900,000 ÷ 209h = 9,091원 < 9,288원(수습 하한)
+        // 1,900,000원 < 1,941,192원(2026 최저임금 90% × 209h)
         LaborContract c = validSalary(1_900_000);
         c.setPeriodType(ContractPeriodType.FIXED_TERM);
         c.setStartDate(LocalDate.of(2026, 1, 1));
@@ -582,7 +726,7 @@ class LaborContractServiceTest {
 
         assertThatThrownBy(() -> service.save(c))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("9,288");
+                .hasMessageContaining("1,941,192");
     }
 
     @Test
@@ -611,5 +755,45 @@ class LaborContractServiceTest {
         c.setSimpleLabor(false);
 
         assertThatCode(() -> service.save(c)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("발송 전(sentAt=null) 계약은 서명이 거부된다 — create()만 되고 send()가 안/못 된 초안 보호")
+    void sign_beforeSent_throws() {
+        LaborContract c = valid();
+        when(repository.findById(10L)).thenReturn(Optional.of(c));
+
+        assertThatThrownBy(() -> service.sign(10L, 1L, null))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("발송");
+
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("발송된(markSent) 계약은 서명이 허용된다")
+    void sign_afterSent_succeeds() {
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        LaborContract c = valid();
+        c.markSent(java.time.LocalDateTime.now());
+        when(repository.findById(10L)).thenReturn(Optional.of(c));
+
+        LaborContract signed = service.sign(10L, 1L, null);
+
+        assertThat(signed.isSigned()).isTrue();
+    }
+
+    @Test
+    @DisplayName("markSent는 재호출해도 최초 발송 시각을 보존한다(멱등)")
+    void markSent_isIdempotent() {
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        LaborContract c = valid();
+        when(repository.findById(10L)).thenReturn(Optional.of(c));
+
+        LaborContract first = service.markSent(10L);
+        var firstSentAt = first.getSentAt();
+        LaborContract second = service.markSent(10L);
+
+        assertThat(second.getSentAt()).isEqualTo(firstSentAt);
     }
 }

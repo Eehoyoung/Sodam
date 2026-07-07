@@ -37,6 +37,7 @@ public class WorkShiftService {
     private final EmployeeStoreRelationRepository relationRepository;
     private final StoreRepository storeRepository;
     private final NotificationService notificationService;
+    private final FixedScheduleService fixedScheduleService;
 
     @Transactional
     public WorkShiftResponse create(Long storeId, WorkShiftCreateRequest req) {
@@ -80,9 +81,13 @@ public class WorkShiftService {
         return shift;
     }
 
-    /** 매장 기간 조회(사장). */
+    /**
+     * 매장 기간 조회(사장). 조회 직전에 월급제 정규직 고정 스케줄을 조회 범위(to)까지 지연
+     * 생성해 둔다 — 보드를 열 때마다 자연히 채워지므로 별도 배치 없이 "항상 고정"이 유지된다.
+     */
     @Transactional(readOnly = true)
     public List<WorkShiftResponse> listForStore(Long storeId, LocalDate from, LocalDate to) {
+        storeRepository.findById(storeId).ifPresent(store -> fixedScheduleService.ensureGeneratedThrough(store, to));
         return repository.findByStoreIdAndShiftDateBetweenOrderByShiftDateAsc(storeId, from, to).stream()
                 .map(WorkShiftResponse::from)
                 .toList();

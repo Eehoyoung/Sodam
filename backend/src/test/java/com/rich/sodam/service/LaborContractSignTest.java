@@ -47,7 +47,9 @@ class LaborContractSignTest {
         c.setAnnualLeaveNote("§60에 따라 부여");
         c.setWorkLocation("소담매장 서울점");
         c.setJobDescription("홀 서빙");
-        return service.save(c);
+        LaborContract saved = service.save(c);
+        // 서명은 발송된 계약에서만 허용되므로(LaborContractController#send 와 동일 경로) 발송까지 마친다.
+        return service.markSent(saved.getId());
     }
 
     @Test

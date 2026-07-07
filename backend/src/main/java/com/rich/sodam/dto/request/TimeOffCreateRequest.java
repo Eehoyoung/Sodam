@@ -1,12 +1,17 @@
 package com.rich.sodam.dto.request;
 
+import com.rich.sodam.domain.type.TimeOffLeaveType;
+import com.rich.sodam.domain.type.TimeOffUnit;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 /**
- * RN 호환을 위한 JSON 본문 기반 휴가 생성 요청 DTO
+ * RN 호환을 위한 JSON 본문 기반 휴가 생성 요청 DTO.
+ *
+ * <p>{@code leaveType}/{@code unit}은 생략 시 각각 ANNUAL/FULL_DAY 로 처리된다(기존 FE 호환).</p>
  */
 public class TimeOffCreateRequest {
 
@@ -26,6 +31,18 @@ public class TimeOffCreateRequest {
 
     @NotNull
     private String reason;
+
+    /** 휴가 유형(생략 시 ANNUAL). */
+    private TimeOffLeaveType leaveType;
+
+    /** 신청 단위(생략 시 FULL_DAY). */
+    private TimeOffUnit unit;
+
+    /** unit=HOURS 일 때만 사용. */
+    private LocalTime startTime;
+
+    /** unit=HOURS 일 때만 사용. */
+    private LocalTime endTime;
 
     public Long getEmployeeId() {
         return employeeId;
@@ -65,5 +82,37 @@ public class TimeOffCreateRequest {
 
     public void setReason(String reason) {
         this.reason = reason;
+    }
+
+    public TimeOffLeaveType getLeaveType() {
+        return leaveType;
+    }
+
+    public void setLeaveType(TimeOffLeaveType leaveType) {
+        this.leaveType = leaveType;
+    }
+
+    public TimeOffUnit getUnit() {
+        return unit;
+    }
+
+    public void setUnit(TimeOffUnit unit) {
+        this.unit = unit;
+    }
+
+    public LocalTime getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(LocalTime startTime) {
+        this.startTime = startTime;
+    }
+
+    public LocalTime getEndTime() {
+        return endTime;
+    }
+
+    public void setEndTime(LocalTime endTime) {
+        this.endTime = endTime;
     }
 }

@@ -1,6 +1,7 @@
 package com.rich.sodam.dto.response;
 
 import com.rich.sodam.core.payroll.constant.MinimumWage;
+import com.rich.sodam.core.payroll.wage.MonthlySalaryCalculator;
 import com.rich.sodam.core.payroll.wage.WorkScheduleDay;
 import com.rich.sodam.core.payroll.weeklyallowance.LaborLawConstants;
 import com.rich.sodam.domain.LaborContract;
@@ -22,9 +23,11 @@ import java.util.List;
  * @param salaryBaseHourlyWage      스케줄 자동 산출 기준시급(원). 스케줄 모드에서만 값 존재
  * @param scheduleDerivedSalary     월급·연봉이 스케줄에서 자동 산출되었는지(SALARY + 스케줄 존재)
  * @param weeklyAllowanceApplicable 주 소정근로시간이 15시간 이상이라 §55 휴일과 §60 연차가 적용되는지
- * @param minimumWageCompliant      시급이 계약연도(또는 올해) 최저임금 이상인지(합법 수습 감액은 반영)
+ * @param minimumWageCompliant      시급 또는 월 기본급이 계약연도(또는 올해) 최저임금 하한 이상인지(합법 수습 감액은 반영)
  * @param minimumWageReferenceYear  준수 여부 판정에 사용한 연도
  * @param minimumWageReferenceValue 판정에 사용한 해당 연도 시간급 최저임금(원)
+ * @param sent                      사장이 실제로 발송했는지(sentAt != null). false 면 아직 작성(임시저장) 단계.
+ * @param sentAt                    발송 시각(미발송이면 null)
  * @param signed                    직원 서명 완료 여부(employeeSignedAt != null)
  * @param signedAt                  서명 시각(미서명이면 null)
  * @param hasSignatureImage         서명 이미지 첨부 여부(응답 경량화 — 목록에서는 실제 이미지 생략 가능)
@@ -85,6 +88,8 @@ public record LaborContractResponse(
         boolean minimumWageCompliant,
         int minimumWageReferenceYear,
         int minimumWageReferenceValue,
+        boolean sent,
+        LocalDateTime sentAt,
         boolean signed,
         LocalDateTime signedAt,
         boolean hasSignatureImage,
@@ -99,8 +104,17 @@ public record LaborContractResponse(
                 ? c.getProbationWageRate()
                 : 1.0;
         int requiredHourlyWage = (int) Math.ceil(refValue * wageThresholdRate);
-        boolean minWageOk = c.getHourlyWage() == null
-                || c.getHourlyWage() >= requiredHourlyWage;
+        boolean salaryContract = c.getPayType() == LaborContractPayType.SALARY;
+        boolean minWageOk;
+        if (salaryContract && c.getMonthlyBaseSalary() != null && c.getContractedHoursPerWeek() != null) {
+            int standardHours = MonthlySalaryCalculator.monthlyStandardHoursForWeeklyHours(
+                    c.getContractedHoursPerWeek());
+            int requiredMonthlyBaseSalary = (int) Math.ceil(refValue * wageThresholdRate * standardHours);
+            minWageOk = c.getMonthlyBaseSalary() >= requiredMonthlyBaseSalary;
+        } else {
+            Integer effectiveHourlyWage = salaryContract ? c.getOrdinaryHourlyWage() : c.getHourlyWage();
+            minWageOk = effectiveHourlyWage == null || effectiveHourlyWage >= requiredHourlyWage;
+        }
         boolean weeklyAllowanceApplicable = c.getContractedHoursPerWeek() != null
                 && c.getContractedHoursPerWeek() >= LaborLawConstants.MIN_WEEKLY_HOURS_FOR_ALLOWANCE.doubleValue();
 
@@ -160,6 +174,8 @@ public record LaborContractResponse(
                 minWageOk,
                 refYear,
                 refValue,
+                c.isSent(),
+                c.getSentAt(),
                 c.isSigned(),
                 c.getEmployeeSignedAt(),
                 c.getEmployeeSignatureImage() != null,

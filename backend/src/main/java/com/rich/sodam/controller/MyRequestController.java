@@ -58,7 +58,7 @@ public class MyRequestController {
                     ? " ~ " + t.getEndDate() : "");
             result.add(new MyRequestResponse(
                     "timeoff", t.getId(), title, date,
-                    t.getStatus().name().toLowerCase(), t.getReason(), null));
+                    t.getStatus().name().toLowerCase(), t.getReason(), t.getRejectReason()));
         }
 
         result.sort(Comparator.comparing(

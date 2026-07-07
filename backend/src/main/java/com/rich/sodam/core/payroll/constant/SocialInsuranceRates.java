@@ -74,11 +74,6 @@ public final class SocialInsuranceRates {
         return entry.getValue();
     }
 
-    /** 국민연금 기준소득월액 하한(원). 현행 적용분은 {@link #pensionBaseMin(LocalDate)} 사용. */
-    public static final BigDecimal PENSION_BASE_MIN = pensionBaseMin(LocalDate.now());
-    /** 국민연금 기준소득월액 상한(원). 현행 적용분은 {@link #pensionBaseMax(LocalDate)} 사용. */
-    public static final BigDecimal PENSION_BASE_MAX = pensionBaseMax(LocalDate.now());
-
     /** 건강보험 근로자 부담률 (총 7.19%의 1/2). */
     public static final BigDecimal HEALTH_EMPLOYEE = new BigDecimal("0.03595");
     /** 장기요양보험료 = 건강보험료액 × 이 비율 (0.9448/7.19). 보수월액 아님에 주의. */

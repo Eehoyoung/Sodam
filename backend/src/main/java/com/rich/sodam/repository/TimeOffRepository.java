@@ -35,6 +35,19 @@ public interface TimeOffRepository extends JpaRepository<TimeOff, Long> {
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
 
+    /**
+     * 동일 직원·매장에서 기간이 겹치고 상태가 PENDING/APPROVED 인 신청 조회 — 중복/중첩 신청 차단용.
+     * 거부(REJECTED)된 신청은 다시 같은 기간을 신청할 수 있어야 하므로 제외한다.
+     */
+    @Query("SELECT t FROM TimeOff t WHERE t.employee = :employee AND t.store = :store " +
+            "AND t.status IN :statuses AND t.startDate <= :endDate AND t.endDate >= :startDate")
+    List<TimeOff> findOverlappingForEmployee(
+            @Param("employee") EmployeeProfile employee,
+            @Param("store") Store store,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("statuses") List<TimeOffStatus> statuses);
+
     // 특정 사장이 소유한 모든 매장의 대기 중인 휴가 신청 조회
     @Query("SELECT t FROM TimeOff t JOIN t.store s JOIN MasterStoreRelation msr ON s = msr.store " +
             "WHERE msr.masterProfile.id = :masterId AND t.status = 'PENDING'")
@@ -52,4 +65,14 @@ public interface TimeOffRepository extends JpaRepository<TimeOff, Long> {
     int countTimeOffsByStoreIdAndStatus(
             @Param("storeId") Long storeId,
             @Param("status") TimeOffStatus status);
+
+    /**
+     * 근태 이상 감지용 — 해당 날짜가 승인된 휴가로 이미 덮여있는지. 덮여있으면 결근으로 감지하지 않는다
+     * (휴가 승인 흐름과 이중으로 충돌하지 않도록).
+     */
+    @Query("SELECT COUNT(t) > 0 FROM TimeOff t WHERE t.employee.id = :employeeId AND t.store.id = :storeId " +
+            "AND t.status = com.rich.sodam.domain.type.TimeOffStatus.APPROVED " +
+            "AND t.startDate <= :date AND t.endDate >= :date")
+    boolean existsApprovedCoveringDate(@Param("employeeId") Long employeeId, @Param("storeId") Long storeId,
+                                       @Param("date") LocalDate date);
 }
