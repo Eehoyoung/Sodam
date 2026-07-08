@@ -23,10 +23,15 @@ CREATE INDEX idx_shift_swap_request_approved_employee_id ON shift_swap_request (
 -- (이 세션에서는 로컬 docker MySQL 이 기동돼 있지 않아 실측 스캔을 수행하지 못했다 — 운영 적용 전 필수 확인.)
 CREATE UNIQUE INDEX uq_master_store_relation ON master_store_relation (master_id, store_id);
 
--- referral.referee_user_id 는 V1__baseline.sql 이 이미 비유니크 idx_referral_referee 를 만들어뒀다 —
--- 같은 이름으로 유니크 재생성하려면 먼저 drop 해야 한다(엔티티 @Index(unique=true) 도 동일 이름 유지).
-DROP INDEX idx_referral_referee ON referral;
-CREATE UNIQUE INDEX idx_referral_referee ON referral (referee_user_id);
+-- referral.referee_user_id 는 V1__baseline.sql 이 이미 비유니크 idx_referral_referee 를 만들어뒀고,
+-- 그 인덱스는 referral.referee_user_id -> user.user_id FK(FKag8q0as5xk0jgk2c8jxvhuboc)가 의존하고
+-- 있다 — 실제 MySQL에 적용해보니 DROP INDEX와 CREATE UNIQUE INDEX를 별도 statement로 나누면 "FK가
+-- 필요로 하는 인덱스는 못 지운다"(Error 1553)로 실패한다(로컬 docker MySQL 초기화 후 재현·확인).
+-- 하나의 ALTER TABLE 문 안에서 DROP+ADD를 함께 수행해야 InnoDB가 FK를 새 인덱스로 원자적으로
+-- 재연결한다.
+ALTER TABLE referral
+    DROP INDEX idx_referral_referee,
+    ADD UNIQUE INDEX idx_referral_referee (referee_user_id);
 
 -- payroll(employee_id, store_id, start_date, end_date) UNIQUE 는 여기 포함하지 않음 — Payroll.startDate/
 -- endDate가 nullable이고, 배치가 아직 단일 대형 트랜잭션이라 Phase 5(트랜잭션 분할) 완료 후에 추가.
