@@ -81,31 +81,29 @@ describe('OwnerDashboardScreen', () => {
         jest.clearAllMocks();
     });
 
-    test('마운트 시 stores + today + month-to-date 호출', async () => {
+    test('마운트 시 stores + 대시보드 합성 엔드포인트 호출(순차 2콜 → 1콜, Phase 9)', async () => {
         apiMock.get.mockImplementation((url: string) => {
             if (url === '/api/stores/master/current') {
                 return Promise.resolve({
                     data: [{id: 10, storeName: '소담 광교점'}],
                 }) as any;
             }
-            if (url.includes('/stats/today')) {
+            if (url.includes('/stats/dashboard')) {
                 return Promise.resolve({
                     data: {
-                        storeId: 10,
-                        storeName: '소담 광교점',
-                        checkedInCount: 3,
-                        totalActiveEmployees: 5,
-                        pendingEmployees: ['김직원'],
-                    },
-                }) as any;
-            }
-            if (url.includes('/stats/payroll/month-to-date')) {
-                return Promise.resolve({
-                    data: {
-                        totalGross: 1000000,
-                        totalNet: 900000,
-                        totalWorkingHours: 100,
-                        daysRemainingInMonth: 10,
+                        today: {
+                            storeId: 10,
+                            storeName: '소담 광교점',
+                            checkedInCount: 3,
+                            totalActiveEmployees: 5,
+                            pendingEmployees: ['김직원'],
+                        },
+                        payroll: {
+                            totalGross: 1000000,
+                            totalNet: 900000,
+                            totalWorkingHours: 100,
+                            daysRemainingInMonth: 10,
+                        },
                     },
                 }) as any;
             }
@@ -122,10 +120,10 @@ describe('OwnerDashboardScreen', () => {
         expect(urls).toEqual(
             expect.arrayContaining([
                 '/api/stores/master/current',
-                '/api/store-queries/10/stats/today',
-                '/api/store-queries/10/stats/payroll/month-to-date',
+                '/api/store-queries/10/stats/dashboard',
             ]),
         );
+        expect(urls).not.toEqual(expect.arrayContaining(['/api/store-queries/10/stats/today']));
         expect(renderer).toBeTruthy();
     });
 
@@ -134,14 +132,22 @@ describe('OwnerDashboardScreen', () => {
             if (url === '/api/stores/master/current') {
                 return Promise.resolve({data: [{id: 10, storeName: '소담 광교점'}]}) as any;
             }
-            if (url.includes('/stats/today')) {
+            if (url.includes('/stats/dashboard')) {
                 return Promise.resolve({
                     data: {
-                        storeId: 10,
-                        storeName: '소담 광교점',
-                        checkedInCount: 0,
-                        totalActiveEmployees: 0,
-                        pendingEmployees: [],
+                        today: {
+                            storeId: 10,
+                            storeName: '소담 광교점',
+                            checkedInCount: 0,
+                            totalActiveEmployees: 0,
+                            pendingEmployees: [],
+                        },
+                        payroll: {
+                            totalGross: 0,
+                            totalNet: 0,
+                            totalWorkingHours: 0,
+                            daysRemainingInMonth: 0,
+                        },
                     },
                 }) as any;
             }
@@ -164,24 +170,22 @@ describe('OwnerDashboardScreen', () => {
             if (url === '/api/stores/master/current') {
                 return Promise.resolve({data: [{id: 10, storeName: '소담 광교점'}]}) as any;
             }
-            if (url.includes('/stats/today')) {
+            if (url.includes('/stats/dashboard')) {
                 return Promise.resolve({
                     data: {
-                        storeId: 10,
-                        storeName: '소담 광교점',
-                        checkedInCount: 3,
-                        totalActiveEmployees: 5,
-                        pendingEmployees: ['김직원', '박직원'],
-                    },
-                }) as any;
-            }
-            if (url.includes('/stats/payroll/month-to-date')) {
-                return Promise.resolve({
-                    data: {
-                        totalGross: 0,
-                        totalNet: 0,
-                        totalWorkingHours: 0,
-                        daysRemainingInMonth: 5,
+                        today: {
+                            storeId: 10,
+                            storeName: '소담 광교점',
+                            checkedInCount: 3,
+                            totalActiveEmployees: 5,
+                            pendingEmployees: ['김직원', '박직원'],
+                        },
+                        payroll: {
+                            totalGross: 0,
+                            totalNet: 0,
+                            totalWorkingHours: 0,
+                            daysRemainingInMonth: 5,
+                        },
                     },
                 }) as any;
             }
@@ -224,14 +228,22 @@ describe('OwnerDashboardScreen', () => {
             if (url === '/api/stores/master/current') {
                 return Promise.resolve({data: [{id: 10, storeName: '소담 광교점'}]}) as any;
             }
-            if (url.includes('/stats/today')) {
+            if (url.includes('/stats/dashboard')) {
                 return Promise.resolve({
                     data: {
-                        storeId: 10,
-                        storeName: '소담 광교점',
-                        checkedInCount: 5,
-                        totalActiveEmployees: 5,
-                        pendingEmployees: [],
+                        today: {
+                            storeId: 10,
+                            storeName: '소담 광교점',
+                            checkedInCount: 5,
+                            totalActiveEmployees: 5,
+                            pendingEmployees: [],
+                        },
+                        payroll: {
+                            totalGross: 0,
+                            totalNet: 0,
+                            totalWorkingHours: 0,
+                            daysRemainingInMonth: 0,
+                        },
                     },
                 }) as any;
             }

@@ -86,11 +86,13 @@ const OwnerDashboardScreen: React.FC = () => {
                 setToday(null);
                 return;
             }
-            const todayRes = await api.get<TodayStats>(`/api/store-queries/${firstStore.id}/stats/today`).catch(() => null);
-            const monthlyRes = await api.get<MonthPayroll>(`/api/store-queries/${firstStore.id}/stats/payroll/month-to-date`).catch(() => null);
+            // 순차 2콜(today → month-to-date) 대신 합성 엔드포인트 1콜(Phase 9, DB_OPTIMIZATION_PLAN.md).
+            const dashboardRes = await api
+                .get<{today: TodayStats; payroll: MonthPayroll}>(`/api/store-queries/${firstStore.id}/stats/dashboard`)
+                .catch(() => null);
 
             setToday(
-                todayRes?.data ?? {
+                dashboardRes?.data.today ?? {
                     storeId: firstStore.id,
                     storeName: firstStore.storeName ?? '내 매장',
                     checkedInCount: 0,
@@ -99,7 +101,7 @@ const OwnerDashboardScreen: React.FC = () => {
                 },
             );
             setMonthly(
-                monthlyRes?.data ?? {
+                dashboardRes?.data.payroll ?? {
                     totalGross: 0,
                     totalNet: 0,
                     totalWorkingHours: 0,
