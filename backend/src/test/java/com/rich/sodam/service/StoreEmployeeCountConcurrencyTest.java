@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
@@ -28,9 +29,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>클래스에 {@code @Transactional}을 걸지 않는다 — 걸면 테스트 전체가 하나의(롤백되는) 트랜잭션에
  * 묶여 각 서비스 호출이 실제로 커밋되지 않으므로, 동시 스레드 간 실제 DB 레벨 경합을 재현할 수 없다.</p>
+ *
+ * <p>{@code @DirtiesContext}로 이 테스트만 전용 Spring 컨텍스트(전용 H2 인메모리 DB)를 새로 띄운다 —
+ * 전체 스위트 실행 시 캐시된 컨텍스트를 다른 테스트 수백 개와 공유하면, 이 테스트가 만드는 7-스레드
+ * 동시 커밋이 그 시점까지 누적된 다른 테스트들의 커넥션 풀 경합과 겹쳐 드물게 H2 IDENTITY 채번이
+ * 충돌하는 현상을 관찰했다(단독 실행 시 100% 통과, 전체 스위트 중 1회 관찰 — Phase 5 세션에서 발견,
+ * 이 클래스가 검증하는 비관적 락 로직 자체의 결함은 아님). 전용 컨텍스트로 격리해 재현 조건을 없앤다.</p>
  */
 @SpringBootTest
 @ActiveProfiles("test")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class StoreEmployeeCountConcurrencyTest {
 
     @Autowired private StoreManagementServiceImpl service;

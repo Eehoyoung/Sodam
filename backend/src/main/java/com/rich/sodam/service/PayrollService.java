@@ -1361,40 +1361,9 @@ public class PayrollService {
         }
     }
 
-    /**
-     * 월별 급여 계산 스케줄러
-     * 매월 1일 01:00에 실행되어 지난 달의 급여를 계산합니다.
-     */
-    @Scheduled(cron = "0 0 1 1 * ?")
-    @Transactional
-    public void calculateMonthlyPayrolls() {
-        // 지난 달의 시작일과 종료일 계산
-        YearMonth previousMonth = YearMonth.now().minusMonths(1);
-        LocalDate startDate = previousMonth.atDay(1);
-        LocalDate endDate = previousMonth.atEndOfMonth();
-
-        log.info("월별 급여 계산 시작: {} ~ {}", startDate, endDate);
-
-        // 모든 매장 조회
-        List<Store> stores = storeRepository.findAll();
-
-        for (Store store : stores) {
-            // 매장의 모든 직원 관계 조회
-            List<EmployeeStoreRelation> relations = employeeStoreRelationRepository.findByStore(store);
-
-            for (EmployeeStoreRelation relation : relations) {
-                try {
-                    // 급여 계산
-                    calculatePayroll(relation.getEmployeeProfile().getId(), store.getId(), startDate, endDate);
-                    log.info("급여 계산 완료: 직원ID={}, 매장ID={}", relation.getEmployeeProfile().getId(), store.getId());
-                } catch (Exception e) {
-                    log.error("급여 계산 실패: 직원ID={}, 매장ID={}, 오류={}",
-                            relation.getEmployeeProfile().getId(), store.getId(), e.getMessage(), e);
-                }
-            }
-        }
-
-        log.info("월별 급여 계산 완료");
-    }
+    // 월별 급여 계산 스케줄러는 PayrollMonthlyBatchScheduler로 이동했다(Phase 5, §2.8(e)) —
+    // 매장×직원 전체를 하나의 대형 트랜잭션으로 묶던 문제를 직원 단위 REQUIRES_NEW 트랜잭션으로
+    // 쪼개기 위해, 오케스트레이션 루프를 별도 빈으로 분리했다(순환 의존 회피 — PayrollBatchExecutor
+    // Javadoc 참조).
 
 }
