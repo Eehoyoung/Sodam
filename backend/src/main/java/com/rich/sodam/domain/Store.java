@@ -124,6 +124,15 @@ public class Store {
     private Boolean fiveOrMoreEmployees;
 
     /**
+     * 사업자 단위(BusinessEntity) 연결(DB_OPTIMIZATION_PLAN.md §2.13, Phase 7 A단계 — 스키마만 도입).
+     * 자연키(사업자등록번호)가 아닌 대리키로 연결한다. A단계 마이그레이션이 기존 매장 전량을 1:1로
+     * 채워 넣지만, 이 필드 자체는 nullable로 둔다 — B단계(그룹핑 UI)에서 매장 생성/등록 플로우가
+     * 함께 배선되기 전까지는 신규 매장에 값이 채워지지 않는다(현재 API/화면에서 읽거나 쓰지 않음).
+     */
+    @Column(name = "business_entity_id")
+    private Long businessEntityId;
+
+    /**
      * 활성(재직) 직원 수 — DB 영속 아님(@Transient). 조회 시 서비스가 채워 응답에 직렬화한다.
      * (없으면 FE 가 undefined→0 으로 처리해 홈/매장카드 "직원 0명" 오표시가 났다.)
      */
