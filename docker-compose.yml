@@ -104,6 +104,12 @@ services:
       - --max-connections=200
       - --slow-query-log=1
       - --long-query-time=2
+      # DB_OPTIMIZATION_PLAN.md Phase 8 — MySQL 기본값(128MB)은 로컬 개발 전용 디폴트라 부하테스트
+      # 결과가 디스크 I/O 병목에 파묻힌다. 실제 운영 인스턴스 사양이 아직 확정되지 않아, 소상공인
+      # SaaS 초기 규모(2 vCPU/4GB급 관리형 DB 인스턴스를 가정)에서 통상적인 "물리 메모리의 50~70%"
+      # 가이드라인을 적용해 1GB로 설정했다 — 실제 운영 인스턴스 스펙이 정해지면 이 값을 그에 맞춰
+      # 재조정할 것(가정값이며 확정 사양 아님).
+      - --innodb-buffer-pool-size=1073741824
     ports:
       - "${SODAM_DB_PORT:-13306}:3306"
     volumes:
