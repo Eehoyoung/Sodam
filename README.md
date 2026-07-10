@@ -35,6 +35,24 @@ npm run start
 npm run android
 ```
 
+## DB 스키마 관리
+
+`docker compose up`으로 띄우는 로컬 스택은 **Flyway**(`backend/src/main/resources/db/migration/V*.sql`)가
+스키마를 관리합니다 — 엔티티를 바꾸면 Hibernate가 알아서 컬럼을 추가해주지 않으니, 반드시 대응하는
+`V{n}__설명.sql` 마이그레이션 파일을 같은 커밋에 함께 작성하세요(`.claude/rules/api-design.md` 참조).
+부팅 시 `spring.jpa.hibernate.ddl-auto=validate`가 엔티티-스키마 불일치를 즉시 잡아냅니다(운영과 동일
+경로).
+
+이미 있는 V파일은 절대 수정하지 마세요(체크섬이 깨져 다른 환경에서 검증 실패) — 스키마를 더 바꿔야 하면
+새 V파일을 추가하세요.
+
+로컬 볼륨을 완전히 초기화하고 처음부터 Flyway로 다시 만들고 싶다면:
+
+```powershell
+docker compose down -v   # sodam_mysql_data 볼륨 삭제 — 로컬 개발 데이터 전부 사라짐
+docker compose up -d --build
+```
+
 ## 개발 계정
 
 Dev 프로필 실행 시 기본 계정이 자동 생성됩니다.

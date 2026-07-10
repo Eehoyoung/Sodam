@@ -67,10 +67,20 @@ services:
       # 타임존
       TZ: Asia/Seoul
       JAVA_OPTS: "-XX:+UseG1GC -XX:MaxRAMPercentage=75"
-      # 운영 yml 부재 fallback — actuator health 노출 + Hibernate 스키마 자동 생성
+      # 운영 yml 부재 fallback — actuator health 노출
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
       MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: when-authorized
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      # DB_OPTIMIZATION_PLAN.md Phase 3(2026-07-07 사용자 확정, 이 계획서의 다른 모든 Phase 완료 후 착수) —
+      # 로컬 docker-compose도 운영과 동일하게 Flyway가 스키마를 관리하도록 전환한다. 기존
+      # SPRING_JPA_HIBERNATE_DDL_AUTO=update는 Flyway를 완전히 우회해 V파일 누락을 육안으로 확인하기
+      # 어렵게 만들었다(§2.3) — validate로 전환해 "엔티티와 스키마가 어긋나면 부팅 실패"로 즉시 드러나게
+      # 한다. 기존 로컬 볼륨은 ddl-auto=update로 누적된 상태라 flyway_schema_history가 없으므로
+      # baseline-on-migrate + baseline-version으로 첫 부팅 시 자동 baseline한다(V51까지 이미 반영된
+      # 상태로 간주 — 신규 V파일은 V52부터).
+      DDL_AUTO: validate
+      FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+      SPRING_FLYWAY_BASELINE_VERSION: "51"
     ports:
       - "${SODAM_BE_PORT:-7070}:7070"
     volumes:
