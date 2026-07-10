@@ -19,4 +19,11 @@ public interface NotificationInboxRepository extends JpaRepository<NotificationI
 
     @Query("SELECT n FROM NotificationInbox n WHERE n.id = :id AND n.user.id = :userId")
     Optional<NotificationInbox> findByIdAndOwner(@Param("id") Long id, @Param("userId") Long userId);
+
+    /**
+     * 보존기간 만료 스캔용(Phase 4, §2.5) — 카테고리별로 보존기간이 달라 정책마다 대상 카테고리
+     * 집합과 cutoff를 다르게 넘긴다({@code com.rich.sodam.service.retention} 패키지의 3개 정책).
+     */
+    List<NotificationInbox> findByCategoryInAndCreatedAtLessThan(
+            List<NotificationInbox.Category> categories, LocalDateTime cutoff);
 }

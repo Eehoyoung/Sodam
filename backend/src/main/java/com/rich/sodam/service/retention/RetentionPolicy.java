@@ -13,7 +13,16 @@ import java.util.List;
  */
 public interface RetentionPolicy {
 
-    /** {@code retention_purge_schedule.table_name}과 일치해야 한다. */
+    /**
+     * {@code retention_purge_schedule.table_name}에 기록되는 정책 식별 키.
+     *
+     * <p>모든 정책 인스턴스에서 유일해야 한다({@link RetentionPurgeService}가 이 값으로
+     * 스케줄 멱등성 판정 + 파기 시점 정책 조회를 함께 한다) — 하지만 반드시 실제 SQL 테이블명과
+     * 1:1일 필요는 없다. 예를 들어 {@code notification_inbox}는 카테고리별로 보존기간이 다르므로
+     * (§2.5) 같은 물리 테이블을 대상으로 하는 정책이 여러 개 있을 수 있다(예:
+     * {@code "notification_inbox_hr_notice"}, {@code "notification_inbox_billing"}) — 이 경우
+     * 각 정책은 자신이 담당하는 카테고리만 {@link #findExpired}에서 걸러내야 한다.
+     */
     String tableName();
 
     /** 법정/정책 보존기간(예: 3년, 5년, 2년, 1년). */
