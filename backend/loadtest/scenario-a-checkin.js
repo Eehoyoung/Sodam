@@ -37,6 +37,9 @@ export const options = {
             maxDuration: __ENV.DURATION || '2m',
         },
     },
+    // 초대형 규모(VUS 2000)에서 setup()이 로그인 2,000회+매장조회 2,000회를 순차 실행하면 기본
+    // 60초를 넘긴다(실측 발견) — 여유 있게 늘림.
+    setupTimeout: '10m',
     thresholds: {
         sodam_checkin_duration: ['p(95)<1000'],
         sodam_checkout_duration: ['p(95)<1000'],

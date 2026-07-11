@@ -20,6 +20,8 @@ const dashboardTrend = new Trend('sodam_dashboard_duration');
 export const options = {
     vus: parseInt(__ENV.VUS || '30', 10),
     duration: __ENV.DURATION || '1m',
+    // 초대형 규모에서 setup()의 순차 로그인이 기본 60초를 넘길 수 있어 여유 있게 늘림(scenario-a 참조).
+    setupTimeout: '10m',
     thresholds: {
         sodam_employee_list_duration: ['p(95)<800'],
         sodam_dashboard_duration: ['p(95)<800'],

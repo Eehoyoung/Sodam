@@ -266,7 +266,7 @@ public class LaborContract {
      * 미제공(동의 버튼 방식) 시 null 허용 — 그 경우 employeeSignedAt 만으로 서명 인정.
      */
     @Lob
-    @Column(name = "employee_signature_image")
+    @Column(name = "employee_signature_image", length = 65535)
     private String employeeSignatureImage;
 
     private LocalDateTime createdAt;

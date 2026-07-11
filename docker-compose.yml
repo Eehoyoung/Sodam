@@ -32,7 +32,10 @@ services:
       SPRING_PROFILES_ACTIVE: prod
       SERVER_PORT: 7070
       # DB 연결 — MySQL 컨테이너 호스트
-      DB_URL: jdbc:mysql://sodam-mysql:3306/sodam?serverTimezone=Asia/Seoul&useSSL=false&allowPublicKeyRetrieval=true
+      # rewriteBatchedStatements=true — JDBC 배치 INSERT를 다건 VALUES 하나로 재작성해 네트워크 왕복을
+      # 줄인다(MySQL Connector/J 표준 최적화, 동작 변화 없음). Phase 8 초대형 규모 시더(LoadTestStoreSeeder
+      # 의 JdbcTemplate.batchUpdate)가 이 옵션 없이는 매우 느리다 — 운영에도 이롭도록 전역 적용.
+      DB_URL: jdbc:mysql://sodam-mysql:3306/sodam?serverTimezone=Asia/Seoul&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
       DB_USERNAME: sodam
       DB_PASSWORD: ${SODAM_DB_PASSWORD:-sodam_dev_pass}
       DB_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
