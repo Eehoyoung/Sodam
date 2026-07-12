@@ -26,6 +26,7 @@ import EmployeeAttendanceHome from '../features/attendance/screens/EmployeeAtten
 import OwnerDashboardScreen from '../features/home/screens/OwnerDashboardScreen';
 import EmployeeDetailScreen from '../features/store/screens/EmployeeDetailScreen';
 import EmployeeManagementScreen from '../features/store/screens/EmployeeManagementScreen';
+import NfcTagManagementScreen from '../features/store/screens/NfcTagManagementScreen';
 import PayrollRunScreen from '../features/salary/screens/PayrollRunScreen';
 import JoinStoreByCodeScreen from '../features/store/screens/JoinStoreByCodeScreen';
 import AttendanceCorrectionRequestScreen from '../features/attendance/screens/AttendanceCorrectionRequestScreen';
@@ -87,6 +88,11 @@ import AttendanceNoticeScreen from '../features/attendance/screens/AttendanceNot
 import HiringCostSimulatorScreen from '../features/risk/screens/HiringCostSimulatorScreen';
 import SwapRequestsScreen from '../features/shift/screens/SwapRequestsScreen';
 import SwapBoardScreen from '../features/shift/screens/SwapBoardScreen';
+import EmployeeRecruitmentScreen from '../features/recruitment/screens/EmployeeRecruitmentScreen';
+import JobSeekerListScreen from '../features/recruitment/screens/JobSeekerListScreen';
+import JobSeekerDetailScreen from '../features/recruitment/screens/JobSeekerDetailScreen';
+import JobPostingDetailScreen from '../features/recruitment/screens/JobPostingDetailScreen';
+import type {JobPostingNearbyItem, JobSeekerListItem} from '../features/recruitment/types';
 import type {ReceiptDraft} from '../features/purchase/types';
 import appHeaderOptions from './appHeaderOptions';
 
@@ -116,6 +122,7 @@ export type HomeStackParamList = {
     EmployeeAttendanceHome: undefined;
     EmployeeDetail: { employeeId: number; storeId: number };
     EmployeeManagement: { storeId: number };
+    NfcTagManagement: { storeId: number };
     PayrollRun: { storeId?: number } | undefined;
     JoinStoreByCode: undefined;
     AttendanceCorrectionRequest: {
@@ -183,6 +190,16 @@ export type HomeStackParamList = {
     SwapRequests: {storeId: number};
     SwapBoard: {storeId?: number} | undefined;
     HiringCost: undefined;
+    // 인증채용(구직·구인) 허브 — 260711_작업통합.md Part 2 §19.4.
+    // 세그먼트 파라미터로 초기 탭 지정(profile=구직 설정/nearby=주변 구인/inbox=채용함).
+    EmployeeRecruitment: {tab?: 'profile' | 'nearby' | 'inbox'} | undefined;
+    // [사장] 인증채용 — 260711_작업통합.md Part 2 §7.4·§7.4-2(Phase 4).
+    JobSeekerList: {storeId: number};
+    // 리스트 항목을 라우트 파라미터로 그대로 전달(추가 API 호출 없음, §7.4-2).
+    JobSeekerDetail: {storeId: number; seeker: JobSeekerListItem};
+    // [직원] 구인 공고 상세·지원 — 260711_작업통합.md Part 2 §19.4 R-17(Phase 6).
+    // 리스트 항목을 라우트 파라미터로 그대로 전달(추가 API 호출 없음, JobSeekerDetail 과 동일 원칙).
+    JobPostingDetail: {posting: JobPostingNearbyItem};
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -309,6 +326,11 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
                 options={{headerShown: false}}
             />
             <Stack.Screen
+                name="NfcTagManagement"
+                component={NfcTagManagementScreen}
+                options={{headerShown: false}}
+            />
+            <Stack.Screen
                 name="PayrollRun"
                 component={PayrollRunScreen}
                 options={{headerShown: false}}
@@ -393,6 +415,10 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen name="SwapRequests" component={SwapRequestsScreen} options={{headerShown: false}} />
             <Stack.Screen name="SwapBoard" component={SwapBoardScreen} options={{headerShown: false}} />
             <Stack.Screen name="HiringCost" component={HiringCostSimulatorScreen} options={{headerShown: false}} />
+            <Stack.Screen name="EmployeeRecruitment" component={EmployeeRecruitmentScreen} options={{headerShown: false}} />
+            <Stack.Screen name="JobSeekerList" component={JobSeekerListScreen} options={{headerShown: false}} />
+            <Stack.Screen name="JobSeekerDetail" component={JobSeekerDetailScreen} options={{headerShown: false}} />
+            <Stack.Screen name="JobPostingDetail" component={JobPostingDetailScreen} options={{headerShown: false}} />
         </Stack.Navigator>
     );
 };
