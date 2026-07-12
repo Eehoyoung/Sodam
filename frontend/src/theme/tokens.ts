@@ -230,6 +230,25 @@ export const gradient = {
     surfaceWarm: ['#FFFBF5', '#FFF5EC'] as [string, string],
 } as const;
 
+/**
+ * 채용(recruitment) 도메인 전용 액센트 팔레트 — 싱그러운 그린 계열
+ * (260711_작업통합.md Part 2 §7.0, 2026-07-11 2차 확정).
+ *
+ * 브랜드 오렌지(colors.brandPrimary)와는 별개 네임스페이스로 둔다 — `colors`/`darkColors`
+ * 는 764개 참조가 걸린 단일 진실 공급원이라 기존 키를 손대지 않고 순수 추가만 한다는
+ * 원칙(frontend.md)에 따라, 이 팔레트는 별도 export 로 분리해 `colors`/`darkColors`/
+ * `ColorKey`/`useThemeColors()` 타입·다크모드 매핑에 전혀 영향을 주지 않는다.
+ *
+ * 채용 화면은 이 토큰만 사용하고 검정/네이비 배경(다크 히어로 등)은 쓰지 않는다 —
+ * 히어로/강조 카드는 `recruit.gradient` (그린 그라디언트) + 화이트 텍스트로 통일.
+ */
+export const recruit = {
+    primary: '#1FA566',        // 채용 도메인 1차 액센트 (버튼/토글/선택 칩)
+    primaryPressed: '#178A54', // pressed
+    primarySoft: '#E9F7EF',    // soft bg (배지/선택 칩 배경)
+    gradient: ['#1FA566', '#43B986'] as [string, string], // 히어로/강조 카드
+} as const;
+
 export const layout = {
     minTouchTarget: 44, // iOS HIG / Android: 최소 터치 영역
     headerHeight: 56,
@@ -266,6 +285,7 @@ export const tokens = {
     layout,
     motion,
     breakpoints,
+    recruit,
 } as const;
 
 export type Tokens = typeof tokens;

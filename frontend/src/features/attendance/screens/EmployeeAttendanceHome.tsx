@@ -35,7 +35,7 @@ import policyService from '../../info/services/policyService';
 import SectionCard from '../../../common/components/sections/SectionCard';
 import SectionHeader from '../../../common/components/sections/SectionHeader';
 import RoleTabBar from '../../../common/components/navigation/RoleTabBar';
-import {gradient, radius, shadow, spacing} from '../../../theme/tokens';
+import {gradient, radius, recruit, shadow, spacing} from '../../../theme/tokens';
 
 type AttendanceState = 'IDLE' | 'WORKING' | 'DONE' | 'LOADING';
 
@@ -412,9 +412,11 @@ const EmployeeAttendanceHome: React.FC = () => {
             color: {bg: c.brandPrimarySoft, icon: c.brandPrimary},
         },
         {
-            key: 'request', label: '내 요청', icon: 'mail-outline',
-            onPress: () => navigation.navigate('RequestStatus'),
-            color: {bg: c.surfaceMuted, icon: c.textSecondary},
+            // 인증채용(구직·구인) 진입점 — 260711_작업통합.md Part 2 §18-8·§19.4.
+            // 구 '내 요청'(request) 타일을 키 기반으로 교체(배열 길이·나머지 타일 위치 불변).
+            key: 'recruitment', label: '채용·구직', icon: 'briefcase-outline',
+            onPress: () => navigation.navigate('EmployeeRecruitment'),
+            color: {bg: recruit.primarySoft, icon: recruit.primary},
         },
         {
             key: 'attendanceNotice', label: '지각/조퇴/결근 알리기', icon: 'alert-circle-outline',
@@ -459,7 +461,8 @@ const EmployeeAttendanceHome: React.FC = () => {
             color: {bg: c.surfaceMint, icon: c.success},
         },
         {
-            key: 'swap', label: '대타 지원', icon: 'swap-horizontal-outline',
+            // 인증채용의 '당일 대타'와 혼동 방지를 위해 라벨만 개칭(§18-10) — 동작은 그대로 SwapBoard.
+            key: 'swap', label: '우리 매장 대타', icon: 'swap-horizontal-outline',
             onPress: () => navigation.navigate('SwapBoard' as never),
             color: {bg: c.brandPrimarySoft, icon: c.brandPrimary},
         },

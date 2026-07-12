@@ -256,6 +256,62 @@ describe('EmployeeAttendanceHome', () => {
         }
     });
 
+    test('퀵메뉴 교체 회귀: 배열 길이 불변 + 채용·구직/우리 매장 대타 2개만 교체', async () => {
+        // 260711_작업통합.md Part 2 §18-8·§18-10 — '내 요청'(request)→'채용·구직', '대타 지원'→
+        // '우리 매장 대타' 2개 타일만 키 기반으로 교체하고 나머지 12개는 라벨/아이콘/개수가
+        // 그대로여야 한다(퀵메뉴 배열은 실제 14타일 구조 — 계획서상 "12타일"과 혼동 금지).
+        apiMock.get.mockImplementation((url: string) => {
+            if (url.startsWith('/api/stores/employee/')) {
+                return Promise.resolve({
+                    data: [{id: 1, storeName: '소담카페', storeStandardHourWage: 10000}],
+                }) as any;
+            }
+            if (url.endsWith('/today')) {
+                return Promise.resolve({data: null}) as any;
+            }
+            return Promise.resolve({data: []}) as any;
+        });
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<EmployeeAttendanceHome />);
+            await flush();
+        });
+
+        // 퀵메뉴 타일만 activeOpacity=0.75 로 고정돼 있어 다른 TouchableOpacity(알림/설정/알림스트립/
+        // 정책 리스트 등)와 구분 가능하다.
+        const quickTiles = renderer!.root
+            .findAllByType('TouchableOpacity')
+            .filter(n => n.props.activeOpacity === 0.75);
+
+        expect(quickTiles).toHaveLength(14);
+
+        const labels = quickTiles.map(tile => {
+            const texts = tile.findAllByType('Text').map(t => t.props.children);
+            return texts[texts.length - 1];
+        });
+
+        expect(labels).toEqual([
+            '내 스케줄',
+            '급여명세',
+            '계약서',
+            '내 연차',
+            '휴가 신청',
+            '채용·구직',
+            '지각/조퇴/결근 알리기',
+            '시급 이력',
+            '공지사항',
+            '매장 합류',
+            '노무 정보',
+            '증명서 발급',
+            '근무일지',
+            '우리 매장 대타',
+        ]);
+
+        expect(labels).not.toContain('내 요청');
+        expect(labels).not.toContain('대타 지원');
+    });
+
     test.skip('selectedStore 가 없을 때 handleAction → 알림 노출', async () => {
         apiMock.get.mockImplementation((url: string) => {
             if (url.startsWith('/api/stores/employee/')) {
