@@ -103,4 +103,16 @@ public interface EmployeeStoreRelationRepository extends JpaRepository<EmployeeS
      * 직원 ID와 매장 ID로 활성 관계 조회.
      */
     Optional<EmployeeStoreRelation> findByEmployeeProfile_IdAndStore_IdAndIsActiveTrue(Long employeeId, Long storeId);
+
+    /**
+     * 직원의 현재 소속(활성 재직) 관계를 {@code store}까지 fetch join 하여 조회한다
+     * (260711_작업통합.md Part 2 §6.2 — 인증채용 "현재 소속" 표시용). 활성 재직이 없으면 빈 리스트
+     * → 호출측(Phase 2 서비스)에서 "휴직중"으로 처리. 복수 활성 소속이 이론상 가능하므로
+     * 최근 {@code hireDate} 우선으로 정렬해, 호출측이 첫 항목을 채택할 수 있도록 한다.
+     */
+    @Query("SELECT r FROM EmployeeStoreRelation r " +
+            "JOIN FETCH r.store " +
+            "WHERE r.employeeProfile.id = :employeeId AND r.isActive = true " +
+            "ORDER BY r.hireDate DESC")
+    List<EmployeeStoreRelation> findActiveByEmployeeIdWithStore(@Param("employeeId") Long employeeId);
 }
