@@ -19,7 +19,7 @@ import {
     HeroNumber,
     ScreenContainer,
 } from '../../../common/components/ds';
-import {spacing} from '../../../theme/tokens';
+import {recruit, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {formatMoney} from '../../../common/utils/format';
 import StoreSelector, {SelectableStore} from '../../../common/components/store/StoreSelector';
@@ -299,11 +299,17 @@ const OwnerDashboardScreen: React.FC = () => {
                             onPress={() => navigation.navigate('InfoList')}
                         />
                         <AppListItem
-                            title="설정"
-                            subtitle="알림·계정·매장 관리"
-                            left={<Ionicons name="settings-outline" size={24} color={c.brandPrimary} />}
+                            testID="owner-quick-menu-job-seekers"
+                            title="주변 구직자·채용"
+                            subtitle="반경 4km 인증 구직자 확인"
+                            left={<Ionicons name="person-add-outline" size={24} color={recruit.primary} />}
                             right="›"
-                            onPress={() => navigation.navigate('Settings')}
+                            onPress={() => {
+                                // JobSeekerList 는 storeId 필수 — 미선택 시 진입 차단(빈 파라미터 크래시 방지)
+                                if (selectedStoreId !== null) {
+                                    navigation.navigate('JobSeekerList', {storeId: selectedStoreId});
+                                }
+                            }}
                         />
                     </View>
                 </View>
