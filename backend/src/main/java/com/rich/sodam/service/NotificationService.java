@@ -135,6 +135,58 @@ public class NotificationService {
                 .build());
     }
 
+    /**
+     * 채용 제안 수신(§15.4, 260711_작업통합.md Part 2) — 직원에게.
+     */
+    @Async
+    public void notifyJobOfferReceived(Long targetUserId, String storeName) {
+        push(targetUserId, PushMessage.builder()
+                .title("채용 제안 도착")
+                .body(String.format("%s에서 채용 제안을 보냈어요. 확인해 보세요.", storeName))
+                .deepLink("sodam://job-offers")
+                .data(Map.of("type", "JOB_OFFER_RECEIVED"))
+                .build());
+    }
+
+    /**
+     * 채용 제안 수락/거절(§15.4) — 사장에게.
+     */
+    @Async
+    public void notifyJobOfferResponded(Long ownerUserId, String targetName, boolean accepted) {
+        push(ownerUserId, PushMessage.builder()
+                .title(accepted ? "채용 제안 수락" : "채용 제안 거절")
+                .body(String.format("%s 님이 채용 제안을 %s어요.", targetName, accepted ? "수락했" : "거절했"))
+                .deepLink("sodam://job-offers")
+                .data(Map.of("type", accepted ? "JOB_OFFER_ACCEPTED" : "JOB_OFFER_DECLINED"))
+                .build());
+    }
+
+    /**
+     * 구인 공고 지원 발생(§19.3, 260711_작업통합.md Part 2) — 사장에게.
+     */
+    @Async
+    public void notifyJobApplicationReceived(Long ownerUserId, String applicantName, String storeName) {
+        push(ownerUserId, PushMessage.builder()
+                .title("새 지원자 도착")
+                .body(String.format("%s 매장에 %s 님이 지원했어요.", storeName, applicantName))
+                .deepLink("sodam://job-applications")
+                .data(Map.of("type", "JOB_APPLICATION_RECEIVED"))
+                .build());
+    }
+
+    /**
+     * 구인 공고 지원 수락/거절(§19.3) — 지원자(직원)에게.
+     */
+    @Async
+    public void notifyJobApplicationResponded(Long applicantUserId, String storeName, boolean accepted) {
+        push(applicantUserId, PushMessage.builder()
+                .title(accepted ? "지원 수락" : "지원 거절")
+                .body(String.format("%s 매장에서 지원을 %s어요.", storeName, accepted ? "수락했" : "거절했"))
+                .deepLink("sodam://job-applications")
+                .data(Map.of("type", accepted ? "JOB_APPLICATION_ACCEPTED" : "JOB_APPLICATION_DECLINED"))
+                .build());
+    }
+
     @Transactional
     public void push(Long userId, PushMessage message) {
         // 1) 알림 이력 적재 (E-501 알림 센터용) — 트랜잭션 일부이므로 호출측이 롤백되면 함께 롤백된다.
