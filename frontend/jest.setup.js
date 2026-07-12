@@ -221,6 +221,11 @@ jest.mock('react-native-safe-area-context', () => ({
     useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
 }));
 
+// Mock react-native-webview (AddressSearchModal — 카카오 주소검색 postcode iframe)
+jest.mock('react-native-webview', () => ({
+    WebView: 'WebView',
+}));
+
 // RNGH is mapped via moduleNameMapper to a lightweight stub in tests/mocks/react-native-gesture-handler.js
 
 // @expo/vector-icons removed — migrated to react-native-vector-icons
