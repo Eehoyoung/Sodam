@@ -118,6 +118,12 @@ public class LaborRiskService {
                 .orElse(null);
         BigDecimal currentMinWage = MinimumWage.hourlyFor(today.getYear());
 
+        // 근로계약서 — 매장 전체를 한 번에 조회 후 직원별 최신 1건만 취한다(N+1 방지).
+        Map<Long, LaborContract> latestContractByEmployeeId = new HashMap<>();
+        for (LaborContract contract : laborContractRepository.findByStoreIdOrderByEmployeeIdAscCreatedAtDesc(storeId)) {
+            latestContractByEmployeeId.putIfAbsent(contract.getEmployeeId(), contract);
+        }
+
         List<Item> items = new ArrayList<>();
         for (EmployeeStoreRelation rel : relations) {
             Long employeeId = rel.getEmployeeProfile().getId();
@@ -127,7 +133,8 @@ public class LaborRiskService {
                     weekShiftHours.getOrDefault(employeeId, BigDecimal.ZERO),
                     actualHours.getOrDefault(employeeId, BigDecimal.ZERO)
                             .add(upcomingShiftHours.getOrDefault(employeeId, BigDecimal.ZERO)));
-            collectContractRisk(items, employeeId, name, storeId);
+            collectContractRisk(items, employeeId, name,
+                    Optional.ofNullable(latestContractByEmployeeId.get(employeeId)));
             collectMinWageRisk(items, employeeId, name, rel, currentMinWage, nextYearMinWage, today.getYear());
             collectSeveranceRisk(items, employeeId, name, rel, today);
         }
@@ -152,9 +159,7 @@ public class LaborRiskService {
     }
 
     /** (3) 근로계약서 없음/미서명 — 즉시 위법 가능(§17). */
-    private void collectContractRisk(List<Item> items, Long employeeId, String name, Long storeId) {
-        Optional<LaborContract> latest =
-                laborContractRepository.findFirstByEmployeeIdAndStoreIdOrderByCreatedAtDesc(employeeId, storeId);
+    private void collectContractRisk(List<Item> items, Long employeeId, String name, Optional<LaborContract> latest) {
         if (latest.isEmpty()) {
             items.add(new Item(RiskType.CONTRACT_UNSIGNED, Severity.DANGER, employeeId, name,
                     "근로계약서가 없어요. 근로기준법 §17 서면 명시·교부 의무 위반 소지가 있어요.", null));
