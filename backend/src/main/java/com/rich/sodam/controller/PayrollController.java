@@ -11,6 +11,7 @@ import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.service.PayrollService;
+import com.rich.sodam.service.PayrollStoreBatchService;
 import com.rich.sodam.service.StoreAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -42,6 +43,7 @@ import java.util.stream.Collectors;
 public class PayrollController {
 
     private final PayrollService payrollService;
+    private final PayrollStoreBatchService payrollStoreBatchService;
     private final StoreAccessGuard guard;
 
     private static boolean isMaster(UserPrincipal p) {
@@ -130,7 +132,7 @@ public class PayrollController {
 
         // 매장 일괄 계산 모드: employeeId 미지정 → 매장 활성 직원 전체
         if (requestDto.getEmployeeId() == null) {
-            java.util.List<PayrollDto> all = payrollService.calculatePayrollForStore(
+            java.util.List<PayrollDto> all = payrollStoreBatchService.calculatePayrollForStore(
                     requestDto.getStoreId(),
                     requestDto.getStartDate(),
                     requestDto.getEndDate());

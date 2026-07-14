@@ -429,32 +429,12 @@ public class PayrollService {
         );
     }
 
-    /**
-     * 매장 활성 직원 전체에 대한 일괄 급여 계산 (사장 정산 플로우 PRD_OWNER S-301).
-     * 직원 한 명이 실패해도 전체 트랜잭션 중단 없이 나머지는 진행.
-     */
-    @Transactional
-    public java.util.List<com.rich.sodam.dto.response.PayrollDto> calculatePayrollForStore(
-            Long storeId, LocalDate startDate, LocalDate endDate) {
-        var relations = employeeStoreRelationRepository
-                .findByStore_Id(storeId).stream()
-                .filter(r -> Boolean.TRUE.equals(r.getIsActive()))
-                .toList();
-
-        java.util.List<com.rich.sodam.dto.response.PayrollDto> result = new java.util.ArrayList<>();
-        for (var rel : relations) {
-            if (rel.getEmployeeProfile() == null) continue;
-            Long employeeId = rel.getEmployeeProfile().getId();
-            try {
-                Payroll p = calculatePayroll(employeeId, storeId, startDate, endDate, true);
-                result.add(com.rich.sodam.dto.response.PayrollDto.from(p));
-            } catch (Exception e) {
-                log.warn("매장 일괄 정산 실패 emp={} store={} reason={}",
-                        employeeId, storeId, e.getMessage());
-            }
-        }
-        return result;
-    }
+    // 매장 일괄 급여 계산(사장 정산 플로우 PRD_OWNER S-301)은 PayrollStoreBatchService 로 이동했다
+    // (2026-07-14 Phase3 재실측 발견 버그 수정). 이 메서드가 같은 @Transactional 안에서 직원마다
+    // this.calculatePayroll(...)을 자기호출하던 구조라, 한 직원 저장 실패(유니크 제약 위반 등)가
+    // 트랜잭션을 rollback-only 로 마킹해 이후 모든 직원이 UnexpectedRollbackException 으로 연쇄
+    // 실패했다. PayrollBatchExecutor(REQUIRES_NEW)를 거쳐 직원 1명당 독립 트랜잭션으로 실행하도록
+    // PayrollMonthlyBatchScheduler 와 동일한 패턴으로 분리했다(PayrollStoreBatchService Javadoc 참조).
 
     /**
      * 급여 계산 메서드
@@ -476,17 +456,33 @@ public class PayrollService {
         Store store = findStoreById(storeId);
         EmployeeStoreRelation relation = findEmployeeStoreRelation(employee, store);
 
-        // 이미 급여가 계산된 경우 체크
-        if (!recalculate) {
-            Optional<Payroll> existingPayroll = payrollRepository.findByEmployeeIdAndPeriod(
-                            employeeId, startDate, endDate).stream()
-                    .filter(p -> p.getStore().getId().equals(storeId) &&
-                            p.getStartDate().equals(startDate) &&
-                            p.getEndDate().equals(endDate))
-                    .findFirst();
+        // 이미 급여가 계산된 경우 체크 — recalculate 여부와 무관하게 항상 조회한다.
+        // (uq_payroll_employee_store_period, V50) 재계산 시 새 Payroll 을 또 만들면 이 유니크
+        // 제약을 위반해 500 이 나던 버그(2026-07-14 Phase3 재실측 발견) 수정: 기존 행이 있으면
+        // 그 엔티티를 찾아 갱신(update)하고, 없을 때만 신규 생성한다.
+        Optional<Payroll> existingPayrollOpt = payrollRepository.findByEmployeeIdAndPeriod(
+                        employeeId, startDate, endDate).stream()
+                .filter(p -> p.getStore().getId().equals(storeId) &&
+                        p.getStartDate().equals(startDate) &&
+                        p.getEndDate().equals(endDate))
+                .findFirst();
 
-            if (existingPayroll.isPresent()) {
-                throw new BusinessException("이미 해당 기간에 대한 급여가 계산되었습니다. 재계산하려면 recalculate 옵션을 사용하세요.");
+        if (existingPayrollOpt.isPresent() && !recalculate) {
+            throw new BusinessException("이미 해당 기간에 대한 급여가 계산되었습니다. 재계산하려면 recalculate 옵션을 사용하세요.");
+        }
+
+        Payroll existingPayroll = existingPayrollOpt.orElse(null);
+        if (existingPayroll != null) {
+            // 이미 확정(CONFIRMED)·지급완료(PAID) 처리된 급여는 recalculate=true 라도 조용히 덮어쓰지
+            // 않는다 — 사장이 검토·서명(확정)했거나 실제 지급까지 끝난 금액을 재계산이 바꿔치기하면
+            // 임금대장·명세서 정합성이 깨지고 노무 분쟁 소지가 있다(인간 판단 필요 영역, 이 방어는
+            // 최소 안전장치). 재계산하려면 먼저 급여를 CANCELLED 로 되돌린 뒤 다시 계산해야 한다.
+            if (existingPayroll.getStatus() == PayrollStatus.PAID
+                    || existingPayroll.getStatus() == PayrollStatus.CONFIRMED) {
+                throw new BusinessException(
+                        "이미 " + (existingPayroll.getStatus() == PayrollStatus.PAID ? "지급 완료" : "확정")
+                                + " 처리된 급여는 재계산으로 덮어쓸 수 없습니다. 취소(CANCELLED) 후 다시 계산하세요.",
+                        "PAYROLL_ALREADY_FINALIZED");
             }
         }
 
@@ -524,8 +520,20 @@ public class PayrollService {
         Map<LocalDate, Double> paidHoursByDate = new HashMap<>();
         Map<LocalDate, Double> regularHoursByDate = new HashMap<>();
 
-        // 급여 엔티티 생성
-        Payroll payroll = new Payroll();
+        // 급여 엔티티 생성 — 기존 급여(DRAFT/CANCELLED)가 있으면 그 엔티티를 갱신, 없으면 신규 생성.
+        // uq_payroll_employee_store_period(V50) 위반 방지: 같은 (employee, store, startDate, endDate)
+        // 로 새 행을 또 만들지 않는다.
+        Payroll payroll = existingPayroll != null ? existingPayroll : new Payroll();
+        if (existingPayroll != null) {
+            // 기존 상세 내역 전부 제거 — 벌크 삭제라 즉시 실행되어(플러시 대기 없음), 아래에서 같은
+            // attendance_id 로 새 상세 내역을 삽입해도 payroll_detail.attendance_id UNIQUE 제약과
+            // 충돌하지 않는다.
+            payrollDetailRepository.deleteByPayrollId(existingPayroll.getId());
+            // CANCELLED 상태였던 급여를 재계산으로 되살리는 경우(위에서 PAID/CONFIRMED는 이미 걸러짐),
+            // 취소 당시 남겨진 지급일·취소사유가 새 DRAFT 급여에 잔류하지 않도록 초기화한다.
+            payroll.setPaymentDate(null);
+            payroll.setCancelReason(null);
+        }
         payroll.setEmployee(employee);
         payroll.setStore(store);
         payroll.setStartDate(startDate);
@@ -651,8 +659,13 @@ public class PayrollService {
 
         // 즉시 보너스(급여합산형) 자동 합산 — "오늘 바빠서 1만원 더" 같은 비정기 포상금.
         // 통상임금·최저임금 산정에는 영향 없음(PayrollBonus 클래스 정책 주석 참고), 급여 총액에는 합산해 원천징수한다.
-        List<PayrollBonus> unconsumedBonuses =
-                payrollBonusService.findUnconsumedForPeriod(employeeId, storeId, startDate, endDate);
+        // 재계산(recalculate) 시: 기존 급여 엔티티를 갱신하는 방식이므로, 첫 계산 때 이미 이 급여 id로
+        // 소비(markConsumed) 처리된 보너스까지 findConsumableForPeriod 로 함께 조회해 재합산한다 —
+        // 그렇지 않으면 두 번째 계산부터 "이미 소비됨"으로 조회에서 빠져 grossWage 가 조용히 줄어든다.
+        // 신규 계산(existingPayroll==null)이면 기존 findUnconsumedForPeriod 와 동일하게 동작한다.
+        List<PayrollBonus> unconsumedBonuses = payrollBonusService.findConsumableForPeriod(
+                employeeId, storeId, startDate, endDate,
+                existingPayroll != null ? existingPayroll.getId() : null);
         int bonusWage = unconsumedBonuses.stream().mapToInt(PayrollBonus::getAmount).sum();
 
         // 총 급여 계산
@@ -664,7 +677,10 @@ public class PayrollService {
         TaxPolicyType effectiveTaxPolicy = resolveTaxPolicy(relation, policy);
         int taxAmount = calculateTax(grossWage, effectiveTaxPolicy);
 
-        // 임금명세서(§48②) 항목별 공제내역 — 4대보험 정책일 때 항목별 저장
+        // 임금명세서(§48②) 항목별 공제내역 — 4대보험 정책일 때 항목별 저장.
+        // 재계산으로 정책이 4대보험→3.3%로 바뀐 경우를 대비해 else 분기에서 이전 값(재사용 엔티티에
+        // 남아있을 수 있는 값)을 명시적으로 초기화한다 — 그대로 두면 정책이 바뀌었는데도 이전 4대보험
+        // 공제액이 명세서에 잔류하는 회귀가 생긴다.
         if (effectiveTaxPolicy == TaxPolicyType.FOUR_INSURANCES) {
             com.rich.sodam.core.payroll.deduction.DeductionBreakdown b =
                     socialInsuranceCalculator.breakdown(grossWage);
@@ -672,6 +688,11 @@ public class PayrollService {
             payroll.setHealthInsuranceDeduction(b.healthInsurance());
             payroll.setLongTermCareDeduction(b.longTermCare());
             payroll.setEmploymentInsuranceDeduction(b.employmentInsurance());
+        } else {
+            payroll.setNationalPensionDeduction(null);
+            payroll.setHealthInsuranceDeduction(null);
+            payroll.setLongTermCareDeduction(null);
+            payroll.setEmploymentInsuranceDeduction(null);
         }
 
         // 실수령액 계산
@@ -704,8 +725,10 @@ public class PayrollService {
             payrollDetailRepository.save(detail);
         }
 
-        // 이번 정산에 합산한 즉시 보너스를 소비 처리(멱등) — 재계산(recalculate) 시 기존 급여가
-        // 삭제/대체되는 흐름이 아니라 새 Payroll 이 또 생기므로, 소비 처리는 항상 이번 payroll 기준으로 남긴다.
+        // 이번 정산에 합산한 즉시 보너스를 소비 처리(멱등) — 재계산(recalculate) 시에는 기존 Payroll
+        // 엔티티를 그대로 갱신하므로 savedPayroll.getId() 는 첫 계산과 두 번째 계산이 항상 같은 값이다.
+        // findConsumableForPeriod 가 이미 이 id로 소비된 보너스까지 재조회해오므로, 여기서 다시
+        // markConsumed 를 호출해도 같은 id로 덮어쓸 뿐 중복 소비되지 않는다(멱등).
         if (!unconsumedBonuses.isEmpty()) {
             payrollBonusService.markConsumed(unconsumedBonuses, savedPayroll.getId());
         }
