@@ -65,39 +65,27 @@ const InfoListScreen = () => {
         }
     };
 
-    const fetchCategories = async () => {
-        try {
-            const service = getServiceByType(selectedType);
-            const data = await service.getCategories();
-            setCategories(data);
-            if (data.length > 0) {
-                setSelectedCategory(data[0].id);
-            }
-        } catch (error) {
-            AppToast.error('카테고리 목록을 불러오는 데 실패했어요. 다시 시도해 주세요.');
-        }
-    };
-
-    const fetchArticles = async () => {
-        if (!selectedCategory) {
-            return;
-        }
+    // 특정 (탭 유형, 카테고리) 조합의 목록을 명시적 인자로 조회한다.
+    // selectedType/selectedCategory state에 의존하면, 탭 전환 시 카테고리 값이
+    // 우연히 동일(예: 모든 탭이 'ALL' 단일 카테고리)한 경우 state가 바뀌지 않아
+    // articles 재조회 useEffect가 트리거되지 않는 회귀가 발생한다.
+    const fetchArticlesFor = async (type: InfoType, categoryId: string) => {
         try {
             setLoading(true);
-            const service = getServiceByType(selectedType);
+            const service = getServiceByType(type);
             let data: InfoArticle[] = [];
-            switch (selectedType) {
+            switch (type) {
                 case 'LABOR':
-                    data = await (service as typeof laborInfoService).getLaborInfosByCategory(selectedCategory);
+                    data = await (service as typeof laborInfoService).getLaborInfosByCategory(categoryId);
                     break;
                 case 'TAX':
-                    data = await (service as typeof taxInfoService).getTaxInfosByCategory(selectedCategory);
+                    data = await (service as typeof taxInfoService).getTaxInfosByCategory(categoryId);
                     break;
                 case 'POLICY':
-                    data = await (service as typeof policyService).getPoliciesByCategory(selectedCategory);
+                    data = await (service as typeof policyService).getPoliciesByCategory(categoryId);
                     break;
                 case 'TIPS':
-                    data = await (service as typeof tipsService).getTipsByCategory(selectedCategory);
+                    data = await (service as typeof tipsService).getTipsByCategory(categoryId);
                     break;
             }
             setArticles(data);
@@ -108,17 +96,44 @@ const InfoListScreen = () => {
         }
     };
 
+    // 탭(유형) 전환 시 카테고리 목록과 게시글 목록을 함께 새로 불러온다.
+    // 카테고리 응답을 기다린 뒤 결과 값을 직접 fetchArticlesFor에 넘겨,
+    // selectedCategory state 변경 여부와 무관하게 항상 새 탭의 목록을 갱신한다.
     useEffect(() => {
-        fetchCategories();
+        let cancelled = false;
+        const load = async () => {
+            try {
+                const service = getServiceByType(selectedType);
+                const data = await service.getCategories();
+                if (cancelled) {
+                    return;
+                }
+                setCategories(data);
+                const firstCategoryId = data.length > 0 ? data[0].id : null;
+                setSelectedCategory(firstCategoryId);
+                if (firstCategoryId) {
+                    await fetchArticlesFor(selectedType, firstCategoryId);
+                } else {
+                    setArticles([]);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    AppToast.error('카테고리 목록을 불러오는 데 실패했어요. 다시 시도해 주세요.');
+                }
+            }
+        };
+        load();
+        return () => {
+            cancelled = true;
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedType]);
 
-    useEffect(() => {
-        if (selectedCategory) {
-            fetchArticles();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedCategory]);
+    // 사용자가 카테고리 칩을 직접 탭했을 때만 호출 — 탭 전환과 분리된 경로.
+    const handleSelectCategory = (categoryId: string) => {
+        setSelectedCategory(categoryId);
+        fetchArticlesFor(selectedType, categoryId);
+    };
 
     const navigateToDetail = (article: InfoArticle) => {
         switch (selectedType) {
@@ -161,7 +176,7 @@ const InfoListScreen = () => {
                         const on = selectedCategory === item.id;
                         return (
                             <Pressable
-                                onPress={() => setSelectedCategory(item.id)}
+                                onPress={() => handleSelectCategory(item.id)}
                                 style={[styles.chip, {backgroundColor: on ? c.brandPrimary : c.surfaceMuted}]}>
                                 <AppText variant="caption" weight="800" tone={on ? 'inverse' : 'secondary'}>{item.name}</AppText>
                             </Pressable>
