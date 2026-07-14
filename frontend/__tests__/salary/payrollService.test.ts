@@ -47,14 +47,27 @@ describe('payrollService (Phase 1 API mapping)', () => {
     expect(Array.isArray(resp)).toBe(true);
   });
 
-  test('getDetails calls GET /api/payroll/{payrollId}/details', async () => {
+  test('getDetails calls GET /api/payroll/{payrollId}/details and returns the raw array (BE returns PayrollDetailDto[], not a summary object)', async () => {
+    const getMock = getGetMock();
+    getMock.mockResolvedValueOnce({
+      data: [{ id: 1, payrollId: 999, workDate: '2026-05-01', totalHours: 8, dailyWage: 96000 }],
+    });
+
+    const resp = await payrollService.getDetails(999);
+
+    expect(getMock).toHaveBeenCalledWith('/api/payroll/999/details');
+    expect(Array.isArray(resp)).toBe(true);
+    expect(resp).toHaveLength(1);
+    expect(resp[0]).toMatchObject({ payrollId: 999, workDate: '2026-05-01', dailyWage: 96000 });
+  });
+
+  test('getDetails returns [] when BE response is not an array (defensive against summary-object regression)', async () => {
     const getMock = getGetMock();
     getMock.mockResolvedValueOnce({ data: { payrollId: 999, employeeId: 7, storeId: 22 } });
 
     const resp = await payrollService.getDetails(999);
 
-    expect(getMock).toHaveBeenCalledWith('/api/payroll/999/details');
-    expect(resp).toMatchObject({ payrollId: 999 });
+    expect(resp).toEqual([]);
   });
 
   test('updateStatus calls PUT /api/payroll/{payrollId}/status with body { status }', async () => {
@@ -65,5 +78,73 @@ describe('payrollService (Phase 1 API mapping)', () => {
 
     expect(putMock).toHaveBeenCalledWith('/api/payroll/999/status', { status: 'PAID' });
     expect(resp).toEqual({ success: true });
+  });
+
+  // BE PayrollDto (backend/dto/response/PayrollDto.java) 는 id/netWage/평평한 startDate·endDate 필드를 가진다.
+  // FE 화면은 payrollId/totalPay/nested period 를 기대하므로 서비스 레이어가 반드시 변환해야 한다 (§1-1/§1-2 회귀 방지).
+  describe('getById (신설 — GET /api/payroll/{payrollId})', () => {
+    test('BE PayrollDto(id/netWage/flat dates) 를 PayrollSummary(payrollId/totalPay/nested period) 로 정규화', async () => {
+      const getMock = getGetMock();
+      getMock.mockResolvedValueOnce({
+        data: {
+          id: 100,
+          employeeId: 7,
+          employeeName: '홍길동',
+          storeId: 22,
+          storeName: '카페 소담',
+          startDate: '2026-05-01',
+          endDate: '2026-05-31',
+          totalHours: 160,
+          netWage: 2_000_000,
+          status: 'CONFIRMED',
+        },
+      });
+
+      const resp = await payrollService.getById(100);
+
+      expect(getMock).toHaveBeenCalledWith('/api/payroll/100');
+      expect(resp).toMatchObject({
+        payrollId: 100,
+        totalPay: 2_000_000,
+        totalHours: 160,
+        status: 'CONFIRMED',
+        period: { startDate: '2026-05-01', endDate: '2026-05-31' },
+      });
+    });
+  });
+
+  describe('listByStore / listByEmployee — BE PayrollDto[] 정규화', () => {
+    test('listByStore: id→payrollId, netWage→totalPay, 평평한 날짜→nested period', async () => {
+      const getMock = getGetMock();
+      getMock.mockResolvedValueOnce({
+        data: [
+          { id: 1, employeeId: 7, employeeName: '홍길동', storeId: 22, startDate: '2026-05-01', endDate: '2026-05-31', netWage: 1_800_000, totalHours: 150, status: 'PAID' },
+        ],
+      });
+
+      const resp = await payrollService.listByStore(22);
+
+      expect(getMock).toHaveBeenCalledWith('/api/payroll/store/22', { startDate: undefined, endDate: undefined });
+      expect(resp).toHaveLength(1);
+      expect(resp[0]).toMatchObject({
+        payrollId: 1,
+        totalPay: 1_800_000,
+        status: 'PAID',
+        period: { startDate: '2026-05-01', endDate: '2026-05-31' },
+      });
+    });
+
+    test('listByEmployee: 동일하게 정규화', async () => {
+      const getMock = getGetMock();
+      getMock.mockResolvedValueOnce({
+        data: [{ id: 2, employeeId: 7, storeId: 22, startDate: '2026-04-01', endDate: '2026-04-30', netWage: 1_500_000 }],
+      });
+
+      const resp = await payrollService.listByEmployee(7);
+
+      expect(resp[0].payrollId).toBe(2);
+      expect(resp[0].totalPay).toBe(1_500_000);
+      expect(resp[0].period).toEqual({ startDate: '2026-04-01', endDate: '2026-04-30' });
+    });
   });
 });

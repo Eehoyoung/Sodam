@@ -241,6 +241,23 @@ public class PayrollController {
         return ResponseEntity.ok(dtos);
     }
 
+    @Operation(summary = "급여 단건 조회", description = "특정 급여의 요약 정보(실수령액·기간·상태)를 조회합니다. 상세 화면(SalaryDetailScreen)의 헤더 데이터 공급용 — /details 는 근무일별 배열만 반환하므로 별도 필요.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공",
+                    content = @Content(schema = @Schema(implementation = PayrollDto.class))),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "404", description = "급여 정보를 찾을 수 없음")
+    })
+    @GetMapping("/{payrollId}")
+    public ResponseEntity<PayrollDto> getPayroll(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Parameter(description = "급여 ID", required = true) @PathVariable Long payrollId) {
+        // IDOR 차단: 본인 급여 또는 그 직원의 매장 사장만. (임의 payrollId 로 타인 급여 열람 방지)
+        Payroll payroll = payrollService.getPayrollById(payrollId);
+        guard.assertCanViewEmployee(principal.getId(), payroll.getEmployee().getId(), isMaster(principal));
+        return ResponseEntity.ok(PayrollDto.from(payroll));
+    }
+
     @Operation(summary = "급여 상세 내역 조회", description = "특정 급여의 상세 내역을 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공",

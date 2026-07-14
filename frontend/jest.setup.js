@@ -130,6 +130,8 @@ jest.mock('react-native', () => ({
     Dimensions: {
         get: jest.fn(() => ({width: 375, height: 812})),
     },
+    // useResponsive() 등 여러 DS 컴포넌트(HeroNumber 포함)가 사용 — 누락 시 렌더 중 크래시.
+    useWindowDimensions: jest.fn(() => ({width: 375, height: 812})),
     Platform: {
         OS: 'ios',
         select: jest.fn((obj) => obj.ios),

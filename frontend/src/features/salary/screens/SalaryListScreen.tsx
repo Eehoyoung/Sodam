@@ -27,11 +27,9 @@ const STATUS_LABEL: Record<string, string> = {
     CANCELLED: '취소됨',
 };
 
-interface SalaryRow extends PayrollSummary {
-    payrollId: number;
-    status?: string;
-    employeeName?: string;
-}
+// PayrollSummary 는 이미 payrollId/totalPay/status/employeeName/nested period 로 정규화돼 있다
+// (payrollService.listByStore 가 BE PayrollDto[](id/netWage/평평한 startDate·endDate) 를 변환해서 반환).
+type SalaryRow = PayrollSummary;
 
 const SalaryListScreen = () => {
     const navigation = useNavigation<SalaryListScreenNavigationProp>();
@@ -64,14 +62,9 @@ const SalaryListScreen = () => {
         }
         try {
             setError(false);
+            // listByStore 가 이미 BE PayrollDto[] → PayrollSummary[] 정규화까지 마쳐서 반환한다
             const list = await payrollService.listByStore(storeId);
-            const mapped: SalaryRow[] = (Array.isArray(list) ? list : []).map(p => ({
-                ...p,
-                payrollId: p.payrollId ?? 0,
-                status: (p as PayrollSummary & {status?: string}).status,
-                employeeName: (p as PayrollSummary & {employeeName?: string}).employeeName,
-            }));
-            setRows(mapped);
+            setRows(Array.isArray(list) ? list : []);
         } catch (e) {
             console.error('급여 목록을 가져오는 중 오류가 생겼어요:', e);
             setError(true);
