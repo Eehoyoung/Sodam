@@ -35,7 +35,6 @@ public class CustomerInquiry {
     @Column(nullable = false, length = 190)
     private String email;
 
-    @Lob
     @Column(nullable = false, length = 2000)
     private String content;
 
