@@ -8,9 +8,9 @@
  * 카드 탭 → `JobSeekerDetailScreen` push. 리스트 항목을 라우트 파라미터로 그대로 전달하므로
  * 상세 화면에서 추가 API 호출이 없다(§7.4-2).
  */
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useMemo, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
-import {useFocusEffect, useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
+import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
@@ -74,23 +74,14 @@ const JobSeekerListScreen: React.FC = () => {
     );
     const {data, isLoading, isError, error, refetch} = useJobSeekers(storeId, filters);
 
-    // 포커스마다 재조회 — 제안 발송(Phase 6) 등 쓰기 후 복귀 시 최신 반영(9화면 useFocusEffect 패턴).
-    useFocusEffect(
-        useCallback(() => {
-            refetch();
-        }, [refetch]),
-    );
-
-    // 세그먼트 전환('우리 공고·지원자' ↔ '주변 구직자') 시에도 최신 데이터를 다시 불러온다
-    // (§10 Phase6 "세그먼트 전환마다 refetch" 신규 확정 패턴). 'ourPostings' 탭은 조건부 렌더로
-    // 마운트되는 `OurPostingScreen` 자체 useFocusEffect 가 커버하므로, 여기서는 이 화면 최상단에서
-    // 항상 구독 중인 `useJobSeekers` 쿼리만 'nearby' 재진입 시 명시적으로 재요청한다.
-    useEffect(() => {
-        if (topTab === 'nearby') {
-            refetch();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [topTab]);
+    // 재조회 전략(FE-DUP 수정, findings_report.md §4.1): 이 화면은 `JobSeekerDetailScreen` 이
+    // 스택 push 되는 동안에도(뒤로가기 전까지) 마운트가 유지되므로, `useSendJobOffer` 뮤테이션이
+    // 성공 시 invalidate 하는 `recruitment.store(storeId)` 키(=`storeSeekers` 의 상위 프리픽스)가
+    // TanStack Query 의 "활성 쿼리 자동 재조회"를 즉시 트리거한다 — 상세 화면에서 제안을 보내고
+    // 돌아오면 별도 `useFocusEffect`/`refetch()` 호출 없이도 배지가 최신화된다. 이전에는 여기에
+    // 수동 `useFocusEffect(refetch)` + 상단 탭(`topTab`) 변경 `useEffect(refetch)` 가 함께 있어
+    // 최초 진입 시 마운트 자동조회까지 겹쳐 최대 3중으로 API가 호출됐다. 'ourPostings' 세그먼트는
+    // 조건부 렌더로 매번 새로 마운트되는 `OurPostingScreen` 자체의 마운트 기반 재조회로 충분하다.
 
     const list = useMemo(() => sortForTab(data ?? [], typeFilter), [data, typeFilter]);
     const errorCode = isError ? extractErrorCode(error) : undefined;

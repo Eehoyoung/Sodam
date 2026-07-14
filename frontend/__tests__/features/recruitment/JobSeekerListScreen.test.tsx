@@ -278,7 +278,13 @@ describe('JobSeekerListScreen', () => {
         expect(mockNavigate).toHaveBeenCalledWith('JobSeekerDetail', {storeId: 10, seeker});
     });
 
-    test('세그먼트 전환 시 refetch — "우리 공고·지원자"로 갔다가 "주변 구직자"로 돌아오면 재조회된다(§10 Phase6)', async () => {
+    // FE-DUP 회귀 테스트(findings_report.md §4.1): 예전에는 마운트 시 `useFocusEffect(refetch)` +
+    // topTab 변경 `useEffect(refetch)` 가 함께 있어 최초 진입만으로 `refetch()`가 여러 번 수동
+    // 호출되었다(마운트 자동조회와 중복). 이제는 이 화면이 `refetch()`를 직접 호출하는 경로가
+    // "다시 시도" 에러 CTA 뿐이므로, 마운트/세그먼트 전환만으로는 절대 호출되지 않아야 한다 —
+    // 최신화는 마운트 기반 자동조회(`useJobSeekers` 훅) + 쓰기 뮤테이션의 캐시 invalidate 로
+    // 커버된다(제안 발송 시 `recruitment.store(storeId)` invalidate → storeSeekers 자동 재조회).
+    test('마운트/세그먼트 전환만으로는 refetch 가 수동 호출되지 않는다(중복 호출 제거)', async () => {
         mockUseJobSeekers.mockReturnValue({
             data: [makeSeeker()],
             isLoading: false,
@@ -293,23 +299,23 @@ describe('JobSeekerListScreen', () => {
             await flush();
         });
 
-        // 최초 마운트 시 useFocusEffect + topTab 초기값('nearby') 진입 효과로 이미 1회 이상 호출됨.
-        const callsAfterMount = mockRefetch.mock.calls.length;
-        expect(callsAfterMount).toBeGreaterThan(0);
+        // 최초 마운트 — 더 이상 수동 refetch 호출이 없어야 한다(TanStack 자체 마운트 자동조회에 위임).
+        expect(mockRefetch).not.toHaveBeenCalled();
 
         const topSegment = renderer!.root.findAllByProps({accessibilityRole: 'tablist'})[0];
         const topTabs = topSegment.findAllByProps({accessibilityRole: 'tab'});
 
-        // '우리 공고·지원자'(index 1)로 전환 — OurPostingScreen 이 마운트되며 자체 useFocusEffect 로
-        // useMyJobPosting/useStoreJobApplications refetch 가 실행된다.
+        // '우리 공고·지원자'(index 1)로 전환 — OurPostingScreen 이 새로 마운트되지만, 이 화면 자체는
+        // 더 이상 수동 refetch 를 호출하지 않는다(OurPostingScreen 은 자신의 훅 staleTime:0 +
+        // 마운트 자동조회로 대체).
         await act(async () => {
             topTabs[1].props.onPress();
             await flush();
         });
-        expect(mockMyJobPostingRefetch).toHaveBeenCalled();
-        expect(mockStoreApplicationsRefetch).toHaveBeenCalled();
+        expect(mockMyJobPostingRefetch).not.toHaveBeenCalled();
+        expect(mockStoreApplicationsRefetch).not.toHaveBeenCalled();
 
-        // 다시 '주변 구직자'(index 0)로 돌아오면 useJobSeekers.refetch 가 추가로 호출돼야 한다.
+        // 다시 '주변 구직자'(index 0)로 돌아와도 useJobSeekers.refetch 가 수동 호출되지 않아야 한다.
         const topSegmentAgain = renderer!.root.findAllByProps({accessibilityRole: 'tablist'})[0];
         const topTabsAgain = topSegmentAgain.findAllByProps({accessibilityRole: 'tab'});
         await act(async () => {
@@ -317,7 +323,7 @@ describe('JobSeekerListScreen', () => {
             await flush();
         });
 
-        expect(mockRefetch.mock.calls.length).toBeGreaterThan(callsAfterMount);
+        expect(mockRefetch).not.toHaveBeenCalled();
     });
 
     // 회귀 테스트(Phase 7 E2E 검증에서 발견): ScreenContainer 에 scroll prop 이 없으면 본문이
