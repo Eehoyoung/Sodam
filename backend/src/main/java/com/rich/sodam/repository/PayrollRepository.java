@@ -19,6 +19,12 @@ public interface PayrollRepository extends JpaRepository<Payroll, Long> {
     List<Payroll> findByEmployee_IdOrderByEndDateDesc(Long employeeId);
 
     /**
+     * 여러 직원 ID의 급여 내역을 한 번에 조회 (N+1 방지). 최신순 정렬 후 자바에서
+     * 직원 ID별로 그룹핑해 각자의 첫 번째(최신) 레코드만 사용할 것.
+     */
+    List<Payroll> findByEmployee_IdInOrderByEndDateDesc(List<Long> employeeIds);
+
+    /**
      * 직원 ID와 기간으로 급여 내역 조회
      */
     @Query("SELECT p FROM Payroll p WHERE p.employee.id = :employeeId " +

@@ -12,7 +12,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 두루누리·고용지원금 자격 자동판정 (B7/M-NEW-03).
@@ -41,6 +43,12 @@ public class SubsidyEligibilityService {
         int employeeCount = relations.size();
         boolean storeUnder10 = employeeCount < SubsidyStandards.HEADCOUNT_LIMIT;
 
+        List<Long> employeeIds = relations.stream()
+                .filter(r -> r.getEmployeeProfile() != null && r.getEmployeeProfile().getId() != null)
+                .map(r -> r.getEmployeeProfile().getId())
+                .toList();
+        Map<Long, Integer> latestMonthlyWageByEmployeeId = latestMonthlyWageByEmployeeId(employeeIds);
+
         List<Candidate> candidates = new ArrayList<>();
         int eligibleCount = 0;
         for (EmployeeStoreRelation r : relations) {
@@ -49,7 +57,7 @@ public class SubsidyEligibilityService {
             }
             Long employeeId = r.getEmployeeProfile().getId();
             String name = employeeName(r);
-            Integer monthlyWage = latestMonthlyWage(employeeId);
+            Integer monthlyWage = latestMonthlyWageByEmployeeId.get(employeeId);
             boolean eligible = storeUnder10
                     && monthlyWage != null
                     && monthlyWage < SubsidyStandards.MONTHLY_WAGE_CAP;
@@ -63,13 +71,22 @@ public class SubsidyEligibilityService {
                 storeId, employeeCount, storeUnder10, eligibleCount, candidates, GUIDANCE, DISCLAIMER);
     }
 
-    /** 최근 급여 명세의 세전 급여를 월보수 추정으로 사용. 없으면 null(판정 보류). */
-    private Integer latestMonthlyWage(Long employeeId) {
-        List<Payroll> payrolls = payrollRepository.findByEmployee_IdOrderByEndDateDesc(employeeId);
-        if (payrolls.isEmpty()) {
-            return null;
+    /**
+     * 직원 ID 목록의 최신 급여(세전)를 배치 조회로 계산 (N+1 방지). endDate 내림차순으로 한 번에
+     * 조회한 뒤, 직원 ID별로 처음 등장하는(=가장 최신) 레코드만 채택한다. 급여 이력이 없으면
+     * 해당 직원은 맵에 없고, 판정 시 null 처리(보류)된다.
+     */
+    private Map<Long, Integer> latestMonthlyWageByEmployeeId(List<Long> employeeIds) {
+        Map<Long, Integer> result = new HashMap<>();
+        if (employeeIds.isEmpty()) {
+            return result;
         }
-        return payrolls.get(0).getGrossWage();
+        List<Payroll> payrolls = payrollRepository.findByEmployee_IdInOrderByEndDateDesc(employeeIds);
+        for (Payroll payroll : payrolls) {
+            Long employeeId = payroll.getEmployee().getId();
+            result.putIfAbsent(employeeId, payroll.getGrossWage());
+        }
+        return result;
     }
 
     private String employeeName(EmployeeStoreRelation r) {
