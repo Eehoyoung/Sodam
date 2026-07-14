@@ -53,7 +53,7 @@ public class MasterController {
         Long masterId = principal.getId();
         MasterProfile masterProfile = masterProfileService.getMasterProfile(masterId);
         List<Store> stores = masterProfileService.getStoresByMaster(masterId);
-        Map<String, Object> statsMap = masterProfileService.getCombinedStats(masterId);
+        Map<String, Object> statsMap = masterProfileService.getCombinedStats(masterId, stores);
         CombinedStatsDto combinedStats = new CombinedStatsDto(
                 (int) statsMap.get("totalStores"),
                 (int) statsMap.get("totalEmployees"),
