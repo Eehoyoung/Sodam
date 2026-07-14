@@ -160,18 +160,31 @@ public class AttendanceController {
     }
 
     @Operation(summary = "직원 오늘 출퇴근 단건 조회",
-            description = "직원의 오늘자 출퇴근 기록 1건 조회. 없으면 204. FE EmployeeAttendanceHome 진입 시 사용.")
+            description = "직원의 오늘자 출퇴근 기록 1건 조회. 없으면 204. FE EmployeeAttendanceHome 진입 시 사용. " +
+                    "storeId 를 지정하면 다매장 직원의 경우 해당 매장 기록만 필터링해 조회한다.")
     @GetMapping("/employee/{employeeId}/today")
     public ResponseEntity<AttendanceResponseDto> getTodayAttendance(
             @AuthenticationPrincipal UserPrincipal principal,
-            @PathVariable Long employeeId) {
+            @PathVariable Long employeeId,
+            @Parameter(description = "매장 ID (선택). 지정 시 다매장 직원의 출퇴근 기록을 해당 매장 기준으로만 조회한다.")
+            @RequestParam(required = false) Long storeId) {
+        boolean master = isMaster(principal);
         // IDOR 차단: 본인 또는 그 직원의 매장 사장만.
-        guard.assertCanViewEmployee(principal.getId(), employeeId, isMaster(principal));
+        guard.assertCanViewEmployee(principal.getId(), employeeId, master);
+        if (storeId != null) {
+            // storeId 가 지정되면 그 매장에 대한 조회 권한도 별도 검증한다.
+            if (master && !principal.getId().equals(employeeId)) {
+                guard.assertMasterOwnsStore(principal.getId(), storeId);
+            } else {
+                guard.assertEmployeeInStore(employeeId, storeId);
+            }
+        }
         LocalDateTime startOfDay = java.time.LocalDate.now().atStartOfDay();
         LocalDateTime endOfDay = startOfDay.plusDays(1);
 
-        List<Attendance> all = attendanceService.getAttendancesByEmployeeAndPeriod(
-                employeeId, startOfDay, endOfDay);
+        List<Attendance> all = storeId != null
+                ? attendanceService.getAttendancesByEmployeeStoreAndPeriod(employeeId, storeId, startOfDay, endOfDay)
+                : attendanceService.getAttendancesByEmployeeAndPeriod(employeeId, startOfDay, endOfDay);
         return all.stream()
                 .findFirst()
                 .map(AttendanceResponseDto::from)
