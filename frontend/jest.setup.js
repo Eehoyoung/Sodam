@@ -39,6 +39,15 @@ jest.mock('react-native', () => ({
     useColorScheme: jest.fn(() => 'light'),
     StyleSheet: {
         create: jest.fn((styles) => styles),
+        flatten: jest.fn((style) => {
+            if (Array.isArray(style)) {
+                return Object.assign({}, ...style.map((s) => s || {}));
+            }
+            return style || {};
+        }),
+        compose: jest.fn((a, b) => [a, b]),
+        absoluteFillObject: {position: 'absolute', left: 0, right: 0, top: 0, bottom: 0},
+        hairlineWidth: 1,
     },
     View: 'View',
     Text: 'Text',
@@ -76,11 +85,31 @@ jest.mock('react-native', () => ({
             stop: jest.fn(),
             reset: jest.fn(),
         })),
-        sequence: jest.fn(),
-        parallel: jest.fn(),
-        stagger: jest.fn(),
-        loop: jest.fn(),
-        delay: jest.fn(),
+        sequence: jest.fn(() => ({
+            start: jest.fn((cb) => cb && cb({finished: true})),
+            stop: jest.fn(),
+            reset: jest.fn(),
+        })),
+        parallel: jest.fn(() => ({
+            start: jest.fn((cb) => cb && cb({finished: true})),
+            stop: jest.fn(),
+            reset: jest.fn(),
+        })),
+        stagger: jest.fn(() => ({
+            start: jest.fn((cb) => cb && cb({finished: true})),
+            stop: jest.fn(),
+            reset: jest.fn(),
+        })),
+        loop: jest.fn(() => ({
+            start: jest.fn(),
+            stop: jest.fn(),
+            reset: jest.fn(),
+        })),
+        delay: jest.fn(() => ({
+            start: jest.fn((cb) => cb && cb({finished: true})),
+            stop: jest.fn(),
+            reset: jest.fn(),
+        })),
         event: jest.fn(() => jest.fn()),
         createAnimatedComponent: jest.fn(() => 'AnimatedComponent'),
         add: jest.fn(),
@@ -214,12 +243,18 @@ jest.mock('react-native-screens', () => ({
     enableScreens: jest.fn(),
 }));
 
-// Mock react-native-safe-area-context
-jest.mock('react-native-safe-area-context', () => ({
-    SafeAreaProvider: ({children}) => children,
-    SafeAreaView: ({children}) => children,
-    useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
-}));
+// Mock react-native-safe-area-context.
+// SafeAreaView forwards remaining props (testID, style, ...) onto a host 'View' so that
+// screens relying on testID for RNTL queries (getByTestId) still resolve under real rendering —
+// a bare `({children}) => children` passthrough silently drops testID/style.
+jest.mock('react-native-safe-area-context', () => {
+    const React = require('react');
+    return {
+        SafeAreaProvider: ({children}) => children,
+        SafeAreaView: ({children, ...props}) => React.createElement('View', props, children),
+        useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
+    };
+});
 
 // Mock react-native-webview (AddressSearchModal — 카카오 주소검색 postcode iframe)
 jest.mock('react-native-webview', () => ({
@@ -308,76 +343,49 @@ jest.mock('react-native-reanimated', () => {
     }
 });
 
-// Lightweight mock for @testing-library/react-native to avoid adding a dev dependency
-try {
-    jest.mock('@testing-library/react-native', () => {
-        const stubEl = () => ({type: 'View', props: {}, children: []});
-        const render = jest.fn(() => ({
-            getByText: jest.fn(stubEl),
-            getByTestId: jest.fn(stubEl),
-            getByPlaceholderText: jest.fn(stubEl),
-            getByDisplayValue: jest.fn(stubEl),
-            getByRole: jest.fn(stubEl),
-            getByLabelText: jest.fn(stubEl),
-            queryByText: jest.fn(() => null),
-            queryByTestId: jest.fn(() => null),
-            queryByPlaceholderText: jest.fn(() => null),
-            findByText: jest.fn(() => Promise.resolve(stubEl())),
-            findByTestId: jest.fn(() => Promise.resolve(stubEl())),
-            getAllByText: jest.fn(() => [stubEl()]),
-            getAllByTestId: jest.fn(() => [stubEl()]),
-            queryAllByText: jest.fn(() => []),
-            queryAllByTestId: jest.fn(() => []),
-            toJSON: jest.fn(() => ({type: 'View', children: []})),
-            debug: jest.fn(),
-            update: jest.fn(),
-            unmount: jest.fn(),
-            rerender: jest.fn(),
-        }));
-        const renderHook = jest.fn((callback) => {
-            const result = {current: undefined};
-            try {
-                const r = callback();
-                result.current = (r && 'result' in r) ? r.result : r;
-            } catch (e) {
-                result.current = undefined;
-            }
-            return {
-                result,
-                rerender: jest.fn(),
-                unmount: jest.fn(),
-            };
-        });
-        const fireEvent = Object.assign(jest.fn(), {
-            press: jest.fn(),
-            changeText: jest.fn(),
-            scroll: jest.fn(),
-            focus: jest.fn(),
-            blur: jest.fn(),
-        });
-        const waitFor = async (cb) => {
-            if (cb) {
-                await cb();
-            }
-        };
-        const act = async (cb) => {
-            return cb ? await cb() : undefined;
-        };
-        return {render, renderHook, fireEvent, waitFor, act};
-    });
-} catch (e) {
-    // ignore
-}
+// NOTE: @testing-library/react-native is intentionally NOT mocked here — it is a real dev
+// dependency (see package.json) and screens must be rendered through the genuine RNTL renderer.
+// A previous lightweight stub (fake render()/findByText() that always resolved truthy) hid real
+// runtime failures from Jest entirely (e.g. AddressSearchModal's react-native-webview link crash
+// shipped to a device despite 337 "passing" FE tests). Removed 2026-07-12.
 
-
-
-// Mock @react-navigation/native-stack to avoid native dependencies in tests
+// Mock @react-navigation/native-stack to avoid native dependencies in tests.
+// Renders only the resolved initial route's `component` (matching real single-screen-focus
+// stack behavior) instead of dumping every <Stack.Screen> child — a naive `children` passthrough
+// mock never invokes the `component` prop (the pattern used by every screen in this codebase),
+// so real RNTL queries against a rendered <Stack.Navigator> would find nothing.
 try {
   jest.mock('@react-navigation/native-stack', () => {
-    const createNativeStackNavigator = () => ({
-      Navigator: ({children}) => children,
-      Screen: ({children}) => children,
-    });
+    const React = require('react');
+    const Navigator = ({children, initialRouteName}) => {
+      const screens = React.Children.toArray(children).filter(Boolean);
+      const target =
+        (initialRouteName && screens.find((s) => s.props && s.props.name === initialRouteName)) ||
+        screens[0];
+      if (!target) {
+        return null;
+      }
+      const {component: ScreenComponent, children: renderChildren, initialParams, name} = target.props;
+      const navigation = {
+        navigate: jest.fn(),
+        goBack: jest.fn(),
+        reset: jest.fn(),
+        setOptions: jest.fn(),
+        addListener: jest.fn(() => jest.fn()),
+        removeListener: jest.fn(),
+        isFocused: jest.fn(() => true),
+      };
+      const route = {name, params: initialParams, key: `${name}-mock`};
+      if (typeof renderChildren === 'function') {
+        return renderChildren({navigation, route});
+      }
+      if (ScreenComponent) {
+        return React.createElement(ScreenComponent, {navigation, route});
+      }
+      return null;
+    };
+    const Screen = () => null;
+    const createNativeStackNavigator = () => ({Navigator, Screen});
     return { createNativeStackNavigator };
   });
 } catch (e) {
