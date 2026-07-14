@@ -9,10 +9,19 @@
  * 수락 시(제안·지원 공통) 매장 초대코드가 노출되며(R-13, PII 최소화로 수락 후에만 응답에 포함),
  * "매장 가입하기" 버튼은 기존 `JoinStoreByCode` 화면으로 네비게이션만 한다(그 화면 내부 로직은
  * 건드리지 않는다 — 코드값은 자동 프리필되지 않으므로 화면에 코드를 표시해 사용자가 직접 입력한다).
+ *
+ * 재조회 전략(FE-DUP 수정, findings_report.md §4.1): `useMyJobOffers`/`useMyJobApplications` 는
+ * `staleTime: 0` 이라 TanStack Query 기본 `refetchOnMount` 만으로 마운트마다 항상 재조회된다.
+ * 이 화면은 허브(`EmployeeRecruitmentScreen`) 탭 전환마다 조건부 렌더로 매번 새로 마운트되므로
+ * 별도 `useFocusEffect(refetch)` 조합 없이 이 자동 동작만으로 "탭 전환마다 재조회"가 충족된다 —
+ * 예전에는 여기에 수동 `useFocusEffect` 를 얹어 마운트 자동조회 + 포커스 refetch 가 겹쳐 최초
+ * 진입 시 API가 2회씩(제안·지원 각각) 중복 호출됐다. 응답(`useRespondToJobOffer`) 뮤테이션은
+ * 성공 시 `myOffers` 쿼리를 invalidate 하므로, 이 화면이 마운트돼 있는 동안 응답을 처리해도
+ * 리스트가 자동으로 최신화된다(쓰기 후 별도 refetch 불필요).
  */
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {Pressable, StyleSheet, View} from 'react-native';
-import {useFocusEffect, useNavigation} from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {AppBadge, AppCard, AppText, AppToast, EmptyState, ErrorState, LoadingState} from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
@@ -40,14 +49,6 @@ const JobOfferInboxScreen: React.FC = () => {
     const applicationsQuery = useMyJobApplications();
     const respondMutation = useRespondToJobOffer();
     const [, setTick] = useState(0);
-
-    useFocusEffect(
-        useCallback(() => {
-            offersQuery.refetch();
-            applicationsQuery.refetch();
-            // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, []),
-    );
 
     // 대기중 제안의 남은 시간 표기를 1분마다 재계산(값 자체는 항상 현재 시각을 다시 계산 — drift 없음).
     useEffect(() => {

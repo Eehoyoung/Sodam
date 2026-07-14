@@ -141,6 +141,21 @@ describe('JobSeekingSettingsScreen', () => {
         successSpy.mockRestore();
     });
 
+    // FE-DUP 회귀 테스트(findings_report.md §4.1): 예전에는 `useMyJobSeeking` 이 `staleTime: 30s`
+    // 인데도 이 탭(허브 기본 탭)에 마운트마다 수동 `useFocusEffect(refetch)` 가 있어 staleTime 설정을
+    // 무시하고 항상 강제 재조회했다. 이제 이 화면이 refetch 를 직접 호출하는 경로는 "다시 시도"
+    // 에러 CTA 뿐이므로, 정상 마운트만으로는 절대 호출되지 않아야 한다.
+    test('마운트만으로는 refetch 가 수동 호출되지 않는다(중복 호출 제거)', async () => {
+        mockQueryState.data = makeProfile({eligible: true});
+
+        await act(async () => {
+            ReactTestRenderer.create(<JobSeekingSettingsScreen />);
+            await flush();
+        });
+
+        expect(mockRefetch).not.toHaveBeenCalled();
+    });
+
     test('eligible=false 이면 구직 토글이 비활성화되고 자격 배너가 노출된다', async () => {
         mockQueryState.data = makeProfile({eligible: false});
 

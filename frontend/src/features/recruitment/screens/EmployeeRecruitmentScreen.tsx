@@ -37,8 +37,10 @@ const EmployeeRecruitmentScreen: React.FC = () => {
 
             {/*
              * 탭 전환은 조건부 렌더로 마운트/언마운트한다 — 다시 선택될 때마다 새로 마운트되므로
-             * 각 탭 컴포넌트의 `useFocusEffect` refetch 가 매번 재실행된다(§10 Phase6 "세그먼트
-             * 전환마다 refetch" 신규 확정 패턴, JobSeekingSettingsScreen 도 동일하게 이미 적용됨).
+             * 각 탭 컴포넌트의 TanStack Query 훅이 기본 `refetchOnMount` 로 매번 재조회한다(§10
+             * Phase6 "세그먼트 전환마다 refetch"). 수동 `useFocusEffect(refetch)` 조합은 마운트
+             * 자동조회와 중복 호출되는 문제(FE-DUP, findings_report.md §4.1)가 있어 제거했다 —
+             * 각 탭 화면(JobSeekingSettingsScreen 등)의 훅 staleTime 설정만으로 충분하다.
              */}
             {tabIndex === 0 ? <JobSeekingSettingsScreen /> : null}
             {tabIndex === 1 ? <NearbyJobPostingsScreen onGoToProfileTab={() => setTabIndex(0)} /> : null}

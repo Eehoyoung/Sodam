@@ -93,6 +93,23 @@ describe('NearbyJobPostingsScreen', () => {
         });
     });
 
+    // FE-DUP 회귀 테스트(findings_report.md §4.1): 예전에는 `useNearbyJobPostings` 가
+    // `staleTime: 0` 인데도 마운트마다 수동 `useFocusEffect(refetch)` 를 추가로 호출해, 마운트
+    // 자동조회(useQuery 자체)와 겹쳐 최초 진입 시 API가 2회 중복 호출됐다. 이제 이 화면은 refetch
+    // 를 "다시 시도" 에러 CTA 에서만 호출하므로, 정상 마운트만으로는 절대 호출되지 않아야 한다.
+    test('마운트만으로는 refetch 가 수동 호출되지 않는다(중복 호출 제거)', async () => {
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(
+                <NearbyJobPostingsScreen onGoToProfileTab={mockOnGoToProfileTab} />,
+            );
+            await flush();
+        });
+
+        expect(mockRefetch).not.toHaveBeenCalled();
+        expect(renderer).toBeTruthy();
+    });
+
     test('리스트 렌더 — 매장명/유형/업종/시급/거리 노출', async () => {
         mockUseNearbyJobPostings.mockReturnValue({
             data: [makePosting()],

@@ -13,10 +13,16 @@
  * `EmployeeRecruitment` 스크린과 동일 인스턴스(React Navigation 컨텍스트로 전파)이므로,
  * 여기서 `beforeRemove` 리스너를 등록해도 화면 이탈(BACK/스와이프/goBack) 시점에 정확히
  * 동작한다 — 미저장 변경(`dirty`)이 있으면 확인 시트를 띄운다(testing.md BACK=폼취소 주의).
+ *
+ * 재조회 전략(FE-DUP 수정, findings_report.md §4.1): `useMyJobSeeking` 은 `staleTime: 30s` —
+ * 이 탭은 허브의 기본 탭이라 진입할 때마다 조건부 렌더로 새로 마운트되므로, TanStack Query 기본
+ * `refetchOnMount` 만으로 "재진입 시 stale 하면 재조회"가 이미 충족된다. 예전에는 여기에 수동
+ * `useFocusEffect(refetch)` 를 얹어 staleTime 을 무시하고 매번 강제 재조회했다(허브 기본 탭이라
+ * 사실상 항상 발생) — staleTime 30s 설정의 취지 자체를 무력화하는 중복 호출이었다.
  */
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {ActivityIndicator, Pressable, StyleSheet, Switch, View} from 'react-native';
-import {useFocusEffect, useNavigation} from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
@@ -92,13 +98,6 @@ const JobSeekingSettingsScreen: React.FC = () => {
     const [editingDay, setEditingDay] = useState<JobDayOfWeek | null>(null);
     const [sheetStart, setSheetStart] = useState('0900');
     const [sheetEnd, setSheetEnd] = useState('1800');
-
-    // 허브 탭 재진입/포커스마다 재조회 — 다른 화면에서 매장 이력이 바뀌었을 수도 있음(자격 판정 갱신).
-    useFocusEffect(
-        useCallback(() => {
-            refetch();
-        }, [refetch]),
-    );
 
     // 서버 데이터 → 로컬 폼 동기화. 사용자가 편집 중(dirty)이면 덮어쓰지 않는다.
     useEffect(() => {

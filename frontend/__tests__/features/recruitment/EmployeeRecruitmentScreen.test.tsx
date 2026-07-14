@@ -2,10 +2,10 @@ import React from 'react';
 import ReactTestRenderer, {act} from 'react-test-renderer';
 
 // EmployeeRecruitmentScreen — [직원] 채용 허브 (260711_작업통합.md Part 2 §19.4, Phase 6).
-// 핵심 검증: 세그먼트 전환(구직 설정 ↔ 주변 구인 ↔ 채용함) 시 각 탭이 조건부 마운트/언마운트되며,
-// 그때마다 해당 탭의 데이터가 재조회된다(§10 Phase6 "세그먼트 전환마다 refetch" 신규 확정 패턴).
-// 탭 컴포넌트 자체는 개별 테스트 파일에서 이미 검증했으므로, 여기서는 허브가 탭을 스위칭할 때
-// 각 탭의 refetch 훅이 호출되는지만 훅을 목(mock)해 결정적으로 확인한다.
+// 핵심 검증: 세그먼트 전환(구직 설정 ↔ 주변 구인 ↔ 채용함) 시 각 탭이 조건부 마운트/언마운트된다
+// (§10 Phase6 "세그먼트 전환마다 재조회"). 재조회는 이제 각 탭의 TanStack Query 훅이 매 마운트마다
+// 기본 `refetchOnMount` 로 처리하므로(FE-DUP 수정, findings_report.md §4.1), 허브 레벨에서는
+// "탭 전환마다 실제로 리마운트되는지"와 "수동 refetch 호출이 더 이상 없는지"만 검증한다.
 
 const mockGoBack = jest.fn();
 const mockNavigate = jest.fn();
@@ -117,24 +117,26 @@ describe('EmployeeRecruitmentScreen', () => {
         renderer = null;
     });
 
-    test('세그먼트 전환마다 각 탭의 데이터가 재조회된다(구직 설정 → 주변 구인 → 채용함 → 구직 설정)', async () => {
+    test('세그먼트 전환마다 각 탭이 조건부 마운트/언마운트된다(구직 설정 → 주변 구인 → 채용함 → 구직 설정)', async () => {
         await act(async () => {
             renderer = ReactTestRenderer.create(<EmployeeRecruitmentScreen />);
             await flush();
         });
 
-        // 최초 마운트('구직 설정' 탭) — JobSeekingSettingsScreen 의 useFocusEffect 로 1회 이상 호출.
-        expect(mockJobSeekingRefetch.mock.calls.length).toBeGreaterThan(0);
-        expect(mockNearbyRefetch).not.toHaveBeenCalled();
+        // 최초 마운트('구직 설정' 탭) — JobSeekingSettingsScreen 만 렌더돼야 한다.
+        expect(renderer!.root.findAllByProps({testID: 'job-seeking-toggle'}).length).toBeGreaterThan(0);
+        expect(renderer!.root.findAllByProps({testID: 'nearby-job-postings-screen'}).length).toBe(0);
+        expect(renderer!.root.findAllByProps({testID: 'job-offer-inbox-screen'}).length).toBe(0);
 
         const segment = renderer!.root.findAllByProps({accessibilityRole: 'tablist'})[0];
 
-        // '주변 구인'(index 1) 으로 전환 — NearbyJobPostingsScreen 마운트.
+        // '주변 구인'(index 1) 으로 전환 — NearbyJobPostingsScreen 마운트, 구직 설정은 언마운트.
         await act(async () => {
             segment.findAllByProps({accessibilityRole: 'tab'})[1].props.onPress();
             await flush();
         });
-        expect(mockNearbyRefetch.mock.calls.length).toBeGreaterThan(0);
+        expect(renderer!.root.findAllByProps({testID: 'nearby-job-postings-screen'}).length).toBeGreaterThan(0);
+        expect(renderer!.root.findAllByProps({testID: 'job-seeking-toggle'}).length).toBe(0);
 
         // '채용함'(index 2) 으로 전환 — JobOfferInboxScreen 마운트.
         await act(async () => {
@@ -142,17 +144,23 @@ describe('EmployeeRecruitmentScreen', () => {
                 .findAllByProps({accessibilityRole: 'tab'})[2].props.onPress();
             await flush();
         });
-        expect(mockOffersRefetch.mock.calls.length).toBeGreaterThan(0);
-        expect(mockApplicationsRefetch.mock.calls.length).toBeGreaterThan(0);
+        expect(renderer!.root.findAllByProps({testID: 'job-offer-inbox-screen'}).length).toBeGreaterThan(0);
+        expect(renderer!.root.findAllByProps({testID: 'nearby-job-postings-screen'}).length).toBe(0);
 
-        // 다시 '구직 설정'(index 0) 으로 돌아오면 JobSeekingSettingsScreen 이 재마운트되어
-        // refetch 가 한 번 더 호출된다(최초 마운트 호출 수보다 커야 함).
-        const callsBeforeReturn = mockJobSeekingRefetch.mock.calls.length;
+        // 다시 '구직 설정'(index 0) 으로 돌아오면 JobSeekingSettingsScreen 이 재마운트된다.
         await act(async () => {
             renderer!.root.findAllByProps({accessibilityRole: 'tablist'})[0]
                 .findAllByProps({accessibilityRole: 'tab'})[0].props.onPress();
             await flush();
         });
-        expect(mockJobSeekingRefetch.mock.calls.length).toBeGreaterThan(callsBeforeReturn);
+        expect(renderer!.root.findAllByProps({testID: 'job-seeking-toggle'}).length).toBeGreaterThan(0);
+
+        // FE-DUP 수정(findings_report.md §4.1) — 탭 전환은 이제 어떤 화면에서도 수동 refetch 를
+        // 유발하지 않는다(마운트 자동조회에만 의존). 허브 안의 4개 탭을 모두 거쳤음에도 훅에서 받은
+        // refetch 목은 한 번도 호출되지 않아야 한다.
+        expect(mockJobSeekingRefetch).not.toHaveBeenCalled();
+        expect(mockNearbyRefetch).not.toHaveBeenCalled();
+        expect(mockOffersRefetch).not.toHaveBeenCalled();
+        expect(mockApplicationsRefetch).not.toHaveBeenCalled();
     });
 });

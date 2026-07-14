@@ -7,10 +7,15 @@
  * 내 희망지역(§2 #4) 기준 4km 이내 open 공고를 유형·업종 필터로 좁혀 리스트로 보여주고,
  * 카드 탭 → `JobPostingDetailScreen`(R-17)으로 push(추가 조회 없이 항목을 그대로 전달).
  * 희망지역 미설정이면(`JOB_SEEKING_LOCATIONS_REQUIRED`) 구직 설정 탭으로 유도한다.
+ *
+ * 재조회 전략(FE-DUP 수정, findings_report.md §4.1): `useNearbyJobPostings` 는 `staleTime: 0` —
+ * 허브 탭 전환마다 조건부 렌더로 매번 새로 마운트되므로 TanStack Query 기본 `refetchOnMount` 만으로
+ * 매 진입마다 재조회된다. 예전에는 여기에 수동 `useFocusEffect(refetch)` 를 얹어 마운트 자동조회와
+ * 겹쳐 최초 진입 시 API가 2회 중복 호출됐다.
  */
-import React, {useCallback, useMemo, useState} from 'react';
+import React, {useMemo, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
-import {useFocusEffect, useNavigation} from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
@@ -69,13 +74,6 @@ const NearbyJobPostingsScreen: React.FC<NearbyJobPostingsScreenProps> = ({onGoTo
         [typeFilter, categoryFilter],
     );
     const {data, isLoading, isError, error, refetch} = useNearbyJobPostings(filters);
-
-    useFocusEffect(
-        useCallback(() => {
-            refetch();
-            // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, []),
-    );
 
     const list = data ?? [];
     const errorCode = isError ? extractErrorCode(error) : undefined;

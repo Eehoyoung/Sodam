@@ -8,13 +8,15 @@
  * 기존 공고가 있으면 프리필된 수정 폼) → 지원자 리스트(§5.3 구직자 카드와 동일 정보 구성) →
  * 지원자별 수락/거절.
  *
- * 탭 재진입/전환마다 `useFocusEffect` 로 재조회한다 — 탭을 조건부 렌더로 마운트/언마운트하는 상위
- * 구조(`{topTab==='ourPostings' ? <OurPostingScreen/> : null}`)에서는 매 마운트마다 이 훅이 다시
- * 타므로(§10 Phase6 "세그먼트 전환마다 refetch") 별도 장치 없이 이 패턴만으로 충분하다.
+ * 재조회 전략(FE-DUP 수정, findings_report.md §4.1): `useMyJobPosting`/`useStoreJobApplications`
+ * 는 둘 다 `staleTime: 0` — 탭을 조건부 렌더로 마운트/언마운트하는 상위 구조
+ * (`{topTab==='ourPostings' ? <OurPostingScreen/> : null}`)에서 이 화면은 세그먼트 전환마다
+ * 매번 새로 마운트되므로, TanStack Query 기본 `refetchOnMount` 만으로 "세그먼트 전환마다 재조회"가
+ * 이미 충족된다. 예전에는 여기에 수동 `useFocusEffect(refetch)` 를 두 쿼리 모두에 얹어 마운트
+ * 자동조회와 겹쳐 최초 진입 시 API가 최대 4회(공고·지원자 각 2회) 중복 호출됐다.
  */
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {Pressable, StyleSheet, Switch, View} from 'react-native';
-import {useFocusEffect} from '@react-navigation/native';
 import {
     AppBadge,
     AppCard,
@@ -90,14 +92,6 @@ const OurPostingScreen: React.FC<OurPostingScreenProps> = ({storeId}) => {
     const [message, setMessage] = useState('');
     const [open, setOpen] = useState(true);
     const [dirty, setDirty] = useState(false);
-
-    useFocusEffect(
-        useCallback(() => {
-            postingQuery.refetch();
-            applicationsQuery.refetch();
-            // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, []),
-    );
 
     // 기존 공고 → 폼 프리필(사용자가 편집 중이면 덮어쓰지 않음).
     useEffect(() => {

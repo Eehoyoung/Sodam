@@ -96,6 +96,22 @@ describe('OurPostingScreen', () => {
         mockRespondMutateAsync.mockResolvedValue({});
     });
 
+    // FE-DUP 회귀 테스트(findings_report.md §4.1): 예전에는 `useMyJobPosting`/`useStoreJobApplications`
+    // 가 둘 다 `staleTime: 0` 인데도 마운트마다 수동 `useFocusEffect` 로 두 refetch 를 함께 호출해,
+    // 마운트 자동조회(useQuery 자체)와 겹쳐 최초 진입 시 API가 최대 4회(공고·지원자 각 2회) 중복
+    // 호출됐다(recruitment 도메인 5화면 중 "가장 심함"). 이제 이 화면이 refetch 를 직접 호출하는
+    // 경로는 "다시 시도" 에러 CTA(지원자 리스트만) 뿐이므로, 정상 마운트만으로는 절대 호출되지
+    // 않아야 한다.
+    test('마운트만으로는 postingQuery/applicationsQuery refetch 가 수동 호출되지 않는다(중복 호출 제거)', async () => {
+        await act(async () => {
+            ReactTestRenderer.create(<OurPostingScreen storeId={7} />);
+            await flush();
+        });
+
+        expect(mockPostingRefetch).not.toHaveBeenCalled();
+        expect(mockApplicationsRefetch).not.toHaveBeenCalled();
+    });
+
     test('기존 공고가 있으면 upsert 폼이 프리필된다', async () => {
         mockPostingState.data = {
             id: 1,
