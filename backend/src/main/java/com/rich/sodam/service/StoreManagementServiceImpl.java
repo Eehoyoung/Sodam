@@ -11,6 +11,7 @@ import com.rich.sodam.dto.request.LocationUpdateDto;
 import com.rich.sodam.dto.request.OperatingHoursUpdateDto.DayOperatingHours;
 import com.rich.sodam.dto.request.StoreRegistrationDto;
 import com.rich.sodam.dto.request.StoreUpdateDto;
+import com.rich.sodam.dto.response.StoreEmployeeResponseDto;
 import com.rich.sodam.exception.BusinessException;
 import com.rich.sodam.exception.EntityNotFoundException;
 import com.rich.sodam.repository.*;
@@ -646,13 +647,13 @@ public class StoreManagementServiceImpl implements StoreManagementService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<User> getEmployeesByStore(Long storeId) {
+    public List<StoreEmployeeResponseDto> getEmployeesByStore(Long storeId) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new EntityNotFoundException("매장을 찾을 수 없습니다."));
 
         return employeeStoreRelationRepository.findByStore(store)
                 .stream()
-                .map(relation -> relation.getEmployeeProfile().getUser())
+                .map(relation -> StoreEmployeeResponseDto.from(relation.getEmployeeProfile().getUser()))
                 .collect(Collectors.toList());
     }
 

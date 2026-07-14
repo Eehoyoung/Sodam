@@ -6,6 +6,7 @@ import com.rich.sodam.dto.request.LocationUpdateDto;
 import com.rich.sodam.dto.request.StoreRegistrationDto;
 import com.rich.sodam.dto.request.StoreUpdateDto;
 import com.rich.sodam.dto.response.GeocodingResult;
+import com.rich.sodam.dto.response.StoreEmployeeResponseDto;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.service.GeocodingService;
 import com.rich.sodam.service.StoreAccessGuard;
@@ -236,17 +237,17 @@ public class StoreController {
     @Operation(summary = "매장 직원 목록 조회", description = "특정 매장에 소속된 모든 직원 목록을 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공",
-                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = User.class)))),
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = StoreEmployeeResponseDto.class)))),
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "404", description = "매장 정보를 찾을 수 없음")
     })
     @GetMapping("/{storeId}/employees")
-    public ResponseEntity<List<User>> getEmployeesByStore(
+    public ResponseEntity<List<StoreEmployeeResponseDto>> getEmployeesByStore(
             @org.springframework.security.core.annotation.AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "매장 ID", required = true) @PathVariable Long storeId) {
         // BOLA 차단: 본인 소유 매장의 직원 명부만 조회(타 매장 직원 PII 열람 방지)
         storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
-        List<User> employees = storeManagementService.getEmployeesByStore(storeId);
+        List<StoreEmployeeResponseDto> employees = storeManagementService.getEmployeesByStore(storeId);
         return ResponseEntity.ok(employees);
     }
 
