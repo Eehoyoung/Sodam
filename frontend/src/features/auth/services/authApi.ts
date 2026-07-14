@@ -90,7 +90,7 @@ export const authApi = {
 
   /** 이메일 사용 가능 여부 확인. available=true 면 가입 가능. */
   async checkEmail(email: string): Promise<{available: boolean}> {
-    const res = await api.get<{data: {available: boolean}}>('/api/auth/email-check', {params: {email}});
+    const res = await api.get<{data: {available: boolean}}>('/api/auth/email-check', {email});
     return res.data.data ?? {available: false};
   },
 

@@ -27,4 +27,14 @@ describe('authApi', () => {
       userGrade: 'MASTER',
     });
   });
+
+  test('checkEmail passes params directly (not double-wrapped under {params})', async () => {
+    (api.get as jest.Mock).mockResolvedValue({data: {data: {available: true}}});
+
+    await authApi.checkEmail('user@example.com');
+
+    // api.get(url, params) — the second arg IS the params object (see common/utils/api.ts).
+    // Passing {params: {email}} here double-wraps it and the query string never gets sent.
+    expect(api.get).toHaveBeenCalledWith('/api/auth/email-check', {email: 'user@example.com'});
+  });
 });
