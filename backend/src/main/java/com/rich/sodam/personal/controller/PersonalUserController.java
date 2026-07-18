@@ -62,12 +62,12 @@ public class PersonalUserController {
         if (Objects.equals(authUserId, pathUserId)) {
             return null; // OK
         }
-        // 관리자/운영 권한 허용(ROLE_MASTER, ROLE_MANAGER)
+        // 관리자/운영 권한 허용(ROLE_MASTER 전용 — 매니저는 전역 역할이 아니라 매장 관계 기반이므로 여기서 허용하지 않는다)
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null) {
             boolean allowed = authentication.getAuthorities().stream()
                     .map(GrantedAuthority::getAuthority)
-                    .anyMatch(r -> "ROLE_MASTER".equals(r) || "ROLE_MANAGER".equals(r));
+                    .anyMatch("ROLE_MASTER"::equals);
             if (allowed) return null;
         }
         return ResponseEntity.status(HttpStatus.FORBIDDEN)

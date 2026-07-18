@@ -102,6 +102,12 @@ public class DevSeedRunner implements CommandLineRunner {
         EmployeeStoreRelation staffRel = new EmployeeStoreRelation(employeeProfile, store, 12_000);
         staffRel.setHireDate(LocalDate.now().minusMonths(3));
         staffRel.setContractedWeeklyDays(5);
+        // 지훈(staff)을 매장 매니저(프리셋 6권한, 발효 상태)로 시드 — 매니저 모드 E2E를 로그인 즉시 검증하기 위함.
+        // dev 전용으로 전자서명 절차를 생략하고 가짜 envelope id(-1)를 넣는다(가드는 non-null만 요구,
+        // 실제 envelope 조회는 subjectId 기반이라 충돌 없음). 운영 경로에서는 반드시 서명 완료로만 발효된다.
+        staffRel.draftManagerAppointment(
+                com.rich.sodam.domain.type.ManagerPermission.defaultPreset(), LocalDateTime.now());
+        staffRel.activateManagerDelegation(-1L, staffRel.getManagerDelegationVersion(), LocalDateTime.now());
         employeeStoreRelationRepository.save(staffRel);
 
         // 추가 더미 직원 9명 (다양한 시급·입사일·계약일수로 시연 경우의 수 극대화)

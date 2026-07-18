@@ -205,7 +205,7 @@ public class EmployeeStoreRelation {
 
     public void activateManagerDelegation(Long envelopeId, int delegationVersion, LocalDateTime acceptedAt) {
         if (storeRole != StoreRole.MANAGER) {
-            throw new IllegalStateException("현재 위임 버전과 일치하지 않습니다.");
+            throw new IllegalStateException("매니저로 지명된 상태가 아닙니다.");
         }
         if (envelopeId == null) throw new IllegalArgumentException("서명 envelope가 필요합니다.");
         if (pendingManagerDelegationVersion != null) {
@@ -257,6 +257,7 @@ public class EmployeeStoreRelation {
     public void revokeManager() {
         this.storeRole = StoreRole.STAFF;
         this.grantedPermissions = EnumSet.noneOf(ManagerPermission.class);
+        this.managerAppointedAt = null;
         this.managerAcceptedAt = null;
         this.managerSignatureEnvelopeId = null;
         clearPendingManagerPermissionChange();

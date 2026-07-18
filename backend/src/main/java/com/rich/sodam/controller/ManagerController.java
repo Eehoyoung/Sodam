@@ -61,8 +61,10 @@ public class ManagerController {
     @MasterOnly
     @GetMapping("/api/stores/{storeId}/delegation-audit")
     public List<ManagerDelegationService.AuditView> audit(@AuthenticationPrincipal UserPrincipal principal,
-                                                          @PathVariable Long storeId) {
-        return service.audit(principal.getId(), storeId);
+                                                          @PathVariable Long storeId,
+                                                          @RequestParam(defaultValue = "0") int page,
+                                                          @RequestParam(defaultValue = "50") int size) {
+        return service.audit(principal.getId(), storeId, page, Math.min(Math.max(size, 1), 200));
     }
 
     @EmployeeOrMaster

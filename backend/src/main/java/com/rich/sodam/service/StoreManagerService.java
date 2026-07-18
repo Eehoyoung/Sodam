@@ -60,23 +60,6 @@ public class StoreManagerService {
     }
 
     @Transactional
-    public EmployeeStoreRelation activateSignedDelegation(Long storeId, Long employeeId, Long envelopeId,
-                                                          int delegationVersion, String documentSha256) {
-        guard.assertManagerDelegationEnabled();
-        storeRepository.findByIdForUpdate(storeId)
-                .orElseThrow(() -> new EntityNotFoundException("매장을 찾을 수 없습니다."));
-        EmployeeStoreRelation relation = relationRepository.findRelationForUpdate(employeeId, storeId)
-                .orElseThrow(() -> new EntityNotFoundException("직원-매장 관계를 찾을 수 없습니다."));
-        relation.activateManagerDelegation(envelopeId, delegationVersion, LocalDateTime.now());
-        EmployeeStoreRelation saved = relationRepository.save(relation);
-        auditRepository.save(StoreDelegationAudit.of(storeId, employeeId, null, null,
-                StoreDelegationAudit.ActorType.SYSTEM, StoreDelegationAudit.Action.ACTIVATED,
-                saved.getGrantedPermissions(), saved.getManagerDelegationVersion(), envelopeId,
-                documentSha256, null));
-        return saved;
-    }
-
-    @Transactional
     public EmployeeStoreRelation activateSignedDelegationByRelationId(Long storeId, Long relationId, Long envelopeId,
                                                                       int delegationVersion, String documentSha256) {
         guard.assertManagerDelegationEnabled();

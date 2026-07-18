@@ -179,9 +179,11 @@ public class ManagerDelegationService {
     }
 
     @Transactional(readOnly = true)
-    public List<AuditView> audit(Long masterId, Long storeId) {
+    public List<AuditView> audit(Long masterId, Long storeId, int page, int size) {
         guard.assertMasterOwnsStore(masterId, storeId);
-        return auditRepository.findByStoreIdOrderByCreatedAtDesc(storeId).stream()
+        // 3년 보존 이력이라 무한 성장 — 페이지 단위로만 내려준다 (응답 형태는 List 유지, FE 계약 불변).
+        return auditRepository.findByStoreIdOrderByCreatedAtDesc(
+                        storeId, org.springframework.data.domain.PageRequest.of(page, size)).stream()
                 .map(a -> new AuditView(a.getAction().name(), a.getEmployeeId(), a.getActorType().name(),
                         a.getPermissionsSnapshot(), a.getDelegationVersion(), a.getSignatureEnvelopeId(),
                         a.getDocumentSha256(), a.getReason(), a.getCreatedAt())).toList();

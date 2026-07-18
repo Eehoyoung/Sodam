@@ -9,6 +9,7 @@ public enum ManagerPermission {
     SCHEDULE_MANAGE,
     TIMEOFF_APPROVE,
     STAFF_VIEW,
+    /** 대타 모집 + 매장 공지(StoreNoticeController)를 함께 묶은 권한 — 별도 분리하지 않음(FE 라벨: "대타·공지 관리"). */
     SUBSTITUTE_MANAGE,
     DASHBOARD_VIEW,
     RECRUITMENT_MANAGE,

@@ -24,6 +24,10 @@ import java.util.List;
  *
  * <p>사장(@MasterOnly + StoreAccessGuard): 공지 작성·목록·읽은 직원 조회.
  * 직원(본인 principal 주체): 본인 공지 목록·읽음확인(ack).
+ *
+ * <p>매니저 위임: {@link ManagerPermission#SUBSTITUTE_MANAGE}로 게이팅 — 대타 모집과 공지를
+ * 의도적으로 한 권한으로 묶었다(둘 다 "현장 운영 공지" 성격, FE 라벨도 "대타·공지 관리"로 동일하게
+ * 노출). 별도 NOTICE_MANAGE 권한을 만들지 않는다.
  */
 @RestController
 @RequiredArgsConstructor

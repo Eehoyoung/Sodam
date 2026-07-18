@@ -382,13 +382,16 @@ const EmployeeAttendanceHome: React.FC = () => {
         year: 'numeric', month: 'long', day: 'numeric', weekday: 'short',
     });
     const pendingDelegation = managedStores.data?.find(store => !store.active && !!store.signatureEnvelopeId);
-    const activeManagedStore = managedStores.data?.find(store => store.active);
+    const activeManagedStores = managedStores.data?.filter(store => store.active) ?? [];
     const showAlertStrip = pendingContractCount > 0 || unreadNoticeCount > 0 || !!pendingDelegation;
 
     const quickMenus: QuickMenuItem[] = [
-        ...(activeManagedStore ? [{
+        ...(activeManagedStores.length > 0 ? [{
             key: 'manager', label: '매장 관리', icon: 'shield-checkmark-outline',
-            onPress: () => navigation.navigate('OwnerDashboard', {storeId: activeManagedStore.storeId, managerMode: true}),
+            // 위임 매장이 하나면 바로 대시보드, 여럿이면 매장을 고를 수 있는 위임 현황 목록으로 보낸다.
+            onPress: () => activeManagedStores.length === 1
+                ? navigation.navigate('OwnerDashboard', {storeId: activeManagedStores[0].storeId, managerMode: true})
+                : navigation.navigate('ManagerMyPageScreen'),
             color: {bg: c.brandPrimarySoft, icon: c.brandPrimary},
         }] : []),
         {

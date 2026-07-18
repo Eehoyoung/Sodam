@@ -101,11 +101,11 @@ sodam:
     channel-talk:
       mode: off
       plugin-key: ""
-      electronic-signature:
-        mode: mock
-        provider: ${BAROCERT_PROVIDER:naver}
-        allowed-return-scheme: ${BAROCERT_ALLOWED_RETURN_SCHEME:sodam}
-        worker-enabled: true
+    electronic-signature:
+      mode: mock
+      provider: ${BAROCERT_PROVIDER:naver}
+      allowed-return-scheme: ${BAROCERT_ALLOWED_RETURN_SCHEME:sodam}
+      worker-enabled: true
 
 logging:
   level:
