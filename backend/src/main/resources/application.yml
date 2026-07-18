@@ -30,7 +30,9 @@ spring:
           kakao:
             client-id: ${KAKAO_CLIENT_ID:#{null}}
             client-secret: ${KAKAO_CLIENT_SECRET:#{null}}
-            redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:7070/kakao/auth/proc}
+            # 앱 전용 커스텀 스킴(sodam://) — FE(env.ts kakaoRedirectUri)와 반드시 동일해야 하고,
+            # Kakao Developers 콘솔에 등록된 Redirect URI 도 이 값과 일치해야 한다(사람 설정, iOS 가이드 참고).
+            redirect-uri: ${KAKAO_REDIRECT_URI:sodam://oauth/kakao}
             authorization-grant-type: authorization_code
             client-authentication-method: POST
             client-name: Kakao
@@ -208,6 +210,10 @@ sodam:
       mode: ${SODAM_INTEGRATION_KAKAO_MODE:mock}
       base-url: ${KAKAO_BASE_URL:https://dapi.kakao.com}
       rest-api-key: ${KAKAO_REST_API_KEY:}
+    apple:
+      # Sign in with Apple identityToken 검증용 aud 매칭값 — Apple Developer 에서 발급받는
+      # Services ID(웹) 또는 Bundle ID(네이티브 앱). 실값은 사용자가 Apple Developer 가입 후 채운다.
+      client-id: ${APPLE_CLIENT_ID:#{null}}
     channel:
       mode: ${SODAM_INTEGRATION_CHANNEL_MODE:off}
     mail:

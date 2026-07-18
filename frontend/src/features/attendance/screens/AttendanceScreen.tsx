@@ -31,8 +31,9 @@ import { useThemeColors, ThemeColors } from '../../../common/hooks/useThemeColor
 import {parseServerDateTime} from '../../../common/utils/format';
 
 type CheckInMethod = 'standard' | 'location' | 'nfc';
-const METHOD_ORDER: CheckInMethod[] = ['standard', 'location', 'nfc'];
-const METHOD_LABELS = ['기본', '위치', 'NFC'];
+// iOS는 CoreNFC 제약(entitlement·실기기 전용 등)으로 1차 출시에서 NFC 출퇴근을 제외 — GPS·사장승인 방식으로 대체
+const METHOD_ORDER: CheckInMethod[] = Platform.OS === 'ios' ? ['standard', 'location'] : ['standard', 'location', 'nfc'];
+const METHOD_LABELS = Platform.OS === 'ios' ? ['기본', '위치'] : ['기본', '위치', 'NFC'];
 
 const AttendanceScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();

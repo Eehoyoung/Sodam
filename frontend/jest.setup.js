@@ -217,6 +217,14 @@ jest.mock('react-native-nfc-manager', () => ({
     NfcTech: {Ndef: 'Ndef', NfcA: 'NfcA'},
     NfcEvents: {DiscoverTag: 'DiscoverTag'},
 }));
+jest.mock('@invertase/react-native-apple-authentication', () => ({
+    appleAuth: {
+        performRequest: jest.fn(() => Promise.resolve({identityToken: 'mock-identity-token'})),
+        Operation: {LOGIN: 'LOGIN'},
+        Scope: {EMAIL: 'EMAIL', FULL_NAME: 'FULL_NAME'},
+    },
+    AppleButton: 'AppleButton',
+}));
 
 // Mock @react-native-firebase/messaging + /app (FCM key-ready 래퍼는 optional-require 로
 // 이미 부재를 막지만, 모듈이 설치된 환경에서 깔끔히 동작하도록 명시 mock).

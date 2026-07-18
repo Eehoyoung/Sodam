@@ -128,6 +128,32 @@ export const useKakaoLogin = () => {
     });
 };
 
+export const useAppleLogin = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (identityToken: string): Promise<AuthResponse> => {
+            try {
+                return await authService.appleLogin(identityToken);
+            } catch (error) {
+                handleQueryError(error, 'appleLogin');
+                throw error;
+            }
+        },
+        onSuccess: (data: AuthResponse) => {
+            cacheAuthenticatedUser(queryClient, data);
+            console.log('[TanStack Query] Apple login success - auth cache updated');
+        },
+        onError: (error: unknown) => {
+            queryClient.removeQueries({queryKey: queryKeys.auth.all});
+            console.error('[TanStack Query] Apple login failed:', error);
+        },
+        meta: {
+            errorMessage: 'Apple 로그인에 실패했습니다.',
+        },
+    });
+};
+
 export const useSignup = () => {
     return useMutation({
         mutationFn: async (signupRequest: SignupRequest): Promise<SignupResponse> => {

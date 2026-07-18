@@ -55,6 +55,30 @@ describe('authService FE-BE contract', () => {
     });
   });
 
+  test('appleLogin posts identityToken to /apple/auth/proc and stores tokens', async () => {
+    (api.post as jest.Mock).mockResolvedValue({
+      data: {
+        success: true,
+        message: 'ok',
+        data: {
+          accessToken: 'access-apple-1',
+          refreshToken: 'refresh-apple-1',
+          userId: 7,
+          userGrade: 'ROLE_PERSONAL',
+        },
+      },
+    });
+
+    const response = await authService.appleLogin('mock-identity-token');
+
+    expect(api.post).toHaveBeenCalledWith('/apple/auth/proc', {identityToken: 'mock-identity-token'});
+    expect(response.user.id).toBe(7);
+    await expect(TokenManager.getTokens()).resolves.toEqual({
+      accessToken: 'access-apple-1',
+      refreshToken: 'refresh-apple-1',
+    });
+  });
+
   test('signup treats tokenless /api/join success as success', async () => {
     (api.post as jest.Mock).mockResolvedValue({
       data: {

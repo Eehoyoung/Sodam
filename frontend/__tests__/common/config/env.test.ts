@@ -117,6 +117,19 @@ describe('env (config)', () => {
         });
     });
 
+    describe('kakaoRedirectUri — 앱 전용 커스텀 스킴으로 플랫폼 무관 통일', () => {
+        it('iOS/Android 모두 sodam://oauth/kakao (커스텀 스킴이라 플랫폼 분기 불필요)', () => {
+            expect(loadEnvWith({os: 'ios', dev: true}).kakaoRedirectUri).toBe('sodam://oauth/kakao');
+            expect(loadEnvWith({os: 'android', dev: true}).kakaoRedirectUri).toBe('sodam://oauth/kakao');
+        });
+
+        it('SODAM_KAKAO_REDIRECT_URI 환경변수가 있으면 그 값을 우선한다', () => {
+            process.env.SODAM_KAKAO_REDIRECT_URI = 'sodam://oauth/kakao-staging';
+            const env = loadEnvWith({os: 'ios', dev: true});
+            expect(env.kakaoRedirectUri).toBe('sodam://oauth/kakao-staging');
+        });
+    });
+
     describe('isTossLive 게이팅', () => {
         it('샌드박스 테스트 키(test_*) → false', () => {
             const isTossLive = loadIsTossLiveWith('test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq');

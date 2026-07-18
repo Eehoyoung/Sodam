@@ -37,6 +37,15 @@ public class User {
     private String email;
 
     /**
+     * Apple의 sub 클레임 — 앱+사용자 조합의 안정적 불변 식별자.
+     * Apple identityToken 은 재로그인 시 email 클레임을 재전송하지 않을 수 있어(특히 이메일 릴레이 사용 시)
+     * email 단일 매칭(카카오 방식)으로는 사용자를 못 찾을 수 있다. 그래서 이 컬럼을 기본 조회 키로 쓴다.
+     * nullable(카카오/이메일 가입 사용자는 값 없음) — MySQL UNIQUE INDEX 는 NULL 다중 허용.
+     */
+    @Column(name = "apple_sub", unique = true, length = 255)
+    private String appleSub;
+
+    /**
      * 사용자 이름
      */
     @Column(nullable = false, length = 50)

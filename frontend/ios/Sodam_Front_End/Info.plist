@@ -33,9 +33,28 @@
 		<true/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app needs location access for attendance tracking and workplace verification.</string>
-	<key>NFCReaderUsageDescription</key>
-	<string>This app uses NFC for attendance check-in/out functionality.</string>
+	<string>출퇴근 기록과 근무지 확인을 위해 위치 정보가 필요해요.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.rich.sodam.oauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!-- 카카오 로그인 복귀 딥링크(sodam://oauth/kakao) 등 앱 전용 커스텀 스킴. -->
+				<string>sodam</string>
+			</array>
+		</dict>
+	</array>
+	<key>UIAppFonts</key>
+	<array>
+		<!-- src 전역에서 쓰는 아이콘 폰트만 등록(Ionicons·FontAwesome·FontAwesome5) — 미등록 시 아이콘이 □로 깨진다. -->
+		<string>Ionicons.ttf</string>
+		<string>FontAwesome.ttf</string>
+		<string>FontAwesome5_Brands.ttf</string>
+		<string>FontAwesome5_Regular.ttf</string>
+		<string>FontAwesome5_Solid.ttf</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>

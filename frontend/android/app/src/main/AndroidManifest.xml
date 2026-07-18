@@ -63,6 +63,13 @@ package="com.sodam_front_end">
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- 카카오 로그인 복귀 등 앱 전용 딥링크(sodam://) — iOS Info.plist CFBundleURLTypes 와 동일 스킴 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="sodam"/>
+            </intent-filter>
             <intent-filter>
                 <action android:name="android.nfc.action.NDEF_DISCOVERED"/>
                 <category android:name="android.intent.category.DEFAULT"/>

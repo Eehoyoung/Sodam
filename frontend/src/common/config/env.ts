@@ -76,13 +76,16 @@ export const env = {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty-string env var means "unset"; must fall through to default, so ?? would be wrong
     kakaoNativeKey: (process.env.SODAM_KAKAO_NATIVE_KEY) || '',
 
-    /** 카카오 OAuth redirect URI */
+    /**
+     * 카카오 OAuth redirect URI — 앱 전용 커스텀 스킴(sodam://)으로 통일.
+     * BE HTTP 엔드포인트를 직접 가리키면 브라우저가 그 URL에 머물러 앱으로 돌아오지 못한다(구 버그) —
+     * Kakao 인증 완료 시 OS 가 이 스킴을 앱으로 라우팅해야 KakaoLoginScreen 의 Linking 리스너가 code 를 받는다.
+     * iOS Info.plist(CFBundleURLTypes)·Android AndroidManifest.xml(intent-filter) 양쪽에 동일 스킴 등록 필요.
+     * Kakao Developers 콘솔의 등록 Redirect URI 도 이 값과 반드시 일치해야 한다(사람 설정).
+     */
     kakaoRedirectUri:
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty-string env var means "unset"; must fall through to default, so ?? would be wrong
-        (process.env.SODAM_KAKAO_REDIRECT_URI) ||
-        (Platform.OS === 'android'
-            ? 'http://10.0.2.2:7070/kakao/auth/proc'
-            : 'http://localhost:7070/kakao/auth/proc'),
+        (process.env.SODAM_KAKAO_REDIRECT_URI) || 'sodam://oauth/kakao',
 
     /** 디버그 모드 토글 */
     debug: __DEV__,

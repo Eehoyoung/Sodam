@@ -98,6 +98,8 @@ sodam:
       mode: ${SODAM_INTEGRATION_KAKAO_MODE:mock} # mock | live (geocoding)
       base-url: ${KAKAO_BASE_URL:https://dapi.kakao.com}
       rest-api-key: ${KAKAO_REST_API_KEY:}
+    apple:
+      client-id: ${APPLE_CLIENT_ID:dev-mock-bundle-id} # dev 는 키 없이 부팅 가능하도록 mock 기본값
     channel-talk:
       mode: off
       plugin-key: ""

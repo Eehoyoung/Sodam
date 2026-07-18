@@ -209,6 +209,17 @@ const authService = {
         }
     },
 
+    /** Sign in with Apple — 네이티브 SDK가 반환한 identityToken을 BE에서 검증(iOS 전용, Apple 심사 4.8 요건). */
+    appleLogin: async (identityToken: string): Promise<AuthResponse> => {
+        try {
+            const res = await api.post<RawAuthResponse>('/apple/auth/proc', {identityToken});
+            return await mapAuthResponse(res.data);
+        } catch (error) {
+            logger.error('appleLogin failed', 'AUTH_SERVICE', error);
+            throw error;
+        }
+    },
+
     signup: async (signupRequest: SignupRequest): Promise<SignupResponse> => {
         try {
             const body = {

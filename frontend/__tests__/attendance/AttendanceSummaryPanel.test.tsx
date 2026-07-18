@@ -1,5 +1,6 @@
 import React from 'react';
 import TestRenderer, { act } from 'react-test-renderer';
+import { Platform } from 'react-native';
 import { AttendanceSummaryPanel } from '../../src/features/attendance/components/AttendanceSummaryPanel';
 
 jest.mock('../../src/features/attendance/services/attendanceService', () => ({
@@ -39,5 +40,35 @@ describe('AttendanceSummaryPanel', () => {
     });
 
     expect(true).toBe(true);
+  });
+
+  test('iOS는 NFC 출퇴근 방식 칩을 숨긴다 (1차 출시 제외)', async () => {
+    const originalOS = Platform.OS;
+    (Platform as any).OS = 'ios';
+
+    let renderer: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(<AttendanceSummaryPanel onPressViewDetails={jest.fn()} />);
+    });
+
+    const nfcChips = renderer!.root.findAllByProps({ children: 'NFC' });
+    expect(nfcChips).toHaveLength(0);
+
+    (Platform as any).OS = originalOS;
+  });
+
+  test('Android는 NFC 출퇴근 방식 칩을 노출한다', async () => {
+    const originalOS = Platform.OS;
+    (Platform as any).OS = 'android';
+
+    let renderer: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(<AttendanceSummaryPanel onPressViewDetails={jest.fn()} />);
+    });
+
+    const nfcChips = renderer!.root.findAllByProps({ children: 'NFC' });
+    expect(nfcChips).toHaveLength(1);
+
+    (Platform as any).OS = originalOS;
   });
 });

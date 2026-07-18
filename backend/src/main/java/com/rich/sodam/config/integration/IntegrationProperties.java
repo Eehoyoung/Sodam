@@ -28,6 +28,7 @@ public class IntegrationProperties {
     private ChannelTalk channelTalk = new ChannelTalk();
     private Mail mail = new Mail();
     private ElectronicSignature electronicSignature = new ElectronicSignature();
+    private Apple apple = new Apple();
 
     public enum Mode {
         MOCK, LIVE, OFF;
@@ -147,5 +148,16 @@ public class IntegrationProperties {
         public Mode resolvedMode() {
             return Mode.parse(mode);
         }
+    }
+
+    @Getter
+    @Setter
+    public static class Apple {
+        /**
+         * Apple Developer 에서 발급하는 Services ID(웹) 또는 Bundle ID(네이티브 앱).
+         * Sign in with Apple identityToken 의 aud 클레임과 대조하는 값 — 실값은 Apple Developer
+         * 가입 후 채워야 한다(APPLE_CLIENT_ID env). dev 는 mock 값으로 부팅 가능.
+         */
+        private String clientId = "";
     }
 }

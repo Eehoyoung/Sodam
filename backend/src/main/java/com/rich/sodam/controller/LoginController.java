@@ -2,6 +2,7 @@ package com.rich.sodam.controller;
 
 import com.rich.sodam.domain.RefreshToken;
 import com.rich.sodam.domain.User;
+import com.rich.sodam.dto.request.AppleLoginRequest;
 import com.rich.sodam.dto.request.JoinDto;
 import com.rich.sodam.dto.request.Login;
 import com.rich.sodam.dto.response.ApiResponse;
@@ -39,6 +40,7 @@ public class LoginController {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(LoginController.class);
 
     private final KakaoAuthService kakaoAuthService;
+    private final AppleAuthService appleAuthService;
     private final JwtTokenProvider jwtTokenProvider;
     private final TokenService tokenService;
     private final UserService userService;
@@ -53,8 +55,9 @@ public class LoginController {
     @Value("${spring.security.oauth2.client.registration.kakao.client-id}")
     private String clientId;
 
-    public LoginController(KakaoAuthService kakaoAuthService, JwtTokenProvider jwtTokenProvider, TokenService tokenService, UserService userService, TokenStore redisService, RefreshTokenService refreshTokenService, MessageSource messageSource, LocaleResolver localeResolver) {
+    public LoginController(KakaoAuthService kakaoAuthService, AppleAuthService appleAuthService, JwtTokenProvider jwtTokenProvider, TokenService tokenService, UserService userService, TokenStore redisService, RefreshTokenService refreshTokenService, MessageSource messageSource, LocaleResolver localeResolver) {
         this.kakaoAuthService = kakaoAuthService;
+        this.appleAuthService = appleAuthService;
         this.jwtTokenProvider = jwtTokenProvider;
         this.tokenService = tokenService;
         this.userService = userService;
@@ -136,6 +139,56 @@ public class LoginController {
             String errorMessage = messageSource.getMessage("auth.kakao.failed", new Object[]{e.getMessage()}, locale);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error(ErrorCode.KAKAO_AUTH_ERROR.getCode(), errorMessage));
+        }
+    }
+
+    /**
+     * Apple 인증 처리 엔드포인트.
+     * 카카오와 달리 브라우저 OAuth 코드 교환이 필요 없다 — FE 네이티브 SDK 가 이미 발급한
+     * identityToken(서명된 JWT)의 서명·클레임만 검증하면 된다.
+     *
+     * @param request  identityToken 을 담은 요청 바디
+     * @param response HTTP 응답 객체
+     * @return 인증 결과를 담은 ResponseEntity
+     */
+    @Operation(summary = "Apple 로그인 처리", description = "Apple identityToken 을 검증하여 사용자를 인증합니다.")
+    @PostMapping("/apple/auth/proc")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> appleLogin(
+            @Valid @RequestBody AppleLoginRequest request,
+            HttpServletResponse response, HttpServletRequest httpRequest) {
+        Locale locale = localeResolver.resolveLocale(httpRequest);
+
+        try {
+            User authenticationUser = appleAuthService.authenticate(request.getIdentityToken());
+            log.debug("Apple 사용자 인증 성공: {}", authenticationUser.getEmail());
+
+            // JWT 토큰 생성
+            String jwtToken = jwtTokenProvider.createToken(authenticationUser);
+            // 리프레시 토큰 생성
+            var refreshToken = refreshTokenService.createRefreshToken(authenticationUser);
+            // Redis 토큰 저장 (액세스 토큰 만료 시간을 15분으로 연장)
+            redisService.saveToken(authenticationUser.getId(), jwtToken, 900); // 15분
+            // 쿠키 생성 및 설정
+            Cookie jwtCookie = tokenService.createJwtCookie(authenticationUser, jwtToken);
+            response.addCookie(jwtCookie);
+
+            // 성공 응답 생성
+            Map<String, Object> result = new HashMap<>();
+            result.put("userGrade", authenticationUser.getUserGrade().getValue());
+            result.put("accessToken", jwtToken); // 액세스 토큰
+            result.put("refreshToken", refreshToken.getToken()); // 리프레시 토큰
+            result.put("userId", authenticationUser.getId()); // 사용자 ID
+
+            log.info("Apple 로그인 성공: {}", authenticationUser.getEmail());
+            String successMessage = messageSource.getMessage("auth.apple.success", null, locale);
+            return ResponseEntity.ok(ApiResponse.success(successMessage, result));
+        } catch (Exception e) {
+            // 만료/무효 토큰 인증 실패는 401 — Kakao(500)와 달리 신규 코드는 api-design.md 규칙(401=인증실패)을 따른다.
+            log.warn("Apple 인증 실패: {}", e.getMessage());
+
+            String errorMessage = messageSource.getMessage("auth.apple.failed", new Object[]{e.getMessage()}, locale);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error(ErrorCode.APPLE_AUTH_ERROR.getCode(), errorMessage));
         }
     }
 

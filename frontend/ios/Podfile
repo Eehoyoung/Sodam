@@ -5,6 +5,14 @@ require Pod::Executable.execute_command('node', ['-p',
     {paths: [process.argv[1]]},
   )', __dir__]).strip
 
+# react-native-permissions v5 — 요청할 권한만 명시적으로 선언해야 iOS 빌드에 포함된다.
+# 미선언 권한은 request() 호출 시 무조건 실패한다(react-native-permissions 공식 요구사항).
+require '../node_modules/react-native-permissions/scripts/setup.rb'
+
+# RN Firebase(FCM)가 use_frameworks! 링키지 하에서 정적으로 빌드되도록 강제 —
+# 프레임워크를 안 쓰는 기본 빌드에서는 무해하고, 추후 USE_FRAMEWORKS 켤 때 대비.
+$RNFirebaseAsStaticFramework = true
+
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
@@ -17,6 +25,9 @@ end
 
 target 'Sodam_Front_End' do
   config = use_native_modules!
+
+  # 출퇴근(GPS)·FCM 푸시 알림 — 이 두 권한만 iOS 네이티브 빌드에 포함한다(NFC는 1차 출시 제외).
+  setup_permissions(['LocationWhenInUse', 'Notifications'])
 
   use_react_native!(
     :path => config[:reactNativePath],

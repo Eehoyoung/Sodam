@@ -13,6 +13,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
 
     /**
+     * Apple sub 클레임으로 사용자 조회 — Sign in with Apple 재로그인 시 기본 조회 키.
+     */
+    Optional<User> findByAppleSub(String appleSub);
+
+    /**
      * 최근 생성된 사용자 20명 조회 (캐시 워밍업용)
      */
     List<User> findTop20ByOrderByCreatedAtDesc();

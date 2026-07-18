@@ -7,6 +7,7 @@ public enum ErrorCode {
 
     // 인증 관련 에러 코드
     KAKAO_AUTH_ERROR("KAKAO_AUTH_ERROR", "auth.kakao.failed"),
+    APPLE_AUTH_ERROR("APPLE_AUTH_ERROR", "auth.apple.failed"),
     UNAUTHORIZED("UNAUTHORIZED", "auth.login.failed"),
     USER_NOT_FOUND("USER_NOT_FOUND", "auth.user.not.found"),
 

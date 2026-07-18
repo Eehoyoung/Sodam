@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { COLORS } from '../../../common/components/logo/Colors';
 import useAttendance, { CheckMethod } from '../hooks/useAttendance';
 import { requestApproval } from '../services/attendanceApprovalService';
@@ -70,7 +70,10 @@ export const AttendanceSummaryPanel: React.FC<Props> = ({ workplaceId, onPressVi
       <View style={styles.methodRow}>
         <MethodChip label="기본" active={method==='standard'} onPress={() => onChangeMethod('standard')} />
         <MethodChip label="위치" active={method==='location'} onPress={() => onChangeMethod('location')} />
-        <MethodChip label="NFC" active={method==='nfc'} onPress={() => onChangeMethod('nfc')} />
+        {/* iOS는 CoreNFC 제약으로 1차 출시에서 NFC 출퇴근 제외 — GPS·사장승인 방식으로 대체 */}
+        {Platform.OS !== 'ios' && (
+          <MethodChip label="NFC" active={method==='nfc'} onPress={() => onChangeMethod('nfc')} />
+        )}
       </View>
 
       <View style={styles.actions}>

@@ -2,6 +2,7 @@ import React, {useState} from 'react';
 import {KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {NavigationProp, RouteProp} from '@react-navigation/native';
+import {appleAuth} from '@invertase/react-native-apple-authentication';
 import {AppButton, AppInput, AppText, AppToast} from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
@@ -45,8 +46,9 @@ export default function LoginScreen({navigation, route}: LoginScreenProps) {
     const [emailError, setEmailError] = useState<string | undefined>();
     const [isLoading, setIsLoading] = useState(false);
 
-    const {login: authLogin} = useAuth();
+    const {login: authLogin, appleLogin} = useAuth();
     const selectedPurpose = route.params?.selectedPurpose;
+    const [isAppleLoading, setIsAppleLoading] = useState(false);
 
     const consumePendingPurpose = async (loggedInUser: Awaited<ReturnType<typeof authLogin>>): Promise<AuthPurpose | undefined> => {
         const pending = await unifiedStorage.getItem('pendingPurposeAfterSignup');
@@ -111,6 +113,38 @@ export default function LoginScreen({navigation, route}: LoginScreenProps) {
         navigation.navigate('KakaoLogin', {selectedPurpose});
     };
 
+    // Sign in with Apple — iOS 전용(카카오 로그인을 제공하는 앱은 Apple 심사 가이드라인 4.8상 필수).
+    // 브라우저 왕복 없이 네이티브 시트에서 바로 identityToken 을 받는다.
+    const handleApple = async () => {
+        if (isAppleLoading) {
+            return;
+        }
+        setIsAppleLoading(true);
+        try {
+            const appleResponse = await appleAuth.performRequest({
+                requestedOperation: appleAuth.Operation.LOGIN,
+                requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
+            });
+            const {identityToken} = appleResponse;
+            if (!identityToken) {
+                throw new Error('Apple 인증 토큰을 받지 못했어요.');
+            }
+            const loggedInUser = await appleLogin(identityToken);
+            const fallbackPurpose = await consumePendingPurpose(loggedInUser);
+            const nextRoute = resolvePostAuthRoute(loggedInUser, fallbackPurpose);
+            AppToast.success('Apple 계정으로 로그인되었습니다.');
+            resetToRootRoute(navigation, nextRoute);
+        } catch (error: any) {
+            // 사용자가 시트를 닫은 취소는 실패로 취급하지 않고 조용히 무시한다.
+            const message = String(error?.message ?? '');
+            if (!/cancel/i.test(message)) {
+                AppToast.error('Apple 로그인에 실패했습니다. 다시 시도해 주세요.');
+            }
+        } finally {
+            setIsAppleLoading(false);
+        }
+    };
+
     return (
         <SafeAreaView style={[styles.flex, {backgroundColor: c.surfaceCanvas}]} edges={['top', 'bottom']}>
             <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -163,6 +197,14 @@ export default function LoginScreen({navigation, route}: LoginScreenProps) {
 
                         <AppButton label="로그인" loading={isLoading} onPress={handleLogin} style={styles.cta} />
                         <AppButton label="카카오로 계속" variant="secondary" onPress={handleKakao} />
+                        {Platform.OS === 'ios' && (
+                            <AppButton
+                                label="Apple로 계속"
+                                variant="secondary"
+                                loading={isAppleLoading}
+                                onPress={handleApple}
+                            />
+                        )}
                     </View>
 
                     <View style={styles.footerRow}>

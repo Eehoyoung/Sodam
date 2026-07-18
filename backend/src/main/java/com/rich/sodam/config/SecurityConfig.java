@@ -59,7 +59,7 @@ public class SecurityConfig {
                                 "/swagger-ui.html", "/webjars/**",
                                 "/actuator/health", "/actuator/info",
                                 "/api/join", "/api/login", "/api/auth/email-check",
-                                "/kakao/auth/proc", "/api/auth/refresh",
+                                "/kakao/auth/proc", "/apple/auth/proc", "/api/auth/refresh",
                                 "/api/auth/password-reset/**",
                                 // 결제 웹훅: 자체 HMAC 서명 검증으로 보호 — 인증 헤더 없이 진입 허용
                                 "/api/billing/webhook/**",

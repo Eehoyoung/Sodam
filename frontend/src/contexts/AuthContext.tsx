@@ -1,6 +1,6 @@
 import React, {createContext, ReactNode, useContext, useEffect, useRef} from 'react';
 import {User} from '../features/auth/services/authService';
-import {useAuthState, useKakaoLogin, useLogin, useLogout} from '../features/auth/hooks/useAuthQueries';
+import {useAppleLogin, useAuthState, useKakaoLogin, useLogin, useLogout} from '../features/auth/hooks/useAuthQueries';
 import {unifiedStorage} from '../common/utils/unifiedStorage';
 import {safeLogger} from '../utils/safeLogger';
 import { setOnUnauthorized } from '../common/utils/api';
@@ -19,6 +19,7 @@ interface AuthContextType {
     login: (email: string, password: string) => Promise<User>;
     logout: () => Promise<void>;
     kakaoLogin: (code: string) => Promise<User>;
+    appleLogin: (identityToken: string) => Promise<User>;
 }
 
 /**
@@ -35,6 +36,9 @@ const defaultAuthContext: AuthContextType = {
         throw new Error('AuthProvider not found');
     },
     kakaoLogin: async () => {
+        throw new Error('AuthProvider not found');
+    },
+    appleLogin: async () => {
         throw new Error('AuthProvider not found');
     },
 };
@@ -69,6 +73,9 @@ export const useAuth = (): AuthContextType => {
             kakaoLogin: async () => {
                 throw new Error('AuthProvider not found');
             },
+            appleLogin: async () => {
+                throw new Error('AuthProvider not found');
+            },
         };
     }
 
@@ -100,6 +107,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
     const loginMutation = useLogin();
     const logoutMutation = useLogout();
     const kakaoLoginMutation = useKakaoLogin();
+    const appleLoginMutation = useAppleLogin();
 
     // refetchAuth 를 ref 로 안정화 — useAuthState 가 매 렌더마다 새 함수를 반환해
     // useEffect dep 에 두면 무한 재실행(addViewAt mount 폭발 진원) 이 일어남.
@@ -203,6 +211,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
     };
 
     /**
+     * Apple 로그인 함수 (iOS 전용 — Sign in with Apple)
+     * TanStack Query 뮤테이션을 사용하여 Apple 로그인 처리
+     */
+    const appleLogin = async (identityToken: string): Promise<User> => {
+        try {
+            console.log('[AuthProvider] Apple 로그인 시도');
+            const result = await appleLoginMutation.mutateAsync(identityToken);
+            console.log('[AuthProvider] Apple 로그인 성공');
+            return result.user;
+        } catch (error) {
+            console.error('[AuthProvider] Apple 로그인 실패:', error);
+            safeLogger.error('Apple login failed', error);
+            throw error;
+        }
+    };
+
+    /**
      * 인증 에러 처리
      */
     useEffect(() => {
@@ -225,7 +250,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
         if (kakaoLoginMutation.error) {
             console.error('[AuthProvider] 카카오 로그인 뮤테이션 오류:', kakaoLoginMutation.error);
         }
-    }, [loginMutation.error, logoutMutation.error, kakaoLoginMutation.error]);
+        if (appleLoginMutation.error) {
+            console.error('[AuthProvider] Apple 로그인 뮤테이션 오류:', appleLoginMutation.error);
+        }
+    }, [loginMutation.error, logoutMutation.error, kakaoLoginMutation.error, appleLoginMutation.error]);
 
     /**
      * 로딩 상태 계산
@@ -234,7 +262,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
     const loading = authLoading ||
         loginMutation.isPending ||
         logoutMutation.isPending ||
-        kakaoLoginMutation.isPending;
+        kakaoLoginMutation.isPending ||
+        appleLoginMutation.isPending;
 
     /**
      * 컨텍스트 값 생성
@@ -246,6 +275,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
         login,
         logout,
         kakaoLogin,
+        appleLogin,
     };
 
     /**
