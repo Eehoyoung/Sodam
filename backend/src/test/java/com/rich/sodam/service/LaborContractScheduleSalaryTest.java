@@ -295,13 +295,19 @@ class LaborContractScheduleSalaryTest {
     }
 
     @Test
-    @DisplayName("스케줄 모드 저장 → 직원-매장 관계에 월급제·월급·주 소정시간·소정일이 전파된다(정산 연동)")
-    void propagatesDerivedTermsToRelation() {
+    @DisplayName("스케줄 계약 조건은 저장 때가 아니라 전자서명 검증 완료 후 전파된다")
+    void propagatesDerivedTermsOnlyAfterVerifiedSignature() {
         EmployeeStoreRelation relation = new EmployeeStoreRelation();
         relation.setId(77L);
         when(employeeStoreRelationRepository.findRelation(1L, 2L)).thenReturn(Optional.of(relation));
 
-        service.save(scheduleContract(fiveDays()), 99L);
+        LaborContract saved = service.save(scheduleContract(fiveDays()), 99L);
+        assertThat(relation.getEmploymentType()).isEqualTo(EmploymentType.HOURLY);
+
+        saved.setId(501L);
+        saved.linkElectronicSignature(700L, 1, java.time.LocalDateTime.now());
+        when(repository.findByIdForUpdate(501L)).thenReturn(Optional.of(saved));
+        service.activateVerifiedElectronicSignature(501L, 700L, 1, java.time.LocalDateTime.now(), 99L);
 
         assertThat(relation.getEmploymentType()).isEqualTo(EmploymentType.MONTHLY_SALARY);
         assertThat(relation.getMonthlySalary()).isEqualTo(2_156_880);

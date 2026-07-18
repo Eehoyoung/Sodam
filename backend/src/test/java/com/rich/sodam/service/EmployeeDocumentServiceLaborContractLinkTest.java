@@ -103,7 +103,9 @@ class EmployeeDocumentServiceLaborContractLinkTest {
         assertThat(before.contractSigned()).isFalse();
         assertThat(before.contractSignedAt()).isNull();
 
-        laborContractService.sign(saved.getId(), 1L, null);
+        saved.linkElectronicSignature(100L, 1, java.time.LocalDateTime.now());
+        laborContractService.activateVerifiedElectronicSignature(
+                saved.getId(), 100L, 1, java.time.LocalDateTime.now(), 9L);
 
         EmployeeDocumentResponse after = findLaborContractDoc(1L, saved.getStoreId());
         assertThat(after.contractSigned()).isTrue();

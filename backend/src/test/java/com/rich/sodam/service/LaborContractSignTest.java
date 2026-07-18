@@ -7,7 +7,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,34 +52,40 @@ class LaborContractSignTest {
     }
 
     @Test
-    @DisplayName("직원 본인 서명 시 signed=true 로 기록된다")
-    void signsByOwner() {
+    @DisplayName("전자서명 봉투 검증 완료 시 signed=true 로 기록된다")
+    void signsAfterVerifiedEnvelope() {
         LaborContract saved = newContract(1L);
         assertThat(saved.isSigned()).isFalse();
+        saved.linkElectronicSignature(100L, 1, LocalDateTime.now());
 
-        LaborContract signed = service.sign(saved.getId(), 1L, null);
+        LaborContract signed = service.activateVerifiedElectronicSignature(
+                saved.getId(), 100L, 1, LocalDateTime.now(), 9L);
 
         assertThat(signed.isSigned()).isTrue();
         assertThat(signed.getEmployeeSignedAt()).isNotNull();
     }
 
     @Test
-    @DisplayName("서명 이미지가 함께 전달되면 저장된다")
-    void signsWithSignatureImage() {
+    @DisplayName("전자서명 완료 후에도 이미지나 base64는 DB에 저장하지 않는다")
+    void doesNotStoreSignatureImage() {
         LaborContract saved = newContract(1L);
+        saved.linkElectronicSignature(101L, 1, LocalDateTime.now());
 
-        LaborContract signed = service.sign(saved.getId(), 1L, "iVBORw0KGgoAAAANSUhEUgAAAAE=");
+        LaborContract signed = service.activateVerifiedElectronicSignature(
+                saved.getId(), 101L, 1, LocalDateTime.now(), 9L);
 
-        assertThat(signed.getEmployeeSignatureImage()).isEqualTo("iVBORw0KGgoAAAANSUhEUgAAAAE=");
+        assertThat(signed.getEmployeeSignatureImage()).isNull();
     }
 
     @Test
-    @DisplayName("타인이 서명 시도하면 AccessDeniedException")
-    void rejectsOtherEmployee() {
+    @DisplayName("연결되지 않은 봉투의 완료 처리는 거부한다")
+    void rejectsMismatchedEnvelope() {
         LaborContract saved = newContract(1L);
+        saved.linkElectronicSignature(102L, 1, LocalDateTime.now());
 
-        assertThatThrownBy(() -> service.sign(saved.getId(), 99L, null))
-                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> service.activateVerifiedElectronicSignature(
+                saved.getId(), 999L, 1, LocalDateTime.now(), 9L))
+                .isInstanceOf(IllegalStateException.class);
 
         // 서명되지 않은 상태가 유지된다
         assertThat(service.findById(saved.getId()).isSigned()).isFalse();
@@ -90,11 +95,14 @@ class LaborContractSignTest {
     @DisplayName("중복 서명은 멱등 — 최초 서명 시각이 유지된다")
     void signIsIdempotent() {
         LaborContract saved = newContract(1L);
+        saved.linkElectronicSignature(103L, 1, LocalDateTime.now());
 
-        LocalDateTime firstSignedAt = service.sign(saved.getId(), 1L, null).getEmployeeSignedAt();
+        LocalDateTime firstSignedAt = service.activateVerifiedElectronicSignature(
+                saved.getId(), 103L, 1, LocalDateTime.now(), 9L).getEmployeeSignedAt();
         assertThat(firstSignedAt).isNotNull();
 
-        LaborContract second = service.sign(saved.getId(), 1L, null);
+        LaborContract second = service.activateVerifiedElectronicSignature(
+                saved.getId(), 103L, 1, LocalDateTime.now().plusMinutes(1), 9L);
 
         assertThat(second.isSigned()).isTrue();
         assertThat(second.getEmployeeSignedAt()).isEqualTo(firstSignedAt);

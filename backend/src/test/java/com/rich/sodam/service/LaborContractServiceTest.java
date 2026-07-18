@@ -432,13 +432,23 @@ class LaborContractServiceTest {
         return c;
     }
 
+    private LaborContract completeElectronicSignature(LaborContract contract, Long changedBy) {
+        contract.setId(501L);
+        contract.linkElectronicSignature(700L, 1, java.time.LocalDateTime.now());
+        when(repository.findByIdForUpdate(501L)).thenReturn(Optional.of(contract));
+        return service.activateVerifiedElectronicSignature(
+                501L, 700L, 1, java.time.LocalDateTime.now(), changedBy);
+    }
+
     @Test
-    @DisplayName("SALARY 계약 저장 → 관계가 월급제로 전환되고 전환 이력에 작성 사장이 기록된다")
+    @DisplayName("SALARY 계약 전자서명 완료 → 관계가 월급제로 전환되고 작성 사장이 기록된다")
     void salaryContractSwitchesRelationToMonthly() {
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
         EmployeeStoreRelation relation = hourlyRelation();
 
-        service.save(validSalary(3_000_000), 99L);
+        LaborContract saved = service.save(validSalary(3_000_000), 99L);
+        assertThat(relation.getEmploymentType()).isEqualTo(EmploymentType.HOURLY);
+        completeElectronicSignature(saved, 99L);
 
         assertThat(relation.getEmploymentType()).isEqualTo(EmploymentType.MONTHLY_SALARY);
         assertThat(relation.getMonthlySalary()).isEqualTo(3_000_000);
@@ -464,7 +474,8 @@ class LaborContractServiceTest {
         c.setHourlyWage(null);
         c.setAnnualSalary(36_000_000);
 
-        service.save(c, 99L);
+        LaborContract saved = service.save(c, 99L);
+        completeElectronicSignature(saved, 99L);
 
         assertThat(relation.getEmploymentType()).isEqualTo(EmploymentType.MONTHLY_SALARY);
         assertThat(relation.getMonthlySalary()).isEqualTo(3_000_000); // 36,000,000 / 12
@@ -477,7 +488,9 @@ class LaborContractServiceTest {
         EmployeeStoreRelation relation = hourlyRelation();
         relation.applyEmploymentType(EmploymentType.MONTHLY_SALARY, 3_000_000);
 
-        service.save(valid(), 99L);
+        LaborContract saved = service.save(valid(), 99L);
+        assertThat(relation.getEmploymentType()).isEqualTo(EmploymentType.MONTHLY_SALARY);
+        completeElectronicSignature(saved, 99L);
 
         assertThat(relation.getEmploymentType()).isEqualTo(EmploymentType.HOURLY);
         assertThat(relation.getMonthlySalary()).isNull();
@@ -496,7 +509,8 @@ class LaborContractServiceTest {
         EmployeeStoreRelation relation = hourlyRelation();
         relation.applyEmploymentType(EmploymentType.MONTHLY_SALARY, 3_000_000);
 
-        service.save(validSalary(3_000_000), 99L);
+        LaborContract saved = service.save(validSalary(3_000_000), 99L);
+        completeElectronicSignature(saved, 99L);
 
         assertThat(relation.getEmploymentType()).isEqualTo(EmploymentType.MONTHLY_SALARY);
         verify(employmentTypeChangeLogRepository, never()).save(any());
@@ -509,7 +523,8 @@ class LaborContractServiceTest {
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(employeeStoreRelationRepository.findRelation(1L, 2L)).thenReturn(Optional.empty());
 
-        assertThatCode(() -> service.save(validSalary(3_000_000), 99L)).doesNotThrowAnyException();
+        LaborContract saved = service.save(validSalary(3_000_000), 99L);
+        assertThatCode(() -> completeElectronicSignature(saved, 99L)).doesNotThrowAnyException();
         verify(employmentTypeChangeLogRepository, never()).save(any());
     }
 
@@ -524,6 +539,7 @@ class LaborContractServiceTest {
         c.setContractedHoursPerWeek(20.0); // 일 4h × 주 5일 단시간 월급제
 
         LaborContract saved = service.save(c, 99L);
+        completeElectronicSignature(saved, 99L);
 
         // 계약서: 1,200,000 ÷ 104h(= (20+주휴4)×4.345238) = 11,538원
         assertThat(saved.getOrdinaryHourlyWage()).isEqualTo(11_538);
@@ -758,27 +774,29 @@ class LaborContractServiceTest {
     }
 
     @Test
-    @DisplayName("발송 전(sentAt=null) 계약은 서명이 거부된다 — create()만 되고 send()가 안/못 된 초안 보호")
-    void sign_beforeSent_throws() {
+    @DisplayName("전자서명 봉투가 연결되지 않은 초안은 완료 처리가 거부된다")
+    void signatureCompletionBeforeEnvelopeLinkThrows() {
         LaborContract c = valid();
-        when(repository.findById(10L)).thenReturn(Optional.of(c));
+        when(repository.findByIdForUpdate(10L)).thenReturn(Optional.of(c));
 
-        assertThatThrownBy(() -> service.sign(10L, 1L, null))
+        assertThatThrownBy(() -> service.activateVerifiedElectronicSignature(
+                10L, 100L, 1, java.time.LocalDateTime.now(), 9L))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("발송");
+                .hasMessageContaining("봉투");
 
         verify(repository, never()).save(any());
     }
 
     @Test
-    @DisplayName("발송된(markSent) 계약은 서명이 허용된다")
-    void sign_afterSent_succeeds() {
+    @DisplayName("연결된 전자서명 봉투가 검증되면 계약 서명이 완료된다")
+    void verifiedEnvelopeCompletesSignature() {
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
         LaborContract c = valid();
-        c.markSent(java.time.LocalDateTime.now());
-        when(repository.findById(10L)).thenReturn(Optional.of(c));
+        c.linkElectronicSignature(100L, 1, java.time.LocalDateTime.now());
+        when(repository.findByIdForUpdate(10L)).thenReturn(Optional.of(c));
 
-        LaborContract signed = service.sign(10L, 1L, null);
+        LaborContract signed = service.activateVerifiedElectronicSignature(
+                10L, 100L, 1, java.time.LocalDateTime.now(), 9L);
 
         assertThat(signed.isSigned()).isTrue();
     }

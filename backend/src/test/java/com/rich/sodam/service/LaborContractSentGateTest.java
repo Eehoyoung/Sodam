@@ -79,7 +79,8 @@ class LaborContractSentGateTest {
         Store store = storeRepository.save(new Store("발송게이트매장3", "1111100003", "02-000-0000", "카페", 10_320, 100));
         LaborContract draft = createDraft(103L, store);
 
-        assertThatThrownBy(() -> laborContractService.sign(draft.getId(), 103L, null))
+        assertThatThrownBy(() -> laborContractService.activateVerifiedElectronicSignature(
+                draft.getId(), 100L, 1, java.time.LocalDateTime.now(), 1L))
                 .isInstanceOf(IllegalStateException.class);
     }
 
