@@ -1,6 +1,7 @@
 package com.rich.sodam.controller;
 
 import com.rich.sodam.domain.AttendanceApprovalRequest.Status;
+import com.rich.sodam.domain.type.ManagerPermission;
 import com.rich.sodam.dto.request.AttendanceApprovalCreateRequest;
 import com.rich.sodam.dto.response.AttendanceApprovalResponse;
 import com.rich.sodam.security.UserPrincipal;
@@ -9,6 +10,7 @@ import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.service.AttendanceApprovalService;
 import com.rich.sodam.service.AttendanceApprovalService.AttendanceApprovalResponseHolder;
 import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.service.ManagerSupervisionNotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -31,6 +33,7 @@ public class AttendanceApprovalController {
 
     private final AttendanceApprovalService service;
     private final StoreAccessGuard storeAccessGuard;
+    private final ManagerSupervisionNotificationService supervision;
 
     private static AttendanceApprovalResponse toDto(AttendanceApprovalResponseHolder h) {
         return AttendanceApprovalResponse.of(h.request(), h.employeeName());
@@ -55,36 +58,44 @@ public class AttendanceApprovalController {
                 .map(AttendanceApprovalController::toDto).toList());
     }
 
-    @MasterOnly
+    @EmployeeOrMaster
     @Operation(summary = "매장 승인 요청 목록 (사장)", description = "기본 PENDING. 매장 소유 검증.")
     @GetMapping("/api/stores/{storeId}/approval-requests")
     public ResponseEntity<List<AttendanceApprovalResponse>> listForStore(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId,
             @RequestParam(defaultValue = "PENDING") Status status) {
-        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        storeAccessGuard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.ATTENDANCE_APPROVE);
         return ResponseEntity.ok(service.listForStore(storeId, status).stream()
                 .map(AttendanceApprovalController::toDto).toList());
     }
 
-    @MasterOnly
+    @EmployeeOrMaster
     @Operation(summary = "승인 (사장)", description = "요청 시각으로 출퇴근 기록 + 직원에게 알림.")
     @PostMapping("/api/attendance/approval-requests/{id}/approve")
     public ResponseEntity<AttendanceApprovalResponse> approve(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long id) {
-        storeAccessGuard.assertMasterOwnsStore(principal.getId(), service.storeIdOf(id));
-        return ResponseEntity.ok(toDto(service.approve(id)));
+        Long storeId = service.storeIdOf(id);
+        storeAccessGuard.assertMasterOrManagerPermission(
+                principal.getId(), storeId, ManagerPermission.ATTENDANCE_APPROVE);
+        AttendanceApprovalResponse response = toDto(service.approve(id));
+        supervision.notifyIfManager(principal.getId(), storeId, "출퇴근 승인");
+        return ResponseEntity.ok(response);
     }
 
-    @MasterOnly
+    @EmployeeOrMaster
     @Operation(summary = "거절 (사장)")
     @PostMapping("/api/attendance/approval-requests/{id}/reject")
     public ResponseEntity<AttendanceApprovalResponse> reject(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long id,
             @RequestParam(defaultValue = "") String reason) {
-        storeAccessGuard.assertMasterOwnsStore(principal.getId(), service.storeIdOf(id));
-        return ResponseEntity.ok(toDto(service.reject(id, reason)));
+        Long storeId = service.storeIdOf(id);
+        storeAccessGuard.assertMasterOrManagerPermission(
+                principal.getId(), storeId, ManagerPermission.ATTENDANCE_APPROVE);
+        AttendanceApprovalResponse response = toDto(service.reject(id, reason));
+        supervision.notifyIfManager(principal.getId(), storeId, "출퇴근 요청 거절");
+        return ResponseEntity.ok(response);
     }
 }

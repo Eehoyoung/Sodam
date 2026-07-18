@@ -36,6 +36,7 @@ public class AttendanceApprovalService {
     private final EmployeeStoreRelationRepository relationRepository;
     private final MasterStoreRelationRepository masterStoreRelationRepository;
     private final NotificationService notificationService;
+    private final StorePermissionRecipientService permissionRecipients;
     private final UserRepository userRepository;
     private final StoreRepository storeRepository;
     private final LiveSyncPublisher liveSyncPublisher;
@@ -124,12 +125,9 @@ public class AttendanceApprovalService {
         String storeName = storeRepository.findById(storeId)
                 .map(s -> s.getStoreName() != null ? s.getStoreName() : "매장").orElse("매장");
         String verb = type == Type.CHECK_IN ? "출근" : "퇴근";
-        for (MasterStoreRelation rel : masterStoreRelationRepository.findByStore_Id(storeId)) {
-            if (rel.getMasterProfile() == null || rel.getMasterProfile().getUser() == null) {
-                continue;
-            }
-            Long masterUserId = rel.getMasterProfile().getUser().getId();
-            notificationService.push(masterUserId, PushMessage.builder()
+        for (Long recipientUserId : permissionRecipients.ownersAndManagers(
+                storeId, com.rich.sodam.domain.type.ManagerPermission.ATTENDANCE_APPROVE)) {
+            notificationService.push(recipientUserId, PushMessage.builder()
                     .title(verb + " 승인 요청")
                     .body(String.format("%s님이 %s 처리를 요청했어요. (%s)", empName, verb, storeName))
                     .deepLink("sodam://attendance/approvals")

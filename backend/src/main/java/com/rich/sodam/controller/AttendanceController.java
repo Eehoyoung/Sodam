@@ -4,6 +4,7 @@ import com.rich.sodam.domain.Attendance;
 import com.rich.sodam.dto.request.AttendanceRequestDto;
 import com.rich.sodam.dto.request.LocationVerifyRequest;
 import com.rich.sodam.dto.request.ManualAttendanceRequestDto;
+import com.rich.sodam.dto.request.NfcAttendanceRequestDto;
 import com.rich.sodam.dto.request.NfcVerifyRequest;
 import com.rich.sodam.dto.response.AttendanceResponseDto;
 import com.rich.sodam.dto.response.AttendanceWorkLogResponse;
@@ -102,6 +103,55 @@ public class AttendanceController {
         return ResponseEntity.ok(AttendanceResponseDto.from(attendance));
     }
 
+    @PostMapping("/check-in/nfc")
+    @Operation(summary = "NFC 전용 직원 출근 처리",
+            description = "GPS 좌표 없이 매장에 등록된 NFC 태그 태깅만으로 출근 정보를 기록합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "출근 처리 성공",
+                    content = @Content(schema = @Schema(implementation = AttendanceResponseDto.class))),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "403", description = "NFC 태그 검증 실패")
+    })
+    public ResponseEntity<AttendanceResponseDto> checkInWithNfc(@AuthenticationPrincipal UserPrincipal principal,
+                                                                 @RequestBody @Validated NfcAttendanceRequestDto request) {
+        // IDOR 차단: 출근은 본인만. 타인 employeeId 로 대리출근 불가.
+        guard.assertSelf(principal.getId(), request.getEmployeeId());
+        Attendance attendance = attendanceService.checkInWithNfcVerification(
+                request.getEmployeeId(),
+                request.getStoreId(),
+                request.getTagId(),
+                request.getQueuedAt()
+        );
+
+        return ResponseEntity.ok(AttendanceResponseDto.from(attendance));
+    }
+
+    @PostMapping("/check-out/nfc")
+    @Operation(summary = "NFC 전용 직원 퇴근 처리",
+            description = "GPS 좌표 없이 매장에 등록된 NFC 태그 태깅만으로 퇴근 정보를 기록합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "퇴근 처리 성공",
+                    content = @Content(schema = @Schema(implementation = AttendanceResponseDto.class))),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "403", description = "NFC 태그 검증 실패"),
+            @ApiResponse(responseCode = "404", description = "해당 직원의 출근 기록이 없음")
+    })
+    public ResponseEntity<AttendanceResponseDto> checkOutWithNfc(@AuthenticationPrincipal UserPrincipal principal,
+                                                                  @RequestBody @Validated NfcAttendanceRequestDto request) {
+        // IDOR 차단: 퇴근도 본인만.
+        guard.assertSelf(principal.getId(), request.getEmployeeId());
+        Attendance attendance = attendanceService.checkOutWithNfcVerification(
+                request.getEmployeeId(),
+                request.getStoreId(),
+                request.getTagId(),
+                request.getQueuedAt()
+        );
+
+        return ResponseEntity.ok(AttendanceResponseDto.from(attendance));
+    }
+
     @Operation(summary = "직원별 출퇴근 기록 조회", description = "특정 기간 동안의 직원 출퇴근 기록을 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
@@ -117,8 +167,8 @@ public class AttendanceController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @Parameter(description = "조회 종료일시 (ISO 형식: yyyy-MM-dd'T'HH:mm:ss)", required = true)
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
-        // IDOR 차단: 본인 또는 그 직원의 매장 사장만 조회.
-        guard.assertCanViewEmployee(principal.getId(), employeeId, isMaster(principal));
+        // storeId 없는 전 매장 기록은 직원 본인에게만 노출한다.
+        guard.assertSelf(principal.getId(), employeeId);
 
         List<Attendance> attendances = attendanceService.getAttendancesByEmployeeAndPeriod(
                 employeeId, startDate, endDate);
@@ -169,8 +219,13 @@ public class AttendanceController {
             @Parameter(description = "매장 ID (선택). 지정 시 다매장 직원의 출퇴근 기록을 해당 매장 기준으로만 조회한다.")
             @RequestParam(required = false) Long storeId) {
         boolean master = isMaster(principal);
-        // IDOR 차단: 본인 또는 그 직원의 매장 사장만.
-        guard.assertCanViewEmployee(principal.getId(), employeeId, master);
+        if (!master) {
+            guard.assertSelf(principal.getId(), employeeId);
+        }
+        if (master && storeId == null) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "사업주 조회에는 매장 ID가 필요합니다.");
+        }
         if (storeId != null) {
             // storeId 가 지정되면 그 매장에 대한 조회 권한도 별도 검증한다.
             if (master && !principal.getId().equals(employeeId)) {
@@ -232,8 +287,8 @@ public class AttendanceController {
             @Parameter(description = "직원 ID", required = true) @PathVariable Long employeeId,
             @Parameter(description = "조회 연도", required = true, example = "2025") @RequestParam int year,
             @Parameter(description = "조회 월 (1-12)", required = true, example = "5") @RequestParam int month) {
-        // IDOR 차단: 본인 또는 그 직원의 매장 사장만.
-        guard.assertCanViewEmployee(principal.getId(), employeeId, isMaster(principal));
+        // storeId 없는 전 매장 월 기록은 직원 본인에게만 노출한다.
+        guard.assertSelf(principal.getId(), employeeId);
 
         List<Attendance> attendances = attendanceService.getMonthlyAttendancesByEmployee(
                 employeeId, year, month);
@@ -331,11 +386,9 @@ public class AttendanceController {
         return ResponseEntity.ok(com.rich.sodam.dto.response.ApiResponse.success(body));
     }
 
-    /** principal 이 사장(MASTER/MANAGER/BOSS) 권한인지. */
+    /** principal 이 사업주(MASTER) 권한인지. */
     private boolean isMaster(UserPrincipal principal) {
         return principal.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_MASTER")
-                        || a.getAuthority().equals("ROLE_MANAGER")
-                        || a.getAuthority().equals("ROLE_BOSS"));
+                .anyMatch(a -> a.getAuthority().equals("ROLE_MASTER"));
     }
 }

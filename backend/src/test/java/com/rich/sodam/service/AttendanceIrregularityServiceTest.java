@@ -230,7 +230,7 @@ class AttendanceIrregularityServiceTest {
         attend(rel, shiftDate.atTime(9, 30), shiftDate.atTime(18, 0)); // 30분 지각
 
         AttendanceIrregularity item = irregularityService.listForStore(store.getId(), shiftDate, shiftDate).get(0);
-        AttendanceIrregularity resolved = irregularityService.deduct(item.getId(), 1L, "지각 사유 불충분");
+        AttendanceIrregularity resolved = irregularityService.deduct(item.getId(), item.getStoreId(), 1L, "지각 사유 불충분");
 
         assertThat(resolved.getResolution()).isEqualTo(AttendanceIrregularityResolution.DEDUCTED);
         int expected = (int) Math.round(ORDINARY_WAGE * 0.5); // 30분 = 0.5시간
@@ -247,10 +247,28 @@ class AttendanceIrregularityServiceTest {
         attend(rel, shiftDate.atTime(9, 30), shiftDate.atTime(18, 0));
 
         AttendanceIrregularity item = irregularityService.listForStore(store.getId(), shiftDate, shiftDate).get(0);
-        AttendanceIrregularity resolved = irregularityService.waive(item.getId(), 1L, "교통사고 확인됨");
+        AttendanceIrregularity resolved = irregularityService.waive(item.getId(), item.getStoreId(), 1L, "교통사고 확인됨");
 
         assertThat(resolved.getResolution()).isEqualTo(AttendanceIrregularityResolution.WAIVED);
         assertThat(resolved.getDeductedAmount()).isNull();
+    }
+
+    @Test
+    @DisplayName("경로 매장과 실제 근태 이상 매장이 다르면 처리하지 않는다")
+    void resolutionRejectsMismatchedStore() {
+        Store store = store();
+        EmployeeStoreRelation rel = monthlyEmployee(store, "cross-store@x.com");
+        LocalDate shiftDate = LocalDate.now().minusDays(3);
+        confirmedShift(rel, shiftDate, LocalTime.of(9, 0), LocalTime.of(18, 0));
+        attend(rel, shiftDate.atTime(9, 30), shiftDate.atTime(18, 0));
+        AttendanceIrregularity item = irregularityService.listForStore(store.getId(), shiftDate, shiftDate).get(0);
+
+        assertThatThrownBy(() -> irregularityService.waive(
+                item.getId(), store.getId() + 1, 1L, "타 매장 리소스 조작"))
+                .isInstanceOf(java.util.NoSuchElementException.class);
+
+        AttendanceIrregularity unchanged = irregularityRepository.findById(item.getId()).orElseThrow();
+        assertThat(unchanged.getResolution()).isEqualTo(AttendanceIrregularityResolution.PENDING);
     }
 
     @Test
@@ -272,7 +290,7 @@ class AttendanceIrregularityServiceTest {
         AttendanceIrregularity item = irregularityService.listForStore(store.getId(), shiftDate, shiftDate).get(0);
         assertThat(item.getType()).isEqualTo(AttendanceIrregularityType.ABSENCE);
 
-        AttendanceIrregularity resolved = irregularityService.convertToLeave(item.getId(), 1L, "연차로 대체");
+        AttendanceIrregularity resolved = irregularityService.convertToLeave(item.getId(), item.getStoreId(), 1L, "연차로 대체");
 
         assertThat(resolved.getResolution()).isEqualTo(AttendanceIrregularityResolution.CONVERTED_TO_LEAVE);
         List<com.rich.sodam.domain.TimeOff> timeOffs = timeOffRepository.findByEmployee(rel.getEmployeeProfile());
@@ -291,9 +309,9 @@ class AttendanceIrregularityServiceTest {
         attend(rel, shiftDate.atTime(9, 30), shiftDate.atTime(18, 0));
 
         AttendanceIrregularity item = irregularityService.listForStore(store.getId(), shiftDate, shiftDate).get(0);
-        irregularityService.waive(item.getId(), 1L, "1차 처리");
+        irregularityService.waive(item.getId(), item.getStoreId(), 1L, "1차 처리");
 
-        assertThatThrownBy(() -> irregularityService.deduct(item.getId(), 1L, "2차 처리"))
+        assertThatThrownBy(() -> irregularityService.deduct(item.getId(), item.getStoreId(), 1L, "2차 처리"))
                 .isInstanceOf(IllegalStateException.class);
     }
 
@@ -313,8 +331,8 @@ class AttendanceIrregularityServiceTest {
         AttendanceIrregularity late = items.stream().filter(i -> i.getShiftDate().equals(d1)).findFirst().orElseThrow();
         AttendanceIrregularity absence = items.stream().filter(i -> i.getShiftDate().equals(d2)).findFirst().orElseThrow();
 
-        irregularityService.deduct(late.getId(), 1L, null);
-        irregularityService.waive(absence.getId(), 1L, "가족 상 확인됨");
+        irregularityService.deduct(late.getId(), late.getStoreId(), 1L, null);
+        irregularityService.waive(absence.getId(), absence.getStoreId(), 1L, "가족 상 확인됨");
 
         var waivedMinutes = irregularityService.waivedMinutesByDate(
                 rel.getEmployeeProfile().getId(), store.getId(), d1, d2);
@@ -345,7 +363,7 @@ class AttendanceIrregularityServiceTest {
         int expectedDeduction = (int) Math.round(ORDINARY_WAGE * (forgivenMinutes / 60.0));
         assertThat(before.getRegularWage()).isEqualTo(MONTHLY_SALARY - expectedDeduction);
 
-        irregularityService.waive(item.getId(), 1L, "병가 확인됨");
+        irregularityService.waive(item.getId(), item.getStoreId(), 1L, "병가 확인됨");
 
         com.rich.sodam.domain.Payroll after = payrollService.calculatePayroll(
                 rel.getEmployeeProfile().getId(), store.getId(), periodStart, periodEnd, true);

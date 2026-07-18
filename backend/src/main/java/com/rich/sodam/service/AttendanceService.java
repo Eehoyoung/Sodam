@@ -9,6 +9,7 @@ import com.rich.sodam.dto.request.ManualAttendanceRequestDto;
 import com.rich.sodam.exception.EntityNotFoundException;
 import com.rich.sodam.exception.InvalidOperationException;
 import com.rich.sodam.exception.LocationVerificationException;
+import com.rich.sodam.exception.NfcVerificationException;
 import com.rich.sodam.repository.AttendanceRepository;
 import com.rich.sodam.repository.EmployeeProfileRepository;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
@@ -59,6 +60,7 @@ public class AttendanceService {
     private final LiveSyncPublisher liveSyncPublisher;
     private final MasterStoreRelationRepository masterStoreRelationRepository;
     private final NotificationService notificationService;
+    private final NfcVerificationService nfcVerificationService;
 
     /**
      * 위치정보 수집·이용 동의 여부를 강제한다(위치정보법 §18·§19, G-1).
@@ -195,6 +197,47 @@ public class AttendanceService {
         }
 
         Attendance result = checkOut(employeeId, storeId, latitude, longitude, resolveQueuedTime(queuedAt));
+        liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.ATTENDANCE_CHANGED);
+        notifyOwnersAttendance(result, false);
+        return result;
+    }
+
+    /**
+     * NFC 전용 출근 처리 — GPS 좌표를 전혀 수집하지 않고, 매장에 등록된 활성 태그 태깅만으로 기록한다.
+     *
+     * <p>{@link #checkInWithVerification}의 NFC 대응 버전. 위치정보를 수집하지 않으므로
+     * {@link #assertLocationConsent}는 호출하지 않는다(위치정보법 §18·§19 동의 대상 자체가 아님).
+     * 태그 검증은 {@link NfcVerificationService#verifyTag}에 위임하고, 실패 시
+     * {@link NfcVerificationException}으로 거부한다(대리출근 방지).</p>
+     */
+    @Transactional
+    // 진입점에 캐시 무효화 — this.checkIn(...) 자기호출은 프록시를 우회해 checkIn 의 @CacheEvict 가
+    // 발화하지 않는다(checkInWithVerification 과 동일한 이유).
+    @CacheEvict(value = "attendance", allEntries = true)
+    public Attendance checkInWithNfcVerification(Long employeeId, Long storeId, String tagId, LocalDateTime queuedAt) {
+        var verifyResult = nfcVerificationService.verifyTag(storeId, tagId);
+        if (!verifyResult.isSuccess()) {
+            throw NfcVerificationException.invalidTag();
+        }
+
+        Attendance result = checkIn(employeeId, storeId, null, null, resolveQueuedTime(queuedAt));
+        liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.ATTENDANCE_CHANGED);
+        notifyOwnersAttendance(result, true);
+        return result;
+    }
+
+    /**
+     * NFC 전용 퇴근 처리 — {@link #checkInWithNfcVerification}과 대칭.
+     */
+    @Transactional
+    @CacheEvict(value = "attendance", allEntries = true)
+    public Attendance checkOutWithNfcVerification(Long employeeId, Long storeId, String tagId, LocalDateTime queuedAt) {
+        var verifyResult = nfcVerificationService.verifyTag(storeId, tagId);
+        if (!verifyResult.isSuccess()) {
+            throw NfcVerificationException.invalidTag();
+        }
+
+        Attendance result = checkOut(employeeId, storeId, null, null, resolveQueuedTime(queuedAt));
         liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.ATTENDANCE_CHANGED);
         notifyOwnersAttendance(result, false);
         return result;

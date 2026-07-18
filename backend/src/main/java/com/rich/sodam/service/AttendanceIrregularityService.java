@@ -179,8 +179,8 @@ public class AttendanceIrregularityService {
     }
 
     @Transactional
-    public AttendanceIrregularity waive(Long id, Long masterId, String note) {
-        AttendanceIrregularity a = get(id);
+    public AttendanceIrregularity waive(Long id, Long storeId, Long masterId, String note) {
+        AttendanceIrregularity a = getInStore(id, storeId);
         a.waive(masterId, note);
         AttendanceIrregularity saved = irregularityRepository.save(a);
         notifyEmployee(saved, "공제 없이 처리됐어요.");
@@ -193,8 +193,8 @@ public class AttendanceIrregularityService {
      * 했다"는 기록만 남긴다.
      */
     @Transactional
-    public AttendanceIrregularity deduct(Long id, Long masterId, String note) {
-        AttendanceIrregularity a = get(id);
+    public AttendanceIrregularity deduct(Long id, Long storeId, Long masterId, String note) {
+        AttendanceIrregularity a = getInStore(id, storeId);
         EmployeeStoreRelation relation = relationRepository.findRelation(a.getEmployeeId(), a.getStoreId())
                 .orElseThrow(() -> new NoSuchElementException("직원-매장 관계를 찾을 수 없어요."));
         if (!relation.isMonthlySalaried()) {
@@ -218,8 +218,8 @@ public class AttendanceIrregularityService {
      * 결근은 종일로 전환한다. {@link TimeOffService}의 잔여 검증·중복 신청 방지 로직을 그대로 탄다.
      */
     @Transactional
-    public AttendanceIrregularity convertToLeave(Long id, Long masterId, String note) {
-        AttendanceIrregularity a = get(id);
+    public AttendanceIrregularity convertToLeave(Long id, Long storeId, Long masterId, String note) {
+        AttendanceIrregularity a = getInStore(id, storeId);
         TimeOffUnit unit = a.getType() == AttendanceIrregularityType.ABSENCE ? TimeOffUnit.FULL_DAY : TimeOffUnit.HALF_DAY;
         TimeOffResponse timeOff = timeOffService.createTimeOffRequest(
                 a.getEmployeeId(), a.getStoreId(), TimeOffLeaveType.ANNUAL, unit,
@@ -233,8 +233,8 @@ public class AttendanceIrregularityService {
         return saved;
     }
 
-    private AttendanceIrregularity get(Long id) {
-        return irregularityRepository.findById(id)
+    private AttendanceIrregularity getInStore(Long id, Long storeId) {
+        return irregularityRepository.findByIdAndStoreId(id, storeId)
                 .orElseThrow(() -> new NoSuchElementException("근태 이상 건을 찾을 수 없어요."));
     }
 

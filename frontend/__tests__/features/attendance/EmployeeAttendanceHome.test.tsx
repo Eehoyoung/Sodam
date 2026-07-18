@@ -61,6 +61,13 @@ jest.mock('../../../src/common/utils/api', () => {
     return {__esModule: true, default: api, setOnUnauthorized: jest.fn()};
 });
 
+jest.mock('../../../src/features/manager/hooks/useManagedStores', () => ({
+    useManagedStores: () => ({
+        data: [],
+        refetch: jest.fn(() => Promise.resolve()),
+    }),
+}));
+
 // 실제 토큰 사용 — DS named export 전체 제공 (부분 모킹 시 import 크래시)
 jest.mock('../../../src/theme/tokens', () => jest.requireActual('../../../src/theme/tokens'));
 
@@ -77,9 +84,15 @@ const flush = async () => {
 
 describe('EmployeeAttendanceHome', () => {
     beforeEach(() => {
+        jest.useFakeTimers();
         jest.clearAllMocks();
         mockAlert.mockClear();
         mockNavigate.mockClear();
+    });
+
+    afterEach(() => {
+        jest.clearAllTimers();
+        jest.useRealTimers();
     });
 
     test('마운트 시 매장 + 오늘 출퇴근 조회 API 호출', async () => {

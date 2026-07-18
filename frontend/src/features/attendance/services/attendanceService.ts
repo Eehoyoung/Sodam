@@ -11,6 +11,7 @@ import {
     AttendanceStatus,
     CheckInRequest,
     CheckOutRequest,
+    NfcAttendanceRequest,
     UpdateAttendanceRequest
 } from '../types';
 import {NFCVerifyResponse, verifyCheckInByNFC, verifyCheckOutByNFC} from './nfcAttendanceService';
@@ -76,6 +77,21 @@ const toAttendancePayload = (data: CheckInRequest | CheckOutRequest) => {
     };
 };
 
+/**
+ * BE NfcAttendanceRequestDto 3필드 매핑 헬퍼. GPS 좌표 없이 태그 검증만으로 기록한다.
+ */
+const toNfcAttendancePayload = (data: NfcAttendanceRequest) => {
+    const storeIdNum = Number(data.workplaceId);
+    const employeeIdNum = Number(data.employeeId);
+    if (!Number.isFinite(storeIdNum)) {
+        throw new Error('INVALID_STORE_ID');
+    }
+    if (!Number.isFinite(employeeIdNum)) {
+        throw new Error('INVALID_EMPLOYEE_ID');
+    }
+    return { employeeId: employeeIdNum, storeId: storeIdNum, tagId: data.tagId };
+};
+
 // 출퇴근 관련 서비스 객체
 const attendanceService = {
     getMonthlyWorkLog: async (
@@ -114,6 +130,34 @@ const attendanceService = {
             return response.data;
         } catch (error) {
             logger.error('출퇴�?기록??가?�오??�??�류가 발생?�습?�다', 'ATTENDANCE_SERVICE', error);
+            throw error;
+        }
+    },
+
+    /**
+     * NFC 전용 출근 처리 — 매장에 등록된 태그 검증 후 위치 없이 기록(BE /check-in/nfc).
+     */
+    checkInWithNfc: async (data: NfcAttendanceRequest): Promise<AttendanceRecord> => {
+        try {
+            const payload = toNfcAttendancePayload(data);
+            const response = await api.post<AttendanceRecord>('/api/attendance/check-in/nfc', payload);
+            return response.data;
+        } catch (error) {
+            logger.error('', 'ATTENDANCE_SERVICE', error);
+            throw error;
+        }
+    },
+
+    /**
+     * NFC 전용 퇴근 처리 — 매장에 등록된 태그 검증 후 위치 없이 기록(BE /check-out/nfc).
+     */
+    checkOutWithNfc: async (data: NfcAttendanceRequest): Promise<AttendanceRecord> => {
+        try {
+            const payload = toNfcAttendancePayload(data);
+            const response = await api.post<AttendanceRecord>('/api/attendance/check-out/nfc', payload);
+            return response.data;
+        } catch (error) {
+            logger.error('', 'ATTENDANCE_SERVICE', error);
             throw error;
         }
     },

@@ -29,7 +29,36 @@ async function rejectTimeOff(timeOffId: number, reason: string): Promise<TimeOff
   return res.data;
 }
 
-const timeOffService = {fetchPendingTimeOffs, approveTimeOff, rejectTimeOff};
+async function fetchStorePendingTimeOffs(storeId: number): Promise<TimeOffResponse[]> {
+  const res = await api.get<TimeOffResponse[]>(`/api/timeoff/store/${storeId}/status/PENDING`);
+  return Array.isArray(res.data) ? res.data : [];
+}
+
+async function approveStoreTimeOff(timeOffId: number): Promise<TimeOffResponse> {
+  const res = await api.put<TimeOffResponse>(`/api/timeoff/${timeOffId}/approve`, {});
+  return res.data;
+}
+
+async function rejectStoreTimeOff(timeOffId: number, reason: string): Promise<TimeOffResponse> {
+  const res = await api.put<TimeOffResponse>(`/api/timeoff/${timeOffId}/reject`, {reason});
+  return res.data;
+}
+
+const timeOffService = {
+  fetchPendingTimeOffs,
+  approveTimeOff,
+  rejectTimeOff,
+  fetchStorePendingTimeOffs,
+  approveStoreTimeOff,
+  rejectStoreTimeOff,
+};
 
 export default timeOffService;
-export {fetchPendingTimeOffs, approveTimeOff, rejectTimeOff};
+export {
+  fetchPendingTimeOffs,
+  approveTimeOff,
+  rejectTimeOff,
+  fetchStorePendingTimeOffs,
+  approveStoreTimeOff,
+  rejectStoreTimeOff,
+};

@@ -48,6 +48,7 @@ public class TimeOffService {
     private final UserRepository userRepository;
     private final MasterStoreRelationRepository masterStoreRelationRepository;
     private final NotificationService notificationService;
+    private final StorePermissionRecipientService permissionRecipients;
     private final AnnualLeaveEntitlementResolver annualLeaveEntitlementResolver;
 
     /**
@@ -335,12 +336,9 @@ public class TimeOffService {
         String empName = timeOff.getEmployee() != null && timeOff.getEmployee().getUser() != null
                 ? timeOff.getEmployee().getUser().getName() : "직원";
         String storeName = timeOff.getStore().getStoreName() != null ? timeOff.getStore().getStoreName() : "매장";
-        for (MasterStoreRelation rel : masterStoreRelationRepository.findByStore_Id(storeId)) {
-            if (rel.getMasterProfile() == null || rel.getMasterProfile().getUser() == null) {
-                continue;
-            }
-            Long masterUserId = rel.getMasterProfile().getUser().getId();
-            notificationService.push(masterUserId, PushMessage.builder()
+        for (Long recipientUserId : permissionRecipients.ownersAndManagers(
+                storeId, com.rich.sodam.domain.type.ManagerPermission.TIMEOFF_APPROVE)) {
+            notificationService.push(recipientUserId, PushMessage.builder()
                     .title("휴가 신청")
                     .body(String.format("%s님이 %s 매장에 휴가를 신청했어요. (%s~%s)",
                             empName, storeName, timeOff.getStartDate(), timeOff.getEndDate()))

@@ -2,6 +2,7 @@ package com.rich.sodam.controller;
 
 import com.rich.sodam.domain.Attendance;
 import com.rich.sodam.domain.AttendanceCorrectionRequest;
+import com.rich.sodam.domain.type.ManagerPermission;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.repository.AttendanceCorrectionRequestRepository;
 import com.rich.sodam.repository.AttendanceRepository;
@@ -10,6 +11,7 @@ import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.service.NotificationService;
 import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.service.ManagerSupervisionNotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -46,6 +48,7 @@ public class AttendanceCorrectionController {
     private final UserRepository userRepo;
     private final NotificationService notificationService;
     private final StoreAccessGuard storeAccessGuard;
+    private final ManagerSupervisionNotificationService supervision;
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor
     public static class CorrectionRequest {
@@ -110,7 +113,7 @@ public class AttendanceCorrectionController {
 
     @Operation(summary = "정정 요청 승인 (사장)",
             description = "Attendance.adjustTimes 로 출퇴근 시간을 실제로 갱신하고 요청자에게 알림 발송.")
-    @MasterOnly
+    @EmployeeOrMaster
     @PostMapping("/correction-requests/{id}/approve")
     @Transactional
     public ResponseEntity<Map<String, String>> approve(
@@ -124,7 +127,8 @@ public class AttendanceCorrectionController {
         if (att == null || att.getStore() == null) {
             throw new IllegalArgumentException("정정 대상 매장을 확인할 수 없어요.");
         }
-        storeAccessGuard.assertMasterOwnsStore(principal.getId(), att.getStore().getId());
+        storeAccessGuard.assertMasterOrManagerPermission(
+                principal.getId(), att.getStore().getId(), ManagerPermission.ATTENDANCE_APPROVE);
         if (req.getProposedCheckIn() != null) {
             att.adjustTimes(req.getProposedCheckIn(), req.getProposedCheckOut());
             attendanceRepo.save(att);
@@ -140,11 +144,12 @@ public class AttendanceCorrectionController {
                             .data(Map.of("type", "ATTENDANCE_CORRECTION_APPROVED"))
                             .build());
         }
+        supervision.notifyIfManager(principal.getId(), att.getStore().getId(), "출퇴근 정정 승인");
         return ResponseEntity.ok(Map.of("message", "승인되었어요."));
     }
 
     @Operation(summary = "정정 요청 거절 (사장)")
-    @MasterOnly
+    @EmployeeOrMaster
     @PostMapping("/correction-requests/{id}/reject")
     @Transactional
     public ResponseEntity<Map<String, String>> reject(
@@ -157,7 +162,8 @@ public class AttendanceCorrectionController {
         if (req.getAttendance() == null || req.getAttendance().getStore() == null) {
             throw new IllegalArgumentException("정정 대상 매장을 확인할 수 없어요.");
         }
-        storeAccessGuard.assertMasterOwnsStore(principal.getId(), req.getAttendance().getStore().getId());
+        storeAccessGuard.assertMasterOrManagerPermission(
+                principal.getId(), req.getAttendance().getStore().getId(), ManagerPermission.ATTENDANCE_APPROVE);
         req.reject(reason);
 
         if (req.getRequester() != null) {
@@ -171,6 +177,7 @@ public class AttendanceCorrectionController {
                             .data(Map.of("type", "ATTENDANCE_CORRECTION_REJECTED"))
                             .build());
         }
+        supervision.notifyIfManager(principal.getId(), req.getAttendance().getStore().getId(), "출퇴근 정정 거절");
         return ResponseEntity.ok(Map.of("message", "거절했어요."));
     }
 }

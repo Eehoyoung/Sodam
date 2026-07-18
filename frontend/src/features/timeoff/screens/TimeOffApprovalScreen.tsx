@@ -1,7 +1,7 @@
 import React, {useCallback, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import {useFocusEffect, useNavigation} from '@react-navigation/native';
+import {useFocusEffect, useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {
@@ -40,6 +40,8 @@ function formatPeriod(item: TimeOffResponse): string {
  */
 export default function TimeOffApprovalScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
+    const route = useRoute<RouteProp<HomeStackParamList, 'TimeOffApproval'>>();
+    const storeId = route.params?.storeId;
     const c = useThemeColors();
     const [items, setItems] = useState<TimeOffResponse[]>([]);
     const [loading, setLoading] = useState(true);
@@ -53,13 +55,15 @@ export default function TimeOffApprovalScreen() {
         try {
             setLoading(true);
             setError(null);
-            setItems(await timeOffService.fetchPendingTimeOffs());
+            setItems(storeId
+                ? await timeOffService.fetchStorePendingTimeOffs(storeId)
+                : await timeOffService.fetchPendingTimeOffs());
         } catch (err: any) {
             setError(err?.response?.data?.message || '승인 대기 목록을 불러오지 못했어요.');
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [storeId]);
 
     useFocusEffect(useCallback(() => {
         load();
@@ -68,7 +72,11 @@ export default function TimeOffApprovalScreen() {
     const approve = async (item: TimeOffResponse) => {
         setBusyId(item.id);
         try {
-            await timeOffService.approveTimeOff(item.id);
+            if (storeId) {
+                await timeOffService.approveStoreTimeOff(item.id);
+            } else {
+                await timeOffService.approveTimeOff(item.id);
+            }
             AppToast.success(`${item.employeeName}님 휴가 신청을 승인했어요.`);
             await load();
         } catch (err: any) {
@@ -98,7 +106,11 @@ export default function TimeOffApprovalScreen() {
         }
         setBusyId(rejectTarget.id);
         try {
-            await timeOffService.rejectTimeOff(rejectTarget.id, trimmed);
+            if (storeId) {
+                await timeOffService.rejectStoreTimeOff(rejectTarget.id, trimmed);
+            } else {
+                await timeOffService.rejectTimeOff(rejectTarget.id, trimmed);
+            }
             AppToast.show(`${rejectTarget.employeeName}님 휴가 신청을 거부했어요.`);
             closeReject();
             await load();

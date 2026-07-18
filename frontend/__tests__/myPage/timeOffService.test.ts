@@ -87,4 +87,24 @@ describe('timeOffService (사장 승인)', () => {
       expect(result.rejectReason).toBe('인력 공백 우려');
     });
   });
+
+  describe('매니저 매장 범위 승인', () => {
+    it('storeId가 있는 목록은 권한형 매장 API를 사용한다', async () => {
+      (api.get as jest.Mock).mockResolvedValue({data: [sampleResponse]});
+
+      await timeOffService.fetchStorePendingTimeOffs(2);
+
+      expect(api.get).toHaveBeenCalledWith('/api/timeoff/store/2/status/PENDING');
+    });
+
+    it('승인·거절은 manager permission guard가 적용되는 API를 사용한다', async () => {
+      (api.put as jest.Mock).mockResolvedValue({data: sampleResponse});
+
+      await timeOffService.approveStoreTimeOff(42);
+      await timeOffService.rejectStoreTimeOff(42, '인력 공백 우려');
+
+      expect(api.put).toHaveBeenCalledWith('/api/timeoff/42/approve', {});
+      expect(api.put).toHaveBeenCalledWith('/api/timeoff/42/reject', {reason: '인력 공백 우려'});
+    });
+  });
 });

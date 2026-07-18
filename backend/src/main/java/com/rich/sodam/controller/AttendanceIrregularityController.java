@@ -2,6 +2,7 @@ package com.rich.sodam.controller;
 
 import com.rich.sodam.domain.AttendanceIrregularity;
 import com.rich.sodam.domain.AttendanceNotice;
+import com.rich.sodam.domain.type.ManagerPermission;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.dto.request.AttendanceIrregularityResolveRequest;
 import com.rich.sodam.dto.request.AttendanceNoticeCreateRequest;
@@ -14,6 +15,7 @@ import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.service.AttendanceIrregularityService;
 import com.rich.sodam.service.AttendanceNoticeService;
 import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.service.ManagerSupervisionNotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -40,56 +42,60 @@ public class AttendanceIrregularityController {
     private final AttendanceNoticeService noticeService;
     private final StoreAccessGuard guard;
     private final UserRepository userRepository;
+    private final ManagerSupervisionNotificationService supervision;
 
     @Operation(summary = "매장의 근태 이상 목록 조회(자동 감지 포함) — 사장 전용")
-    @MasterOnly
+    @EmployeeOrMaster
     @GetMapping("/api/stores/{storeId}/attendance-irregularities")
     public ResponseEntity<List<AttendanceIrregularityResponse>> list(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        guard.assertMasterOwnsStore(principal.getId(), storeId);
+        guard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.ATTENDANCE_APPROVE);
         List<AttendanceIrregularity> items = irregularityService.listForStore(storeId, from, to);
         return ResponseEntity.ok(toResponses(items));
     }
 
     @Operation(summary = "근태 이상 공제 없이 처리 — 사장 전용")
-    @MasterOnly
+    @EmployeeOrMaster
     @PostMapping("/api/stores/{storeId}/attendance-irregularities/{id}/waive")
     public ResponseEntity<AttendanceIrregularityResponse> waive(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId,
             @PathVariable Long id,
             @RequestBody(required = false) AttendanceIrregularityResolveRequest body) {
-        guard.assertMasterOwnsStore(principal.getId(), storeId);
-        AttendanceIrregularity a = irregularityService.waive(id, principal.getId(), note(body));
+        guard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.ATTENDANCE_APPROVE);
+        AttendanceIrregularity a = irregularityService.waive(id, storeId, principal.getId(), note(body));
+        supervision.notifyIfManager(principal.getId(), storeId, "근태 이상 공제 면제");
         return ResponseEntity.ok(toResponse(a));
     }
 
     @Operation(summary = "근태 이상 공제 확정(통상시급 기준) — 사장 전용")
-    @MasterOnly
+    @EmployeeOrMaster
     @PostMapping("/api/stores/{storeId}/attendance-irregularities/{id}/deduct")
     public ResponseEntity<AttendanceIrregularityResponse> deduct(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId,
             @PathVariable Long id,
             @RequestBody(required = false) AttendanceIrregularityResolveRequest body) {
-        guard.assertMasterOwnsStore(principal.getId(), storeId);
-        AttendanceIrregularity a = irregularityService.deduct(id, principal.getId(), note(body));
+        guard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.ATTENDANCE_APPROVE);
+        AttendanceIrregularity a = irregularityService.deduct(id, storeId, principal.getId(), note(body));
+        supervision.notifyIfManager(principal.getId(), storeId, "근태 이상 공제 확정");
         return ResponseEntity.ok(toResponse(a));
     }
 
     @Operation(summary = "근태 이상 연차(반차/종일) 전환 — 사장 전용")
-    @MasterOnly
+    @EmployeeOrMaster
     @PostMapping("/api/stores/{storeId}/attendance-irregularities/{id}/convert-to-leave")
     public ResponseEntity<AttendanceIrregularityResponse> convertToLeave(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId,
             @PathVariable Long id,
             @RequestBody(required = false) AttendanceIrregularityResolveRequest body) {
-        guard.assertMasterOwnsStore(principal.getId(), storeId);
-        AttendanceIrregularity a = irregularityService.convertToLeave(id, principal.getId(), note(body));
+        guard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.ATTENDANCE_APPROVE);
+        AttendanceIrregularity a = irregularityService.convertToLeave(id, storeId, principal.getId(), note(body));
+        supervision.notifyIfManager(principal.getId(), storeId, "근태 이상 연차 전환");
         return ResponseEntity.ok(toResponse(a));
     }
 

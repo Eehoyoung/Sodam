@@ -60,6 +60,16 @@ export interface CheckOutRequest {
 }
 
 /**
+ * NFC 태그 기반 출퇴근 요청 인터페이스. BE NfcAttendanceRequestDto 와 매핑 —
+ * GPS 좌표 없이 매장에 등록된 태그(tagId) 검증만으로 기록한다.
+ */
+export interface NfcAttendanceRequest {
+    employeeId: number;
+    workplaceId: string;
+    tagId: string;
+}
+
+/**
  * 출퇴근 기록 수정 요청 인터페이스
  */
 export interface UpdateAttendanceRequest {

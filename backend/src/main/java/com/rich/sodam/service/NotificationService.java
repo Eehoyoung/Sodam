@@ -198,7 +198,7 @@ public class NotificationService {
                         user, cat, message.getTitle(), message.getBody(), message.getDeepLink()));
             }
         } catch (Exception e) {
-            log.warn("알림 inbox 적재 실패 userId={} reason={}", userId, e.getMessage());
+            log.warn("알림 inbox 적재 실패 userId={} exceptionType={}", userId, e.getClass().getSimpleName());
         }
 
         // 2) 푸시 발송 — 되돌릴 수 없는 외부 부작용이므로 트랜잭션 afterCommit 에서만 실행한다.

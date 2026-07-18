@@ -7,8 +7,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface AttendanceIrregularityRepository extends JpaRepository<AttendanceIrregularity, Long> {
+
+    Optional<AttendanceIrregularity> findByIdAndStoreId(Long id, Long storeId);
 
     /** 감지 중복 방지 — 같은 시프트에 같은 유형이 이미 있으면 재생성하지 않는다(사장 확정 결과 보존). */
     boolean existsByWorkShiftIdAndType(Long workShiftId, AttendanceIrregularityType type);
