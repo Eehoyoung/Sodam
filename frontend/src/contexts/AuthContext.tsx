@@ -284,12 +284,10 @@ export const useAuthCheck = () => {
 
         // 역할 확인 헬퍼
         isEmployee: user?.role === 'EMPLOYEE',
-        isManager: user?.role === 'MANAGER',
         isMaster: user?.role === 'MASTER',
         isUser: user?.role === 'USER',
 
         // 권한 확인 헬퍼
-        hasManagerAccess: user?.role === 'MANAGER' || user?.role === 'MASTER',
         hasMasterAccess: user?.role === 'MASTER',
 
         // 사용자 정보 헬퍼

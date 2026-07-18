@@ -26,6 +26,7 @@ import EmployeeAttendanceHome from '../features/attendance/screens/EmployeeAtten
 import OwnerDashboardScreen from '../features/home/screens/OwnerDashboardScreen';
 import EmployeeDetailScreen from '../features/store/screens/EmployeeDetailScreen';
 import EmployeeManagementScreen from '../features/store/screens/EmployeeManagementScreen';
+import NfcTagManagementScreen from '../features/store/screens/NfcTagManagementScreen';
 import PayrollRunScreen from '../features/salary/screens/PayrollRunScreen';
 import JoinStoreByCodeScreen from '../features/store/screens/JoinStoreByCodeScreen';
 import AttendanceCorrectionRequestScreen from '../features/attendance/screens/AttendanceCorrectionRequestScreen';
@@ -39,6 +40,7 @@ import StoreOperatingHoursScreen from '../features/store/screens/StoreOperatingH
 import MissingAttendanceCenterScreen from '../features/attendance/screens/MissingAttendanceCenterScreen';
 import AccountSettingsScreen from '../features/myPage/screens/AccountSettingsScreen';
 import TimeOffRequestScreen from '../features/timeoff/screens/TimeOffRequestScreen';
+import TimeOffApprovalScreen from '../features/timeoff/screens/TimeOffApprovalScreen';
 import ReferralScreen from '../features/referral/screens/ReferralScreen';
 import TossBillingAuthScreen from '../features/subscription/screens/TossBillingAuthScreen';
 import PurchaseLedgerScreen from '../features/purchase/screens/PurchaseLedgerScreen';
@@ -51,6 +53,7 @@ import WeeklyInsightsScreen from '../features/store/screens/WeeklyInsightsScreen
 import MyContractScreen from '../features/contract/screens/MyContractScreen';
 import ContractSignScreen from '../features/contract/screens/ContractSignScreen';
 import SendContractScreen from '../features/contract/screens/SendContractScreen';
+import DraftContractsScreen from '../features/contract/screens/DraftContractsScreen';
 import WithholdingStatementScreen from '../features/salary/screens/WithholdingStatementScreen';
 import EmployeeDocumentsScreen from '../features/document/screens/EmployeeDocumentsScreen';
 import AddDocumentScreen from '../features/document/screens/AddDocumentScreen';
@@ -62,6 +65,7 @@ import MyWageHistoryScreen from '../features/wage/screens/MyWageHistoryScreen';
 import MyLeaveBalanceScreen from '../features/timeoff/screens/MyLeaveBalanceScreen';
 import SubsidyEligibilityScreen from '../features/store/screens/SubsidyEligibilityScreen';
 import TaxDeadlineScreen from '../features/salary/screens/TaxDeadlineScreen';
+import TaxReportScreen from '../features/salary/screens/TaxReportScreen';
 import LegalLedgerScreen from '../features/salary/screens/LegalLedgerScreen';
 import MyShiftScreen from '../features/shift/screens/MyShiftScreen';
 import EditShiftScreen from '../features/shift/screens/EditShiftScreen';
@@ -79,9 +83,17 @@ import DailySalesEntryScreen from '../features/sales/screens/DailySalesEntryScre
 import LaborCostRatioScreen from '../features/sales/screens/LaborCostRatioScreen';
 import MyCertificateScreen from '../features/certificate/screens/MyCertificateScreen';
 import LaborRiskDashboardScreen from '../features/risk/screens/LaborRiskDashboardScreen';
+import AttendanceIrregularitiesScreen from '../features/attendance/screens/AttendanceIrregularitiesScreen';
+import AttendanceNoticeScreen from '../features/attendance/screens/AttendanceNoticeScreen';
 import HiringCostSimulatorScreen from '../features/risk/screens/HiringCostSimulatorScreen';
 import SwapRequestsScreen from '../features/shift/screens/SwapRequestsScreen';
 import SwapBoardScreen from '../features/shift/screens/SwapBoardScreen';
+import EmployeeRecruitmentScreen from '../features/recruitment/screens/EmployeeRecruitmentScreen';
+import JobSeekerListScreen from '../features/recruitment/screens/JobSeekerListScreen';
+import JobSeekerDetailScreen from '../features/recruitment/screens/JobSeekerDetailScreen';
+import JobPostingDetailScreen from '../features/recruitment/screens/JobPostingDetailScreen';
+import ElectronicSignScreen from '../features/electronicSignature/screens/ElectronicSignScreen';
+import type {JobPostingNearbyItem, JobSeekerListItem} from '../features/recruitment/types';
 import type {ReceiptDraft} from '../features/purchase/types';
 import appHeaderOptions from './appHeaderOptions';
 
@@ -107,10 +119,12 @@ export type HomeStackParamList = {
     Profile: undefined;
     StoreRegistration: undefined;
     StoreDetail: { storeId: number };
-    OwnerDashboard: undefined;
+    OwnerDashboard: {storeId: number; managerMode: true} | undefined;
     EmployeeAttendanceHome: undefined;
+    ElectronicSign: {envelopeId: number};
     EmployeeDetail: { employeeId: number; storeId: number };
-    EmployeeManagement: { storeId: number };
+    EmployeeManagement: {storeId: number; managerMode?: true};
+    NfcTagManagement: { storeId: number };
     PayrollRun: { storeId?: number } | undefined;
     JoinStoreByCode: undefined;
     AttendanceCorrectionRequest: {
@@ -142,6 +156,7 @@ export type HomeStackParamList = {
     MyContract: undefined;
     ContractSign: {contractId: number};
     SendContract: {storeId: number; employeeId?: number; employeeName?: string};
+    DraftContracts: {storeId: number; employeeId: number; employeeName?: string};
     SendBonus: {storeId: number; employeeId: number; employeeName?: string};
     WithholdingStatement: {storeId: number};
     EmployeeDocuments: {storeId: number; employeeId: number; employeeName?: string};
@@ -153,11 +168,13 @@ export type HomeStackParamList = {
     MyLeaveBalance: undefined;
     SubsidyEligibility: {storeId: number};
     TaxDeadline: {storeId: number};
+    TaxReport: {storeId: number};
     LegalLedger: {storeId: number};
     MyShift: undefined;
     EditShift: {storeId: number; employeeId: number; employeeName?: string};
     StoreSchedule: {storeId: number};
     AttendanceApproval: {storeId: number};
+    TimeOffApproval: {storeId?: number} | undefined;
     TaxSimulator: undefined;
     PersonalAnnualTax: undefined;
     StoreNoticeList: {storeId: number};
@@ -170,9 +187,21 @@ export type HomeStackParamList = {
     LaborCostRatio: {storeId: number};
     MyCertificate: {storeId?: number} | undefined;
     LaborRisk: {storeId: number};
+    AttendanceIrregularities: {storeId: number};
+    AttendanceNotice: {storeId: number};
     SwapRequests: {storeId: number};
     SwapBoard: {storeId?: number} | undefined;
     HiringCost: undefined;
+    // 인증채용(구직·구인) 허브 — 260711_작업통합.md Part 2 §19.4.
+    // 세그먼트 파라미터로 초기 탭 지정(profile=구직 설정/nearby=주변 구인/inbox=채용함).
+    EmployeeRecruitment: {tab?: 'profile' | 'nearby' | 'inbox'} | undefined;
+    // [사장] 인증채용 — 260711_작업통합.md Part 2 §7.4·§7.4-2(Phase 4).
+    JobSeekerList: {storeId: number};
+    // 리스트 항목을 라우트 파라미터로 그대로 전달(추가 API 호출 없음, §7.4-2).
+    JobSeekerDetail: {storeId: number; seeker: JobSeekerListItem};
+    // [직원] 구인 공고 상세·지원 — 260711_작업통합.md Part 2 §19.4 R-17(Phase 6).
+    // 리스트 항목을 라우트 파라미터로 그대로 전달(추가 API 호출 없음, JobSeekerDetail 과 동일 원칙).
+    JobPostingDetail: {posting: JobPostingNearbyItem};
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -289,6 +318,11 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
                 options={{headerShown: false}}
             />
             <Stack.Screen
+                name="ElectronicSign"
+                component={ElectronicSignScreen}
+                options={{headerShown: false}}
+            />
+            <Stack.Screen
                 name="EmployeeDetail"
                 component={EmployeeDetailScreen}
                 options={{headerShown: false}}
@@ -296,6 +330,11 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen
                 name="EmployeeManagement"
                 component={EmployeeManagementScreen}
+                options={{headerShown: false}}
+            />
+            <Stack.Screen
+                name="NfcTagManagement"
+                component={NfcTagManagementScreen}
                 options={{headerShown: false}}
             />
             <Stack.Screen
@@ -347,6 +386,7 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen name="MyContract" component={MyContractScreen} options={{headerShown: false}} />
             <Stack.Screen name="ContractSign" component={ContractSignScreen} options={{headerShown: false}} />
             <Stack.Screen name="SendContract" component={SendContractScreen} options={{headerShown: false}} />
+            <Stack.Screen name="DraftContracts" component={DraftContractsScreen} options={{headerShown: false}} />
             <Stack.Screen name="WithholdingStatement" component={WithholdingStatementScreen} options={{headerShown: false}} />
             <Stack.Screen name="EmployeeDocuments" component={EmployeeDocumentsScreen} options={{headerShown: false}} />
             <Stack.Screen name="AddDocument" component={AddDocumentScreen} options={{headerShown: false}} />
@@ -358,11 +398,13 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen name="MyLeaveBalance" component={MyLeaveBalanceScreen} options={{headerShown: false}} />
             <Stack.Screen name="SubsidyEligibility" component={SubsidyEligibilityScreen} options={{headerShown: false}} />
             <Stack.Screen name="TaxDeadline" component={TaxDeadlineScreen} options={{headerShown: false}} />
+            <Stack.Screen name="TaxReport" component={TaxReportScreen} options={{headerShown: false}} />
             <Stack.Screen name="LegalLedger" component={LegalLedgerScreen} options={{headerShown: false}} />
             <Stack.Screen name="MyShift" component={MyShiftScreen} options={{headerShown: false}} />
             <Stack.Screen name="EditShift" component={EditShiftScreen} options={{headerShown: false}} />
             <Stack.Screen name="StoreSchedule" component={StoreScheduleScreen} options={{headerShown: false}} />
             <Stack.Screen name="AttendanceApproval" component={AttendanceApprovalScreen} options={{headerShown: false}} />
+            <Stack.Screen name="TimeOffApproval" component={TimeOffApprovalScreen} options={{headerShown: false}} />
             <Stack.Screen name="TaxSimulator" component={TaxSimulatorScreen} options={{headerShown: false}} />
             <Stack.Screen name="PersonalAnnualTax" component={PersonalAnnualTaxScreen} options={{headerShown: false}} />
             <Stack.Screen name="StoreNoticeList" component={StoreNoticeListScreen} options={{headerShown: false}} />
@@ -375,9 +417,15 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen name="LaborCostRatio" component={LaborCostRatioScreen} options={{headerShown: false}} />
             <Stack.Screen name="MyCertificate" component={MyCertificateScreen} options={{headerShown: false}} />
             <Stack.Screen name="LaborRisk" component={LaborRiskDashboardScreen} options={{headerShown: false}} />
+            <Stack.Screen name="AttendanceIrregularities" component={AttendanceIrregularitiesScreen} options={{headerShown: false}} />
+            <Stack.Screen name="AttendanceNotice" component={AttendanceNoticeScreen} options={{headerShown: false}} />
             <Stack.Screen name="SwapRequests" component={SwapRequestsScreen} options={{headerShown: false}} />
             <Stack.Screen name="SwapBoard" component={SwapBoardScreen} options={{headerShown: false}} />
             <Stack.Screen name="HiringCost" component={HiringCostSimulatorScreen} options={{headerShown: false}} />
+            <Stack.Screen name="EmployeeRecruitment" component={EmployeeRecruitmentScreen} options={{headerShown: false}} />
+            <Stack.Screen name="JobSeekerList" component={JobSeekerListScreen} options={{headerShown: false}} />
+            <Stack.Screen name="JobSeekerDetail" component={JobSeekerDetailScreen} options={{headerShown: false}} />
+            <Stack.Screen name="JobPostingDetail" component={JobPostingDetailScreen} options={{headerShown: false}} />
         </Stack.Navigator>
     );
 };

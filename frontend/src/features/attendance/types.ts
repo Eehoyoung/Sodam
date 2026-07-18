@@ -60,6 +60,16 @@ export interface CheckOutRequest {
 }
 
 /**
+ * NFC 태그 기반 출퇴근 요청 인터페이스. BE NfcAttendanceRequestDto 와 매핑 —
+ * GPS 좌표 없이 매장에 등록된 태그(tagId) 검증만으로 기록한다.
+ */
+export interface NfcAttendanceRequest {
+    employeeId: number;
+    workplaceId: string;
+    tagId: string;
+}
+
+/**
  * 출퇴근 기록 수정 요청 인터페이스
  */
 export interface UpdateAttendanceRequest {
@@ -94,3 +104,28 @@ export interface AttendanceFilter {
     employeeId?: string;
     status?: AttendanceStatus;
 }
+
+/**
+ * 월급제 정규직 지각/조퇴/결근 — 예정(스케줄) 대비 실제 출퇴근 차이 자동 감지 + 사장 확정.
+ * BE AttendanceIrregularityController 와 매핑.
+ */
+export type AttendanceIrregularityType = 'LATE' | 'EARLY_LEAVE' | 'ABSENCE';
+
+export type AttendanceIrregularityResolution = 'PENDING' | 'WAIVED' | 'DEDUCTED' | 'CONVERTED_TO_LEAVE';
+
+export interface AttendanceIrregularity {
+    id: number;
+    employeeId: number;
+    employeeName: string | null;
+    storeId: number;
+    shiftDate: string;
+    type: AttendanceIrregularityType;
+    minutesShort: number;
+    resolution: AttendanceIrregularityResolution;
+    deductedAmount: number | null;
+    note: string | null;
+    resolvedAt: string | null;
+}
+
+/** 직원의 지각/조퇴/결근 사전 신고 — 사장에게 알리는 용도일 뿐 임금 계산에는 영향을 주지 않는다. */
+export type AttendanceNoticeType = 'LATE_EXPECTED' | 'EARLY_LEAVE_EXPECTED' | 'ABSENCE_EXPECTED';

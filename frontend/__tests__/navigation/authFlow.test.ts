@@ -3,7 +3,6 @@ import {
     pendingSlugToPurpose,
     resolveInitialRootRoute,
     resolvePostAuthRoute,
-    roleToPurpose,
 } from '../../src/navigation/authFlow';
 import {User} from '../../src/features/auth/services/authService';
 
@@ -18,8 +17,8 @@ const baseUser = (overrides: Partial<User> = {}): User => ({
 });
 
 describe('authFlow navigation decisions', () => {
-    test('no restored session starts at welcome onboarding', () => {
-        expect(resolveInitialRootRoute(null, false)).toEqual({name: 'Welcome'});
+    test('no restored session starts at SodamLanding onboarding', () => {
+        expect(resolveInitialRootRoute(null, false)).toEqual({name: 'SodamLanding'});
     });
 
     test('restored authenticated session skips welcome and lands by role', () => {
@@ -44,17 +43,17 @@ describe('authFlow navigation decisions', () => {
     });
 
     test('server role wins over selected purpose fallback', () => {
-        expect(homeScreenForUser(baseUser({role: 'EMPLOYEE'}), 'boss')).toBe('EmployeeMyPageScreen');
+        // EMPLOYEE 랜딩은 승인 출퇴근 버튼이 있는 EmployeeAttendanceHome — 마이페이지는 빠른메뉴로 이동.
+        expect(homeScreenForUser(baseUser({role: 'EMPLOYEE'}), 'boss')).toBe('EmployeeAttendanceHome');
     });
 
     test('selected purpose is fallback when server role is missing', () => {
         expect(homeScreenForUser(baseUser({role: undefined}), 'boss')).toBe('MasterMyPageScreen');
     });
 
-    test('role selection and pending signup purpose share vocabulary', () => {
-        expect(roleToPurpose('owner')).toBe('boss');
-        expect(roleToPurpose('employee')).toBe('employee');
+    test('pending signup slug maps to the same purpose vocabulary', () => {
         expect(pendingSlugToPurpose('master')).toBe('boss');
         expect(pendingSlugToPurpose('user')).toBe('personal');
+        expect(pendingSlugToPurpose('employee')).toBe('employee');
     });
 });

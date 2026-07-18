@@ -72,6 +72,19 @@ public class PayrollBonusService {
                         employeeId, storeId, BonusPaymentTiming.INCLUDED_IN_PAYROLL, from, to);
     }
 
+    /**
+     * 급여 재계산(recalculate) 전용 — 미소비 보너스뿐 아니라, 재계산 대상인 기존 급여(existingPayrollId)에
+     * 이미 합산 소비된 보너스도 함께 반환한다. 신규 계산(existingPayrollId=null)이면 {@link #findUnconsumedForPeriod}
+     * 와 동일하게 동작한다. PayrollService 가 기존 Payroll 을 갱신하는 방식으로 재계산할 때, 첫 계산에서 이미
+     * markConsumed 된 보너스가 두 번째 계산의 grossWage 에서 조용히 빠지는 회귀를 막기 위함.
+     */
+    @Transactional(readOnly = true)
+    public List<PayrollBonus> findConsumableForPeriod(Long employeeId, Long storeId, LocalDate from, LocalDate to,
+                                                        Long existingPayrollId) {
+        return payrollBonusRepository.findConsumableForPeriod(
+                employeeId, storeId, BonusPaymentTiming.INCLUDED_IN_PAYROLL, from, to, existingPayrollId);
+    }
+
     /** 위 목록을 실제로 이번 급여에 반영했다고 표시(멱등 소비) — 다음 정산에서 다시 잡히지 않는다. */
     @Transactional
     public void markConsumed(List<PayrollBonus> bonuses, Long payrollId) {

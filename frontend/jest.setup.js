@@ -39,6 +39,15 @@ jest.mock('react-native', () => ({
     useColorScheme: jest.fn(() => 'light'),
     StyleSheet: {
         create: jest.fn((styles) => styles),
+        flatten: jest.fn((style) => {
+            if (Array.isArray(style)) {
+                return Object.assign({}, ...style.map((s) => s || {}));
+            }
+            return style || {};
+        }),
+        compose: jest.fn((a, b) => [a, b]),
+        absoluteFillObject: {position: 'absolute', left: 0, right: 0, top: 0, bottom: 0},
+        hairlineWidth: 1,
     },
     View: 'View',
     Text: 'Text',
@@ -76,11 +85,31 @@ jest.mock('react-native', () => ({
             stop: jest.fn(),
             reset: jest.fn(),
         })),
-        sequence: jest.fn(),
-        parallel: jest.fn(),
-        stagger: jest.fn(),
-        loop: jest.fn(),
-        delay: jest.fn(),
+        sequence: jest.fn(() => ({
+            start: jest.fn((cb) => cb && cb({finished: true})),
+            stop: jest.fn(),
+            reset: jest.fn(),
+        })),
+        parallel: jest.fn(() => ({
+            start: jest.fn((cb) => cb && cb({finished: true})),
+            stop: jest.fn(),
+            reset: jest.fn(),
+        })),
+        stagger: jest.fn(() => ({
+            start: jest.fn((cb) => cb && cb({finished: true})),
+            stop: jest.fn(),
+            reset: jest.fn(),
+        })),
+        loop: jest.fn(() => ({
+            start: jest.fn(),
+            stop: jest.fn(),
+            reset: jest.fn(),
+        })),
+        delay: jest.fn(() => ({
+            start: jest.fn((cb) => cb && cb({finished: true})),
+            stop: jest.fn(),
+            reset: jest.fn(),
+        })),
         event: jest.fn(() => jest.fn()),
         createAnimatedComponent: jest.fn(() => 'AnimatedComponent'),
         add: jest.fn(),
@@ -101,6 +130,8 @@ jest.mock('react-native', () => ({
     Dimensions: {
         get: jest.fn(() => ({width: 375, height: 812})),
     },
+    // useResponsive() 등 여러 DS 컴포넌트(HeroNumber 포함)가 사용 — 누락 시 렌더 중 크래시.
+    useWindowDimensions: jest.fn(() => ({width: 375, height: 812})),
     Platform: {
         OS: 'ios',
         select: jest.fn((obj) => obj.ios),
@@ -187,19 +218,24 @@ jest.mock('react-native-nfc-manager', () => ({
     NfcEvents: {DiscoverTag: 'DiscoverTag'},
 }));
 
-// Mock @react-native-firebase/messaging (FCM key-ready 래퍼는 optional-require 로
+// Mock @react-native-firebase/messaging + /app (FCM key-ready 래퍼는 optional-require 로
 // 이미 부재를 막지만, 모듈이 설치된 환경에서 깔끔히 동작하도록 명시 mock).
+// src/common/services/fcm.ts 는 RNFirebase v22+ 모듈러 API(getMessaging/getToken/...)를
+// 우선 사용한다 — 네임스페이스 API(default 팩토리)는 deprecated 폴백일 뿐이므로, 여기서도
+// 모듈러 API 모양으로 mock 해야 실제로 검증하는 코드 경로와 일치한다.
 try {
-    jest.mock('@react-native-firebase/messaging', () => {
-        const messaging = jest.fn(() => ({
-            requestPermission: jest.fn(() => Promise.resolve(1)),
-            getToken: jest.fn(() => Promise.resolve('test-fcm-token')),
-            onMessage: jest.fn(() => jest.fn()),
-            onTokenRefresh: jest.fn(() => jest.fn()),
-            setBackgroundMessageHandler: jest.fn(),
-        }));
-        return {__esModule: true, default: messaging};
-    }, {virtual: true}); // 패키지 미설치 상태에서도 mock 등록 (key-ready 검증용)
+    jest.mock('@react-native-firebase/messaging', () => ({
+        __esModule: true,
+        getMessaging: jest.fn(() => ({})),
+        getToken: jest.fn(() => Promise.resolve('test-fcm-token')),
+        requestPermission: jest.fn(() => Promise.resolve(1)),
+        onMessage: jest.fn(() => jest.fn()),
+        onTokenRefresh: jest.fn(() => jest.fn()),
+    }), {virtual: true}); // 패키지 미설치 상태에서도 mock 등록 (key-ready 검증용)
+    jest.mock('@react-native-firebase/app', () => ({
+        __esModule: true,
+        getApp: jest.fn(() => ({})),
+    }), {virtual: true});
 } catch (e) {
     // 모듈 미설치 — optional-require 가 fallback 처리
 }
@@ -209,11 +245,22 @@ jest.mock('react-native-screens', () => ({
     enableScreens: jest.fn(),
 }));
 
-// Mock react-native-safe-area-context
-jest.mock('react-native-safe-area-context', () => ({
-    SafeAreaProvider: ({children}) => children,
-    SafeAreaView: ({children}) => children,
-    useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
+// Mock react-native-safe-area-context.
+// SafeAreaView forwards remaining props (testID, style, ...) onto a host 'View' so that
+// screens relying on testID for RNTL queries (getByTestId) still resolve under real rendering —
+// a bare `({children}) => children` passthrough silently drops testID/style.
+jest.mock('react-native-safe-area-context', () => {
+    const React = require('react');
+    return {
+        SafeAreaProvider: ({children}) => children,
+        SafeAreaView: ({children, ...props}) => React.createElement('View', props, children),
+        useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
+    };
+});
+
+// Mock react-native-webview (AddressSearchModal — 카카오 주소검색 postcode iframe)
+jest.mock('react-native-webview', () => ({
+    WebView: 'WebView',
 }));
 
 // RNGH is mapped via moduleNameMapper to a lightweight stub in tests/mocks/react-native-gesture-handler.js
@@ -273,94 +320,74 @@ jest.mock('react-native-chart-kit', () => ({
     StackedBarChart: 'StackedBarChart',
 }));
 
-// Mock react-native-reanimated with official mock to avoid native crashes in Jest
-try {
-    jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
-} catch (e) {
-    // if module resolution fails, provide a minimal fallback
-    jest.mock('react-native-reanimated', () => ({
-        Easing: {linear: jest.fn(), ease: jest.fn()},
-        useSharedValue: jest.fn(() => ({value: 0})),
-        useAnimatedStyle: jest.fn(() => ({})),
-        withTiming: jest.fn((v) => v),
-        withSpring: jest.fn((v) => v),
-        withDelay: jest.fn((_, v) => v),
-        runOnJS: (fn) => fn,
-        runOnUI: (fn) => fn,
-        createAnimatedComponent: (c) => c,
-    }));
-}
-
-// Lightweight mock for @testing-library/react-native to avoid adding a dev dependency
-try {
-    jest.mock('@testing-library/react-native', () => {
-        const stubEl = () => ({type: 'View', props: {}, children: []});
-        const render = jest.fn(() => ({
-            getByText: jest.fn(stubEl),
-            getByTestId: jest.fn(stubEl),
-            getByPlaceholderText: jest.fn(stubEl),
-            getByDisplayValue: jest.fn(stubEl),
-            getByRole: jest.fn(stubEl),
-            getByLabelText: jest.fn(stubEl),
-            queryByText: jest.fn(() => null),
-            queryByTestId: jest.fn(() => null),
-            queryByPlaceholderText: jest.fn(() => null),
-            findByText: jest.fn(() => Promise.resolve(stubEl())),
-            findByTestId: jest.fn(() => Promise.resolve(stubEl())),
-            getAllByText: jest.fn(() => [stubEl()]),
-            getAllByTestId: jest.fn(() => [stubEl()]),
-            queryAllByText: jest.fn(() => []),
-            queryAllByTestId: jest.fn(() => []),
-            toJSON: jest.fn(() => ({type: 'View', children: []})),
-            debug: jest.fn(),
-            update: jest.fn(),
-            unmount: jest.fn(),
-            rerender: jest.fn(),
-        }));
-        const renderHook = jest.fn((callback) => {
-            const result = {current: undefined};
-            try {
-                const r = callback();
-                result.current = (r && 'result' in r) ? r.result : r;
-            } catch (e) {
-                result.current = undefined;
-            }
-            return {
-                result,
-                rerender: jest.fn(),
-                unmount: jest.fn(),
-            };
-        });
-        const fireEvent = Object.assign(jest.fn(), {
-            press: jest.fn(),
-            changeText: jest.fn(),
-            scroll: jest.fn(),
-            focus: jest.fn(),
-            blur: jest.fn(),
-        });
-        const waitFor = async (cb) => {
-            if (cb) {
-                await cb();
-            }
+// Mock react-native-reanimated with official mock to avoid native crashes in Jest.
+// jest.mock's factory is lazy — it only runs the first time a test actually requires the
+// module, so a try/catch wrapped around the jest.mock(...) call itself never sees an error
+// thrown from inside the factory. The try/catch must be INSIDE the factory to fall back
+// correctly when the official mock's own require chain breaks (e.g. reanimated 4.x mock
+// incompatibility).
+jest.mock('react-native-reanimated', () => {
+    try {
+        return require('react-native-reanimated/mock');
+    } catch (e) {
+        // module resolution failed — minimal fallback
+        return {
+            Easing: {linear: jest.fn(), ease: jest.fn()},
+            useSharedValue: jest.fn(() => ({value: 0})),
+            useAnimatedStyle: jest.fn(() => ({})),
+            withTiming: jest.fn((v) => v),
+            withSpring: jest.fn((v) => v),
+            withDelay: jest.fn((_, v) => v),
+            runOnJS: (fn) => fn,
+            runOnUI: (fn) => fn,
+            createAnimatedComponent: (c) => c,
         };
-        const act = async (cb) => {
-            return cb ? await cb() : undefined;
-        };
-        return {render, renderHook, fireEvent, waitFor, act};
-    });
-} catch (e) {
-    // ignore
-}
+    }
+});
 
+// NOTE: @testing-library/react-native is intentionally NOT mocked here — it is a real dev
+// dependency (see package.json) and screens must be rendered through the genuine RNTL renderer.
+// A previous lightweight stub (fake render()/findByText() that always resolved truthy) hid real
+// runtime failures from Jest entirely (e.g. AddressSearchModal's react-native-webview link crash
+// shipped to a device despite 337 "passing" FE tests). Removed 2026-07-12.
 
-
-// Mock @react-navigation/native-stack to avoid native dependencies in tests
+// Mock @react-navigation/native-stack to avoid native dependencies in tests.
+// Renders only the resolved initial route's `component` (matching real single-screen-focus
+// stack behavior) instead of dumping every <Stack.Screen> child — a naive `children` passthrough
+// mock never invokes the `component` prop (the pattern used by every screen in this codebase),
+// so real RNTL queries against a rendered <Stack.Navigator> would find nothing.
 try {
   jest.mock('@react-navigation/native-stack', () => {
-    const createNativeStackNavigator = () => ({
-      Navigator: ({children}) => children,
-      Screen: ({children}) => children,
-    });
+    const React = require('react');
+    const Navigator = ({children, initialRouteName}) => {
+      const screens = React.Children.toArray(children).filter(Boolean);
+      const target =
+        (initialRouteName && screens.find((s) => s.props && s.props.name === initialRouteName)) ||
+        screens[0];
+      if (!target) {
+        return null;
+      }
+      const {component: ScreenComponent, children: renderChildren, initialParams, name} = target.props;
+      const navigation = {
+        navigate: jest.fn(),
+        goBack: jest.fn(),
+        reset: jest.fn(),
+        setOptions: jest.fn(),
+        addListener: jest.fn(() => jest.fn()),
+        removeListener: jest.fn(),
+        isFocused: jest.fn(() => true),
+      };
+      const route = {name, params: initialParams, key: `${name}-mock`};
+      if (typeof renderChildren === 'function') {
+        return renderChildren({navigation, route});
+      }
+      if (ScreenComponent) {
+        return React.createElement(ScreenComponent, {navigation, route});
+      }
+      return null;
+    };
+    const Screen = () => null;
+    const createNativeStackNavigator = () => ({Navigator, Screen});
     return { createNativeStackNavigator };
   });
 } catch (e) {

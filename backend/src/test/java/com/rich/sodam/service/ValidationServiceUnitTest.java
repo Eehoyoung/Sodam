@@ -1,5 +1,6 @@
 package com.rich.sodam.service;
 
+import com.rich.sodam.config.crypto.PiiSearchHashSupport;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.repository.StoreRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,15 +37,16 @@ class ValidationServiceUnitTest {
     void isDuplicate_DuplicateBusinessNumber() {
         // given
         String businessNumber = "1234567890";
+        String hash = PiiSearchHashSupport.hashBusinessNumber(businessNumber);
         Store store = new Store("테스트 매장", businessNumber, "02-1234-5678", "음식점", 10000, 100);
-        when(storeRepository.findByBusinessNumber(businessNumber)).thenReturn(Optional.of(store));
+        when(storeRepository.findByBusinessNumberSearchHash(hash)).thenReturn(Optional.of(store));
 
         // when
         boolean result = validationService.isDuplicate(businessNumber);
 
         // then
         assertThat(result).isTrue();
-        verify(storeRepository, times(1)).findByBusinessNumber(businessNumber);
+        verify(storeRepository, times(1)).findByBusinessNumberSearchHash(hash);
     }
 
     @Test
@@ -52,14 +54,15 @@ class ValidationServiceUnitTest {
     void isDuplicate_NonDuplicateBusinessNumber() {
         // given
         String businessNumber = "1234567890";
-        when(storeRepository.findByBusinessNumber(businessNumber)).thenReturn(Optional.empty());
+        String hash = PiiSearchHashSupport.hashBusinessNumber(businessNumber);
+        when(storeRepository.findByBusinessNumberSearchHash(hash)).thenReturn(Optional.empty());
 
         // when
         boolean result = validationService.isDuplicate(businessNumber);
 
         // then
         assertThat(result).isFalse();
-        verify(storeRepository, times(1)).findByBusinessNumber(businessNumber);
+        verify(storeRepository, times(1)).findByBusinessNumberSearchHash(hash);
     }
 
     @Test
@@ -73,7 +76,7 @@ class ValidationServiceUnitTest {
 
         // then
         assertThat(result).isFalse();
-        verify(storeRepository, never()).findByBusinessNumber(anyString());
+        verify(storeRepository, never()).findByBusinessNumberSearchHash(anyString());
     }
 
     @Test
@@ -81,13 +84,14 @@ class ValidationServiceUnitTest {
     void isDuplicate_ExceptionThrown() {
         // given
         String businessNumber = "1234567890";
-        when(storeRepository.findByBusinessNumber(businessNumber)).thenThrow(new RuntimeException("데이터베이스 오류"));
+        String hash = PiiSearchHashSupport.hashBusinessNumber(businessNumber);
+        when(storeRepository.findByBusinessNumberSearchHash(hash)).thenThrow(new RuntimeException("데이터베이스 오류"));
 
         // when
         boolean result = validationService.isDuplicate(businessNumber);
 
         // then
         assertThat(result).isFalse();
-        verify(storeRepository, times(1)).findByBusinessNumber(businessNumber);
+        verify(storeRepository, times(1)).findByBusinessNumberSearchHash(hash);
     }
 }

@@ -17,7 +17,7 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Geolocation from 'react-native-geolocation-service';
 import {PERMISSIONS, request, RESULTS} from 'react-native-permissions';
-import NfcManager from 'react-native-nfc-manager';
+import NfcManager, {Ndef, NfcTech} from 'react-native-nfc-manager';
 import attendanceService from '../services/attendanceService';
 import storeService from '../../store/services/storeService';
 import {AttendanceRecord, AttendanceStatus, CheckInRequest, CheckOutRequest} from '../types';
@@ -95,12 +95,53 @@ const AttendanceScreen = () => {
         }
     };
 
+    // NFC 태그 스캔 시작 — 기기에 태그를 대면 getTag() 이 resolve 된다.
+    const startNFCScan = async () => {
+        try {
+            await NfcManager.start();
+            await NfcManager.requestTechnology(NfcTech.Ndef);
+            const tag = await NfcManager.getTag();
+
+            if (!isMountedRef.current) {
+                await NfcManager.cancelTechnologyRequest().catch(() => {});
+                return;
+            }
+
+            let scannedTag = '';
+            if (tag?.ndefMessage?.length) {
+                const ndefRecord = tag.ndefMessage[0];
+                scannedTag = Ndef.text.decodePayload(Uint8Array.from((ndefRecord as any).payload || []));
+            } else if (tag?.id) {
+                scannedTag = tag.id;
+            }
+
+            if (!scannedTag) {
+                throw new Error('NFC 태그에서 데이터를 읽을 수 없어요.');
+            }
+
+            await handleNFCTagScanned(scannedTag);
+        } catch (error) {
+            if (!isMountedRef.current) {return;}
+            console.error('NFC 태그 스캔 실패:', error);
+            AppToast.error('NFC 태그 읽기에 실패했어요. 다시 시도해 주세요.');
+            setShowNFCReader(false);
+        } finally {
+            NfcManager.cancelTechnologyRequest().catch(() => {});
+        }
+    };
+
+    // NFC 스캔 취소 (모달 닫기)
+    const cancelNFCScan = () => {
+        setShowNFCReader(false);
+        NfcManager.cancelTechnologyRequest().catch(() => {});
+    };
+
     // NFC 리더 열기
     const openNFCReader = async () => {
         const isNFCAvailable = await checkNFCSupport();
         if (isNFCAvailable) {
-            // TODO(NFC): 실제 태그 스캔 로직(NFCAttendanceService.readTag 등) 연동
             setShowNFCReader(true);
+            startNFCScan();
         }
     };
 
@@ -211,16 +252,15 @@ const AttendanceScreen = () => {
     };
 
     // NFC 태그 스캔 처리
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const handleNFCTagScanned = (scannedNFCTag: string) => {
+    const handleNFCTagScanned = async (scannedNFCTag: string) => {
         setNfcTagId(scannedNFCTag);
         setShowNFCReader(false);
 
         // NFC 태그로 출퇴근 처리
         if (currentAttendance) {
-            handleCheckOutWithNFC(scannedNFCTag);
+            await handleCheckOutWithNFC(scannedNFCTag);
         } else {
-            handleCheckInWithNFC(scannedNFCTag);
+            await handleCheckInWithNFC(scannedNFCTag);
         }
     };
 
@@ -241,6 +281,9 @@ const AttendanceScreen = () => {
             } catch (error) {
                 console.warn('AttendanceScreen: Error stopping location observing:', error);
             }
+
+            // Cancel any in-flight NFC scan to avoid leaking the native tech session
+            NfcManager.cancelTechnologyRequest().catch(() => {});
         };
     }, []);
 
@@ -374,46 +417,30 @@ const AttendanceScreen = () => {
         }
     };
 
-    // NFC 태그 기반 출근 처리
+    // NFC 태그 기반 출근 처리 — 매장 등록 태그 검증 + 기록을 BE 가 한 번에 처리(GPS 불요)
     const handleCheckInWithNFC = async (scannedNFCTag: string) => {
-        // TODO(API): NFC 태그 인증/출근 처리 API 연동
-        // TODO(NFC): 실제 태그값 파싱/검증 로직 연동
         if (!selectedWorkplaceId) {
             AppToast.show('근무지를 선택해주세요.');
             return;
         }
-
-        const gate = requireAuthAndLocation();
-        if (!gate.ok) {return;}
+        if (!Number.isFinite(employeeIdNum)) {
+            AppToast.show('로그인이 필요합니다.');
+            return;
+        }
 
         try {
-            // NFC 태그 기반 인증 먼저 수행
-            const verifyResult = await attendanceService.verifyNfcTagAttendance(
-                String(employeeIdNum),
-                selectedWorkplaceId,
-                scannedNFCTag
-            );
-
-            if (!verifyResult.success) {
-                AppToast.warn(verifyResult.message ?? 'NFC 태그 인증에 실패했어요. 다시 시도해 주세요.');
-                return;
-            }
-
-            // 인증 성공 시 출근 처리 — NFC 모드도 BE 는 lat/lng 필수
-            const checkInData: CheckInRequest = {
+            const response = await attendanceService.checkInWithNfc({
                 employeeId: employeeIdNum,
                 workplaceId: selectedWorkplaceId,
-                latitude: gate.loc.latitude,
-                longitude: gate.loc.longitude,
-            };
-
-            const response = await attendanceService.checkIn(checkInData);
+                tagId: scannedNFCTag,
+            });
             AppToast.success('NFC 태그 기반 출근 처리됐어요.');
             setCurrentAttendance(response);
             fetchAttendanceRecords();
         } catch (error) {
             console.error('NFC 태그 기반 출근 처리 중 오류가 생겼어요:', error);
-            AppToast.error('NFC 태그 기반 출근 처리에 실패했어요. 다시 시도해 주세요.');
+            const message = (error as any)?.response?.data?.message;
+            AppToast.error(message ?? 'NFC 태그 기반 출근 처리에 실패했어요. 등록된 태그인지 확인해 주세요.');
         }
     };
 
@@ -502,46 +529,30 @@ const AttendanceScreen = () => {
         }
     };
 
-    // NFC 태그 기반 퇴근 처리
+    // NFC 태그 기반 퇴근 처리 — 매장 등록 태그 검증 + 기록을 BE 가 한 번에 처리(GPS 불요)
     const handleCheckOutWithNFC = async (scannedNFCTag: string) => {
-        // TODO(API): NFC 태그 인증/퇴근 처리 API 연동
-        // TODO(NFC): 실제 태그값 파싱/검증 로직 연동
         if (!currentAttendance) {
             AppToast.show('현재 출근 상태가 아닙니다.');
             return;
         }
-
-        const gate = requireAuthAndLocation();
-        if (!gate.ok) {return;}
+        if (!Number.isFinite(employeeIdNum)) {
+            AppToast.show('로그인이 필요합니다.');
+            return;
+        }
 
         try {
-            // NFC 태그 기반 인증 먼저 수행
-            const verifyResult = await attendanceService.verifyNfcTagAttendance(
-                String(employeeIdNum),
-                selectedWorkplaceId,
-                scannedNFCTag
-            );
-
-            if (!verifyResult.success) {
-                AppToast.warn(verifyResult.message ?? 'NFC 태그 인증에 실패했어요. 다시 시도해 주세요.');
-                return;
-            }
-
-            // 인증 성공 시 퇴근 처리 — NFC 모드도 BE 는 lat/lng 필수
-            const checkOutData: CheckOutRequest = {
+            await attendanceService.checkOutWithNfc({
                 employeeId: employeeIdNum,
                 workplaceId: selectedWorkplaceId,
-                latitude: gate.loc.latitude,
-                longitude: gate.loc.longitude,
-            };
-
-            await attendanceService.checkOut(currentAttendance.id, checkOutData);
+                tagId: scannedNFCTag,
+            });
             AppToast.success('NFC 태그 기반 퇴근 처리됐어요.');
             setCurrentAttendance(null);
             fetchAttendanceRecords();
         } catch (error) {
             console.error('NFC 태그 기반 퇴근 처리 중 오류가 생겼어요:', error);
-            AppToast.error('NFC 태그 기반 퇴근 처리에 실패했어요. 다시 시도해 주세요.');
+            const message = (error as any)?.response?.data?.message;
+            AppToast.error(message ?? 'NFC 태그 기반 퇴근 처리에 실패했어요. 등록된 태그인지 확인해 주세요.');
         }
     };
 
@@ -688,12 +699,12 @@ const AttendanceScreen = () => {
         <Modal
             visible={showNFCReader}
             animationType="slide"
-            onRequestClose={() => setShowNFCReader(false)}
+            onRequestClose={cancelNFCScan}
         >
             <View style={styles.nfcContainer}>
                 <View style={styles.nfcHeader}>
                     <TouchableOpacity
-                        onPress={() => setShowNFCReader(false)}
+                        onPress={cancelNFCScan}
                         style={styles.closeButton}
                     >
                         <Ionicons name="close" size={24} color={c.textInverse}/>
@@ -721,7 +732,7 @@ const AttendanceScreen = () => {
                 </View>
 
                 <View style={styles.nfcFooter}>
-                    <AppButton label="취소" variant="destructive" onPress={() => setShowNFCReader(false)} />
+                    <AppButton label="취소" variant="destructive" onPress={cancelNFCScan} />
                 </View>
             </View>
         </Modal>

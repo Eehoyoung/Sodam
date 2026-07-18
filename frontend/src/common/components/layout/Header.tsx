@@ -94,21 +94,13 @@ const Header: React.FC<HeaderProps> = ({title}) => {
             return;
         }
 
-        // 사용자 역할에 따라 다른 마이페이지로 이동
-        if (user?.role) {
-            switch (user.role) {
-                case 'EMPLOYEE':
-                    navigation.navigate('EmployeeMyPageScreen');
-                    break;
-                case 'MANAGER':
-                    navigation.navigate('ManagerMyPageScreen');
-                    break;
-                case 'MASTER':
-                    navigation.navigate('MasterMyPageScreen');
-                    break;
-                default:
-                    navigation.navigate('UserMyPageScreen');
-            }
+        // 매니저 여부는 전역 계정 역할이 아니라 매장-직원 위임 관계로 판정한다.
+        if (user?.role === 'MASTER') {
+            navigation.navigate('MasterMyPageScreen');
+        } else if (user?.role === 'USER' || user?.role === 'PERSONAL') {
+            navigation.navigate('UserMyPageScreen');
+        } else if (user?.role) {
+            navigation.navigate('EmployeeMyPageScreen');
         } else {
             // 사용자 정보가 없는 경우 기본 마이페이지로 이동
             navigation.navigate('UserMyPageScreen');

@@ -15,7 +15,7 @@ import {env} from '../config/env';
 import TokenManager from '../../services/TokenManager';
 
 export interface SyncEvent {
-    type: 'EMPLOYEES_CHANGED' | 'ATTENDANCE_CHANGED' | 'STORE_UPDATED' | string;
+    type: 'EMPLOYEES_CHANGED' | 'ATTENDANCE_CHANGED' | 'STORE_UPDATED' | 'PAYROLL_CHANGED' | string;
     storeId: number;
     at: string;
 }

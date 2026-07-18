@@ -74,4 +74,42 @@ describe('attendanceService (standard endpoints)', () => {
     });
     expect(resp).toEqual({ id: 'a1', status: 'CHECKED_OUT' });
   });
+
+  // [contract] NFC 전용 경로는 GPS 좌표를 보내지 않는다 — BE NfcAttendanceRequestDto 3필드
+  // (employeeId/storeId/tagId)만 전송한다.
+  test('checkInWithNfc calls POST /api/attendance/check-in/nfc with tagId, no lat/lng', async () => {
+    const postMock = getPostMock();
+    postMock.mockResolvedValueOnce({ data: { id: 'a2', status: 'CHECKED_IN' } });
+
+    const resp = await attendanceService.checkInWithNfc({
+      employeeId: 42,
+      workplaceId: '123',
+      tagId: 'SODAM-ABCDEF1234',
+    });
+
+    expect(postMock).toHaveBeenCalledWith('/api/attendance/check-in/nfc', {
+      employeeId: 42,
+      storeId: 123,
+      tagId: 'SODAM-ABCDEF1234',
+    });
+    expect(resp).toEqual({ id: 'a2', status: 'CHECKED_IN' });
+  });
+
+  test('checkOutWithNfc calls POST /api/attendance/check-out/nfc with tagId, no lat/lng', async () => {
+    const postMock = getPostMock();
+    postMock.mockResolvedValueOnce({ data: { id: 'a2', status: 'CHECKED_OUT' } });
+
+    const resp = await attendanceService.checkOutWithNfc({
+      employeeId: 7,
+      workplaceId: '77',
+      tagId: 'SODAM-ZYXWVU9876',
+    });
+
+    expect(postMock).toHaveBeenCalledWith('/api/attendance/check-out/nfc', {
+      employeeId: 7,
+      storeId: 77,
+      tagId: 'SODAM-ZYXWVU9876',
+    });
+    expect(resp).toEqual({ id: 'a2', status: 'CHECKED_OUT' });
+  });
 });

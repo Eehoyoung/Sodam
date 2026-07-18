@@ -45,9 +45,11 @@ describe('evidenceService', () => {
 
         const res = await fetchEvidencePackage(1, 10, '2026-03-01', '2026-05-31');
 
+        // api.get(url, params, config) — params 를 {params: {}}로 다시 감싸면 쿼리스트링이
+        // 안 나가는 이중래핑 함정이 있다(CLAUDE.md 참고). 서비스는 params 를 그대로 2번째 인자로 넘긴다.
         expect(mockedGet).toHaveBeenCalledWith(
             '/api/stores/1/employees/10/evidence',
-            {params: {from: '2026-03-01', to: '2026-05-31'}},
+            {from: '2026-03-01', to: '2026-05-31'},
         );
         expect(res.employeeName).toBe('김알바');
         expect(res.payroll.totalGrossWage).toBe(2200000);

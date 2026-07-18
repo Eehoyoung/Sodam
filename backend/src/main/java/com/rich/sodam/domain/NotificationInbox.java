@@ -12,7 +12,9 @@ import java.time.LocalDateTime;
  * 사용자별 알림 이력 (E-501 알림 센터).
  * NotificationService 가 발송할 때 동시 기록 (best-effort).
  *
- * 90일 이전 항목은 배치로 삭제 (TODO[P2]).
+ * 보관기간은 카테고리별로 다르다(DB_OPTIMIZATION_PLAN.md §2.5, Phase 4) —
+ * ATTENDANCE/PAYROLL/NOTICE 3년, BILLING 5년, MARKETING/SYSTEM 1년.
+ * {@code com.rich.sodam.service.retention} 패키지의 정책 3개가 처리한다.
  */
 @Entity
 @Table(name = "notification_inbox", indexes = {

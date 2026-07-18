@@ -19,7 +19,9 @@ public record LaborRiskResponse(List<Item> items) {
         /** 적용 시급이 현행(또는 차기년도 고시) 최저임금 미만. */
         MIN_WAGE_RISK,
         /** 입사 11개월 이상 경과 — 1년 근속(퇴직금 채권 발생) 임박. */
-        SEVERANCE_UPCOMING
+        SEVERANCE_UPCOMING,
+        /** 월급제 계약의 스케줄 약정이 주 52시간 한도(연장 12h, §53) 초과. */
+        CONTRACT_OVER_52H
     }
 
     /** 심각도 — DANGER: 즉시 위법 가능(최저임금 미만·계약서 미서명), WARN: 사전 경고. */

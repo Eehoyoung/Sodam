@@ -1,5 +1,6 @@
 package com.rich.sodam.domain;
 
+import com.rich.sodam.config.crypto.PiiSearchHashSupport;
 import com.rich.sodam.config.crypto.StringCryptoConverter;
 import com.rich.sodam.domain.type.UserGrade;
 import jakarta.persistence.*;
@@ -105,6 +106,16 @@ public class User {
     private String phone;
 
     /**
+     * 휴대폰 번호 블라인드 인덱스(HMAC-SHA256, DB_OPTIMIZATION_PLAN.md §2.6) — phone이 AES-GCM
+     * 암호화라 동등검색이 불가능해진 대신 이 컬럼으로 조회한다. 아직 이 해시로 조회하는 기능은 없다
+     * (§5 확정 정책 — 향후 검색 기능 추가 대비 선제 도입). {@link #completeProfile}에서만 계산한다 —
+     * {@code setPhone()}(Lombok, DevSeedRunner 시드용) 직접 호출은 해시가 갱신되지 않는다.
+     */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @Column(name = "phone_search_hash", length = 64)
+    private String phoneSearchHash;
+
+    /**
      * 생년월일 (선택) — 만 14세 검증·맞춤 콘텐츠에 사용.
      */
     @Column(name = "birth_date")
@@ -188,6 +199,7 @@ public class User {
         }
         // 숫자만 저장 (FE 가 하이픈 표시 책임)
         this.phone = phone.replaceAll("[^0-9]", "");
+        this.phoneSearchHash = PiiSearchHashSupport.hashPhone(this.phone);
         if (name != null && !name.isBlank()) {
             this.name = name.trim();
         }
@@ -228,6 +240,7 @@ public class User {
      */
     public void anonymizePii() {
         this.phone = null;
+        this.phoneSearchHash = null; // 해시만 남아있으면 평문 파기 후에도 동일 번호 존재 여부가 상관관계로 새어나감
         this.birthDate = null;
         this.name = "탈퇴회원";
         this.piiAnonymizedAt = LocalDateTime.now();

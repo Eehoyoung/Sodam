@@ -4,10 +4,11 @@
  * 작은 로고에서는 내부 텍스트 단순화 (05-design-system.md 로고 개선 방향).
  */
 import React from 'react';
-import {StyleProp, StyleSheet, Text, View, ViewStyle} from 'react-native';
+import {Image, StyleProp, StyleSheet, Text, View, ViewStyle} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {gradient} from '../../../theme/tokens';
 import {useThemeColors} from '../../hooks/useThemeColors';
+import {SODAM_LOGO} from '../../../assets/images';
 
 interface BrandmarkProps {
     size?: number;
@@ -20,7 +21,7 @@ interface BrandmarkProps {
 
 export const Brandmark: React.FC<BrandmarkProps> = ({
     size = 56,
-    label = '소',
+    label,
     style,
     backgroundColor,
     textColor,
@@ -37,6 +38,19 @@ export const Brandmark: React.FC<BrandmarkProps> = ({
         shadowRadius: 20,
         elevation: 8,
     };
+
+    if (label === undefined && backgroundColor === undefined) {
+        return (
+            <View style={[styles.logoBox, {width: size, height: size}, style]}>
+                <Image
+                    source={SODAM_LOGO}
+                    accessibilityLabel="소담 로고"
+                    resizeMode="contain"
+                    style={styles.logoImage}
+                />
+            </View>
+        );
+    }
 
     if (backgroundColor) {
         return (
@@ -60,6 +74,8 @@ export const Brandmark: React.FC<BrandmarkProps> = ({
 const styles = StyleSheet.create({
     box: {alignItems: 'center', justifyContent: 'center'},
     text: {fontWeight: '900'},
+    logoBox: {alignItems: 'center', justifyContent: 'center', overflow: 'hidden'},
+    logoImage: {width: '100%', height: '100%', transform: [{scale: 1.45}]},
 });
 
 export default Brandmark;

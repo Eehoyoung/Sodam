@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "shift_swap_applicant",
+        indexes = @Index(name = "idx_shift_swap_applicant_employee_id", columnList = "employee_id"),
         uniqueConstraints = @UniqueConstraint(name = "uk_ssa_request_employee",
                 columnNames = {"swap_request_id", "employee_id"}))
 @Getter

@@ -26,6 +26,8 @@ public class IntegrationProperties {
     private Sentry sentry = new Sentry();
     private Kakao kakao = new Kakao();
     private ChannelTalk channelTalk = new ChannelTalk();
+    private Mail mail = new Mail();
+    private ElectronicSignature electronicSignature = new ElectronicSignature();
 
     public enum Mode {
         MOCK, LIVE, OFF;
@@ -98,6 +100,49 @@ public class IntegrationProperties {
     public static class ChannelTalk {
         private String mode = "off";
         private String pluginKey = "";
+
+        public Mode resolvedMode() {
+            return Mode.parse(mode);
+        }
+    }
+
+    @Getter
+    @Setter
+    public static class Mail {
+        private String mode = "mock";
+        private String host = "";
+        private int port = 587;
+        private String username = "";
+        private String password = "";
+        private String from = "";
+        private boolean starttls = true;
+
+        public Mode resolvedMode() {
+            return Mode.parse(mode);
+        }
+    }
+
+    @Getter
+    @Setter
+    public static class ElectronicSignature {
+        private String mode = "off";
+        private String provider = "naver";
+        private String linkId = "";
+        private String secretKey = "";
+        private String clientCode = "";
+        private boolean ipRestrict = true;
+        private boolean useStaticIp = false;
+        private String allowedReturnScheme = "sodam";
+        /** Base64 32-byte AES-256 key. live 모드는 미설정 시 부팅 실패. */
+        private String refEncryptionKey = "";
+        /** Base64 32-byte 이상 HMAC pepper. PII 검색 키와 분리. */
+        private String refHmacPepper = "";
+        private String storageBucket = "";
+        private String storageKmsKeyId = "";
+        private String storageRegion = "ap-northeast-2";
+        private String storageEndpoint = "";
+        private String callCenterNumber = "";
+        private boolean workerEnabled = false;
 
         public Mode resolvedMode() {
             return Mode.parse(mode);

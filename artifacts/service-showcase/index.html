@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>소담 | 매장 운영 시연</title>
+  <style>
+    :root { --ink:#18231b; --muted:#5d685f; --line:#dbe3dc; --paper:#f6f8f5; --green:#287043; --orange:#e57536; }
+    * { box-sizing:border-box; } body { margin:0; color:var(--ink); font-family:Arial, "Malgun Gothic", sans-serif; background:var(--paper); }
+    main { max-width:1180px; margin:auto; padding:48px 24px 72px; } header { padding:28px 0 44px; border-bottom:1px solid var(--line); }
+    .eyebrow { color:var(--green); font-size:14px; font-weight:700; } h1 { margin:10px 0 14px; font-size:42px; line-height:1.14; letter-spacing:0; } p { margin:0; color:var(--muted); line-height:1.65; }
+    section { padding:42px 0; border-bottom:1px solid var(--line); } h2 { margin:0 0 10px; font-size:25px; } .journey { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-top:24px; }
+    .step { min-height:104px; padding:16px; background:#fff; border:1px solid var(--line); border-radius:6px; font-weight:700; } .step span { display:block; margin-top:8px; font-size:13px; font-weight:400; color:var(--muted); line-height:1.45; }
+    .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:18px; margin-top:24px; } article { min-width:0; background:#fff; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+    article img { display:block; width:100%; aspect-ratio:9/16; object-fit:cover; object-position:top; background:#e9eeea; } article div { padding:14px; } h3 { margin:0 0 6px; font-size:16px; } article p { font-size:13px; }
+    .note { margin-top:20px; font-size:13px; } .tag { display:inline-block; margin-bottom:8px; color:var(--orange); font-size:12px; font-weight:700; }
+    @media (max-width:900px) { .grid { grid-template-columns:repeat(2,1fr); } .journey { grid-template-columns:repeat(2,1fr); } }
+    @media (max-width:540px) { main { padding:28px 16px 48px; } h1 { font-size:32px; } .grid { grid-template-columns:1fr; } .journey { grid-template-columns:1fr; } section { padding:30px 0; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">SODAM APP WALKTHROUGH</div>
+    <h1>소상공인 매장 운영을 한 흐름으로</h1>
+    <p>사장과 직원이 가입하고 매장에 연결되어 출퇴근·일정·급여 업무를 처리하는 소담 앱의 실제 실행 화면입니다. 모든 이미지는 두 대의 Android 에뮬레이터와 로컬 API에서 수집했습니다.</p>
+  </header>
+
+  <section>
+    <h2>핵심 운영 흐름</h2>
+    <div class="journey">
+      <div class="step">1. 역할별 가입<span>사장과 직원 역할을 선택하고 필수 약관에 동의합니다.</span></div>
+      <div class="step">2. 매장 연결<span>사장은 매장을 등록하고 직원은 초대 코드로 소속됩니다.</span></div>
+      <div class="step">3. 출퇴근 기록<span>기본·위치·NFC 인증 방식을 선택해 출퇴근을 기록합니다.</span></div>
+      <div class="step">4. 일정 관리<span>근무 현황과 주간 스케줄을 확인하고 운영 요청을 처리합니다.</span></div>
+      <div class="step">5. 급여 정산<span>근무 데이터를 바탕으로 급여를 검토하고 정산합니다.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>가입과 매장 시작</h2>
+    <div class="grid">
+      <article><img src="screenshots/08-employee-debug-host.png" alt="소담 시작 화면"><div><span class="tag">시작</span><h3>첫 진입 화면</h3><p>회원가입 또는 기존 계정 로그인으로 시작합니다.</p></div></article>
+      <article><img src="screenshots/10-employee-role-select.png" alt="직원 역할 선택과 회원가입"><div><span class="tag">가입</span><h3>직원 역할 선택</h3><p>직원용 가입 정보를 입력할 수 있습니다.</p></div></article>
+      <article><img src="screenshots/21-employee-login.png" alt="로그인"><div><span class="tag">로그인</span><h3>기존 계정 로그인</h3><p>등록된 계정으로 역할별 홈 화면에 진입합니다.</p></div></article>
+      <article><img src="screenshots/29-master-employee-management.png" alt="매장 운영"><div><span class="tag">매장</span><h3>매장 운영 시작</h3><p>기본 시급, 운영시간, 공지 등 매장 설정을 관리합니다.</p></div></article>
+    </div>
+  </section>
+
+  <section>
+    <h2>사장 운영 화면</h2>
+    <div class="grid">
+      <article><img src="screenshots/57-master-after-employee-checkin.png" alt="사장 대시보드"><div><span class="tag">대시보드</span><h3>오늘의 운영 현황</h3><p>매장 수, 직원 수, 출근 현황을 한 화면에서 확인합니다.</p></div></article>
+      <article><img src="screenshots/29-master-employee-management.png" alt="매장 운영 설정"><div><span class="tag">매장 관리</span><h3>운영 설정</h3><p>시급 정책, 영업시간, 공지, NFC 태그 관리로 이어집니다.</p></div></article>
+      <article><img src="screenshots/58-master-checkin-notification.png" alt="직원 출근 알림"><div><span class="tag">근태 알림</span><h3>출근 등록 알림</h3><p>직원 출근 이벤트를 알림함에서 즉시 확인합니다.</p></div></article>
+      <article><img src="screenshots/41-master-payroll-list.png" alt="급여 정산 기간 설정"><div><span class="tag">급여</span><h3>정산 기간 설정</h3><p>매장과 급여 계산 기간을 먼저 선택합니다.</p></div></article>
+      <article><img src="screenshots/59-master-wage-policy.png" alt="시급 정책"><div><span class="tag">시급</span><h3>매장 기본 시급 정책</h3><p>직원별 개별 시급이 없을 때 적용할 기본 시급을 관리합니다.</p></div></article>
+      <article><img src="screenshots/60-master-business-hours.png" alt="운영시간 설정"><div><span class="tag">운영시간</span><h3>요일별 영업시간</h3><p>출퇴근 인증과 이상 알림에 사용할 영업 시간을 설정합니다.</p></div></article>
+      <article><img src="screenshots/61-master-store-notice.png" alt="매장 공지"><div><span class="tag">공지</span><h3>매장 공지</h3><p>직원이 확인하고 읽음 상태를 남길 공지를 작성합니다.</p></div></article>
+      <article><img src="screenshots/64-master-store-operations-more.png" alt="매장 추가 운영 메뉴"><div><span class="tag">운영 도구</span><h3>매입·급여·세무 메뉴</h3><p>매입장부, 급여 미리보기, 세무 자료, 법정 장부로 이어집니다.</p></div></article>
+      <article><img src="screenshots/65-master-weekly-insights.png" alt="주간 매장 인사이트"><div><span class="tag">인사이트</span><h3>최근 7일 활동 요약</h3><p>매장 생성, 직원 등록, 급여 미리보기 등 주요 활동을 요약합니다.</p></div></article>
+      <article><img src="screenshots/78-master-employee-list.png" alt="직원 관리 목록"><div><span class="tag">직원</span><h3>직원 목록과 초대</h3><p>소속 직원을 확인하고 새 직원 초대 흐름으로 진입합니다.</p></div></article>
+      <article><img src="screenshots/79-master-employee-detail.png" alt="직원 상세"><div><span class="tag">직원 상세</span><h3>노무 정보와 적용 시급</h3><p>직원의 고용형태, 시급, 4대보험 적용 기준을 확인합니다.</p></div></article>
+      <article><img src="screenshots/80-master-employee-detail-actions.png" alt="직원 상세 작업"><div><span class="tag">노무 관리</span><h3>계약·보너스·서류 작업</h3><p>즉시 보너스, 근로계약서, 서류함, 휴게 기록 작업으로 이어집니다.</p></div></article>
+    </div>
+    <p class="note">이 페이지는 현재 실행 중인 Android 앱에서 수집한 화면을 사용합니다. 오류 상태 화면은 기능 소개용으로 포함하지 않습니다.</p>
+  </section>
+
+  <section>
+    <h2>직원 이용 화면</h2>
+    <div class="grid">
+      <article><img src="screenshots/44-employee-login-final.png" alt="직원 홈"><div><span class="tag">직원 홈</span><h3>오늘의 근무와 예상 급여</h3><p>소속 매장, 적용 시급, 출근 준비 상태를 확인합니다.</p></div></article>
+      <article><img src="screenshots/68-employee-profile-basics.png" alt="직원 필수 프로필 입력"><div><span class="tag">프로필</span><h3>필수 기본 정보 보강</h3><p>로그인 뒤 연락 가능한 기본 정보를 확인하고 저장합니다.</p></div></article>
+      <article><img src="screenshots/69-employee-home-runtime.png" alt="직원 런타임 홈"><div><span class="tag">직원 홈</span><h3>오늘의 근무 현황</h3><p>출근 준비 상태와 적용 시급, 이번 달 근무를 확인합니다.</p></div></article>
+      <article><img src="screenshots/51-employee-attendance-attempt.png" alt="직원 출퇴근 인증 방식"><div><span class="tag">출퇴근</span><h3>인증 방식 선택</h3><p>기본, 위치, NFC 방식 중 출근 인증 수단을 선택합니다.</p></div></article>
+      <article><img src="screenshots/70-employee-schedule-runtime.png" alt="근무 일정"><div><span class="tag">스케줄</span><h3>내 근무 일정</h3><p>월간 캘린더와 이번 달 근무 건수·시간을 확인합니다.</p></div></article>
+      <article><img src="screenshots/71-employee-payroll-runtime.png" alt="급여 정산"><div><span class="tag">급여</span><h3>지난 급여명세</h3><p>정산 후 발급된 명세서를 연도별로 보관합니다.</p></div></article>
+      <article><img src="screenshots/72-employee-contract-runtime.png" alt="내 근로계약서"><div><span class="tag">계약</span><h3>내 근로계약서</h3><p>사장이 전송한 근로계약서를 확인합니다.</p></div></article>
+      <article><img src="screenshots/73-employee-notifications-runtime.png" alt="직원 알림"><div><span class="tag">알림</span><h3>업무 알림함</h3><p>출퇴근, 급여, 결제, 공지 항목으로 알림을 분류합니다.</p></div></article>
+      <article><img src="screenshots/10-employee-role-select.png" alt="직원 회원가입"><div><span class="tag">가입</span><h3>직원 역할 가입</h3><p>직원 역할에 맞춰 계정을 만들고 매장 초대 흐름을 시작합니다.</p></div></article>
+      <article><img src="screenshots/21-employee-login.png" alt="직원 로그인"><div><span class="tag">로그인</span><h3>직원 로그인</h3><p>등록된 계정으로 개인 근무 화면에 진입합니다.</p></div></article>
+    </div>
+  </section>
+
+  <section>
+    <h2>일정과 급여 정산</h2>
+    <div class="grid">
+      <article><img src="screenshots/36-master-schedule-board.png" alt="스케줄 캘린더"><div><span class="tag">스케줄</span><h3>월간 캘린더</h3><p>근무 일정을 날짜 단위로 조회하고 관리합니다.</p></div></article>
+      <article><img src="screenshots/37-master-schedule-dnd-board.png" alt="주간 스케줄 보드"><div><span class="tag">스케줄</span><h3>주간 보드</h3><p>주별 근무 건수, 인원, 시간을 한눈에 확인합니다.</p></div></article>
+      <article><img src="screenshots/38-master-schedule-template.png" alt="스케줄 템플릿"><div><span class="tag">스케줄</span><h3>스케줄 템플릿</h3><p>반복되는 주간 패턴을 템플릿으로 저장합니다.</p></div></article>
+      <article><img src="screenshots/41-master-payroll-list.png" alt="급여 정산 기간 설정"><div><span class="tag">급여</span><h3>정산 기간 설정</h3><p>매장과 급여 계산 기간을 먼저 선택합니다.</p></div></article>
+    </div>
+  </section>
+
+  <section>
+    <h2>실시간 운영 반영</h2>
+    <div class="grid">
+      <article><img src="screenshots/57-master-after-employee-checkin.png" alt="직원 출근 후 사장 대시보드"><div><span class="tag">실시간 근태</span><h3>사장 현황 즉시 반영</h3><p>직원 GPS 출근 후 오늘 출근, 근무중, 출근률이 사장 화면에 반영됐습니다.</p></div></article>
+      <article><img src="screenshots/58-master-checkin-notification.png" alt="사장 출근 등록 알림"><div><span class="tag">알림</span><h3>직원 출근 알림</h3><p>직원 출근 등록 이벤트가 사장 알림함에 전달됩니다.</p></div></article>
+      <article><img src="screenshots/37-master-schedule-dnd-board.png" alt="사장 주간 스케줄"><div><span class="tag">운영 계획</span><h3>주간 일정 확인</h3><p>매장 운영자는 주간 보드에서 근무 배치를 검토합니다.</p></div></article>
+      <article><img src="screenshots/38-master-schedule-template.png" alt="스케줄 템플릿"><div><span class="tag">반복 운영</span><h3>스케줄 템플릿</h3><p>반복되는 주간 운영 패턴을 템플릿으로 관리합니다.</p></div></article>
+      <article><img src="screenshots/82-master-contract-details.png" alt="근로계약 조건"><div><span class="tag">계약</span><h3>임금 형태와 근로조건</h3><p>시급제·월급제와 상시근로자 기준을 선택해 근로조건을 입력합니다.</p></div></article>
+    </div>
+    <p class="note">시연 중 확인된 오류 상태는 기능 소개 화면에 사용하지 않았으며, 상세 재현 기록은 <code>manifest.md</code>에 분리했습니다.</p>
+  </section>
+</main>
+</body>
+</html>

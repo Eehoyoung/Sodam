@@ -24,7 +24,8 @@ public enum PlanFeature {
     MULTI_STORE("멀티매장"),
     PRIORITY_CS("전담 CS"),
     PARTNER_REFERRAL("세무·노무 우선 연결"),
-    INSPECTION_EVIDENCE("근로감독 증거 패키지");
+    INSPECTION_EVIDENCE("근로감독 증거 패키지"),
+    MANAGER_DELEGATION("매니저 권한 위임");
 
     private final String label;
 

@@ -143,8 +143,8 @@ public class AsyncConfig implements AsyncConfigurer {
     @Override
     public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
         return (throwable, method, objects) -> {
-            log.error("비동기 작업 실행 중 예외 발생 - 메서드: {}, 매개변수: {}",
-                    method.getName(), objects, throwable);
+            log.error("비동기 작업 실행 중 예외 발생 - 메서드: {}, 예외유형: {}",
+                    method.getName(), throwable.getClass().getSimpleName());
 
             // 필요시 알림 발송, 메트릭 수집 등 추가 처리
             // 예: 슬랙 알림, 이메일 알림, 모니터링 시스템 연동

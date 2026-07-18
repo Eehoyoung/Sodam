@@ -74,8 +74,36 @@ const PayrollRunScreen: React.FC = () => {
     const setEndDate = (value: string) => setEndDateValue(sanitizeDateDigits(value));
     const [previews, setPreviews] = useState<PayrollPreview[]>([]);
     const [loading, setLoading] = useState(false);
+    const [stepUpPassword, setStepUpPassword] = useState('');
     // 연장근로 한도(주 52h, §53) 위반 경보 — 정산 미리보기 시점에 조회(B5/L-NEW-02).
     const [overtime, setOvertime] = useState<OvertimeCheck | null>(null);
+    // 매장 정산주기의 지급 예정일 — 주기 기본값 적용 시 안내용
+    const [cyclePayDate, setCyclePayDate] = useState<string | null>(null);
+
+    // 매장 선택 시 정산주기가 설정돼 있으면 기간 기본값을 주기(시작~마감)로 채운다.
+    // 미설정/조회 실패면 기존 달력(이번 달 1일~말일) 기본값 유지.
+    useEffect(() => {
+        if (!storeId) {
+            return;
+        }
+        let cancelled = false;
+        (async () => {
+            try {
+                const period = await storeService.getPayrollCyclePeriod(storeId);
+                if (cancelled || !period.configured || !period.startDate || !period.endDate) {
+                    return;
+                }
+                setStartDateValue(period.startDate.replace(/-/g, ''));
+                setEndDateValue(period.endDate.replace(/-/g, ''));
+                setCyclePayDate(period.paymentDate);
+            } catch (_) {
+                /* 주기 미조회 시 달력 기본값으로 진행 */
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [storeId]);
 
     // 사장 매장 목록 로드 → 손으로 매장 ID 입력하지 않도록 셀렉터 제공.
     useEffect(() => {
@@ -159,6 +187,10 @@ const PayrollRunScreen: React.FC = () => {
     const goConfirm = () => setStep('CONFIRM');
 
     const issuePayrolls = async () => {
+        if (!stepUpPassword) {
+            AppToast.warn('급여 확정을 위해 비밀번호를 다시 입력해 주세요.');
+            return;
+        }
         setLoading(true);
         // BE /issue 가 확정→지급완료를 원자 처리(DRAFT→PAID 직접 전이 400 방지).
         // 항목별 성공/실패를 집계해 부분 발급 상황을 사장에게 정확히 알린다.
@@ -167,7 +199,7 @@ const PayrollRunScreen: React.FC = () => {
         const failed: string[] = [];
         for (const p of issuable) {
             try {
-                await api.put(`/api/payroll/${p.payrollId}/issue`);
+                await api.put(`/api/payroll/${p.payrollId}/issue`, {stepUpPassword});
                 success += 1;
             } catch (_) {
                 failed.push(p.employeeName ?? `#${p.payrollId}`);
@@ -204,7 +236,9 @@ const PayrollRunScreen: React.FC = () => {
             <StepScaffold
                 progress={1 / 3}
                 title="1단계: 기간 설정"
-                subtitle="정산할 매장과 기간을 골라 주세요. 기본은 이번 달 1일~말일이에요."
+                subtitle={cyclePayDate
+                    ? `매장 정산주기로 기간을 채웠어요. 지급 예정일은 ${cyclePayDate} 이에요.`
+                    : '정산할 매장과 기간을 골라 주세요. 기본은 이번 달 1일~말일이에요.'}
                 onBack={() => navigation.goBack()}
                 footer={
                     <CtaStack>
@@ -270,6 +304,14 @@ const PayrollRunScreen: React.FC = () => {
                 endDate={endDate}
                 previews={previews}
                 totalNet={totalNet}
+            />
+            <Input
+                label="비밀번호 재확인"
+                value={stepUpPassword}
+                onChangeText={setStepUpPassword}
+                secureTextEntry
+                autoComplete="current-password"
+                helperText="급여 확정 권한과 현재 계정을 한 번 더 확인해요. 비밀번호는 저장되지 않아요."
             />
         </StepScaffold>
     );

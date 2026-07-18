@@ -7,6 +7,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import com.rich.sodam.security.UserPrincipal;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -58,6 +59,33 @@ class SecurityRbacTest {
     }
 
     @Test
+    @DisplayName("MANAGER: /api/master/mypage 호출 → 403 (전역 역할이 아닌 관계 권한으로만 허용)")
+    void manager_masterMyPage_forbidden() throws Exception {
+        mockMvc.perform(get("/api/master/mypage")
+                        .with(user("manager@x").authorities(
+                                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_MANAGER"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("BOSS: /api/master/mypage 호출 → 403 (레거시 전역 역할 차단)")
+    void boss_masterMyPage_forbidden() throws Exception {
+        mockMvc.perform(get("/api/master/mypage")
+                        .with(user("boss@x").authorities(
+                                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_BOSS"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("레거시 MANAGER: EmployeeOrMaster API도 관계권한 이관 전에는 403")
+    void manager_employeeOrMasterEndpoint_forbidden() throws Exception {
+        mockMvc.perform(get("/api/payroll/employee/1/wages")
+                        .with(user("manager@x").authorities(
+                                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_MANAGER"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @DisplayName("EMPLOYEE: 시급 변경 POST /api/wages/employee → 403 (MasterOnly)")
     void employee_updateWage_forbidden() throws Exception {
         mockMvc.perform(post("/api/wages/employee")
@@ -69,11 +97,12 @@ class SecurityRbacTest {
     }
 
     @Test
-    @DisplayName("EMPLOYEE: 휴가 승인 PUT /api/timeoff/{id}/approve → 403 (MasterOnly)")
+    @DisplayName("일반 EMPLOYEE: 휴가 승인 → 관계 권한 가드에서 403")
     void employee_approveTimeOff_forbidden() throws Exception {
+        UserPrincipal employee = new UserPrincipal(999999L, "emp@x", java.util.List.of(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_EMPLOYEE")));
         mockMvc.perform(put("/api/timeoff/1/approve")
-                        .with(user("emp@x").authorities(
-                                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_EMPLOYEE"))))
+                        .with(user(employee)))
                 .andExpect(status().isForbidden());
     }
 

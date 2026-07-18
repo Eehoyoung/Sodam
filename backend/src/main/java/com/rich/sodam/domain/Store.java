@@ -1,5 +1,7 @@
 package com.rich.sodam.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.rich.sodam.config.crypto.PiiSearchHashSupport;
 import com.rich.sodam.config.crypto.StringCryptoConverter;
 import com.rich.sodam.util.GeoUtils;
 import jakarta.persistence.*;
@@ -37,12 +39,33 @@ public class Store {
     @Column(name = "store_id")
     private Long id;
 
+    /** 낙관적 락(DB_OPTIMIZATION_PLAN.md §2.8) — 직원수·시급 등 동시 갱신 시 lost update 감지용. */
+    @Version
+    @JsonIgnore // 컨트롤러 일부가 Store 엔티티를 직접 반환 — 내부 락 카운터를 응답에 노출하지 않음
+    @Column(nullable = false)
+    private Long version;
+
     @Column(nullable = false)
     private String storeName;
 
 
-    @Column(nullable = false, unique = true)
+    @Convert(converter = StringCryptoConverter.class) // PII 암호화 저장(PIPA §29) — Phase 0 핫픽스
+    @Column(nullable = false, unique = true, length = 255)
     private String businessNumber; // 사업자등록번호
+
+    /**
+     * 사업자등록번호 블라인드 인덱스(HMAC-SHA256, DB_OPTIMIZATION_PLAN.md §2.6).
+     * businessNumber가 AES-GCM(비결정적 암호화)이라 동등검색이 불가능해진 대신,
+     * 이 컬럼으로 "이미 등록된 사업자등록번호인가"를 조회·유니크 검증한다.
+     */
+    @JsonIgnore // 내부 검색 토큰 — 컨트롤러가 Store 엔티티를 직접 반환하는 경로가 있어 응답 노출 차단
+    @Column(name = "business_number_search_hash", unique = true, length = 64)
+    private String businessNumberSearchHash;
+
+    /** 위 해시를 계산한 페퍼 버전(로테이션 시 이중 조회 전환 기간 판별용, §2.6.6). */
+    @JsonIgnore
+    @Column(name = "business_number_pepper_version")
+    private Integer businessNumberPepperVersion;
 
     @Convert(converter = StringCryptoConverter.class) // PII 암호화 저장(PIPA §29)
     @Column(nullable = false, length = 255)
@@ -80,6 +103,10 @@ public class Store {
     @Embedded
     private PayrollCycle payrollCycle;
 
+    // 세무사(신고 대리인) 이메일 — 인건비 내역서 송부처. 미설정이면 발송 불가(400)
+    @Column(name = "tax_accountant_email")
+    private String taxAccountantEmail;
+
     // Soft Delete 관련 필드
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
@@ -95,6 +122,15 @@ public class Store {
      */
     @Column(name = "five_or_more_employees")
     private Boolean fiveOrMoreEmployees;
+
+    /**
+     * 사업자 단위(BusinessEntity) 연결(DB_OPTIMIZATION_PLAN.md §2.13, Phase 7 A단계 — 스키마만 도입).
+     * 자연키(사업자등록번호)가 아닌 대리키로 연결한다. A단계 마이그레이션이 기존 매장 전량을 1:1로
+     * 채워 넣지만, 이 필드 자체는 nullable로 둔다 — B단계(그룹핑 UI)에서 매장 생성/등록 플로우가
+     * 함께 배선되기 전까지는 신규 매장에 값이 채워지지 않는다(현재 API/화면에서 읽거나 쓰지 않음).
+     */
+    @Column(name = "business_entity_id")
+    private Long businessEntityId;
 
     /**
      * 활성(재직) 직원 수 — DB 영속 아님(@Transient). 조회 시 서비스가 채워 응답에 직렬화한다.
@@ -116,6 +152,10 @@ public class Store {
         this.employeeCount = employeeCount;
     }
 
+    public void setTaxAccountantEmail(String taxAccountantEmail) {
+        this.taxAccountantEmail = taxAccountantEmail;
+    }
+
     public void setMonthlyLaborCost(Long monthlyLaborCost) {
         this.monthlyLaborCost = monthlyLaborCost;
     }
@@ -126,6 +166,19 @@ public class Store {
 
     public void setMonthlyRevenue(Long monthlyRevenue) {
         this.monthlyRevenue = monthlyRevenue;
+    }
+
+    /**
+     * 기존(암호화 전환 이전) 평문 로우의 블라인드 인덱스 백필 전용(Phase 6 배치, §2.6.5).
+     * 이미 해시가 있으면 아무 것도 하지 않는다(멱등). 저장 시 businessNumber 도
+     * {@link com.rich.sodam.config.crypto.StringCryptoConverter}를 거쳐 자동으로 암호화 전환된다.
+     */
+    public void backfillBusinessNumberSearchHash() {
+        if (this.businessNumberSearchHash != null) {
+            return;
+        }
+        this.businessNumberSearchHash = PiiSearchHashSupport.hashBusinessNumber(this.businessNumber);
+        this.businessNumberPepperVersion = PiiSearchHashSupport.currentVersion();
     }
 
     /** §56 가산수당 적용 여부 (5인 미만이 아니면 적용). */
@@ -163,6 +216,8 @@ public class Store {
 
         this.storeName = storeName;
         this.businessNumber = businessNumber;
+        this.businessNumberSearchHash = PiiSearchHashSupport.hashBusinessNumber(businessNumber);
+        this.businessNumberPepperVersion = PiiSearchHashSupport.currentVersion();
         this.storePhoneNumber = storePhoneNumber;
         this.businessType = businessType;
         this.storeCode = generateStoreCode();

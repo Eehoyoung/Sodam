@@ -121,4 +121,46 @@ class PayrollCycleTest {
 
         assertThat(c.resolveStart(YearMonth.of(2026, 2))).isEqualTo(LocalDate.of(2026, 2, 28));
     }
+
+    @Test
+    @DisplayName("cycleMonthContaining: 전월 25일~당월 24일 주기에서 7/3은 기준월 7월에 속한다")
+    void cycleMonthContainingCrossMonth() {
+        PayrollCycle c = PayrollCycle.of(
+                MonthOffset.PREV_MONTH, 25,
+                MonthOffset.CURRENT_MONTH, 24, false,
+                MonthOffset.CURRENT_MONTH, 25, false);
+
+        assertThat(c.cycleMonthContaining(LocalDate.of(2026, 7, 3))).isEqualTo(YearMonth.of(2026, 7));
+        // 주기 경계: 6/25 은 7월 주기의 첫날, 6/24 은 6월 주기의 마지막날
+        assertThat(c.cycleMonthContaining(LocalDate.of(2026, 6, 25))).isEqualTo(YearMonth.of(2026, 7));
+        assertThat(c.cycleMonthContaining(LocalDate.of(2026, 6, 24))).isEqualTo(YearMonth.of(2026, 6));
+    }
+
+    @Test
+    @DisplayName("cycleMonthContaining: 당월 1일~말일 주기는 해당 월 자신이 기준월이다")
+    void cycleMonthContainingCalendarMonth() {
+        PayrollCycle c = PayrollCycle.of(
+                MonthOffset.CURRENT_MONTH, 1,
+                MonthOffset.CURRENT_MONTH, null, true,   // 말일 마감
+                MonthOffset.NEXT_MONTH, 10, false);
+
+        assertThat(c.cycleMonthContaining(LocalDate.of(2026, 7, 1))).isEqualTo(YearMonth.of(2026, 7));
+        assertThat(c.cycleMonthContaining(LocalDate.of(2026, 7, 31))).isEqualTo(YearMonth.of(2026, 7));
+        // 2월 말일 경계 (윤년 아님)
+        assertThat(c.cycleMonthContaining(LocalDate.of(2026, 2, 28))).isEqualTo(YearMonth.of(2026, 2));
+    }
+
+    @Test
+    @DisplayName("cycleMonthContaining 기준월로 지급일을 해석하면 익월 지급이 맞게 나온다")
+    void payDateResolvesFromContainingMonth() {
+        PayrollCycle c = PayrollCycle.of(
+                MonthOffset.CURRENT_MONTH, 1,
+                MonthOffset.CURRENT_MONTH, null, true,
+                MonthOffset.NEXT_MONTH, 10, false);
+
+        YearMonth base = c.cycleMonthContaining(LocalDate.of(2026, 6, 15));
+        assertThat(c.resolveStart(base)).isEqualTo(LocalDate.of(2026, 6, 1));
+        assertThat(c.resolveEnd(base)).isEqualTo(LocalDate.of(2026, 6, 30));
+        assertThat(c.resolvePayDate(base)).isEqualTo(LocalDate.of(2026, 7, 10));
+    }
 }

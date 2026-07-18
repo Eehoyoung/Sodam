@@ -19,6 +19,8 @@ interface SheetAction {
     onPress: () => void;
     variant?: ButtonVariant;
     loading?: boolean;
+    disabled?: boolean;
+    testID?: string;
 }
 
 interface BottomSheetProps {
@@ -55,10 +57,25 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
             ) : null}
             {children}
             {primary ? (
-                <AppButton label={primary.label} variant={primary.variant ?? 'primary'} loading={primary.loading} onPress={primary.onPress} style={styles.cta} />
+                <AppButton
+                    testID={primary.testID}
+                    label={primary.label}
+                    variant={primary.variant ?? 'primary'}
+                    loading={primary.loading}
+                    disabled={primary.disabled}
+                    onPress={primary.onPress}
+                    style={styles.cta}
+                />
             ) : null}
             {secondary ? (
-                <AppButton label={secondary.label} variant={secondary.variant ?? 'secondary'} onPress={secondary.onPress} style={styles.ctaSub} />
+                <AppButton
+                    testID={secondary.testID}
+                    label={secondary.label}
+                    variant={secondary.variant ?? 'secondary'}
+                    disabled={secondary.disabled}
+                    onPress={secondary.onPress}
+                    style={styles.ctaSub}
+                />
             ) : null}
         </>
     );

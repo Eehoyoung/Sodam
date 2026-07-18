@@ -58,7 +58,7 @@ class MyLeaveBalanceServiceTest {
     }
 
     @Test
-    @DisplayName("5인 이상·1년 이상: 발생 15 − 승인 휴가 3일 = 잔여 12")
+    @DisplayName("5인 이상·1년 이상: 발생 15 − 현재 연차연도 내 승인 휴가 3일 = 잔여 12")
     void remainingAfterApprovedUsage() {
         Store store = store();
         EmployeeProfile me = relation(store, "lb1@x.com", "1년차",
@@ -67,8 +67,8 @@ class MyLeaveBalanceServiceTest {
         for (int i = 2; i <= 5; i++) {
             relation(store, "lbf" + i + "@x.com", "동료" + i, LocalDate.now().minusMonths(2));
         }
-        // 승인 휴가 3일(5/1~5/3 포함)
-        approvedTimeOff(me, store, LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 3));
+        // 현재 연차연도(입사일+1년 시작, 즉 지금부터 대략 -10일) 안에 드는 승인 휴가 3일
+        approvedTimeOff(me, store, LocalDate.now().minusDays(5), LocalDate.now().minusDays(3));
 
         MyLeaveBalanceDto dto = myLeaveBalanceService.getMyLeaveBalance(me.getId());
 
@@ -77,6 +77,24 @@ class MyLeaveBalanceServiceTest {
         assertThat(dto.usedDays()).isEqualTo(3);
         assertThat(dto.remainingDays()).isEqualTo(12);
         assertThat(dto.disclaimer()).isNotBlank();
+    }
+
+    @Test
+    @DisplayName("이전 연차연도에 사용한 휴가는 현재 잔여 계산에 포함되지 않는다")
+    void previousLeaveYearUsageExcluded() {
+        Store store = store();
+        LocalDate hire = LocalDate.now().minusYears(1).minusDays(10);
+        EmployeeProfile me = relation(store, "prevyear@x.com", "2년차", hire);
+        for (int i = 2; i <= 5; i++) {
+            relation(store, "pyf" + i + "@x.com", "동료" + i, LocalDate.now().minusMonths(2));
+        }
+        // 입사 직후(첫 연차연도)에 쓴 휴가 — 현재(두 번째 연차연도) 잔여와 무관해야 한다.
+        approvedTimeOff(me, store, hire.plusDays(5), hire.plusDays(7));
+
+        MyLeaveBalanceDto dto = myLeaveBalanceService.getMyLeaveBalance(me.getId());
+
+        assertThat(dto.usedDays()).isZero();
+        assertThat(dto.remainingDays()).isEqualTo(15);
     }
 
     @Test
@@ -103,7 +121,7 @@ class MyLeaveBalanceServiceTest {
             relation(store, "pf" + i + "@x.com", "동료" + i, LocalDate.now().minusMonths(2));
         }
         // PENDING (approve 호출 안 함)
-        TimeOff pending = new TimeOff(me, store, LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 4), "신청만");
+        TimeOff pending = new TimeOff(me, store, LocalDate.now().minusDays(5), LocalDate.now().minusDays(2), "신청만");
         timeOffRepository.save(pending);
 
         MyLeaveBalanceDto dto = myLeaveBalanceService.getMyLeaveBalance(me.getId());

@@ -6,6 +6,7 @@ import com.rich.sodam.dto.request.LocationUpdateDto;
 import com.rich.sodam.dto.request.StoreRegistrationDto;
 import com.rich.sodam.dto.request.StoreUpdateDto;
 import com.rich.sodam.dto.response.GeocodingResult;
+import com.rich.sodam.dto.response.StoreEmployeeResponseDto;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.service.GeocodingService;
 import com.rich.sodam.service.StoreAccessGuard;
@@ -28,6 +29,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.domain.type.ManagerPermission;
 
 import java.util.List;
 
@@ -68,7 +70,11 @@ public class StoreController {
         if (storeDto.getRadius() == null) {
             storeDto.setRadius(100);
         }
-        Long resolvedUserId = userId != null ? userId : getCurrentUserId();
+        Long authenticatedUserId = getCurrentUserId();
+        if (userId != null) {
+            storeAccessGuard.assertSelf(authenticatedUserId, userId);
+        }
+        Long resolvedUserId = authenticatedUserId;
         Store store = storeManagementService.registerStoreWithMaster(resolvedUserId, storeDto);
         domainEventService.record(com.rich.sodam.domain.type.DomainEventType.STORE_CREATED,
                 resolvedUserId, store.getId(), null);
@@ -148,8 +154,8 @@ public class StoreController {
             @Parameter(description = "사용자 ID", required = true) @RequestParam Long userId,
             @Parameter(description = "사용자 지정 시급") @RequestParam(required = false) Integer customHourlyWage) {
         storeAccessGuard.assertMasterOwnsStore(getCurrentUserId(), storeId); // BOLA 차단: 본인 매장에만 직원 할당
-        storeManagementService.assignUserToStoreAsEmployee(userId, storeId, customHourlyWage);
-        return ResponseEntity.ok().build();
+        throw new org.springframework.security.access.AccessDeniedException(
+                "직원 등록은 초대 수락 또는 매장 코드 본인 가입으로만 가능합니다.");
     }
 
     @Operation(summary = "직원 활성/비활성 토글 (사장만)",
@@ -164,6 +170,18 @@ public class StoreController {
         storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
         storeManagementService.setEmployeeActive(storeId, employeeId, active);
         return ResponseEntity.ok(java.util.Map.of("employeeId", employeeId, "active", active));
+    }
+
+    @Operation(summary = "매장 정산주기 기간 해석",
+            description = "정산주기 설정을 실제 날짜(시작·마감·지급일)로 해석합니다. "
+                    + "month(YYYY-MM) 미지정 시 오늘이 속한 주기를 반환. 미설정 매장은 configured=false.")
+    @GetMapping("/{storeId}/payroll-cycle/period")
+    public ResponseEntity<com.rich.sodam.dto.response.PayrollCyclePeriodDto> getPayrollCyclePeriod(
+            @PathVariable Long storeId,
+            @RequestParam(required = false)
+            @org.springframework.format.annotation.DateTimeFormat(pattern = "yyyy-MM") java.time.YearMonth month) {
+        storeAccessGuard.assertMasterOwnsStore(getCurrentUserId(), storeId); // BOLA 차단: 본인 매장만
+        return ResponseEntity.ok(storeManagementService.resolvePayrollCyclePeriod(storeId, month));
     }
 
     @Operation(summary = "매장 운영시간 조회", description = "요일별 영업 시작/종료/휴무를 반환합니다.")
@@ -224,17 +242,21 @@ public class StoreController {
     @Operation(summary = "매장 직원 목록 조회", description = "특정 매장에 소속된 모든 직원 목록을 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공",
-                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = User.class)))),
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = StoreEmployeeResponseDto.class)))),
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "404", description = "매장 정보를 찾을 수 없음")
     })
     @GetMapping("/{storeId}/employees")
-    public ResponseEntity<List<User>> getEmployeesByStore(
+    @EmployeeOrMaster
+    public ResponseEntity<List<StoreEmployeeResponseDto>> getEmployeesByStore(
             @org.springframework.security.core.annotation.AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "매장 ID", required = true) @PathVariable Long storeId) {
         // BOLA 차단: 본인 소유 매장의 직원 명부만 조회(타 매장 직원 PII 열람 방지)
-        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
-        List<User> employees = storeManagementService.getEmployeesByStore(storeId);
+        storeAccessGuard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.STAFF_VIEW);
+        List<StoreEmployeeResponseDto> employees = storeManagementService.getEmployeesByStore(storeId);
+        if (!storeAccessGuard.isMasterOwner(principal.getId(), storeId)) {
+            employees = employees.stream().map(StoreEmployeeResponseDto::maskedForManager).toList();
+        }
         return ResponseEntity.ok(employees);
     }
 

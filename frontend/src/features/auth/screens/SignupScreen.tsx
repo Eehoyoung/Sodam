@@ -100,7 +100,11 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
             setCheckedEmail(normalizedEmail);
             setEmailError(available ? undefined : '이미 사용 중인 이메일이에요.');
             if (showToast) {
-                available ? AppToast.success('사용 가능한 이메일이에요.') : AppToast.warn('이미 사용 중인 이메일이에요.');
+                if (available) {
+                    AppToast.success('사용 가능한 이메일이에요.');
+                } else {
+                    AppToast.warn('이미 사용 중인 이메일이에요.');
+                }
             }
             return available;
         } catch {

@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.stereotype.Component;
 
 /**
@@ -20,24 +19,21 @@ public class ServiceLoggingAspect {
      */
     @Around("execution(* com.rich.sodam.service..*.*(..))")
     public Object logServiceMethodExecution(ProceedingJoinPoint joinPoint) throws Throwable {
-        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
-        String methodName = signature.getMethod().getName();
-        String className = signature.getDeclaringType().getSimpleName();
-        Object[] args = joinPoint.getArgs();
+        String methodName = joinPoint.getSignature().getName();
+        String className = joinPoint.getSignature().getDeclaringType().getSimpleName();
 
-        // 위경도·비밀번호·이메일 등 PII/크리덴셜 평문 로깅 방지: 파라미터명+필드 기반 마스킹
-        log.info("실행 시작: {}.{}() 매개변수: {}", className, methodName,
-                LogArgMasker.mask(args, signature.getParameterNames()));
+        // 서비스 인자·반환값은 계약/급여/PII를 중첩 포함할 수 있으므로 allow-list 없이는 기록하지 않는다.
+        log.info("실행 시작: {}.{}()", className, methodName);
 
         long startTime = System.currentTimeMillis();
         Object result;
         try {
             result = joinPoint.proceed();
-            log.info("실행 완료: {}.{}() 반환값: {}", className, methodName,
-                    LogArgMasker.mask(new Object[]{result}));
+            log.info("실행 완료: {}.{}()", className, methodName);
             return result;
         } catch (Exception e) {
-            log.error("실행 오류: {}.{}() 예외: {}", className, methodName, e.getMessage(), e);
+            log.error("실행 오류: {}.{}() 예외유형: {}", className, methodName,
+                    e.getClass().getSimpleName());
             throw e;
         } finally {
             long executionTime = System.currentTimeMillis() - startTime;

@@ -14,7 +14,8 @@ import java.time.LocalTime;
  */
 @Entity
 @Table(name = "shift_template_entry", indexes = {
-        @Index(name = "idx_ste_template", columnList = "shift_template_id")
+        @Index(name = "idx_ste_template", columnList = "shift_template_id"),
+        @Index(name = "idx_shift_template_entry_employee_id", columnList = "employee_id")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

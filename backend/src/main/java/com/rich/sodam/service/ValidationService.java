@@ -1,5 +1,6 @@
 package com.rich.sodam.service;
 
+import com.rich.sodam.config.crypto.PiiSearchHashSupport;
 import com.rich.sodam.repository.StoreRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -126,7 +127,8 @@ public class ValidationService {
         }
 
         try {
-            boolean exists = storeRepository.findByBusinessNumber(businessNumber).isPresent();
+            String hash = PiiSearchHashSupport.hashBusinessNumber(businessNumber);
+            boolean exists = storeRepository.findByBusinessNumberSearchHash(hash).isPresent();
 
             if (exists) {
                 logger.info("이미 등록된 사업자등록번호입니다: {}", businessNumber);

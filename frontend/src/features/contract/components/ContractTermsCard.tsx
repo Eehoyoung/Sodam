@@ -29,6 +29,27 @@ const WEEKDAY_SCHEDULE: Array<{key: keyof Pick<LaborContract, 'monHours' | 'tueH
     {key: 'sunHours', label: '일'},
 ];
 
+const WEEKDAY_SHORT_KO: Record<string, string> = {
+    MONDAY: '월',
+    TUESDAY: '화',
+    WEDNESDAY: '수',
+    THURSDAY: '목',
+    FRIDAY: '금',
+    SATURDAY: '토',
+    SUNDAY: '일',
+};
+
+/** 요일 정렬(월→일) — BE 응답 순서에 의존하지 않는다. */
+const WEEKDAY_ORDER: Record<string, number> = {
+    MONDAY: 0,
+    TUESDAY: 1,
+    WEDNESDAY: 2,
+    THURSDAY: 3,
+    FRIDAY: 4,
+    SATURDAY: 5,
+    SUNDAY: 6,
+};
+
 function dash(v: string | null | undefined): string {
     return v && v.trim().length > 0 ? v : '-';
 }
@@ -37,6 +58,10 @@ function fmtTime(v: string | null): string {
     if (!v) {return '-';}
     // BE LocalTime → 'HH:mm:ss' or 'HH:mm'
     return v.slice(0, 5);
+}
+
+function won(v: number | null | undefined): string {
+    return v !== null && v !== undefined ? `${v.toLocaleString('ko-KR')}원` : '-';
 }
 
 const TermRow: React.FC<{label: string; value: string; last?: boolean}> = ({label, value, last}) => {
@@ -63,7 +88,13 @@ export const ContractTermsCard: React.FC<{contract: LaborContract}> = ({contract
         contract.startDate
             ? `${periodLabel} · ${contract.startDate} ~ ${contract.periodType === 'FIXED_TERM' ? (contract.endDate ?? '-') : '계속'}`
             : periodLabel;
+    const isSalary = contract.payType === 'SALARY';
+    const payType = isSalary
+        ? contract.salaryPayUnit === 'ANNUAL' ? '연봉제' : '월급제'
+        : '시급제';
     const wage = contract.hourlyWage !== null ? `${contract.hourlyWage.toLocaleString('ko-KR')}원` : '-';
+    const fixedAllowanceTotal =
+        (contract.fixedOvertimePay ?? 0) + (contract.fixedNightPay ?? 0) + (contract.fixedHolidayPay ?? 0);
     const payDay = contract.wagePaymentDay !== null ? `매월 ${contract.wagePaymentDay}일` : '-';
     const payMethod = contract.wagePaymentMethod === 'CASH' ? '현금'
         : contract.wagePaymentMethod === 'BANK_TRANSFER' ? '계좌이체' : '-';
@@ -75,9 +106,19 @@ export const ContractTermsCard: React.FC<{contract: LaborContract}> = ({contract
     const holiday = contract.weeklyAllowanceApplicable
         ? (contract.weeklyHolidayDay ? (WEEKDAY_KO[contract.weeklyHolidayDay] ?? contract.weeklyHolidayDay) : '-')
         : '주 15시간 미만 — 주휴 미적용';
+    const annualLeave = contract.weeklyAllowanceApplicable
+        ? contract.fiveOrMoreEmployeesSnapshot === false
+            ? '5인 미만 — 연차유급휴가 미적용'
+            : dash(contract.annualLeaveNote)
+        : '주 15시간 미만 — 연차유급휴가 미적용';
 
     const scheduleEntries = WEEKDAY_SCHEDULE.map(d => ({...d, value: contract[d.key]}))
         .filter(d => d.value !== null && d.value !== undefined);
+    // 스케줄 자동 산출 계약 — 요일별 출퇴근·휴게를 상세 표시(요일 시간 칩과 중복 방지 위해 대체)
+    const workScheduleEntries = (contract.workSchedule ?? [])
+        .slice()
+        .sort((a, b) => (WEEKDAY_ORDER[a.day] ?? 7) - (WEEKDAY_ORDER[b.day] ?? 7));
+    const hasWorkSchedule = workScheduleEntries.length > 0;
 
     const insuranceOn: string[] = [];
     if (contract.employmentInsurance) {insuranceOn.push('고용보험');}
@@ -108,7 +149,27 @@ export const ContractTermsCard: React.FC<{contract: LaborContract}> = ({contract
 
             <AppCard variant="flat">
                 <SectionTitle>임금</SectionTitle>
-                <TermRow label="시급" value={wage} />
+                <TermRow label="임금 유형" value={payType} />
+                {isSalary ? (
+                    <>
+                        {contract.scheduleDerivedSalary ? (
+                            <TermRow label="산출 방식" value="근무 스케줄 자동 산출" />
+                        ) : null}
+                        {contract.salaryBaseHourlyWage !== null && contract.salaryBaseHourlyWage !== undefined ? (
+                            <TermRow label="급여 기준시급" value={won(contract.salaryBaseHourlyWage)} />
+                        ) : null}
+                        <TermRow label="월 기본급" value={won(contract.monthlyBaseSalary)} />
+                        <TermRow label="연봉 환산" value={won(contract.annualSalary)} />
+                        <TermRow label="통상시급" value={won(contract.ordinaryHourlyWage)} />
+                        <TermRow label="고정 연장수당" value={won(contract.fixedOvertimePay)} />
+                        <TermRow label="고정 야간수당" value={won(contract.fixedNightPay)} />
+                        <TermRow label="고정 휴일수당" value={won(contract.fixedHolidayPay)} />
+                        <TermRow label="고정수당 합계" value={won(fixedAllowanceTotal)} />
+                        <TermRow label="예상 월 지급액" value={won(contract.expectedMonthlyWage)} />
+                    </>
+                ) : (
+                    <TermRow label="시급" value={wage} />
+                )}
                 <TermRow label="지급방법" value={payMethod} />
                 <TermRow label="지급일" value={payDay} />
                 <TermRow label="구성항목·계산방법" value={dash(contract.wageComponents)} last />
@@ -119,8 +180,28 @@ export const ContractTermsCard: React.FC<{contract: LaborContract}> = ({contract
                 <TermRow label="소정근로시간" value={hours} />
                 <TermRow label="근무시간(시업~종업)" value={workTime} />
                 <TermRow label="주휴일" value={holiday} />
-                <TermRow label="연차휴가" value={dash(contract.annualLeaveNote)} last={scheduleEntries.length === 0} />
-                {scheduleEntries.length > 0 ? (
+                <TermRow label="연차휴가" value={annualLeave} last={scheduleEntries.length === 0 && !hasWorkSchedule} />
+                {hasWorkSchedule ? (
+                    <View style={styles.scheduleWrap}>
+                        <AppText variant="caption" tone="secondary" style={styles.scheduleLabel}>
+                            요일별 근무 스케줄{contract.scheduleDerivedSalary ? '(급여 산출 기준)' : ''}
+                        </AppText>
+                        {workScheduleEntries.map(d => (
+                            <View key={d.day} style={styles.workScheduleRow}>
+                                <AppText variant="caption" tone="secondary">
+                                    {WEEKDAY_SHORT_KO[d.day] ?? d.day}
+                                </AppText>
+                                <AppText variant="bodyMd" weight="700" style={styles.value}>
+                                    {`${fmtTime(d.startTime)}~${fmtTime(d.endTime)}${
+                                        d.breakStartTime && d.breakEndTime
+                                            ? ` (휴게 ${fmtTime(d.breakStartTime)}~${fmtTime(d.breakEndTime)})`
+                                            : ''
+                                    }`}
+                                </AppText>
+                            </View>
+                        ))}
+                    </View>
+                ) : scheduleEntries.length > 0 ? (
                     <View style={styles.scheduleWrap}>
                         <AppText variant="caption" tone="secondary" style={styles.scheduleLabel}>
                             요일별 근로시간(단시간근로자)
@@ -144,8 +225,8 @@ export const ContractTermsCard: React.FC<{contract: LaborContract}> = ({contract
                     <TermRow
                         label="수습 중 임금"
                         value={contract.probationWageRate ? `최저임금의 ${Math.round(contract.probationWageRate * 100)}%` : '-'}
-                        last
                     />
+                    <TermRow label="업무 구분" value={contract.simpleLabor ? '단순노무직' : '비단순노무직'} last />
                 </AppCard>
             ) : null}
 
@@ -181,6 +262,13 @@ const styles = StyleSheet.create({
     value: {flexShrink: 1, textAlign: 'right'},
     scheduleWrap: {marginTop: spacing.sm},
     scheduleLabel: {marginBottom: spacing.xs},
+    workScheduleRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: spacing.xs,
+        gap: spacing.md,
+    },
     scheduleRow: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs},
     scheduleChip: {
         alignItems: 'center',

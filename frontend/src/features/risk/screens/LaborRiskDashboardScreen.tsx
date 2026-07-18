@@ -26,6 +26,7 @@ const TYPE_META: Record<LaborRiskType, {icon: string; title: string}> = {
     CONTRACT_UNSIGNED: {icon: 'document-text-outline', title: '근로계약서 미서명'},
     MIN_WAGE_RISK: {icon: 'cash-outline', title: '최저임금 리스크'},
     SEVERANCE_UPCOMING: {icon: 'wallet-outline', title: '퇴직금 발생 임박'},
+    CONTRACT_OVER_52H: {icon: 'warning-outline', title: '계약 주 52시간 초과'},
 };
 
 /**

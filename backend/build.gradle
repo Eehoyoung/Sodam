@@ -33,6 +33,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     // 실시간 인앱 동기화(STOMP over WebSocket) — 직원 입사·출퇴근 등 변경을 사장/직원 화면에 즉시 반영.
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    // 이메일 발송(SMTP) — 세무사 인건비 내역서 송부·비밀번호 재설정. mock/live 는 SODAM_INTEGRATION_MAIL_MODE
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
@@ -61,6 +63,11 @@ dependencies {
 
     // OpenPDF (급여 명세서 PDF 생성) — iText 호환, AGPL 회피 위해 OpenPDF 사용
     implementation 'com.github.librepdf:openpdf:2.0.3'
+    // BaroCert 전자서명 SDK — 네이버·카카오·토스 공급자 어댑터에서만 사용한다.
+    // 도메인 코어는 SDK 타입에 의존하지 않으며 mock 모드에서는 외부 호출이 없다.
+    implementation 'kr.co.linkhub:barocert-sdk:1.8.1'
+    // 전자서명 증적 전용 private object storage. live 모드에서는 SSE-KMS put/get stream만 사용한다.
+    implementation 'software.amazon.awssdk:s3:2.25.67'
     // https://mvnrepository.com/artifact/com.auth0/auth0
     implementation group: 'com.auth0', name: 'auth0', version: '2.17.0'
     // https://mvnrepository.com/artifact/com.google.code.gson/gson
@@ -85,6 +92,10 @@ dependencies {
     implementation 'io.micrometer:micrometer-tracing'
     implementation 'io.micrometer:micrometer-tracing-bridge-brave'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    // 동시성 정합성(DB_OPTIMIZATION_PLAN.md Phase 2) — 낙관적 락 충돌 시 자동 재시도.
+    // @Retryable 은 AOP 프록시 기반이라 spring-boot-starter-aop(AspectJ 런타임)가 함께 필요.
+    implementation 'org.springframework.retry:spring-retry'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
 }
 
 tasks.named('test') {

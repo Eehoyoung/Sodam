@@ -5,6 +5,7 @@ import {Linking, Pressable, StyleSheet, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
+import inquiryService from '../services/inquiryService';
 
 const faqData = [
     {id: '1', question: '소담 서비스는 어떤 서비스인가요?', answer: '소담은 아르바이트 근태 및 급여 관리를 위한 서비스입니다. 사장님은 직원들의 출퇴근 관리와 급여 계산을 쉽게 할 수 있고, 직원들은 자신의 근무 시간과 급여를 확인할 수 있어요.'},
@@ -27,18 +28,32 @@ const QnAScreen: React.FC = () => {
     const [inquiryName, setInquiryName] = useState('');
     const [inquiryEmail, setInquiryEmail] = useState('');
     const [inquiryContent, setInquiryContent] = useState('');
+    const [submitting, setSubmitting] = useState(false);
 
     const toggleFaq = (id: string) => setExpandedId(expandedId === id ? null : id);
 
-    const handleInquirySubmit = () => {
+    const handleInquirySubmit = async () => {
         if (!inquiryName.trim() || !inquiryEmail.trim() || !inquiryContent.trim()) {
             AppToast.warn('모든 필드를 입력해 주세요.');
             return;
         }
-        AppToast.success('문의가 접수됐어요. 빠른 시일 내에 답변 드릴게요.');
-        setInquiryName('');
-        setInquiryEmail('');
-        setInquiryContent('');
+        if (submitting) {return;}
+        setSubmitting(true);
+        try {
+            await inquiryService.submit({
+                name: inquiryName.trim(),
+                email: inquiryEmail.trim(),
+                content: inquiryContent.trim(),
+            });
+            AppToast.success('문의가 접수됐어요. 빠른 시일 내에 답변 드릴게요.');
+            setInquiryName('');
+            setInquiryEmail('');
+            setInquiryContent('');
+        } catch (_e) {
+            AppToast.error('문의 접수에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const handleKakaoChat = () => {
@@ -72,7 +87,7 @@ const QnAScreen: React.FC = () => {
                 <AppInput label="이름" value={inquiryName} onChangeText={setInquiryName} placeholder="이름을 입력하세요" />
                 <AppInput label="이메일" value={inquiryEmail} onChangeText={setInquiryEmail} placeholder="이메일을 입력하세요" keyboardType="email-address" autoCapitalize="none" />
                 <AppInput label="문의 내용" value={inquiryContent} onChangeText={setInquiryContent} placeholder="문의 내용을 입력하세요" multiline multilineMinHeight={120} />
-                <AppButton label="문의하기" onPress={handleInquirySubmit} />
+                <AppButton label="문의하기" onPress={handleInquirySubmit} loading={submitting} testID="qna-inquiry-submit" />
             </View>
 
             <AppText variant="headingSm" style={styles.sectionTitle}>카카오톡 채팅 문의</AppText>

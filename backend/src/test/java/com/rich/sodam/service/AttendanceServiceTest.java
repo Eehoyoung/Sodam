@@ -6,6 +6,7 @@ import com.rich.sodam.dto.request.ManualAttendanceRequestDto;
 import com.rich.sodam.exception.EntityNotFoundException;
 import com.rich.sodam.exception.InvalidOperationException;
 import com.rich.sodam.exception.LocationVerificationException;
+import com.rich.sodam.exception.NfcVerificationException;
 import com.rich.sodam.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -50,6 +51,9 @@ class AttendanceServiceTest {
 
     @Autowired
     private AttendanceRepository attendanceRepository;
+
+    @Autowired
+    private StoreNfcTagRepository storeNfcTagRepository;
 
     private User testUser;
     private User testMaster; // 사업주 권한 사용자
@@ -182,7 +186,7 @@ class AttendanceServiceTest {
         assertThatThrownBy(() -> attendanceService.checkIn(
                 testEmployee.getId(), testStore.getId(), latitude, longitude))
                 .isInstanceOf(InvalidOperationException.class)
-                .hasMessageContaining("이미 오늘 출근 기록이 있습니다");
+                .hasMessageContaining("이미 해당 시간대에 출퇴근 기록이 있습니다");
 
         System.out.println("[DEBUG_LOG] 중복 출근 처리 실패 테스트 완료");
     }
@@ -227,7 +231,7 @@ class AttendanceServiceTest {
         assertThatThrownBy(() -> attendanceService.checkOut(
                 testEmployee.getId(), testStore.getId(), latitude, longitude))
                 .isInstanceOf(InvalidOperationException.class)
-                .hasMessageContaining("오늘 출근 기록이 없습니다");
+                .hasMessageContaining("해당 매장에 진행 중인 출근 기록이 없습니다");
 
         System.out.println("[DEBUG_LOG] 출근 기록 없이 퇴근 시도 실패 테스트 완료");
     }
@@ -431,7 +435,7 @@ class AttendanceServiceTest {
         // When & Then
         assertThatThrownBy(() -> attendanceService.registerManualAttendance(request))
                 .isInstanceOf(InvalidOperationException.class)
-                .hasMessageContaining("이미 출퇴근 기록이 존재합니다");
+                .hasMessageContaining("이미 해당 시간대에 출퇴근 기록이 있습니다");
 
         System.out.println("[DEBUG_LOG] 중복 기록 존재 실패 테스트 완료");
     }
@@ -486,5 +490,93 @@ class AttendanceServiceTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getStore().getId()).isEqualTo(otherStore.getId());
         assertThat(result.get(0).getAppliedHourlyWage()).isEqualTo(13000);
+    }
+
+    @Test
+    @DisplayName("NFC 출근 - 등록된 활성 태그면 위치 없이 기록된다")
+    void checkInWithNfcVerification_Success() {
+        System.out.println("[DEBUG_LOG] NFC 출근 처리 테스트 시작");
+
+        // Given - 매장에 활성 태그 등록
+        storeNfcTagRepository.save(StoreNfcTag.register(testStore, "SODAM-ENTRANCE-01", "정문"));
+
+        // When
+        Attendance result = attendanceService.checkInWithNfcVerification(
+                testEmployee.getId(), testStore.getId(), "SODAM-ENTRANCE-01", null);
+
+        // Then - GPS 좌표를 전혀 수집하지 않으므로 위치는 null 이어야 한다
+        assertThat(result).isNotNull();
+        assertThat(result.getCheckInTime()).isNotNull();
+        assertThat(result.getCheckInLatitude()).isNull();
+        assertThat(result.getCheckInLongitude()).isNull();
+        assertThat(result.getAppliedHourlyWage()).isEqualTo(12000);
+
+        System.out.println("[DEBUG_LOG] NFC 출근 처리 성공 - 출근 시간: " + result.getCheckInTime());
+    }
+
+    @Test
+    @DisplayName("NFC 출근 - 미등록/비활성 태그면 거부된다")
+    void checkInWithNfcVerification_UnregisteredTag_Failure() {
+        System.out.println("[DEBUG_LOG] NFC 출근 미등록 태그 테스트 시작");
+
+        // Given - 태그를 등록하지 않음(형식은 유효하나 매장 대조 실패)
+
+        // When & Then
+        assertThatThrownBy(() -> attendanceService.checkInWithNfcVerification(
+                testEmployee.getId(), testStore.getId(), "SODAM-UNKNOWN-99", null))
+                .isInstanceOf(NfcVerificationException.class);
+
+        System.out.println("[DEBUG_LOG] NFC 출근 미등록 태그 거부 테스트 완료");
+    }
+
+    @Test
+    @DisplayName("NFC 출근 - 비활성화된 태그면 거부된다")
+    void checkInWithNfcVerification_DeactivatedTag_Failure() {
+        // Given
+        StoreNfcTag tag = StoreNfcTag.register(testStore, "SODAM-ENTRANCE-02", "후문");
+        tag.deactivate();
+        storeNfcTagRepository.save(tag);
+
+        // When & Then
+        assertThatThrownBy(() -> attendanceService.checkInWithNfcVerification(
+                testEmployee.getId(), testStore.getId(), "SODAM-ENTRANCE-02", null))
+                .isInstanceOf(NfcVerificationException.class);
+    }
+
+    @Test
+    @DisplayName("NFC 퇴근 - 등록된 활성 태그면 위치 없이 기록된다")
+    void checkOutWithNfcVerification_Success() {
+        System.out.println("[DEBUG_LOG] NFC 퇴근 처리 테스트 시작");
+
+        // Given - 활성 태그 등록 + 선행 출근
+        storeNfcTagRepository.save(StoreNfcTag.register(testStore, "SODAM-ENTRANCE-01", "정문"));
+        attendanceService.checkInWithNfcVerification(
+                testEmployee.getId(), testStore.getId(), "SODAM-ENTRANCE-01", null);
+
+        // When
+        Attendance result = attendanceService.checkOutWithNfcVerification(
+                testEmployee.getId(), testStore.getId(), "SODAM-ENTRANCE-01", null);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.getCheckOutTime()).isNotNull();
+        assertThat(result.getCheckOutLatitude()).isNull();
+        assertThat(result.getCheckOutLongitude()).isNull();
+
+        System.out.println("[DEBUG_LOG] NFC 퇴근 처리 성공 - 퇴근 시간: " + result.getCheckOutTime());
+    }
+
+    @Test
+    @DisplayName("NFC 퇴근 - 미등록 태그면 거부된다")
+    void checkOutWithNfcVerification_UnregisteredTag_Failure() {
+        // Given - 선행 출근은 정상 등록 태그로
+        storeNfcTagRepository.save(StoreNfcTag.register(testStore, "SODAM-ENTRANCE-01", "정문"));
+        attendanceService.checkInWithNfcVerification(
+                testEmployee.getId(), testStore.getId(), "SODAM-ENTRANCE-01", null);
+
+        // When & Then - 퇴근은 미등록 태그로 시도
+        assertThatThrownBy(() -> attendanceService.checkOutWithNfcVerification(
+                testEmployee.getId(), testStore.getId(), "SODAM-UNKNOWN-99", null))
+                .isInstanceOf(NfcVerificationException.class);
     }
 }

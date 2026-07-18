@@ -133,6 +133,24 @@ public class PayrollCycle {
         return resolveDate(payMonth, payOffset, payDay, Boolean.TRUE.equals(payDayLastDay));
     }
 
+    /**
+     * 주어진 날짜가 포함되는 정산주기의 기준월을 찾는다.
+     * 후보(전월/당월/익월 기준)를 순회하며 start ≤ date ≤ end 인 첫 기준월을 반환.
+     * 예: 시작=전월 25일·마감=당월 24일이면 7/3 은 기준월 7월(6/25~7/24)에 속한다.
+     * 어느 주기에도 속하지 않으면(이례적 설정 조합) 해당 월로 폴백.
+     */
+    public YearMonth cycleMonthContaining(LocalDate date) {
+        YearMonth now = YearMonth.from(date);
+        for (YearMonth candidate : java.util.List.of(now.minusMonths(1), now, now.plusMonths(1))) {
+            LocalDate start = resolveStart(candidate);
+            LocalDate end = resolveEnd(candidate);
+            if (start != null && end != null && !date.isBefore(start) && !date.isAfter(end)) {
+                return candidate;
+            }
+        }
+        return now;
+    }
+
     private static LocalDate resolveDate(YearMonth payMonth, MonthOffset offset, String day, boolean lastDay) {
         if (payMonth == null || offset == null) {
             return null;

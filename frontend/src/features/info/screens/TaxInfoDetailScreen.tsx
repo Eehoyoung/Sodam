@@ -3,7 +3,7 @@ export type RootStackParamList = {
 };
 
 import React, {useEffect, useState} from 'react';
-import {Linking, Share, StyleSheet, View} from 'react-native';
+import {Share, StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -18,6 +18,7 @@ import {
 } from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
+import taxInfoService from '../services/taxInfoService';
 
 interface TaxInfoDetail {
     id: number;
@@ -25,16 +26,15 @@ interface TaxInfoDetail {
     date: string;
     content: string;
     author: string;
-    views: number;
     category: string;
-    relatedLinks: Array<{title: string; url: string}>;
 }
 
 type TaxInfoDetailScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'TaxInfoDetail'>;
 
 /**
  * 35 TaxInfoDetail — 확정 시안.
- * 세무 정보 상세. fetch/share/관련 링크 로직 보존.
+ * 세무 정보 상세. GET /api/tax-info/{id}(taxInfoService.getTaxInfoById) 실API 연동.
+ * BE(TaxInfoResponseDto)에 관련 링크 필드가 없어 해당 UI는 제거.
  */
 const TaxInfoDetailScreen = () => {
     const navigation = useNavigation<TaxInfoDetailScreenNavigationProp>();
@@ -49,33 +49,40 @@ const TaxInfoDetailScreen = () => {
     const [toastType, setToastType] = useState<'success' | 'error' | 'info' | 'warning'>('info');
 
     useEffect(() => {
+        let mounted = true;
         const fetchTaxInfo = async () => {
             try {
-                setTimeout(() => {
-                    setTaxInfo({
-                        id: taxInfoId,
-                        title: '2024년 세금신고 주요 변경사항 총정리',
-                        date: '2024-05-14',
-                        content:
-                            '2024년 세금신고 주요 변경사항\n\n1. 종합소득세 신고 기간 변경\n- 기존: 5월 1일 ~ 5월 31일\n- 변경: 5월 1일 ~ 6월 15일 (15일 연장)\n\n2. 간이과세자 기준금액 상향\n- 기존: 연 매출 4,800만원 미만\n- 변경: 연 매출 8,000만원 미만\n\n3. 소상공인 세액공제 확대\n4. 전자세금계산서 의무발급 대상 확대\n5. 신용카드 매출 세액공제율 조정\n\n자세한 내용은 국세청 홈페이지를 참조주세요.',
-                        author: '소담 세무팀',
-                        views: 2345,
-                        category: '세무 정보',
-                        relatedLinks: [
-                            {title: '국세청 홈페이지', url: 'https://www.nts.go.kr'},
-                            {title: '종합소득세 신고 안내', url: 'https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=2318&cntntsId=7711'},
-                        ],
-                    });
-                    setLoading(false);
-                }, 1000);
+                setLoading(true);
+                const detail = await taxInfoService.getTaxInfoById(String(taxInfoId));
+                if (!mounted) {
+                    return;
+                }
+                setTaxInfo({
+                    id: Number(detail.id),
+                    title: detail.title,
+                    date: new Date(detail.publishDate).toISOString().slice(0, 10),
+                    content: detail.content,
+                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty-string author should fall back to default, so ?? would be wrong
+                    author: detail.author || '소담 세무팀',
+                    category: '세무 정보',
+                });
             } catch (error) {
+                if (!mounted) {
+                    return;
+                }
                 setToastMessage('정보를 불러오는 중 오류가 생겼어요.');
                 setToastType('error');
                 setShowToast(true);
-                setLoading(false);
+            } finally {
+                if (mounted) {
+                    setLoading(false);
+                }
             }
         };
         fetchTaxInfo();
+        return () => {
+            mounted = false;
+        };
     }, [taxInfoId]);
 
     const toggleBookmark = () => {
@@ -96,28 +103,6 @@ const TaxInfoDetailScreen = () => {
             });
         } catch (error) {
             setToastMessage('공유 중 오류가 생겼어요.');
-            setToastType('error');
-            setShowToast(true);
-        }
-    };
-
-    const openLink = async (url: string) => {
-        // 보안: 서버 응답 변조 시 tel:/임의 스킴 실행 방지 — http(s) 만 허용
-        if (!/^https?:\/\//i.test(url)) {
-            setToastMessage('안전하지 않은 링크예요.');
-            return;
-        }
-        try {
-            const supported = await Linking.canOpenURL(url);
-            if (supported) {
-                await Linking.openURL(url);
-            } else {
-                setToastMessage('링크를 열 수 없어요.');
-                setToastType('error');
-                setShowToast(true);
-            }
-        } catch (error) {
-            setToastMessage('링크를 여는 중 오류가 생겼어요.');
             setToastType('error');
             setShowToast(true);
         }
@@ -162,17 +147,6 @@ const TaxInfoDetailScreen = () => {
             <AppText variant="bodyMd" tone="tertiary" style={styles.meta}>{taxInfo.author} · {taxInfo.date}</AppText>
 
             <AppText variant="bodyLg" style={styles.content}>{taxInfo.content}</AppText>
-
-            {taxInfo.relatedLinks.length > 0 ? (
-                <>
-                    <AppText variant="headingSm" style={styles.relatedTitle}>관련 링크</AppText>
-                    <View style={styles.list}>
-                        {taxInfo.relatedLinks.map((l, i) => (
-                            <AppListItem key={i} title={l.title} right={<Ionicons name="open-outline" size={18} color={c.textTertiary} />} onPress={() => openLink(l.url)} />
-                        ))}
-                    </View>
-                </>
-            ) : null}
 
             <AppText variant="headingSm" style={styles.relatedTitle}>관련 세무 정보</AppText>
             <View style={styles.list}>

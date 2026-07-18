@@ -1,7 +1,7 @@
 import React, {useMemo, useState} from 'react';
 import {Modal, StyleSheet, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {WebView, WebViewMessageEvent} from 'react-native-webview';
+import {WebView, type WebViewMessageEvent} from 'react-native-webview';
 import {AppHeader, AppText, AppToast} from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
@@ -135,6 +135,7 @@ const AddressSearchModal: React.FC<AddressSearchModalProps> = ({
                         <AppText variant="bodyMd" tone="secondary">주소 검색을 불러오고 있어요.</AppText>
                     </View>
                 ) : null}
+                {visible ? (
                 <WebView
                     source={{html, baseUrl: 'https://postcode.map.daum.net'}}
                     originWhitelist={['*']}
@@ -148,6 +149,7 @@ const AddressSearchModal: React.FC<AddressSearchModalProps> = ({
                     }}
                     style={styles.webView}
                 />
+                ) : null}
             </SafeAreaView>
         </Modal>
     );

@@ -1,5 +1,5 @@
 import React, {useCallback, useState} from 'react';
-import {StyleSheet, View} from 'react-native';
+import {Share, StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute, useFocusEffect, RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -9,6 +9,7 @@ import {
     AppCard,
     AppHeader,
     AppText,
+    AppToast,
     EmptyState,
     ErrorState,
     LoadingState,
@@ -19,6 +20,7 @@ import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {spacing} from '../../../theme/tokens';
 import {EmployeeDocument, ExpiryStatus, fetchDocuments} from '../services/documentService';
+import contractService from '../../contract/services/contractService';
 
 type Route = RouteProp<{D: {storeId: number; employeeId: number; employeeName?: string}}, 'D'>;
 
@@ -67,6 +69,38 @@ const EmployeeDocumentsScreen: React.FC = () => {
 
     const expiringCount = items.filter(it => it.expiryStatus !== 'OK').length;
 
+    // 서명 여부는 옆의 AppBadge(서명완료/서명대기)가 이미 보여주므로, 제목은 항상 파일명 형태로
+    // 표시한다 — 서명 전 제목을 "서명대기"로 바꾸면 배지와 중복되고 "근로계약서"라는 정보가 사라진다.
+    const contractFileName = (it: EmployeeDocument): string => {
+        if (!it.contractSigned) {
+            return `${employeeName ?? '직원'}_근로계약서.pdf`;
+        }
+        const dateSuffix = (it.contractSignedAt ?? '').slice(0, 10).replace(/-/g, '');
+        return `${employeeName ?? '직원'}_근로계약서_${dateSuffix}.pdf`;
+    };
+
+    const openContractDocument = async (it: EmployeeDocument) => {
+        if (!it.contractId) {
+            return;
+        }
+        try {
+            await contractService.downloadPdfForMaster(storeId, it.contractId);
+            AppToast.success('근로계약서 PDF가 발급됐어요.');
+            const fileName = contractFileName(it);
+            navigation.navigate('PdfPreview', {
+                title: fileName,
+                sub: it.contractSigned && it.contractSignedAt
+                    ? `서명일 ${it.contractSignedAt.slice(0, 10)}`
+                    : '서명 대기 중',
+                onShare: () => {
+                    Share.share({message: `[소담] 근로계약서\n${fileName}`}).catch(() => undefined);
+                },
+            });
+        } catch {
+            AppToast.error('PDF 발급에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        }
+    };
+
     return (
         <ScreenContainer
             scroll
@@ -104,20 +138,33 @@ const EmployeeDocumentsScreen: React.FC = () => {
                     ) : null}
                     <View style={styles.list}>
                         {items.map(it => {
+                            const isContract = it.type === 'LABOR_CONTRACT';
                             const s = STATUS[it.expiryStatus];
                             return (
-                                <AppCard key={it.id} variant="flat">
+                                <AppCard
+                                    key={it.id}
+                                    variant="flat"
+                                    onPress={isContract ? () => openContractDocument(it) : undefined}>
                                     <View style={styles.row}>
                                         <View style={[styles.iconWrap, {backgroundColor: c.surfaceMuted}]}>
                                             <Ionicons name={ICON[it.type] ?? 'folder-outline'} size={20} color={c.textSecondary} />
                                         </View>
                                         <View style={styles.flex}>
-                                            <AppText variant="titleMd" numberOfLines={1}>{it.title}</AppText>
+                                            <AppText variant="titleMd" numberOfLines={1}>
+                                                {isContract ? contractFileName(it) : it.title}
+                                            </AppText>
                                             <AppText variant="caption" tone="tertiary">
                                                 {it.typeLabel}{it.expiresAt ? ` · ~${it.expiresAt}` : ''}
                                             </AppText>
                                         </View>
-                                        <AppBadge label={s.text(it.daysUntilExpiry)} tone={s.tone} />
+                                        {isContract ? (
+                                            <AppBadge
+                                                label={it.contractSigned ? '서명완료' : '서명대기'}
+                                                tone={it.contractSigned ? 'success' : 'warning'}
+                                            />
+                                        ) : (
+                                            <AppBadge label={s.text(it.daysUntilExpiry)} tone={s.tone} />
+                                        )}
                                     </View>
                                 </AppCard>
                             );

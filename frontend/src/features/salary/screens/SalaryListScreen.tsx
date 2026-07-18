@@ -3,6 +3,7 @@ import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {FlatList, RefreshControl, StyleSheet, View} from 'react-native';
 import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {useStoreLiveSync} from '../../../common/hooks/useStoreLiveSync';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {formatMoney} from '../../../common/utils/format';
 import {spacing} from '../../../theme/tokens';
@@ -26,11 +27,9 @@ const STATUS_LABEL: Record<string, string> = {
     CANCELLED: '취소됨',
 };
 
-interface SalaryRow extends PayrollSummary {
-    payrollId: number;
-    status?: string;
-    employeeName?: string;
-}
+// PayrollSummary 는 이미 payrollId/totalPay/status/employeeName/nested period 로 정규화돼 있다
+// (payrollService.listByStore 가 BE PayrollDto[](id/netWage/평평한 startDate·endDate) 를 변환해서 반환).
+type SalaryRow = PayrollSummary;
 
 const SalaryListScreen = () => {
     const navigation = useNavigation<SalaryListScreenNavigationProp>();
@@ -63,14 +62,9 @@ const SalaryListScreen = () => {
         }
         try {
             setError(false);
+            // listByStore 가 이미 BE PayrollDto[] → PayrollSummary[] 정규화까지 마쳐서 반환한다
             const list = await payrollService.listByStore(storeId);
-            const mapped: SalaryRow[] = (Array.isArray(list) ? list : []).map(p => ({
-                ...p,
-                payrollId: p.payrollId ?? 0,
-                status: (p as PayrollSummary & {status?: string}).status,
-                employeeName: (p as PayrollSummary & {employeeName?: string}).employeeName,
-            }));
-            setRows(mapped);
+            setRows(Array.isArray(list) ? list : []);
         } catch (e) {
             console.error('급여 목록을 가져오는 중 오류가 생겼어요:', e);
             setError(true);
@@ -96,6 +90,13 @@ const SalaryListScreen = () => {
             fetchPayrolls(selectedStoreId);
         }, [selectedStoreId, fetchPayrolls]),
     );
+
+    // 화면을 보고 있는 동안 급여 생성/확정/지급이 일어나면 즉시 반영 (사장-직원 동시 조회 동기화)
+    useStoreLiveSync(selectedStoreId ? [selectedStoreId] : [], e => {
+        if (e.type === 'PAYROLL_CHANGED') {
+            fetchPayrolls(selectedStoreId);
+        }
+    });
 
     const handleRefresh = () => {
         setRefreshing(true);

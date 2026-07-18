@@ -62,7 +62,7 @@ public class MasterProfileService {
 
     /** 매장 활성 직원 수. */
     private int activeEmployeeCountOf(Store store) {
-        return employeeStoreRelationRepository.findByStoreAndIsActiveTrue(store).size();
+        return (int) employeeStoreRelationRepository.countByStoreAndIsActiveTrue(store);
     }
 
     /**
@@ -126,11 +126,24 @@ public class MasterProfileService {
     }
 
     /**
-     * 사장이 소유한 모든 매장의 통합 통계 조회
+     * 사장이 소유한 모든 매장의 통합 통계 조회.
+     *
+     * 매장 목록을 아직 조회하지 않은 호출부(예: /api/master/stats)를 위한 편의 오버로드 —
+     * 내부에서 {@link #getStoresByMaster(Long)}로 조회한 뒤 {@link #getCombinedStats(Long, List)}에 위임한다.
+     * 이미 매장 목록을 가진 호출부(예: /api/master/mypage)는 중복 조회를 피하기 위해
+     * {@link #getCombinedStats(Long, List)}를 직접 사용할 것.
      */
     @Transactional(readOnly = true)
     public Map<String, Object> getCombinedStats(Long masterId) {
         List<Store> stores = getStoresByMaster(masterId);
+        return getCombinedStats(masterId, stores);
+    }
+
+    /**
+     * 사장이 소유한 모든 매장의 통합 통계 조회 — 매장 목록을 매개변수로 받아 중복 조회를 방지한다.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getCombinedStats(Long masterId, List<Store> stores) {
         YearMonth thisMonth = YearMonth.now();
 
         int totalStores = stores.size();
@@ -159,7 +172,7 @@ public class MasterProfileService {
                 .orElseThrow(() -> new NoSuchElementException("사장 프로필을 찾을 수 없습니다."));
 
         List<Store> stores = getStoresByMaster(masterId);
-        Map<String, Object> combinedStats = getCombinedStats(masterId);
+        Map<String, Object> combinedStats = getCombinedStats(masterId, stores);
         List<Map<String, Object>> timeOffRequests = timeOffService.getPendingTimeOffsByMaster(masterId).stream()
                 .map(this::convertTimeOffToMap)
                 .collect(Collectors.toList());

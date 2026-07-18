@@ -17,15 +17,17 @@ const PdfPreviewScreen: React.FC = () => {
     const c = useThemeColors();
     const title = route.params?.title ?? '급여명세서.pdf';
     const sub = route.params?.sub ?? '';
+    const onDownload = route.params?.onDownload;
+    const onShare = route.params?.onShare;
 
     return (
         <ScreenContainer
             scroll
-            header={<AppHeader title="PDF 미리보기" onBack={() => navigation.goBack()} actions={[{label: '공유', onPress: () => route.params?.onShare?.()}]} />}
+            header={<AppHeader title="PDF 미리보기" onBack={() => navigation.goBack()} actions={[{label: '공유', onPress: () => onShare?.()}]} />}
             footer={
                 <CtaStack bordered>
-                    <AppButton label="다운로드" onPress={() => route.params?.onDownload?.()} />
-                    <AppButton label="공유하기" variant="secondary" onPress={() => route.params?.onShare?.()} />
+                    {onDownload ? <AppButton label="다운로드" onPress={onDownload} /> : null}
+                    <AppButton label="공유하기" variant={onDownload ? 'secondary' : 'primary'} onPress={() => onShare?.()} />
                 </CtaStack>
             }>
             <AppCard variant="flat" style={[styles.page, {backgroundColor: c.surfaceMuted}]}>

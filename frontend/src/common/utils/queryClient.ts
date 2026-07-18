@@ -75,6 +75,7 @@ export const queryKeys = {
         detail: (storeId: number) => [...queryKeys.store.all, 'detail', storeId] as const,
         employees: (storeId: number) => [...queryKeys.store.all, 'employees', storeId] as const,
         master: (userId: string) => [...queryKeys.store.all, 'master', userId] as const,
+        nfcTags: (storeId: number) => [...queryKeys.store.all, 'nfcTags', storeId] as const,
     },
 
     // 정보 서비스 관련
@@ -90,6 +91,24 @@ export const queryKeys = {
         all: ['qna'] as const,
         questions: () => [...queryKeys.qna.all, 'questions'] as const,
         question: (questionId: number) => [...queryKeys.qna.all, 'question', questionId] as const,
+    },
+
+    // 인증채용(구직) 관련 — 260711_작업통합.md Part 2
+    recruitment: {
+        all: ['recruitment'] as const,
+        me: () => [...queryKeys.recruitment.all, 'me'] as const,
+        store: (storeId: number) => [...queryKeys.recruitment.all, 'store', storeId] as const,
+        // Phase 4 — 사장 리스트(유형 필터별로 캐시 분리, §7.4)
+        storeSeekers: (storeId: number, workType?: string) =>
+            [...queryKeys.recruitment.all, 'store', storeId, 'seekers', workType ?? 'ALL'] as const,
+        // Phase 6 — 매칭 왕복(제안·공고·지원, §15·§19)
+        myOffers: () => [...queryKeys.recruitment.all, 'myOffers'] as const,
+        myPosting: (storeId: number) => [...queryKeys.recruitment.all, 'myPosting', storeId] as const,
+        nearbyPostings: (workType?: string, category?: string) =>
+            [...queryKeys.recruitment.all, 'nearbyPostings', workType ?? 'ALL', category ?? 'ALL'] as const,
+        myApplications: () => [...queryKeys.recruitment.all, 'myApplications'] as const,
+        storeApplications: (storeId: number) =>
+            [...queryKeys.recruitment.all, 'storeApplications', storeId] as const,
     },
 } as const;
 

@@ -66,6 +66,8 @@ spring.security.oauth2.client.registration.kakao:
 
 # 외부 서비스 — 전부 mock/off (API 키 없이 부팅)
 sodam:
+  features:
+    manager-delegation-enabled: true
   integration:
     toss:
       mode: mock
@@ -88,6 +90,10 @@ sodam:
     channel-talk:
       mode: off
       plugin-key: ""
+    electronic-signature:
+      mode: mock
+      provider: naver
+      allowed-return-scheme: sodam
 
 # 국세청 API 테스트 설정
 tax:

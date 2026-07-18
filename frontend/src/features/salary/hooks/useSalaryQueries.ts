@@ -2,7 +2,7 @@ import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {handleQueryError, queryKeys} from '../../../common/utils/queryClient';
 import payrollService, {
     PayrollCalculatePayload,
-    PayrollDetails,
+    PayrollDetailItem,
     PayrollStatusValue,
     PayrollSummary,
 } from '../services/payrollService';
@@ -50,11 +50,29 @@ export const useEmployeePayrolls = (employeeId: number, startDate?: string, endD
         meta: {errorMessage: '직원 급여 기록을 가져오는데 실패했습니다.'},
     });
 
-/** 급여 상세 — GET /api/payroll/{payrollId}/details */
+/** 급여 단건 요약(실수령액/기간/상태) — GET /api/payroll/{payrollId} */
+export const usePayroll = (payrollId: number, enabled = true) =>
+    useQuery({
+        queryKey: [...queryKeys.salary.all, 'summary', payrollId],
+        queryFn: async (): Promise<PayrollSummary> => {
+            try {
+                return await payrollService.getById(payrollId);
+            } catch (error) {
+                handleQueryError(error, 'getById');
+                throw error;
+            }
+        },
+        staleTime: 30 * 60 * 1000,
+        gcTime: 60 * 60 * 1000,
+        enabled: enabled && !!payrollId,
+        meta: {errorMessage: '급여 정보를 가져오는데 실패했습니다.'},
+    });
+
+/** 급여 상세(근무일별 배열) — GET /api/payroll/{payrollId}/details */
 export const usePayrollDetails = (payrollId: number, enabled = true) =>
     useQuery({
         queryKey: [...queryKeys.salary.all, 'details', payrollId],
-        queryFn: async (): Promise<PayrollDetails> => {
+        queryFn: async (): Promise<PayrollDetailItem[]> => {
             try {
                 return await payrollService.getDetails(payrollId);
             } catch (error) {

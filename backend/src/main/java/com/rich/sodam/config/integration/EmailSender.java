@@ -1,32 +1,46 @@
 package com.rich.sodam.config.integration;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+import java.util.List;
 
 /**
- * 이메일 발송 추상화. 현재 mock(stdout) 만 구현.
- *
- * TODO[CONFIRM-C-?]: 운영 출시 직전 실제 메일 전송 구현 (AWS SES 또는 SMTP)
- *   - 활성화 조건: 사업자 도메인 확보 + DKIM/SPF 설정 완료
- *   - 권장: AWS SES (한국 리전) 또는 SendGrid 등 트랜잭셔널 메일 SaaS
- *   - 변경 위치: 본 클래스를 인터페이스로 분리하고 LiveEmailSender 추가
+ * 이메일 발송 추상화. mock(stdout 로그) / live(SMTP) 두 모드 지원.
+ * 모드는 sodam.integration.mail.mode (SODAM_INTEGRATION_MAIL_MODE) 로 전환.
  */
-@Slf4j
-@Component
-public class EmailSender {
+public interface EmailSender {
 
-    public void sendPasswordResetCode(String to, String code) {
-        // TODO[CONFIRM-C-운영]: 실제 메일 발송 — 출시 직전 SES/SendGrid 연동 필요
-        log.info("[MOCK Email] → to={} subject=\"소담 비밀번호 재설정\" code={}", maskEmail(to), code);
-        log.info("[MOCK Email] body: \"인증번호 {} 를 입력해 비밀번호를 재설정해 주세요. 5분간 유효합니다.\"", code);
+    void sendPasswordResetCode(String to, String code);
+
+    void sendWelcome(String to, String name);
+
+    /**
+     * 첨부파일 포함 발송 (세무사 인건비 내역서 송부 등).
+     * 실패해도 예외를 던지지 않고 결과만 반환 — 호출부에서 발송 이력에 상태 기록.
+     */
+    SendResult sendWithAttachments(String to, String subject, String body, List<Attachment> attachments);
+
+    record Attachment(String filename, String contentType, byte[] content) {
     }
 
-    public void sendWelcome(String to, String name) {
-        // TODO[CONFIRM-C-운영]: 실제 메일 발송
-        log.info("[MOCK Email] → to={} subject=\"소담에 오신 걸 환영해요\" name={}", maskEmail(to), name);
+    @Getter
+    @AllArgsConstructor
+    class SendResult {
+        private final boolean success;
+        private final String detail;
+
+        public static SendResult ok() {
+            return new SendResult(true, "ok");
+        }
+
+        public static SendResult fail(String detail) {
+            return new SendResult(false, detail);
+        }
     }
 
-    private String maskEmail(String email) {
+    /** 로그용 이메일 마스킹 (PII 로그 금지 규칙). */
+    static String maskEmail(String email) {
         if (email == null) return "(null)";
         int at = email.indexOf('@');
         if (at <= 1) return "***";

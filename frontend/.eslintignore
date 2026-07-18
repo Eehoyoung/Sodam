@@ -41,3 +41,7 @@ scripts/
 .temp/
 temp/
 tmp/
+
+# Non-product scratch/demo pages (not part of the app bundle)
+_archive/
+prd-usage-pages/

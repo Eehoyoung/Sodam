@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactTestRenderer, { act } from 'react-test-renderer';
-import WelcomeMainScreen from '../../src/features/welcome/screens/WelcomeMainScreen';
+import WelcomeMainScreen from '../../src/features/welcome/screens/SodamLandingScreen';
 import LoginScreen from '../../src/features/auth/screens/LoginScreen';
 
 // We will spy on useNavigation from the (already globally mocked) module in jest.setup.js

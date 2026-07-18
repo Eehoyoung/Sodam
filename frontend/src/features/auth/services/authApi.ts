@@ -24,9 +24,11 @@ export interface JoinRequest {
   password: string;
 }
 
+type PublicSignupGrade = 'PERSONAL' | 'EMPLOYEE' | 'MASTER';
+
 export interface JoinOptions {
   purpose?: 'personal' | 'employee' | 'boss';
-  userGrade?: 'PERSONAL' | 'EMPLOYEE' | 'MASTER';
+  userGrade?: PublicSignupGrade;
   /** 약관 동의 (필수 3종 + 선택 1종). BE JoinDto 매핑. */
   consent?: {
     age: boolean;
@@ -50,9 +52,16 @@ export const authApi = {
     const headers: Record<string, string> = {};
     const purposeSlug = options?.purpose ? toPurposeSlug(options.purpose) : undefined;
     if (purposeSlug) { headers['X-User-Purpose'] = purposeSlug; }
-    if (options?.userGrade) { headers['X-User-Grade'] = options.userGrade; }
-    const body: any = { ...payload };
+    const body: JoinRequest & {
+      purpose?: 'user' | 'employee' | 'master';
+      userGrade?: PublicSignupGrade;
+      ageConfirmed?: boolean;
+      termsAgreed?: boolean;
+      privacyAgreed?: boolean;
+      marketingAgreed?: boolean;
+    } = { ...payload };
     if (purposeSlug) { body.purpose = purposeSlug; }
+    if (options?.userGrade) { body.userGrade = options.userGrade; }
     // BE JoinDto 필수 필드 매핑 (G-A1~G-A4 약관 동의)
     if (options?.consent) {
       body.ageConfirmed = !!options.consent.age;
@@ -90,7 +99,7 @@ export const authApi = {
 
   /** 이메일 사용 가능 여부 확인. available=true 면 가입 가능. */
   async checkEmail(email: string): Promise<{available: boolean}> {
-    const res = await api.get<{data: {available: boolean}}>('/api/auth/email-check', {params: {email}});
+    const res = await api.get<{data: {available: boolean}}>('/api/auth/email-check', {email});
     return res.data.data ?? {available: false};
   },
 

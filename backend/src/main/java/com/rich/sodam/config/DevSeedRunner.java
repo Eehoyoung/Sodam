@@ -165,9 +165,16 @@ public class DevSeedRunner implements CommandLineRunner {
                     : new EmployeeStoreRelation(ep, store);
             rel.setHireDate(LocalDate.now().minusMonths(s.hiresMonthsAgo()));
             rel.setContractedWeeklyDays(s.weeklyDays());
+            // 월급제(정규직) E2E 검증용: emp2 이서준 — 월 220만원, 4대보험 가입(개인 오버라이드).
+            // 매장 정책은 3.3% 이므로 개인별 오버라이드 동작(4대보험 공제 분기)도 함께 검증된다.
+            if ("emp2@sodam.dev".equals(s.email())) {
+                rel.setEmploymentType(com.rich.sodam.domain.type.EmploymentType.MONTHLY_SALARY);
+                rel.setMonthlySalary(2_200_000);
+                rel.setSocialInsuranceEnrolled(true);
+            }
             employeeStoreRelationRepository.save(rel);
         }
-        log.info("DevSeed: 더미 직원 9명 추가 완료 (emp1~9@sodam.dev, 비번=SODAM_DEV_SEED_PASSWORD)");
+        log.info("DevSeed: 더미 직원 9명 추가 완료 (emp1~9@sodam.dev, 비번=SODAM_DEV_SEED_PASSWORD, emp2=월급제 220만)");
     }
 
     private User buildUser(String email, String name, UserGrade grade) {

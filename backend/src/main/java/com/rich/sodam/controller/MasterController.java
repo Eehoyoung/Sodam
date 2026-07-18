@@ -6,11 +6,14 @@ import com.rich.sodam.domain.TimeOff;
 import com.rich.sodam.dto.CombinedStatsDto;
 import com.rich.sodam.dto.MasterMyPageResponseDto;
 import com.rich.sodam.dto.MasterProfileResponseDto;
+import com.rich.sodam.dto.request.TimeOffRejectRequest;
+import com.rich.sodam.dto.response.TimeOffResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.service.MasterProfileService;
 import com.rich.sodam.service.StoreAccessGuard;
 import com.rich.sodam.service.TimeOffService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -50,7 +53,7 @@ public class MasterController {
         Long masterId = principal.getId();
         MasterProfile masterProfile = masterProfileService.getMasterProfile(masterId);
         List<Store> stores = masterProfileService.getStoresByMaster(masterId);
-        Map<String, Object> statsMap = masterProfileService.getCombinedStats(masterId);
+        Map<String, Object> statsMap = masterProfileService.getCombinedStats(masterId, stores);
         CombinedStatsDto combinedStats = new CombinedStatsDto(
                 (int) statsMap.get("totalStores"),
                 (int) statsMap.get("totalEmployees"),
@@ -116,30 +119,33 @@ public class MasterController {
     }
 
     @GetMapping("/timeoff/pending")
-    public ResponseEntity<List<TimeOff>> getPendingTimeOffs(
+    public ResponseEntity<List<TimeOffResponse>> getPendingTimeOffs(
             @AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(timeOffService.getPendingTimeOffsByMaster(principal.getId()));
+        return ResponseEntity.ok(timeOffService.getPendingTimeOffResponsesByMaster(principal.getId()));
     }
 
     @PutMapping("/timeoff/approve")
-    public ResponseEntity<TimeOff> approveTimeOff(
+    public ResponseEntity<TimeOffResponse> approveTimeOff(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam Long timeOffId) {
         guard.assertMasterOwnsTimeOff(principal.getId(), timeOffId);
         return ResponseEntity.ok(timeOffService.approveTimeOffRequest(timeOffId));
     }
 
+    // 사유(reason) 필수 — §60⑤ 시기변경권이 유일한 법적 거부 근거라 입력을 강제해 유도한다.
+    // 본문(JSON)으로 받는다 — 거부 사유는 개인정보를 담을 수 있어 쿼리스트링·서버 로그 노출을 피한다.
     @PutMapping("/timeoff/reject")
-    public ResponseEntity<TimeOff> rejectTimeOff(
+    public ResponseEntity<TimeOffResponse> rejectTimeOff(
             @AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam Long timeOffId) {
+            @RequestParam Long timeOffId,
+            @Valid @RequestBody TimeOffRejectRequest body) {
         guard.assertMasterOwnsTimeOff(principal.getId(), timeOffId);
-        return ResponseEntity.ok(timeOffService.rejectTimeOffRequest(timeOffId));
+        return ResponseEntity.ok(timeOffService.rejectTimeOffRequest(timeOffId, body.getReason()));
     }
 
     // [Compat] RN 경로 호환
     @PutMapping("/timeoff/{timeOffId}/approve")
-    public ResponseEntity<TimeOff> approveTimeOffCompat(
+    public ResponseEntity<TimeOffResponse> approveTimeOffCompat(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long timeOffId) {
         guard.assertMasterOwnsTimeOff(principal.getId(), timeOffId);
@@ -147,10 +153,11 @@ public class MasterController {
     }
 
     @PutMapping("/timeoff/{timeOffId}/reject")
-    public ResponseEntity<TimeOff> rejectTimeOffCompat(
+    public ResponseEntity<TimeOffResponse> rejectTimeOffCompat(
             @AuthenticationPrincipal UserPrincipal principal,
-            @PathVariable Long timeOffId) {
+            @PathVariable Long timeOffId,
+            @Valid @RequestBody TimeOffRejectRequest body) {
         guard.assertMasterOwnsTimeOff(principal.getId(), timeOffId);
-        return ResponseEntity.ok(timeOffService.rejectTimeOffRequest(timeOffId));
+        return ResponseEntity.ok(timeOffService.rejectTimeOffRequest(timeOffId, body.getReason()));
     }
 }

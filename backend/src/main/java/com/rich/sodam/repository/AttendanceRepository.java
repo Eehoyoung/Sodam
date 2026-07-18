@@ -42,6 +42,12 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     /** 온보딩(첫 출근) 판정 — 해당 직원이 해당 매장에 출근 기록이 있는지. */
     boolean existsByEmployeeProfile_IdAndStore_Id(Long employeeId, Long storeId);
 
+    /**
+     * 인증채용 자격(인증) 판정 — 매장 불문 해당 직원이 소담으로 출퇴근을 찍은 적이 있는지
+     * (260711_작업통합.md Part 2 §2 #5). {@code JobSeekingService}(Phase 2)에서 사용 예정.
+     */
+    boolean existsByEmployeeProfile_Id(Long employeeId);
+
     /** 지각·미출근 감지 배치용 — 해당 직원의 해당 매장 기간 내 출근(check-in) 기록 존재 여부. */
     boolean existsByEmployeeProfile_IdAndStore_IdAndCheckInTimeBetween(
             Long employeeId, Long storeId, LocalDateTime start, LocalDateTime end);
@@ -51,6 +57,14 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
      */
     @Query("SELECT a FROM Attendance a WHERE a.employeeProfile = :employeeProfile AND a.checkOutTime IS NULL")
     List<Attendance> findIncompleteAttendances(@Param("employeeProfile") EmployeeProfile employeeProfile);
+
+    /**
+     * 특정 직원의 특정 매장에서 아직 퇴근 처리되지 않은 출근 기록 조회(DB_OPTIMIZATION_PLAN.md Phase 2.5).
+     * {@code checkOut}이 "직원의 가장 최근 기록"이 아니라 "그 매장에서 진행 중인 기록"을 정확히
+     * 특정하기 위해 사용 — 여러 매장에서 근무한 날, 엉뚱한 매장의 진행중 기록이 잘못 종료되는 것을 방지.
+     */
+    List<Attendance> findByEmployeeProfileAndStoreAndCheckOutTimeIsNullOrderByCheckInTimeDesc(
+            EmployeeProfile employeeProfile, Store store);
 
     /**
      * 특정 매장의 특정 날짜의 모든 출퇴근 기록 조회

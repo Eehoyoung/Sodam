@@ -4,7 +4,7 @@
  * 이미 서명한 계약은 서명 완료 배지를 보여주고 CTA 를 숨긴다.
  */
 import React, {useCallback, useState} from 'react';
-import {StyleSheet, View} from 'react-native';
+import {Share, StyleSheet, View} from 'react-native';
 import {NavigationProp, useFocusEffect, useNavigation} from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
@@ -14,6 +14,7 @@ import {
     AppHeader,
     AppListItem,
     AppText,
+    AppToast,
     CtaStack,
     EmptyState,
     ErrorState,
@@ -34,6 +35,7 @@ const MyContractScreen: React.FC = () => {
     const [phase, setPhase] = useState<Phase>('loading');
     const [contracts, setContracts] = useState<LaborContract[]>([]);
     const [selected, setSelected] = useState<LaborContract | null>(null);
+    const [downloadingPdf, setDownloadingPdf] = useState(false);
 
     const load = useCallback(async () => {
         setPhase('loading');
@@ -76,21 +78,50 @@ const MyContractScreen: React.FC = () => {
 
     // 상세 보기
     if (selected) {
+        const downloadPdf = async () => {
+            if (downloadingPdf) {
+                return;
+            }
+            setDownloadingPdf(true);
+            try {
+                await contractService.downloadMyPdf(selected.id);
+                AppToast.success('근로계약서 PDF가 발급됐어요.');
+                const issuedAt = new Date().toISOString().slice(0, 10);
+                navigation.navigate('PdfPreview', {
+                    title: `근로계약서_${issuedAt}.pdf`,
+                    sub: `발급일 ${issuedAt}`,
+                    onShare: () => {
+                        Share.share({message: `[소담] 근로계약서\n발급일 ${issuedAt}`}).catch(() => undefined);
+                    },
+                });
+            } catch {
+                AppToast.error('PDF 발급에 실패했어요. 잠시 후 다시 시도해 주세요.');
+            } finally {
+                setDownloadingPdf(false);
+            }
+        };
         return (
             <ScreenContainer
                 scroll
                 header={<AppHeader title="근로계약서" onBack={() => setSelected(null)} />}
                 footer={
-                    selected.signed ? undefined : (
-                        <CtaStack>
+                    <CtaStack>
+                        {selected.signed || selected.electronicSignatureEnvelopeId === null ? null : (
                             <AppButton
                                 label="내용 확인하고 서명"
                                 onPress={() =>
-                                    navigation.navigate('ContractSign', {contractId: selected.id})
+                                    navigation.navigate('ElectronicSign', {
+                                        envelopeId: selected.electronicSignatureEnvelopeId!,
+                                    })
                                 }
                             />
-                        </CtaStack>
-                    )
+                        )}
+                        <AppButton
+                            label={downloadingPdf ? '발급 중…' : '근로계약서 PDF 발급'}
+                            variant={selected.signed ? 'primary' : 'secondary'}
+                            onPress={downloadPdf}
+                        />
+                    </CtaStack>
                 }>
                 <View style={styles.detailHead}>
                     <AppText variant="headingSm">근로조건을 확인해 주세요</AppText>
@@ -150,7 +181,10 @@ const MyContractScreen: React.FC = () => {
 };
 
 function subtitleFor(c: LaborContract): string {
-    const wage = c.hourlyWage !== null ? `시급 ${c.hourlyWage.toLocaleString('ko-KR')}원` : '시급 미정';
+    // 월급제는 hourlyWage 가 환산 통상시급을 담고 있어 그대로 쓰면 "시급"으로 오라벨링된다.
+    const wage = c.payType === 'SALARY'
+        ? (c.monthlyBaseSalary !== null ? `월급 ${c.monthlyBaseSalary.toLocaleString('ko-KR')}원` : '월급 미정')
+        : (c.hourlyWage !== null ? `시급 ${c.hourlyWage.toLocaleString('ko-KR')}원` : '시급 미정');
     const start = c.startDate ? ` · ${c.startDate} 시작` : '';
     return `${wage}${start}`;
 }

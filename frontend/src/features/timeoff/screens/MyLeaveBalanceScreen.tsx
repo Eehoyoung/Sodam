@@ -13,6 +13,7 @@ import {
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {spacing} from '../../../theme/tokens';
 import myLeaveService, {MyLeaveBalance} from '../services/myLeaveService';
+import {formatConsumedDays as formatDays} from '../types';
 
 /**
  * B2 내 잔여 연차 (E-NEW-03). 직원 본인 전용 읽기·추정.
@@ -84,8 +85,8 @@ const Content: React.FC<{data: MyLeaveBalance}> = ({data}) => {
         <View>
             <HeroNumber
                 label="잔여 연차"
-                value={`${data.remainingDays}일`}
-                sub={`발생 ${data.entitledDays}일 중 ${data.usedDays}일 사용`}
+                value={`${formatDays(data.remainingDays)}일`}
+                sub={`발생 ${formatDays(data.entitledDays)}일 중 ${formatDays(data.usedDays)}일 사용`}
                 accent
             />
 
@@ -96,9 +97,9 @@ const Content: React.FC<{data: MyLeaveBalance}> = ({data}) => {
                     />
                 </View>
                 <View style={styles.legendRow}>
-                    <LegendItem label="발생" value={`${data.entitledDays}일`} />
-                    <LegendItem label="사용" value={`${data.usedDays}일`} />
-                    <LegendItem label="잔여" value={`${data.remainingDays}일`} emphasize />
+                    <LegendItem label="발생" value={`${formatDays(data.entitledDays)}일`} />
+                    <LegendItem label="사용" value={`${formatDays(data.usedDays)}일`} />
+                    <LegendItem label="잔여" value={`${formatDays(data.remainingDays)}일`} emphasize />
                 </View>
             </AppCard>
 

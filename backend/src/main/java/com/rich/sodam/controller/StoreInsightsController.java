@@ -1,8 +1,10 @@
 package com.rich.sodam.controller;
 
 import com.rich.sodam.dto.response.WeeklyInsightsResponse;
+import com.rich.sodam.domain.type.ManagerPermission;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.service.DomainEventService;
 import com.rich.sodam.service.StoreAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * 사장용 주간 인사이트 (A6) — 퍼널 이벤트 집계 기반 매장 활동 요약.
  */
-@MasterOnly
+@EmployeeOrMaster
 @RestController
 @RequestMapping("/api/stores/{storeId}/insights")
 @RequiredArgsConstructor
@@ -35,7 +37,7 @@ public class StoreInsightsController {
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId,
             @RequestParam(defaultValue = "7") int days) {
-        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        storeAccessGuard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.DASHBOARD_VIEW);
         return ResponseEntity.ok(domainEventService.weeklyInsights(storeId, days));
     }
 }

@@ -35,7 +35,8 @@ import policyService from '../../info/services/policyService';
 import SectionCard from '../../../common/components/sections/SectionCard';
 import SectionHeader from '../../../common/components/sections/SectionHeader';
 import RoleTabBar from '../../../common/components/navigation/RoleTabBar';
-import {gradient, radius, shadow, spacing} from '../../../theme/tokens';
+import {gradient, radius, recruit, shadow, spacing} from '../../../theme/tokens';
+import {useManagedStores} from '../../manager/hooks/useManagedStores';
 
 type AttendanceState = 'IDLE' | 'WORKING' | 'DONE' | 'LOADING';
 
@@ -79,6 +80,7 @@ const EmployeeAttendanceHome: React.FC = () => {
     const {user} = useAuth();
     const c = useThemeColors();
     const {width} = useWindowDimensions();
+    const managedStores = useManagedStores();
 
     // 본문 좌우 여백(spacing.lg) + 퀵메뉴 2개 간격(spacing.sm) 제외 후 3등분
     const QUICK_ITEM_W = (width - spacing.lg * 2 - spacing.sm * 2) / 3;
@@ -176,6 +178,7 @@ const EmployeeAttendanceHome: React.FC = () => {
     useFocusEffect(
         useCallback(() => {
             loadStores();
+            managedStores.refetch();
             // 포커스 복귀 시 현재 매장 출퇴근 상태를 항상 최신화한다.
             // (매장이 동일하면 아래 useEffect[selectedStore?.id]가 재실행되지 않아,
             //  사장 승인 출근/퇴근 등 외부 변경 후에도 WORKING/IDLE 이 stale 로 남던 버그 수정.)
@@ -183,7 +186,9 @@ const EmployeeAttendanceHome: React.FC = () => {
                 loadStoreScopedData(selectedStore);
             }
             // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [loadStores, selectedStore?.id, loadStoreScopedData]),
+        // managedStores.refetch is stable; depending on the whole query result would recreate the focus callback.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [loadStores, selectedStore?.id, loadStoreScopedData, managedStores.refetch]),
     );
 
     // 실시간 동기화 — 내 매장의 출퇴근/직원 변경 시(보고 있는 동안) 선택 매장 데이터 즉시 갱신.
@@ -376,9 +381,16 @@ const EmployeeAttendanceHome: React.FC = () => {
     const dateLabel = today.toLocaleDateString('ko-KR', {
         year: 'numeric', month: 'long', day: 'numeric', weekday: 'short',
     });
-    const showAlertStrip = pendingContractCount > 0 || unreadNoticeCount > 0;
+    const pendingDelegation = managedStores.data?.find(store => !store.active && !!store.signatureEnvelopeId);
+    const activeManagedStore = managedStores.data?.find(store => store.active);
+    const showAlertStrip = pendingContractCount > 0 || unreadNoticeCount > 0 || !!pendingDelegation;
 
     const quickMenus: QuickMenuItem[] = [
+        ...(activeManagedStore ? [{
+            key: 'manager', label: '매장 관리', icon: 'shield-checkmark-outline',
+            onPress: () => navigation.navigate('OwnerDashboard', {storeId: activeManagedStore.storeId, managerMode: true}),
+            color: {bg: c.brandPrimarySoft, icon: c.brandPrimary},
+        }] : []),
         {
             key: 'shift', label: '내 스케줄', icon: 'calendar-outline',
             onPress: () => navigation.navigate('MyShift'),
@@ -401,9 +413,33 @@ const EmployeeAttendanceHome: React.FC = () => {
             color: {bg: c.surfaceMint, icon: c.success},
         },
         {
-            key: 'request', label: '내 요청', icon: 'mail-outline',
-            onPress: () => navigation.navigate('RequestStatus'),
-            color: {bg: c.surfaceMuted, icon: c.textSecondary},
+            key: 'timeOffRequest', label: '휴가 신청', icon: 'calendar-clear-outline',
+            onPress: () => {
+                if (!selectedStore) {
+                    AppToast.show('먼저 소속 매장을 선택해 주세요.');
+                    return;
+                }
+                navigation.navigate('TimeOffRequest', {storeId: selectedStore.id});
+            },
+            color: {bg: c.brandPrimarySoft, icon: c.brandPrimary},
+        },
+        {
+            // 인증채용(구직·구인) 진입점 — 260711_작업통합.md Part 2 §18-8·§19.4.
+            // 구 '내 요청'(request) 타일을 키 기반으로 교체(배열 길이·나머지 타일 위치 불변).
+            key: 'recruitment', label: '채용·구직', icon: 'briefcase-outline',
+            onPress: () => navigation.navigate('EmployeeRecruitment'),
+            color: {bg: recruit.primarySoft, icon: recruit.primary},
+        },
+        {
+            key: 'attendanceNotice', label: '지각/조퇴/결근 알리기', icon: 'alert-circle-outline',
+            onPress: () => {
+                if (!selectedStore) {
+                    AppToast.show('먼저 소속 매장을 선택해 주세요.');
+                    return;
+                }
+                navigation.navigate('AttendanceNotice', {storeId: selectedStore.id});
+            },
+            color: {bg: c.warningBg, icon: c.warning},
         },
         {
             key: 'wage', label: '시급 이력', icon: 'trending-up-outline',
@@ -437,7 +473,8 @@ const EmployeeAttendanceHome: React.FC = () => {
             color: {bg: c.surfaceMint, icon: c.success},
         },
         {
-            key: 'swap', label: '대타 지원', icon: 'swap-horizontal-outline',
+            // 인증채용의 '당일 대타'와 혼동 방지를 위해 라벨만 개칭(§18-10) — 동작은 그대로 SwapBoard.
+            key: 'swap', label: '우리 매장 대타', icon: 'swap-horizontal-outline',
             onPress: () => navigation.navigate('SwapBoard' as never),
             color: {bg: c.brandPrimarySoft, icon: c.brandPrimary},
         },
@@ -499,6 +536,18 @@ const EmployeeAttendanceHome: React.FC = () => {
                                 <Ionicons name="document-text-outline" size={13} color={c.warning} />
                                 <AppText variant="caption" weight="700" style={{color: c.warning}}>
                                     계약서 서명 대기 {pendingContractCount}건
+                                </AppText>
+                            </TouchableOpacity>
+                        ) : null}
+                        {pendingDelegation?.signatureEnvelopeId ? (
+                            <TouchableOpacity
+                                style={[styles.alertChip, {backgroundColor: c.warningBg, borderColor: c.warning}]}
+                                onPress={() => navigation.navigate('ElectronicSign', {
+                                    envelopeId: pendingDelegation.signatureEnvelopeId as number,
+                                })}>
+                                <Ionicons name="shield-checkmark-outline" size={13} color={c.warning} />
+                                <AppText variant="caption" weight="700" style={{color: c.warning}}>
+                                    매니저 위임장 서명 대기
                                 </AppText>
                             </TouchableOpacity>
                         ) : null}

@@ -98,7 +98,7 @@ export const RoleTabBar: React.FC<RoleTabBarProps> = ({active}) => {
         busyRef.current = true;
         try {
             const storeId = await resolveMasterStoreId();
-            if (storeId == null) {
+            if (storeId === null) {
                 AppToast.show('먼저 매장을 등록해 주세요.');
                 navigation.navigate('StoreRegistration');
                 return;

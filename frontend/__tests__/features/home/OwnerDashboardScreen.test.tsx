@@ -19,10 +19,17 @@ jest.mock('react-native', () => ({
 }));
 
 const mockNavigate = jest.fn();
-jest.mock('@react-navigation/native', () => ({
-    useNavigation: () => ({navigate: mockNavigate, goBack: jest.fn()}),
-    NavigationContainer: ({children}: any) => children,
-}));
+let mockRouteParams: {storeId: number; managerMode: true} | undefined;
+jest.mock('@react-navigation/native', () => {
+    // 실제 useFocusEffect 처럼 콜백을 렌더 중이 아닌 effect 로 실행해야 무한 렌더를 막을 수 있다.
+    const React = jest.requireActual('react');
+    return {
+        useNavigation: () => ({navigate: mockNavigate, goBack: jest.fn()}),
+        useRoute: () => ({params: mockRouteParams}),
+        useFocusEffect: (cb: () => void) => React.useEffect(cb, []),
+        NavigationContainer: ({children}: any) => children,
+    };
+});
 
 jest.mock('react-native-safe-area-context', () => ({
     SafeAreaView: ({children}: any) => children,
@@ -56,6 +63,19 @@ jest.mock('../../../src/common/utils/api', () => {
     return {__esModule: true, default: api, setOnUnauthorized: jest.fn()};
 });
 
+jest.mock('../../../src/features/manager/hooks/useManagedStores', () => ({
+    useManagedStores: () => ({
+        data: [{
+            storeId: 10,
+            storeName: '소담 광교점',
+            permissions: ['DASHBOARD_VIEW', 'ATTENDANCE_APPROVE', 'STAFF_VIEW'],
+            active: true,
+        }],
+        isLoading: false,
+        refetch: jest.fn(() => Promise.resolve()),
+    }),
+}));
+
 // 실제 토큰 사용 — DS 컴포넌트가 named export(colors/spacing/radius/...)를 쓰므로
 // 부분 모킹 대신 requireActual 로 전체 토큰을 제공한다.
 jest.mock('../../../src/theme/tokens', () => jest.requireActual('../../../src/theme/tokens'));
@@ -74,33 +94,56 @@ const flush = async () => {
 describe('OwnerDashboardScreen', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        mockRouteParams = undefined;
     });
 
-    test('마운트 시 stores + today + month-to-date 호출', async () => {
+    test('매니저 모드는 owner·payroll API를 호출하지 않고 오늘 현황만 조회', async () => {
+        mockRouteParams = {storeId: 10, managerMode: true};
+        apiMock.get.mockResolvedValue({
+            data: {
+                storeId: 10,
+                storeName: '소담 광교점',
+                checkedInCount: 2,
+                totalActiveEmployees: 4,
+                pendingEmployees: ['김직원'],
+            },
+        } as any);
+
+        await act(async () => {
+            ReactTestRenderer.create(<OwnerDashboardScreen />);
+            await flush();
+        });
+
+        const urls = apiMock.get.mock.calls.map(c => c[0]);
+        expect(urls).toContain('/api/store-queries/10/stats/today');
+        expect(urls).not.toContain('/api/stores/master/current');
+        expect(urls.some(url => String(url).includes('payroll'))).toBe(false);
+        expect(urls.some(url => String(url).includes('/stats/dashboard'))).toBe(false);
+    });
+
+    test('마운트 시 stores + 대시보드 합성 엔드포인트 호출(순차 2콜 → 1콜, Phase 9)', async () => {
         apiMock.get.mockImplementation((url: string) => {
             if (url === '/api/stores/master/current') {
                 return Promise.resolve({
                     data: [{id: 10, storeName: '소담 광교점'}],
                 }) as any;
             }
-            if (url.includes('/stats/today')) {
+            if (url.includes('/stats/dashboard')) {
                 return Promise.resolve({
                     data: {
-                        storeId: 10,
-                        storeName: '소담 광교점',
-                        checkedInCount: 3,
-                        totalActiveEmployees: 5,
-                        pendingEmployees: ['김직원'],
-                    },
-                }) as any;
-            }
-            if (url.includes('/stats/payroll/month-to-date')) {
-                return Promise.resolve({
-                    data: {
-                        totalGross: 1000000,
-                        totalNet: 900000,
-                        totalWorkingHours: 100,
-                        daysRemainingInMonth: 10,
+                        today: {
+                            storeId: 10,
+                            storeName: '소담 광교점',
+                            checkedInCount: 3,
+                            totalActiveEmployees: 5,
+                            pendingEmployees: ['김직원'],
+                        },
+                        payroll: {
+                            totalGross: 1000000,
+                            totalNet: 900000,
+                            totalWorkingHours: 100,
+                            daysRemainingInMonth: 10,
+                        },
                     },
                 }) as any;
             }
@@ -117,10 +160,10 @@ describe('OwnerDashboardScreen', () => {
         expect(urls).toEqual(
             expect.arrayContaining([
                 '/api/stores/master/current',
-                '/api/store-queries/10/stats/today',
-                '/api/store-queries/10/stats/payroll/month-to-date',
+                '/api/store-queries/10/stats/dashboard',
             ]),
         );
+        expect(urls).not.toEqual(expect.arrayContaining(['/api/store-queries/10/stats/today']));
         expect(renderer).toBeTruthy();
     });
 
@@ -129,14 +172,22 @@ describe('OwnerDashboardScreen', () => {
             if (url === '/api/stores/master/current') {
                 return Promise.resolve({data: [{id: 10, storeName: '소담 광교점'}]}) as any;
             }
-            if (url.includes('/stats/today')) {
+            if (url.includes('/stats/dashboard')) {
                 return Promise.resolve({
                     data: {
-                        storeId: 10,
-                        storeName: '소담 광교점',
-                        checkedInCount: 0,
-                        totalActiveEmployees: 0,
-                        pendingEmployees: [],
+                        today: {
+                            storeId: 10,
+                            storeName: '소담 광교점',
+                            checkedInCount: 0,
+                            totalActiveEmployees: 0,
+                            pendingEmployees: [],
+                        },
+                        payroll: {
+                            totalGross: 0,
+                            totalNet: 0,
+                            totalWorkingHours: 0,
+                            daysRemainingInMonth: 0,
+                        },
                     },
                 }) as any;
             }
@@ -159,24 +210,22 @@ describe('OwnerDashboardScreen', () => {
             if (url === '/api/stores/master/current') {
                 return Promise.resolve({data: [{id: 10, storeName: '소담 광교점'}]}) as any;
             }
-            if (url.includes('/stats/today')) {
+            if (url.includes('/stats/dashboard')) {
                 return Promise.resolve({
                     data: {
-                        storeId: 10,
-                        storeName: '소담 광교점',
-                        checkedInCount: 3,
-                        totalActiveEmployees: 5,
-                        pendingEmployees: ['김직원', '박직원'],
-                    },
-                }) as any;
-            }
-            if (url.includes('/stats/payroll/month-to-date')) {
-                return Promise.resolve({
-                    data: {
-                        totalGross: 0,
-                        totalNet: 0,
-                        totalWorkingHours: 0,
-                        daysRemainingInMonth: 5,
+                        today: {
+                            storeId: 10,
+                            storeName: '소담 광교점',
+                            checkedInCount: 3,
+                            totalActiveEmployees: 5,
+                            pendingEmployees: ['김직원', '박직원'],
+                        },
+                        payroll: {
+                            totalGross: 0,
+                            totalNet: 0,
+                            totalWorkingHours: 0,
+                            daysRemainingInMonth: 5,
+                        },
                     },
                 }) as any;
             }
@@ -219,14 +268,22 @@ describe('OwnerDashboardScreen', () => {
             if (url === '/api/stores/master/current') {
                 return Promise.resolve({data: [{id: 10, storeName: '소담 광교점'}]}) as any;
             }
-            if (url.includes('/stats/today')) {
+            if (url.includes('/stats/dashboard')) {
                 return Promise.resolve({
                     data: {
-                        storeId: 10,
-                        storeName: '소담 광교점',
-                        checkedInCount: 5,
-                        totalActiveEmployees: 5,
-                        pendingEmployees: [],
+                        today: {
+                            storeId: 10,
+                            storeName: '소담 광교점',
+                            checkedInCount: 5,
+                            totalActiveEmployees: 5,
+                            pendingEmployees: [],
+                        },
+                        payroll: {
+                            totalGross: 0,
+                            totalNet: 0,
+                            totalWorkingHours: 0,
+                            daysRemainingInMonth: 0,
+                        },
                     },
                 }) as any;
             }
@@ -241,5 +298,49 @@ describe('OwnerDashboardScreen', () => {
 
         const texts = renderer!.root.findAllByType('Text').map(t => t.props.children);
         expect(texts).toContain('모든 직원이 출근했어요 ✅');
+    });
+
+    test('"빠르게 하기": 설정 행이 주변 구직자·채용 행으로 교체되고 나머지 3행은 그대로다 (P4 §18-9)', async () => {
+        apiMock.get.mockImplementation((url: string) => {
+            if (url === '/api/stores/master/current') {
+                return Promise.resolve({data: [{id: 10, storeName: '소담 광교점'}]}) as any;
+            }
+            if (url.includes('/stats/dashboard')) {
+                return Promise.resolve({
+                    data: {
+                        today: {storeId: 10, storeName: '소담 광교점', checkedInCount: 0, totalActiveEmployees: 0, pendingEmployees: []},
+                        payroll: {totalGross: 0, totalNet: 0, totalWorkingHours: 0, daysRemainingInMonth: 0},
+                    },
+                }) as any;
+            }
+            return Promise.resolve({data: null}) as any;
+        });
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<OwnerDashboardScreen />);
+            await flush();
+        });
+
+        const texts = renderer!.root.findAllByType('Text').map(t => t.props.children);
+        // 교체된 행
+        expect(texts).toContain('주변 구직자·채용');
+        expect(texts).toContain('반경 4km 인증 구직자 확인');
+        // 폐기된 행은 더 이상 없어야 함
+        expect(texts).not.toContain('설정');
+        expect(texts).not.toContain('알림·계정·매장 관리');
+        // 나머지 3행 라벨은 무변경
+        expect(texts).toContain('직원 추가');
+        expect(texts).toContain('위치·반경 설정');
+        expect(texts).toContain('노무·세무 팁');
+
+        // AppListItem 은 testID 를 host Pressable 에 그대로 스프레드하므로 findAllByProps 는
+        // (컴포지트 + host) 2개가 매치될 수 있다 — onPress 를 가진 host 노드만 골라 호출한다.
+        const matches = renderer!.root.findAllByProps({testID: 'owner-quick-menu-job-seekers'});
+        const host = matches.find(n => typeof n.props.onPress === 'function');
+        act(() => {
+            host!.props.onPress();
+        });
+        expect(mockNavigate).toHaveBeenCalledWith('JobSeekerList', {storeId: 10});
     });
 });

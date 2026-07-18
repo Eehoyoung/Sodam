@@ -19,7 +19,8 @@ import java.time.LocalDateTime;
 @Table(name = "referral", indexes = {
         @Index(name = "idx_referral_code", columnList = "referralCode", unique = true),
         @Index(name = "idx_referral_referrer", columnList = "referrer_user_id"),
-        @Index(name = "idx_referral_referee", columnList = "referee_user_id"),
+        // 한 사람은 한 번만 추천받을 수 있어야 함(리워드 중복 지급 방지, §2.12) — UNIQUE 전환
+        @Index(name = "idx_referral_referee", columnList = "referee_user_id", unique = true),
         @Index(name = "idx_referral_status", columnList = "status")
 })
 @Getter

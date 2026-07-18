@@ -32,7 +32,10 @@ services:
       SPRING_PROFILES_ACTIVE: prod
       SERVER_PORT: 7070
       # DB 연결 — MySQL 컨테이너 호스트
-      DB_URL: jdbc:mysql://sodam-mysql:3306/sodam?serverTimezone=Asia/Seoul&useSSL=false&allowPublicKeyRetrieval=true
+      # rewriteBatchedStatements=true — JDBC 배치 INSERT를 다건 VALUES 하나로 재작성해 네트워크 왕복을
+      # 줄인다(MySQL Connector/J 표준 최적화, 동작 변화 없음). Phase 8 초대형 규모 시더(LoadTestStoreSeeder
+      # 의 JdbcTemplate.batchUpdate)가 이 옵션 없이는 매우 느리다 — 운영에도 이롭도록 전역 적용.
+      DB_URL: jdbc:mysql://sodam-mysql:3306/sodam?serverTimezone=Asia/Seoul&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
       DB_USERNAME: sodam
       DB_PASSWORD: ${SODAM_DB_PASSWORD:-sodam_dev_pass}
       DB_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
@@ -44,6 +47,10 @@ services:
       # PII 암호화 키(AES-256-GCM) — phone·사업자번호 등 개인정보 컬럼 암호화 저장(PIPA §29).
       #   미설정 시 평문 모드(dev/test 허용, 운영 금지). 운영은 .env 에 SODAM_PII_KEY=<랜덤 32바이트 Base64> 주입.
       SODAM_SECURITY_PII_ENCRYPTION_KEY: ${SODAM_PII_KEY:-sodam-dev-pii-key-change-in-production}
+      # PII 블라인드 인덱스(§2.6) HMAC 페퍼 — encryption-key와 반드시 별도 시크릿(키 분리).
+      #   prod 프로필은 미설정 시 부팅을 거부한다(fail-fast) — 이 compose는 로컬용이라 기본값을 둔다.
+      #   운영은 .env 에 SODAM_PII_SEARCH_PEPPER=<랜덤 32바이트 Base64> 주입(encryption-key와 다른 값).
+      SODAM_SECURITY_PII_SEARCH_PEPPER: ${SODAM_PII_SEARCH_PEPPER:-sodam-dev-pii-search-pepper-change-in-production}
       # 단위: 초/일 (yaml token-validity-in-seconds / refresh-token-validity-in-days 와 일치)
       JWT_TOKEN_VALIDITY_SECONDS: 3600
       JWT_REFRESH_VALIDITY_DAYS: 7
@@ -63,10 +70,20 @@ services:
       # 타임존
       TZ: Asia/Seoul
       JAVA_OPTS: "-XX:+UseG1GC -XX:MaxRAMPercentage=75"
-      # 운영 yml 부재 fallback — actuator health 노출 + Hibernate 스키마 자동 생성
+      # 운영 yml 부재 fallback — actuator health 노출
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
       MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: when-authorized
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      # DB_OPTIMIZATION_PLAN.md Phase 3(2026-07-07 사용자 확정, 이 계획서의 다른 모든 Phase 완료 후 착수) —
+      # 로컬 docker-compose도 운영과 동일하게 Flyway가 스키마를 관리하도록 전환한다. 기존
+      # SPRING_JPA_HIBERNATE_DDL_AUTO=update는 Flyway를 완전히 우회해 V파일 누락을 육안으로 확인하기
+      # 어렵게 만들었다(§2.3) — validate로 전환해 "엔티티와 스키마가 어긋나면 부팅 실패"로 즉시 드러나게
+      # 한다. 기존 로컬 볼륨은 ddl-auto=update로 누적된 상태라 flyway_schema_history가 없으므로
+      # baseline-on-migrate + baseline-version으로 첫 부팅 시 자동 baseline한다(V51까지 이미 반영된
+      # 상태로 간주 — 신규 V파일은 V52부터).
+      DDL_AUTO: validate
+      FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+      SPRING_FLYWAY_BASELINE_VERSION: "51"
     ports:
       - "${SODAM_BE_PORT:-7070}:7070"
     volumes:
@@ -100,6 +117,12 @@ services:
       - --max-connections=200
       - --slow-query-log=1
       - --long-query-time=2
+      # DB_OPTIMIZATION_PLAN.md Phase 8 — MySQL 기본값(128MB)은 로컬 개발 전용 디폴트라 부하테스트
+      # 결과가 디스크 I/O 병목에 파묻힌다. 실제 운영 인스턴스 사양이 아직 확정되지 않아, 소상공인
+      # SaaS 초기 규모(2 vCPU/4GB급 관리형 DB 인스턴스를 가정)에서 통상적인 "물리 메모리의 50~70%"
+      # 가이드라인을 적용해 1GB로 설정했다 — 실제 운영 인스턴스 스펙이 정해지면 이 값을 그에 맞춰
+      # 재조정할 것(가정값이며 확정 사양 아님).
+      - --innodb-buffer-pool-size=1073741824
     ports:
       - "${SODAM_DB_PORT:-13306}:3306"
     volumes:

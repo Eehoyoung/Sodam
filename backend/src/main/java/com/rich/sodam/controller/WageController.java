@@ -45,7 +45,7 @@ public class WageController {
         // 사장이 자기 매장에 소속된 직원의 시급만 변경 가능
         guard.assertMasterOwnsStore(principal.getId(), wageDto.getStoreId());
         guard.assertEmployeeInStore(wageDto.getEmployeeId(), wageDto.getStoreId());
-        storeManagementService.updateEmployeeWage(wageDto);
+        storeManagementService.updateEmployeeWage(wageDto, principal.getId());
         return ResponseEntity.ok().build();
     }
 
@@ -82,9 +82,7 @@ public class WageController {
             @Parameter(description = "매장 ID", required = true) @PathVariable Long storeId) {
         // 본인 시급 조회 OR 사장이 자기 매장 직원 시급 조회
         boolean isMaster = principal.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_MASTER")
-                        || a.getAuthority().equals("ROLE_MANAGER")
-                        || a.getAuthority().equals("ROLE_BOSS"));
+                .anyMatch(a -> a.getAuthority().equals("ROLE_MASTER"));
         guard.assertCanViewEmployee(principal.getId(), employeeId, isMaster);
         if (isMaster) {
             guard.assertMasterOwnsStore(principal.getId(), storeId);
@@ -120,7 +118,7 @@ public class WageController {
             @Parameter(description = "사용자 지정 시급")
             @RequestParam(required = false) Integer customHourlyWage) {
         guard.assertMasterOwnsStore(principal.getId(), storeId);
-        storeManagementService.assignUserToStoreAsEmployee(employeeId, storeId);
-        return ResponseEntity.ok().build();
+        throw new org.springframework.security.access.AccessDeniedException(
+                "직원 등록은 초대 수락 또는 매장 코드 본인 가입으로만 가능합니다.");
     }
 }

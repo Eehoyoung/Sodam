@@ -25,6 +25,7 @@ import RoleTabBar from '../../../common/components/navigation/RoleTabBar';
 import SectionCard from '../../../common/components/sections/SectionCard';
 import SectionHeader from '../../../common/components/sections/SectionHeader';
 import {fetchStoreApprovals} from '../../attendance/services/attendanceApprovalService';
+import timeOffService from '../services/timeOffService';
 
 interface MasterMyPageScreenProps {
     navigation: NavigationProp<any>;
@@ -83,6 +84,7 @@ export default function MasterMyPageScreen({navigation}: MasterMyPageScreenProps
     const [laborInfo, setLaborInfo] = useState<LaborInfo | null>(null);
     const [refreshing, setRefreshing] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
+    const [timeOffPendingCount, setTimeOffPendingCount] = useState(0);
     const [masterInfo, setMasterInfo] = useState({
         name: '',
         totalStores: 0,
@@ -137,6 +139,12 @@ export default function MasterMyPageScreen({navigation}: MasterMyPageScreenProps
                     setPendingCount(Array.isArray(pending) ? pending.length : 0);
                 } catch {setPendingCount(0);}
             }
+
+            // 대기 중인 휴가 신청 건수(본인 소유 전 매장 통합)
+            try {
+                const pendingTimeOffs = await timeOffService.fetchPendingTimeOffs();
+                setTimeOffPendingCount(pendingTimeOffs.length);
+            } catch {setTimeOffPendingCount(0);}
 
             try {
                 const policyDtos: any[] = await policyService.getPoliciesByCategory('ALL');
@@ -232,6 +240,12 @@ export default function MasterMyPageScreen({navigation}: MasterMyPageScreenProps
             badge: pendingCount > 0 ? (pendingCount > 9 ? '9+' : String(pendingCount)) : undefined,
         },
         {
+            key: 'timeOffApproval', label: '휴가 승인', icon: 'umbrella-outline',
+            onPress: () => navigation.navigate('TimeOffApproval'),
+            color: {bg: c.surfaceMint, icon: c.success},
+            badge: timeOffPendingCount > 0 ? (timeOffPendingCount > 9 ? '9+' : String(timeOffPendingCount)) : undefined,
+        },
+        {
             key: 'dailySales', label: '매출 입력', icon: 'cash-outline',
             onPress: requireStore(() => navigation.navigate('DailySales', {storeId: primaryStoreId})),
             color: {bg: c.surfaceMint, icon: c.attendanceCheckedIn},
@@ -245,6 +259,11 @@ export default function MasterMyPageScreen({navigation}: MasterMyPageScreenProps
             key: 'laborRisk', label: '노무 리스크', icon: 'shield-checkmark-outline',
             onPress: requireStore(() => navigation.navigate('LaborRisk', {storeId: primaryStoreId})),
             color: {bg: c.errorBg, icon: c.error},
+        },
+        {
+            key: 'attendanceIrregularity', label: '지각/조퇴/결근', icon: 'alert-circle-outline',
+            onPress: requireStore(() => navigation.navigate('AttendanceIrregularities', {storeId: primaryStoreId})),
+            color: {bg: c.warningBg, icon: c.warning},
         },
         {
             key: 'swapRequests', label: '대타 구하기', icon: 'swap-horizontal-outline',
@@ -315,7 +334,7 @@ export default function MasterMyPageScreen({navigation}: MasterMyPageScreenProps
     };
 
     const nameInitial = (user?.name ?? masterInfo.name ?? '사').charAt(0);
-    const showAlertStrip = pendingCount > 0;
+    const showAlertStrip = pendingCount > 0 || timeOffPendingCount > 0;
 
     return (
         <ScreenContainer padded={false} footer={<RoleTabBar active="home" />}>
@@ -374,6 +393,16 @@ export default function MasterMyPageScreen({navigation}: MasterMyPageScreenProps
                                 미처리 근태 확인
                             </AppText>
                         </TouchableOpacity>
+                        {timeOffPendingCount > 0 ? (
+                            <TouchableOpacity
+                                style={[styles.alertChip, {backgroundColor: c.surfaceMint, borderColor: c.success}]}
+                                onPress={() => navigation.navigate('TimeOffApproval')}>
+                                <Ionicons name="umbrella-outline" size={13} color={c.success} />
+                                <AppText variant="caption" weight="700" style={{color: c.success}}>
+                                    휴가 승인 {timeOffPendingCount}건 대기
+                                </AppText>
+                            </TouchableOpacity>
+                        ) : null}
                     </ScrollView>
                 )}
 

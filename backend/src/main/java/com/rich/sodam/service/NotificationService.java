@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.Map;
@@ -133,9 +135,61 @@ public class NotificationService {
                 .build());
     }
 
-    @org.springframework.transaction.annotation.Transactional
+    /**
+     * 채용 제안 수신(§15.4, 260711_작업통합.md Part 2) — 직원에게.
+     */
+    @Async
+    public void notifyJobOfferReceived(Long targetUserId, String storeName) {
+        push(targetUserId, PushMessage.builder()
+                .title("채용 제안 도착")
+                .body(String.format("%s에서 채용 제안을 보냈어요. 확인해 보세요.", storeName))
+                .deepLink("sodam://job-offers")
+                .data(Map.of("type", "JOB_OFFER_RECEIVED"))
+                .build());
+    }
+
+    /**
+     * 채용 제안 수락/거절(§15.4) — 사장에게.
+     */
+    @Async
+    public void notifyJobOfferResponded(Long ownerUserId, String targetName, boolean accepted) {
+        push(ownerUserId, PushMessage.builder()
+                .title(accepted ? "채용 제안 수락" : "채용 제안 거절")
+                .body(String.format("%s 님이 채용 제안을 %s어요.", targetName, accepted ? "수락했" : "거절했"))
+                .deepLink("sodam://job-offers")
+                .data(Map.of("type", accepted ? "JOB_OFFER_ACCEPTED" : "JOB_OFFER_DECLINED"))
+                .build());
+    }
+
+    /**
+     * 구인 공고 지원 발생(§19.3, 260711_작업통합.md Part 2) — 사장에게.
+     */
+    @Async
+    public void notifyJobApplicationReceived(Long ownerUserId, String applicantName, String storeName) {
+        push(ownerUserId, PushMessage.builder()
+                .title("새 지원자 도착")
+                .body(String.format("%s 매장에 %s 님이 지원했어요.", storeName, applicantName))
+                .deepLink("sodam://job-applications")
+                .data(Map.of("type", "JOB_APPLICATION_RECEIVED"))
+                .build());
+    }
+
+    /**
+     * 구인 공고 지원 수락/거절(§19.3) — 지원자(직원)에게.
+     */
+    @Async
+    public void notifyJobApplicationResponded(Long applicantUserId, String storeName, boolean accepted) {
+        push(applicantUserId, PushMessage.builder()
+                .title(accepted ? "지원 수락" : "지원 거절")
+                .body(String.format("%s 매장에서 지원을 %s어요.", storeName, accepted ? "수락했" : "거절했"))
+                .deepLink("sodam://job-applications")
+                .data(Map.of("type", accepted ? "JOB_APPLICATION_ACCEPTED" : "JOB_APPLICATION_DECLINED"))
+                .build());
+    }
+
+    @Transactional
     public void push(Long userId, PushMessage message) {
-        // 1) 알림 이력 적재 (E-501 알림 센터용)
+        // 1) 알림 이력 적재 (E-501 알림 센터용) — 트랜잭션 일부이므로 호출측이 롤백되면 함께 롤백된다.
         try {
             User user = userRepository.findById(userId).orElse(null);
             if (user != null) {
@@ -144,10 +198,24 @@ public class NotificationService {
                         user, cat, message.getTitle(), message.getBody(), message.getDeepLink()));
             }
         } catch (Exception e) {
-            log.warn("알림 inbox 적재 실패 userId={} reason={}", userId, e.getMessage());
+            log.warn("알림 inbox 적재 실패 userId={} exceptionType={}", userId, e.getClass().getSimpleName());
         }
 
-        // 2) 푸시 발송
+        // 2) 푸시 발송 — 되돌릴 수 없는 외부 부작용이므로 트랜잭션 afterCommit 에서만 실행한다.
+        // 여기서 바로 보내면 호출측 트랜잭션이 이후 롤백돼도 이미 발송된 알림은 취소할 수 없다.
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    sendPush(userId, message);
+                }
+            });
+        } else {
+            sendPush(userId, message);
+        }
+    }
+
+    private void sendPush(Long userId, PushMessage message) {
         List<DeviceToken> tokens = deviceTokenRepository.findByUser_Id(userId);
         if (tokens.isEmpty()) {
             log.debug("푸시 대상 디바이스 없음 userId={}", userId);

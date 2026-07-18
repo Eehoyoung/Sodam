@@ -1,4 +1,5 @@
 import api from '../../../common/utils/api';
+import type {TimeOffCreatePayload, TimeOffResponse} from '../types';
 
 /**
  * 직원 본인 잔여 연차 (E-NEW-03).
@@ -32,6 +33,15 @@ async function getMyLeaveBalance(): Promise<MyLeaveBalance> {
   };
 }
 
-export const myLeaveService = {getMyLeaveBalance};
+/**
+ * 직원 본인 휴가 셀프 신청.
+ * BE: POST /api/timeoff/self → TimeOffResponse (leaveType/unit 생략 시 ANNUAL/FULL_DAY).
+ */
+async function createTimeOffRequest(payload: TimeOffCreatePayload): Promise<TimeOffResponse> {
+  const res = await api.post<TimeOffResponse>('/api/timeoff/self', payload);
+  return res.data;
+}
+
+export const myLeaveService = {getMyLeaveBalance, createTimeOffRequest};
 
 export default myLeaveService;

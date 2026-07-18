@@ -10,15 +10,15 @@ package com.rich.sodam.dto.response;
  * 화면에 반드시 노출한다.</p>
  *
  * @param entitledDays          발생 연차일수(추정)
- * @param usedDays              승인된 휴가 사용일수
- * @param remainingDays         잔여 연차일수(발생 − 사용, 음수면 0)
+ * @param usedDays              승인된 휴가 사용일수(반차 0.5·시간단위 환산 포함 — 소수 가능)
+ * @param remainingDays         잔여 연차일수(발생 − 사용, 음수면 0. 소수 가능)
  * @param fiveOrMoreApplicable  5인 이상 사업장 여부(연차 적용 대상)
  * @param disclaimer            면책 문구(참고용 추정 안내)
  */
 public record MyLeaveBalanceDto(
         int entitledDays,
-        int usedDays,
-        int remainingDays,
+        double usedDays,
+        double remainingDays,
         boolean fiveOrMoreApplicable,
         String disclaimer
 ) {

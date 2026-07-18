@@ -4,7 +4,7 @@ import {Share, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
-import payrollService, {PayrollDetails} from '../services/payrollService';
+import payrollService, {PayrollDetailItem, PayrollSummary} from '../services/payrollService';
 import {formatMoney} from '../../../common/utils/format';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {spacing} from '../../../theme/tokens';
@@ -20,6 +20,9 @@ interface Props {
 /**
  * 29 SalaryDetail — v3 토스식.
  * 실수령액(HeroNumber) + 상세 항목 리스트. 하단 CTA(명세서 공유). 상태/ testID 보존.
+ *
+ * [FE_BE_SCHEMA_GAP §1-1] GET /api/payroll/{payrollId}/details 는 근무일별 배열(PayrollDetailDto[])만
+ * 반환하고 실수령액/기간 같은 요약 필드가 없다. 요약은 GET /api/payroll/{payrollId} 로 별도 조회한다.
  */
 const SalaryDetailScreen: React.FC<Props> = ({route}) => {
     const payrollId = route?.params?.payrollId ?? null;
@@ -28,7 +31,8 @@ const SalaryDetailScreen: React.FC<Props> = ({route}) => {
 
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
-    const [details, setDetails] = useState<PayrollDetails | null>(null);
+    const [summary, setSummary] = useState<PayrollSummary | null>(null);
+    const [items, setItems] = useState<PayrollDetailItem[]>([]);
 
     useEffect(() => {
         if (!payrollId || typeof payrollId !== 'number' || payrollId <= 0) {
@@ -41,11 +45,15 @@ const SalaryDetailScreen: React.FC<Props> = ({route}) => {
             setLoading(true);
             setError(null);
             try {
-                const res = await payrollService.getDetails(payrollId);
+                const [summaryRes, itemsRes] = await Promise.all([
+                    payrollService.getById(payrollId),
+                    payrollService.getDetails(payrollId),
+                ]);
                 if (!mounted) {
                     return;
                 }
-                setDetails(res ?? null);
+                setSummary(summaryRes ?? null);
+                setItems(Array.isArray(itemsRes) ? itemsRes : []);
             } catch (e: any) {
                 if (!mounted) {
                     return;
@@ -85,7 +93,7 @@ const SalaryDetailScreen: React.FC<Props> = ({route}) => {
             </ScreenContainer>
         );
     }
-    if (!details) {
+    if (!summary) {
         return (
             <ScreenContainer header={header} testID="salary-detail-empty">
                 <ErrorState glyph="∅" title="표시할 데이터가 없어요" />
@@ -93,20 +101,19 @@ const SalaryDetailScreen: React.FC<Props> = ({route}) => {
         );
     }
 
-    const items = details.items ?? [];
-    const periodLabel = details.period ? `${details.period.startDate} ~ ${details.period.endDate}` : undefined;
+    const periodLabel = summary.period ? `${summary.period.startDate} ~ ${summary.period.endDate}` : undefined;
 
     const handleShare = () => {
         // eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined
-        const total = details.totalPay != null ? formatMoney(details.totalPay) : '-';
+        const total = summary.totalPay != null ? formatMoney(summary.totalPay) : '-';
         Share.share({
-            message: `[소담] 급여 명세서\n근로자 ${details.employeeId} · 매장 ${details.storeId}\n${periodLabel ?? ''}\n실수령액 ${total}`.trim(),
+            message: `[소담] 급여 명세서\n근로자 ${summary.employeeId} · 매장 ${summary.storeId}\n${periodLabel ?? ''}\n실수령액 ${total}`.trim(),
         }).catch(() => undefined);
     };
 
     const openPreview = () => {
         navigation.navigate('PdfPreview', {
-            title: `급여명세서_${details.employeeId}.pdf`,
+            title: `급여명세서_${summary.employeeId}.pdf`,
             sub: periodLabel,
             onShare: handleShare,
         });
@@ -125,9 +132,9 @@ const SalaryDetailScreen: React.FC<Props> = ({route}) => {
             }>
             <View style={styles.heroBlock}>
                 <HeroNumber
-                    label={`근로자 ${details.employeeId} · 매장 ${details.storeId}`}
+                    label={`근로자 ${summary.employeeName ?? summary.employeeId} · 매장 ${summary.storeName ?? summary.storeId}`}
                     // eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined
-                    value={details.totalPay != null ? formatMoney(details.totalPay) : '-'}
+                    value={summary.totalPay != null ? formatMoney(summary.totalPay) : '-'}
                     sub={periodLabel}
                     accent
                 />
@@ -135,11 +142,11 @@ const SalaryDetailScreen: React.FC<Props> = ({route}) => {
 
             <AppCard variant="warm" style={styles.summary}>
                 {/* eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined */}
-                {details.totalHours != null ? (
-                    <Row label="총 근무시간" value={`${details.totalHours}h`} />
+                {summary.totalHours != null ? (
+                    <Row label="총 근무시간" value={`${summary.totalHours}h`} />
                 ) : null}
                 {/* eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined */}
-                {details.totalPay != null ? <Row label="실수령액" value={formatMoney(details.totalPay)} highlight /> : null}
+                {summary.totalPay != null ? <Row label="실수령액" value={formatMoney(summary.totalPay)} highlight /> : null}
             </AppCard>
 
             <AppText variant="titleMd" style={styles.subtitle}>상세 항목</AppText>
@@ -155,11 +162,11 @@ const SalaryDetailScreen: React.FC<Props> = ({route}) => {
                                 idx < items.length - 1 ? {borderBottomWidth: 1, borderBottomColor: c.divider} : null,
                             ]}>
                             <View style={styles.itemLabel}>
-                                <AppText variant="bodyMd" weight="600" numberOfLines={1}>{String(it.date)}</AppText>
-                                <AppText variant="caption" tone="tertiary">{it.hours}h</AppText>
+                                <AppText variant="bodyMd" weight="600" numberOfLines={1}>{String(it.workDate)}</AppText>
+                                <AppText variant="caption" tone="tertiary">{it.totalHours ?? 0}h</AppText>
                             </View>
                             <AppText variant="titleMd" weight="700" numberOfLines={1} style={styles.itemValue}>
-                                {formatMoney(Number(it.pay) || 0)}
+                                {formatMoney(Number(it.dailyWage) || 0)}
                             </AppText>
                         </View>
                     ))}

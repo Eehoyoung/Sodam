@@ -3,14 +3,12 @@ export type RootStackParamList = {
 };
 
 import React, {useEffect, useState} from 'react';
-import {Linking, Share, StyleSheet, View} from 'react-native';
+import {Share, StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {Toast} from '../../../common/components';
 import {
-    AppButton,
-    AppCard,
     AppHeader,
     AppListItem,
     AppText,
@@ -20,6 +18,7 @@ import {
 } from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
+import policyService from '../services/policyService';
 
 interface PolicyDetail {
     id: number;
@@ -27,17 +26,14 @@ interface PolicyDetail {
     date: string;
     content: string;
     department: string;
-    applicationPeriod: string;
-    eligibility: string;
-    benefits: string;
-    applicationLink: string;
 }
 
 type PolicyDetailScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'PolicyDetail'>;
 
 /**
  * 34 PolicyDetail — 확정 시안.
- * 정책 정보 상세. fetch/bookmark/share/신청링크 로직 보존.
+ * 정책 정보 상세. GET /api/policy-info/{id}(policyService.getPolicyById) 실API 연동.
+ * BE(PolicyInfoResponseDto)에 신청기간/지원대상/지원내용/신청링크 필드가 없어 해당 UI는 제거.
  */
 const PolicyDetailScreen = () => {
     const navigation = useNavigation<PolicyDetailScreenNavigationProp>();
@@ -53,30 +49,39 @@ const PolicyDetailScreen = () => {
     const [toastType, setToastType] = useState<'success' | 'error' | 'info' | 'warning'>('info');
 
     useEffect(() => {
+        let mounted = true;
         const fetchPolicy = async () => {
             try {
-                setTimeout(() => {
-                    setPolicy({
-                        id: policyId,
-                        title: '2024년 소상공인 디지털 전환 지원 사업 안내',
-                        date: '2024-05-15',
-                        content: '소상공인의 디지털 전환을 지원하기 위한 2024년 지원 사업을 안내드립니다. 본 사업은 소상공인의 경쟁력 강화와 디지털 역량 향상을 목표로 합니다.',
-                        department: '중소벤처기업부',
-                        applicationPeriod: '2024년 6월 1일 ~ 2024년 7월 31일',
-                        eligibility: '연 매출 3억원 이하의 소상공인 (사업자등록증 보유 필수)',
-                        benefits: '1. 디지털 전환 컨설팅 지원 (최대 100만원)\n2. 온라인 판로 구축 지원 (최대 300만원)\n3. 디지털 기기 도입 지원 (최대 200만원)\n4. 디지털 마케팅 교육 제공',
-                        applicationLink: 'https://www.mss.go.kr/site/smba/main.do',
-                    });
-                    setLoading(false);
-                }, 1000);
+                setLoading(true);
+                const detail = await policyService.getPolicyById(String(policyId));
+                if (!mounted) {
+                    return;
+                }
+                setPolicy({
+                    id: Number(detail.id),
+                    title: detail.title,
+                    date: new Date(detail.publishDate).toISOString().slice(0, 10),
+                    content: detail.content,
+                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty-string author should fall back to default, so ?? would be wrong
+                    department: detail.author || '소담 정책팀',
+                });
             } catch (error) {
+                if (!mounted) {
+                    return;
+                }
                 setToastMessage('정보를 불러오는 중 오류가 생겼어요.');
                 setToastType('error');
                 setShowToast(true);
-                setLoading(false);
+            } finally {
+                if (mounted) {
+                    setLoading(false);
+                }
             }
         };
         fetchPolicy();
+        return () => {
+            mounted = false;
+        };
     }, [policyId]);
 
     const toggleBookmark = () => {
@@ -92,36 +97,11 @@ const PolicyDetailScreen = () => {
                 return;
             }
             await Share.share({
-                message: `${policy.title}\n\n${policy.content}\n\n신청 기간: ${policy.applicationPeriod}\n\n소담 앱에서 더 보기`,
+                message: `${policy.title}\n\n${policy.content.substring(0, 100)}...\n\n소담 앱에서 더 보기`,
                 title: policy.title,
             });
         } catch (error) {
             setToastMessage('공유 중 오류가 생겼어요.');
-            setToastType('error');
-            setShowToast(true);
-        }
-    };
-
-    const openApplicationLink = async () => {
-        if (!policy?.applicationLink) {
-            return;
-        }
-        // 보안: 서버 응답 변조 시 tel:/임의 스킴 실행 방지 — http(s) 만 허용
-        if (!/^https?:\/\//i.test(policy.applicationLink)) {
-            setToastMessage('안전하지 않은 링크예요.');
-            return;
-        }
-        try {
-            const supported = await Linking.canOpenURL(policy.applicationLink);
-            if (supported) {
-                await Linking.openURL(policy.applicationLink);
-            } else {
-                setToastMessage('링크를 열 수 없어요.');
-                setToastType('error');
-                setShowToast(true);
-            }
-        } catch (error) {
-            setToastMessage('링크를 여는 중 오류가 생겼어요.');
             setToastType('error');
             setShowToast(true);
         }
@@ -160,23 +140,12 @@ const PolicyDetailScreen = () => {
     }
 
     return (
-        <ScreenContainer
-            scroll
-            header={header}
-            footer={
-                <View style={styles.footer}>
-                    <AppButton label="신청하기" onPress={openApplicationLink} />
-                </View>
-            }>
+        <ScreenContainer scroll header={header}>
             <AppText variant="caption" tone="brand" weight="800" style={styles.kicker}>{policy.department}</AppText>
             <AppText variant="headingLg" style={styles.title}>{policy.title}</AppText>
             <AppText variant="bodyMd" tone="tertiary" style={styles.meta}>등록일 {policy.date}</AppText>
 
             <AppText variant="bodyLg" style={styles.content}>{policy.content}</AppText>
-
-            <InfoSection title="신청 기간" body={policy.applicationPeriod} />
-            <InfoSection title="지원 대상" body={policy.eligibility} />
-            <InfoSection title="지원 내용" body={policy.benefits} />
 
             <AppText variant="headingSm" style={styles.relatedTitle}>관련 정책</AppText>
             <View style={styles.list}>
@@ -190,23 +159,13 @@ const PolicyDetailScreen = () => {
     );
 };
 
-const InfoSection: React.FC<{title: string; body: string}> = ({title, body}) => (
-    <AppCard variant="plain" style={styles.infoCard}>
-        <AppText variant="titleMd">{title}</AppText>
-        <AppText variant="bodyMd" tone="secondary" style={styles.infoBody}>{body}</AppText>
-    </AppCard>
-);
-
 const styles = StyleSheet.create({
     kicker: {marginTop: spacing.xs},
     title: {marginTop: spacing.sm},
     meta: {marginTop: spacing.md},
     content: {marginTop: spacing.xxl, lineHeight: 28},
-    infoCard: {marginTop: spacing.md},
-    infoBody: {marginTop: spacing.xs, lineHeight: 22},
     relatedTitle: {marginTop: spacing.xxxl, marginBottom: spacing.md},
     list: {gap: spacing.sm},
-    footer: {paddingHorizontal: spacing.xxl, paddingTop: spacing.md, paddingBottom: spacing.sm},
 });
 
 export default PolicyDetailScreen;

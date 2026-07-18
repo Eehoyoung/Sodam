@@ -77,6 +77,8 @@ jwt:
 # dev 프로필: 전부 mock 으로 동작 → API 키 없이 부팅 가능
 # =============================================================================
 sodam:
+  features:
+    manager-delegation-enabled: true
   integration:
     toss:
       mode: mock              # mock | live
@@ -99,6 +101,11 @@ sodam:
     channel-talk:
       mode: off
       plugin-key: ""
+      electronic-signature:
+        mode: mock
+        provider: ${BAROCERT_PROVIDER:naver}
+        allowed-return-scheme: ${BAROCERT_ALLOWED_RETURN_SCHEME:sodam}
+        worker-enabled: true
 
 logging:
   level:

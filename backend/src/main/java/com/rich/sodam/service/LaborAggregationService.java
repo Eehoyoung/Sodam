@@ -1,7 +1,6 @@
 package com.rich.sodam.service;
 
 import com.rich.sodam.core.payroll.constant.LaborStandards;
-import com.rich.sodam.core.payroll.leave.AnnualLeaveCalculator;
 import com.rich.sodam.core.payroll.severance.SeveranceCalculator;
 import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.Payroll;
@@ -26,7 +25,7 @@ import java.util.NoSuchElementException;
  * 인건비·연차·퇴직금 집계뷰. 기존 급여/출퇴근 데이터 위에서 읽기 전용 파생 지표를 만든다.
  * (수익화 확정안 §9: 퇴직금·연차·인건비비율 집계뷰 — PRO 대시보드 가치)
  *
- * 모든 산식은 SRP 계산기({@link AnnualLeaveCalculator}, {@link SeveranceCalculator})에 위임하고
+ * 모든 산식은 SRP 계산기({@link AnnualLeaveEntitlementResolver}, {@link SeveranceCalculator})에 위임하고
  * 여기서는 데이터 수집·추정 입력만 담당한다. 결과는 입력 기준 <b>추정치</b>다.
  */
 @Service
@@ -41,7 +40,7 @@ public class LaborAggregationService {
     private final StoreRepository storeRepository;
     private final EmployeeStoreRelationRepository relationRepository;
     private final PayrollRepository payrollRepository;
-    private final AnnualLeaveCalculator annualLeaveCalculator;
+    private final AnnualLeaveEntitlementResolver annualLeaveEntitlementResolver;
     private final SeveranceCalculator severanceCalculator;
 
     /**
@@ -84,12 +83,9 @@ public class LaborAggregationService {
         return active.stream().map(r -> {
             LocalDate hire = r.getHireDate() == null ? today : r.getHireDate();
             long tenureDays = ChronoUnit.DAYS.between(hire, today);
-            int completedYears = (int) (tenureDays / 365);
-            int monthsWorked = (int) ChronoUnit.MONTHS.between(hire, today);
-
-            int entitled = completedYears >= 1
-                    ? annualLeaveCalculator.annual(completedYears, 1.0, fiveOrMore)
-                    : annualLeaveCalculator.firstYearMonthly(monthsWorked, fiveOrMore);
+            // 발생일수 산정은 AnnualLeaveEntitlementResolver(공통 산식)에 위임 —
+            // §18③(주 15시간 미만 제외)·기간제 정확히 1년 계약 예외 포함. MyLeaveBalanceService 와 동일 산식.
+            int entitled = annualLeaveEntitlementResolver.entitledDays(r, today, fiveOrMore);
 
             return new EmployeeAnnualLeaveDto(
                     r.getEmployeeProfile().getId(),

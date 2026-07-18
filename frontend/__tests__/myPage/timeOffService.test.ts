@@ -12,55 +12,99 @@ jest.mock('../../src/common/utils/api', () => ({
   },
 }));
 
-// [Test Mapping] TimeOff APIs
-// - POST /api/timeoff
-// - GET /api/timeoff/store/{storeId}
-// - GET /api/timeoff/store/{storeId}/status/{status}
-// - GET /api/timeoff/employee/{employeeId}
-// - PUT /api/timeoff/{requestId}/approve
-// - PUT /api/timeoff/{requestId}/reject
+// [Test Mapping] 사장 연차/휴가 승인 API — 재작성(옛 계약 폐기, /api/master/timeoff/* 신계약)
+// BE: MasterController
+//   GET  /api/master/timeoff/pending             → TimeOffResponse[]
+//   PUT  /api/master/timeoff/{id}/approve         → TimeOffResponse
+//   PUT  /api/master/timeoff/{id}/reject {reason} → TimeOffResponse (reason 필수, 본문 전달)
 
-describe('timeOffService', () => {
+const sampleResponse = {
+  id: 42,
+  employeeId: 5,
+  employeeName: '홍길동',
+  storeId: 2,
+  leaveType: 'ANNUAL',
+  unit: 'FULL_DAY',
+  startDate: '2026-07-10',
+  endDate: '2026-07-11',
+  startTime: null,
+  endTime: null,
+  consumedDays: 2,
+  reason: '가족 행사',
+  rejectReason: null,
+  status: 'PENDING',
+};
+
+describe('timeOffService (사장 승인)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  test('create posts payload and returns id', async () => {
-    (api.post as jest.Mock).mockResolvedValue({ data: { id: 10 } });
+  describe('fetchPendingTimeOffs', () => {
+    it('GET /api/master/timeoff/pending 호출 후 배열 반환', async () => {
+      (api.get as jest.Mock).mockResolvedValue({data: [sampleResponse]});
 
-    const res = await timeOffService.create({ employeeId: 1, storeId: 2, from: '2025-10-01', to: '2025-10-02', reason: '휴가' });
+      const list = await timeOffService.fetchPendingTimeOffs();
 
-    expect(api.post).toHaveBeenCalledWith('/api/timeoff', { employeeId: 1, storeId: 2, from: '2025-10-01', to: '2025-10-02', reason: '휴가' });
-    expect(res.id).toBe(10);
+      expect(api.get).toHaveBeenCalledWith('/api/master/timeoff/pending');
+      expect(list).toHaveLength(1);
+      expect(list[0].employeeName).toBe('홍길동');
+    });
+
+    it('응답이 배열이 아니면 빈 배열로 정규화', async () => {
+      (api.get as jest.Mock).mockResolvedValue({data: null});
+
+      const list = await timeOffService.fetchPendingTimeOffs();
+
+      expect(list).toEqual([]);
+    });
   });
 
-  test('getStoreAll calls correct endpoint', async () => {
-    (api.get as jest.Mock).mockResolvedValue({ data: [] });
-    await timeOffService.getStoreAll(5);
-    expect(api.get).toHaveBeenCalledWith('/api/timeoff/store/5');
+  describe('approveTimeOff', () => {
+    it('PUT /api/master/timeoff/{id}/approve 호출', async () => {
+      (api.put as jest.Mock).mockResolvedValue({data: {...sampleResponse, status: 'APPROVED'}});
+
+      const result = await timeOffService.approveTimeOff(42);
+
+      expect(api.put).toHaveBeenCalledWith('/api/master/timeoff/42/approve', {});
+      expect(result.status).toBe('APPROVED');
+    });
   });
 
-  test('getByStatus calls correct endpoint', async () => {
-    (api.get as jest.Mock).mockResolvedValue({ data: [] });
-    await timeOffService.getByStatus(5, 'PENDING');
-    expect(api.get).toHaveBeenCalledWith('/api/timeoff/store/5/status/PENDING');
+  describe('rejectTimeOff', () => {
+    it('reason 을 요청 본문에 담아 PUT 호출', async () => {
+      (api.put as jest.Mock).mockResolvedValue({
+        data: {...sampleResponse, status: 'REJECTED', rejectReason: '인력 공백 우려'},
+      });
+
+      const result = await timeOffService.rejectTimeOff(42, '인력 공백 우려');
+
+      expect(api.put).toHaveBeenCalledWith(
+        '/api/master/timeoff/42/reject',
+        {reason: '인력 공백 우려'},
+      );
+      expect(result.status).toBe('REJECTED');
+      expect(result.rejectReason).toBe('인력 공백 우려');
+    });
   });
 
-  test('getEmployeeAll calls correct endpoint', async () => {
-    (api.get as jest.Mock).mockResolvedValue({ data: [] });
-    await timeOffService.getEmployeeAll(7);
-    expect(api.get).toHaveBeenCalledWith('/api/timeoff/employee/7');
-  });
+  describe('매니저 매장 범위 승인', () => {
+    it('storeId가 있는 목록은 권한형 매장 API를 사용한다', async () => {
+      (api.get as jest.Mock).mockResolvedValue({data: [sampleResponse]});
 
-  test('approve and reject call correct endpoints', async () => {
-    (api.put as jest.Mock).mockResolvedValue({ data: { success: true } });
+      await timeOffService.fetchStorePendingTimeOffs(2);
 
-    const a = await timeOffService.approve(123);
-    expect(api.put).toHaveBeenCalledWith('/api/timeoff/123/approve');
-    expect(a).toEqual({ success: true });
+      expect(api.get).toHaveBeenCalledWith('/api/timeoff/store/2/status/PENDING');
+    });
 
-    const r = await timeOffService.reject(456);
-    expect(api.put).toHaveBeenCalledWith('/api/timeoff/456/reject');
-    expect(r).toEqual({ success: true });
+    it('승인·거절은 manager permission guard가 적용되는 API를 사용한다', async () => {
+      (api.put as jest.Mock).mockResolvedValue({data: sampleResponse});
+
+      await timeOffService.approveStoreTimeOff(42);
+      await timeOffService.rejectStoreTimeOff(42, '인력 공백 우려');
+
+      expect(api.put).toHaveBeenCalledWith('/api/timeoff/42/approve', {});
+      expect(api.put).toHaveBeenCalledWith('/api/timeoff/42/reject', {reason: '인력 공백 우려'});
+    });
   });
 });

@@ -137,6 +137,13 @@ export default function StoreDetailScreen({route, navigation}: StoreDetailScreen
                     />
                     <ManageItem
                         c={c}
+                        icon="pricetags-outline"
+                        title="NFC 태그 관리"
+                        subtitle="매장에 부착한 출퇴근 인증 태그 등록·관리"
+                        onPress={() => navigation.navigate('NfcTagManagement', {storeId})}
+                    />
+                    <ManageItem
+                        c={c}
                         icon="receipt-outline"
                         title="매입장부"
                         subtitle="영수증으로 매입 기록·가격 비교"
@@ -190,6 +197,13 @@ export default function StoreDetailScreen({route, navigation}: StoreDetailScreen
                         title="세무 신고 기한"
                         subtitle="원천세 월·부가세 분기 기한 알림"
                         onPress={() => navigation.navigate('TaxDeadline', {storeId})}
+                    />
+                    <ManageItem
+                        c={c}
+                        icon="mail-outline"
+                        title="세무사 송부"
+                        subtitle="인건비 내역서(세전) 이메일 발송"
+                        onPress={() => navigation.navigate('TaxReport', {storeId})}
                     />
                     <ManageItem
                         c={c}

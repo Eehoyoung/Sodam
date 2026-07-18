@@ -1,6 +1,6 @@
 import React, {useCallback, useState} from 'react';
 import {RefreshControl, ScrollView, StyleSheet, View} from 'react-native';
-import {useNavigation, useFocusEffect} from '@react-navigation/native';
+import {useNavigation, useFocusEffect, useRoute, type RouteProp} from '@react-navigation/native';
 import {useStoreLiveSync} from '../../../common/hooks/useStoreLiveSync';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
@@ -17,9 +17,10 @@ import {
     EmptyState,
     ErrorState,
     HeroNumber,
+    LoadingState,
     ScreenContainer,
 } from '../../../common/components/ds';
-import {spacing} from '../../../theme/tokens';
+import {recruit, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {formatMoney} from '../../../common/utils/format';
 import StoreSelector, {SelectableStore} from '../../../common/components/store/StoreSelector';
@@ -28,6 +29,8 @@ import {useAuth} from '../../../contexts/AuthContext';
 import api from '../../../common/utils/api';
 import {useSubscription} from '../../subscription/hooks/useSubscription';
 import {PastDueBanner} from '../../subscription/components/PastDueBanner';
+import {useManagedStores} from '../../manager/hooks/useManagedStores';
+import type {ManagerPermission} from '../../manager/types';
 
 interface TodayStats {
     storeId: number;
@@ -49,7 +52,7 @@ interface MonthPayroll {
  * 숫자 히어로(이번 달 예상 인건비) 상단 + 출근 현황 + 빠른 액션 리스트(Ionicons).
  * 1차 행동(급여 정산)은 하단 풀폭 CTA. load/StoreSelector/네비게이션 보존.
  */
-const OwnerDashboardScreen: React.FC = () => {
+const OwnerDashboardContent: React.FC = () => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const {user} = useAuth();
     const c = useThemeColors();
@@ -86,11 +89,13 @@ const OwnerDashboardScreen: React.FC = () => {
                 setToday(null);
                 return;
             }
-            const todayRes = await api.get<TodayStats>(`/api/store-queries/${firstStore.id}/stats/today`).catch(() => null);
-            const monthlyRes = await api.get<MonthPayroll>(`/api/store-queries/${firstStore.id}/stats/payroll/month-to-date`).catch(() => null);
+            // 순차 2콜(today → month-to-date) 대신 합성 엔드포인트 1콜(Phase 9, DB_OPTIMIZATION_PLAN.md).
+            const dashboardRes = await api
+                .get<{today: TodayStats; payroll: MonthPayroll}>(`/api/store-queries/${firstStore.id}/stats/dashboard`)
+                .catch(() => null);
 
             setToday(
-                todayRes?.data ?? {
+                dashboardRes?.data.today ?? {
                     storeId: firstStore.id,
                     storeName: firstStore.storeName ?? '내 매장',
                     checkedInCount: 0,
@@ -99,7 +104,7 @@ const OwnerDashboardScreen: React.FC = () => {
                 },
             );
             setMonthly(
-                monthlyRes?.data ?? {
+                dashboardRes?.data.payroll ?? {
                     totalGross: 0,
                     totalNet: 0,
                     totalWorkingHours: 0,
@@ -297,11 +302,17 @@ const OwnerDashboardScreen: React.FC = () => {
                             onPress={() => navigation.navigate('InfoList')}
                         />
                         <AppListItem
-                            title="설정"
-                            subtitle="알림·계정·매장 관리"
-                            left={<Ionicons name="settings-outline" size={24} color={c.brandPrimary} />}
+                            testID="owner-quick-menu-job-seekers"
+                            title="주변 구직자·채용"
+                            subtitle="반경 4km 인증 구직자 확인"
+                            left={<Ionicons name="person-add-outline" size={24} color={recruit.primary} />}
                             right="›"
-                            onPress={() => navigation.navigate('Settings')}
+                            onPress={() => {
+                                // JobSeekerList 는 storeId 필수 — 미선택 시 진입 차단(빈 파라미터 크래시 방지)
+                                if (selectedStoreId !== null) {
+                                    navigation.navigate('JobSeekerList', {storeId: selectedStoreId});
+                                }
+                            }}
                         />
                     </View>
                 </View>
@@ -323,6 +334,107 @@ const OwnerDashboardScreen: React.FC = () => {
             </ScrollView>
         </ScreenContainer>
     );
+};
+
+const ManagerDashboardContent: React.FC<{storeId: number}> = ({storeId}) => {
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
+    const c = useThemeColors();
+    const managedStores = useManagedStores();
+    const delegation = managedStores.data?.find(store => store.storeId === storeId && store.active);
+    const [today, setToday] = useState<TodayStats | null>(null);
+    const [error, setError] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const load = useCallback(async () => {
+        try {
+            setError(false);
+            const {data} = await api.get<TodayStats>(`/api/store-queries/${storeId}/stats/today`);
+            setToday(data);
+        } catch (e) {
+            console.warn('[ManagerDashboard] load failed', e);
+            setError(true);
+        }
+    }, [storeId]);
+
+    useFocusEffect(useCallback(() => {
+        managedStores.refetch();
+        load();
+        // The query observer object changes as data arrives; refetch itself is the stable dependency.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [load, managedStores.refetch]));
+    useStoreLiveSync([storeId], load);
+
+    const has = (permission: ManagerPermission) => delegation?.permissions.includes(permission) === true;
+    if (error) {
+        return <ScreenContainer header={<AppHeader title="매장 운영" onBack={() => navigation.goBack()} />}>
+            <ErrorState title="운영 현황을 불러오지 못했어요" description="위임 상태와 네트워크를 확인해 주세요."
+                primary={{label: '다시 시도', onPress: load}} />
+        </ScreenContainer>;
+    }
+    if (managedStores.isLoading || !today) {
+        return <ScreenContainer header={<AppHeader title="매장 운영" onBack={() => navigation.goBack()} />}>
+            <LoadingState title="매장 운영 현황 확인 중" description="위임 권한과 오늘 출근 현황을 불러오고 있어요." />
+        </ScreenContainer>;
+    }
+    if (!delegation) {
+        return <ScreenContainer header={<AppHeader title="매장 운영" onBack={() => navigation.goBack()} />}>
+            <ErrorState title="활성 위임을 확인할 수 없어요" description="서명 완료 또는 위임 해제 여부를 확인해 주세요."
+                primary={{label: '위임 현황 보기', onPress: () => navigation.navigate('ManagerMyPageScreen')}} />
+        </ScreenContainer>;
+    }
+
+    const pending = today.pendingEmployees ?? [];
+    return (
+        <ScreenContainer padded={false} header={<AppHeader title={today.storeName || delegation.storeName}
+            onBack={() => navigation.goBack()} />}>
+            <ScrollView contentContainerStyle={styles.content}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => {
+                    setRefreshing(true);
+                    await Promise.all([load(), managedStores.refetch()]);
+                    setRefreshing(false);
+                }} />}>
+                <AppCard variant="navy" hero style={styles.taskCard}>
+                    <AppText variant="caption" tone="inverse">매니저 운영 모드</AppText>
+                    <AppText variant="headingSm" tone="inverse">
+                        오늘 출근 {today.checkedInCount}/{today.totalActiveEmployees}명
+                    </AppText>
+                    <AppText variant="bodyMd" tone="inverse" style={styles.taskSub}>
+                        급여·구독·직원 추가·매장 설정 정보는 이 화면에서 조회하지 않습니다.
+                    </AppText>
+                </AppCard>
+
+                <View style={styles.section}>
+                    <AppText variant="headingSm">오늘 출근 현황</AppText>
+                    {pending.length > 0 ? pending.map(name => (
+                        <AppListItem key={name} title={name} subtitle="아직 출근 기록 없음"
+                            left={<Ionicons name="person-circle-outline" size={26} color={c.warning} />}
+                            right={<AppBadge label="확인" tone="warning" />} />
+                    )) : <AppCard variant="plain"><AppText variant="bodyLg" tone="success">모든 직원이 출근했어요.</AppText></AppCard>}
+                </View>
+
+                <View style={styles.section}>
+                    <AppText variant="headingSm">위임받은 업무</AppText>
+                    {has('ATTENDANCE_APPROVE') ? <AppListItem title="출퇴근 승인" right="›"
+                        onPress={() => navigation.navigate('AttendanceApproval', {storeId})} /> : null}
+                    {has('TIMEOFF_APPROVE') ? <AppListItem title="휴가 승인" right="›"
+                        onPress={() => navigation.navigate('TimeOffApproval', {storeId})} /> : null}
+                    {has('SCHEDULE_MANAGE') ? <AppListItem title="스케줄 관리" right="›"
+                        onPress={() => navigation.navigate('StoreSchedule', {storeId})} /> : null}
+                    {has('STAFF_VIEW') ? <AppListItem title="직원 조회" subtitle="연락처는 마스킹되어 표시됩니다." right="›"
+                        onPress={() => navigation.navigate('EmployeeManagement', {storeId, managerMode: true})} /> : null}
+                    {has('SUBSTITUTE_MANAGE') ? <AppListItem title="공지·대타 관리" right="›"
+                        onPress={() => navigation.navigate('StoreNoticeList', {storeId})} /> : null}
+                </View>
+            </ScrollView>
+        </ScreenContainer>
+    );
+};
+
+const OwnerDashboardScreen: React.FC = () => {
+    const route = useRoute<RouteProp<HomeStackParamList, 'OwnerDashboard'>>();
+    return route.params?.managerMode
+        ? <ManagerDashboardContent storeId={route.params.storeId} />
+        : <OwnerDashboardContent />;
 };
 
 function daysLeftInMonth(): number {

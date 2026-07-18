@@ -7,16 +7,28 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
+import org.springframework.data.jpa.repository.Lock;
 
 /**
  * 급여 명세서 레포지토리
  */
 public interface PayrollRepository extends JpaRepository<Payroll, Long> {
 
+    @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Payroll p where p.id = :id")
+    Optional<Payroll> findByIdForUpdate(@Param("id") Long id);
+
     /**
      * 직원 ID로 급여 내역 조회
      */
     List<Payroll> findByEmployee_IdOrderByEndDateDesc(Long employeeId);
+
+    /**
+     * 여러 직원 ID의 급여 내역을 한 번에 조회 (N+1 방지). 최신순 정렬 후 자바에서
+     * 직원 ID별로 그룹핑해 각자의 첫 번째(최신) 레코드만 사용할 것.
+     */
+    List<Payroll> findByEmployee_IdInOrderByEndDateDesc(List<Long> employeeIds);
 
     /**
      * 직원 ID와 기간으로 급여 내역 조회

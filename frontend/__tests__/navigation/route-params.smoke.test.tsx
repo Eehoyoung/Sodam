@@ -8,9 +8,9 @@ jest.mock('../../src/contexts/AuthContext', () => ({
 }));
 
 describe('AppNavigator initial route', () => {
-  test('initial route is Welcome (UsageSelectionScreen)', async () => {
+  test('initial route is Welcome (SodamLandingScreen)', async () => {
     const { findByText } = render(<AppNavigator />);
-    const el = await findByText('어떻게 사용하고 싶으세요?');
+    const el = await findByText('사장님의 가게 관리 파트너');
     expect(el).toBeTruthy();
   });
 });

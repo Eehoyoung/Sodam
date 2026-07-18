@@ -42,6 +42,12 @@ public final class LogArgMasker {
             "email"
     );
 
+    private static final Set<String> SENSITIVE_NAME_FRAGMENTS = Set.of(
+            "password", "passwd", "credential", "secret", "token", "apikey",
+            "signeddata", "receipt", "objectref", "phone", "mobile", "birth",
+            "resident", "account", "card", "email", "identity"
+    );
+
     private LogArgMasker() {
     }
 
@@ -160,7 +166,8 @@ public final class LogArgMasker {
     /** 필드명이 좌표 또는 민감 필드인지(소문자·'_' 제거 비교). */
     private static boolean isMaskedFieldName(String name) {
         String n = name.toLowerCase().replace("_", "");
-        return COORDINATE_FIELD_NAMES.contains(n) || SENSITIVE_FIELD_NAMES.contains(n);
+        return COORDINATE_FIELD_NAMES.contains(n) || SENSITIVE_FIELD_NAMES.contains(n)
+                || SENSITIVE_NAME_FRAGMENTS.stream().anyMatch(n::contains);
     }
 
     private static String readMaskedField(Object owner, Field field) {
