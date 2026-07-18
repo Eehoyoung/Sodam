@@ -63,6 +63,11 @@ dependencies {
 
     // OpenPDF (급여 명세서 PDF 생성) — iText 호환, AGPL 회피 위해 OpenPDF 사용
     implementation 'com.github.librepdf:openpdf:2.0.3'
+    // BaroCert 전자서명 SDK — 네이버·카카오·토스 공급자 어댑터에서만 사용한다.
+    // 도메인 코어는 SDK 타입에 의존하지 않으며 mock 모드에서는 외부 호출이 없다.
+    implementation 'kr.co.linkhub:barocert-sdk:1.8.1'
+    // 전자서명 증적 전용 private object storage. live 모드에서는 SSE-KMS put/get stream만 사용한다.
+    implementation 'software.amazon.awssdk:s3:2.25.67'
     // https://mvnrepository.com/artifact/com.auth0/auth0
     implementation group: 'com.auth0', name: 'auth0', version: '2.17.0'
     // https://mvnrepository.com/artifact/com.google.code.gson/gson

@@ -145,15 +145,16 @@ class UserServiceTest {
         joinDto.setTermsAgreed(true);
         joinDto.setPrivacyAgreed(true);
         joinDto.setMarketingAgreed(false);
+        joinDto.setUserGrade(UserGrade.MASTER);
 
         // When
-        User result = userService.joinUser(joinDto, "Master");
+        User result = userService.joinUser(joinDto);
 
         // Then
         assertNotNull(result);
         assertEquals("newuser@example.com", result.getEmail());
         assertEquals("신규사용자", result.getName());
-        // "Master" 헤더 등급 → MASTER 로 매핑됨 (resolveUserGrade)
+        // 공개 가입에서 허용된 사업주 등급은 요청 본문으로 전달한다.
         assertEquals(UserGrade.MASTER, result.getUserGrade());
         assertNotNull(result.getCreatedAt());
         // 비밀번호는 암호화되어 저장되므로 직접 비교하지 않음
@@ -161,13 +162,47 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("직원 정보 수정 - 성공: 이름과 이메일 수정")
+    @DisplayName("공개 회원가입 - MANAGER 권한 요청 거부")
+    void joinUser_ManagerGrade_Blocked() {
+        JoinDto joinDto = validJoinDto("manager-attempt@example.com");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> {
+                    joinDto.setUserGrade(UserGrade.MANAGER);
+                    userService.joinUser(joinDto);
+                });
+    }
+
+    @Test
+    @DisplayName("공개 회원가입 - BOSSES 권한 요청 거부")
+    void joinUser_BossesGrade_Blocked() {
+        JoinDto joinDto = validJoinDto("boss-attempt@example.com");
+        joinDto.setUserGrade(UserGrade.BOSSES);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> userService.joinUser(joinDto));
+    }
+
+    private JoinDto validJoinDto(String email) {
+        JoinDto joinDto = new JoinDto();
+        joinDto.setEmail(email);
+        joinDto.setName("가입시도자");
+        joinDto.setPassword("Sodam123!");
+        joinDto.setAgeConfirmed(true);
+        joinDto.setTermsAgreed(true);
+        joinDto.setPrivacyAgreed(true);
+        joinDto.setMarketingAgreed(false);
+        return joinDto;
+    }
+
+    @Test
+    @DisplayName("직원 정보 수정 - 성공: 이름만 수정하고 로그인 식별자·등급 유지")
     void updateEmployeeInfo_Success() {
         // Given
         EmployeeUpdateDto updateDto = new EmployeeUpdateDto();
         updateDto.setName("수정된이름");
-        updateDto.setEmail("updated@example.com");
-        updateDto.setUserGrade(UserGrade.EMPLOYEE);
+        updateDto.setEmail(testUser.getEmail());
+        updateDto.setUserGrade(testUser.getUserGrade());
 
         // When
         User result = userService.updateEmployeeInfo(testUser.getId(), updateDto);
@@ -175,8 +210,8 @@ class UserServiceTest {
         // Then
         assertNotNull(result);
         assertEquals("수정된이름", result.getName());
-        assertEquals("updated@example.com", result.getEmail());
-        assertEquals(UserGrade.EMPLOYEE, result.getUserGrade());
+        assertEquals("test@example.com", result.getEmail());
+        assertEquals(UserGrade.Personal, result.getUserGrade());
     }
 
     @Test
@@ -210,17 +245,10 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("직원 정보 수정 - 실패: 이메일 중복")
-    void updateEmployeeInfo_EmailDuplicate() {
-        // Given
-        // 다른 사용자 생성
-        User anotherUser = new User("another@example.com", "다른사용자");
-        anotherUser.setPassword("password");
-        anotherUser = userRepository.save(anotherUser);
-
-        // 기존 사용자의 이메일을 다른 사용자의 이메일로 변경 시도
+    @DisplayName("직원 정보 수정 - 계정탈취 차단: 사업주 경로의 로그인 이메일 변경 거부")
+    void updateEmployeeInfo_EmailChangeBlocked() {
         EmployeeUpdateDto updateDto = new EmployeeUpdateDto();
-        updateDto.setEmail("another@example.com");
+        updateDto.setEmail("attacker@example.com");
 
         // When & Then
         IllegalArgumentException exception = assertThrows(
@@ -228,7 +256,8 @@ class UserServiceTest {
                 () -> userService.updateEmployeeInfo(testUser.getId(), updateDto)
         );
 
-        assertEquals("이미 사용 중인 이메일입니다: another@example.com", exception.getMessage());
+        assertEquals("직원 관리 화면에서는 로그인 이메일을 변경할 수 없어요.", exception.getMessage());
+        assertEquals("test@example.com", testUser.getEmail());
     }
 
     @Test

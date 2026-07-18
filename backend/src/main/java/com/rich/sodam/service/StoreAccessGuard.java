@@ -1,11 +1,15 @@
 package com.rich.sodam.service;
 
 import com.rich.sodam.domain.TimeOff;
+import com.rich.sodam.domain.EmployeeStoreRelation;
+import com.rich.sodam.domain.type.ManagerPermission;
+import com.rich.sodam.domain.type.PlanFeature;
+import com.rich.sodam.exception.ManagerAccessDeniedException;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
 import com.rich.sodam.repository.MasterStoreRelationRepository;
 import com.rich.sodam.repository.TimeOffRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
@@ -19,12 +23,26 @@ import org.springframework.stereotype.Component;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class StoreAccessGuard {
 
     private final MasterStoreRelationRepository masterStoreRelationRepository;
     private final EmployeeStoreRelationRepository employeeStoreRelationRepository;
     private final TimeOffRepository timeOffRepository;
+    private final PlanAccessService planAccessService;
+    private final boolean managerDelegationEnabled;
+
+    public StoreAccessGuard(MasterStoreRelationRepository masterStoreRelationRepository,
+                            EmployeeStoreRelationRepository employeeStoreRelationRepository,
+                            TimeOffRepository timeOffRepository,
+                            PlanAccessService planAccessService,
+                            @Value("${sodam.features.manager-delegation-enabled:false}")
+                            boolean managerDelegationEnabled) {
+        this.masterStoreRelationRepository = masterStoreRelationRepository;
+        this.employeeStoreRelationRepository = employeeStoreRelationRepository;
+        this.timeOffRepository = timeOffRepository;
+        this.planAccessService = planAccessService;
+        this.managerDelegationEnabled = managerDelegationEnabled;
+    }
 
     /**
      * 사장이 해당 매장을 소유하는지 검증. 미소유 시 AccessDeniedException.
@@ -111,6 +129,58 @@ public class StoreAccessGuard {
             log.warn("권한 거부: principal {} != employee {}", principalId, employeeId);
             throw new AccessDeniedException("본인 정보만 접근할 수 있어요.");
         }
+    }
+
+    public void assertManagerPermission(Long userId, Long storeId, ManagerPermission permission) {
+        requireNonNull(userId, "userId");
+        requireNonNull(storeId, "storeId");
+        assertManagerDelegationEnabled();
+        EmployeeStoreRelation relation = employeeStoreRelationRepository
+                .findByEmployeeProfile_IdAndStore_IdAndIsActiveTrue(userId, storeId)
+                .orElseThrow(ManagerAccessDeniedException::permissionDenied);
+        if (relation.getStoreRole() != com.rich.sodam.domain.type.StoreRole.MANAGER) {
+            throw ManagerAccessDeniedException.permissionDenied();
+        }
+        if (relation.getManagerAcceptedAt() == null || relation.getManagerSignatureEnvelopeId() == null) {
+            throw ManagerAccessDeniedException.signaturePending();
+        }
+        if (!planAccessService.storeOwnerHasFeature(storeId, PlanFeature.MANAGER_DELEGATION)) {
+            throw ManagerAccessDeniedException.subscriptionFrozen();
+        }
+        if (!relation.hasActiveManagerPermission(permission)) {
+            throw ManagerAccessDeniedException.permissionDenied();
+        }
+    }
+
+    public void assertMasterOrManagerPermission(Long userId, Long storeId, ManagerPermission permission) {
+        requireNonNull(userId, "userId");
+        requireNonNull(storeId, "storeId");
+        if (masterStoreRelationRepository.existsByMasterProfile_IdAndStore_Id(userId, storeId)) return;
+        assertManagerPermission(userId, storeId, permission);
+    }
+
+    public void assertMasterOrManagerOwnsTimeOff(Long userId, Long timeOffId, ManagerPermission permission) {
+        requireNonNull(userId, "userId");
+        requireNonNull(timeOffId, "timeOffId");
+        TimeOff timeOff = timeOffRepository.findById(timeOffId)
+                .orElseThrow(() -> new AccessDeniedException("휴가 신청을 찾을 수 없어요."));
+        if (timeOff.getStore() == null || timeOff.getStore().getId() == null) {
+            throw new AccessDeniedException("휴가 신청 매장을 확인할 수 없어요.");
+        }
+        assertMasterOrManagerPermission(userId, timeOff.getStore().getId(), permission);
+    }
+
+    public boolean isMasterOwner(Long userId, Long storeId) {
+        return userId != null && storeId != null
+                && masterStoreRelationRepository.existsByMasterProfile_IdAndStore_Id(userId, storeId);
+    }
+
+    public void assertManagerDelegationEnabled() {
+        if (!managerDelegationEnabled) throw ManagerAccessDeniedException.featureDisabled();
+    }
+
+    public boolean isManagerDelegationEnabled() {
+        return managerDelegationEnabled;
     }
 
     private static void requireNonNull(Object v, String name) {

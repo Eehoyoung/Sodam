@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -37,6 +38,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final Map<String, Bucket> resetBuckets = new ConcurrentHashMap<>();   // 강화: 3/분
     private final Map<String, Bucket> authBuckets = new ConcurrentHashMap<>();    // 20/분
     private final Map<String, Bucket> generalBuckets = new ConcurrentHashMap<>(); // 120/분
+
+    @Value("${sodam.security.trust-forwarded-headers:false}")
+    private boolean trustForwardedHeaders;
 
     private Bucket resolveLoginBucket(String key) {
         return loginBuckets.computeIfAbsent(key, k -> Bucket.builder()
@@ -106,9 +110,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private String resolveClientIp(HttpServletRequest request) {
-        String xff = request.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) {
-            return xff.split(",")[0].trim();
+        if (trustForwardedHeaders) {
+            String xff = request.getHeader("X-Forwarded-For");
+            if (xff != null && !xff.isBlank()) {
+                return xff.split(",")[0].trim();
+            }
         }
         return request.getRemoteAddr();
     }

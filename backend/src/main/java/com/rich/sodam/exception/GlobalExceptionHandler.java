@@ -51,6 +51,16 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * NFC 태그 검증 실패 예외 처리 (403) — 대리출근 방지. 미등록/비활성 태그로는 출퇴근을 기록하지 않는다.
+     */
+    @ExceptionHandler(NfcVerificationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleNfcVerificationException(NfcVerificationException e) {
+        log.warn("NfcVerificationException: {}", e.getMessage(), e);
+        ApiResponse<Object> response = ApiResponse.error(e.getErrorCode(), e.getMessage());
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+    }
+
+    /**
      * 권한 거부 — @PreAuthorize/Method Security/StoreAccessGuard 거부.
      */
     @ExceptionHandler({
@@ -80,6 +90,18 @@ public class GlobalExceptionHandler {
         detail.put("currentPlan", e.getCurrentPlan().name());
         ApiResponse<Object> response = ApiResponse.error("PLAN_REQUIRED", e.getMessage(), detail);
         return new ResponseEntity<>(response, HttpStatus.PAYMENT_REQUIRED);
+    }
+
+    @ExceptionHandler(ManagerAccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleManagerAccessDenied(ManagerAccessDeniedException e) {
+        return ResponseEntity.status(e.getStatus())
+                .body(ApiResponse.error(e.getCode(), e.getMessage()));
+    }
+
+    @ExceptionHandler(com.rich.sodam.service.ElectronicSignatureRefreshLimiter.TooManySignatureRefreshesException.class)
+    public ResponseEntity<ApiResponse<Object>> handleSignatureRefreshRateLimit(RuntimeException e) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(ApiResponse.error("ESIGN-RATE-001", e.getMessage()));
     }
 
     /**

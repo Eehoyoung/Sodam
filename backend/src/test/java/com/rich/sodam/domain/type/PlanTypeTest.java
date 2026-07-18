@@ -48,6 +48,10 @@ class PlanTypeTest {
         assertThat(PlanType.PRO.hasFeature(PlanFeature.PARTNER_REFERRAL)).isFalse();
         assertThat(PlanType.PREMIUM.hasFeature(PlanFeature.PARTNER_REFERRAL)).isTrue();
         assertThat(PlanType.PREMIUM.hasFeature(PlanFeature.INSPECTION_EVIDENCE)).isTrue();
+        assertThat(PlanType.FREE.hasFeature(PlanFeature.MANAGER_DELEGATION)).isFalse();
+        assertThat(PlanType.STARTER.hasFeature(PlanFeature.MANAGER_DELEGATION)).isFalse();
+        assertThat(PlanType.PRO.hasFeature(PlanFeature.MANAGER_DELEGATION)).isTrue();
+        assertThat(PlanType.PREMIUM.hasFeature(PlanFeature.MANAGER_DELEGATION)).isTrue();
     }
 
     @Test

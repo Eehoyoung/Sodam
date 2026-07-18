@@ -33,7 +33,7 @@ public enum PlanType {
                     PlanFeature.INSURANCE_PREVIEW, PlanFeature.LABOR_LAW_FULL,
                     PlanFeature.ANNUAL_LEAVE, PlanFeature.INSURANCE_FILING,
                     PlanFeature.E_CONTRACT, PlanFeature.DASHBOARD,
-                    PlanFeature.MULTI_STORE)),
+                    PlanFeature.MULTI_STORE, PlanFeature.MANAGER_DELEGATION)),
 
     PREMIUM("프리미엄", 39_900, null,
             "프로 전부 + 멀티매장 무제한 + 전담 CS + 세무·노무 우선연결 + 근로감독 증거패키지",
@@ -43,7 +43,8 @@ public enum PlanType {
                     PlanFeature.ANNUAL_LEAVE, PlanFeature.INSURANCE_FILING,
                     PlanFeature.E_CONTRACT, PlanFeature.DASHBOARD,
                     PlanFeature.MULTI_STORE, PlanFeature.PRIORITY_CS,
-                    PlanFeature.PARTNER_REFERRAL, PlanFeature.INSPECTION_EVIDENCE));
+                    PlanFeature.PARTNER_REFERRAL, PlanFeature.INSPECTION_EVIDENCE,
+                    PlanFeature.MANAGER_DELEGATION));
 
     private final String displayName;
     private final int monthlyPriceKrw;

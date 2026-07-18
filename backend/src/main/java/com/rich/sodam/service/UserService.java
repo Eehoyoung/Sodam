@@ -135,7 +135,7 @@ public class UserService {
 
     @jakarta.transaction.Transactional
     @CacheEvict(value = "users", key = "#joinDto.email")
-    public User joinUser(JoinDto joinDto, String grade) {
+    public User joinUser(JoinDto joinDto) {
         if (joinDto == null) {
             throw new IllegalArgumentException("가입 요청이 비어 있어요.");
         }
@@ -171,7 +171,7 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(joinDto.getPassword()));
         user.setEmail(joinDto.getEmail().trim());
         user.setName(joinDto.getName().trim());
-        user.setUserGrade(resolveUserGrade(grade, joinDto.getUserGrade()));
+        user.setUserGrade(resolvePublicSignupGrade(joinDto.getUserGrade()));
         LocalDateTime now = LocalDateTime.now();
         user.setCreatedAt(now);
         user.setAgeConfirmedAt(now);
@@ -197,38 +197,18 @@ public class UserService {
     }
 
     /**
-     * 헤더(X-User-Grade) → DTO → 기본값 순으로 등급 결정.
-     * 잘못된 값(예: "PERSONAL", "owner")이 와도 500 으로 떨어지지 않게 fail-safe.
+     * 공개 가입에서 만들 수 있는 계정 등급만 허용한다.
+     * MANAGER/BOSSES는 매장-사용자 관계와 별도 승인 흐름으로만 부여해야 한다.
      */
-    private UserGrade resolveUserGrade(String headerGrade, UserGrade dtoGrade) {
-        if (headerGrade != null && !headerGrade.isBlank()) {
-            String normalized = headerGrade.trim();
-            // 정확 매치 우선
-            for (UserGrade g : UserGrade.values()) {
-                if (g.name().equalsIgnoreCase(normalized)) {
-                    return g;
-                }
-            }
-            // 의미 매핑 (FE 가 사람이 읽는 값을 보낼 때 대비)
-            switch (normalized.toLowerCase()) {
-                case "personal":
-                case "normal":
-                case "user":
-                    return UserGrade.Personal;
-                case "boss":
-                case "owner":
-                case "master":
-                    return UserGrade.MASTER;
-                case "employee":
-                case "staff":
-                    return UserGrade.EMPLOYEE;
-                default:
-                    // 알 수 없는 값은 Personal 로 fallback (회원가입 자체는 막지 않음)
-                    org.slf4j.LoggerFactory.getLogger(UserService.class)
-                            .warn("알 수 없는 X-User-Grade 값 — Personal 로 fallback: {}", normalized);
-            }
+    private UserGrade resolvePublicSignupGrade(UserGrade requestedGrade) {
+        if (requestedGrade == null) {
+            return UserGrade.Personal;
         }
-        return dtoGrade != null ? dtoGrade : UserGrade.Personal;
+        return switch (requestedGrade) {
+            case Personal, EMPLOYEE, MASTER -> requestedGrade;
+            case MANAGER, BOSSES -> throw new IllegalArgumentException(
+                    "공개 회원가입으로 요청할 수 없는 사용자 등급입니다.");
+        };
     }
 
     /**
@@ -314,12 +294,10 @@ public class UserService {
         User employee = userRepository.findById(employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("직원을 찾을 수 없습니다. ID: " + employeeId));
 
-        // 2. 이메일 중복 검사 (변경하는 경우)
+        // 로그인 이메일은 직원 관리 API에서 변경할 수 없다.
+        // 변경은 본인 재인증과 새 이메일 검증을 거치는 전용 흐름에서만 허용한다.
         if (updateDto.getEmail() != null && !updateDto.getEmail().equals(employee.getEmail())) {
-            Optional<User> existingUser = userRepository.findByEmail(updateDto.getEmail());
-            if (existingUser.isPresent()) {
-                throw new IllegalArgumentException("이미 사용 중인 이메일입니다: " + updateDto.getEmail());
-            }
+            throw new IllegalArgumentException("직원 관리 화면에서는 로그인 이메일을 변경할 수 없어요.");
         }
 
         // 3. 정보 업데이트
@@ -327,20 +305,8 @@ public class UserService {
             employee.setName(updateDto.getName().trim());
         }
 
-        if (updateDto.getEmail() != null && !updateDto.getEmail().trim().isEmpty()) {
-            employee.setEmail(updateDto.getEmail().trim());
-        }
-
-        if (updateDto.getUserGrade() != null) {
-            // 권한상승 차단: 직원 정보 수정 경로에서 사장(MASTER) 승격 금지.
-            // 사업주 전환은 별도 인가 플로우(convertToOwner)에서만 허용한다.
-            if (updateDto.getUserGrade() == UserGrade.MASTER) {
-                throw new IllegalArgumentException("직원 정보 수정에서는 사장 권한으로 변경할 수 없어요.");
-            } else if (updateDto.getUserGrade() == UserGrade.EMPLOYEE) {
-                employee.changeToEmployee();
-            } else {
-                employee.setUserGrade(updateDto.getUserGrade());
-            }
+        if (updateDto.getUserGrade() != null && updateDto.getUserGrade() != employee.getUserGrade()) {
+            throw new IllegalArgumentException("직원 관리 화면에서는 전역 사용자 등급을 변경할 수 없어요.");
         }
 
         // 4. 저장 및 반환

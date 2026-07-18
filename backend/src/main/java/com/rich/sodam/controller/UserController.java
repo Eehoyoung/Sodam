@@ -122,7 +122,7 @@ public class UserController {
 
     /** 사업주/관리자 권한(직원 관리 가능) 보유 여부. */
     private boolean hasManagerRole(UserPrincipal principal) {
-        Set<String> managerRoles = Set.of("ROLE_MASTER", "ROLE_MANAGER", "ROLE_BOSS");
+        Set<String> managerRoles = Set.of("ROLE_MASTER");
         return principal.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .anyMatch(managerRoles::contains);
