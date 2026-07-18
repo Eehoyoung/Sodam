@@ -92,8 +92,12 @@ public record LaborContractResponse(
         LocalDateTime sentAt,
         boolean signed,
         LocalDateTime signedAt,
-        boolean hasSignatureImage,
-        String employeeSignatureImage,
+        Long electronicSignatureEnvelopeId,
+        int electronicSignatureDocumentVersion,
+        Long signingActorUserId,
+        Long delegatedByMasterId,
+        Long delegationEnvelopeId,
+        Integer delegationVersion,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -178,8 +182,12 @@ public record LaborContractResponse(
                 c.getSentAt(),
                 c.isSigned(),
                 c.getEmployeeSignedAt(),
-                c.getEmployeeSignatureImage() != null,
-                c.getEmployeeSignatureImage(),
+                c.getElectronicSignatureEnvelopeId(),
+                c.getElectronicSignatureDocumentVersion(),
+                c.getSigningActorUserId(),
+                c.getDelegatedByMasterId(),
+                c.getDelegationEnvelopeId(),
+                c.getDelegationVersion(),
                 c.getCreatedAt(),
                 c.getUpdatedAt()
         );

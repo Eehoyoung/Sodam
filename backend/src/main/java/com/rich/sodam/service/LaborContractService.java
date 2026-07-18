@@ -25,7 +25,6 @@ import com.rich.sodam.repository.PayrollPolicyRepository;
 import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -94,9 +93,7 @@ public class LaborContractService {
         applySocialInsuranceEligibility(contract);
         assertRequiredFields(contract);
         assertAtLeastMinimumWage(contract);
-        LaborContract saved = laborContractRepository.save(contract);
-        propagateContractTermsToRelation(saved, changedBy);
-        return saved;
+        return laborContractRepository.save(contract);
     }
 
     /**
@@ -633,28 +630,15 @@ public class LaborContractService {
         return laborContractRepository.save(contract);
     }
 
-    /**
-     * 직원 본인이 근로계약서에 서명(동의)한다.
-     *
-     * <p>본인 계약이 아니면 {@link AccessDeniedException}. 아직 발송 전(임시저장)이면
-     * 거부한다 — 사장이 검토를 마치고 명시적으로 발송해야만 서명 대상이 된다. 이미 서명된
-     * 경우 멱등하게 기존 계약을 그대로 반환한다(최초 서명 시각 보존).
-     *
-     * @param contractId     서명 대상 계약 id
-     * @param employeeId     서명 주체(principal) — 계약의 employeeId 와 일치해야 함
-     * @param signatureImage 서명 이미지(base64, 선택 — null 이면 동의 버튼 방식)
-     */
     @Transactional
-    public LaborContract sign(Long contractId, Long employeeId, String signatureImage) {
-        LaborContract contract = findById(contractId);
-        if (!contract.getEmployeeId().equals(employeeId)) {
-            throw new AccessDeniedException("본인 근로계약서만 서명할 수 있어요.");
+    public LaborContract activateVerifiedElectronicSignature(Long contractId, Long envelopeId,
+                                                              int documentVersion, LocalDateTime verifiedAt,
+                                                              Long changedBy) {
+        LaborContract contract = laborContractRepository.findByIdForUpdate(contractId)
+                .orElseThrow(() -> new IllegalArgumentException("근로계약서를 찾을 수 없어요."));
+        if (contract.completeElectronicSignature(envelopeId, documentVersion, verifiedAt)) {
+            propagateContractTermsToRelation(contract, changedBy);
         }
-        if (!contract.isSent()) {
-            throw new IllegalStateException("아직 발송되지 않은 근로계약서예요.");
-        }
-        // markSigned 는 멱등 — 이미 서명돼 있으면 시각 보존하고 false 반환
-        contract.markSigned(LocalDateTime.now(), signatureImage);
         return laborContractRepository.save(contract);
     }
 
@@ -868,6 +852,11 @@ public class LaborContractService {
                 addKv(parties, "사업장 주소", store.getFullAddress(), fontH, fontN);
             }
             addKv(parties, "근로자 성명", employeeName, fontH, fontN);
+            if (c.getDelegationEnvelopeId() != null) {
+                addKv(parties, "사업주측 체결자", "위임받은 매니저 (사용자 " + c.getSigningActorUserId() + ")", fontH, fontN);
+                addKv(parties, "위임 증적", "Envelope " + c.getDelegationEnvelopeId()
+                        + " / version " + c.getDelegationVersion(), fontH, fontN);
+            }
             document.add(parties);
             document.add(blank(fontN));
 
@@ -947,6 +936,9 @@ public class LaborContractService {
             addSection(document, "서명", fontSection);
             com.lowagie.text.pdf.PdfPTable sign = kvTable();
             addKv(sign, "사업주", storeName, fontH, fontN);
+            if (c.getDelegationEnvelopeId() != null) {
+                addKv(sign, "대리 체결", "현재 유효한 전자서명 위임 범위 내 체결", fontH, fontN);
+            }
             addKv(sign, "근로자 서명 상태", c.isSigned()
                     ? "서명 완료 (" + strOf(c.getEmployeeSignedAt()) + ")" : "서명 대기", fontH, fontN);
             document.add(sign);

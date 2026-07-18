@@ -106,11 +106,13 @@ const MyContractScreen: React.FC = () => {
                 header={<AppHeader title="근로계약서" onBack={() => setSelected(null)} />}
                 footer={
                     <CtaStack>
-                        {selected.signed ? null : (
+                        {selected.signed || selected.electronicSignatureEnvelopeId === null ? null : (
                             <AppButton
                                 label="내용 확인하고 서명"
                                 onPress={() =>
-                                    navigation.navigate('ContractSign', {contractId: selected.id})
+                                    navigation.navigate('ElectronicSign', {
+                                        envelopeId: selected.electronicSignatureEnvelopeId!,
+                                    })
                                 }
                             />
                         )}

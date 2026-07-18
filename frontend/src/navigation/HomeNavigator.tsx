@@ -92,6 +92,7 @@ import EmployeeRecruitmentScreen from '../features/recruitment/screens/EmployeeR
 import JobSeekerListScreen from '../features/recruitment/screens/JobSeekerListScreen';
 import JobSeekerDetailScreen from '../features/recruitment/screens/JobSeekerDetailScreen';
 import JobPostingDetailScreen from '../features/recruitment/screens/JobPostingDetailScreen';
+import ElectronicSignScreen from '../features/electronicSignature/screens/ElectronicSignScreen';
 import type {JobPostingNearbyItem, JobSeekerListItem} from '../features/recruitment/types';
 import type {ReceiptDraft} from '../features/purchase/types';
 import appHeaderOptions from './appHeaderOptions';
@@ -118,10 +119,11 @@ export type HomeStackParamList = {
     Profile: undefined;
     StoreRegistration: undefined;
     StoreDetail: { storeId: number };
-    OwnerDashboard: undefined;
+    OwnerDashboard: {storeId: number; managerMode: true} | undefined;
     EmployeeAttendanceHome: undefined;
+    ElectronicSign: {envelopeId: number};
     EmployeeDetail: { employeeId: number; storeId: number };
-    EmployeeManagement: { storeId: number };
+    EmployeeManagement: {storeId: number; managerMode?: true};
     NfcTagManagement: { storeId: number };
     PayrollRun: { storeId?: number } | undefined;
     JoinStoreByCode: undefined;
@@ -172,7 +174,7 @@ export type HomeStackParamList = {
     EditShift: {storeId: number; employeeId: number; employeeName?: string};
     StoreSchedule: {storeId: number};
     AttendanceApproval: {storeId: number};
-    TimeOffApproval: undefined;
+    TimeOffApproval: {storeId?: number} | undefined;
     TaxSimulator: undefined;
     PersonalAnnualTax: undefined;
     StoreNoticeList: {storeId: number};
@@ -313,6 +315,11 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen
                 name="EmployeeAttendanceHome"
                 component={EmployeeAttendanceHome}
+                options={{headerShown: false}}
+            />
+            <Stack.Screen
+                name="ElectronicSign"
+                component={ElectronicSignScreen}
                 options={{headerShown: false}}
             />
             <Stack.Screen

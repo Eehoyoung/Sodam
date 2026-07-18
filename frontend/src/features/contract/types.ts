@@ -90,8 +90,8 @@ export interface LaborContract extends WeeklySchedule {
     sentAt: string | null;
     signed: boolean;
     signedAt: string | null;
-    hasSignatureImage: boolean;
-    employeeSignatureImage: string | null;
+    electronicSignatureEnvelopeId: number | null;
+    electronicSignatureDocumentVersion: number;
     createdAt: string | null;
     updatedAt: string | null;
     /** 요일별 근무 스케줄(스케줄 자동 산출 모드에서 존재). 구계약 응답 호환을 위해 optional. */
@@ -103,6 +103,11 @@ export interface LaborContract extends WeeklySchedule {
 }
 
 /** 사장 작성 요청 본문 (storeId 는 경로변수). */
+export interface LaborContractSendResult {
+    envelopeId: number;
+    status: string;
+}
+
 export interface LaborContractCreatePayload extends Partial<WeeklySchedule> {
     employeeId: number;
     periodType?: ContractPeriodType;

@@ -886,8 +886,8 @@ const SendContractScreen: React.FC = () => {
             sentAt: null,
             signed: false,
             signedAt: null,
-            hasSignatureImage: false,
-            employeeSignatureImage: null,
+            electronicSignatureEnvelopeId: null,
+            electronicSignatureDocumentVersion: 0,
             createdAt: null,
             updatedAt: null,
             workSchedule: days,
@@ -972,8 +972,8 @@ const SendContractScreen: React.FC = () => {
             sentAt: null,
             signed: false,
             signedAt: null,
-            hasSignatureImage: false,
-            employeeSignatureImage: null,
+            electronicSignatureEnvelopeId: null,
+            electronicSignatureDocumentVersion: 0,
             createdAt: null,
             updatedAt: null,
         };
@@ -995,9 +995,10 @@ const SendContractScreen: React.FC = () => {
                 contractId = created.id;
                 setCreatedContractId(contractId);
             }
-            await contractService.send(storeId, contractId);
+            const signature = await contractService.send(storeId, contractId);
             setSentContractId(contractId);
             setDone(true);
+            navigation.navigate('ElectronicSign', {envelopeId: signature.envelopeId});
         } catch (e: unknown) {
             AppToast.error(contractErrorMessage(e, '발송에 실패했어요. 잠시 후 다시 시도해 주세요.'));
         } finally {

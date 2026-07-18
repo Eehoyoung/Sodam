@@ -4,6 +4,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.rich.sodam.config.converter.WorkScheduleListConverter;
 import com.rich.sodam.core.payroll.wage.WorkScheduleDay;
 import com.rich.sodam.domain.type.EmploymentType;
+import com.rich.sodam.domain.type.ManagerPermission;
+import com.rich.sodam.domain.type.StoreRole;
+import com.rich.sodam.config.converter.ManagerPermissionSetConverter;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,6 +15,8 @@ import lombok.Setter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.EnumSet;
+import java.util.Set;
 
 /**
  * 왜 EmployeeStoreRelation에 입사일을 저장해야 하는가?
@@ -72,6 +77,36 @@ public class EmployeeStoreRelation {
      */
     @Column(name = "deactivated_at")
     private LocalDateTime deactivatedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "store_role", nullable = false, length = 20)
+    private StoreRole storeRole = StoreRole.STAFF;
+
+    @Convert(converter = ManagerPermissionSetConverter.class)
+    @Column(name = "granted_permissions", nullable = false, length = 1000)
+    private Set<ManagerPermission> grantedPermissions = EnumSet.noneOf(ManagerPermission.class);
+
+    @Column(name = "manager_appointed_at")
+    private LocalDateTime managerAppointedAt;
+
+    @Column(name = "manager_accepted_at")
+    private LocalDateTime managerAcceptedAt;
+
+    @Column(name = "manager_signature_envelope_id")
+    private Long managerSignatureEnvelopeId;
+
+    @Column(name = "manager_delegation_version", nullable = false)
+    private int managerDelegationVersion;
+
+    @Convert(converter = ManagerPermissionSetConverter.class)
+    @Column(name = "pending_manager_permissions", length = 1000)
+    private Set<ManagerPermission> pendingManagerPermissions;
+
+    @Column(name = "pending_manager_delegation_version")
+    private Integer pendingManagerDelegationVersion;
+
+    @Column(name = "pending_manager_appointed_at")
+    private LocalDateTime pendingManagerAppointedAt;
 
     /** 사장만 보이는 직원 메모 (직원에게 절대 노출 X — DTO 분리 필수) */
     @Column(name = "owner_memo", length = 500)
@@ -155,6 +190,86 @@ public class EmployeeStoreRelation {
     public void changeActive(boolean active) {
         this.isActive = active;
         this.deactivatedAt = active ? null : LocalDateTime.now();
+        if (!active) revokeManager();
+    }
+
+    public void draftManagerAppointment(Set<ManagerPermission> permissions, LocalDateTime appointedAt) {
+        if (!Boolean.TRUE.equals(isActive)) throw new IllegalStateException("비활성 직원은 매니저로 임명할 수 없습니다.");
+        this.storeRole = StoreRole.MANAGER;
+        this.grantedPermissions = orderedCopy(permissions);
+        this.managerAppointedAt = appointedAt == null ? LocalDateTime.now() : appointedAt;
+        this.managerAcceptedAt = null;
+        this.managerSignatureEnvelopeId = null;
+        this.managerDelegationVersion++;
+    }
+
+    public void activateManagerDelegation(Long envelopeId, int delegationVersion, LocalDateTime acceptedAt) {
+        if (storeRole != StoreRole.MANAGER) {
+            throw new IllegalStateException("현재 위임 버전과 일치하지 않습니다.");
+        }
+        if (envelopeId == null) throw new IllegalArgumentException("서명 envelope가 필요합니다.");
+        if (pendingManagerDelegationVersion != null) {
+            if (!pendingManagerDelegationVersion.equals(delegationVersion) || pendingManagerPermissions == null) {
+                throw new IllegalStateException("대기 중인 위임 버전과 일치하지 않습니다.");
+            }
+            this.grantedPermissions = orderedCopy(pendingManagerPermissions);
+            this.managerDelegationVersion = delegationVersion;
+            clearPendingManagerPermissionChange();
+        } else if (managerDelegationVersion != delegationVersion) {
+            throw new IllegalStateException("현재 위임 버전과 일치하지 않습니다.");
+        }
+        this.managerSignatureEnvelopeId = envelopeId;
+        this.managerAcceptedAt = acceptedAt == null ? LocalDateTime.now() : acceptedAt;
+    }
+
+    public int stageManagerPermissionChange(Set<ManagerPermission> permissions, LocalDateTime appointedAt) {
+        if (!hasActiveManagerDelegation()) throw new IllegalStateException("활성 매니저만 권한을 변경할 수 있습니다.");
+        if (permissions == null || permissions.isEmpty()) throw new IllegalArgumentException("권한은 1개 이상이어야 합니다.");
+        this.pendingManagerPermissions = orderedCopy(permissions);
+        this.pendingManagerDelegationVersion = this.pendingManagerDelegationVersion == null
+                ? this.managerDelegationVersion + 1
+                : this.pendingManagerDelegationVersion + 1;
+        this.pendingManagerAppointedAt = appointedAt == null ? LocalDateTime.now() : appointedAt;
+        return this.pendingManagerDelegationVersion;
+    }
+
+    public void reduceManagerPermissions(Set<ManagerPermission> permissions) {
+        if (!hasActiveManagerDelegation()) throw new IllegalStateException("활성 매니저만 권한을 변경할 수 있습니다.");
+        Set<ManagerPermission> reduced = orderedCopy(permissions);
+        if (reduced.isEmpty() || !this.grantedPermissions.containsAll(reduced)) {
+            throw new IllegalArgumentException("즉시 변경은 기존 권한의 축소만 허용합니다.");
+        }
+        this.grantedPermissions = reduced;
+        this.managerDelegationVersion++;
+        clearPendingManagerPermissionChange();
+    }
+
+    public void clearPendingManagerPermissionChange() {
+        this.pendingManagerPermissions = null;
+        this.pendingManagerDelegationVersion = null;
+        this.pendingManagerAppointedAt = null;
+    }
+
+    public boolean hasActiveManagerDelegation() {
+        return Boolean.TRUE.equals(isActive) && storeRole == StoreRole.MANAGER && managerAcceptedAt != null;
+    }
+
+    public void revokeManager() {
+        this.storeRole = StoreRole.STAFF;
+        this.grantedPermissions = EnumSet.noneOf(ManagerPermission.class);
+        this.managerAcceptedAt = null;
+        this.managerSignatureEnvelopeId = null;
+        clearPendingManagerPermissionChange();
+    }
+
+    public boolean hasActiveManagerPermission(ManagerPermission permission) {
+        return hasActiveManagerDelegation()
+                && grantedPermissions.contains(permission);
+    }
+
+    private static Set<ManagerPermission> orderedCopy(Set<ManagerPermission> permissions) {
+        if (permissions == null || permissions.isEmpty()) return EnumSet.noneOf(ManagerPermission.class);
+        return EnumSet.copyOf(permissions);
     }
 
     // 실제 적용되는 시급 계산

@@ -3,6 +3,7 @@ package com.rich.sodam.repository;
 import com.rich.sodam.domain.EmployeeProfile;
 import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.Store;
+import com.rich.sodam.domain.type.StoreRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -115,4 +116,18 @@ public interface EmployeeStoreRelationRepository extends JpaRepository<EmployeeS
             "WHERE r.employeeProfile.id = :employeeId AND r.isActive = true " +
             "ORDER BY r.hireDate DESC")
     List<EmployeeStoreRelation> findActiveByEmployeeIdWithStore(@Param("employeeId") Long employeeId);
+
+    long countByStore_IdAndStoreRoleAndIsActiveTrue(Long storeId, StoreRole storeRole);
+
+    @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM EmployeeStoreRelation r WHERE r.employeeProfile.id = :employeeId AND r.store.id = :storeId")
+    Optional<EmployeeStoreRelation> findRelationForUpdate(@Param("employeeId") Long employeeId,
+                                                          @Param("storeId") Long storeId);
+
+    @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM EmployeeStoreRelation r WHERE r.id = :id")
+    Optional<EmployeeStoreRelation> findByIdForUpdate(@Param("id") Long id);
+
+    List<EmployeeStoreRelation> findByStore_IdAndStoreRoleAndIsActiveTrue(Long storeId, StoreRole storeRole);
+    List<EmployeeStoreRelation> findByEmployeeProfile_IdAndStoreRoleAndIsActiveTrue(Long employeeId, StoreRole storeRole);
 }

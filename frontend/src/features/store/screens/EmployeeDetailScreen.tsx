@@ -26,6 +26,7 @@ import api from '../../../common/utils/api';
 import {WageEditSheet, WageEditValues} from '../components/StoreSheets';
 import wageService, {EmploymentType} from '../../wage/services/wageService';
 import contractService from '../../contract/services/contractService';
+import ManagerAppointSection from '../../manager/screens/ManagerAppointSection';
 
 type TabKey = 'INFO' | 'ATTENDANCE' | 'SALARY' | 'TIMEOFF';
 
@@ -91,8 +92,7 @@ const EmployeeDetailScreen: React.FC = () => {
     const [savingWage, setSavingWage] = useState(false);
     const [draftContractCount, setDraftContractCount] = useState(0);
 
-    // 직원별 급여 설정 — POST /api/wages/employee
-    // (시급제: customHourlyWage, 0/빈값이면 매장 기본 사용 · 월급제: employmentType+monthlySalary 일괄)
+    // 중요 근로조건은 즉시 수정하지 않고 변경계약 전자서명 완료 후 효력일에 적용한다.
     const saveWage = async (values: WageEditValues) => {
         if (savingWage) {
             return;
@@ -103,35 +103,30 @@ const EmployeeDetailScreen: React.FC = () => {
             return;
         }
         setSavingWage(true);
+        let createdAmendmentId: number | null = null;
         try {
-            const useStoreStandard = !values.hourlyWage || values.hourlyWage < 1;
-            const res = await wageService.upsertEmployeeWage({
+            const hourlyWage = values.hourlyWage > 0
+                ? values.hourlyWage
+                : emp?.appliedHourlyWage;
+            if (!isMonthly && !hourlyWage) {
+                AppToast.error('변경할 시급을 입력해 주세요.');
+                return;
+            }
+            const amendment = await wageService.createEmploymentAmendment(storeId, {
                 employeeId,
-                storeId,
-                hourlyWage: isMonthly || useStoreStandard ? undefined : values.hourlyWage,
-                useStoreStandardWage: isMonthly ? true : useStoreStandard,
+                effectiveDate: new Date().toLocaleDateString('en-CA'),
                 employmentType: values.employmentType,
+                hourlyWage: isMonthly ? undefined : hourlyWage,
                 monthlySalary: isMonthly ? values.monthlySalary : undefined,
-                socialInsuranceEnrolled: values.socialInsuranceEnrolled,
             });
-            setEmp(e => (e ? {
-                ...e,
-                appliedHourlyWage: isMonthly || useStoreStandard
-                    ? undefined
-                    : (res.hourlyWage ?? values.hourlyWage),
-                employmentType: values.employmentType,
-                monthlySalary: isMonthly ? values.monthlySalary : undefined,
-                socialInsuranceEnrolled: values.socialInsuranceEnrolled,
-            } : e));
+            createdAmendmentId = amendment.id;
+            const signature = await wageService.sendEmploymentAmendment(storeId, amendment.id);
             setWageSheet(false);
-            AppToast.success(
-                isMonthly
-                    ? '월급제로 급여 설정이 저장됐어요.'
-                    : useStoreStandard
-                        ? '매장 기본 시급을 사용하도록 변경했어요.'
-                        : '직원 시급이 변경됐어요.',
-            );
+            navigation.navigate('ElectronicSign', {envelopeId: signature.envelopeId});
         } catch (err: any) {
+            if (createdAmendmentId !== null) {
+                await wageService.cancelEmploymentAmendment(storeId, createdAmendmentId).catch(() => undefined);
+            }
             const data = err?.response?.data;
             if (data?.errorCode === 'WAGE_BELOW_MINIMUM') {
                 AppToast.error(
@@ -307,6 +302,13 @@ const EmployeeDetailScreen: React.FC = () => {
             </View>
 
             <MemoEditor storeId={storeId} employeeId={emp.id} />
+
+            <ManagerAppointSection
+                storeId={storeId}
+                employeeId={emp.id}
+                employeeName={emp.name}
+                navigation={navigation}
+            />
 
             <View style={styles.contractRow}>
                 <AppListItem

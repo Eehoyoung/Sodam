@@ -14,6 +14,8 @@ public interface MasterStoreRelationRepository extends JpaRepository<MasterStore
 
     List<MasterStoreRelation> findByStore_Id(Long storeId);
 
+    java.util.Optional<MasterStoreRelation> findFirstByStore_IdOrderByIdAsc(Long storeId);
+
     /**
      * 사장이 해당 매장을 소유하는지 검증 (StoreAccessGuard 용).
      */

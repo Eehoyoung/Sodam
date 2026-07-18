@@ -1,176 +1,111 @@
-import {AppToast, ConfirmSheet, AppBadge, AppButton, AppCard, AppHeader, AppListItem, AppText, ScreenContainer} from '../../../common/components/ds';
-import React, {useCallback, useState} from 'react';
-import {ScrollView, StyleSheet, View} from 'react-native';
-import {NavigationProp, useNavigation, useFocusEffect} from '@react-navigation/native';
+import React, {useCallback} from 'react';
+import {RefreshControl, ScrollView, StyleSheet, View} from 'react-native';
+import {useFocusEffect, useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {
+    AppBadge,
+    AppButton,
+    AppCard,
+    AppHeader,
+    AppListItem,
+    AppText,
+    EmptyState,
+    ErrorState,
+    LoadingState,
+    ScreenContainer,
+} from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
-import {layout, spacing} from '../../../theme/tokens';
-import {HeroSlot, SummarySlot, ActionsSlot, InfoSlot} from '../components/RoleSlots';
+import {useManagedStores} from '../../manager/hooks/useManagedStores';
+import {MANAGER_PERMISSION_LABEL} from '../../manager/types';
+import {spacing} from '../../../theme/tokens';
 
-interface TeamMember {
-    id: number;
-    name: string;
-    position: string;
-    todayStatus: 'working' | 'off' | 'pending';
-}
-
-interface PendingApproval {
-    id: number;
-    employeeName: string;
-    type: 'check-in' | 'check-out' | 'manual';
-    timestamp: string;
-}
-
-/**
- * 46 ManagerHome — 확정 시안.
- * 매니저 마이페이지. RoleSlots/testID/데이터·승인 로직 보존.
- */
 const ManagerMyPageScreen: React.FC = () => {
-    const navigation = useNavigation<NavigationProp<HomeStackParamList>>();
-    const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-    const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
-    const [storeInfo] = useState({storeName: '소담 카페 강남점', todayAttendance: 6, totalEmployees: 8});
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
+    const stores = useManagedStores();
 
-    // 포커스마다 재조회 — 점장 담당 매장/직원 변경 후 복귀 시 최신 반영.
-    useFocusEffect(
-        useCallback(() => {
-            loadManagerData();
-        }, []),
-    );
+    useFocusEffect(useCallback(() => {
+        stores.refetch();
+        // The query observer object changes as data arrives; refetch itself is the stable dependency.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [stores.refetch]));
 
-    const loadManagerData = async () => {
-        try {
-            setTeamMembers([
-                {id: 1, name: '김알바', position: '파트타임', todayStatus: 'working'},
-                {id: 2, name: '이직원', position: '파트타임', todayStatus: 'working'},
-                {id: 3, name: '박사원', position: '파트타임', todayStatus: 'off'},
-                {id: 4, name: '최근무', position: '파트타임', todayStatus: 'pending'},
-            ]);
-            setPendingApprovals([{id: 1, employeeName: '최근무', type: 'check-in', timestamp: '2025-10-12T09:05:00'}]);
-        } catch (error) {
-            AppToast.error('데이터를 불러오는데 실패했어요.');
-        }
-    };
+    if (stores.isLoading) {
+        return <ScreenContainer header={<AppHeader title="내 위임 현황" onBack={() => navigation.goBack()} />}>
+            <LoadingState title="위임 현황 불러오는 중" description="매장별 서명 상태와 권한을 확인하고 있어요." />
+        </ScreenContainer>;
+    }
 
-    const handleApproval = (approvalId: number) => {
-        ConfirmSheet.confirm({
-            title: '이 출퇴근 기록을 승인할까요?',
-            description: '승인하면 정상 기록으로 반영되고 직원에게 알림이 가요.',
-            primary: {
-                label: '승인하기',
-                onPress: () => {
-                    setPendingApprovals(prev => prev.filter(item => item.id !== approvalId));
-                    AppToast.success('출퇴근 기록이 승인됐어요.');
-                },
-            },
-            secondary: {label: '취소'},
-        });
-    };
-
-    const statusBadge = (status: TeamMember['todayStatus']): {label: string; tone: 'success' | 'neutral' | 'warning'} => {
-        switch (status) {
-            case 'working':
-                return {label: '근무중', tone: 'success'};
-            case 'off':
-                return {label: '퇴근', tone: 'neutral'};
-            case 'pending':
-                return {label: '승인대기', tone: 'warning'};
-        }
-    };
+    if (stores.isError) {
+        return <ScreenContainer header={<AppHeader title="내 위임 현황" onBack={() => navigation.goBack()} />}>
+            <ErrorState title="위임 현황을 불러오지 못했어요" description="잠시 후 다시 시도해 주세요."
+                primary={{label: '다시 시도', onPress: () => stores.refetch()}} />
+        </ScreenContainer>;
+    }
 
     return (
-        <ScreenContainer
-            padded={false}
-            header={
-                <AppHeader
-                    title="매니저 홈"
-                    actions={[
-                        {label: '알림', onPress: () => navigation.navigate('NotificationCenter')},
-                        {label: '설정', onPress: () => navigation.navigate('AccountSettings')},
-                    ]}
-                />
-            }>
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                <HeroSlot testID="slotHero">
-                    <AppText variant="headingMd">안녕하세요, 김매니저님</AppText>
-                    <AppText variant="bodyMd" tone="secondary" style={styles.sub}>{storeInfo.storeName} 관리자</AppText>
-                </HeroSlot>
-
-                <SummarySlot testID="slotSummary">
-                    <AppCard variant="navy" hero style={styles.summaryCard}>
-                        <View style={styles.summaryRow}>
-                            <Summary label="오늘 출근" value={`${storeInfo.todayAttendance}명`} />
-                            <Summary label="전체 팀원" value={`${storeInfo.totalEmployees}명`} />
-                            <Summary label="승인 대기" value={`${pendingApprovals.length}건`} />
+        <ScreenContainer padded={false} header={<AppHeader title="내 위임 현황" onBack={() => navigation.goBack()} />}>
+            <ScrollView
+                contentContainerStyle={styles.content}
+                refreshControl={<RefreshControl refreshing={stores.isRefetching} onRefresh={() => stores.refetch()} />}>
+                {(stores.data?.length ?? 0) === 0 ? (
+                    <EmptyState title="위임받은 매장이 없어요"
+                        description="사업주가 위임장을 만들면 서명 대기 상태부터 이곳에 표시됩니다." />
+                ) : stores.data?.map(store => (
+                    <AppCard key={store.storeId} variant={store.active ? 'plain' : 'warm'}>
+                        <View style={styles.headingRow}>
+                            <View style={styles.flex}>
+                                <AppText variant="headingSm">{store.storeName}</AppText>
+                                <AppText variant="caption" tone="secondary" style={styles.caption}>
+                                    위임장 버전 {store.delegationVersion}
+                                    {store.acceptedAt ? ` · ${new Date(store.acceptedAt).toLocaleDateString('ko-KR')} 발효` : ''}
+                                </AppText>
+                            </View>
+                            <AppBadge label={store.active ? '권한 발효' : signatureLabel(store.signatureStatus)}
+                                tone={store.active ? 'success' : 'warning'} />
                         </View>
-                    </AppCard>
-                </SummarySlot>
 
-                {pendingApprovals.length > 0 ? (
-                    <View style={styles.section}>
-                        <AppText variant="titleMd" style={styles.sectionTitle}>승인 대기 중</AppText>
-                        <View style={styles.list}>
-                            {pendingApprovals.map(a => (
-                                <AppListItem
-                                    key={a.id}
-                                    title={a.employeeName}
-                                    subtitle={`${a.type === 'check-in' ? '출근' : a.type === 'check-out' ? '퇴근' : '수동 기록'} · ${new Date(a.timestamp).toLocaleString('ko-KR')}`}
-                                    right={<AppBadge label="승인" tone="info" />}
-                                    onPress={() => handleApproval(a.id)}
-                                />
+                        <View style={styles.permissions}>
+                            {store.permissions.map(permission => (
+                                <AppBadge key={permission} label={MANAGER_PERMISSION_LABEL[permission]} tone="neutral" />
                             ))}
                         </View>
-                    </View>
-                ) : null}
+
+                        {!store.active && store.signatureEnvelopeId ? (
+                            <AppButton label="전자서명 확인" style={styles.button}
+                                onPress={() => navigation.navigate('ElectronicSign', {envelopeId: store.signatureEnvelopeId as number})} />
+                        ) : null}
+                        {store.active ? (
+                            <AppButton label="매장 운영 화면" variant="secondary" style={styles.button}
+                                onPress={() => navigation.navigate('OwnerDashboard', {storeId: store.storeId, managerMode: true})} />
+                        ) : null}
+                    </AppCard>
+                ))}
 
                 <View style={styles.section}>
-                    <AppText variant="titleMd" style={styles.sectionTitle}>팀원 현황</AppText>
-                    <View style={styles.list}>
-                        {teamMembers.map(m => {
-                            const b = statusBadge(m.todayStatus);
-                            return <AppListItem key={m.id} title={m.name} subtitle={m.position} right={<AppBadge label={b.label} tone={b.tone} />} />;
-                        })}
-                    </View>
+                    <AppText variant="titleMd">운영 바로가기</AppText>
+                    <AppListItem title="알림 센터" subtitle="승인 요청과 서명 상태 변경을 확인해요."
+                        right="›" onPress={() => navigation.navigate('NotificationCenter')} />
+                    <AppListItem title="계정 설정" subtitle="전자서명에 필요한 휴대전화·생년월일을 관리해요."
+                        right="›" onPress={() => navigation.navigate('AccountSettings')} />
                 </View>
-
-                <ActionsSlot testID="slotActions">
-                    <View style={styles.section}>
-                        <AppButton label="출퇴근 기록 관리" testID="btnManageAttendance" onPress={() => navigation.navigate('Attendance')} />
-                    </View>
-                </ActionsSlot>
-
-                <InfoSlot testID="slotInfo">
-                    <View style={styles.section}>
-                        <AppCard variant="warm">
-                            <AppText variant="titleMd">관리자 안내</AppText>
-                            <AppText variant="caption" tone="secondary" style={styles.infoText}>
-                                • 팀원의 출퇴근 기록을 승인하거나 수정할 수 있어요.{'\n'}• 매장 운영 현황을 실시간으로 확인하세요.{'\n'}• 문제가 있을 경우 사장님께 보고해주세요.
-                            </AppText>
-                        </AppCard>
-                    </View>
-                </InfoSlot>
             </ScrollView>
         </ScreenContainer>
     );
 };
 
-const Summary: React.FC<{label: string; value: string}> = ({label, value}) => (
-    <View style={styles.summaryItem}>
-        <AppText variant="caption" tone="inverse" style={styles.summaryLabel}>{label}</AppText>
-        <AppText variant="headingSm" tone="inverse">{value}</AppText>
-    </View>
-);
+const signatureLabel = (status?: string | null) => ({
+    VERIFIED: '검증 완료', DECLINED: '서명 거절', EXPIRED: '서명 만료', FAILED: '처리 실패',
+    CANCELLED: '요청 취소', MANUAL_REISSUE_REQUIRED: '재발행 필요', IN_PROGRESS: '서명 대기',
+}[status ?? ''] ?? '서명 준비');
 
 const styles = StyleSheet.create({
-    content: {paddingHorizontal: layout.screenPaddingHorizontal, paddingTop: spacing.md, paddingBottom: spacing.xl, gap: spacing.md},
-    sub: {marginTop: 2},
-    summaryCard: {},
-    summaryRow: {flexDirection: 'row', justifyContent: 'space-around'},
-    summaryItem: {alignItems: 'center', flex: 1},
-    summaryLabel: {opacity: 0.85, marginBottom: 4},
-    section: {gap: spacing.sm},
-    sectionTitle: {},
-    list: {gap: spacing.sm},
-    infoText: {marginTop: spacing.xs, lineHeight: 22},
+    content: {padding: spacing.xxl, paddingBottom: spacing.xxxl, gap: spacing.lg},
+    headingRow: {flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm},
+    flex: {flex: 1},
+    caption: {marginTop: spacing.xs},
+    permissions: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.md},
+    button: {marginTop: spacing.lg},
+    section: {marginTop: spacing.sm, gap: spacing.sm},
 });
 
 export default ManagerMyPageScreen;

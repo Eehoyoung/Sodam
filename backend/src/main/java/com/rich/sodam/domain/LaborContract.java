@@ -269,6 +269,25 @@ public class LaborContract {
     @Column(name = "employee_signature_image", length = 65535)
     private String employeeSignatureImage;
 
+    /** 공통 전자서명 봉투 참조. 원문·서명 원본은 비공개 객체 저장소에만 보관한다. */
+    @Column(name = "electronic_signature_envelope_id")
+    private Long electronicSignatureEnvelopeId;
+
+    @Column(name = "electronic_signature_document_version", nullable = false)
+    private int electronicSignatureDocumentVersion;
+
+    @Column(name = "signing_actor_user_id")
+    private Long signingActorUserId;
+
+    @Column(name = "delegated_by_master_id")
+    private Long delegatedByMasterId;
+
+    @Column(name = "delegation_envelope_id")
+    private Long delegationEnvelopeId;
+
+    @Column(name = "delegation_version")
+    private Integer delegationVersion;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -284,6 +303,44 @@ public class LaborContract {
         this.employeeSignedAt = signedAt;
         this.employeeSignatureImage = signatureImage;
         return true;
+    }
+
+    public void linkElectronicSignature(Long envelopeId, int documentVersion, LocalDateTime sentAt) {
+        if (envelopeId == null || documentVersion < 1) {
+            throw new IllegalArgumentException("전자서명 봉투와 문서 버전이 필요합니다.");
+        }
+        if (this.electronicSignatureEnvelopeId != null
+                && (!this.electronicSignatureEnvelopeId.equals(envelopeId)
+                || this.electronicSignatureDocumentVersion != documentVersion)) {
+            throw new IllegalStateException("이미 다른 전자서명 봉투에 연결된 근로계약서입니다.");
+        }
+        this.electronicSignatureEnvelopeId = envelopeId;
+        this.electronicSignatureDocumentVersion = documentVersion;
+        markSent(sentAt == null ? LocalDateTime.now() : sentAt);
+    }
+
+    public void bindSigningAuthority(Long actorUserId, Long ownerUserId,
+                                     Long delegationEnvelopeId, Integer delegationVersion) {
+        if (actorUserId == null || ownerUserId == null) {
+            throw new IllegalArgumentException("계약 체결 권한 주체가 필요합니다.");
+        }
+        boolean delegated = !actorUserId.equals(ownerUserId);
+        if (delegated && (delegationEnvelopeId == null || delegationVersion == null || delegationVersion < 1)) {
+            throw new IllegalArgumentException("대리 체결에는 완료된 위임 증적이 필요합니다.");
+        }
+        this.signingActorUserId = actorUserId;
+        this.delegatedByMasterId = ownerUserId;
+        this.delegationEnvelopeId = delegated ? delegationEnvelopeId : null;
+        this.delegationVersion = delegated ? delegationVersion : null;
+    }
+
+    public boolean completeElectronicSignature(Long envelopeId, int documentVersion, LocalDateTime verifiedAt) {
+        if (!java.util.Objects.equals(this.electronicSignatureEnvelopeId, envelopeId)
+                || this.electronicSignatureDocumentVersion != documentVersion) {
+            throw new IllegalStateException("근로계약서와 전자서명 봉투가 일치하지 않습니다.");
+        }
+        // 신규 전자서명은 이미지/base64를 DB에 남기지 않는다.
+        return markSigned(verifiedAt == null ? LocalDateTime.now() : verifiedAt, null);
     }
 
     public boolean isSigned() {
