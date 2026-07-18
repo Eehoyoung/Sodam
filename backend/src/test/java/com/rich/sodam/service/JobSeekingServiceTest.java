@@ -4,17 +4,21 @@ import com.rich.sodam.domain.Attendance;
 import com.rich.sodam.domain.EmployeeProfile;
 import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.JobAvailabilityDay;
+import com.rich.sodam.domain.JobOffer;
 import com.rich.sodam.domain.JobSeekingProfile;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.domain.type.UserGrade;
+import com.rich.sodam.dto.request.JobOfferCreateRequest;
 import com.rich.sodam.dto.request.JobSeekingUpdateRequest;
+import com.rich.sodam.dto.response.JobOfferResponse;
 import com.rich.sodam.dto.response.JobSeekerListItemResponse;
 import com.rich.sodam.dto.response.JobSeekingProfileResponse;
 import com.rich.sodam.exception.BusinessException;
 import com.rich.sodam.repository.AttendanceRepository;
 import com.rich.sodam.repository.EmployeeProfileRepository;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
+import com.rich.sodam.repository.JobOfferRepository;
 import com.rich.sodam.repository.JobSeekingProfileRepository;
 import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.repository.UserRepository;
@@ -24,11 +28,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,6 +57,10 @@ class JobSeekingServiceTest {
     @Autowired private AttendanceRepository attendanceRepo;
     @Autowired private EmployeeStoreRelationRepository relationRepo;
     @Autowired private JobSeekingProfileRepository jobSeekingProfileRepo;
+    @Autowired private JobOfferService jobOfferService;
+    @Autowired private JobOfferRepository jobOfferRepo;
+
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     private int bizSeq = 0;
     private int emailSeq = 0;
@@ -548,5 +559,80 @@ class JobSeekingServiceTest {
         assertThatThrownBy(() -> service.getJobSeekersForStore(999_999_999L, null, null))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(errorCode(e)).isEqualTo("ENTITY_NOT_FOUND"));
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // offerStatus 파생 — 매장→구직자 최신 제안 상태 인라인(§15.3 offerStatus 필드 갭 해소)
+    // ─────────────────────────────────────────────────────────────────
+
+    private JobOfferCreateRequest substituteOfferRequest(Long targetUserId) {
+        LocalDate workDate = LocalDate.now(SEOUL).plusDays(10); // 24h 밖 → 만료시각=생성+24h(경계 조작 용이)
+        return new JobOfferCreateRequest(targetUserId, "SUBSTITUTE", workDate,
+                LocalTime.of(9, 0), LocalTime.of(13, 0), 12_000, "대타 가능하신가요");
+    }
+
+    private JobSeekerListItemResponse itemFor(Store store, Long userId) {
+        return service.getJobSeekersForStore(store.getId(), null, null).stream()
+                .filter(r -> r.userId().equals(userId))
+                .findFirst().orElseThrow();
+    }
+
+    @Test
+    @DisplayName("제안을 보낸 적 없으면 offerStatus=null")
+    void offerStatus_withoutOffer_isNull() {
+        Store store = store("카페");
+        User seeker = seekerWithLocation(store, 1_000, List.of("SUBSTITUTE"), List.of("CAFE"), mondayAvailability());
+
+        assertThat(itemFor(store, seeker.getId()).offerStatus()).isNull();
+    }
+
+    @Test
+    @DisplayName("PENDING 제안이 있으면 offerStatus=PENDING")
+    void offerStatus_withPendingOffer_isPending() {
+        Store store = store("카페");
+        User seeker = seekerWithLocation(store, 1_000, List.of("SUBSTITUTE"), List.of("CAFE"), mondayAvailability());
+
+        jobOfferService.sendOffer(store.getId(), substituteOfferRequest(seeker.getId()));
+
+        assertThat(itemFor(store, seeker.getId()).offerStatus()).isEqualTo("PENDING");
+    }
+
+    @Test
+    @DisplayName("제안이 수락되면 offerStatus=ACCEPTED")
+    void offerStatus_afterAccept_isAccepted() {
+        Store store = store("카페");
+        User seeker = seekerWithLocation(store, 1_000, List.of("SUBSTITUTE"), List.of("CAFE"), mondayAvailability());
+
+        JobOfferResponse offer = jobOfferService.sendOffer(store.getId(), substituteOfferRequest(seeker.getId()));
+        jobOfferService.respondToOffer(offer.id(), seeker.getId(), true);
+
+        assertThat(itemFor(store, seeker.getId()).offerStatus()).isEqualTo("ACCEPTED");
+    }
+
+    @Test
+    @DisplayName("제안이 거절되면 offerStatus=DECLINED")
+    void offerStatus_afterDecline_isDeclined() {
+        Store store = store("카페");
+        User seeker = seekerWithLocation(store, 1_000, List.of("SUBSTITUTE"), List.of("CAFE"), mondayAvailability());
+
+        JobOfferResponse offer = jobOfferService.sendOffer(store.getId(), substituteOfferRequest(seeker.getId()));
+        jobOfferService.respondToOffer(offer.id(), seeker.getId(), false);
+
+        assertThat(itemFor(store, seeker.getId()).offerStatus()).isEqualTo("DECLINED");
+    }
+
+    @Test
+    @DisplayName("만료 시각이 지난 PENDING 제안 → offerStatus=EXPIRED(lazy 판정), DB 원본은 그대로 PENDING")
+    void offerStatus_lazyExpiry_isExpired_withoutMutatingDb() {
+        Store store = store("카페");
+        User seeker = seekerWithLocation(store, 1_000, List.of("SUBSTITUTE"), List.of("CAFE"), mondayAvailability());
+
+        JobOfferResponse offer = jobOfferService.sendOffer(store.getId(), substituteOfferRequest(seeker.getId()));
+        JobOffer persisted = jobOfferRepo.findById(offer.id()).orElseThrow();
+        ReflectionTestUtils.setField(persisted, "expiresAt", LocalDateTime.now(SEOUL).minusSeconds(1));
+        jobOfferRepo.saveAndFlush(persisted);
+
+        assertThat(itemFor(store, seeker.getId()).offerStatus()).isEqualTo("EXPIRED");
+        assertThat(jobOfferRepo.findById(offer.id()).orElseThrow().getStatus().name()).isEqualTo("PENDING");
     }
 }

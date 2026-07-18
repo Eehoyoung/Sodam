@@ -1,10 +1,12 @@
 package com.rich.sodam.controller;
 
 import com.rich.sodam.dto.request.ShiftTemplateCreateRequest;
+import com.rich.sodam.domain.type.ManagerPermission;
 import com.rich.sodam.dto.response.ApplyTemplateResponse;
 import com.rich.sodam.dto.response.ShiftTemplateResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.service.ShiftTemplateService;
 import com.rich.sodam.service.StoreAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,39 +34,39 @@ public class ShiftTemplateController {
     private final ShiftTemplateService shiftTemplateService;
     private final StoreAccessGuard storeAccessGuard;
 
-    @MasterOnly
+    @EmployeeOrMaster
     @Operation(summary = "템플릿 저장", description = "지정 기간(from~to)의 근무를 요일 패턴으로 스냅샷 저장.")
     @PostMapping("/api/stores/{storeId}/shift-templates")
     public ResponseEntity<ShiftTemplateResponse> create(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId,
             @Valid @RequestBody ShiftTemplateCreateRequest req) {
-        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        storeAccessGuard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.SCHEDULE_MANAGE);
         return ResponseEntity.ok(shiftTemplateService.createFromWeek(storeId, principal.getId(), req));
     }
 
-    @MasterOnly
+    @EmployeeOrMaster
     @Operation(summary = "템플릿 목록", description = "매장 템플릿 목록(최신순).")
     @GetMapping("/api/stores/{storeId}/shift-templates")
     public ResponseEntity<List<ShiftTemplateResponse>> list(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId) {
-        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        storeAccessGuard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.SCHEDULE_MANAGE);
         return ResponseEntity.ok(shiftTemplateService.list(storeId));
     }
 
-    @MasterOnly
+    @EmployeeOrMaster
     @Operation(summary = "템플릿 상세", description = "엔트리(요일·직원·시간) 포함 상세.")
     @GetMapping("/api/stores/{storeId}/shift-templates/{templateId}")
     public ResponseEntity<ShiftTemplateResponse> get(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId,
             @PathVariable Long templateId) {
-        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        storeAccessGuard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.SCHEDULE_MANAGE);
         return ResponseEntity.ok(shiftTemplateService.get(storeId, templateId));
     }
 
-    @MasterOnly
+    @EmployeeOrMaster
     @Operation(summary = "템플릿 적용", description = "weekStart가 속한 주(월요일 기준)에 일괄 생성. 비활성 직원 엔트리는 스킵 보고.")
     @PostMapping("/api/stores/{storeId}/shift-templates/{templateId}/apply")
     public ResponseEntity<ApplyTemplateResponse> apply(
@@ -72,18 +74,18 @@ public class ShiftTemplateController {
             @PathVariable Long storeId,
             @PathVariable Long templateId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart) {
-        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        storeAccessGuard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.SCHEDULE_MANAGE);
         return ResponseEntity.ok(shiftTemplateService.apply(storeId, templateId, weekStart));
     }
 
-    @MasterOnly
+    @EmployeeOrMaster
     @Operation(summary = "템플릿 삭제", description = "매장 소유 검증 후 삭제(엔트리 cascade).")
     @DeleteMapping("/api/stores/{storeId}/shift-templates/{templateId}")
     public ResponseEntity<Void> delete(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId,
             @PathVariable Long templateId) {
-        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        storeAccessGuard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.SCHEDULE_MANAGE);
         shiftTemplateService.delete(storeId, templateId);
         return ResponseEntity.noContent().build();
     }

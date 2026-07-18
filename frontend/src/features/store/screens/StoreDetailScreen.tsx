@@ -137,6 +137,13 @@ export default function StoreDetailScreen({route, navigation}: StoreDetailScreen
                     />
                     <ManageItem
                         c={c}
+                        icon="pricetags-outline"
+                        title="NFC 태그 관리"
+                        subtitle="매장에 부착한 출퇴근 인증 태그 등록·관리"
+                        onPress={() => navigation.navigate('NfcTagManagement', {storeId})}
+                    />
+                    <ManageItem
+                        c={c}
                         icon="receipt-outline"
                         title="매입장부"
                         subtitle="영수증으로 매입 기록·가격 비교"

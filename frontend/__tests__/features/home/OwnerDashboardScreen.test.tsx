@@ -19,11 +19,13 @@ jest.mock('react-native', () => ({
 }));
 
 const mockNavigate = jest.fn();
+let mockRouteParams: {storeId: number; managerMode: true} | undefined;
 jest.mock('@react-navigation/native', () => {
     // 실제 useFocusEffect 처럼 콜백을 렌더 중이 아닌 effect 로 실행해야 무한 렌더를 막을 수 있다.
     const React = jest.requireActual('react');
     return {
         useNavigation: () => ({navigate: mockNavigate, goBack: jest.fn()}),
+        useRoute: () => ({params: mockRouteParams}),
         useFocusEffect: (cb: () => void) => React.useEffect(cb, []),
         NavigationContainer: ({children}: any) => children,
     };
@@ -61,6 +63,19 @@ jest.mock('../../../src/common/utils/api', () => {
     return {__esModule: true, default: api, setOnUnauthorized: jest.fn()};
 });
 
+jest.mock('../../../src/features/manager/hooks/useManagedStores', () => ({
+    useManagedStores: () => ({
+        data: [{
+            storeId: 10,
+            storeName: '소담 광교점',
+            permissions: ['DASHBOARD_VIEW', 'ATTENDANCE_APPROVE', 'STAFF_VIEW'],
+            active: true,
+        }],
+        isLoading: false,
+        refetch: jest.fn(() => Promise.resolve()),
+    }),
+}));
+
 // 실제 토큰 사용 — DS 컴포넌트가 named export(colors/spacing/radius/...)를 쓰므로
 // 부분 모킹 대신 requireActual 로 전체 토큰을 제공한다.
 jest.mock('../../../src/theme/tokens', () => jest.requireActual('../../../src/theme/tokens'));
@@ -79,6 +94,31 @@ const flush = async () => {
 describe('OwnerDashboardScreen', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        mockRouteParams = undefined;
+    });
+
+    test('매니저 모드는 owner·payroll API를 호출하지 않고 오늘 현황만 조회', async () => {
+        mockRouteParams = {storeId: 10, managerMode: true};
+        apiMock.get.mockResolvedValue({
+            data: {
+                storeId: 10,
+                storeName: '소담 광교점',
+                checkedInCount: 2,
+                totalActiveEmployees: 4,
+                pendingEmployees: ['김직원'],
+            },
+        } as any);
+
+        await act(async () => {
+            ReactTestRenderer.create(<OwnerDashboardScreen />);
+            await flush();
+        });
+
+        const urls = apiMock.get.mock.calls.map(c => c[0]);
+        expect(urls).toContain('/api/store-queries/10/stats/today');
+        expect(urls).not.toContain('/api/stores/master/current');
+        expect(urls.some(url => String(url).includes('payroll'))).toBe(false);
+        expect(urls.some(url => String(url).includes('/stats/dashboard'))).toBe(false);
     });
 
     test('마운트 시 stores + 대시보드 합성 엔드포인트 호출(순차 2콜 → 1콜, Phase 9)', async () => {

@@ -21,6 +21,10 @@ import java.util.List;
  * @param availability      요일별 근무 가능 시간
  * @param availableToday    오늘 요일 근무 가능 여부(BE 파생, Asia/Seoul 기준)
  * @param distanceMeters    두 희망지역 중 가까운 쪽까지의 거리(미터)
+ * @param offerStatus       이 매장이 이 구직자에게 보낸 최신 채용 제안({@link com.rich.sodam.domain.JobOffer})의
+ *                          유효 상태(null/"PENDING"/"ACCEPTED"/"DECLINED"/"EXPIRED"). 제안을 보낸 적이 없으면
+ *                          null. EXPIRED 는 {@code JobOfferService} 의 lazy 판정 헬퍼를 그대로 재사용해 계산한다
+ *                          (260711_작업통합.md Part 2 §15.3, offerStatus 필드 갭 해소 — Phase6 팔로우업)
  */
 public record JobSeekerListItemResponse(
         Long userId,
@@ -33,6 +37,7 @@ public record JobSeekerListItemResponse(
         boolean categoryMatched,
         List<JobAvailabilityDay> availability,
         boolean availableToday,
-        long distanceMeters
+        long distanceMeters,
+        String offerStatus
 ) {
 }

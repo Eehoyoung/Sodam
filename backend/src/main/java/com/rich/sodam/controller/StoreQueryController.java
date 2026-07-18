@@ -1,8 +1,10 @@
 package com.rich.sodam.controller;
 
 import com.rich.sodam.domain.Store;
+import com.rich.sodam.domain.type.ManagerPermission;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.service.StoreAccessGuard;
 import com.rich.sodam.service.StoreQueryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,7 +25,7 @@ import java.util.List;
  * 매장 단위 소유권 가드 + 본인 범위(self) 검증으로 폐쇄하고, 소비자가 없고 전테넌트를 노출하던
  * 전역 목록/검색 엔드포인트(/active, /deleted, by-business-number, /search/*)는 제거했다.</p>
  */
-@MasterOnly
+@EmployeeOrMaster
 @RestController
 @RequestMapping("/api/store-queries")
 @RequiredArgsConstructor
@@ -40,6 +42,7 @@ public class StoreQueryController {
     }
 
     @Operation(summary = "ID로 활성 매장 조회 (본인 소유)")
+    @MasterOnly
     @GetMapping("/active/{id}")
     public ResponseEntity<Store> findActiveById(@AuthenticationPrincipal UserPrincipal principal,
                                                 @PathVariable Long id) {
@@ -50,6 +53,7 @@ public class StoreQueryController {
     }
 
     @Operation(summary = "사장이 관리하는 활성 매장 목록 조회 (본인)")
+    @MasterOnly
     @GetMapping("/by-master/{userId}")
     public ResponseEntity<List<Store>> findActiveStoresByMaster(@AuthenticationPrincipal UserPrincipal principal,
                                                                 @PathVariable Long userId) {
@@ -58,6 +62,7 @@ public class StoreQueryController {
     }
 
     @Operation(summary = "특정 사용자가 매장의 사장인지 여부 확인 (본인)")
+    @MasterOnly
     @GetMapping("/ownership/exists")
     public ResponseEntity<Boolean> isMasterOfStore(@AuthenticationPrincipal UserPrincipal principal,
                                                    @RequestParam Long storeId, @RequestParam Long userId) {
@@ -69,7 +74,7 @@ public class StoreQueryController {
     @GetMapping("/{storeId}/stats/employees/active/count")
     public ResponseEntity<Integer> countActiveEmployees(@AuthenticationPrincipal UserPrincipal principal,
                                                         @PathVariable Long storeId) {
-        guard.assertMasterOwnsStore(principal.getId(), storeId);
+        guard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.DASHBOARD_VIEW);
         return ResponseEntity.ok(storeQueryService.countActiveEmployees(storeId));
     }
 
@@ -77,11 +82,12 @@ public class StoreQueryController {
     @GetMapping("/{storeId}/stats/attendance/count")
     public ResponseEntity<Integer> countAttendance(@AuthenticationPrincipal UserPrincipal principal,
                                                    @PathVariable Long storeId) {
-        guard.assertMasterOwnsStore(principal.getId(), storeId);
+        guard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.DASHBOARD_VIEW);
         return ResponseEntity.ok(storeQueryService.countAttendance(storeId));
     }
 
     @Operation(summary = "급여 기록 수 조회 (본인 소유 매장)")
+    @MasterOnly
     @GetMapping("/{storeId}/stats/payroll/count")
     public ResponseEntity<Integer> countPayroll(@AuthenticationPrincipal UserPrincipal principal,
                                                 @PathVariable Long storeId) {
@@ -90,6 +96,7 @@ public class StoreQueryController {
     }
 
     @Operation(summary = "미지급 급여 건수 조회 (본인 소유 매장)")
+    @MasterOnly
     @GetMapping("/{storeId}/stats/payroll/unpaid/count")
     public ResponseEntity<Integer> countUnpaidPayroll(@AuthenticationPrincipal UserPrincipal principal,
                                                       @PathVariable Long storeId) {
@@ -101,7 +108,7 @@ public class StoreQueryController {
     @GetMapping("/{storeId}/last-activity")
     public ResponseEntity<LocalDateTime> findLastActivity(@AuthenticationPrincipal UserPrincipal principal,
                                                           @PathVariable Long storeId) {
-        guard.assertMasterOwnsStore(principal.getId(), storeId);
+        guard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.DASHBOARD_VIEW);
         return storeQueryService.findLastActivity(storeId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.noContent().build());

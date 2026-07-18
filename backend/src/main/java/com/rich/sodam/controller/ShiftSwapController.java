@@ -1,10 +1,12 @@
 package com.rich.sodam.controller;
 
 import com.rich.sodam.domain.type.SwapRequestStatus;
+import com.rich.sodam.domain.type.ManagerPermission;
 import com.rich.sodam.dto.request.SwapApproveRequest;
 import com.rich.sodam.dto.response.ShiftSwapRequestResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.service.ShiftSwapService;
 import com.rich.sodam.service.StoreAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,13 +33,14 @@ public class ShiftSwapController {
     private final ShiftSwapService shiftSwapService;
     private final StoreAccessGuard storeAccessGuard;
 
-    @MasterOnly
+    @EmployeeOrMaster
     @Operation(summary = "대타 모집 생성", description = "해당 시프트를 대타 모집으로 전환. 매장 전 직원(원 배정자 제외)에게 알림. 지난 시프트 400, 중복 모집 409.")
     @PostMapping("/api/shifts/{shiftId}/swap-requests")
     public ResponseEntity<ShiftSwapRequestResponse> create(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long shiftId) {
-        storeAccessGuard.assertMasterOwnsStore(principal.getId(), shiftSwapService.storeIdOfShift(shiftId));
+        storeAccessGuard.assertMasterOrManagerPermission(
+                principal.getId(), shiftSwapService.storeIdOfShift(shiftId), ManagerPermission.SUBSTITUTE_MANAGE);
         return ResponseEntity.ok(shiftSwapService.create(shiftId));
     }
 
@@ -61,24 +64,26 @@ public class ShiftSwapController {
         return ResponseEntity.ok().build();
     }
 
-    @MasterOnly
+    @EmployeeOrMaster
     @Operation(summary = "대타 승인", description = "지원자 중 한 명을 승인 — 시프트를 승인자에게 재배정하고 FILLED 전이. 승인자에게 확정, 탈락자에게 마감 알림.")
     @PostMapping("/api/swap-requests/{id}/approve")
     public ResponseEntity<ShiftSwapRequestResponse> approve(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long id,
             @Valid @RequestBody SwapApproveRequest req) {
-        storeAccessGuard.assertMasterOwnsStore(principal.getId(), shiftSwapService.storeIdOfRequest(id));
+        storeAccessGuard.assertMasterOrManagerPermission(
+                principal.getId(), shiftSwapService.storeIdOfRequest(id), ManagerPermission.SUBSTITUTE_MANAGE);
         return ResponseEntity.ok(shiftSwapService.approve(id, req.getEmployeeId()));
     }
 
-    @MasterOnly
+    @EmployeeOrMaster
     @Operation(summary = "대타 모집 취소", description = "OPEN 모집을 취소(CANCELLED). 마감된 모집은 409.")
     @PostMapping("/api/swap-requests/{id}/cancel")
     public ResponseEntity<Void> cancel(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long id) {
-        storeAccessGuard.assertMasterOwnsStore(principal.getId(), shiftSwapService.storeIdOfRequest(id));
+        storeAccessGuard.assertMasterOrManagerPermission(
+                principal.getId(), shiftSwapService.storeIdOfRequest(id), ManagerPermission.SUBSTITUTE_MANAGE);
         shiftSwapService.cancel(id);
         return ResponseEntity.ok().build();
     }

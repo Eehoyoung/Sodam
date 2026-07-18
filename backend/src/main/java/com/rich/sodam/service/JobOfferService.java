@@ -211,6 +211,15 @@ public class JobOfferService {
         return isExpired(offer) ? JobResponseStatus.EXPIRED : offer.getStatus();
     }
 
+    /**
+     * {@link #effectiveStatus(JobOffer)} 의 공개 진입점 — 다른 서비스가 동일한 lazy 만료 판정 로직을
+     * 중복 구현하지 않고 그대로 재사용하도록 공개한다(§10 Phase5 "동일한 판정 메서드로 공유" 원칙,
+     * 260711_작업통합.md Part 2 §15.3 offerStatus 필드 갭 해소 — Phase6 팔로우업). DB는 건드리지 않는다.
+     */
+    public JobResponseStatus effectiveStatusOf(JobOffer offer) {
+        return effectiveStatus(offer);
+    }
+
     private Long resolveStoreOwnerUserId(Long storeId) {
         List<MasterStoreRelation> relations = masterStoreRelationRepository.findByStore_Id(storeId);
         return relations.isEmpty() ? null : relations.get(0).getMasterProfile().getId();

@@ -42,7 +42,7 @@ const ROLE_LABEL: Record<string, string> = {
  * 행 탭 → EmployeeDetail. 비어있으면 초대 유도.
  */
 export default function EmployeeManagementScreen({route, navigation}: Props) {
-    const {storeId} = route.params;
+    const {storeId, managerMode = false} = route.params;
     const c = useThemeColors();
     const [employees, setEmployees] = useState<StoreEmployeeDto[]>([]);
     const [storeCode, setStoreCode] = useState<string>('');
@@ -56,7 +56,7 @@ export default function EmployeeManagementScreen({route, navigation}: Props) {
             setError(null);
             const [list, store] = await Promise.all([
                 storeService.getStoreEmployees(storeId),
-                storeService.getStoreById(storeId).catch(() => null),
+                managerMode ? Promise.resolve(null) : storeService.getStoreById(storeId).catch(() => null),
             ]);
             setEmployees(list);
             if (store?.storeCode) {setStoreCode(store.storeCode);}
@@ -65,7 +65,7 @@ export default function EmployeeManagementScreen({route, navigation}: Props) {
         } finally {
             setLoading(false);
         }
-    }, [storeId]);
+    }, [storeId, managerMode]);
 
     // 포커스마다 재조회 — 직원 입사(코드)·삭제 등으로 목록이 바뀐 뒤 복귀해도 최신 반영.
     useFocusEffect(
@@ -89,9 +89,9 @@ export default function EmployeeManagementScreen({route, navigation}: Props) {
 
     const header = (
         <AppHeader
-            title="직원 관리"
+            title={managerMode ? '직원 조회' : '직원 관리'}
             onBack={() => navigation.goBack()}
-            actions={storeCode ? [{label: '초대', onPress: () => setInviteVisible(true)}] : undefined}
+            actions={!managerMode && storeCode ? [{label: '초대', onPress: () => setInviteVisible(true)}] : undefined}
         />
     );
 
@@ -114,16 +114,16 @@ export default function EmployeeManagementScreen({route, navigation}: Props) {
         <ScreenContainer
             scroll
             header={header}
-            footer={
+            footer={!managerMode ? (
                 <CtaStack>
                     <AppButton label="직원 초대하기" onPress={() => setInviteVisible(true)} />
                 </CtaStack>
-            }>
+            ) : undefined}>
             {employees.length === 0 ? (
                 <EmptyState
                     glyph={<Ionicons name="people-outline" size={40} color={c.textInverse} />}
                     title="아직 등록된 직원이 없어요"
-                    description="초대 코드를 공유하면 직원이 매장에 합류할 수 있어요."
+                    description={managerMode ? '현재 조회할 수 있는 직원이 없어요.' : '초대 코드를 공유하면 직원이 매장에 합류할 수 있어요.'}
                 />
             ) : (
                 <View style={styles.section}>
@@ -136,8 +136,8 @@ export default function EmployeeManagementScreen({route, navigation}: Props) {
                                 key={emp.id}
                                 title={emp.name}
                                 subtitle={emp.phone ? emp.phone : (ROLE_LABEL[emp.userGrade ?? ''] ?? '직원')}
-                                onPress={() => navigation.navigate('EmployeeDetail', {employeeId: emp.id, storeId})}
-                                right={<Ionicons name="chevron-forward" size={20} color={c.textTertiary} />}
+                                onPress={managerMode ? undefined : () => navigation.navigate('EmployeeDetail', {employeeId: emp.id, storeId})}
+                                right={managerMode ? undefined : <Ionicons name="chevron-forward" size={20} color={c.textTertiary} />}
                                 left={
                                     <View style={[styles.avatar, {backgroundColor: c.brandPrimarySoft}]}>
                                         <AppText variant="titleMd" tone="brand">{emp.name.slice(0, 1)}</AppText>
@@ -149,14 +149,16 @@ export default function EmployeeManagementScreen({route, navigation}: Props) {
                 </View>
             )}
 
-            <InviteShareSheet
-                visible={inviteVisible}
-                onClose={() => setInviteVisible(false)}
-                code={storeCode}
-                onShareKakao={shareCode}
-                onShareSms={shareCode}
-                onCopy={copyCode}
-            />
+            {!managerMode ? (
+                <InviteShareSheet
+                    visible={inviteVisible}
+                    onClose={() => setInviteVisible(false)}
+                    code={storeCode}
+                    onShareKakao={shareCode}
+                    onShareSms={shareCode}
+                    onCopy={copyCode}
+                />
+            ) : null}
         </ScreenContainer>
     );
 }

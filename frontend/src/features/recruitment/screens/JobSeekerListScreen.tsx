@@ -29,10 +29,12 @@ import {recruit, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {useJobSeekers} from '../hooks/useRecruitmentQueries';
 import {
+    JOB_RESPONSE_STATUS_TONE,
     JOB_SEEKING_ERROR_MESSAGES,
     JobSeekerListItem,
     JobSeekingErrorCode,
     JobSeekingType,
+    OFFER_STATUS_BADGE_LABELS,
     SEEKING_TYPE_LABELS,
 } from '../types';
 import {formatDistanceKm, summarizeAvailability} from '../utils/formatAvailability';
@@ -82,7 +84,6 @@ const JobSeekerListScreen: React.FC = () => {
     // 수동 `useFocusEffect(refetch)` + 상단 탭(`topTab`) 변경 `useEffect(refetch)` 가 함께 있어
     // 최초 진입 시 마운트 자동조회까지 겹쳐 최대 3중으로 API가 호출됐다. 'ourPostings' 세그먼트는
     // 조건부 렌더로 매번 새로 마운트되는 `OurPostingScreen` 자체의 마운트 기반 재조회로 충분하다.
-
     const list = useMemo(() => sortForTab(data ?? [], typeFilter), [data, typeFilter]);
     const errorCode = isError ? extractErrorCode(error) : undefined;
     const locationNotSet = errorCode === 'STORE_LOCATION_NOT_SET';
@@ -198,6 +199,12 @@ const JobSeekerCard: React.FC<JobSeekerCardProps> = ({seeker, onPress}) => {
                     <AppBadge key={type} label={SEEKING_TYPE_LABELS[type]} tone="info" />
                 ))}
                 {seeker.availableToday ? <AppBadge label="오늘 가능" tone="warning" /> : null}
+                {seeker.offerStatus ? (
+                    <AppBadge
+                        label={OFFER_STATUS_BADGE_LABELS[seeker.offerStatus]}
+                        tone={JOB_RESPONSE_STATUS_TONE[seeker.offerStatus]}
+                    />
+                ) : null}
             </View>
 
             {summary ? (

@@ -23,4 +23,10 @@ public interface JobOfferRepository extends JpaRepository<JobOffer, Long> {
 
     /** 같은 매장→같은 구직자 대기중 제안 존재 여부(사전 체크, 409 판정용). */
     Optional<JobOffer> findByStore_IdAndTargetUser_IdAndStatus(Long storeId, Long targetUserId, JobResponseStatus status);
+
+    /**
+     * 매장→구직자 최신 제안 1건(상태 무관) — 사장이 보는 구직자 리스트 카드 인라인 뱃지용
+     * (260711_작업통합.md Part 2 §15.3, offerStatus 필드 갭 해소).
+     */
+    Optional<JobOffer> findFirstByStore_IdAndTargetUser_IdOrderByCreatedAtDesc(Long storeId, Long targetUserId);
 }

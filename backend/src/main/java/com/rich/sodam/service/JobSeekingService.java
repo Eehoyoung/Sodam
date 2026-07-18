@@ -2,6 +2,7 @@ package com.rich.sodam.service;
 
 import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.JobAvailabilityDay;
+import com.rich.sodam.domain.JobOffer;
 import com.rich.sodam.domain.JobSeekingProfile;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.User;
@@ -14,6 +15,7 @@ import com.rich.sodam.exception.BusinessException;
 import com.rich.sodam.exception.EntityNotFoundException;
 import com.rich.sodam.repository.AttendanceRepository;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
+import com.rich.sodam.repository.JobOfferRepository;
 import com.rich.sodam.repository.JobSeekingProfileRepository;
 import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.repository.UserRepository;
@@ -38,7 +40,8 @@ import java.util.Set;
  *
  * <p>캐시(@Cacheable)는 v1 미적용 — 구직 상태는 실시간성이 중요하고 무효화 교차점(직원 토글 → 사장
  * 리스트)이 넓어 이득이 없다(§6.3). 현재 소속 조회는 구직자별 1쿼리(N+1 유사)이나 v1 리스트 규모가
- * 작아 허용한다(§6.3, 후속 IN 절 배치 개선은 백로그).</p>
+ * 작아 허용한다(§6.3, 후속 IN 절 배치 개선은 백로그). {@code offerStatus} 파생을 위한 최신 제안 조회도
+ * 동일한 기준으로 구직자별 1쿼리를 허용한다(§15.3 offerStatus 필드 갭 해소, Phase6 팔로우업).</p>
  */
 @Slf4j
 @Service
@@ -55,6 +58,8 @@ public class JobSeekingService {
     private final AttendanceRepository attendanceRepository;
     private final EmployeeStoreRelationRepository employeeStoreRelationRepository;
     private final GeocodingService geocodingService;
+    private final JobOfferRepository jobOfferRepository;
+    private final JobOfferService jobOfferService;
 
     // ─────────────────────────────────────────────────────────────────
     // GET /api/job-seekers/me
@@ -271,7 +276,20 @@ public class JobSeekingService {
                 categoryMatched(store, profile),
                 availability,
                 profile.isAvailableOn(today),
-                Math.round(distanceMeters));
+                Math.round(distanceMeters),
+                resolveOfferStatus(store.getId(), seeker.getId()));
+    }
+
+    /**
+     * 이 매장이 이 구직자에게 보낸 최신 제안의 유효 상태(§15.3 offerStatus 필드 갭 해소). 제안이 없으면
+     * null. 만료 판정은 {@link JobOfferService#effectiveStatusOf(JobOffer)} 로 위임해 lazy 판정 로직을
+     * 중복 구현하지 않는다(§10 Phase5 원칙).
+     */
+    private String resolveOfferStatus(Long storeId, Long seekerId) {
+        return jobOfferRepository.findFirstByStore_IdAndTargetUser_IdOrderByCreatedAtDesc(storeId, seekerId)
+                .map(jobOfferService::effectiveStatusOf)
+                .map(Enum::name)
+                .orElse(null);
     }
 
     /** 두 희망지역 중 매장에 더 가까운 쪽까지의 거리(미터). 좌표가 둘 다 없으면 null(리스트 제외 대상). */

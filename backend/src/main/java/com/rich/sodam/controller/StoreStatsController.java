@@ -4,6 +4,7 @@ import com.rich.sodam.domain.Attendance;
 import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.Payroll;
 import com.rich.sodam.domain.Store;
+import com.rich.sodam.domain.type.ManagerPermission;
 import com.rich.sodam.repository.AttendanceRepository;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
 import com.rich.sodam.repository.PayrollRepository;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.service.StoreAccessGuard;
 
 import java.time.LocalDate;
@@ -29,7 +31,7 @@ import java.util.Map;
 /**
  * 사장님 대시보드용 매장 통계 API (PRD_OWNER S-001).
  */
-@MasterOnly
+@EmployeeOrMaster
 @RestController
 @RequestMapping("/api/store-queries")
 @RequiredArgsConstructor
@@ -47,13 +49,14 @@ public class StoreStatsController {
     @Transactional(readOnly = true)
     public ResponseEntity<Map<String, Object>> today(@AuthenticationPrincipal UserPrincipal principal,
                                                      @PathVariable Long storeId) {
-        guard.assertMasterOwnsStore(principal.getId(), storeId);
+        guard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.DASHBOARD_VIEW);
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("store not found"));
         return ResponseEntity.ok(buildTodayStats(store));
     }
 
     @Operation(summary = "이번 달 누적 급여", description = "이번 달 발급된 급여 명세서의 총합 + 근무시간 누계.")
+    @MasterOnly
     @GetMapping("/{storeId}/stats/payroll/month-to-date")
     @Transactional(readOnly = true)
     public ResponseEntity<Map<String, Object>> monthToDate(@AuthenticationPrincipal UserPrincipal principal,
@@ -72,6 +75,7 @@ public class StoreStatsController {
      * 네이밍 충돌을 피한다).</p>
      */
     @Operation(summary = "대시보드 합성 통계", description = "오늘 출근 현황 + 이번 달 누적 급여를 한 응답으로 반환(today/payroll/month-to-date 합성).")
+    @MasterOnly
     @GetMapping("/{storeId}/stats/dashboard")
     @Transactional(readOnly = true)
     public ResponseEntity<Map<String, Object>> dashboard(@AuthenticationPrincipal UserPrincipal principal,

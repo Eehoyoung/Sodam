@@ -153,6 +153,8 @@ export interface JobSeekerListItem {
     availability: JobAvailabilityDay[];
     availableToday: boolean;
     distanceMeters: number;
+    /** 이 매장이 보낸 최신 채용 제안의 유효 상태. 제안을 보낸 적 없으면 null(§15.3 offerStatus 필드 갭 해소). */
+    offerStatus: JobResponseStatus | null;
 }
 
 /** `GET /api/stores/{storeId}/job-seekers` 선택 쿼리 필터(Phase 4 재사용). */
@@ -207,6 +209,18 @@ export const JOB_RESPONSE_STATUS_TONE: Record<JobResponseStatus, 'success' | 'wa
     ACCEPTED: 'success',
     DECLINED: 'error',
     EXPIRED: 'neutral',
+};
+
+/**
+ * 구직자 리스트 카드 인라인 제안 상태 뱃지 문구(§16.2-6, offerStatus 필드 갭 해소) — 카드 안의 다른
+ * 뱃지(유형/업종일치/오늘가능)와 구분되도록 "제안" 접두를 붙인다. 톤은 `JOB_RESPONSE_STATUS_TONE` 을
+ * 그대로 재사용한다(사장/직원 화면 공용, 중복 정의 금지).
+ */
+export const OFFER_STATUS_BADGE_LABELS: Record<JobResponseStatus, string> = {
+    PENDING: '제안 대기중',
+    ACCEPTED: '제안 수락됨',
+    DECLINED: '제안 거절됨',
+    EXPIRED: '제안 만료',
 };
 
 // ── §15 채용 제안(JobOffer) — 사장→직원 ────────────────────────────────

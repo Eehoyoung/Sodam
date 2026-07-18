@@ -250,11 +250,12 @@ class JobOfferServiceTest {
         grantEligibility(target, store);
         seekingProfile(target, List.of("SUBSTITUTE"));
 
-        LocalDate workDate = LocalDate.now(SEOUL).plusDays(1);
-        LocalTime startTime = LocalTime.of(9, 0);
+        LocalDateTime workStart = LocalDateTime.now(SEOUL).plusHours(12).withNano(0);
+        LocalDate workDate = workStart.toLocalDate();
+        LocalTime startTime = workStart.toLocalTime();
         JobOfferResponse resp = service.sendOffer(store.getId(), substituteRequest(target.getId(), workDate, startTime));
 
-        assertThat(resp.expiresAt()).isEqualTo(LocalDateTime.of(workDate, startTime));
+        assertThat(resp.expiresAt()).isEqualTo(workStart);
     }
 
     @Test

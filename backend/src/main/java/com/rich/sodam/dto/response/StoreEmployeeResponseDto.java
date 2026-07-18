@@ -27,7 +27,34 @@ public class StoreEmployeeResponseDto {
         this.userGrade = user.getUserGrade() != null ? user.getUserGrade().name() : null;
     }
 
+    private StoreEmployeeResponseDto(Long id, String name, String email, String phone, String userGrade) {
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.phone = phone;
+        this.userGrade = userGrade;
+    }
+
     public static StoreEmployeeResponseDto from(User user) {
         return new StoreEmployeeResponseDto(user);
+    }
+
+    public StoreEmployeeResponseDto maskedForManager() {
+        return new StoreEmployeeResponseDto(id, name, maskEmail(email), maskPhone(phone), userGrade);
+    }
+
+    private static String maskPhone(String value) {
+        if (value == null || value.length() < 7) return null;
+        String digits = value.replaceAll("[^0-9]", "");
+        if (digits.length() < 7) return null;
+        return digits.substring(0, 3) + "****" + digits.substring(digits.length() - 4);
+    }
+
+    private static String maskEmail(String value) {
+        if (value == null || !value.contains("@")) return null;
+        int at = value.indexOf('@');
+        String local = value.substring(0, at);
+        String visible = local.isEmpty() ? "" : local.substring(0, 1);
+        return visible + "***" + value.substring(at);
     }
 }

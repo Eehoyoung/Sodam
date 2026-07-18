@@ -6,6 +6,7 @@ import com.rich.sodam.core.payroll.wage.MonthlySalaryCalculator;
 import com.rich.sodam.domain.*;
 import com.rich.sodam.domain.type.DomainEventType;
 import com.rich.sodam.domain.type.EmploymentType;
+import com.rich.sodam.domain.type.UserGrade;
 import com.rich.sodam.dto.request.EmployeeWageUpdateDto;
 import com.rich.sodam.dto.request.LocationUpdateDto;
 import com.rich.sodam.dto.request.OperatingHoursUpdateDto.DayOperatingHours;
@@ -423,6 +424,12 @@ public class StoreManagementServiceImpl implements StoreManagementService {
         assertAtLeastMinimumWage(customHourlyWage);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
+
+        if (user.getUserGrade() == UserGrade.MASTER
+                || user.getUserGrade() == UserGrade.MANAGER
+                || user.getUserGrade() == UserGrade.BOSSES) {
+            throw new IllegalArgumentException("사업주 또는 특권 계정은 직원으로 할당할 수 없습니다.");
+        }
 
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new EntityNotFoundException("매장을 찾을 수 없습니다."));

@@ -1,10 +1,12 @@
 package com.rich.sodam.controller;
 
 import com.rich.sodam.dto.request.StoreNoticeCreateRequest;
+import com.rich.sodam.domain.type.ManagerPermission;
 import com.rich.sodam.dto.response.NoticeReadResponse;
 import com.rich.sodam.dto.response.StoreNoticeResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.service.StoreAccessGuard;
 import com.rich.sodam.service.StoreNoticeService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,35 +35,35 @@ public class StoreNoticeController {
 
     // ===== 사장 =====
 
-    @MasterOnly
+    @EmployeeOrMaster
     @Operation(summary = "공지 작성", description = "공지를 발행하면 매장 직원들에게 알림이 전송돼요.")
     @PostMapping("/api/stores/{storeId}/notices")
     public ResponseEntity<StoreNoticeResponse> create(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId,
             @Valid @RequestBody StoreNoticeCreateRequest req) {
-        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        storeAccessGuard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.SUBSTITUTE_MANAGE);
         return ResponseEntity.ok(noticeService.create(storeId, req));
     }
 
-    @MasterOnly
+    @EmployeeOrMaster
     @Operation(summary = "매장 공지 목록", description = "각 공지의 읽음 수(N)/총직원수(M) 포함.")
     @GetMapping("/api/stores/{storeId}/notices")
     public ResponseEntity<List<StoreNoticeResponse>> listForStore(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId) {
-        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        storeAccessGuard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.SUBSTITUTE_MANAGE);
         return ResponseEntity.ok(noticeService.listForStore(storeId));
     }
 
-    @MasterOnly
+    @EmployeeOrMaster
     @Operation(summary = "공지를 읽은 직원 목록", description = "누가 확인했는지 목록.")
     @GetMapping("/api/stores/{storeId}/notices/{noticeId}/reads")
     public ResponseEntity<List<NoticeReadResponse>> reads(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId,
             @PathVariable Long noticeId) {
-        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        storeAccessGuard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.SUBSTITUTE_MANAGE);
         return ResponseEntity.ok(noticeService.readsOf(storeId, noticeId));
     }
 

@@ -146,6 +146,57 @@ describe('JobSeekerListScreen', () => {
         expect(() => findHostByTestId(renderer!, 'job-seeker-list')).not.toThrow();
     });
 
+    test('offerStatus=null — 제안 상태 뱃지 미표시(제안을 보낸 적 없음)', async () => {
+        mockUseJobSeekers.mockReturnValue({
+            data: [makeSeeker({offerStatus: null})],
+            isLoading: false,
+            isError: false,
+            error: undefined,
+            refetch: mockRefetch,
+        });
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<JobSeekerListScreen />);
+            await flush();
+        });
+
+        const texts = renderer!.root
+            .findAllByType('Text')
+            .map(t => t.props.children)
+            .flat()
+            .filter(t => typeof t === 'string');
+        expect(texts.some(t => t.startsWith('제안 '))).toBe(false);
+    });
+
+    test.each([
+        ['PENDING', '제안 대기중'],
+        ['ACCEPTED', '제안 수락됨'],
+        ['DECLINED', '제안 거절됨'],
+        ['EXPIRED', '제안 만료'],
+    ])('offerStatus=%s — "%s" 뱃지 노출', async (offerStatus, expectedLabel) => {
+        mockUseJobSeekers.mockReturnValue({
+            data: [makeSeeker({offerStatus})],
+            isLoading: false,
+            isError: false,
+            error: undefined,
+            refetch: mockRefetch,
+        });
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<JobSeekerListScreen />);
+            await flush();
+        });
+
+        const texts = renderer!.root
+            .findAllByType('Text')
+            .map(t => t.props.children)
+            .flat()
+            .filter(t => typeof t === 'string');
+        expect(texts).toContain(expectedLabel);
+    });
+
     test('빈 상태 — "반경 4km 안에 구직중인 분이 아직 없어요"', async () => {
         mockUseJobSeekers.mockReturnValue({
             data: [],
@@ -280,7 +331,7 @@ describe('JobSeekerListScreen', () => {
 
     // FE-DUP 회귀 테스트(findings_report.md §4.1): 예전에는 마운트 시 `useFocusEffect(refetch)` +
     // topTab 변경 `useEffect(refetch)` 가 함께 있어 최초 진입만으로 `refetch()`가 여러 번 수동
-    // 호출되었다(마운트 자동조회와 중복). 이제는 이 화면이 `refetch()`를 직접 호출하는 경로가
+    // 호출됐다(마운트 자동조회와 중복). 이제는 이 화면이 `refetch()`를 직접 호출하는 경로가
     // "다시 시도" 에러 CTA 뿐이므로, 마운트/세그먼트 전환만으로는 절대 호출되지 않아야 한다 —
     // 최신화는 마운트 기반 자동조회(`useJobSeekers` 훅) + 쓰기 뮤테이션의 캐시 invalidate 로
     // 커버된다(제안 발송 시 `recruitment.store(storeId)` invalidate → storeSeekers 자동 재조회).
