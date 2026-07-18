@@ -5,10 +5,12 @@ import com.rich.sodam.domain.Payroll;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.domain.type.PayrollStatus;
+import com.rich.sodam.dto.request.PayrollStatusUpdateDto;
 import com.rich.sodam.dto.response.PayrollDto;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.service.PayrollService;
 import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.service.PayrollHighRiskActionService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -48,6 +51,8 @@ class PayrollControllerTest {
     PayrollService payrollService;
     @Mock
     StoreAccessGuard guard;
+    @Mock
+    PayrollHighRiskActionService payrollHighRiskActionService;
     @InjectMocks
     PayrollController controller;
 
@@ -93,7 +98,7 @@ class PayrollControllerTest {
         assertThat(res.getBody().getNetWage()).isEqualTo(2_000_000);
         assertThat(res.getBody().getStatus()).isEqualTo(PayrollStatus.CONFIRMED);
         assertThat(res.getBody().getEmployeeName()).isEqualTo("홍길동");
-        verify(guard).assertCanViewEmployee(1L, 1L, false);
+        verify(guard).assertSelf(1L, 1L);
     }
 
     @Test
@@ -102,10 +107,26 @@ class PayrollControllerTest {
         Payroll payroll = buildPayroll(999L, 20L);
         when(payrollService.getPayrollById(100L)).thenReturn(payroll);
         doThrow(new AccessDeniedException("본인 정보만 접근할 수 있어요."))
-                .when(guard).assertCanViewEmployee(1L, 999L, false);
+                .when(guard).assertSelf(1L, 999L);
 
         assertThatThrownBy(() -> controller.getPayroll(principal, 100L))
                 .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    @DisplayName("사업주 급여 단건 조회 — 실제 급여 매장의 소유권으로 검증")
+    void getPayroll_masterChecksActualPayrollStore() {
+        UserPrincipal master = new UserPrincipal(1L, "master@sodam.dev", List.of(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_MASTER")));
+        Payroll payroll = buildPayroll(2L, 99L);
+        when(payrollService.getPayrollById(100L)).thenReturn(payroll);
+        doThrow(new AccessDeniedException("해당 매장에 접근할 권한이 없습니다."))
+                .when(guard).assertMasterOwnsStore(1L, 99L);
+
+        assertThatThrownBy(() -> controller.getPayroll(master, 100L))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(guard).assertMasterOwnsStore(1L, 99L);
     }
 
     @Test
@@ -118,5 +139,41 @@ class PayrollControllerTest {
                 .isInstanceOf(com.rich.sodam.exception.EntityNotFoundException.class);
 
         verifyNoInteractions(guard);
+    }
+
+    @Test
+    @DisplayName("급여 상태 변경 — 급여의 매장 소유권 확인 후 변경")
+    void updatePayrollStatus_checksStoreOwnership() {
+        Payroll target = buildPayroll(2L, 20L);
+        when(payrollHighRiskActionService.changeStatus(
+                1L, 100L, PayrollStatus.PAID, null, null, "step-up"))
+                .thenReturn(target);
+
+        ResponseEntity<PayrollDto> response = controller.updatePayrollStatus(
+                principal,
+                100L,
+                null,
+                PayrollStatusUpdateDto.builder().status(PayrollStatus.PAID).stepUpPassword("step-up").build());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(payrollHighRiskActionService).changeStatus(
+                1L, 100L, PayrollStatus.PAID, null, null, "step-up");
+    }
+
+    @Test
+    @DisplayName("타 매장 급여 상태 변경 — 소유권 거부 후 변경 서비스 미호출")
+    void updatePayrollStatus_deniedForOtherStore() {
+        doThrow(new AccessDeniedException("해당 매장에 접근할 권한이 없습니다."))
+                .when(payrollHighRiskActionService).changeStatus(
+                        1L, 100L, PayrollStatus.PAID, null, null, "step-up");
+
+        assertThatThrownBy(() -> controller.updatePayrollStatus(
+                principal,
+                100L,
+                null,
+                PayrollStatusUpdateDto.builder().status(PayrollStatus.PAID).stepUpPassword("step-up").build()))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(payrollService, never()).updatePayrollStatus(100L, PayrollStatus.PAID);
     }
 }

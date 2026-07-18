@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.Period;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
  * 연소근로자(만 18세 미만) 가드 (L-NEW-01). 사장 보호 기능.
@@ -41,6 +42,8 @@ public class MinorLaborGuardService {
                     + "만 18세 미만일 수 있으니 생년월일을 먼저 확인해 주세요.";
 
     private final EmployeeProfileRepository employeeProfileRepository;
+    @Value("${sodam.features.guardian-consent-enabled:false}")
+    private boolean guardianConsentEnabled;
 
     /**
      * 만 18세 미만(연소자) 여부 판정. birthDate 가 null 이면 false(불명).
@@ -71,7 +74,9 @@ public class MinorLaborGuardService {
             return new MinorGuardResponse(
                     employeeId, false, null,
                     MinorLaborStandards.DAILY_HOUR_LIMIT, MinorLaborStandards.WEEKLY_HOUR_LIMIT,
-                    false, false, GUIDANCE_UNKNOWN, DISCLAIMER);
+                    false, false, false,
+                    "가족관계증명서와 동의서 원본은 앱에 업로드하거나 저장하지 않습니다.",
+                    GUIDANCE_UNKNOWN, DISCLAIMER);
         }
 
         int age = ageAt(birthDate, today);
@@ -86,6 +91,8 @@ public class MinorLaborGuardService {
                 MinorLaborStandards.WEEKLY_HOUR_LIMIT,
                 minor,   // 미성년이면 야간/휴일근로 제한
                 minor,   // 미성년이면 친권자 동의서·가족관계증명서 비치 필요
+                minor && guardianConsentEnabled,
+                "가족관계증명서는 사업주가 별도 비치하며 앱에 업로드하거나 저장하지 않습니다.",
                 minor ? GUIDANCE_MINOR : GUIDANCE_NOT_MINOR,
                 DISCLAIMER);
     }

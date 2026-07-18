@@ -7,11 +7,17 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
+import org.springframework.data.jpa.repository.Lock;
 
 /**
  * 급여 명세서 레포지토리
  */
 public interface PayrollRepository extends JpaRepository<Payroll, Long> {
+
+    @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Payroll p where p.id = :id")
+    Optional<Payroll> findByIdForUpdate(@Param("id") Long id);
 
     /**
      * 직원 ID로 급여 내역 조회

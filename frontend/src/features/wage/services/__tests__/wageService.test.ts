@@ -108,4 +108,27 @@ describe('wageService — 고용형태(시급제/월급제) 설정', () => {
     expect(wageService.formatMonthlyPay(2205000)).toBe('월 2,205,000원');
     expect(wageService.formatMonthlyPay(10000000)).toBe('월 1,000만원');
   });
+
+  it('근로조건 변경은 초안을 만든 뒤 별도 전자서명 발송 API로 시작한다', async () => {
+    mockedPost
+      .mockResolvedValueOnce({data: {id: 44, status: 'DRAFT', effectiveDate: '2026-07-17', electronicSignatureEnvelopeId: null}})
+      .mockResolvedValueOnce({data: {envelopeId: 81}});
+
+    const amendment = await wageService.createEmploymentAmendment(3, {
+      employeeId: 9,
+      effectiveDate: '2026-07-17',
+      employmentType: 'HOURLY',
+      hourlyWage: 12000,
+    });
+    const signature = await wageService.sendEmploymentAmendment(3, amendment.id);
+
+    expect(mockedPost).toHaveBeenNthCalledWith(1, '/api/stores/3/employment-amendments', {
+      employeeId: 9,
+      effectiveDate: '2026-07-17',
+      employmentType: 'HOURLY',
+      hourlyWage: 12000,
+    });
+    expect(mockedPost).toHaveBeenNthCalledWith(2, '/api/stores/3/employment-amendments/44/send');
+    expect(signature.envelopeId).toBe(81);
+  });
 });

@@ -50,6 +50,23 @@ export interface UpsertEmployeeWagePayload {
   socialInsuranceEnrolled?: boolean | null;
 }
 
+export interface EmploymentAmendmentPayload {
+  employeeId: number;
+  effectiveDate: string;
+  employmentType: EmploymentType;
+  hourlyWage?: number;
+  monthlySalary?: number;
+  contractedWeeklyHours?: number;
+  contractedWeeklyDays?: number;
+}
+
+export interface EmploymentAmendment {
+  id: number;
+  status: 'DRAFT' | 'SIGNING' | 'VERIFIED' | 'APPLIED' | 'CANCELLED';
+  effectiveDate: string;
+  electronicSignatureEnvelopeId: number | null;
+}
+
 /** BE EmployeeWageInfoDto (GET /api/payroll/employee/{id}/wages 응답 원소) */
 export interface EmployeeStoreWageInfo {
   employeeId: number;
@@ -112,6 +129,28 @@ async function getEmployeeWageInfo(employeeId: number, storeId: number): Promise
   return list.find(info => Number(info.storeId) === Number(storeId)) ?? null;
 }
 
+async function createEmploymentAmendment(
+  storeId: number,
+  payload: EmploymentAmendmentPayload,
+): Promise<EmploymentAmendment> {
+  const res = await api.post<EmploymentAmendment>(
+    `/api/stores/${storeId}/employment-amendments`,
+    payload,
+  );
+  return res.data;
+}
+
+async function sendEmploymentAmendment(storeId: number, amendmentId: number): Promise<{envelopeId: number}> {
+  const res = await api.post<{envelopeId: number}>(
+    `/api/stores/${storeId}/employment-amendments/${amendmentId}/send`,
+  );
+  return res.data;
+}
+
+async function cancelEmploymentAmendment(storeId: number, amendmentId: number): Promise<void> {
+  await api.delete(`/api/stores/${storeId}/employment-amendments/${amendmentId}`);
+}
+
 /**
  * 월급제 급여 표기: 만원 단위로 떨어지면 "월 220만원", 아니면 "월 2,205,000원".
  */
@@ -148,6 +187,9 @@ export const wageService = {
   getEmployeeWage,
   getEmployeeWageInfo,
   upsertEmployeeWage,
+  createEmploymentAmendment,
+  sendEmploymentAmendment,
+  cancelEmploymentAmendment,
   formatMonthlyPay,
 };
 

@@ -17,6 +17,7 @@ jest.mock('react-native', () => ({
     StyleSheet: {create: (s: any) => s},
     View: 'View',
     Text: 'Text',
+    Image: 'Image',
     ScrollView: 'ScrollView',
     Pressable: 'Pressable',
     ActivityIndicator: 'ActivityIndicator',
@@ -221,6 +222,14 @@ describe('PayrollRunScreen (3단계 정산 마법사)', () => {
         const texts1 = renderer!.root.findAllByType('Text').map(t => t.props.children);
         expect(texts1).toContain('3단계: 확인');
 
+        const passwordInput = renderer!.root.findAllByType('TextInput')
+            .find(input => input.props.secureTextEntry === true);
+        expect(passwordInput).toBeDefined();
+        await act(async () => {
+            passwordInput!.props.onChangeText('step-up-password');
+            await flush();
+        });
+
         // 3단계 → 발급
         await act(async () => {
             findPressableByLabel(renderer!, '명세서 발급하기')!.props.onPress();
@@ -233,6 +242,10 @@ describe('PayrollRunScreen (3단계 정산 마법사)', () => {
         expect(urls).toEqual([
             '/api/payroll/11/issue',
             '/api/payroll/12/issue',
+        ]);
+        expect(apiMock.put.mock.calls.map(c => c[1])).toEqual([
+            {stepUpPassword: 'step-up-password'},
+            {stepUpPassword: 'step-up-password'},
         ]);
 
         // DONE 단계
@@ -285,6 +298,12 @@ describe('PayrollRunScreen (3단계 정산 마법사)', () => {
         // PREVIEW → CONFIRM
         await act(async () => {
             findPressableByLabel(renderer!, '다음: 명세서 발급')!.props.onPress();
+            await flush();
+        });
+        const passwordInput = renderer!.root.findAllByType('TextInput')
+            .find(input => input.props.secureTextEntry === true);
+        await act(async () => {
+            passwordInput!.props.onChangeText('step-up-password');
             await flush();
         });
         // CONFIRM → 발급 시도

@@ -27,6 +27,8 @@ public record MinorGuardResponse(
         int weeklyHourLimit,
         boolean nightWorkRestricted,
         boolean consentRequired,
+        boolean electronicConsentAvailable,
+        String evidenceStoragePolicy,
         String guidance,
         String disclaimer
 ) {
