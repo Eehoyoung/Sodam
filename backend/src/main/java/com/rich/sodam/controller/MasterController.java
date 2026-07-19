@@ -11,7 +11,7 @@ import com.rich.sodam.dto.response.TimeOffResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.service.MasterProfileService;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.TimeOffService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +26,7 @@ import java.util.Map;
  * 사장 마이페이지/통계 컨트롤러.
  *
  * 보안: 모든 masterId 는 query 파라미터가 아닌 principal.id 강제 사용.
- * 매장/timeOff 접근 시 StoreAccessGuard 로 소유권 검증.
+ * 매장/timeOff 접근 시 StoreAuthorizationPolicy 로 소유권 검증.
  */
 @MasterOnly
 @RestController
@@ -35,12 +35,12 @@ public class MasterController {
 
     private final MasterProfileService masterProfileService;
     private final TimeOffService timeOffService;
-    private final StoreAccessGuard guard;
+    private final StoreAuthorizationPolicy guard;
 
     @Autowired
     public MasterController(MasterProfileService masterProfileService,
                             TimeOffService timeOffService,
-                            StoreAccessGuard guard) {
+                            StoreAuthorizationPolicy guard) {
         this.masterProfileService = masterProfileService;
         this.timeOffService = timeOffService;
         this.guard = guard;

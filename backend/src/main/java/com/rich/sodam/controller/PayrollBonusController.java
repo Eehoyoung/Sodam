@@ -9,7 +9,7 @@ import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.service.NotificationService;
 import com.rich.sodam.service.PayrollBonusService;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -33,7 +33,7 @@ import java.util.Map;
 public class PayrollBonusController {
 
     private final PayrollBonusService payrollBonusService;
-    private final StoreAccessGuard guard;
+    private final StoreAuthorizationPolicy guard;
     private final NotificationService notificationService;
 
     /** 사장이 직원에게 즉시 보너스를 등록한다. */

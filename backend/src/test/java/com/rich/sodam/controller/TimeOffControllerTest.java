@@ -2,7 +2,7 @@ package com.rich.sodam.controller;
 
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.service.MyLeaveBalanceService;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.TimeOffService;
 import com.rich.sodam.service.ManagerSupervisionNotificationService;
 import org.junit.jupiter.api.DisplayName;
@@ -26,7 +26,7 @@ class TimeOffControllerTest {
     @Mock
     TimeOffService timeOffService;
     @Mock
-    StoreAccessGuard guard;
+    StoreAuthorizationPolicy guard;
     @Mock
     MyLeaveBalanceService myLeaveBalanceService;
     @Mock

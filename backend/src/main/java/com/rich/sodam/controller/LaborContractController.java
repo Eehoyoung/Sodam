@@ -12,7 +12,7 @@ import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.security.annotation.RequirePlan;
 import com.rich.sodam.service.LaborContractElectronicSignatureService;
 import com.rich.sodam.service.LaborContractService;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.DelegatedActionAuthorityService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +39,7 @@ import java.util.List;
 public class LaborContractController {
 
     private final LaborContractService laborContractService;
-    private final StoreAccessGuard guard;
+    private final StoreAuthorizationPolicy guard;
     private final LaborContractElectronicSignatureService laborContractElectronicSignatureService;
     private final DelegatedActionAuthorityService authorityService;
 

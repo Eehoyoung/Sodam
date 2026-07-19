@@ -4,7 +4,7 @@ import com.rich.sodam.dto.request.EmployeeWageUpdateDto;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.security.annotation.MasterOnly;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.StoreManagementServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.*;
 public class WageController {
 
     private final StoreManagementServiceImpl storeManagementService;
-    private final StoreAccessGuard guard;
+    private final StoreAuthorizationPolicy guard;
 
     @Operation(summary = "직원 임금 업데이트", description = "특정 직원의 임금을 업데이트합니다.")
     @ApiResponses(value = {

@@ -8,7 +8,7 @@ import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.security.annotation.RequirePlan;
 import com.rich.sodam.service.InsuranceFilingService;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.*;
 public class InsuranceFilingController {
 
     private final InsuranceFilingService insuranceFilingService;
-    private final StoreAccessGuard guard;
+    private final StoreAuthorizationPolicy guard;
 
     @Operation(summary = "4대보험 신고서 생성",
             description = "PRO 플랜 전용. 취득/상실/보수월액 신고서 서식을 채워 반환. 제출은 사장이 직접.")

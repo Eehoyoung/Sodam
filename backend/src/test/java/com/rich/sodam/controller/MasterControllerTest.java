@@ -13,7 +13,7 @@ import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.repository.UserRepository;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.service.MasterProfileService;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.TimeOffService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -58,7 +58,7 @@ class MasterControllerTest {
     @Mock
     PayrollRepository payrollRepository;
     @Mock
-    StoreAccessGuard guard;
+    StoreAuthorizationPolicy guard;
 
     private final UserPrincipal principal = new UserPrincipal(1L, "owner@sodam.dev", List.of());
 

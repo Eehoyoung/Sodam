@@ -14,7 +14,7 @@ import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.service.PayrollService;
 import com.rich.sodam.service.PayrollStoreBatchService;
 import com.rich.sodam.service.PayrollHighRiskActionService;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -46,7 +46,7 @@ public class PayrollController {
 
     private final PayrollService payrollService;
     private final PayrollStoreBatchService payrollStoreBatchService;
-    private final StoreAccessGuard guard;
+    private final StoreAuthorizationPolicy guard;
     private final PayrollHighRiskActionService payrollHighRiskActionService;
 
     private static boolean isMaster(UserPrincipal p) {

@@ -5,7 +5,7 @@ import com.rich.sodam.dto.response.DailySalesResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.service.DailySalesService;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 일일 매출 입력 API — 사장 본인 소유 매장만 ({@link StoreAccessGuard} 로 BOLA 차단).
+ * 일일 매출 입력 API — 사장 본인 소유 매장만 ({@link StoreAuthorizationPolicy} 로 BOLA 차단).
  */
 @MasterOnly
 @RestController
@@ -27,7 +27,7 @@ import java.util.List;
 public class DailySalesController {
 
     private final DailySalesService dailySalesService;
-    private final StoreAccessGuard guard;
+    private final StoreAuthorizationPolicy guard;
 
     @Operation(summary = "일일 매출 입력(upsert)", description = "같은 날 재입력 시 금액이 수정됩니다. 음수는 400.")
     @PostMapping

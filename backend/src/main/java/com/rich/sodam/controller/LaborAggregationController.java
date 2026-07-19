@@ -8,7 +8,7 @@ import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.security.annotation.RequirePlan;
 import com.rich.sodam.service.LaborAggregationService;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +24,7 @@ import java.time.YearMonth;
 import java.util.List;
 
 /**
- * 인건비·연차·퇴직금 집계뷰 API (PRO 대시보드). 사장 본인 소유 매장만 — {@link StoreAccessGuard} 검증.
+ * 인건비·연차·퇴직금 집계뷰 API (PRO 대시보드). 사장 본인 소유 매장만 — {@link StoreAuthorizationPolicy} 검증.
  */
 @MasterOnly
 @RestController
@@ -34,7 +34,7 @@ import java.util.List;
 public class LaborAggregationController {
 
     private final LaborAggregationService laborAggregationService;
-    private final StoreAccessGuard guard;
+    private final StoreAuthorizationPolicy guard;
 
     @Operation(summary = "매장 인건비 집계", description = "활성 직원수·인건비총액·평균시급. 매출 제공 시 인건비비율도 산출. (PRO)")
     @RequirePlan(min = PlanType.PRO)

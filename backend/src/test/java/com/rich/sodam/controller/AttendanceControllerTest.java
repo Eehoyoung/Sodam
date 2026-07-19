@@ -8,7 +8,7 @@ import com.rich.sodam.service.AttendanceService;
 import com.rich.sodam.service.AttendanceWorkLogService;
 import com.rich.sodam.service.LocationVerificationService;
 import com.rich.sodam.service.NfcVerificationService;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,7 +35,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * NFC 전용 출퇴근 엔드포인트 IDOR 회귀 테스트 — 타인 employeeId 로 대리 출퇴근을 시도하면
- * StoreAccessGuard#assertSelf 가 서비스 호출 전에 차단해야 한다.
+ * StoreAuthorizationPolicy#assertSelf 가 서비스 호출 전에 차단해야 한다.
  */
 @ExtendWith(MockitoExtension.class)
 class AttendanceControllerTest {
@@ -49,7 +49,7 @@ class AttendanceControllerTest {
     @Mock
     AttendanceWorkLogService attendanceWorkLogService;
     @Mock
-    StoreAccessGuard guard;
+    StoreAuthorizationPolicy guard;
     @InjectMocks
     AttendanceController controller;
 

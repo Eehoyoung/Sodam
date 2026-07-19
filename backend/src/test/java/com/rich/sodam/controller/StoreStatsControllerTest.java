@@ -6,7 +6,7 @@ import com.rich.sodam.repository.EmployeeStoreRelationRepository;
 import com.rich.sodam.repository.PayrollRepository;
 import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.security.UserPrincipal;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,7 +43,7 @@ class StoreStatsControllerTest {
     @Mock
     PayrollRepository payrollRepository;
     @Mock
-    StoreAccessGuard guard;
+    StoreAuthorizationPolicy guard;
     @InjectMocks
     StoreStatsController controller;
 

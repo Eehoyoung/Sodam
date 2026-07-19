@@ -9,7 +9,7 @@ import com.rich.sodam.dto.request.PayrollStatusUpdateDto;
 import com.rich.sodam.dto.response.PayrollDto;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.service.PayrollService;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.PayrollHighRiskActionService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -50,7 +50,7 @@ class PayrollControllerTest {
     @Mock
     PayrollService payrollService;
     @Mock
-    StoreAccessGuard guard;
+    StoreAuthorizationPolicy guard;
     @Mock
     PayrollHighRiskActionService payrollHighRiskActionService;
     @InjectMocks

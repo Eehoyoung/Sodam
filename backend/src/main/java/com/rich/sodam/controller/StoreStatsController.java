@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.security.annotation.EmployeeOrMaster;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -42,7 +42,7 @@ public class StoreStatsController {
     private final EmployeeStoreRelationRepository employeeStoreRelationRepository;
     private final AttendanceRepository attendanceRepository;
     private final PayrollRepository payrollRepository;
-    private final StoreAccessGuard guard;
+    private final StoreAuthorizationPolicy guard;
 
     @Operation(summary = "오늘 출근 현황", description = "활성 직원 수 / 체크인 완료 / 미체크인 명단.")
     @GetMapping("/{storeId}/stats/today")

@@ -5,7 +5,7 @@ import com.rich.sodam.domain.type.ManagerPermission;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.security.annotation.EmployeeOrMaster;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.StoreQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +32,7 @@ import java.util.List;
 public class StoreQueryController {
 
     private final StoreQueryService storeQueryService;
-    private final StoreAccessGuard guard;
+    private final StoreAuthorizationPolicy guard;
 
     /** path/param 의 userId 가 호출자 본인인지 검증 (타인 데이터 조회 차단). */
     private void assertSelf(UserPrincipal principal, Long userId) {

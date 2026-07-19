@@ -5,7 +5,7 @@ import com.rich.sodam.dto.response.DailyLaborRatioDto;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.service.LaborRatioService;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * 인건비율(인건비/매출) 조회 API — 사장 본인 소유 매장만 ({@link StoreAccessGuard} 검증).
+ * 인건비율(인건비/매출) 조회 API — 사장 본인 소유 매장만 ({@link StoreAuthorizationPolicy} 검증).
  */
 @MasterOnly
 @RestController
@@ -28,7 +28,7 @@ import java.util.List;
 public class LaborRatioController {
 
     private final LaborRatioService laborRatioService;
-    private final StoreAccessGuard guard;
+    private final StoreAuthorizationPolicy guard;
 
     @Operation(summary = "일자별 인건비율", description = "출퇴근 기록 기반 인건비 ÷ 일일 매출. 매출 미입력/0원이면 ratio=null.")
     @GetMapping("/daily")

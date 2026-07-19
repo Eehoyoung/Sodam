@@ -3,7 +3,7 @@ package com.rich.sodam.controller;
 import com.rich.sodam.dto.request.DailySalesUpsertRequest;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.service.DailySalesService;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,7 +20,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
- * 일일 매출 API 권한 — 미소유 매장 접근 시 StoreAccessGuard 가 차단(BOLA)하고 서비스에 도달하지 않는다.
+ * 일일 매출 API 권한 — 미소유 매장 접근 시 StoreAuthorizationPolicy 가 차단(BOLA)하고 서비스에 도달하지 않는다.
  */
 @ExtendWith(MockitoExtension.class)
 class DailySalesControllerTest {
@@ -28,7 +28,7 @@ class DailySalesControllerTest {
     @Mock
     DailySalesService dailySalesService;
     @Mock
-    StoreAccessGuard guard;
+    StoreAuthorizationPolicy guard;
     @InjectMocks
     DailySalesController controller;
 

@@ -9,7 +9,7 @@ import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.dto.response.MyLeaveBalanceDto;
 import com.rich.sodam.service.MyLeaveBalanceService;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.ManagerSupervisionNotificationService;
 import com.rich.sodam.service.TimeOffService;
 import jakarta.validation.Valid;
@@ -28,12 +28,12 @@ import java.util.List;
 public class TimeOffController {
 
     private final TimeOffService timeOffService;
-    private final StoreAccessGuard guard;
+    private final StoreAuthorizationPolicy guard;
     private final ManagerSupervisionNotificationService supervision;
     private final MyLeaveBalanceService myLeaveBalanceService;
 
     @Autowired
-    public TimeOffController(TimeOffService timeOffService, StoreAccessGuard guard,
+    public TimeOffController(TimeOffService timeOffService, StoreAuthorizationPolicy guard,
                             MyLeaveBalanceService myLeaveBalanceService,
                             ManagerSupervisionNotificationService supervision) {
         this.timeOffService = timeOffService;

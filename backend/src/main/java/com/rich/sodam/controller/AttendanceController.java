@@ -15,7 +15,7 @@ import com.rich.sodam.service.AttendanceService;
 import com.rich.sodam.service.AttendanceWorkLogService;
 import com.rich.sodam.service.LocationVerificationService;
 import com.rich.sodam.service.NfcVerificationService;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.security.annotation.MasterOnly;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
@@ -51,7 +51,7 @@ public class AttendanceController {
     private final LocationVerificationService locationVerificationService;
     private final NfcVerificationService nfcVerificationService;
     private final AttendanceWorkLogService attendanceWorkLogService;
-    private final StoreAccessGuard guard;
+    private final StoreAuthorizationPolicy guard;
 
     @PostMapping("/check-in")
     @Operation(summary = "직원 출근 처리", description = "직원 출근 정보를 기록하고 위치 인증을 수행합니다.")

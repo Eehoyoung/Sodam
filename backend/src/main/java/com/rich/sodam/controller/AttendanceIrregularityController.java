@@ -14,7 +14,7 @@ import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.service.AttendanceIrregularityService;
 import com.rich.sodam.service.AttendanceNoticeService;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.ManagerSupervisionNotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -40,7 +40,7 @@ public class AttendanceIrregularityController {
 
     private final AttendanceIrregularityService irregularityService;
     private final AttendanceNoticeService noticeService;
-    private final StoreAccessGuard guard;
+    private final StoreAuthorizationPolicy guard;
     private final UserRepository userRepository;
     private final ManagerSupervisionNotificationService supervision;
 
