@@ -5,16 +5,20 @@ import com.rich.sodam.config.integration.PushNotifier.PushMessage;
 import com.rich.sodam.domain.DeviceToken;
 import com.rich.sodam.domain.NotificationInbox;
 import com.rich.sodam.domain.User;
+import com.rich.sodam.dto.request.DeviceTokenRequest;
 import com.rich.sodam.repository.DeviceTokenRepository;
 import com.rich.sodam.repository.NotificationInboxRepository;
 import com.rich.sodam.repository.UserRepository;
 import com.rich.sodam.service.support.AfterCommitExecutor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -185,6 +189,77 @@ public class NotificationService {
                 .deepLink("sodam://job-applications")
                 .data(Map.of("type", accepted ? "JOB_APPLICATION_ACCEPTED" : "JOB_APPLICATION_DECLINED"))
                 .build());
+    }
+
+    // ── NotificationController 애플리케이션 진입점 (WP-09 2단계) ──────────────
+    // 아래 메서드들은 FCM 디바이스 토큰 등록/해제, 사장→직원 커스텀 메시지, 알림함(inbox)
+    // 조회를 담당한다. 위의 notify*/push 메서드(도메인 이벤트 → 푸시)와 이름이 겹치지
+    // 않도록 register/unregister/inbox 접두를 사용했다.
+
+    /** FCM 토큰 등록. 기존 토큰이면 lastSeenAt 갱신, 없으면 신규 저장. */
+    @Transactional
+    public void registerDeviceToken(Long userId, DeviceTokenRequest req) {
+        User user = userRepository.findById(userId).orElseThrow();
+        deviceTokenRepository.findByToken(req.getToken())
+                .ifPresentOrElse(
+                        DeviceToken::touch,
+                        () -> deviceTokenRepository.save(
+                                DeviceToken.of(user, req.getToken(), req.getPlatform()))
+                );
+    }
+
+    /** FCM 토큰 해제. 본인 소유 토큰만 삭제(IDOR 차단은 호출측에서 소유 확인 후 위임). */
+    @Transactional
+    public void unregisterDeviceToken(Long userId, String token) {
+        deviceTokenRepository.findByToken(token)
+                .filter(dt -> dt.getUser() != null && dt.getUser().getId().equals(userId))
+                .ifPresent(deviceTokenRepository::delete);
+    }
+
+    /**
+     * 사장 → 직원 커스텀 메시지를 알림함(inbox)에 적재한다.
+     * 대상 직원이 없으면 false 를 반환해 컨트롤러가 400 을 내리도록 한다.
+     */
+    @Transactional
+    public boolean sendCustomInboxMessage(Long employeeUserId, String title, String message) {
+        User employee = userRepository.findById(employeeUserId).orElse(null);
+        if (employee == null) {
+            return false;
+        }
+        inboxRepository.save(NotificationInbox.of(
+                employee, NotificationInbox.Category.NOTICE, title, message, "sodam://home"));
+        return true;
+    }
+
+    /** 알림 이력 페이지 조회. */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getInboxPage(Long userId, int page, int pageSize) {
+        Page<NotificationInbox> pageObj = inboxRepository.findByUser_IdOrderByCreatedAtDesc(
+                userId, PageRequest.of(page, pageSize));
+        return pageObj.getContent().stream().map(n -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", n.getId());
+            m.put("category", n.getCategory().name());
+            m.put("title", n.getTitle());
+            m.put("body", n.getBody());
+            m.put("deepLink", n.getDeepLink());
+            m.put("isRead", n.isRead());
+            m.put("createdAt", n.getCreatedAt());
+            return m;
+        }).toList();
+    }
+
+    /** 읽지 않은 알림 수. */
+    @Transactional(readOnly = true)
+    public long countUnreadInbox(Long userId) {
+        return inboxRepository.countByUser_IdAndIsReadFalse(userId);
+    }
+
+    /** 알림 읽음 처리 (본인 소유만 — findByIdAndOwner 로 소유 필터링). */
+    @Transactional
+    public void markInboxRead(Long id, Long userId) {
+        inboxRepository.findByIdAndOwner(id, userId)
+                .ifPresent(NotificationInbox::markRead);
     }
 
     @Transactional

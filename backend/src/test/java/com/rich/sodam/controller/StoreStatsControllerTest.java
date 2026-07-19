@@ -7,10 +7,11 @@ import com.rich.sodam.repository.PayrollRepository;
 import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
+import com.rich.sodam.service.StoreStatsService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +30,11 @@ import static org.mockito.Mockito.when;
  *
  * <p>{@code dashboard()} 응답의 {@code today}/{@code payroll} 중첩 필드가, 같은 매장에 대해 기존
  * {@code today()}/{@code monthToDate()} 엔드포인트를 각각 호출했을 때의 응답과 완전히 동일해야 한다 —
- * 새 엔드포인트가 조회 로직을 재사용만 할 뿐 별도 계산을 하지 않는다는 것을 보장한다.</p>
+ * 새 엔드포인트가 조회 로직을 재사용만 할 뿐 별도 계산을 하지 않는다는 것을 보장한다.
+ *
+ * <p>WP-09 2단계(repository → StoreStatsService 이관) 이후에는 통계 조립 로직이 서비스에 있으므로,
+ * 컨트롤러에는 실제 {@link StoreStatsService}(레포지토리는 mock)를 수동 주입해 원래 검증 의도(합성
+ * 응답이 개별 응답과 필드까지 동일함)를 그대로 유지한다.</p>
  */
 @ExtendWith(MockitoExtension.class)
 class StoreStatsControllerTest {
@@ -44,10 +49,17 @@ class StoreStatsControllerTest {
     PayrollRepository payrollRepository;
     @Mock
     StoreAuthorizationPolicy guard;
-    @InjectMocks
+
     StoreStatsController controller;
 
     private final UserPrincipal principal = new UserPrincipal(1L, "boss@sodam.dev", List.of());
+
+    @BeforeEach
+    void setUp() {
+        StoreStatsService storeStatsService = new StoreStatsService(
+                storeRepository, employeeStoreRelationRepository, attendanceRepository, payrollRepository);
+        controller = new StoreStatsController(storeStatsService, guard);
+    }
 
     @Test
     @DisplayName("dashboard() 응답의 today/payroll이 개별 엔드포인트 응답과 필드까지 동일하다")
