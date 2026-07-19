@@ -5,8 +5,8 @@ import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.domain.type.DomainEventType;
 import com.rich.sodam.service.DomainEventService;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.PayrollPreviewService;
-import com.rich.sodam.service.StoreAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PayrollPreviewController {
 
     private final PayrollPreviewService payrollPreviewService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
     private final DomainEventService domainEventService;
 
     @Operation(summary = "급여 미리보기", description = "시급·주 근로시간으로 주휴 포함 월 예상급여를 계산. 추정치(면책 동반).")

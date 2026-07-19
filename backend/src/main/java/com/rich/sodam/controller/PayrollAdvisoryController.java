@@ -3,8 +3,8 @@ package com.rich.sodam.controller;
 import com.rich.sodam.dto.response.PayrollBoundaryAdvisoryResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.PayrollAdvisoryService;
-import com.rich.sodam.service.StoreAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PayrollAdvisoryController {
 
     private final PayrollAdvisoryService payrollAdvisoryService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
 
     @Operation(summary = "주휴 월경계 알림", description = "그 달 월 경계에 걸친 주(주휴 귀속 모호) 안내.")
     @GetMapping("/boundary-advisory")

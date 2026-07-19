@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 
 @MasterOnly
 @RestController
@@ -28,7 +28,7 @@ import com.rich.sodam.service.StoreAccessGuard;
 public class PayrollPolicyController {
 
     private final PayrollPolicyService payrollPolicyService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
 
     @Operation(summary = "매장 급여 정책 조회", description = "특정 매장의 급여 정책을 조회합니다.")
     @ApiResponses(value = {
