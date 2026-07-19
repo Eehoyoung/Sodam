@@ -3,6 +3,7 @@ package com.rich.sodam.service;
 import com.rich.sodam.domain.Referral;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.repository.ReferralRepository;
+import com.rich.sodam.repository.UserRepository;
 import com.rich.sodam.service.ReferralRewardService.ReferralRewardResult;
 import com.rich.sodam.service.ReferralRewardService.ReferralRewardSummary;
 import org.junit.jupiter.api.DisplayName;
@@ -21,7 +22,8 @@ import static org.mockito.Mockito.when;
 class ReferralRewardServiceTest {
 
     private final ReferralRepository referralRepository = mock(ReferralRepository.class);
-    private final ReferralRewardService service = new ReferralRewardService(referralRepository);
+    private final UserRepository userRepository = mock(UserRepository.class);
+    private final ReferralRewardService service = new ReferralRewardService(referralRepository, userRepository);
 
     @Test
     @DisplayName("피추천인 첫 결제 → 전환(CONVERTED) + 양측 1개월 보상 산정")

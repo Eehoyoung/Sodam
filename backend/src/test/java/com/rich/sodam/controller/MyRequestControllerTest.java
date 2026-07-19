@@ -4,6 +4,7 @@ import com.rich.sodam.domain.TimeOff;
 import com.rich.sodam.dto.response.MyRequestResponse;
 import com.rich.sodam.repository.AttendanceCorrectionRequestRepository;
 import com.rich.sodam.security.UserPrincipal;
+import com.rich.sodam.service.MyRequestService;
 import com.rich.sodam.service.TimeOffService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,7 +43,8 @@ class MyRequestControllerTest {
         rejected.reject("성수기라 대체 인력 확보가 어려워요");
         when(timeOffService.getTimeOffsByEmployee(anyLong())).thenReturn(List.of(rejected));
 
-        MyRequestController controller = new MyRequestController(correctionRepo, timeOffService);
+        MyRequestService myRequestService = new MyRequestService(correctionRepo, timeOffService);
+        MyRequestController controller = new MyRequestController(myRequestService);
         UserPrincipal principal = new UserPrincipal(5L, "emp@x.com", List.of());
 
         ResponseEntity<List<MyRequestResponse>> response = controller.myRequests(principal);

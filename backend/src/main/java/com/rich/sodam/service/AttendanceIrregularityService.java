@@ -7,16 +7,19 @@ import com.rich.sodam.domain.Attendance;
 import com.rich.sodam.domain.AttendanceIrregularity;
 import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.PayrollPolicy;
+import com.rich.sodam.domain.User;
 import com.rich.sodam.domain.WorkShift;
 import com.rich.sodam.domain.type.AttendanceIrregularityType;
 import com.rich.sodam.domain.type.TimeOffLeaveType;
 import com.rich.sodam.domain.type.TimeOffUnit;
+import com.rich.sodam.dto.response.AttendanceIrregularityResponse;
 import com.rich.sodam.dto.response.TimeOffResponse;
 import com.rich.sodam.repository.AttendanceIrregularityRepository;
 import com.rich.sodam.repository.AttendanceRepository;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
 import com.rich.sodam.repository.PayrollPolicyRepository;
 import com.rich.sodam.repository.TimeOffRepository;
+import com.rich.sodam.repository.UserRepository;
 import com.rich.sodam.repository.WorkShiftRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * 월급제 정규직 지각/조퇴/결근 자동 감지 + 사장 확정(공제확인/공제안함/연차전환).
@@ -62,6 +66,7 @@ public class AttendanceIrregularityService {
     private final WorkHoursCalculator workHoursCalculator;
     private final TimeOffService timeOffService;
     private final NotificationService notificationService;
+    private final UserRepository userRepository;
 
     /**
      * 매장 조회 시점에 지연 감지 — WorkShiftService.listForStore 의 FixedScheduleService 호출과
@@ -250,5 +255,20 @@ public class AttendanceIrregularityService {
                 .deepLink("sodam://attendance")
                 .data(Map.of("type", "ATTENDANCE_IRREGULARITY_RESOLVED"))
                 .build());
+    }
+
+    /** 컨트롤러 응답 변환용 — 직원 이름 일괄 조회 후 매핑(WP-09: 컨트롤러의 UserRepository 직접 조회 이관). */
+    @Transactional(readOnly = true)
+    public List<AttendanceIrregularityResponse> toResponses(List<AttendanceIrregularity> items) {
+        Map<Long, String> names = userRepository.findAllById(items.stream().map(AttendanceIrregularity::getEmployeeId).distinct().toList())
+                .stream().collect(Collectors.toMap(User::getId, User::getName));
+        return items.stream().map(a -> AttendanceIrregularityResponse.of(a, names.get(a.getEmployeeId()))).toList();
+    }
+
+    /** 컨트롤러 응답 변환용 — 단건. */
+    @Transactional(readOnly = true)
+    public AttendanceIrregularityResponse toResponse(AttendanceIrregularity a) {
+        String name = userRepository.findById(a.getEmployeeId()).map(User::getName).orElse(null);
+        return AttendanceIrregularityResponse.of(a, name);
     }
 }
