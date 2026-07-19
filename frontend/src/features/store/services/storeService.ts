@@ -97,7 +97,8 @@ const getPayrollCyclePeriod = async (storeId: number): Promise<PayrollCyclePerio
   return res.data;
 };
 
-const getMasterStores = async (userId: number): Promise<StoreSummaryDto[]> => {
+// userId 대신 'current' 를 넘기면 BE가 JWT principal 기준으로 본인 매장 목록을 반환한다.
+const getMasterStores = async (userId: number | 'current'): Promise<StoreSummaryDto[]> => {
   const res = await api.get<StoreSummaryDto[]>(`/api/stores/master/${userId}`);
   // 일부 백엔드가 {data: T} 래핑일 수 있어 방어적 파싱
   const data: any = res.data as any;

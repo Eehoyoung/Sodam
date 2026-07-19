@@ -7,7 +7,9 @@ import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import api from '../../../common/utils/api';
+import storeService from '../../store/services/storeService';
+import {fetchTodayStats} from '../../store/services/insightsService';
+import notificationService from '../../notification/services/notificationService';
 
 interface PendingItem {
     employeeId: number;
@@ -30,12 +32,10 @@ const MissingAttendanceCenterScreen: React.FC = () => {
 
     const load = useCallback(async () => {
         try {
-            const storesRes = await api.get<any[]>('/api/stores/master/current');
-            const stores = (storesRes.data) ?? [];
+            const stores = await storeService.getMasterStores('current');
             const collected: PendingItem[] = [];
             for (const s of stores) {
-                const statsRes = await api.get<any>(`/api/store-queries/${s.id}/stats/today`);
-                const data = statsRes.data;
+                const data = await fetchTodayStats(s.id);
                 (data?.pendingEmployees ?? []).forEach((name: string, idx: number) => {
                     collected.push({
                         employeeId: idx,
@@ -66,11 +66,11 @@ const MissingAttendanceCenterScreen: React.FC = () => {
                 label: '보내기',
                 onPress: async () => {
                     try {
-                        await api.post('/api/notifications/push-to-employee', {
-                            employeeId: item.employeeId,
-                            title: '출근 확인 부탁드려요',
-                            body: `${item.storeName} 매장 출근이 등록되지 않았어요. 확인해 주세요.`,
-                        });
+                        await notificationService.pushToEmployee(
+                            item.employeeId,
+                            '출근 확인 부탁드려요',
+                            `${item.storeName} 매장 출근이 등록되지 않았어요. 확인해 주세요.`,
+                        );
                         AppToast.success('직원에게 알림을 보냈어요.');
                     } catch (e: any) {
                         AppToast.error('알림 발송에 실패했어요.');

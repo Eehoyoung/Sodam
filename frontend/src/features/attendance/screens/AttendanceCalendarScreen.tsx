@@ -8,17 +8,10 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import {spacing, tokens} from '../../../theme/tokens';
 import {AppButton, AppCard, AppHeader, AppText, ScreenContainer} from '../../../common/components/ds';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import api from '../../../common/utils/api';
+import attendanceService, {MonthlyAttendanceItem} from '../services/attendanceService';
 import {useAuth} from '../../../contexts/AuthContext';
 
-interface AttendanceRecord {
-    id: number;
-    checkInTime?: string;
-    checkOutTime?: string;
-    workingMinutes?: number;
-    appliedHourlyWage?: number;
-    storeName?: string;
-}
+type AttendanceRecord = MonthlyAttendanceItem;
 
 type DayStatus = 'CHECKED_IN' | 'WORKING';
 
@@ -44,11 +37,9 @@ const AttendanceCalendarScreen: React.FC = () => {
             }
             setLoading(true);
             try {
-                const res = await api.get<any[]>(
-                    `/api/attendance/employee/${user.id}/monthly?year=${year}&month=${month}`,
-                );
+                const list = await attendanceService.getMonthlyAttendance(user.id, year, month);
                 if (mounted) {
-                    setItems((res.data) ?? []);
+                    setItems(list);
                 }
             } catch (_) {
                 if (mounted) {

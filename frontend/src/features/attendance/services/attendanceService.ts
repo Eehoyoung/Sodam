@@ -52,6 +52,16 @@ export interface AttendanceWorkLogResponse {
     rows: AttendanceWorkLogRow[];
 }
 
+/** GET /api/attendance/employee/{id}/monthly 원소 — 달력 점 표시·직원상세 최근기록용 원본 레코드. */
+export interface MonthlyAttendanceItem {
+    id: number;
+    checkInTime?: string;
+    checkOutTime?: string;
+    workingMinutes?: number;
+    appliedHourlyWage?: number;
+    storeName?: string;
+}
+
 /**
  * BE AttendanceRequestDto 4필드(@NotNull) 매핑 헬퍼.
  * employeeId/storeId 는 Long, latitude/longitude 는 Double. 누락 시 400 발생하므로 fail-fast.
@@ -105,6 +115,18 @@ const attendanceService = {
             {year, month, storeId},
         );
         return (response.data as any)?.data ?? response.data;
+    },
+
+    /**
+     * 월간 출퇴근 원본 기록(달력 점 표시용) — GET /api/attendance/employee/{employeeId}/monthly.
+     * getMonthlyWorkLog(주휴/급여 합산 요약)와는 다른 엔드포인트·응답 형태다 — 이름을 합치지 않는다.
+     */
+    getMonthlyAttendance: async (employeeId: number, year: number, month: number): Promise<MonthlyAttendanceItem[]> => {
+        const response = await api.get<MonthlyAttendanceItem[]>(
+            `/api/attendance/employee/${employeeId}/monthly`,
+            {year, month},
+        );
+        return (response.data as any)?.data ?? response.data ?? [];
     },
 
     /**

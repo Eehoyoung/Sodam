@@ -7,7 +7,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import {AppHeader, AppText, EmptyState, ScreenContainer} from '../../../common/components/ds';
 import {spacing, tokens} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import api from '../../../common/utils/api';
+import notificationService, {InboxItem} from '../services/notificationService';
 import {parseServerDateTime} from '../../../common/utils/format';
 
 const CATEGORY_ICON: Record<InboxItem['category'], string> = {
@@ -20,16 +20,6 @@ const CATEGORY_ICON: Record<InboxItem['category'], string> = {
 };
 
 type Category = 'ALL' | 'ATTENDANCE' | 'PAYROLL' | 'BILLING' | 'NOTICE';
-
-interface InboxItem {
-    id: number;
-    category: 'ATTENDANCE' | 'PAYROLL' | 'BILLING' | 'NOTICE' | 'MARKETING' | 'SYSTEM';
-    title: string;
-    body: string;
-    deepLink?: string;
-    isRead: boolean;
-    createdAt: string;
-}
 
 const FILTERS: Array<{key: Category; label: string}> = [
     {key: 'ALL', label: '전체'},
@@ -53,8 +43,8 @@ const NotificationCenterScreen: React.FC = () => {
 
     const load = useCallback(async () => {
         try {
-            const res = await api.get<InboxItem[]>('/api/notifications/inbox?page=0&size=50');
-            setItems((res.data) ?? []);
+            const list = await notificationService.listInbox(0, 50);
+            setItems(list);
         } catch (_) {
             setItems([]);
         } finally {
@@ -75,7 +65,7 @@ const NotificationCenterScreen: React.FC = () => {
     const open = async (item: InboxItem) => {
         try {
             if (!item.isRead) {
-                await api.post(`/api/notifications/inbox/${item.id}/read`);
+                await notificationService.markRead(item.id);
                 setItems(items.map(i => (i.id === item.id ? {...i, isRead: true} : i)));
             }
         } catch (_) {/* ignore */}

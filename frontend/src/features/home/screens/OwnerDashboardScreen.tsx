@@ -26,26 +26,14 @@ import {formatMoney} from '../../../common/utils/format';
 import StoreSelector, {SelectableStore} from '../../../common/components/store/StoreSelector';
 import {StoreSetupCard} from '../../store/components/StoreSetupCard';
 import {useAuth} from '../../../contexts/AuthContext';
-import api from '../../../common/utils/api';
+import storeService from '../../store/services/storeService';
+import {fetchDashboardStats, fetchTodayStats, MonthPayrollStats, TodayStats} from '../../store/services/insightsService';
 import {useSubscription} from '../../subscription/hooks/useSubscription';
 import {PastDueBanner} from '../../subscription/components/PastDueBanner';
 import {useManagedStores} from '../../manager/hooks/useManagedStores';
 import type {ManagerPermission} from '../../manager/types';
 
-interface TodayStats {
-    storeId: number;
-    storeName: string;
-    checkedInCount: number;
-    totalActiveEmployees: number;
-    pendingEmployees: string[];
-}
-
-interface MonthPayroll {
-    totalGross: number;
-    totalNet: number;
-    totalWorkingHours: number;
-    daysRemainingInMonth: number;
-}
+type MonthPayroll = MonthPayrollStats;
 
 /**
  * OwnerHome / Dashboard — v3 토스식 재디자인.
@@ -72,8 +60,8 @@ const OwnerDashboardContent: React.FC = () => {
     const load = useCallback(async () => {
         try {
             setError(false);
-            const storesRes = await api.get<any[]>(`/api/stores/master/current`);
-            const storeList: SelectableStore[] = ((storesRes.data) ?? []).map(s => ({
+            const masterStores = await storeService.getMasterStores('current');
+            const storeList: SelectableStore[] = masterStores.map(s => ({
                 id: s.id,
                 storeName: s.storeName,
             }));
@@ -90,12 +78,10 @@ const OwnerDashboardContent: React.FC = () => {
                 return;
             }
             // 순차 2콜(today → month-to-date) 대신 합성 엔드포인트 1콜(Phase 9, DB_OPTIMIZATION_PLAN.md).
-            const dashboardRes = await api
-                .get<{today: TodayStats; payroll: MonthPayroll}>(`/api/store-queries/${firstStore.id}/stats/dashboard`)
-                .catch(() => null);
+            const dashboard = await fetchDashboardStats(firstStore.id).catch(() => null);
 
             setToday(
-                dashboardRes?.data.today ?? {
+                dashboard?.today ?? {
                     storeId: firstStore.id,
                     storeName: firstStore.storeName ?? '내 매장',
                     checkedInCount: 0,
@@ -104,7 +90,7 @@ const OwnerDashboardContent: React.FC = () => {
                 },
             );
             setMonthly(
-                dashboardRes?.data.payroll ?? {
+                dashboard?.payroll ?? {
                     totalGross: 0,
                     totalNet: 0,
                     totalWorkingHours: 0,
@@ -348,7 +334,7 @@ const ManagerDashboardContent: React.FC<{storeId: number}> = ({storeId}) => {
     const load = useCallback(async () => {
         try {
             setError(false);
-            const {data} = await api.get<TodayStats>(`/api/store-queries/${storeId}/stats/today`);
+            const data = await fetchTodayStats(storeId);
             setToday(data);
         } catch (e) {
             console.warn('[ManagerDashboard] load failed', e);

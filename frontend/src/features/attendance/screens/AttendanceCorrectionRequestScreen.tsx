@@ -7,7 +7,7 @@ import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import api from '../../../common/utils/api';
+import attendanceCorrectionService from '../services/attendanceCorrectionService';
 import {
     TIME_DIGITS_HELPER,
     compactDateFromApi,
@@ -55,7 +55,7 @@ const AttendanceCorrectionRequestScreen: React.FC = () => {
         try {
             // 정정 대상 날짜(YYYY-MM-DD) + 입력 시각(HH:MM)을 LocalDateTime 으로 결합
             const baseDate = compactDateFromApi(params.date) || compactDateFromApi(new Date().toISOString());
-            await api.post(`/api/attendance/${params.attendanceId}/correction-request`, {
+            await attendanceCorrectionService.request(params.attendanceId, {
                 proposedCheckIn: localDateTimeFromDigits(baseDate, checkIn),
                 proposedCheckOut: localDateTimeFromDigits(baseDate, checkOut),
                 reason: reason.trim(),

@@ -27,7 +27,6 @@ import {
     AppHeader,
 } from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
-import api from '../../../common/utils/api';
 import {
     DATE_DIGITS_HELPER,
     TIME_DIGITS_HELPER,
@@ -435,8 +434,8 @@ const SendContractScreen: React.FC = () => {
 
     const loadEmployees = useCallback(async () => {
         try {
-            const res = await api.get<StoreEmployee[]>(`/api/stores/${storeId}/employees`);
-            setEmployees(res.data);
+            const list = await storeService.getStoreEmployees(storeId);
+            setEmployees(list.map(e => ({id: e.id, name: e.name, email: e.email ?? ''})));
         } catch {
             AppToast.error('직원 목록을 불러오지 못했어요.');
         }
