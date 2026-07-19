@@ -2,13 +2,15 @@ import axios, {AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRe
 import TokenManager from '../../services/TokenManager';
 import {unifiedStorage} from '../utils/unifiedStorage';
 import {env} from '../config/env';
+import {refresh as refreshAccessToken} from '../auth/sessionCoordinator';
 
 /**
- * API 클라이언트 설정 및 인터셉터 (Access/Refresh with single-flight queue) — WP-01.
+ * API 클라이언트 설정 및 인터셉터 (Access/Refresh with single-flight queue) — WP-01/WP-02.
  *
  * axios instance 생성과 인터셉터(Authorization 주입, 401 단일 refresh, 402 페이월)의
  * 유일한 소유 파일. `common/utils/api.ts`는 이 파일을 재-export하는 호환 계층으로 축소됐다
- * (WP-10에서 import 0건 확인 후 삭제 예정).
+ * (WP-10에서 import 0건 확인 후 삭제 예정). refresh 실행 자체는 WP-02에서
+ * `common/auth/sessionCoordinator.ts`로 옮겼다 — 이 파일은 "언제 호출할지"만 결정한다.
  *
  * 베이스 URL은 `src/common/config/env.ts` 에서 단일 진실로 관리.
  *   - Android 에뮬레이터: http://10.0.2.2:7070
@@ -75,40 +77,19 @@ export const setOnPlanRequired = (
     onPlanRequired = cb;
 };
 
-async function refreshAccessToken(): Promise<string> {
-    const refreshToken = await TokenManager.getRefresh();
-    if (!refreshToken) {throw new Error('NO_REFRESH_TOKEN');}
-
-    // 1차 경로
-    try {
-        const res = await axios.post(`${BASE_URL}/api/auth/refresh`, { refreshToken }, { timeout: 10000 });
-        const newAccess = res.data?.accessToken || res.data?.data?.accessToken;
-        const rotatedRefresh = res.data?.refreshToken || res.data?.data?.refreshToken || refreshToken;
-        if (!newAccess) {throw new Error('INVALID_REFRESH_RESPONSE');}
-        await TokenManager.setTokens({ accessToken: newAccess, refreshToken: rotatedRefresh });
-        return newAccess;
-    } catch (e: any) {
-        // 404/405 등일 경우 폴백 시도
-        if (e?.response?.status === 404 || e?.response?.status === 405) {
-            const res = await axios.post(`${BASE_URL}/api/refresh`, { refreshToken }, { timeout: 10000 });
-            const newAccess = res.data?.accessToken || res.data?.data?.accessToken;
-            const rotatedRefresh = res.data?.refreshToken || res.data?.data?.refreshToken || refreshToken;
-            if (!newAccess) {throw new Error('INVALID_REFRESH_RESPONSE');}
-            await TokenManager.setTokens({ accessToken: newAccess, refreshToken: rotatedRefresh });
-            return newAccess;
-        }
-        throw e;
-    }
-}
+// refreshAccessToken 실제 구현은 `common/auth/sessionCoordinator.ts`가 소유한다(WP-02) —
+// 이 파일은 401 발생 시 언제/얼마나 자주 호출할지(single-flight)만 책임진다.
 
 // 응답 인터셉터: 401 처리 및 단일 비행(refresh queue)
 // ⚠️ 인증 엔드포인트(/login, /auth/refresh, /refresh, /join)의 401 은 "잘못된 자격증명" 의미.
 // refresh 시도하면 진짜 원인(비밀번호 불일치) 이 NO_REFRESH_TOKEN 으로 가려져 UX 가 망가짐.
 //
-// WP-00 계약 기준선에서 확인된 기지 결함(WP-02에서 수정 예정, docs/260718/WP-00_완료_보고.md §2-1):
+// WP-00 계약 기준선에서 확인된 기지 결함(docs/260718/WP-00_완료_보고.md §2-1, 아직 미수정):
 // 이 목록에 '/apple/auth/proc'가 없고 '/kakao/auth/proc' 는 실제 경로와 문자열이 어긋나 있어
-// 두 소셜 로그인의 401도 자격증명 오류인데 refresh를 시도한다. WP-01은 구현 이동만 하는 단계라
-// 동작을 바꾸지 않고 그대로 옮긴다.
+// 두 소셜 로그인의 401도 자격증명 오류인데 refresh를 시도한다. 로그인 흐름 자체를 건드리는
+// 수정이라 별도 에뮬레이터 검증 없이는 위험이 커서 이번 WP-02 증분에서도 보류했다 — 수정 시
+// 이 배열에 '/apple/auth/proc'를 추가하고 '/kakao/auth/proc'를 정확히 매칭하도록 고친 뒤
+// apiRefreshInterceptor.test.ts의 두 [WP-02 대상] 테스트를 반전(refreshAttempted: false)시킬 것.
 const AUTH_ENDPOINTS = ['/api/login', '/api/auth/refresh', '/api/refresh', '/api/join', '/api/kakao'];
 const isAuthEndpoint = (url?: string) =>
     !!url && AUTH_ENDPOINTS.some(p => url.includes(p));

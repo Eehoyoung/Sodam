@@ -2,8 +2,8 @@ import React, {useState} from 'react';
 import {KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {NavigationProp, RouteProp} from '@react-navigation/native';
-import {appleAuth} from '@invertase/react-native-apple-authentication';
 import {AppButton, AppInput, AppText, AppToast} from '../../../common/components/ds';
+import {AppleSignInCancelledError, requestAppleIdentityToken} from '../native/appleSignIn';
 import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {useResponsive} from '../../../common/hooks/useResponsive';
@@ -121,14 +121,7 @@ export default function LoginScreen({navigation, route}: LoginScreenProps) {
         }
         setIsAppleLoading(true);
         try {
-            const appleResponse = await appleAuth.performRequest({
-                requestedOperation: appleAuth.Operation.LOGIN,
-                requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
-            });
-            const {identityToken} = appleResponse;
-            if (!identityToken) {
-                throw new Error('Apple 인증 토큰을 받지 못했어요.');
-            }
+            const identityToken = await requestAppleIdentityToken();
             const loggedInUser = await appleLogin(identityToken);
             const fallbackPurpose = await consumePendingPurpose(loggedInUser);
             const nextRoute = resolvePostAuthRoute(loggedInUser, fallbackPurpose);
@@ -136,8 +129,7 @@ export default function LoginScreen({navigation, route}: LoginScreenProps) {
             resetToRootRoute(navigation, nextRoute);
         } catch (error: any) {
             // 사용자가 시트를 닫은 취소는 실패로 취급하지 않고 조용히 무시한다.
-            const message = String(error?.message ?? '');
-            if (!/cancel/i.test(message)) {
+            if (!(error instanceof AppleSignInCancelledError)) {
                 AppToast.error('Apple 로그인에 실패했습니다. 다시 시도해 주세요.');
             }
         } finally {
