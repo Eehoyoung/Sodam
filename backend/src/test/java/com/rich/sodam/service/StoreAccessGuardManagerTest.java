@@ -7,6 +7,7 @@ import com.rich.sodam.exception.ManagerAccessDeniedException;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
 import com.rich.sodam.repository.MasterStoreRelationRepository;
 import com.rich.sodam.repository.TimeOffRepository;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,7 +32,8 @@ class StoreAccessGuardManagerTest {
 
     @BeforeEach
     void setUp() {
-        guard = new StoreAccessGuard(masterRepository, employeeRepository, timeOffRepository, planAccessService, true);
+        guard = new StoreAccessGuard(new StoreAuthorizationPolicy(
+                masterRepository, employeeRepository, timeOffRepository, planAccessService, true));
     }
 
     @Test
@@ -70,8 +72,8 @@ class StoreAccessGuardManagerTest {
 
     @Test
     void disabledFeatureFailsClosedBeforeRelationLookup() {
-        StoreAccessGuard disabled = new StoreAccessGuard(
-                masterRepository, employeeRepository, timeOffRepository, planAccessService, false);
+        StoreAccessGuard disabled = new StoreAccessGuard(new StoreAuthorizationPolicy(
+                masterRepository, employeeRepository, timeOffRepository, planAccessService, false));
 
         assertThatThrownBy(() -> disabled.assertManagerPermission(
                 2L, 10L, ManagerPermission.ATTENDANCE_APPROVE))
