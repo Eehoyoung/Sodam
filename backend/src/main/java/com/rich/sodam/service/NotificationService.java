@@ -8,13 +8,12 @@ import com.rich.sodam.domain.User;
 import com.rich.sodam.repository.DeviceTokenRepository;
 import com.rich.sodam.repository.NotificationInboxRepository;
 import com.rich.sodam.repository.UserRepository;
+import com.rich.sodam.service.support.AfterCommitExecutor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.Map;
@@ -37,6 +36,7 @@ public class NotificationService {
     private final DeviceTokenRepository deviceTokenRepository;
     private final NotificationInboxRepository inboxRepository;
     private final UserRepository userRepository;
+    private final AfterCommitExecutor afterCommitExecutor;
 
     @Async
     public void notifyEmployeeCheckedIn(Long ownerUserId, String employeeName, String storeName) {
@@ -203,16 +203,7 @@ public class NotificationService {
 
         // 2) 푸시 발송 — 되돌릴 수 없는 외부 부작용이므로 트랜잭션 afterCommit 에서만 실행한다.
         // 여기서 바로 보내면 호출측 트랜잭션이 이후 롤백돼도 이미 발송된 알림은 취소할 수 없다.
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    sendPush(userId, message);
-                }
-            });
-        } else {
-            sendPush(userId, message);
-        }
+        afterCommitExecutor.execute(() -> sendPush(userId, message));
     }
 
     private void sendPush(Long userId, PushMessage message) {

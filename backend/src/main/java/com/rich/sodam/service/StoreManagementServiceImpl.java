@@ -16,6 +16,7 @@ import com.rich.sodam.dto.response.StoreEmployeeResponseDto;
 import com.rich.sodam.exception.BusinessException;
 import com.rich.sodam.exception.EntityNotFoundException;
 import com.rich.sodam.repository.*;
+import com.rich.sodam.service.support.AfterCommitExecutor;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.cache.Cache;
@@ -27,8 +28,6 @@ import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
@@ -64,6 +63,7 @@ public class StoreManagementServiceImpl implements StoreManagementService {
     private final MonthlySalaryCalculator monthlySalaryCalculator;
     private final CacheManager cacheManager;
     private final jakarta.persistence.EntityManager entityManager;
+    private final AfterCommitExecutor afterCommitExecutor;
 
     /**
      * "stores" 캐시 무효화를 트랜잭션 커밋 이후로 미룬다(DB_OPTIMIZATION_PLAN.md §2.8(c)).
@@ -71,25 +71,15 @@ public class StoreManagementServiceImpl implements StoreManagementService {
      * {@code @Transactional}의 실제 커밋 완료 "직전"이라 evict 직후~커밋 완료 사이의 짧은 창에 다른
      * 스레드가 아직 반영 안 된 값으로 캐시를 재적재할 수 있다(운영 RedisCacheManager 는 여러 인스턴스가
      * 공유해 이 레이스가 실질적 영향을 준다). {@link LiveSyncPublisher}가 WebSocket 발행에 쓰는 것과
-     * 동일한 {@link TransactionSynchronizationManager} 패턴으로 커밋 이후로 미룬다.
+     * 동일한 {@link AfterCommitExecutor} 패턴으로 커밋 이후로 미룬다.
      */
     private void evictStoresCacheAfterCommit(java.util.function.Consumer<Cache> evictAction) {
-        Runnable run = () -> {
+        afterCommitExecutor.execute(() -> {
             Cache cache = cacheManager.getCache("stores");
             if (cache != null) {
                 evictAction.accept(cache);
             }
-        };
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    run.run();
-                }
-            });
-        } else {
-            run.run();
-        }
+        });
     }
 
     @NotNull

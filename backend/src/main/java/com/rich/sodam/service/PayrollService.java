@@ -58,6 +58,7 @@ public class PayrollService {
     private final PayrollBonusService payrollBonusService;
     private final LiveSyncPublisher liveSyncPublisher;
     private final NotificationService notificationService;
+    private final com.rich.sodam.service.support.AfterCommitExecutor afterCommitExecutor;
     private final AttendanceIrregularityService attendanceIrregularityService;
 
     /** 미리보기 워터마크 문구(매장 사장 플랜이 명세서 PDF 발급 권한 미보유 시). */
@@ -875,17 +876,7 @@ public class PayrollService {
                     ? payroll.getStartDate().getMonthValue() + "월분" : "이번 달";
             Runnable send = () ->
                     notificationService.notifyPayrollPaid(employeeUserId, storeName, netWage, monthLabel);
-            if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
-                org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
-                        new org.springframework.transaction.support.TransactionSynchronization() {
-                            @Override
-                            public void afterCommit() {
-                                send.run();
-                            }
-                        });
-            } else {
-                send.run();
-            }
+            afterCommitExecutor.execute(send);
         } catch (Exception e) {
             log.debug("급여 지급 직원 푸시 스킵: {}", e.getMessage());
         }

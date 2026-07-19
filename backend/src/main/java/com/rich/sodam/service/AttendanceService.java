@@ -16,6 +16,7 @@ import com.rich.sodam.repository.EmployeeStoreRelationRepository;
 import com.rich.sodam.repository.MasterStoreRelationRepository;
 import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.repository.UserRepository;
+import com.rich.sodam.service.support.AfterCommitExecutor;
 import com.rich.sodam.util.DateTimeUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,8 +25,6 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -61,6 +60,7 @@ public class AttendanceService {
     private final MasterStoreRelationRepository masterStoreRelationRepository;
     private final NotificationService notificationService;
     private final NfcVerificationService nfcVerificationService;
+    private final AfterCommitExecutor afterCommitExecutor;
 
     /**
      * 위치정보 수집·이용 동의 여부를 강제한다(위치정보법 §18·§19, G-1).
@@ -277,16 +277,7 @@ public class AttendanceService {
                     notificationService.notifyEmployeeCheckedOut(masterUserId, employeeName, storeName, workingMinutes);
                 }
             });
-            if (TransactionSynchronizationManager.isSynchronizationActive()) {
-                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        send.run();
-                    }
-                });
-            } else {
-                send.run();
-            }
+            afterCommitExecutor.execute(send);
         } catch (Exception e) {
             log.debug("출퇴근 사장 푸시 스킵: {}", e.getMessage());
         }

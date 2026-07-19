@@ -1,11 +1,10 @@
 package com.rich.sodam.service;
 
+import com.rich.sodam.service.support.AfterCommitExecutor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.util.Map;
@@ -26,6 +25,7 @@ import java.util.Map;
 public class LiveSyncPublisher {
 
     private final SimpMessagingTemplate messagingTemplate;
+    private final AfterCommitExecutor afterCommitExecutor;
 
     /** 동기화 이벤트 종류 — FE 가 어떤 데이터를 재조회할지 분기. */
     public enum SyncType {
@@ -46,16 +46,7 @@ public class LiveSyncPublisher {
         if (storeId == null) {
             return;
         }
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    doPublish(storeId, type);
-                }
-            });
-        } else {
-            doPublish(storeId, type);
-        }
+        afterCommitExecutor.execute(() -> doPublish(storeId, type));
     }
 
     private void doPublish(Long storeId, SyncType type) {
