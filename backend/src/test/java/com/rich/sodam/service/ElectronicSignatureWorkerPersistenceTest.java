@@ -36,6 +36,12 @@ class ElectronicSignatureWorkerPersistenceTest {
     @Autowired PlatformTransactionManager transactionManager;
 
     @Test
+    // WP-07 B-4: transactions 필드가 PROPAGATION_REQUIRES_NEW로 바뀌면서, @DataJpaTest가 테스트
+    // 메서드 전체에 걸어두는 암묵적 @Transactional(미커밋) 안에서는 REQUIRES_NEW 구간이 별도
+    // 물리 커넥션/EntityManager로 격리돼 이 테스트의 setUp 데이터(아직 커밋 전)를 보지 못한다.
+    // finalizationFailureDeletesUnboundManifestAndRetriesFinalizeOutbox()와 동일하게 클래스
+    // 레벨 트랜잭션 참여를 끊어, 모든 repository 호출이 실제로 커밋되도록 한다.
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void requestStatusVerifyStoresRawEvidenceOnlyInPrivateObjectStorage() throws Exception {
         IntegrationProperties properties = new IntegrationProperties();
         properties.getElectronicSignature().setMode("mock");
@@ -57,9 +63,13 @@ class ElectronicSignatureWorkerPersistenceTest {
                 SignatureSubjectType.LABOR_CONTRACT, 100L, 200L, 1,
                 DocumentDigest.sha256(pdf).hex(), crypto.encrypt(pdfRef), signer.getId()));
         envelope.markInProgress();
+        // WP-07 B-4: 이 테스트는 이제 @Transactional(propagation = NOT_SUPPORTED)라 saveAndFlush()가
+        // 반환하는 엔티티가 곧바로 detach된다 — 위 markInProgress() mutation을 다시 저장해야 DB에 반영된다.
+        envelope = envelopeRepository.saveAndFlush(envelope);
         ElectronicSignatureParty party = partyRepository.saveAndFlush(ElectronicSignatureParty.waiting(
                 envelope, SignatureSignerRole.OWNER, signer.getId(), 1, ElectronicSignatureProvider.NAVER));
         party.queueRequest();
+        party = partyRepository.saveAndFlush(party);
         ElectronicSignatureOutbox request = outboxRepository.saveAndFlush(ElectronicSignatureOutbox.queue(
                 envelope.getId(), party.getId(), SignatureOperation.REQUEST,
                 "request:" + party.getId(), LocalDateTime.now()));

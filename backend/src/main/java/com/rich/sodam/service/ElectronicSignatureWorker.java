@@ -7,11 +7,11 @@ import com.rich.sodam.domain.*;
 import com.rich.sodam.domain.type.*;
 import com.rich.sodam.exception.EntityNotFoundException;
 import com.rich.sodam.repository.*;
-import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.ByteArrayInputStream;
@@ -21,9 +21,20 @@ import java.time.LocalDateTime;
 import java.util.EnumSet;
 import java.util.List;
 
-/** BaroCert request → status polling → verify를 DB outbox lease로 직렬화한다. */
+/**
+ * BaroCert request → status polling → verify를 DB outbox lease로 직렬화한다.
+ *
+ * <p><b>트랜잭션 경계</b>: {@link #runDueWork()}는 {@code com.rich.sodam.service} 전역 트랜잭션
+ * advisor({@code TransactionAspect})에 의해 이미 하나의 물리 트랜잭션으로 감싸여 있다. 이 안에서
+ * {@link #processOne(Long)}가 {@code transactions.execute(...)}로 outbox 항목별 "독립 트랜잭션"을
+ * 의도하지만, {@link TransactionTemplate}의 기본 전파({@code PROPAGATION_REQUIRED})는 이미 열려있는
+ * advisor의 외부 트랜잭션에 그대로 참여해버려 항목 A의 실패가 rollback-only 마킹을 남기고, 이후
+ * 처리된 항목 B까지 루프 종료 시점의 커밋에서 {@code UnexpectedRollbackException}으로 함께
+ * 롤백되는 문제가 있었다. 그래서 {@link #transactions}는 생성자에서 항상
+ * {@code PROPAGATION_REQUIRES_NEW}로 강제해, outbox 항목마다 독립된 물리 트랜잭션에서 커밋/롤백이
+ * 결정되도록 한다.</p>
+ */
 @Component
-@RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "sodam.integration.electronic-signature", name = "worker-enabled", havingValue = "true")
 public class ElectronicSignatureWorker {
     private final ElectronicSignatureGateway gateway;
@@ -43,6 +54,47 @@ public class ElectronicSignatureWorker {
     private final IntegrationProperties properties;
     private final TransactionTemplate transactions;
     private final ObjectMapper objectMapper;
+
+    public ElectronicSignatureWorker(ElectronicSignatureGateway gateway,
+                                      ElectronicSignatureEnvelopeRepository envelopeRepository,
+                                      ElectronicSignaturePartyRepository partyRepository,
+                                      ElectronicSignatureOutboxRepository outboxRepository,
+                                      ElectronicSignatureAttemptRepository attemptRepository,
+                                      UserRepository userRepository,
+                                      PrivateSignatureObjectStorage storage,
+                                      SensitiveReferenceCrypto crypto,
+                                      StoreManagerService storeManagerService,
+                                      LaborContractService laborContractService,
+                                      FixedScheduleService fixedScheduleService,
+                                      EmploymentAmendmentService employmentAmendmentService,
+                                      DelegatedActionAuthorityService delegatedActionAuthorityService,
+                                      NotificationService notificationService,
+                                      IntegrationProperties properties,
+                                      TransactionTemplate transactions,
+                                      ObjectMapper objectMapper) {
+        this.gateway = gateway;
+        this.envelopeRepository = envelopeRepository;
+        this.partyRepository = partyRepository;
+        this.outboxRepository = outboxRepository;
+        this.attemptRepository = attemptRepository;
+        this.userRepository = userRepository;
+        this.storage = storage;
+        this.crypto = crypto;
+        this.storeManagerService = storeManagerService;
+        this.laborContractService = laborContractService;
+        this.fixedScheduleService = fixedScheduleService;
+        this.employmentAmendmentService = employmentAmendmentService;
+        this.delegatedActionAuthorityService = delegatedActionAuthorityService;
+        this.notificationService = notificationService;
+        this.properties = properties;
+        // 항목별 독립 롤백을 보장하기 위해 항상 새 물리 트랜잭션을 시작한다(클래스 Javadoc 참고).
+        // 주입받은 템플릿을 직접 mutate하지 않고 복사본을 만든다 — 같은 TransactionTemplate 빈을
+        // 공유하는 다른 서비스(ElectronicSignatureApplicationService 등)의 전파 옵션에 영향을 주면 안 된다.
+        TransactionTemplate requiresNew = new TransactionTemplate(transactions.getTransactionManager(), transactions);
+        requiresNew.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.transactions = requiresNew;
+        this.objectMapper = objectMapper;
+    }
 
     @Scheduled(fixedDelayString = "${sodam.integration.electronic-signature.worker-delay-ms:3000}")
     public void runDueWork() {
