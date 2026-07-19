@@ -2,7 +2,8 @@ import React from 'react';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import authService, {AuthResponse, LoginRequest, SignupRequest, SignupResponse, User} from '../services/authService';
 import * as sessionCoordinator from '../../../common/auth/sessionCoordinator';
-import {handleQueryError, queryKeys} from '../../../common/utils/queryClient';
+import {handleQueryError} from '../../../common/query/errorHandler';
+import {authQueryKeys} from '../../../common/auth/queryKeys';
 
 // axios 에러에서 HTTP 상태코드만 안전하게 추출 (인증·존재 에러 분기용).
 const statusOf = (error: unknown): number | undefined =>
@@ -10,7 +11,7 @@ const statusOf = (error: unknown): number | undefined =>
 
 export const useCurrentUser = () => {
     return useQuery({
-        queryKey: queryKeys.auth.currentUser(),
+        queryKey: authQueryKeys.currentUser(),
         queryFn: async (): Promise<User> => {
             try {
                 return await authService.getCurrentUser();
@@ -45,7 +46,7 @@ export const useCurrentUser = () => {
 
 export const useAuthStatus = () => {
     return useQuery({
-        queryKey: queryKeys.auth.all,
+        queryKey: authQueryKeys.all,
         queryFn: async (): Promise<boolean> => {
             try {
                 return await authService.isAuthenticated();
@@ -69,10 +70,10 @@ export const useAuthStatus = () => {
 };
 
 const cacheAuthenticatedUser = (queryClient: ReturnType<typeof useQueryClient>, data: AuthResponse) => {
-    queryClient.setQueryData(queryKeys.auth.currentUser(), data.user);
-    queryClient.setQueryData(queryKeys.auth.all, true);
+    queryClient.setQueryData(authQueryKeys.currentUser(), data.user);
+    queryClient.setQueryData(authQueryKeys.all, true);
     queryClient.invalidateQueries({
-        queryKey: queryKeys.auth.all,
+        queryKey: authQueryKeys.all,
         exact: false,
     });
 };
@@ -94,7 +95,7 @@ export const useLogin = () => {
             console.log('[TanStack Query] Login success - auth cache updated');
         },
         onError: (error: unknown) => {
-            queryClient.removeQueries({queryKey: queryKeys.auth.all});
+            queryClient.removeQueries({queryKey: authQueryKeys.all});
             console.error('[TanStack Query] Login failed:', error);
         },
         meta: {
@@ -120,7 +121,7 @@ export const useKakaoLogin = () => {
             console.log('[TanStack Query] Kakao login success - auth cache updated');
         },
         onError: (error: unknown) => {
-            queryClient.removeQueries({queryKey: queryKeys.auth.all});
+            queryClient.removeQueries({queryKey: authQueryKeys.all});
             console.error('[TanStack Query] Kakao login failed:', error);
         },
         meta: {
@@ -146,7 +147,7 @@ export const useAppleLogin = () => {
             console.log('[TanStack Query] Apple login success - auth cache updated');
         },
         onError: (error: unknown) => {
-            queryClient.removeQueries({queryKey: queryKeys.auth.all});
+            queryClient.removeQueries({queryKey: authQueryKeys.all});
             console.error('[TanStack Query] Apple login failed:', error);
         },
         meta: {

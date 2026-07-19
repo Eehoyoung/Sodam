@@ -18,7 +18,7 @@ import {useAuth} from '../../../contexts/AuthContext';
 import userService from '../services/userService';
 import {AuthStackParamList} from '../../../navigation/types';
 import {resetToRootRoute, resolvePostAuthRoute} from '../../../navigation/authFlow';
-import {queryKeys} from '../../../common/utils/queryClient';
+import {authQueryKeys} from '../../../common/auth/queryKeys';
 import {User} from '../services/authService';
 import {DATE_DIGITS_HELPER, dateDigitsToIso, isValidDateDigits, sanitizeDateDigits} from '../../../common/utils/dateTimeInput';
 
@@ -137,7 +137,7 @@ export default function ProfileBasicsScreen({navigation, route}: Props) {
                 phone,
                 profileCompleted: true,
             };
-            queryClient.setQueryData<User | null>(queryKeys.auth.currentUser(), nextUser);
+            queryClient.setQueryData<User | null>(authQueryKeys.currentUser(), nextUser);
 
             AppToast.success('기본 정보가 저장되었습니다. 이제 시작해 볼까요?');
             resetToRootRoute(navigation, resolvePostAuthRoute(nextUser, route.params?.selectedPurpose));

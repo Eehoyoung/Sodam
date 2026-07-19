@@ -22,7 +22,8 @@
  * authService.ts 쪽에만 남긴다. `AuthContext.tsx`의 login/kakaoLogin/appleLogin/logout 함수 자체를
  * TanStack Query 뮤테이션 밖으로 완전히 빼내는 작업(로딩 상태·쿼리 캐시 동기화 재설계 필요 —
  * `AppNavigator.tsx`·`useOfflineSync.ts`·`ProfileBasicsScreen.tsx`·`ConsentScreen.tsx`가 모두
- * `queryKeys.auth.*` 캐시를 직접 읽고 쓰고 있어 파급 범위가 이 증분 범위를 넘는다)는 후속 증분.
+ * `authQueryKeys`(common/auth/queryKeys.ts) 캐시를 직접 읽고 쓰고 있어 파급 범위가 이 증분
+ * 범위를 넘는다)는 후속 증분.
  */
 import axios from 'axios';
 import authService, {type AuthResponse, type LoginRequest} from '../../features/auth/services/authService';

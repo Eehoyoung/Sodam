@@ -1,5 +1,5 @@
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
-import {handleQueryError, queryKeys} from '../../../common/utils/queryClient';
+import {handleQueryError} from '../../../common/query/errorHandler';
 import recruitmentService from '../services/recruitmentService';
 import type {
     JobApplicantListItem,
@@ -17,6 +17,22 @@ import type {
     JobSeekingUpdatePayload,
 } from '../types';
 
+/** 인증채용(recruitment) 쿼리 키 — WP-05 2단계, feature가 직접 소유. */
+export const recruitmentQueryKeys = {
+    all: ['recruitment'] as const,
+    me: () => [...recruitmentQueryKeys.all, 'me'] as const,
+    store: (storeId: number) => [...recruitmentQueryKeys.all, 'store', storeId] as const,
+    storeSeekers: (storeId: number, workType?: string) =>
+        [...recruitmentQueryKeys.all, 'store', storeId, 'seekers', workType ?? 'ALL'] as const,
+    myOffers: () => [...recruitmentQueryKeys.all, 'myOffers'] as const,
+    myPosting: (storeId: number) => [...recruitmentQueryKeys.all, 'myPosting', storeId] as const,
+    nearbyPostings: (workType?: string, category?: string) =>
+        [...recruitmentQueryKeys.all, 'nearbyPostings', workType ?? 'ALL', category ?? 'ALL'] as const,
+    myApplications: () => [...recruitmentQueryKeys.all, 'myApplications'] as const,
+    storeApplications: (storeId: number) =>
+        [...recruitmentQueryKeys.all, 'storeApplications', storeId] as const,
+};
+
 /**
  * 인증채용(구직) TanStack Query 훅 — `/api/job-seekers/me` 정합.
  * `useNfcTagQueries.ts` 패턴(쿼리 훅 + 뮤테이션 훅 분리, onSuccess invalidate) 그대로 따른다.
@@ -25,7 +41,7 @@ import type {
 /** 내 구직 프로필 조회 — GET /api/job-seekers/me */
 export const useMyJobSeeking = () =>
     useQuery({
-        queryKey: queryKeys.recruitment.me(),
+        queryKey: recruitmentQueryKeys.me(),
         queryFn: async (): Promise<JobSeekingProfile> => {
             try {
                 return await recruitmentService.getMyJobSeeking();
@@ -52,8 +68,8 @@ export const useUpdateMyJobSeeking = () => {
             }
         },
         onSuccess: (data) => {
-            queryClient.setQueryData(queryKeys.recruitment.me(), data);
-            queryClient.invalidateQueries({queryKey: queryKeys.recruitment.me()});
+            queryClient.setQueryData(recruitmentQueryKeys.me(), data);
+            queryClient.invalidateQueries({queryKey: recruitmentQueryKeys.me()});
         },
         meta: {errorMessage: '구직 설정을 저장하지 못했어요.'},
     });
@@ -66,7 +82,7 @@ export const useUpdateMyJobSeeking = () => {
  */
 export const useJobSeekers = (storeId: number, filters?: JobSeekerListFilters) =>
     useQuery({
-        queryKey: queryKeys.recruitment.storeSeekers(storeId, filters?.workType),
+        queryKey: recruitmentQueryKeys.storeSeekers(storeId, filters?.workType),
         queryFn: async (): Promise<JobSeekerListItem[]> => {
             try {
                 return await recruitmentService.getStoreJobSeekers(storeId, filters);
@@ -102,7 +118,7 @@ export const useSendJobOffer = (storeId: number) => {
         },
         onSuccess: () => {
             // 리스트 카드의 offerStatus 뱃지(§15.3) 갱신 대상 — 유형 필터별 캐시를 모두 무효화.
-            queryClient.invalidateQueries({queryKey: queryKeys.recruitment.store(storeId)});
+            queryClient.invalidateQueries({queryKey: recruitmentQueryKeys.store(storeId)});
         },
         meta: {errorMessage: '채용 제안을 보내지 못했어요.'},
     });
@@ -111,7 +127,7 @@ export const useSendJobOffer = (storeId: number) => {
 // [직원] 받은 채용 제안 목록 — GET /api/job-offers/me (§15)
 export const useMyJobOffers = () =>
     useQuery({
-        queryKey: queryKeys.recruitment.myOffers(),
+        queryKey: recruitmentQueryKeys.myOffers(),
         queryFn: async (): Promise<JobOffer[]> => {
             try {
                 return await recruitmentService.getMyJobOffers();
@@ -138,7 +154,7 @@ export const useRespondToJobOffer = () => {
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({queryKey: queryKeys.recruitment.myOffers()});
+            queryClient.invalidateQueries({queryKey: recruitmentQueryKeys.myOffers()});
         },
         meta: {errorMessage: '제안 응답을 처리하지 못했어요.'},
     });
@@ -157,8 +173,8 @@ export const useUpsertJobPosting = (storeId: number) => {
             }
         },
         onSuccess: (data) => {
-            queryClient.setQueryData(queryKeys.recruitment.myPosting(storeId), data);
-            queryClient.invalidateQueries({queryKey: queryKeys.recruitment.myPosting(storeId)});
+            queryClient.setQueryData(recruitmentQueryKeys.myPosting(storeId), data);
+            queryClient.invalidateQueries({queryKey: recruitmentQueryKeys.myPosting(storeId)});
         },
         meta: {errorMessage: '구인 공고를 저장하지 못했어요.'},
     });
@@ -167,7 +183,7 @@ export const useUpsertJobPosting = (storeId: number) => {
 // [사장] 내 매장 구인 공고 조회 — GET /api/stores/{storeId}/job-posting (§19, 없으면 null)
 export const useMyJobPosting = (storeId: number) =>
     useQuery({
-        queryKey: queryKeys.recruitment.myPosting(storeId),
+        queryKey: recruitmentQueryKeys.myPosting(storeId),
         queryFn: async (): Promise<JobPosting | null> => {
             try {
                 return await recruitmentService.getMyJobPosting(storeId);
@@ -185,7 +201,7 @@ export const useMyJobPosting = (storeId: number) =>
 // [직원] 주변 구인 매장 리스트 — GET /api/job-postings/nearby (§19, 필터별 캐시 분리)
 export const useNearbyJobPostings = (filters?: JobPostingNearbyFilters) =>
     useQuery({
-        queryKey: queryKeys.recruitment.nearbyPostings(filters?.workType, filters?.category),
+        queryKey: recruitmentQueryKeys.nearbyPostings(filters?.workType, filters?.category),
         queryFn: async (): Promise<JobPostingNearbyItem[]> => {
             try {
                 return await recruitmentService.getNearbyJobPostings(filters);
@@ -212,7 +228,7 @@ export const useApplyToJobPosting = () => {
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({queryKey: queryKeys.recruitment.myApplications()});
+            queryClient.invalidateQueries({queryKey: recruitmentQueryKeys.myApplications()});
         },
         meta: {errorMessage: '지원을 완료하지 못했어요.'},
     });
@@ -221,7 +237,7 @@ export const useApplyToJobPosting = () => {
 // [직원] 내 지원 현황 — GET /api/job-applications/me (§19)
 export const useMyJobApplications = () =>
     useQuery({
-        queryKey: queryKeys.recruitment.myApplications(),
+        queryKey: recruitmentQueryKeys.myApplications(),
         queryFn: async (): Promise<JobApplication[]> => {
             try {
                 return await recruitmentService.getMyJobApplications();
@@ -238,7 +254,7 @@ export const useMyJobApplications = () =>
 // [사장] 매장 지원자 리스트 — GET /api/stores/{storeId}/job-applications (§19)
 export const useStoreJobApplications = (storeId: number) =>
     useQuery({
-        queryKey: queryKeys.recruitment.storeApplications(storeId),
+        queryKey: recruitmentQueryKeys.storeApplications(storeId),
         queryFn: async (): Promise<JobApplicantListItem[]> => {
             try {
                 return await recruitmentService.getStoreJobApplications(storeId);
@@ -266,7 +282,7 @@ export const useRespondToJobApplication = (storeId: number) => {
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({queryKey: queryKeys.recruitment.storeApplications(storeId)});
+            queryClient.invalidateQueries({queryKey: recruitmentQueryKeys.storeApplications(storeId)});
         },
         meta: {errorMessage: '지원 응답을 처리하지 못했어요.'},
     });

@@ -1,6 +1,6 @@
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import attendanceService from '../services/attendanceService';
-import {handleQueryError, queryKeys} from '../../../common/utils/queryClient';
+import {handleQueryError} from '../../../common/query/errorHandler';
 import {
     AttendanceFilter,
     AttendanceRecord,
@@ -10,6 +10,15 @@ import {
     CheckOutRequest,
     UpdateAttendanceRequest
 } from '../types';
+
+/** 근태(attendance) 쿼리 키 — WP-05 2단계, feature가 직접 소유. */
+export const attendanceQueryKeys = {
+    all: ['attendance'] as const,
+    store: (storeId: number) => [...attendanceQueryKeys.all, 'store', storeId] as const,
+    employee: (employeeId: number) => [...attendanceQueryKeys.all, 'employee', employeeId] as const,
+    monthly: (employeeId: number, year: number, month: number) =>
+        [...attendanceQueryKeys.employee(employeeId), 'monthly', year, month] as const,
+};
 
 /**
  * 근태 관리 관련 TanStack Query 훅들
@@ -23,7 +32,7 @@ import {
  */
 export const useAttendanceRecords = (filter: AttendanceFilter) => {
     return useQuery({
-        queryKey: [...queryKeys.attendance.all, 'records', JSON.stringify(filter)],
+        queryKey: [...attendanceQueryKeys.all, 'records', JSON.stringify(filter)],
         queryFn: async (): Promise<AttendanceRecord[]> => {
             try {
                 return await attendanceService.getAttendanceRecords(filter);
@@ -53,7 +62,7 @@ export const useAttendanceRecords = (filter: AttendanceFilter) => {
  */
 export const useStoreAttendance = (storeId: number, enabled: boolean = true) => {
     return useQuery({
-        queryKey: queryKeys.attendance.store(storeId),
+        queryKey: attendanceQueryKeys.store(storeId),
         queryFn: async (): Promise<AttendanceRecord[]> => {
             try {
                 const filter: AttendanceFilter = {
@@ -83,7 +92,7 @@ export const useStoreAttendance = (storeId: number, enabled: boolean = true) => 
  */
 export const useEmployeeAttendance = (employeeId: number, enabled: boolean = true) => {
     return useQuery({
-        queryKey: queryKeys.attendance.employee(employeeId),
+        queryKey: attendanceQueryKeys.employee(employeeId),
         queryFn: async (): Promise<AttendanceRecord[]> => {
             try {
                 const filter: AttendanceFilter = {
@@ -117,7 +126,7 @@ export const useMonthlyEmployeeAttendance = (
     enabled: boolean = true
 ) => {
     return useQuery({
-        queryKey: queryKeys.attendance.monthly(employeeId, year, month),
+        queryKey: attendanceQueryKeys.monthly(employeeId, year, month),
         queryFn: async (): Promise<AttendanceRecord[]> => {
             try {
                 const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
@@ -149,7 +158,7 @@ export const useMonthlyEmployeeAttendance = (
  */
 export const useAttendanceRecord = (attendanceId: string, enabled: boolean = true) => {
     return useQuery({
-        queryKey: [...queryKeys.attendance.all, 'record', String(attendanceId)],
+        queryKey: [...attendanceQueryKeys.all, 'record', String(attendanceId)],
         queryFn: async (): Promise<AttendanceRecord> => {
             try {
                 return await attendanceService.getAttendanceById(attendanceId);
@@ -173,7 +182,7 @@ export const useAttendanceRecord = (attendanceId: string, enabled: boolean = tru
  */
 export const useCurrentAttendance = (workplaceId: string, enabled: boolean = true) => {
     return useQuery({
-        queryKey: [...queryKeys.attendance.all, 'current', String(workplaceId)],
+        queryKey: [...attendanceQueryKeys.all, 'current', String(workplaceId)],
         queryFn: async (): Promise<AttendanceRecord | null> => {
             try {
                 return await attendanceService.getCurrentAttendance(workplaceId);
@@ -198,7 +207,7 @@ export const useCurrentAttendance = (workplaceId: string, enabled: boolean = tru
  */
 export const useAttendanceStatistics = (filter: AttendanceFilter, enabled: boolean = true) => {
     return useQuery({
-        queryKey: [...queryKeys.attendance.all, 'statistics', JSON.stringify(filter)],
+        queryKey: [...attendanceQueryKeys.all, 'statistics', JSON.stringify(filter)],
         queryFn: async (): Promise<AttendanceStatistics> => {
             try {
                 return await attendanceService.getAttendanceStatistics(filter);
@@ -235,24 +244,24 @@ export const useCheckIn = () => {
         onSuccess: (data: AttendanceRecord, variables: CheckInRequest) => {
             // 현재 출퇴근 상태 캐시 업데이트
             queryClient.setQueryData(
-                [...queryKeys.attendance.all, 'current', String(variables.workplaceId)],
+                [...attendanceQueryKeys.all, 'current', String(variables.workplaceId)],
                 data
             );
 
             // 관련 쿼리들 무효화
             queryClient.invalidateQueries({
-                queryKey: queryKeys.attendance.store(parseInt(variables.workplaceId, 10))
+                queryKey: attendanceQueryKeys.store(parseInt(variables.workplaceId, 10))
             });
 
             if (data.employeeId) {
                 queryClient.invalidateQueries({
-                    queryKey: queryKeys.attendance.employee(parseInt(data.employeeId, 10))
+                    queryKey: attendanceQueryKeys.employee(parseInt(data.employeeId, 10))
                 });
             }
 
             // 출퇴근 기록 목록 무효화
             queryClient.invalidateQueries({
-                queryKey: queryKeys.attendance.all,
+                queryKey: attendanceQueryKeys.all,
                 predicate: (query) => query.queryKey.includes('records')
             });
 
@@ -286,24 +295,24 @@ export const useCheckOut = () => {
         onSuccess: (data: AttendanceRecord, variables: { checkOutData: CheckOutRequest }) => {
             // 현재 출퇴근 상태 캐시 업데이트
             queryClient.setQueryData(
-                [...queryKeys.attendance.all, 'current', String(variables.checkOutData.workplaceId)],
+                [...attendanceQueryKeys.all, 'current', String(variables.checkOutData.workplaceId)],
                 data
             );
 
             // 관련 쿼리들 무효화
             queryClient.invalidateQueries({
-                queryKey: queryKeys.attendance.store(parseInt(variables.checkOutData.workplaceId, 10))
+                queryKey: attendanceQueryKeys.store(parseInt(variables.checkOutData.workplaceId, 10))
             });
 
             if (data.employeeId) {
                 queryClient.invalidateQueries({
-                    queryKey: queryKeys.attendance.employee(parseInt(data.employeeId, 10))
+                    queryKey: attendanceQueryKeys.employee(parseInt(data.employeeId, 10))
                 });
             }
 
             // 출퇴근 기록 목록 무효화
             queryClient.invalidateQueries({
-                queryKey: queryKeys.attendance.all,
+                queryKey: attendanceQueryKeys.all,
                 predicate: (query) => query.queryKey.includes('records')
             });
 
@@ -340,26 +349,26 @@ export const useUpdateAttendance = () => {
         onSuccess: (data: AttendanceRecord, variables) => {
             // 특정 출퇴근 기록 캐시 업데이트
             queryClient.setQueryData(
-                [...queryKeys.attendance.all, 'record', variables.attendanceId],
+                [...attendanceQueryKeys.all, 'record', variables.attendanceId],
                 data
             );
 
             // 관련 쿼리들 무효화
             if (data.workplaceId) {
                 queryClient.invalidateQueries({
-                    queryKey: queryKeys.attendance.store(parseInt(data.workplaceId, 10))
+                    queryKey: attendanceQueryKeys.store(parseInt(data.workplaceId, 10))
                 });
             }
 
             if (data.employeeId) {
                 queryClient.invalidateQueries({
-                    queryKey: queryKeys.attendance.employee(parseInt(data.employeeId, 10))
+                    queryKey: attendanceQueryKeys.employee(parseInt(data.employeeId, 10))
                 });
             }
 
             // 출퇴근 기록 목록 무효화
             queryClient.invalidateQueries({
-                queryKey: queryKeys.attendance.all,
+                queryKey: attendanceQueryKeys.all,
                 predicate: (query) => query.queryKey.includes('records')
             });
 
@@ -393,12 +402,12 @@ export const useDeleteAttendance = () => {
         onSuccess: (_, attendanceId) => {
             // 특정 출퇴근 기록 캐시 제거
             queryClient.removeQueries({
-                queryKey: [...queryKeys.attendance.all, 'record', attendanceId]
+                queryKey: [...attendanceQueryKeys.all, 'record', attendanceId]
             });
 
             // 모든 출퇴근 관련 목록 쿼리 무효화
             queryClient.invalidateQueries({
-                queryKey: queryKeys.attendance.all,
+                queryKey: attendanceQueryKeys.all,
                 predicate: (query) =>
                     query.queryKey.includes('records') ||
                     query.queryKey.includes('store') ||
@@ -477,7 +486,7 @@ export const useBatchUpdateAttendanceStatus = () => {
         onSuccess: () => {
             // 모든 출퇴근 관련 쿼리 무효화 (일괄 업데이트이므로)
             queryClient.invalidateQueries({
-                queryKey: queryKeys.attendance.all
+                queryKey: attendanceQueryKeys.all
             });
 
             console.log('[TanStack Query] 출퇴근 상태 일괄 업데이트 완료 - 캐시 무효화');

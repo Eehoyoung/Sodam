@@ -52,3 +52,8 @@ export function toApiError(error: unknown): ApiError {
 
   return new ApiError({message: '알 수 없는 오류가 발생했어요.', raw: error});
 }
+
+/** 화면에 바로 보여줄 수 있는 오류 메시지 — toApiError의 message를 그대로 노출한다. */
+export function getErrorMessage(error: unknown): string {
+  return toApiError(error).message;
+}

@@ -13,7 +13,7 @@ import {
 } from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 import {useAuth} from '../../../contexts/AuthContext';
-import {queryKeys} from '../../../common/utils/queryClient';
+import {authQueryKeys} from '../../../common/auth/queryKeys';
 import ConsentBlock, {ConsentValue} from '../components/ConsentBlock';
 import authApi from '../services/authApi';
 import {User} from '../services/authService';
@@ -62,7 +62,7 @@ export default function ConsentScreen({navigation, route}: Props) {
             });
 
             const nextUser = {...user, consentCompleted: true};
-            queryClient.setQueryData<User | null>(queryKeys.auth.currentUser(), nextUser);
+            queryClient.setQueryData<User | null>(authQueryKeys.currentUser(), nextUser);
 
             resetToRootRoute(navigation, resolvePostAuthRoute(nextUser, route.params?.selectedPurpose));
         } catch (e: any) {

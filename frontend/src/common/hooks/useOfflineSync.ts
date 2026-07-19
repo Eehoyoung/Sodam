@@ -1,8 +1,12 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
 import {AppState, AppStateStatus} from 'react-native';
-import {queryKeys} from '../utils/queryClient';
+import {authQueryKeys} from '../auth/queryKeys';
 import {adjustCacheForNetwork} from '../utils/cacheStrategy';
+
+// attendance는 features/attendance가 소유한 쿼리 키다 — common 계층(이 훅)이 feature query key를
+// import하지 않는다는 WP-05 2단계 원칙에 따라, attendanceQueryKeys.all과 동일한 리터럴을 직접 쓴다.
+const ATTENDANCE_QUERY_KEY_ALL = ['attendance'] as const;
 
 /**
  * 네트워크 상태 타입 정의
@@ -109,23 +113,23 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
             try {
                 switch (queryType) {
                     case 'auth':
-                        await queryClient.invalidateQueries({queryKey: queryKeys.auth.all});
+                        await queryClient.invalidateQueries({queryKey: authQueryKeys.all});
                         break;
                     case 'attendance-current':
                         await queryClient.invalidateQueries({
-                            queryKey: queryKeys.attendance.all,
+                            queryKey: ATTENDANCE_QUERY_KEY_ALL,
                             predicate: (query) => query.queryKey.includes('current')
                         });
                         break;
                     case 'attendance-store':
                         await queryClient.invalidateQueries({
-                            queryKey: queryKeys.attendance.all,
+                            queryKey: ATTENDANCE_QUERY_KEY_ALL,
                             predicate: (query) => query.queryKey.includes('store')
                         });
                         break;
                     case 'user-profile':
                         await queryClient.invalidateQueries({
-                            queryKey: queryKeys.auth.currentUser()
+                            queryKey: authQueryKeys.currentUser()
                         });
                         break;
                     default:

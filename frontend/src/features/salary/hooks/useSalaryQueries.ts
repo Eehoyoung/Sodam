@@ -1,5 +1,5 @@
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
-import {handleQueryError, queryKeys} from '../../../common/utils/queryClient';
+import {handleQueryError} from '../../../common/query/errorHandler';
 import payrollService, {
     PayrollCalculatePayload,
     PayrollCalculationItem,
@@ -15,10 +15,16 @@ import payrollService, {
  * 실제 BE(PayrollController)에 대응되는 작업만 남기고 payrollService 로 위임한다.
  */
 
+/** 급여(salary) 쿼리 키 — WP-05 2단계, feature가 직접 소유. */
+export const salaryQueryKeys = {
+    all: ['salary'] as const,
+    store: (storeId: number) => [...salaryQueryKeys.all, 'store', storeId] as const,
+};
+
 /** 매장별 급여 목록 — GET /api/payroll/store/{storeId} */
 export const useStorePayrolls = (storeId: number, startDate?: string, endDate?: string, enabled = true) =>
     useQuery({
-        queryKey: [...queryKeys.salary.store(storeId), 'records', startDate ?? '', endDate ?? ''],
+        queryKey: [...salaryQueryKeys.store(storeId), 'records', startDate ?? '', endDate ?? ''],
         queryFn: async (): Promise<PayrollSummary[]> => {
             try {
                 return await payrollService.listByStore(storeId, startDate, endDate);
@@ -36,7 +42,7 @@ export const useStorePayrolls = (storeId: number, startDate?: string, endDate?: 
 /** 직원별 급여 목록 — GET /api/payroll/employee/{employeeId} */
 export const useEmployeePayrolls = (employeeId: number, startDate?: string, endDate?: string, enabled = true) =>
     useQuery({
-        queryKey: [...queryKeys.salary.all, 'employee', employeeId, startDate ?? '', endDate ?? ''],
+        queryKey: [...salaryQueryKeys.all, 'employee', employeeId, startDate ?? '', endDate ?? ''],
         queryFn: async (): Promise<PayrollSummary[]> => {
             try {
                 return await payrollService.listByEmployee(employeeId, startDate, endDate);
@@ -54,7 +60,7 @@ export const useEmployeePayrolls = (employeeId: number, startDate?: string, endD
 /** 급여 단건 요약(실수령액/기간/상태) — GET /api/payroll/{payrollId} */
 export const usePayroll = (payrollId: number, enabled = true) =>
     useQuery({
-        queryKey: [...queryKeys.salary.all, 'summary', payrollId],
+        queryKey: [...salaryQueryKeys.all, 'summary', payrollId],
         queryFn: async (): Promise<PayrollSummary> => {
             try {
                 return await payrollService.getById(payrollId);
@@ -72,7 +78,7 @@ export const usePayroll = (payrollId: number, enabled = true) =>
 /** 급여 상세(근무일별 배열) — GET /api/payroll/{payrollId}/details */
 export const usePayrollDetails = (payrollId: number, enabled = true) =>
     useQuery({
-        queryKey: [...queryKeys.salary.all, 'details', payrollId],
+        queryKey: [...salaryQueryKeys.all, 'details', payrollId],
         queryFn: async (): Promise<PayrollDetailItem[]> => {
             try {
                 return await payrollService.getDetails(payrollId);
@@ -100,7 +106,7 @@ export const useCalculatePayroll = () => {
             }
         },
         onSuccess: (_data, variables) => {
-            queryClient.invalidateQueries({queryKey: queryKeys.salary.store(variables.storeId)});
+            queryClient.invalidateQueries({queryKey: salaryQueryKeys.store(variables.storeId)});
         },
         meta: {errorMessage: '급여 계산에 실패했습니다.'},
     });
@@ -119,7 +125,7 @@ export const useUpdatePayrollStatus = () => {
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({queryKey: queryKeys.salary.all});
+            queryClient.invalidateQueries({queryKey: salaryQueryKeys.all});
         },
         meta: {errorMessage: '급여 상태 업데이트에 실패했습니다.'},
     });
