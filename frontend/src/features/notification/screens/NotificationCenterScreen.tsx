@@ -8,7 +8,7 @@ import {AppHeader, AppText, EmptyState, ScreenContainer} from '../../../common/c
 import {spacing, tokens} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import notificationService, {InboxItem} from '../services/notificationService';
-import {parseServerDateTime} from '../../../common/utils/format';
+import {parseServerDateTime} from '../../../common/format/dateTime';
 
 const CATEGORY_ICON: Record<InboxItem['category'], string> = {
     ATTENDANCE: 'time-outline',

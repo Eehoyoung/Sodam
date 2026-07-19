@@ -1,7 +1,7 @@
 /**
  * TanStack Query 오류 처리 공통 헬퍼 (WP-05 2단계).
  *
- * 기존 `common/utils/queryClient.ts`의 `handleQueryError`가 axios 에러 형태를 직접 파싱하던
+ * (구) `common/utils/queryClient.ts`의 `handleQueryError`가 axios 에러 형태를 직접 파싱하던
  * 로직을 `common/api/error.ts`의 `toApiError`로 위임했다(동작 변경 없음 — 여전히 axios 에러가
  * 아니면 아무 것도 하지 않고, 401이면 auth 쿼리 캐시를 무효화한다). 호출부는 이 함수 호출 후에도
  * 여전히 원본 error를 그대로 throw한다 — LoginScreen 등 여러 화면이 `error.response.status`를

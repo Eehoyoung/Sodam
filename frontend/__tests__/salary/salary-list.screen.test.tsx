@@ -46,7 +46,7 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 // 실시간 동기화(STOMP)는 이 화면의 스키마 버그와 무관 — 외부 연결 없이 no-op 처리.
-jest.mock('../../src/common/hooks/useStoreLiveSync', () => ({
+jest.mock('../../src/common/realtime/useStoreLiveSync', () => ({
   __esModule: true,
   useStoreLiveSync: jest.fn(),
   default: jest.fn(),

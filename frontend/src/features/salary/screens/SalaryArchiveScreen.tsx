@@ -13,7 +13,7 @@ import {
     ScreenContainer,
     SegmentedControl,
 } from '../../../common/components/ds';
-import {formatMoney} from '../../../common/utils/format';
+import {formatMoney} from '../../../common/format/money';
 import RoleTabBar from '../../../common/components/navigation/RoleTabBar';
 import {spacing} from '../../../theme/tokens';
 import {useAuth} from '../../../contexts/AuthContext';

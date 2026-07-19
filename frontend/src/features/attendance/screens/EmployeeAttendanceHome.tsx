@@ -18,7 +18,8 @@ import {
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {useAuth} from '../../../contexts/AuthContext';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import {formatTimer, formatWage, parseServerDateTime} from '../../../common/utils/format';
+import {formatWage} from '../../../common/format/money';
+import {formatTimer, parseServerDateTime} from '../../../common/format/dateTime';
 import {
     fetchMyShifts,
     shortTime,
@@ -29,7 +30,7 @@ import storeService from '../../store/services/storeService';
 import attendanceService, {MonthlyAttendanceItem} from '../services/attendanceService';
 import {wageService} from '../../wage/services/wageService';
 import {requestApproval} from '../services/attendanceApprovalService';
-import {useStoreLiveSync} from '../../../common/hooks/useStoreLiveSync';
+import {useStoreLiveSync} from '../../../common/realtime/useStoreLiveSync';
 import contractService from '../../contract/services/contractService';
 import {fetchMyNotices} from '../../notice/services/noticeService';
 import policyService from '../../info/services/policyService';

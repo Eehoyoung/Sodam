@@ -18,7 +18,7 @@ import {AppToast, AppText, AmountText, ScreenContainer} from '../../../common/co
 import {useAuth} from '../../../contexts/AuthContext';
 import policyService from '../../info/services/policyService';
 import storeService from '../../store/services/storeService';
-import {useStoreLiveSync} from '../../../common/hooks/useStoreLiveSync';
+import {useStoreLiveSync} from '../../../common/realtime/useStoreLiveSync';
 import laborInfoService from '../../../services/laborInfoService';
 import {InfoSlot} from '../components/RoleSlots';
 import RoleTabBar from '../../../common/components/navigation/RoleTabBar';

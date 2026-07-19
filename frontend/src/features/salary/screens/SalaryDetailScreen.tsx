@@ -5,7 +5,7 @@ import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import payrollService, {PayrollDetailItem, PayrollSummary} from '../services/payrollService';
-import {formatMoney} from '../../../common/utils/format';
+import {formatMoney} from '../../../common/format/money';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {spacing} from '../../../theme/tokens';
 

@@ -21,7 +21,7 @@ import {ENABLE_SCREENS_NATIVE, stageAtLeast} from './src/navigation/config';
 import AuthMockProvider from './src/contexts/AuthMockProvider';
 import {AuthProvider} from './src/contexts/AuthContext';
 import {QueryClientProvider} from '@tanstack/react-query';
-import {queryClient} from './src/common/utils/queryClient';
+import {queryClient} from './src/common/query/client';
 import {logRecovery, logWsodFix, logTimingCoordination} from './src/utils/logger';
 
 declare global {

@@ -4,7 +4,7 @@ import {StyleSheet, View} from 'react-native';
 import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {spacing} from '../../../theme/tokens';
-import {formatWage} from '../../../common/utils/format';
+import {formatWage} from '../../../common/format/money';
 import storeService from '../services/storeService';
 import {wageService} from '../../wage/services/wageService';
 

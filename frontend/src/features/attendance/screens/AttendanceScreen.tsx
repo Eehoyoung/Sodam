@@ -28,7 +28,7 @@ import { useNavigation } from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import { useThemeColors, ThemeColors } from '../../../common/hooks/useThemeColors';
-import {parseServerDateTime} from '../../../common/utils/format';
+import {parseServerDateTime} from '../../../common/format/dateTime';
 
 type CheckInMethod = 'standard' | 'location' | 'nfc';
 // iOS는 CoreNFC 제약(entitlement·실기기 전용 등)으로 1차 출시에서 NFC 출퇴근을 제외 — GPS·사장승인 방식으로 대체

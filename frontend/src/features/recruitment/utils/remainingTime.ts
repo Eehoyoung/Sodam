@@ -2,10 +2,10 @@
  * 채용함(§15.5 R-12) 대기중 제안의 "남은 응답시간" 표기 유틸.
  *
  * `expiresAt` 은 서버(Asia/Seoul) `LocalDateTime` 문자열(오프셋 없음)이므로 `parseServerDateTime`
- * (common/utils/format.ts)로 +09:00 오프셋을 명시적으로 붙여 절대 시각을 복원한다 — 기기 타임존에
+ * (common/format/dateTime.ts)로 +09:00 오프셋을 명시적으로 붙여 절대 시각을 복원한다 — 기기 타임존에
  * 의존하지 않는다(frontend.md "시간 계산은 기기 타임존 의존 금지").
  */
-import {parseServerDateTime} from '../../../common/utils/format';
+import {parseServerDateTime} from '../../../common/format/dateTime';
 
 /** 남은 밀리초(0 미만은 0으로 클램프). */
 export function remainingMs(expiresAt: string, nowMs: number = Date.now()): number {

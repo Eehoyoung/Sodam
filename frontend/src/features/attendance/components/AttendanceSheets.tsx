@@ -12,7 +12,8 @@ import {
     SegmentedControl,
     SuccessState,
 } from '../../../common/components/ds';
-import {formatMoney, formatTimer} from '../../../common/utils/format';
+import {formatMoney} from '../../../common/format/money';
+import {formatTimer} from '../../../common/format/dateTime';
 import {spacing} from '../../../theme/tokens';
 import {
     DATE_DIGITS_HELPER,

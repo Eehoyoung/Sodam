@@ -3,7 +3,7 @@ import React, {useState, useCallback} from 'react';
 import {Share, StyleSheet, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useFocusEffect, type RouteProp} from '@react-navigation/native';
-import {useStoreLiveSync} from '../../../common/hooks/useStoreLiveSync';
+import {useStoreLiveSync} from '../../../common/realtime/useStoreLiveSync';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {radius, spacing} from '../../../theme/tokens';
