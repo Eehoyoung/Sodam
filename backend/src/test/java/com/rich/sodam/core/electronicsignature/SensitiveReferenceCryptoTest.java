@@ -1,6 +1,5 @@
 package com.rich.sodam.core.electronicsignature;
 
-import com.rich.sodam.config.integration.IntegrationProperties;
 import org.junit.jupiter.api.Test;
 
 import java.util.Base64;
@@ -11,8 +10,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class SensitiveReferenceCryptoTest {
     @Test
     void encryptsWithRandomIvAndUsesDeterministicDomainSeparatedHmac() {
-        IntegrationProperties properties = configured("mock");
-        SensitiveReferenceCrypto crypto = new SensitiveReferenceCrypto(properties);
+        SensitiveReferenceKeySource keySource = configured();
+        SensitiveReferenceCrypto crypto = new SensitiveReferenceCrypto(keySource);
 
         String first = crypto.encrypt("esign/private/object-1");
         String second = crypto.encrypt("esign/private/object-1");
@@ -27,20 +26,23 @@ class SensitiveReferenceCryptoTest {
 
     @Test
     void liveModeFailsWithoutDedicatedKeys() {
-        IntegrationProperties properties = new IntegrationProperties();
-        properties.getElectronicSignature().setMode("live");
-        assertThatThrownBy(() -> new SensitiveReferenceCrypto(properties))
+        SensitiveReferenceKeySource keySource = new SensitiveReferenceKeySource() {
+            public String refEncryptionKey() { return ""; }
+            public String refHmacPepper() { return ""; }
+            public boolean live() { return true; }
+        };
+        assertThatThrownBy(() -> new SensitiveReferenceCrypto(keySource))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("ESIGN_REF_ENCRYPTION_KEY");
     }
 
-    private IntegrationProperties configured(String mode) {
-        IntegrationProperties p = new IntegrationProperties();
-        p.getElectronicSignature().setMode(mode);
-        p.getElectronicSignature().setRefEncryptionKey(
-                Base64.getEncoder().encodeToString(new byte[32]));
-        p.getElectronicSignature().setRefHmacPepper(
-                Base64.getEncoder().encodeToString(new byte[32]));
-        return p;
+    private SensitiveReferenceKeySource configured() {
+        String aes = Base64.getEncoder().encodeToString(new byte[32]);
+        String hmac = Base64.getEncoder().encodeToString(new byte[32]);
+        return new SensitiveReferenceKeySource() {
+            public String refEncryptionKey() { return aes; }
+            public String refHmacPepper() { return hmac; }
+            public boolean live() { return false; }
+        };
     }
 }

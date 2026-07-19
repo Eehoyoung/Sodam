@@ -47,7 +47,7 @@ class ElectronicSignatureWorkerPersistenceTest {
         properties.getElectronicSignature().setMode("mock");
         properties.getElectronicSignature().setProvider("naver");
         properties.getElectronicSignature().setAllowedReturnScheme("sodam");
-        SensitiveReferenceCrypto crypto = new SensitiveReferenceCrypto(properties);
+        SensitiveReferenceCrypto crypto = new SensitiveReferenceCrypto(toKeySource(properties));
         LocalPrivateSignatureObjectStorage storage = new LocalPrivateSignatureObjectStorage();
 
         User signer = new User("signer@example.test", "홍길동");
@@ -120,7 +120,7 @@ class ElectronicSignatureWorkerPersistenceTest {
         properties.getElectronicSignature().setMode("mock");
         properties.getElectronicSignature().setProvider("naver");
         properties.getElectronicSignature().setAllowedReturnScheme("sodam");
-        SensitiveReferenceCrypto crypto = new SensitiveReferenceCrypto(properties);
+        SensitiveReferenceCrypto crypto = new SensitiveReferenceCrypto(toKeySource(properties));
         PrivateSignatureObjectStorage storage = mock(PrivateSignatureObjectStorage.class);
         when(storage.put(any(), anyLong(), any(), anyLong(), anyString())).thenAnswer(invocation -> {
             PrivateSignatureObjectStorage.ObjectKind kind = invocation.getArgument(0);
@@ -175,6 +175,15 @@ class ElectronicSignatureWorkerPersistenceTest {
         verify(storage).delete("manifest/test-object");
         verify(storage, never()).delete("signed-data/test-object");
         verifyNoInteractions(laborContractService);
+    }
+
+    private static SensitiveReferenceKeySource toKeySource(IntegrationProperties properties) {
+        IntegrationProperties.ElectronicSignature c = properties.getElectronicSignature();
+        return new SensitiveReferenceKeySource() {
+            public String refEncryptionKey() { return c.getRefEncryptionKey(); }
+            public String refHmacPepper() { return c.getRefHmacPepper(); }
+            public boolean live() { return c.resolvedMode() == IntegrationProperties.Mode.LIVE; }
+        };
     }
 
     private ElectronicSignatureOutbox pending(Long envelopeId, SignatureOperation operation) {

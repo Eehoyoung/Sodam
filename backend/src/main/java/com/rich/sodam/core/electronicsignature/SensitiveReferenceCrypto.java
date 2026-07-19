@@ -1,6 +1,5 @@
 package com.rich.sodam.core.electronicsignature;
 
-import com.rich.sodam.config.integration.IntegrationProperties;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
@@ -24,11 +23,10 @@ public class SensitiveReferenceCrypto {
     private final SecretKeySpec hmacKey;
     private final SecureRandom random = new SecureRandom();
 
-    public SensitiveReferenceCrypto(IntegrationProperties properties) {
-        IntegrationProperties.ElectronicSignature c = properties.getElectronicSignature();
-        boolean live = c.resolvedMode() == IntegrationProperties.Mode.LIVE;
-        byte[] aes = decode(c.getRefEncryptionKey(), "ESIGN_REF_ENCRYPTION_KEY", live);
-        byte[] hmac = decode(c.getRefHmacPepper(), "ESIGN_REF_HMAC_PEPPER", live);
+    public SensitiveReferenceCrypto(SensitiveReferenceKeySource keySource) {
+        boolean live = keySource.live();
+        byte[] aes = decode(keySource.refEncryptionKey(), "ESIGN_REF_ENCRYPTION_KEY", live);
+        byte[] hmac = decode(keySource.refHmacPepper(), "ESIGN_REF_HMAC_PEPPER", live);
         if (aes == null) aes = DEV_AES;
         if (hmac == null) hmac = DEV_HMAC;
         if (aes.length != 32 || hmac.length < 32) {
