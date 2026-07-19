@@ -1,44 +1,11 @@
-import {QueryClient} from '@tanstack/react-query';
-
 /**
- * TanStack Query 클라이언트 설정
- * 백엔드 Redis 캐싱과 연계한 최적화된 클라이언트 사이드 데이터 관리
+ * @deprecated queryClient 인스턴스 자체의 구현은 `common/query/client.ts`로 이동했다(WP-05).
+ * 이 파일은 도메인별 query key factory(`queryKeys`)와 invalidate 헬퍼를 계속 소유한다 —
+ * 여러 feature hook이 이미 이 경로에서 import하고 있어(WP-05 완료 조건 중 "기능별 key 소유"는
+ * 후속 증분), 지금은 queryClient 인스턴스만 새 경로로 재-export한다.
  */
-export const queryClient = new QueryClient({
-    defaultOptions: {
-        queries: {
-            // 캐시 전략 설정
-            staleTime: 5 * 60 * 1000, // 5분 - 데이터가 신선한 것으로 간주되는 시간
-            gcTime: 10 * 60 * 1000, // 10분 - 가비지 컬렉션 시간 (구 cacheTime)
-
-            // 재시도 설정
-            retry: 3, // 실패 시 3번까지 재시도
-            retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // 지수 백오프
-
-            // 네트워크 및 포커스 관련 설정
-            refetchOnWindowFocus: false, // 윈도우 포커스 시 자동 재요청 비활성화
-            refetchOnReconnect: true, // 네트워크 재연결 시 자동 재요청
-            refetchOnMount: true, // 컴포넌트 마운트 시 재요청
-
-            // 에러 처리
-            throwOnError: false, // 에러를 throw하지 않고 상태로 관리
-
-            // 네트워크 모드 설정
-            networkMode: 'online', // 온라인일 때만 쿼리 실행
-        },
-        mutations: {
-            // 뮤테이션 재시도 설정
-            retry: 1, // 뮤테이션은 1번만 재시도
-            retryDelay: 1000, // 1초 후 재시도
-
-            // 네트워크 모드 설정
-            networkMode: 'online',
-
-            // 에러 처리
-            throwOnError: false,
-        },
-    },
-});
+import {queryClient} from '../query/client';
+export {queryClient};
 
 /**
  * 쿼리 키 팩토리
