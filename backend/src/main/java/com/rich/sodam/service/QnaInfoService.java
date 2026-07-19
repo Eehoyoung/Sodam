@@ -30,7 +30,7 @@ public class QnaInfoService {
      * @return 생성된 사이트 질문 응답 DTO
      * @throws IOException 파일 업로드 중 오류 발생 시
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public QnaInfoResponseDto createQnaInfo(QnaInfoRequestDto requestDto) throws IOException {
         QnaInfo qnaInfo = new QnaInfo();
         qnaInfo.setTitle(requestDto.getTitle());
@@ -120,7 +120,7 @@ public class QnaInfoService {
      * @throws IllegalArgumentException 해당 ID의 사이트 질문이 없을 경우
      * @throws IOException              파일 업로드 중 오류 발생 시
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public QnaInfoResponseDto updateQnaInfo(Long id, QnaInfoRequestDto requestDto) throws IOException {
         QnaInfo qnaInfo = qnaInfoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사이트 질문이 없습니다. id=" + id));

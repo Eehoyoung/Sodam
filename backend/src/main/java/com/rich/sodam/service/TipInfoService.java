@@ -30,7 +30,7 @@ public class TipInfoService {
      * @return 생성된 소상공인 꿀팁 응답 DTO
      * @throws IOException 파일 업로드 중 오류 발생 시
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public TipInfoResponseDto createTipInfo(TipInfoRequestDto requestDto) throws IOException {
         TipInfo tipInfo = new TipInfo();
         tipInfo.setTitle(requestDto.getTitle());
@@ -119,7 +119,7 @@ public class TipInfoService {
      * @throws IllegalArgumentException 해당 ID의 소상공인 꿀팁이 없을 경우
      * @throws IOException              파일 업로드 중 오류 발생 시
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public TipInfoResponseDto updateTipInfo(Long id, TipInfoRequestDto requestDto) throws IOException {
         TipInfo tipInfo = tipInfoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 소상공인 꿀팁이 없습니다. id=" + id));

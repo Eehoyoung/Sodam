@@ -35,7 +35,7 @@ public class PolicyInfoService {
      * @return 생성된 국가정책 정보 응답 DTO
      * @throws IOException 파일 업로드 중 오류 발생 시
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     @Caching(evict = {
             @CacheEvict(value = "policyInfo", key = "'all'"),
             @CacheEvict(value = "policyInfo", key = "'recent'")
@@ -120,7 +120,7 @@ public class PolicyInfoService {
      * @throws IllegalArgumentException 해당 ID의 국가정책 정보가 없을 경우
      * @throws IOException              파일 업로드 중 오류 발생 시
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     @Caching(evict = {
             @CacheEvict(value = "policyInfo", key = "#id"),
             @CacheEvict(value = "policyInfo", key = "'all'"),

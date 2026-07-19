@@ -30,7 +30,7 @@ public class LaborInfoService {
      * @return 생성된 노무 정보 응답 DTO
      * @throws IOException 파일 업로드 중 오류 발생 시
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public LaborInfoResponseDto createLaborInfo(LaborInfoRequestDto requestDto) throws IOException {
         LaborInfo laborInfo = new LaborInfo();
         laborInfo.setTitle(requestDto.getTitle());
@@ -109,7 +109,7 @@ public class LaborInfoService {
      * @throws IllegalArgumentException 해당 ID의 노무 정보가 없을 경우
      * @throws IOException              파일 업로드 중 오류 발생 시
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public LaborInfoResponseDto updateLaborInfo(Long id, LaborInfoRequestDto requestDto) throws IOException {
         LaborInfo laborInfo = laborInfoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 노무 정보가 없습니다. id=" + id));
