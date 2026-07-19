@@ -6,6 +6,7 @@ import com.rich.sodam.domain.TimeOff;
 import com.rich.sodam.dto.CombinedStatsDto;
 import com.rich.sodam.dto.MasterMyPageResponseDto;
 import com.rich.sodam.dto.MasterProfileResponseDto;
+import com.rich.sodam.dto.response.StoreResponseDto;
 import com.rich.sodam.dto.request.TimeOffRejectRequest;
 import com.rich.sodam.dto.response.TimeOffResponse;
 import com.rich.sodam.security.UserPrincipal;
@@ -73,16 +74,18 @@ public class MasterController {
     }
 
     @PutMapping("/profile")
-    public ResponseEntity<MasterProfile> updateMasterProfile(
+    public ResponseEntity<MasterProfileResponseDto> updateMasterProfile(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam String businessLicenseNumber) {
-        return ResponseEntity.ok(masterProfileService.updateMasterProfile(principal.getId(), businessLicenseNumber));
+        MasterProfile updated = masterProfileService.updateMasterProfile(principal.getId(), businessLicenseNumber);
+        return ResponseEntity.ok(MasterProfileResponseDto.fromEntity(updated));
     }
 
     @GetMapping("/stores")
-    public ResponseEntity<List<Store>> getStoresByMaster(
+    public ResponseEntity<List<StoreResponseDto>> getStoresByMaster(
             @AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(masterProfileService.getStoresByMaster(principal.getId()));
+        List<Store> stores = masterProfileService.getStoresByMaster(principal.getId());
+        return ResponseEntity.ok(stores.stream().map(StoreResponseDto::from).toList());
     }
 
     @GetMapping("/store/stats")

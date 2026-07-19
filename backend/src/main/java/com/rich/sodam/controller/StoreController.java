@@ -7,6 +7,7 @@ import com.rich.sodam.dto.request.StoreRegistrationDto;
 import com.rich.sodam.dto.request.StoreUpdateDto;
 import com.rich.sodam.dto.response.GeocodingResult;
 import com.rich.sodam.dto.response.StoreEmployeeResponseDto;
+import com.rich.sodam.dto.response.StoreResponseDto;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.service.GeocodingService;
 import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
@@ -49,14 +50,14 @@ public class StoreController {
     @Operation(summary = "매장 등록", description = "새로운 매장을 등록하고 사용자를 해당 매장의 사장으로 지정합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "매장 등록 성공",
-                    content = @Content(schema = @Schema(implementation = Store.class))),
+                    content = @Content(schema = @Schema(implementation = StoreResponseDto.class))),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "404", description = "사용자 정보를 찾을 수 없음")
     })
 
     @PostMapping("/registration")
-    public ResponseEntity<Store> registerStore(
+    public ResponseEntity<StoreResponseDto> registerStore(
             @Parameter(description = "사용자 ID (옵션) - 미지정 시 현재 인증 사용자로 처리") @RequestParam(required = false) Long userId,
             @Parameter(description = "매장 등록 정보", required = true) @Valid @RequestBody StoreRegistrationDto storeDto) {
 
@@ -78,7 +79,7 @@ public class StoreController {
         Store store = storeManagementService.registerStoreWithMaster(resolvedUserId, storeDto);
         domainEventService.record(com.rich.sodam.domain.type.DomainEventType.STORE_CREATED,
                 resolvedUserId, store.getId(), null);
-        return ResponseEntity.ok(store);
+        return ResponseEntity.ok(StoreResponseDto.from(store));
     }
 
     /*    @PostMapping("/change/master")
@@ -133,12 +134,12 @@ public class StoreController {
             description = "사장이 공유한 매장 코드로 직원 본인이 매장에 가입. PRD_EMPLOYEE E-301.")
     @EmployeeOrMaster // 클래스 @MasterOnly 오버라이드 — 직원 셀프 합류 엔드포인트(E-301)는 직원도 호출
     @PostMapping("/join-by-code")
-    public ResponseEntity<Store> joinByCode(
+    public ResponseEntity<StoreResponseDto> joinByCode(
             @org.springframework.security.core.annotation.AuthenticationPrincipal
                 com.rich.sodam.security.UserPrincipal principal,
             @Valid @RequestBody com.rich.sodam.dto.request.JoinStoreByCodeRequest req) {
         Store store = storeManagementService.joinStoreByCode(principal.getId(), req.getStoreCode());
-        return ResponseEntity.ok(store);
+        return ResponseEntity.ok(StoreResponseDto.from(store));
     }
 
     @Operation(summary = "매장에 직원 할당", description = "사용자를 특정 매장의 직원으로 할당합니다.")
@@ -207,23 +208,23 @@ public class StoreController {
     @Operation(summary = "사장의 매장 목록 조회", description = "특정 사용자(사장)가 관리하는 모든 매장 목록을 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공",
-                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = Store.class)))),
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = StoreResponseDto.class)))),
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "404", description = "사용자 정보를 찾을 수 없음")
     })
     @GetMapping("/master/{userIdOrCurrent}")
-    public ResponseEntity<List<Store>> getStoresByMaster(
+    public ResponseEntity<List<StoreResponseDto>> getStoresByMaster(
             @Parameter(description = "사용자 ID (사장) 또는 'current'", required = true) @PathVariable String userIdOrCurrent) {
         Long resolved = resolveUserId(userIdOrCurrent);
         storeAccessGuard.assertSelf(getCurrentUserId(), resolved); // BOLA 차단: 본인 매장 목록만
         List<Store> stores = storeManagementService.getStoresByMaster(resolved);
-        return ResponseEntity.ok(stores);
+        return ResponseEntity.ok(stores.stream().map(StoreResponseDto::from).toList());
     }
 
     @Operation(summary = "직원의 매장 목록 조회", description = "특정 사용자(직원)가 소속된 모든 매장 목록을 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공",
-                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = Store.class)))),
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = StoreResponseDto.class)))),
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "404", description = "사용자 정보를 찾을 수 없음")
     })
@@ -232,11 +233,11 @@ public class StoreController {
     // (이 완화 전에는 @MasterOnly 때문에 직원 출퇴근 화면의 매장 로딩이 403 으로 막혔다.)
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/employee/{userId}")
-    public ResponseEntity<List<Store>> getStoresByEmployee(
+    public ResponseEntity<List<StoreResponseDto>> getStoresByEmployee(
             @Parameter(description = "사용자 ID (직원)", required = true) @PathVariable Long userId) {
         storeAccessGuard.assertSelf(getCurrentUserId(), userId); // BOLA 차단: 본인 소속 매장만
         List<Store> stores = storeManagementService.getStoresByEmployee(userId);
-        return ResponseEntity.ok(stores);
+        return ResponseEntity.ok(stores.stream().map(StoreResponseDto::from).toList());
     }
 
     @Operation(summary = "매장 직원 목록 조회", description = "특정 매장에 소속된 모든 직원 목록을 조회합니다.")
@@ -263,13 +264,13 @@ public class StoreController {
     @Operation(summary = "매장 위치 정보 업데이트", description = "매장의 위치 정보(주소, 좌표, 반경 등)를 업데이트합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "업데이트 성공",
-                    content = @Content(schema = @Schema(implementation = Store.class))),
+                    content = @Content(schema = @Schema(implementation = StoreResponseDto.class))),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "404", description = "매장 정보를 찾을 수 없음")
     })
     @PutMapping("/{storeId}/location")
-    public ResponseEntity<Store> updateStoreLocation(
+    public ResponseEntity<StoreResponseDto> updateStoreLocation(
             @Parameter(description = "매장 ID", required = true) @PathVariable Long storeId,
             @Parameter(description = "위치 업데이트 정보", required = true) @Valid @RequestBody LocationUpdateDto locationDto) {
 
@@ -283,26 +284,27 @@ public class StoreController {
         }
 
         Store store = storeManagementService.updateStoreLocation(storeId, locationDto);
-        return ResponseEntity.ok(store);
+        return ResponseEntity.ok(StoreResponseDto.from(store));
     }
 
     @Operation(summary = "매장 단건 조회", description = "ID로 활성 매장 정보를 조회합니다. 자기 매장만 조회 가능합니다.")
     @GetMapping("/{id}")
-    public ResponseEntity<Store> getStoreById(@PathVariable Long id) {
+    public ResponseEntity<StoreResponseDto> getStoreById(@PathVariable Long id) {
         storeAccessGuard.assertMasterOwnsStore(getCurrentUserId(), id); // 타 매장 정보 조회 차단
         return storeQueryService.findActiveById(id)
+                .map(StoreResponseDto::from)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @Operation(summary = "매장 일반 정보 업데이트", description = "매장명/전화번호/업종/주소/반경/기준시급 등의 일반 정보를 업데이트합니다.")
     @PutMapping("/{storeId}")
-    public ResponseEntity<Store> updateStore(
+    public ResponseEntity<StoreResponseDto> updateStore(
             @Parameter(description = "매장 ID", required = true) @PathVariable Long storeId,
             @Parameter(description = "업데이트 정보", required = true) @Valid @RequestBody StoreUpdateDto updateDto) {
         storeAccessGuard.assertMasterOwnsStore(getCurrentUserId(), storeId); // 자기 매장만 수정
         Store updated = storeManagementService.updateStore(storeId, updateDto);
-        return ResponseEntity.ok(updated);
+        return ResponseEntity.ok(StoreResponseDto.from(updated));
     }
 
     @Operation(summary = "매장 삭제", description = "매장을 소프트 삭제합니다.")

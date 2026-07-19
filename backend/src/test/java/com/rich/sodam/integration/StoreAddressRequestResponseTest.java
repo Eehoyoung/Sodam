@@ -20,6 +20,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -74,18 +75,24 @@ class StoreAddressRequestResponseTest {
         request.put("radius", 120);
         request.put("storeStandardHourWage", 12000);
 
-        mockMvc.perform(post("/api/stores/registration")
+        MvcResult result = mockMvc.perform(post("/api/stores/registration")
                         .with(asPrincipal(master))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.fullAddress").value(ADDRESS))
-                .andExpect(jsonPath("$.roadAddress").value(ADDRESS))
-                .andExpect(jsonPath("$.jibunAddress").value(ADDRESS))
                 .andExpect(jsonPath("$.latitude").isNumber())
                 .andExpect(jsonPath("$.longitude").isNumber())
-                .andExpect(jsonPath("$.radius").value(120));
+                .andExpect(jsonPath("$.radius").value(120))
+                .andReturn();
+
+        // WP-09: roadAddress/jibunAddress는 StoreResponseDto 축소로 API 응답에서 빠졌다(FE 미소비 필드).
+        // 지오코딩이 실제로 두 주소를 정확히 해석·영속했는지는 응답이 아닌 저장된 엔티티로 확인한다.
+        long registeredId = objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asLong();
+        Store reloaded = storeRepository.findById(registeredId).orElseThrow();
+        assertThat(reloaded.getRoadAddress()).isEqualTo(ADDRESS);
+        assertThat(reloaded.getJibunAddress()).isEqualTo(ADDRESS);
     }
 
     @Test

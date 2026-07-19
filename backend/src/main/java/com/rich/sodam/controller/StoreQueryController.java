@@ -2,6 +2,7 @@ package com.rich.sodam.controller;
 
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.type.ManagerPermission;
+import com.rich.sodam.dto.response.StoreResponseDto;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.security.annotation.EmployeeOrMaster;
@@ -44,10 +45,11 @@ public class StoreQueryController {
     @Operation(summary = "ID로 활성 매장 조회 (본인 소유)")
     @MasterOnly
     @GetMapping("/active/{id}")
-    public ResponseEntity<Store> findActiveById(@AuthenticationPrincipal UserPrincipal principal,
+    public ResponseEntity<StoreResponseDto> findActiveById(@AuthenticationPrincipal UserPrincipal principal,
                                                 @PathVariable Long id) {
         guard.assertMasterOwnsStore(principal.getId(), id);
         return storeQueryService.findActiveById(id)
+                .map(StoreResponseDto::from)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -55,10 +57,11 @@ public class StoreQueryController {
     @Operation(summary = "사장이 관리하는 활성 매장 목록 조회 (본인)")
     @MasterOnly
     @GetMapping("/by-master/{userId}")
-    public ResponseEntity<List<Store>> findActiveStoresByMaster(@AuthenticationPrincipal UserPrincipal principal,
+    public ResponseEntity<List<StoreResponseDto>> findActiveStoresByMaster(@AuthenticationPrincipal UserPrincipal principal,
                                                                 @PathVariable Long userId) {
         assertSelf(principal, userId);
-        return ResponseEntity.ok(storeQueryService.findActiveStoresByMaster(userId));
+        List<Store> stores = storeQueryService.findActiveStoresByMaster(userId);
+        return ResponseEntity.ok(stores.stream().map(StoreResponseDto::from).toList());
     }
 
     @Operation(summary = "특정 사용자가 매장의 사장인지 여부 확인 (본인)")

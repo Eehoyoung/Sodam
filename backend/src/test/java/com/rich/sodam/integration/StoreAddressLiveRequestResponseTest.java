@@ -2,8 +2,10 @@ package com.rich.sodam.integration;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.domain.type.UserGrade;
+import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.repository.UserRepository;
 import com.rich.sodam.security.UserPrincipal;
 import org.junit.jupiter.api.DisplayName;
@@ -61,6 +63,9 @@ class StoreAddressLiveRequestResponseTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private StoreRepository storeRepository;
+
     @Test
     @DisplayName("POST /api/stores/registration uses live Kakao geocoding for address query")
     void registerStoreWithLiveKakaoGeocoding() throws Exception {
@@ -84,8 +89,6 @@ class StoreAddressLiveRequestResponseTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.fullAddress").value(ROAD_ADDRESS))
-                .andExpect(jsonPath("$.roadAddress").value(ROAD_ADDRESS))
-                .andExpect(jsonPath("$.jibunAddress").value(JIBUN_ADDRESS))
                 .andExpect(jsonPath("$.latitude").isNumber())
                 .andExpect(jsonPath("$.longitude").isNumber())
                 .andExpect(jsonPath("$.radius").value(120))
@@ -94,6 +97,13 @@ class StoreAddressLiveRequestResponseTest {
         JsonNode response = objectMapper.readTree(result.getResponse().getContentAsString());
         assertThat(response.get("latitude").asDouble()).isCloseTo(EXPECTED_LATITUDE, org.assertj.core.data.Offset.offset(0.000001));
         assertThat(response.get("longitude").asDouble()).isCloseTo(EXPECTED_LONGITUDE, org.assertj.core.data.Offset.offset(0.000001));
+
+        // WP-09: roadAddress/jibunAddress는 StoreResponseDto 축소로 API 응답에서 빠졌다(FE 미소비 필드).
+        // 지오코딩이 실제로 두 주소를 정확히 해석·영속했는지는 응답이 아닌 저장된 엔티티로 확인한다.
+        long registeredId = response.get("id").asLong();
+        Store reloaded = storeRepository.findById(registeredId).orElseThrow();
+        assertThat(reloaded.getRoadAddress()).isEqualTo(ROAD_ADDRESS);
+        assertThat(reloaded.getJibunAddress()).isEqualTo(JIBUN_ADDRESS);
 
         System.out.println("LIVE_STORE_REGISTRATION_REQUEST=" + objectMapper.writeValueAsString(request));
         System.out.println("LIVE_STORE_REGISTRATION_RESPONSE=" + result.getResponse().getContentAsString());
