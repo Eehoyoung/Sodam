@@ -8,8 +8,8 @@ import com.rich.sodam.domain.type.PlanType;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.security.annotation.RequirePlan;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.EmploymentCreditService;
-import com.rich.sodam.service.StoreAccessGuard;
 import com.rich.sodam.service.WithholdingMonthlyService;
 import com.rich.sodam.service.WithholdingStatementService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,7 +38,7 @@ public class TaxStatementController {
     private final WithholdingStatementService withholdingStatementService;
     private final WithholdingMonthlyService withholdingMonthlyService;
     private final EmploymentCreditService employmentCreditService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
 
     @Operation(summary = "간이지급명세서 자료", description = "그 해 인별 지급총액·원천징수세액 집계(참고용·세무사 검토 전).")
     @RequirePlan(min = PlanType.PRO) // PRO 세무 우대 SW(자료 집계 참고용 — 신고·대행 아님)

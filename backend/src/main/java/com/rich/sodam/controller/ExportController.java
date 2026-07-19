@@ -18,7 +18,7 @@ import com.rich.sodam.domain.type.PlanType;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.security.annotation.RequirePlan;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import java.nio.charset.StandardCharsets;
@@ -41,7 +41,7 @@ public class ExportController {
     private final AttendanceRepository attendanceRepository;
     private final PayrollRepository payrollRepository;
     private final StoreRepository storeRepository;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
 
     @Operation(summary = "매장 출퇴근 기록 CSV",
             description = "지정 기간의 매장 출퇴근 기록을 CSV 로 내보냅니다. Excel 호환 UTF-8 BOM 포함.")

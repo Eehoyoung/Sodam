@@ -6,8 +6,8 @@ import com.rich.sodam.dto.response.JobPostingResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.JobPostingService;
-import com.rich.sodam.service.StoreAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -22,7 +22,7 @@ import java.util.List;
  * 구인 공고(JobPosting) API — 사장 매장당 1건 upsert + 직원용 주변 구인 리스트
  * (260711_작업통합.md Part 2 §19.3).
  *
- * <p>매장 스코프 엔드포인트는 {@link StoreAccessGuard} 로 소유 검증 후에만 진행한다(가드 호출은 try
+ * <p>매장 스코프 엔드포인트는 {@link StoreAuthorizationPolicy} 로 소유 검증 후에만 진행한다(가드 호출은 try
  * 블록 밖).</p>
  */
 @RestController
@@ -31,7 +31,7 @@ import java.util.List;
 public class JobPostingController {
 
     private final JobPostingService jobPostingService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
 
     @MasterOnly
     @Operation(summary = "구인 공고 upsert", description = "매장당 1건만 유지됩니다. 존재하면 내용을 갈아끼우고, 없으면 새로 만듭니다. open 필드로 ON/OFF도 함께 지정합니다.")

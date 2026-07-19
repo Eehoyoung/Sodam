@@ -6,8 +6,8 @@ import com.rich.sodam.dto.response.EvidencePackageResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.security.annotation.RequirePlan;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.EvidencePackageService;
-import com.rich.sodam.service.StoreAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +36,7 @@ import java.time.LocalDate;
 public class EvidencePackageController {
 
     private final EvidencePackageService evidencePackageService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
 
     @Operation(summary = "근무 증거 패키지 집계",
             description = "기간 내 근태요약·급여요약·계약요약·시급이력을 한 묶음으로 반환(참고용·법적 제출 전 보완 필요).")

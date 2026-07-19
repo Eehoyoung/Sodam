@@ -6,7 +6,7 @@ import com.rich.sodam.dto.response.TaxReportSendLogDto;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.security.annotation.RequirePlan;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.TaxReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,7 +37,7 @@ import java.util.List;
 public class TaxReportController {
 
     private final TaxReportService taxReportService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
 
     @Operation(summary = "인건비 내역서 PDF 미리보기",
             description = "발송 전 사장 검토용. 확정·지급완료 급여의 직원별 세전/공제/실지급 집계.")

@@ -3,8 +3,8 @@ package com.rich.sodam.controller;
 import com.rich.sodam.dto.response.OvertimeCheckResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.OvertimeLimitService;
-import com.rich.sodam.service.StoreAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class OvertimeLimitController {
 
     private final OvertimeLimitService overtimeLimitService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
 
     @Operation(summary = "연장근로 한도(주 52h) 점검",
             description = "해당 월의 직원별·주별 실근로시간 합계로 주 52시간(소정40+연장12, §53) 초과 주를 추출(추정·노무사 검토 전).")

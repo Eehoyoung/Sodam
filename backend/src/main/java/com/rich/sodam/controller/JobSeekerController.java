@@ -6,8 +6,8 @@ import com.rich.sodam.dto.response.JobSeekingProfileResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.JobSeekingService;
-import com.rich.sodam.service.StoreAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -25,7 +25,7 @@ import java.util.List;
  * (260711_작업통합.md Part 2 §5.1).
  *
  * <p>{@code /me} 경로는 JWT principal 의 userId 만 사용한다 — 경로/바디로 타인 userId 를 받지 않아
- * BOLA 를 원천 차단한다. 사장 리스트는 매장 스코프이므로 {@link StoreAccessGuard} 로 소유 검증 후에만
+ * BOLA 를 원천 차단한다. 사장 리스트는 매장 스코프이므로 {@link StoreAuthorizationPolicy} 로 소유 검증 후에만
  * 진행한다(가드 호출은 try 블록 밖).</p>
  */
 @RestController
@@ -34,7 +34,7 @@ import java.util.List;
 public class JobSeekerController {
 
     private final JobSeekingService jobSeekingService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
 
     @EmployeeOrMaster
     @Operation(summary = "내 구직 프로필 조회",

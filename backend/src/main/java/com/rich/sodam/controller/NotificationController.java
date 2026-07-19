@@ -29,7 +29,7 @@ public class NotificationController {
     private final DeviceTokenRepository deviceTokenRepository;
     private final UserRepository userRepository;
     private final NotificationInboxRepository inboxRepository;
-    private final com.rich.sodam.service.StoreAccessGuard storeAccessGuard;
+    private final com.rich.sodam.security.authorization.StoreAuthorizationPolicy storeAccessGuard;
 
     @Operation(summary = "FCM 토큰 등록", description = "앱 실행 시 토큰을 서버에 저장하여 푸시 발송 대상으로 등록.")
     @PostMapping("/token")

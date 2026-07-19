@@ -8,8 +8,8 @@ import com.rich.sodam.dto.response.ReceiptDraftResponse;
 import com.rich.sodam.dto.response.ReorderHintResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.PurchaseService;
-import com.rich.sodam.service.StoreAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -41,7 +41,7 @@ import java.util.List;
 public class PurchaseController {
 
     private final PurchaseService purchaseService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
 
     @Operation(summary = "영수증 OCR 초안(미저장)",
             description = "영수증 이미지에서 품목/수량/단가 초안을 추출. OCR 미설정 시 빈 초안(수기 입력). 저장 전 보정 필요.")

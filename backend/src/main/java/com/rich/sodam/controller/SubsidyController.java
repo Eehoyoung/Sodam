@@ -3,7 +3,7 @@ package com.rich.sodam.controller;
 import com.rich.sodam.dto.response.SubsidyEligibilityResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.SubsidyEligibilityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SubsidyController {
 
     private final SubsidyEligibilityService subsidyEligibilityService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
 
     @Operation(summary = "지원금 자격 판정", description = "근로자 10인 미만·월보수 기준으로 두루누리 지원 가능 직원 추정.")
     @GetMapping("/eligibility")

@@ -7,8 +7,8 @@ import com.rich.sodam.dto.response.WageLedgerResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.security.annotation.RequirePlan;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.LegalLedgerService;
-import com.rich.sodam.service.StoreAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class LegalLedgerController {
 
     private final LegalLedgerService legalLedgerService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
 
     @Operation(summary = "임금대장 자료",
             description = "그 달 직원별 기본·연장·야간·휴일·주휴·총액·공제·실수령 집계(참고용·법정 서식 보완 필요).")

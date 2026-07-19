@@ -3,8 +3,8 @@ package com.rich.sodam.controller;
 import com.rich.sodam.dto.response.MinorGuardResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.MinorLaborGuardService;
-import com.rich.sodam.service.StoreAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class MinorLaborController {
 
     private final MinorLaborGuardService minorLaborGuardService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
 
     @Operation(summary = "연소근로자 확인",
             description = "직원이 만 18세 미만이면 1일7h/주35h·야간/휴일 제한·친권자 동의 필요를 안내. 참고용·노무사 확인 전.")
