@@ -9,7 +9,7 @@ import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.service.AttendanceApprovalService;
 import com.rich.sodam.service.AttendanceApprovalService.AttendanceApprovalResponseHolder;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.ManagerSupervisionNotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,7 +32,7 @@ import java.util.List;
 public class AttendanceApprovalController {
 
     private final AttendanceApprovalService service;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
     private final ManagerSupervisionNotificationService supervision;
 
     private static AttendanceApprovalResponse toDto(AttendanceApprovalResponseHolder h) {

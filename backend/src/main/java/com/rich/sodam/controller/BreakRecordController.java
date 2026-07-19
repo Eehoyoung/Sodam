@@ -5,7 +5,7 @@ import com.rich.sodam.dto.response.BreakRecordResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.service.BreakRecordService;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -30,7 +30,7 @@ import java.util.List;
 public class BreakRecordController {
 
     private final BreakRecordService breakRecordService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
 
     @Operation(summary = "휴게 부여 기록 추가")
     @PostMapping("/employees/{employeeId}/breaks")

@@ -10,7 +10,7 @@ import com.rich.sodam.repository.UserRepository;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.service.NotificationService;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.ManagerSupervisionNotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -47,7 +47,7 @@ public class AttendanceCorrectionController {
     private final AttendanceRepository attendanceRepo;
     private final UserRepository userRepo;
     private final NotificationService notificationService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
     private final ManagerSupervisionNotificationService supervision;
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor
