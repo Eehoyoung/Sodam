@@ -7,7 +7,7 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import api from '../../../common/utils/api';
+import storeService from '../services/storeService';
 
 /**
  * 27 JoinStoreByCode — 확정 시안.
@@ -28,11 +28,8 @@ const JoinStoreByCodeScreen: React.FC = () => {
         }
         setLoading(true);
         try {
-            const res = await api.post<{id: number; storeName: string}>('/api/stores/join-by-code', {
-                storeCode: normalized,
-            });
-            const storeName = (res.data as any)?.storeName ?? '매장';
-            setJoinedStore(storeName);
+            const result = await storeService.joinByCode(normalized);
+            setJoinedStore(result?.storeName ?? '매장');
         } catch (e: any) {
             const msg =
                 e?.response?.data?.message ??

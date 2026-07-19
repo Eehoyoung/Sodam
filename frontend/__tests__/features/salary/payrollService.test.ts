@@ -71,9 +71,9 @@ describe('payrollService', () => {
             expect((api.post as jest.Mock).mock.calls[0][1].recalculate).toBe(true);
         });
 
-        it('응답 envelope({data:{...}}) 해체', async () => {
+        it('응답 envelope({data:[...]}) 해체 — WP-04: BE는 배열을 반환하고 각 항목의 id/employee.id/employee.user.name 을 평탄화한다', async () => {
             (api.post as jest.Mock).mockResolvedValue({
-                data: {data: {payrollId: 42, employeeId: 5, storeId: 2, totalPay: 1000000}},
+                data: {data: [{id: 42, employee: {id: 5, user: {name: '홍길동'}}, netWage: 1000000}]},
             });
 
             const result = await payrollService.calculate({
@@ -82,8 +82,11 @@ describe('payrollService', () => {
                 endDate: '2026-05-31',
             });
 
-            expect(result.payrollId).toBe(42);
-            expect(result.totalPay).toBe(1000000);
+            expect(result).toHaveLength(1);
+            expect(result[0].payrollId).toBe(42);
+            expect(result[0].employeeId).toBe(5);
+            expect(result[0].employeeName).toBe('홍길동');
+            expect(result[0].netWage).toBe(1000000);
         });
     });
 

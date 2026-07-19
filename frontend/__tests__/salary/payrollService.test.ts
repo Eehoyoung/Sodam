@@ -26,15 +26,37 @@ describe('payrollService (Phase 1 API mapping)', () => {
     jest.clearAllMocks();
   });
 
-  test('calculate calls POST /api/payroll/calculate with payload', async () => {
+  // WP-04: PayrollRunScreen.tsx가 직접 api.post 하던 매장 전체 계산 로직을 이관하면서
+  // BE 실제 응답 형태(배열, employee.id/employee.user.name 중첩)에 맞춰 계약을 정정했다 —
+  // 과거 이 테스트는 BE가 단일 객체를 반환한다고 잘못 가정하고 있었다(실제 화면 미사용 상태였음).
+  test('calculate calls POST /api/payroll/calculate with payload and maps BE 배열 응답(employee.id/employee.user.name 중첩) 을 평탄화한다', async () => {
     const postMock = getPostMock();
-    const payload = { employeeId: 7, storeId: 22, from: '2025-10-01', to: '2025-10-31' } as any;
-    postMock.mockResolvedValueOnce({ data: { payrollId: 1, ...payload } });
+    const payload = { employeeId: 7, storeId: 22, startDate: '2025-10-01', endDate: '2025-10-31' } as any;
+    postMock.mockResolvedValueOnce({
+      data: [
+        {
+          id: 1,
+          employee: { id: 7, user: { name: '홍길동' } },
+          regularHours: 160,
+          regularWage: 1_600_000,
+          netWage: 1_500_000,
+        },
+      ],
+    });
 
     const resp = await payrollService.calculate(payload);
 
     expect(postMock).toHaveBeenCalledWith('/api/payroll/calculate', payload);
-    expect(resp).toMatchObject({ payrollId: 1 });
+    expect(resp).toEqual([
+      expect.objectContaining({
+        payrollId: 1,
+        employeeId: 7,
+        employeeName: '홍길동',
+        regularHours: 160,
+        regularWage: 1_600_000,
+        netWage: 1_500_000,
+      }),
+    ]);
   });
 
   test('getMonthly calls GET /api/payroll/employee/{eid}/store/{sid}/monthly with year & month params', async () => {

@@ -17,7 +17,7 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import api from '../../../common/utils/api';
+import storeService from '../services/storeService';
 import {TIME_DIGITS_HELPER, compactTimeFromApi, isValidTimeDigits, sanitizeTimeDigits, timeDigitsToHHmmss} from '../../../common/utils/dateTimeInput';
 
 type DayOfWeek =
@@ -108,10 +108,7 @@ const StoreOperatingHoursScreen: React.FC = () => {
                 return;
             }
             try {
-                const res = await api.get<{operatingHours?: ApiDay[]}>(
-                    `/api/stores/${storeId}/operating-hours`,
-                );
-                const list = res.data?.operatingHours ?? [];
+                const list = await storeService.getStoreOperatingHours(storeId);
                 if (list.length > 0) {
                     const byDay = new Map<DayOfWeek, ApiDay>();
                     list.forEach(d => byDay.set(d.dayOfWeek, d));
@@ -164,18 +161,16 @@ const StoreOperatingHoursScreen: React.FC = () => {
             return;
         }
 
-        const body = {
-            operatingHours: rows.map(r => ({
-                dayOfWeek: r.dayOfWeek,
-                openTime: r.isClosed ? null : toHHmmss(r.openTime),
-                closeTime: r.isClosed ? null : toHHmmss(r.closeTime),
-                isClosed: r.isClosed,
-            })),
-        };
+        const operatingHours = rows.map(r => ({
+            dayOfWeek: r.dayOfWeek,
+            openTime: r.isClosed ? null : toHHmmss(r.openTime),
+            closeTime: r.isClosed ? null : toHHmmss(r.closeTime),
+            isClosed: r.isClosed,
+        }));
 
         setSaving(true);
         try {
-            await api.put(`/api/stores/${storeId}/operating-hours`, body);
+            await storeService.updateStoreOperatingHours(storeId, operatingHours);
             AppToast.success('운영시간이 저장됐어요.');
             navigation.goBack();
         } catch (e: any) {

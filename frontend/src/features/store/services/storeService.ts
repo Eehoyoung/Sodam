@@ -79,6 +79,8 @@ export interface StoreDetailDto {
   taxAccountantEmail?: string;
   createdAt?: string;
   updatedAt?: string;
+  /** PayrollCycleEditor.fromStorePayrollCycle()에 그대로 전달되는 BE 정산주기 원형(any 허용). */
+  payrollCycle?: unknown;
 }
 
 /** 정산주기 해석 결과 — 미설정 매장은 configured=false, 날짜 null. */
@@ -211,11 +213,39 @@ async function putLocation(
 }
 
 // [API Mapping] POST /api/stores/change/master — 매장 소유자 변경(사장 권한 이양)
+// ⚠️ WP-00 계약 기준선에서 확인됨: BE StoreController.java에 이 엔드포인트가 블록 주석으로
+// 비활성화되어 있어 항상 404다(docs/260718/WP-00_완료_보고.md §2-3). 호출부 없음 — 제품 판단 대기.
 async function changeOwner(storeId: number, newOwnerUserId: number): Promise<{ success: boolean }>{
   const res = await api.post<{
       data: { success: boolean; }; success: boolean
   }>(`/api/stores/change/master`, { storeId, newOwnerUserId });
   return res.data?.data || res.data || { success: true };
+}
+
+// [API Mapping] PUT /api/stores/{storeId} — 매장 기본정보 수정(이름/주소/전화 등)
+async function updateStore(storeId: number, payload: Record<string, unknown>): Promise<StoreDetailDto> {
+  const res = await api.put<StoreDetailDto>(`/api/stores/${storeId}`, payload);
+  const data: any = res.data as any;
+  return (data?.id ? data : data?.data) as StoreDetailDto;
+}
+
+// [API Mapping] PUT /api/stores/{storeId}/operating-hours — 요일별 운영시간 일괄 수정
+async function updateStoreOperatingHours(
+  storeId: number,
+  operatingHours: StoreOperatingHourPayload[],
+): Promise<void> {
+  await api.put(`/api/stores/${storeId}/operating-hours`, {operatingHours});
+}
+
+// [API Mapping] POST /api/stores/join-by-code — 초대 코드로 매장 입사
+export interface JoinStoreResult {
+  id: number;
+  storeName: string;
+}
+async function joinByCode(storeCode: string): Promise<JoinStoreResult> {
+  const res = await api.post<JoinStoreResult>('/api/stores/join-by-code', {storeCode});
+  const data: any = res.data as any;
+  return (data?.id !== undefined ? data : data?.data) as JoinStoreResult;
 }
 
 const storeService = {
@@ -230,6 +260,9 @@ const storeService = {
   createStore,
   putLocation,
   changeOwner,
+  updateStore,
+  updateStoreOperatingHours,
+  joinByCode,
 };
 
 export default storeService;

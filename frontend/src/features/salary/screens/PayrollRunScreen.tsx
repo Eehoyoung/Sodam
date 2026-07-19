@@ -9,9 +9,9 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import {tokens} from '../../../theme/tokens';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import {useAuth} from '../../../contexts/AuthContext';
-import api from '../../../common/utils/api';
 import {DATE_DIGITS_HELPER, dateDigitsToIso, isValidDateDigits, sanitizeDateDigits} from '../../../common/utils/dateTimeInput';
 import storeService, {StoreSummaryDto} from '../../store/services/storeService';
+import payrollService from '../services/payrollService';
 import {fetchOvertimeCheck, OvertimeCheck} from '../services/overtimeService';
 
 // 정산 계산 로직 보존을 위한 경량 어댑터 (구식 Badge/Input → DS)
@@ -135,30 +135,12 @@ const PayrollRunScreen: React.FC = () => {
         const endDateIso = dateDigitsToIso(endDate);
         setLoading(true);
         try {
-            const res = await api.post<any[]>('/api/payroll/calculate', {
+            const items = await payrollService.calculate({
                 storeId,
                 startDate: startDateIso,
                 endDate: endDateIso,
             });
-            const data: any[] = res.data ?? [];
-            setPreviews(
-                data.map(d => ({
-                    payrollId: d.id,
-                    employeeId: d.employee?.id ?? d.employeeId,
-                    employeeName: d.employee?.user?.name ?? d.employeeName ?? '직원',
-                    regularHours: d.regularHours ?? 0,
-                    regularWage: d.regularWage ?? 0,
-                    overtimeHours: d.overtimeHours ?? 0,
-                    overtimeWage: d.overtimeWage ?? 0,
-                    nightWorkHours: d.nightWorkHours ?? 0,
-                    nightWorkWage: d.nightWorkWage ?? 0,
-                    weeklyAllowance: d.weeklyAllowance ?? 0,
-                    bonusWage: d.bonusWage ?? 0,
-                    grossWage: d.grossWage ?? 0,
-                    taxAmount: d.taxAmount ?? 0,
-                    netWage: d.netWage ?? 0,
-                })),
-            );
+            setPreviews(items);
             setStep('PREVIEW');
             // 연장근로 한도 경보는 정산을 막지 않는 부가 정보 — 실패해도 정산 흐름 유지.
             loadOvertime(storeId, startDateIso);
@@ -199,7 +181,7 @@ const PayrollRunScreen: React.FC = () => {
         const failed: string[] = [];
         for (const p of issuable) {
             try {
-                await api.put(`/api/payroll/${p.payrollId}/issue`, {stepUpPassword});
+                await payrollService.issue(p.payrollId!, stepUpPassword);
                 success += 1;
             } catch (_) {
                 failed.push(p.employeeName ?? `#${p.payrollId}`);

@@ -75,11 +75,52 @@ function toSummary(dto: RawPayrollDto): PayrollSummary {
   };
 }
 
-// [범위 밖] calculate/getMonthly 는 이번 스키마 버그(§1-1/§1-2) 대상이 아니고 실제 화면에서도 미사용
-// (PayrollRunScreen 은 api.post 를 직접 호출) — 기존 pass-through 동작과 테스트 계약을 그대로 유지한다.
-async function calculate(payload: PayrollCalculatePayload): Promise<PayrollSummary> {
-  const res = await api.post<PayrollSummary>('/api/payroll/calculate', payload);
-  return (res.data as any)?.data || res.data;
+// BE 급여 계산 응답(직원별 명세 항목) — POST /api/payroll/calculate 는 storeId만 넘기면
+// 매장 전체 직원 배열을, employeeId까지 넘기면 해당 직원 단건을 배열로 감싸 반환한다.
+export interface PayrollCalculationItem {
+  payrollId: number;
+  employeeId: number;
+  employeeName: string;
+  regularHours: number;
+  regularWage: number;
+  overtimeHours: number;
+  overtimeWage: number;
+  nightWorkHours: number;
+  nightWorkWage: number;
+  weeklyAllowance: number;
+  bonusWage: number;
+  grossWage: number;
+  taxAmount: number;
+  netWage: number;
+}
+
+// WP-04(계획서): PayrollRunScreen.tsx가 직접 api.post 하던 것을 이관 — BE 응답의 중첩
+// employee.id/employee.user.name 형태를 화면이 쓰는 평탄한 형태로 매핑한다.
+async function calculate(payload: PayrollCalculatePayload): Promise<PayrollCalculationItem[]> {
+  const res = await api.post<any[]>('/api/payroll/calculate', payload);
+  const data: any = res.data as any;
+  const list: any[] = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+  return list.map(d => ({
+    payrollId: d.id,
+    employeeId: d.employee?.id ?? d.employeeId,
+    employeeName: d.employee?.user?.name ?? d.employeeName ?? '직원',
+    regularHours: d.regularHours ?? 0,
+    regularWage: d.regularWage ?? 0,
+    overtimeHours: d.overtimeHours ?? 0,
+    overtimeWage: d.overtimeWage ?? 0,
+    nightWorkHours: d.nightWorkHours ?? 0,
+    nightWorkWage: d.nightWorkWage ?? 0,
+    weeklyAllowance: d.weeklyAllowance ?? 0,
+    bonusWage: d.bonusWage ?? 0,
+    grossWage: d.grossWage ?? 0,
+    taxAmount: d.taxAmount ?? 0,
+    netWage: d.netWage ?? 0,
+  }));
+}
+
+// [API Mapping] PUT /api/payroll/{payrollId}/issue — 확정→지급완료 원자 처리(스텝업 비밀번호 필요)
+async function issue(payrollId: number, stepUpPassword: string): Promise<void> {
+  await api.put(`/api/payroll/${payrollId}/issue`, {stepUpPassword});
 }
 
 async function getMonthly(employeeId: number, storeId: number, year: number, month: number): Promise<PayrollSummary[]> {
@@ -158,6 +199,7 @@ async function listArchive(employeeId: number, year: number): Promise<ArchiveIte
 
 export const payrollService = {
   calculate,
+  issue,
   getMonthly,
   getById,
   getDetails,

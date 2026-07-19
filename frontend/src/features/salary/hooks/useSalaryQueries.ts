@@ -2,6 +2,7 @@ import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {handleQueryError, queryKeys} from '../../../common/utils/queryClient';
 import payrollService, {
     PayrollCalculatePayload,
+    PayrollCalculationItem,
     PayrollDetailItem,
     PayrollStatusValue,
     PayrollSummary,
@@ -90,7 +91,7 @@ export const usePayrollDetails = (payrollId: number, enabled = true) =>
 export const useCalculatePayroll = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (payload: PayrollCalculatePayload): Promise<PayrollSummary> => {
+        mutationFn: async (payload: PayrollCalculatePayload): Promise<PayrollCalculationItem[]> => {
             try {
                 return await payrollService.calculate(payload);
             } catch (error) {

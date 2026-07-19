@@ -90,6 +90,19 @@ async function putStandardHourlyWage(storeId: number, hourlyWage: number): Promi
   return (res.data as any)?.data || res.data || { success: true, storeId, standardHourlyWage: hourlyWage };
 }
 
+export interface WageHistoryEntry {
+  effectiveFrom?: string;
+  reason?: string;
+  hourlyWage?: number;
+}
+
+// [API Mapping] GET /api/wages/store/{storeId}/history — 매장 기본 시급 변경 이력
+async function getStandardWageHistory(storeId: number): Promise<WageHistoryEntry[]> {
+  const res = await api.get<WageHistoryEntry[]>(`/api/wages/store/${storeId}/history`);
+  const data: any = res.data as any;
+  return Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+}
+
 async function getEmployeeWage(employeeId: number, storeId: number): Promise<EmployeeWageResponse> {
   // API: GET /api/wages/employee/{employeeId}/store/{storeId}
   const res = await api.get<any>(`/api/wages/employee/${employeeId}/store/${storeId}`);
@@ -184,6 +197,7 @@ function normalizeEmployeeWageResponse(raw: any, employeeId: number, storeId: nu
 
 export const wageService = {
   putStandardHourlyWage,
+  getStandardWageHistory,
   getEmployeeWage,
   getEmployeeWageInfo,
   upsertEmployeeWage,

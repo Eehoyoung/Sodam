@@ -7,7 +7,6 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {radius as tokenRadius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import api from '../../../common/utils/api';
 import storeService from '../services/storeService';
 import PayrollCycleEditor, {PayrollCycleForm, defaultPayrollCycle, fromStorePayrollCycle, toPayrollCyclePayload} from '../components/PayrollCycleEditor';
 import BusinessTypePicker from '../components/BusinessTypePicker';
@@ -46,8 +45,7 @@ const StoreEditScreen: React.FC = () => {
                 return;
             }
             try {
-                const res = await api.get<any>(`/api/stores/${storeId}`);
-                const s = res.data;
+                const s = await storeService.getStoreById(storeId);
                 setStoreName(s.storeName ?? '');
                 setPhone(s.storePhoneNumber ?? '');
                 setBusinessType(s.businessType ?? '');
@@ -80,7 +78,7 @@ const StoreEditScreen: React.FC = () => {
         const r = parseInt(radius, 10) || 100;
         setLoading(true);
         try {
-            await api.put(`/api/stores/${storeId}`, {
+            await storeService.updateStore(storeId, {
                 storeName,
                 storePhoneNumber: phone,
                 businessType,

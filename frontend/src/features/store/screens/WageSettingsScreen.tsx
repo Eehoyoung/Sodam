@@ -5,7 +5,8 @@ import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {spacing} from '../../../theme/tokens';
 import {formatWage} from '../../../common/utils/format';
-import api from '../../../common/utils/api';
+import storeService from '../services/storeService';
+import {wageService} from '../../wage/services/wageService';
 
 /**
  * 18 WageSettings — v3 토스식.
@@ -28,16 +29,16 @@ const WageSettingsScreen: React.FC = () => {
                 return;
             }
             try {
-                const storeRes = await api.get<any>(`/api/stores/${storeId}`);
-                const wage = storeRes.data?.storeStandardHourWage;
+                const store = await storeService.getStoreById(storeId);
+                const wage = store.storeStandardHourWage;
                 if (wage) {
                     setCurrentWage(wage);
                     setStandardWage(String(wage));
                 }
             } catch (_) {/* ignore */}
             try {
-                const hRes = await api.get<any[]>(`/api/wages/store/${storeId}/history`);
-                setHistory((hRes.data) ?? []);
+                const list = await wageService.getStandardWageHistory(storeId);
+                setHistory(list);
             } catch (_) {/* TODO[P2 BE]: WageHistory 조회 API 미노출 */}
         })();
     }, [storeId]);
@@ -63,17 +64,11 @@ const WageSettingsScreen: React.FC = () => {
     const applyWage = async (wage: number) => {
         setLoading(true);
         try {
-            await api.put(`/api/wages/store/${storeId}/standard`, null, {params: {standardHourlyWage: wage}});
+            await wageService.putStandardHourlyWage(storeId, wage);
             setCurrentWage(wage);
             AppToast.success('매장 기본 시급이 변경됐어요.');
         } catch (e: any) {
-            try {
-                await api.put(`/api/wages/store/${storeId}/standard`, {standardHourlyWage: wage});
-                setCurrentWage(wage);
-                AppToast.success('매장 기본 시급이 변경됐어요.');
-            } catch (e2: any) {
-                AppToast.error(e2?.response?.data?.message ?? '시급 변경에 실패했어요.');
-            }
+            AppToast.error(e?.response?.data?.message ?? '시급 변경에 실패했어요.');
         } finally {
             setLoading(false);
         }
