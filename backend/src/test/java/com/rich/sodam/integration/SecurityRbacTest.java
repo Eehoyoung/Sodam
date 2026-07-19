@@ -140,4 +140,32 @@ class SecurityRbacTest {
                         .content("{}"))
                 .andExpect(status().is(org.hamcrest.Matchers.not(403)));
     }
+
+    // ─── WP-00: 무효 토큰 401 / 타 매장 BOLA 403 (계약 기준선 명시) ──────
+
+    @Test
+    @DisplayName("WP-00: 무효 토큰(서명 손상) — MASTER 전용 endpoint /api/master/mypage → 401")
+    void invalidToken_masterEndpoint_unauthorized() throws Exception {
+        mockMvc.perform(get("/api/master/mypage")
+                        .header("Authorization", "Bearer invalid.jwt.token"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("WP-00: 무효 토큰(서명 손상) — 매장 스코프 endpoint /api/stores/1 → 401")
+    void invalidToken_storeScopedEndpoint_unauthorized() throws Exception {
+        mockMvc.perform(get("/api/stores/1")
+                        .header("Authorization", "Bearer invalid.jwt.token"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("WP-00 BOLA: DevSeedRunner 시드 매장(id=1)은 owner userId=1 소유 — 무관한 MASTER principal(id=999999)이 접근하면 StoreAccessGuard가 403으로 차단한다")
+    void otherMaster_seedStore_forbidden() throws Exception {
+        UserPrincipal unrelatedMaster = new UserPrincipal(999999L, "other-master@x", java.util.List.of(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_MASTER")));
+        mockMvc.perform(get("/api/stores/1")
+                        .with(user(unrelatedMaster)))
+                .andExpect(status().isForbidden());
+    }
 }

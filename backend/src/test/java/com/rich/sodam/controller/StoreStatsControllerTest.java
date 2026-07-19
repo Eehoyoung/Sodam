@@ -68,5 +68,12 @@ class StoreStatsControllerTest {
         assertThat(body).isNotNull();
         assertThat(body.get("today")).isEqualTo(todayResponse.getBody());
         assertThat(body.get("payroll")).isEqualTo(monthToDateResponse.getBody());
+
+        // WP-00 계약 기준선: 세 엔드포인트 모두 200이고, dashboard() 응답은 today/payroll 두 키만 노출한다
+        // (Store 엔티티나 그 밖의 필드가 새어나가지 않는다) — 상태코드·최상위 필드 shape를 함께 고정.
+        assertThat(todayResponse.getStatusCode().value()).isEqualTo(200);
+        assertThat(monthToDateResponse.getStatusCode().value()).isEqualTo(200);
+        assertThat(dashboardResponse.getStatusCode().value()).isEqualTo(200);
+        assertThat(body).containsOnlyKeys("today", "payroll");
     }
 }

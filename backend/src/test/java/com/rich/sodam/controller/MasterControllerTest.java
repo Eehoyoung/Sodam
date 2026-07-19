@@ -111,5 +111,11 @@ class MasterControllerTest {
 
         // 핵심 회귀 검증: 매장 목록 조회 쿼리(findByMasterProfile)가 요청당 정확히 1회만 실행돼야 한다.
         verify(masterStoreRelationRepository, times(1)).findByMasterProfile(masterProfile);
+
+        // WP-00 계약 기준선: /api/master/mypage 는 Store 엔티티가 아니라 StoreDto(id만 노출)로 응답한다 —
+        // F-09(entity 직접 노출)가 이 엔드포인트에는 해당하지 않음을 고정한다(대조: GET /api/master/stores 는 해당).
+        assertThat(response.getBody().getStores())
+                .extracting(MasterMyPageResponseDto.StoreDto::getId)
+                .containsExactlyInAnyOrder(10L, 20L);
     }
 }

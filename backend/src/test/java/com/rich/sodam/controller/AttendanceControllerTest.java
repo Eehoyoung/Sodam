@@ -108,6 +108,7 @@ class AttendanceControllerTest {
         ResponseEntity<AttendanceResponseDto> response = controller.getTodayAttendance(principal, employeeId, storeId);
 
         assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getBody()).isNotNull();
         // 매장 미지정 버전(전체 매장 뒤섞임)은 호출되면 안 된다.
         verify(attendanceService, never()).getAttendancesByEmployeeAndPeriod(anyLong(), any(), any());
     }
@@ -124,6 +125,7 @@ class AttendanceControllerTest {
         ResponseEntity<AttendanceResponseDto> response = controller.getTodayAttendance(principal, employeeId, null);
 
         assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getBody()).isNotNull();
         verify(attendanceService, never()).getAttendancesByEmployeeStoreAndPeriod(
                 anyLong(), anyLong(), any(), any());
     }
