@@ -14,9 +14,14 @@ spring:
   application:
     name: sodam-test
 
-  # H2 in-memory DB (MySQL 호환 모드) — 외부 MySQL 불필요
+  # H2 in-memory DB (MySQL 호환 모드) — 외부 MySQL 불필요.
+  # DB 이름에 ${random.uuid}를 넣어 Spring 테스트 컨텍스트마다 별도 인스턴스를 쓰게 한다.
+  # 고정 이름을 여러 컨텍스트가 공유하면(ddl-auto=create-drop + @DirtiesContext 조합에서),
+  # 한 컨텍스트가 닫히며 스키마를 DROP한 직후 다른(캐시된) 컨텍스트가 같은 이름의 DB에 접근해
+  # "Table not found(this database is empty)"로 실패하는 크로스 컨텍스트 오염이 발생한다
+  # (전체 스위트 실행 시에만 재현되고 단독 실행은 통과하던 기지 결함의 원인).
   datasource:
-    url: jdbc:h2:mem:sodam-test;MODE=MySQL;DB_CLOSE_DELAY=-1;NON_KEYWORDS=USER
+    url: jdbc:h2:mem:sodam-test-${random.uuid};MODE=MySQL;DB_CLOSE_DELAY=-1;NON_KEYWORDS=USER
     driver-class-name: org.h2.Driver
     username: sa
     password: ""
