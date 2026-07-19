@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /** 고위험 행위 직전에 현재 계정의 비밀번호를 다시 확인한다. 원문은 저장하거나 로그하지 않는다. */
 @Service
@@ -16,6 +17,7 @@ public class StepUpAuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final StepUpAttemptLimiter attemptLimiter;
 
+    @Transactional(readOnly = true)
     public void verifyPassword(Long userId, String rawPassword) {
         attemptLimiter.assertAllowed(userId);
         if (rawPassword == null || rawPassword.isBlank()) {

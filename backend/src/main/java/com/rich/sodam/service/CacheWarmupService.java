@@ -13,6 +13,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -35,6 +36,7 @@ public class CacheWarmupService {
      */
     @Async
     @EventListener(ApplicationReadyEvent.class)
+    @Transactional(readOnly = true)
     public void warmUpCache() {
         log.info("캐시 워밍업 시작...");
 
@@ -123,6 +125,7 @@ public class CacheWarmupService {
     /**
      * 수동 캐시 워밍업 (관리자용)
      */
+    @Transactional(readOnly = true)
     public void manualWarmUp() {
         log.info("수동 캐시 워밍업 시작");
         warmUpCache();

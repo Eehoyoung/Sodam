@@ -6,6 +6,7 @@ import com.rich.sodam.service.model.NfcVerifyResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -46,6 +47,7 @@ public class NfcVerificationService {
      * @param tagId   태그 식별자
      * @return { success, reason }. 실패 사유는 INVALID_TAG.
      */
+    @Transactional(readOnly = true)
     public NfcVerifyResult verifyTag(Long storeId, String tagId) {
         if (tagId == null || tagId.isBlank()) {
             return fail("빈 tagId");

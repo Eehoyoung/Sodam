@@ -7,11 +7,13 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Spring Security를 위한 사용자 상세 정보 서비스
  */
 @Service
+@Transactional(readOnly = true)
 public class CustomUserDetailsService implements UserDetailsService {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(CustomUserDetailsService.class);

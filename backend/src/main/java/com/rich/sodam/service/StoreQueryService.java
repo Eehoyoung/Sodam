@@ -5,6 +5,7 @@ import com.rich.sodam.domain.Store;
 import com.rich.sodam.repository.StoreRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -13,9 +14,14 @@ import java.util.Optional;
 /**
  * 매장 조회 및 통계 전용 서비스
  * 컨트롤러에서 직접 Repository를 호출하지 않고 서비스 계층을 통해 접근하도록 분리합니다.
+ *
+ * <p>WP-07: 전역 write 트랜잭션 advisor에만 기대던 경계를 명시했다 — 이 클래스는 전부 조회이므로
+ * readOnly=true(과거엔 advisor가 write 트랜잭션으로 감쌌으나, 실제로는 쓰기가 없어 관찰 가능한
+ * 차이는 없다).</p>
  */
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class StoreQueryService {
 
     private final StoreRepository storeRepository;
