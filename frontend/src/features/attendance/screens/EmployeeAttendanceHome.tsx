@@ -18,7 +18,6 @@ import {
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {useAuth} from '../../../contexts/AuthContext';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import api from '../../../common/utils/api';
 import {formatTimer, formatWage, parseServerDateTime} from '../../../common/utils/format';
 import {
     fetchMyShifts,
@@ -27,6 +26,8 @@ import {
     WorkShift,
 } from '../../shift/services/shiftService';
 import storeService from '../../store/services/storeService';
+import attendanceService, {MonthlyAttendanceItem} from '../services/attendanceService';
+import {wageService} from '../../wage/services/wageService';
 import {requestApproval} from '../services/attendanceApprovalService';
 import {useStoreLiveSync} from '../../../common/hooks/useStoreLiveSync';
 import contractService from '../../contract/services/contractService';
@@ -46,17 +47,7 @@ interface MyStore {
     appliedHourlyWage: number;
 }
 
-interface TodayAttendance {
-    id?: number;
-    storeId: number;
-    storeName?: string;
-    checkInTime?: string;
-    checkOutTime?: string;
-    appliedHourlyWage?: number;
-    workingHours?: number;
-    workingMinutes?: number;
-    dailyWage?: number;
-}
+type TodayAttendance = MonthlyAttendanceItem;
 
 interface PolicyInfo {
     id: number;
@@ -146,25 +137,23 @@ const EmployeeAttendanceHome: React.FC = () => {
             setState('LOADING');
             const now = new Date();
             const {from, to} = thisWeekRange(now);
-            const [todayRes, shiftList, monthRes, wageRes] = await Promise.all([
-                api.get<TodayAttendance>(`/api/attendance/employee/${user.id}/store/${store.id}/today`)
-                    .catch(() => null),
+            const [today, shiftList, monthList, wageInfo] = await Promise.all([
+                attendanceService.getTodayForStore(user.id, store.id).catch(() => null),
                 fetchMyShifts(from, to).catch(() => []),
-                api.get<TodayAttendance[]>(
-                    `/api/attendance/employee/${user.id}/monthly?year=${now.getFullYear()}&month=${now.getMonth() + 1}`,
-                ).catch(() => ({data: [] as TodayAttendance[]})),
-                api.get<number>(`/api/wages/employee/${user.id}/store/${store.id}`).catch(() => null),
+                attendanceService
+                    .getMonthlyAttendance(user.id, now.getFullYear(), now.getMonth() + 1)
+                    .catch(() => [] as TodayAttendance[]),
+                wageService.getEmployeeWage(user.id, store.id).catch(() => null),
             ]);
 
-            const wage = typeof wageRes?.data === 'number' ? wageRes.data : store.appliedHourlyWage;
+            const wage = wageInfo?.hourlyWage ?? store.appliedHourlyWage;
             setStores(prev => prev.map(item => (
                 item.id === store.id ? {...item, appliedHourlyWage: wage} : item
             )));
 
-            const today = todayRes?.data ?? null;
             setTodayRecord(today);
             setWeekShifts(shiftList.filter(item => item.storeId === store.id));
-            setMonthlyAttendances((monthRes.data ?? []).filter(item => item.storeId === store.id));
+            setMonthlyAttendances(monthList.filter(item => item.storeId === store.id));
             setState(determineState(today));
         } catch (error) {
             console.warn('[EmployeeAttendanceHome] loadStoreScopedData failed', error);

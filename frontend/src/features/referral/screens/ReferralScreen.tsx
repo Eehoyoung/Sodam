@@ -14,33 +14,7 @@ import {
 } from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import api from '../../../common/utils/api';
-
-interface MyCode {
-    referralCode: string;
-    shareText: string;
-}
-interface ReferralItem {
-    id: number;
-    refereeName: string;
-    status: 'REGISTERED' | 'CONVERTED' | 'EXPIRED' | 'CANCELLED';
-    registeredAt: string;
-    convertedAt?: string;
-}
-interface MyRewards {
-    convertedCount: number;
-    freeMonthsEarned: number;
-}
-
-/** S2 — 내 추천 보상 요약. BE: GET /api/referrals/my-rewards */
-async function fetchMyRewards(): Promise<MyRewards | null> {
-    try {
-        const res = await api.get<MyRewards>('/api/referrals/my-rewards');
-        return res.data ?? null;
-    } catch (_) {
-        return null;
-    }
-}
+import referralService, {MyCode, MyRewards, ReferralItem} from '../services/referralService';
 
 /**
  * 44 Referral — 확정 시안.
@@ -54,15 +28,9 @@ const ReferralScreen: React.FC = () => {
 
     useEffect(() => {
         (async () => {
-            try {
-                const myCode = await api.get<MyCode>('/api/referrals/my-code');
-                setCode(myCode.data);
-            } catch (_) {/* ignore */}
-            try {
-                const h = await api.get<ReferralItem[]>('/api/referrals/my-history');
-                setHistory((h.data) ?? []);
-            } catch (_) {/* ignore */}
-            setRewards(await fetchMyRewards());
+            setCode(await referralService.getMyCode());
+            setHistory(await referralService.getMyHistory());
+            setRewards(await referralService.getMyRewards());
         })();
     }, []);
 

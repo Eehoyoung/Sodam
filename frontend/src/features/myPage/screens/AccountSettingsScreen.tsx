@@ -5,7 +5,7 @@ import {Pressable, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import type {RootNavigationProp} from '../../../navigation/types';
 import {spacing} from '../../../theme/tokens';
-import api from '../../../common/utils/api';
+import accountService from '../services/accountService';
 import {useAuth} from '../../../contexts/AuthContext';
 import {useTheme, useThemeColors, ThemeMode} from '../../../common/hooks/useThemeColors';
 
@@ -53,7 +53,7 @@ const AccountSettingsScreen: React.FC = () => {
         }
         setSaving(true);
         try {
-            await api.put('/api/user/me', {name: name.trim()});
+            await accountService.updateMe({name: name.trim()});
             AppToast.success('이름이 변경됐어요.');
         } catch (e: any) {
             AppToast.error(e?.response?.data?.message ?? '변경에 실패했어요.');
@@ -74,7 +74,7 @@ const AccountSettingsScreen: React.FC = () => {
                 destructive: true,
                 onPress: async () => {
                     try {
-                        await api.delete(`/api/user/${user.id}`);
+                        await accountService.withdraw(user.id);
                         AppToast.success('탈퇴가 완료됐어요. 이용해 주셔서 감사해요.');
                         try {
                             await logout?.();

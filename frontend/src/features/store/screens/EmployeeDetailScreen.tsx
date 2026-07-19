@@ -22,10 +22,12 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {tokens} from '../../../theme/tokens';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
-import api from '../../../common/utils/api';
 import {WageEditSheet, WageEditValues} from '../components/StoreSheets';
 import wageService, {EmploymentType} from '../../wage/services/wageService';
 import contractService from '../../contract/services/contractService';
+import employeeService from '../services/employeeService';
+import attendanceService from '../../attendance/services/attendanceService';
+import payrollService from '../../salary/services/payrollService';
 import ManagerAppointSection from '../../manager/screens/ManagerAppointSection';
 
 type TabKey = 'INFO' | 'ATTENDANCE' | 'SALARY' | 'TIMEOFF';
@@ -150,12 +152,7 @@ const EmployeeDetailScreen: React.FC = () => {
         const next = emp.isActive === false; // 현재 비활성이면 활성화(true), 아니면 비활성화(false)
         setTogglingActive(true);
         try {
-            const res = await api.put<{employeeId: number; active: boolean}>(
-                `/api/stores/${storeId}/employees/${employeeId}/active`,
-                undefined,
-                {params: {active: next}},
-            );
-            const applied = (res.data as any)?.active ?? next;
+            const applied = await employeeService.toggleActive(storeId, employeeId, next);
             setEmp(e => (e ? {...e, isActive: applied} : e));
             AppToast.success(applied ? '직원을 활성화했어요.' : '직원을 비활성화했어요.');
         } catch (_) {
@@ -183,14 +180,8 @@ const EmployeeDetailScreen: React.FC = () => {
     useEffect(() => {
         (async () => {
             try {
-                const res = await api.get<any>(`/api/user/${employeeId}`);
-                const data = res.data?.data ?? res.data;
-                setEmp({
-                    id: data.id,
-                    name: data.name ?? '직원',
-                    email: data.email ?? '',
-                    role: data.userGrade ?? data.role ?? 'EMPLOYEE',
-                });
+                const detail = await employeeService.getEmployeeDetail(employeeId);
+                setEmp({id: detail.id, name: detail.name, email: detail.email, role: detail.role});
             } catch (_) {/* fallback to placeholder */}
             try {
                 // 고용형태·월급·4대보험까지 포함된 EmployeeWageInfoDto 사용
@@ -446,10 +437,7 @@ const MemoEditor: React.FC<{storeId: number; employeeId: number}> = ({storeId, e
     useEffect(() => {
         (async () => {
             try {
-                const res = await api.get<{memo: string}>(
-                    `/api/stores/${storeId}/employees/${employeeId}/memo`,
-                );
-                setMemo(res.data?.memo ?? '');
+                setMemo(await employeeService.getMemo(storeId, employeeId));
             } catch (_) {/* ignore */} finally {
                 setLoading(false);
             }
@@ -459,7 +447,7 @@ const MemoEditor: React.FC<{storeId: number; employeeId: number}> = ({storeId, e
     const save = async () => {
         setSaving(true);
         try {
-            await api.put(`/api/stores/${storeId}/employees/${employeeId}/memo`, {memo});
+            await employeeService.updateMemo(storeId, employeeId, memo);
             AppToast.success('메모가 저장됐어요.');
         } catch (_) {
             AppToast.error('저장에 실패했어요.');
@@ -525,10 +513,8 @@ const AttendanceTab: React.FC<{employeeId: number; storeId: number}> = ({employe
         (async () => {
             try {
                 const now = new Date();
-                const res = await api.get<any[]>(
-                    `/api/attendance/employee/${employeeId}/monthly?year=${now.getFullYear()}&month=${now.getMonth() + 1}`,
-                );
-                setItems((res.data) ?? []);
+                const list = await attendanceService.getMonthlyAttendance(employeeId, now.getFullYear(), now.getMonth() + 1);
+                setItems(list);
             } catch (_) {
                 setItems([]);
             } finally {
@@ -561,8 +547,8 @@ const SalaryTab: React.FC<{employeeId: number; navigation: NativeStackNavigation
     useEffect(() => {
         (async () => {
             try {
-                const res = await api.get<any[]>(`/api/payroll/employee/${employeeId}`);
-                setItems((res.data) ?? []);
+                const list = await payrollService.listByEmployee(employeeId);
+                setItems(list);
             } catch (_) {
                 setItems([]);
             } finally {
@@ -579,13 +565,13 @@ const SalaryTab: React.FC<{employeeId: number; navigation: NativeStackNavigation
             {items.map((p, idx) => (
                 <Pressable
                     key={idx}
-                    onPress={() => navigation.navigate('SalaryDetail', {payrollId: p.id})}
+                    onPress={() => navigation.navigate('SalaryDetail', {payrollId: p.payrollId})}
                     style={({pressed}) => [styles.salaryRow, pressed && {opacity: 0.7}]}
                 >
                     <View>
-                        <Text style={styles.salaryMonth}>{formatMonth(p.startDate)}</Text>
+                        <Text style={styles.salaryMonth}>{formatMonth(p.period?.startDate)}</Text>
                         <Text style={styles.salaryAmount}>
-                            {(p.netWage ?? 0).toLocaleString('ko-KR')}원
+                            {(p.totalPay ?? 0).toLocaleString('ko-KR')}원
                         </Text>
                     </View>
                     <AppBadge label={payrollStatusLabel(p.status)} tone={payrollStatusTone(p.status)} />

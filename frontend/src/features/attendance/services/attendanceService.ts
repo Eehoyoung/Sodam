@@ -52,15 +52,21 @@ export interface AttendanceWorkLogResponse {
     rows: AttendanceWorkLogRow[];
 }
 
-/** GET /api/attendance/employee/{id}/monthly 원소 — 달력 점 표시·직원상세 최근기록용 원본 레코드. */
+/** GET /api/attendance/employee/{id}/monthly 원소 — 달력 점 표시·직원상세·직원홈 최근기록용 원본 레코드. */
 export interface MonthlyAttendanceItem {
-    id: number;
+    id?: number;
+    storeId?: number;
+    storeName?: string;
     checkInTime?: string;
     checkOutTime?: string;
     workingMinutes?: number;
+    workingHours?: number;
     appliedHourlyWage?: number;
-    storeName?: string;
+    dailyWage?: number;
 }
+
+/** GET /api/attendance/employee/{employeeId}/store/{storeId}/today 응답 — 매장 지정 오늘 근무 기록. */
+export type TodayAttendanceForStore = MonthlyAttendanceItem;
 
 /**
  * BE AttendanceRequestDto 4필드(@NotNull) 매핑 헬퍼.
@@ -127,6 +133,24 @@ const attendanceService = {
             {year, month},
         );
         return (response.data as any)?.data ?? response.data ?? [];
+    },
+
+    /**
+     * 매장 지정 오늘 근무 기록 — GET /api/attendance/employee/{employeeId}/store/{storeId}/today.
+     * getCurrentAttendance(쿼리파라미터 storeId, /today 경로)와는 다른 BE 매핑이다 — 합치지 않는다.
+     */
+    getTodayForStore: async (employeeId: number, storeId: number): Promise<TodayAttendanceForStore | null> => {
+        try {
+            const response = await api.get<TodayAttendanceForStore | null>(
+                `/api/attendance/employee/${employeeId}/store/${storeId}/today`,
+            );
+            return response.data ?? null;
+        } catch (error: any) {
+            if (error?.response?.status === 404) {
+                return null;
+            }
+            throw error;
+        }
     },
 
     /**
