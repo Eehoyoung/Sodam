@@ -81,16 +81,19 @@ export const setOnPlanRequired = (
 // 이 파일은 401 발생 시 언제/얼마나 자주 호출할지(single-flight)만 책임진다.
 
 // 응답 인터셉터: 401 처리 및 단일 비행(refresh queue)
-// ⚠️ 인증 엔드포인트(/login, /auth/refresh, /refresh, /join)의 401 은 "잘못된 자격증명" 의미.
-// refresh 시도하면 진짜 원인(비밀번호 불일치) 이 NO_REFRESH_TOKEN 으로 가려져 UX 가 망가짐.
+// ⚠️ 인증 엔드포인트(/login, /auth/refresh, /refresh, /join, 소셜 로그인 콜백)의 401 은
+// "잘못된 자격증명" 의미. refresh 시도하면 진짜 원인(비밀번호 불일치·유효하지 않은 소셜 토큰) 이
+// NO_REFRESH_TOKEN 으로 가려져 UX 가 망가짐.
 //
-// WP-00 계약 기준선에서 확인된 기지 결함(docs/260718/WP-00_완료_보고.md §2-1, 아직 미수정):
-// 이 목록에 '/apple/auth/proc'가 없고 '/kakao/auth/proc' 는 실제 경로와 문자열이 어긋나 있어
-// 두 소셜 로그인의 401도 자격증명 오류인데 refresh를 시도한다. 로그인 흐름 자체를 건드리는
-// 수정이라 별도 에뮬레이터 검증 없이는 위험이 커서 이번 WP-02 증분에서도 보류했다 — 수정 시
-// 이 배열에 '/apple/auth/proc'를 추가하고 '/kakao/auth/proc'를 정확히 매칭하도록 고친 뒤
-// apiRefreshInterceptor.test.ts의 두 [WP-02 대상] 테스트를 반전(refreshAttempted: false)시킬 것.
-const AUTH_ENDPOINTS = ['/api/login', '/api/auth/refresh', '/api/refresh', '/api/join', '/api/kakao'];
+// WP-02 2단계(Phase E)에서 수정: 기존 '/api/kakao'는 실제 카카오 로그인 콜백 경로
+// authService.ts의 '/kakao/auth/proc'(BE가 클래스 레벨 @RequestMapping 없이 절대경로로 정의 —
+// '/api' prefix가 없다)와 문자열이 어긋나 매칭되지 않았고, '/apple/auth/proc'는 목록 자체에 없어
+// 두 소셜 로그인 실패도 자격증명 오류인데 refresh를 시도하던 버그였다(WP-00 계약 기준선
+// docs/260718/WP-00_완료_보고.md §2-1). 정확한 경로로 교체.
+const AUTH_ENDPOINTS = [
+    '/api/login', '/api/auth/refresh', '/api/refresh', '/api/join',
+    '/kakao/auth/proc', '/apple/auth/proc',
+];
 const isAuthEndpoint = (url?: string) =>
     !!url && AUTH_ENDPOINTS.some(p => url.includes(p));
 

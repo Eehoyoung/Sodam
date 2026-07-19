@@ -122,15 +122,13 @@ describe('api refresh interceptor', () => {
     expect(r).toBeNull();
   });
 
-  // WP-00 실패 재현: AUTH_ENDPOINTS(common/utils/api.ts) 는 '/api/login','/api/auth/refresh',
-  // '/api/refresh','/api/join','/api/kakao' 만 refresh-제외로 등록돼 있다. 그런데 계획서 §7.3.3-A는
-  // "로그인·Apple·Kakao·회원가입·비밀번호 재설정의 401은 자격증명 오류이므로 자동 refresh를 호출하지
-  // 않는다"고 규정한다. 실제 FE 호출 경로(authService.ts)는 '/apple/auth/proc'(아예 목록에 없음)와
-  // '/kakao/auth/proc'('/api/kakao' 문자열을 포함하지 않아 isAuthEndpoint 매칭 실패)이므로 현재는
-  // 두 경로 모두 401에 refresh를 시도한다. 아래 두 테스트는 "현재(버그가 있는) 동작"을 고정한다 —
-  // WP-02(세션 코디네이터 이관)에서 refresh 제외 목록에 두 경로를 추가하면 이 테스트는 실패로 뒤집혀야
-  // 하며, 그때 expect(refreshAttempted).toBe(true) 를 false 로 갱신한다.
-  test('[WP-02 대상] Apple 로그인 401 — 자격증명 오류인데도 refresh를 시도한다(현재 동작 고정)', async () => {
+  // WP-02 2단계(Phase E)에서 수정 완료: AUTH_ENDPOINTS(common/api/client.ts)가 실제 FE 호출 경로
+  // (authService.ts)인 '/apple/auth/proc'·'/kakao/auth/proc'를 정확히 포함하도록 고쳤다. 계획서
+  // §7.3.3-A "로그인·Apple·Kakao·회원가입·비밀번호 재설정의 401은 자격증명 오류이므로 자동 refresh를
+  // 호출하지 않는다" 규정대로 이제 두 소셜 로그인의 401도 refresh를 시도하지 않고 원본 에러를 그대로
+  // 전파한다. 아래 두 테스트는 수정된(올바른) 동작을 고정한다 — WP-00 당시엔 반대로
+  // expect(refreshAttempted).toBe(true) 로 버그를 characterization했었다.
+  test('[WP-02] Apple 로그인 401 — 자격증명 오류이므로 refresh를 시도하지 않는다', async () => {
     const client = __testing__.getClient();
     const instMock = new AxiosMockAdapter(client);
     const globalMock = new AxiosMockAdapter(axios);
@@ -147,10 +145,10 @@ describe('api refresh interceptor', () => {
 
     await expect(client.post('/apple/auth/proc', {})).rejects.toBeDefined();
 
-    expect(refreshAttempted).toBe(true);
+    expect(refreshAttempted).toBe(false);
   });
 
-  test('[WP-02 대상] Kakao 로그인 401 — isAuthEndpoint 문자열 매칭이 실제 경로(/kakao/auth/proc)와 어긋나 refresh를 시도한다(현재 동작 고정)', async () => {
+  test('[WP-02] Kakao 로그인 401 — isAuthEndpoint가 실제 경로(/kakao/auth/proc)와 정확히 매칭돼 refresh를 시도하지 않는다', async () => {
     const client = __testing__.getClient();
     const instMock = new AxiosMockAdapter(client);
     const globalMock = new AxiosMockAdapter(axios);
@@ -167,6 +165,6 @@ describe('api refresh interceptor', () => {
 
     await expect(client.get('/kakao/auth/proc?code=abc')).rejects.toBeDefined();
 
-    expect(refreshAttempted).toBe(true);
+    expect(refreshAttempted).toBe(false);
   });
 });
