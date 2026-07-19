@@ -3,7 +3,7 @@ package com.rich.sodam.controller;
 import com.rich.sodam.dto.response.StoreSetupResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.StoreSetupService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class StoreSetupController {
 
     private final StoreSetupService storeSetupService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
 
     @Operation(summary = "매장 설정 완성도 조회",
             description = "매장정보·기준시급·운영시간·위치·직원 등록 항목별 완료 여부와 완성도 %, 다음 할 한 가지를 반환.")

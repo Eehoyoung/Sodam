@@ -9,7 +9,7 @@ import com.rich.sodam.dto.response.GeocodingResult;
 import com.rich.sodam.dto.response.StoreEmployeeResponseDto;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.service.GeocodingService;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.StoreManagementServiceImpl;
 import com.rich.sodam.service.StoreQueryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -43,7 +43,7 @@ public class StoreController {
     private final StoreManagementServiceImpl storeManagementService;
     private final GeocodingService geocodingService;
     private final StoreQueryService storeQueryService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
     private final com.rich.sodam.service.DomainEventService domainEventService;
 
     @Operation(summary = "매장 등록", description = "새로운 매장을 등록하고 사용자를 해당 매장의 사장으로 지정합니다.")

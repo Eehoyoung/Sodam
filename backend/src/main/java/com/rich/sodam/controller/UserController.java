@@ -32,10 +32,10 @@ import java.util.Set;
 public class UserController {
 
     private final UserService userService;
-    private final com.rich.sodam.service.StoreAccessGuard storeAccessGuard;
+    private final com.rich.sodam.security.authorization.StoreAuthorizationPolicy storeAccessGuard;
 
     public UserController(UserService userService,
-                          com.rich.sodam.service.StoreAccessGuard storeAccessGuard) {
+                          com.rich.sodam.security.authorization.StoreAuthorizationPolicy storeAccessGuard) {
         this.userService = userService;
         this.storeAccessGuard = storeAccessGuard;
     }

@@ -5,8 +5,8 @@ import com.rich.sodam.domain.type.ManagerPermission;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.security.annotation.EmployeeOrMaster;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.DomainEventService;
-import com.rich.sodam.service.StoreAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class StoreInsightsController {
 
     private final DomainEventService domainEventService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
 
     @Operation(summary = "주간 인사이트", description = "최근 N일(기본 7) 이벤트 종류별 카운트.")
     @GetMapping("/weekly")

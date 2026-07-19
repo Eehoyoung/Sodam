@@ -16,7 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 
 import java.io.IOException;
 import java.util.LinkedHashMap;
@@ -36,7 +36,7 @@ public class StorePhotoController {
     private final StorePhotoRepository storePhotoRepository;
     private final StoreRepository storeRepository;
     private final ObjectStorage objectStorage;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
 
     @Operation(summary = "매장 사진 목록")
     @GetMapping
