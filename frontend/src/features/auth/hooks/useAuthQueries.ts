@@ -1,6 +1,7 @@
 import React from 'react';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import authService, {AuthResponse, LoginRequest, SignupRequest, SignupResponse, User} from '../services/authService';
+import * as sessionCoordinator from '../../../common/auth/sessionCoordinator';
 import {handleQueryError, queryKeys} from '../../../common/utils/queryClient';
 
 // axios 에러에서 HTTP 상태코드만 안전하게 추출 (인증·존재 에러 분기용).
@@ -82,7 +83,7 @@ export const useLogin = () => {
     return useMutation({
         mutationFn: async (loginRequest: LoginRequest): Promise<AuthResponse> => {
             try {
-                return await authService.login(loginRequest);
+                return await sessionCoordinator.login(loginRequest);
             } catch (error) {
                 handleQueryError(error, 'login');
                 throw error;
@@ -108,7 +109,7 @@ export const useKakaoLogin = () => {
     return useMutation({
         mutationFn: async (code: string): Promise<AuthResponse> => {
             try {
-                return await authService.kakaoLogin(code);
+                return await sessionCoordinator.kakaoLogin(code);
             } catch (error) {
                 handleQueryError(error, 'kakaoLogin');
                 throw error;
@@ -134,7 +135,7 @@ export const useAppleLogin = () => {
     return useMutation({
         mutationFn: async (identityToken: string): Promise<AuthResponse> => {
             try {
-                return await authService.appleLogin(identityToken);
+                return await sessionCoordinator.appleLogin(identityToken);
             } catch (error) {
                 handleQueryError(error, 'appleLogin');
                 throw error;
@@ -182,7 +183,7 @@ export const useLogout = () => {
     return useMutation({
         mutationFn: async (): Promise<void> => {
             try {
-                await authService.logout();
+                await sessionCoordinator.logout();
             } catch (error) {
                 handleQueryError(error, 'logout');
             }

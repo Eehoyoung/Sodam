@@ -3,7 +3,7 @@ import {User} from '../features/auth/services/authService';
 import {useAppleLogin, useAuthState, useKakaoLogin, useLogin, useLogout} from '../features/auth/hooks/useAuthQueries';
 import {unifiedStorage} from '../common/utils/unifiedStorage';
 import {safeLogger} from '../utils/safeLogger';
-import { setOnUnauthorized } from '../common/utils/api';
+import { subscribeSessionExpired } from '../common/auth/sessionCoordinator';
 import {navigate} from '../navigation/navigationRef';
 import PaywallHost from '../features/subscription/components/PaywallHost';
 import {useFcmRegistration} from '../common/hooks/useFcmRegistration';
@@ -148,8 +148,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
 
     // 전역 401(리프레시 실패 등) 발생 시 인증 상태 재확인 + 세션 만료 안내 (갭분석 A1)
     // 1회 등록 — refetchAuthRef 통해 항상 최신 함수 호출.
+    // WP-02 2단계(Phase E): 기존 setOnUnauthorized(단일 콜백)에서 subscribeSessionExpired(다중
+    // 구독)로 이관 — client.ts는 두 메커니즘을 당분간 병행 호출한다(WP-10에서 구 경로 정리 예정).
     useEffect(() => {
-        setOnUnauthorized(() => {
+        return subscribeSessionExpired(() => {
             // 여기서 user 를 비우면 Protected(!user → Login reset)가 의도된 SessionExpired 안내 화면을
             // 건너뛰어 버린다. 그래서 캐시 정리는 SessionExpired 의 '다시 로그인'(onRelogin)에서 한다.
             refetchAuthRef.current();
@@ -157,7 +159,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
                 navigate('SessionExpired');
             }
         });
-        return () => setOnUnauthorized(null);
     }, []);
 
     /**

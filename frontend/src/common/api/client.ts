@@ -2,7 +2,7 @@ import axios, {AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRe
 import TokenManager from '../../services/TokenManager';
 import {unifiedStorage} from '../utils/unifiedStorage';
 import {env} from '../config/env';
-import {refresh as refreshAccessToken} from '../auth/sessionCoordinator';
+import {refresh as refreshAccessToken, emitSessionExpired} from '../auth/sessionCoordinator';
 
 /**
  * API 클라이언트 설정 및 인터셉터 (Access/Refresh with single-flight queue) — WP-01/WP-02.
@@ -144,7 +144,11 @@ apiClient.interceptors.response.use(
                     refreshQueue = [];
                     await TokenManager.clear();
                     try { await unifiedStorage.removeItem('userToken'); } catch (_) { /* empty */ }
+                    // WP-02 2단계: subscribeSessionExpired(다중 구독) 신설 — 기존 setOnUnauthorized
+                    // (단일 콜백) 계약을 보호하는 api.test.ts/client.test.ts를 그대로 두기 위해 병행 호출.
+                    // AuthContext는 이번 커밋에서 subscribeSessionExpired로 이관했다.
                     if (onUnauthorized) {onUnauthorized();}
+                    emitSessionExpired();
                     return Promise.reject(e);
                 } finally {
                     isRefreshing = false;
