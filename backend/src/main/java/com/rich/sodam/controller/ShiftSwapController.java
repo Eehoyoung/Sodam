@@ -7,8 +7,8 @@ import com.rich.sodam.dto.response.ShiftSwapRequestResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.security.annotation.EmployeeOrMaster;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.ShiftSwapService;
-import com.rich.sodam.service.StoreAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -31,7 +31,7 @@ import java.util.List;
 public class ShiftSwapController {
 
     private final ShiftSwapService shiftSwapService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
 
     @EmployeeOrMaster
     @Operation(summary = "대타 모집 생성", description = "해당 시프트를 대타 모집으로 전환. 매장 전 직원(원 배정자 제외)에게 알림. 지난 시프트 400, 중복 모집 409.")

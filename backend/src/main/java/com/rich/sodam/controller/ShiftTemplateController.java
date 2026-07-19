@@ -7,8 +7,8 @@ import com.rich.sodam.dto.response.ShiftTemplateResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.security.annotation.EmployeeOrMaster;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.ShiftTemplateService;
-import com.rich.sodam.service.StoreAccessGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -32,7 +32,7 @@ import java.util.List;
 public class ShiftTemplateController {
 
     private final ShiftTemplateService shiftTemplateService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
 
     @EmployeeOrMaster
     @Operation(summary = "템플릿 저장", description = "지정 기간(from~to)의 근무를 요일 패턴으로 스냅샷 저장.")

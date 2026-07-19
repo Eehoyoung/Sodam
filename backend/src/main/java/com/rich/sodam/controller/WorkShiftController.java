@@ -9,7 +9,7 @@ import com.rich.sodam.dto.response.WorkShiftResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.security.annotation.EmployeeOrMaster;
-import com.rich.sodam.service.StoreAccessGuard;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.WorkShiftService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,7 +36,7 @@ import java.util.List;
 public class WorkShiftController {
 
     private final WorkShiftService workShiftService;
-    private final StoreAccessGuard storeAccessGuard;
+    private final StoreAuthorizationPolicy storeAccessGuard;
 
     @EmployeeOrMaster
     @Operation(summary = "근무 시프트 등록", description = "사장이 자기 매장 직원의 근무 일정을 등록.")
