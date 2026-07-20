@@ -257,14 +257,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
     }, [loginMutation.error, logoutMutation.error, kakaoLoginMutation.error, appleLoginMutation.error]);
 
     /**
-     * 로딩 상태 계산
-     * 인증 상태 로딩 또는 뮤테이션 진행 중일 때 true
+     * 로딩 상태 계산 — 최초 부팅 시 저장된 세션 확인(authLoading) 동안만 true.
+     *
+     * 과거에는 login/logout/kakaoLogin/appleLogin 뮤테이션의 isPending도 포함했다. 이 값은
+     * AppNavigator의 전체 언마운트 게이트와 Protected의 리다이렉트 이펙트가 공유해서 쓰는데,
+     * 뮤테이션 pending→완료 전환 시점에 loading이 true→false로 바뀌면서 두 컴포넌트 모두
+     * "지금 인증 상태가 무엇인지"를 다시 계산했다 — 이 시점이 로그인 성공 직후 TanStack Query
+     * 인증 캐시(authQueryKeys)가 아직 비동기로 반영되기 전인 경우가 있어, isAuthenticated=false·
+     * user=null인 채로 재평가되어 로그인 직후 로그아웃 상태 화면(SodamLanding)으로 튕기는 버그가
+     * 있었다(간헐적 — 캐시 반영 타이밍에 따라 재현율이 달랐다. 직원 계정에서 재현이 잦았고,
+     * 데이터/토큰 자체는 정상 저장되어 앱 재시작 시 정상 진입했다).
+     *
+     * LoginScreen.handleLogin은 뮤테이션의 반환값(loggedInUser)을 직접 써서 resetToRootRoute를
+     * 호출하므로 이 캐시 반영 타이밍에 의존하지 않는다 — 문제는 전적으로 AppNavigator가 뮤테이션
+     * 진행 중에 네비게이터 전체를 스피너로 바꿔치기(언마운트)했다가 뮤테이션 완료 시 다시
+     * 마운트하면서 initialRouteName을 그 순간의 (아직 갱신 전일 수 있는) 캐시로 재계산하던 것.
+     * 뮤테이션 상태를 loading에서 빼면 네비게이터가 마운트된 채로 유지되어 이 재계산 자체가
+     * 일어나지 않는다.
      */
-    const loading = authLoading ||
-        loginMutation.isPending ||
-        logoutMutation.isPending ||
-        kakaoLoginMutation.isPending ||
-        appleLoginMutation.isPending;
+    const loading = authLoading;
 
     /**
      * 컨텍스트 값 생성
