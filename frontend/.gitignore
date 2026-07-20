@@ -31,6 +31,7 @@ docs
 # Android/IntelliJ
 #
 build/
+android/**/bin/
 .idea
 .gradle
 local.properties

@@ -48,3 +48,14 @@ backend/.gradle-user-home/
 *.tmp
 *.swp
 .git.backup/
+
+# graphify 지식 그래프 산출물 (로컬 생성물, 커밋 대상 아님)
+graphify-out/
+.graphify/
+
+# 에뮬레이터 E2E 검증 산출물 (스크린샷/uiautomator 덤프) — 루트에 흩어지는 일회성 파일
+/*.xml
+e2e_*/
+
+# 서명 완료 근로계약서 등 실 PII 원본 (.graphifyignore와 동일 대상 — git 추적도 금지)
+backend/private-esign-objects/
