@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /**
  * 사장 승인 출퇴근 (위치/NFC 없이 사장 승인으로 출퇴근).

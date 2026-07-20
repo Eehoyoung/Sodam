@@ -44,7 +44,7 @@ jest.mock('react-native-safe-area-context', () => ({
 
 jest.mock('react-native-linear-gradient', () => 'LinearGradient');
 
-jest.mock('../../../src/common/utils/api', () => {
+jest.mock('../../../src/common/api/client', () => {
     const api = {
         get: jest.fn(),
         post: jest.fn(),
@@ -71,7 +71,7 @@ jest.mock('../../../src/features/store/services/storeService', () => ({
 }));
 
 import PayrollRunScreen from '../../../src/features/salary/screens/PayrollRunScreen';
-import api from '../../../src/common/utils/api';
+import api from '../../../src/common/api/client';
 
 const apiMock = api as jest.Mocked<typeof api>;
 

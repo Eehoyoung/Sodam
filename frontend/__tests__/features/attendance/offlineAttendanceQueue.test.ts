@@ -2,11 +2,11 @@ import offlineAttendanceQueue, {
     EnqueueInput,
     MAX_RETRY,
 } from '../../../src/features/attendance/services/offlineAttendanceQueue';
-import api from '../../../src/common/utils/api';
+import api from '../../../src/common/api/client';
 import {unifiedStorage} from '../../../src/common/utils/unifiedStorage';
 import {AppToast} from '../../../src/common/components/ds';
 
-jest.mock('../../../src/common/utils/api', () => ({
+jest.mock('../../../src/common/api/client', () => ({
     __esModule: true,
     default: {
         get: jest.fn(),

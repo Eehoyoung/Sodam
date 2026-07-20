@@ -3,9 +3,9 @@ import {
   sendTaxReport,
   updateAccountantEmail,
 } from '../taxReportService';
-import api from '../../../../common/utils/api';
+import api from '../../../../common/api/client';
 
-jest.mock('../../../../common/utils/api', () => ({
+jest.mock('../../../../common/api/client', () => ({
   __esModule: true,
   default: {get: jest.fn(), post: jest.fn(), put: jest.fn()},
 }));

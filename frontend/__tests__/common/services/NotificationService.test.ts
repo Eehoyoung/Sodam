@@ -1,8 +1,8 @@
 import {Platform} from 'react-native';
 import notificationApi from '../../../src/common/services/NotificationService';
-import api from '../../../src/common/utils/api';
+import api from '../../../src/common/api/client';
 
-jest.mock('../../../src/common/utils/api', () => ({
+jest.mock('../../../src/common/api/client', () => ({
     __esModule: true,
     default: {
         get: jest.fn(),

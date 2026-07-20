@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /** 내 요청 현황(정정·휴가 통합). BE: GET /api/requests/my */
 export type MyRequestType = 'correction' | 'timeoff';

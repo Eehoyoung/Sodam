@@ -1,11 +1,11 @@
 import {fetchMinorGuard, MinorGuard} from '../../src/features/minorguard/services/minorGuardService';
 
-jest.mock('../../src/common/utils/api', () => {
+jest.mock('../../src/common/api/client', () => {
   const get = jest.fn();
   return {__esModule: true, default: {get}, api: {get}};
 });
 
-import apiDefault from '../../src/common/utils/api';
+import apiDefault from '../../src/common/api/client';
 
 const getMock = () => (apiDefault as unknown as {get: jest.Mock}).get;
 

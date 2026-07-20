@@ -1,7 +1,7 @@
 import attendanceService from '../../../src/features/attendance/services/attendanceService';
-import api from '../../../src/common/utils/api';
+import api from '../../../src/common/api/client';
 
-jest.mock('../../../src/common/utils/api', () => ({
+jest.mock('../../../src/common/api/client', () => ({
     __esModule: true,
     default: {
         get: jest.fn(),

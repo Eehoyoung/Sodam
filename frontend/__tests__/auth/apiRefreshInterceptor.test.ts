@@ -1,6 +1,6 @@
 import axios from 'axios';
-import api, { __testing__ } from '../../src/common/utils/api';
-import TokenManager from '../../src/services/TokenManager';
+import api, { __testing__ } from '../../src/common/api/client';
+import TokenManager from '../../src/common/auth/tokenStore';
 
 // Note: This test uses axios-mock-adapter. Install dev dep if running locally:
 // npm i -D axios-mock-adapter

@@ -1,5 +1,5 @@
 import axios, {AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig} from 'axios';
-import TokenManager from '../../services/TokenManager';
+import TokenManager from '../auth/tokenStore';
 import {unifiedStorage} from '../utils/unifiedStorage';
 import {env} from '../config/env';
 import {refresh as refreshAccessToken, emitSessionExpired} from '../auth/sessionCoordinator';
@@ -8,8 +8,8 @@ import {refresh as refreshAccessToken, emitSessionExpired} from '../auth/session
  * API 클라이언트 설정 및 인터셉터 (Access/Refresh with single-flight queue) — WP-01/WP-02.
  *
  * axios instance 생성과 인터셉터(Authorization 주입, 401 단일 refresh, 402 페이월)의
- * 유일한 소유 파일. `common/utils/api.ts`는 이 파일을 재-export하는 호환 계층으로 축소됐다
- * (WP-10에서 import 0건 확인 후 삭제 예정). refresh 실행 자체는 WP-02에서
+ * 유일한 소유 파일(WP-10에서 구 경로 `common/utils/api.ts` 호환 shim 삭제 완료 — `common/api`
+ * 배럴 또는 이 파일을 직접 import할 것). refresh 실행 자체는 WP-02에서
  * `common/auth/sessionCoordinator.ts`로 옮겼다 — 이 파일은 "언제 호출할지"만 결정한다.
  *
  * 베이스 URL은 `src/common/config/env.ts` 에서 단일 진실로 관리.

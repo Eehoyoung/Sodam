@@ -1,7 +1,7 @@
-import api from '../../../../common/utils/api';
+import api from '../../../../common/api/client';
 import managerService from '../managerService';
 
-jest.mock('../../../../common/utils/api', () => ({
+jest.mock('../../../../common/api/client', () => ({
     __esModule: true,
     default: {get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn()},
 }));

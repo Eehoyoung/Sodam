@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /**
  * 직원 본인 시급 이력 (E-NEW-02).

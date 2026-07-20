@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 import type {ElectronicSignatureEnvelope} from '../types';
 
 const base = (envelopeId: number) => `/api/e-sign/envelopes/${envelopeId}`;

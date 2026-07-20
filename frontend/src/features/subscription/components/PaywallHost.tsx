@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {setOnPlanRequired, PlanRequiredInfo} from '../../../common/utils/api';
+import {setOnPlanRequired, PlanRequiredInfo} from '../../../common/api';
 import {navigate} from '../../../navigation/navigationRef';
 import PaywallSheet from './PaywallSheet';
 

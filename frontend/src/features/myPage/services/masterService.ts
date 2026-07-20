@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 // [API Mapping] Master (사장) MyPage APIs — Phase 2 minimal integration
 

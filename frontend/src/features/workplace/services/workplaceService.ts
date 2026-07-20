@@ -1,5 +1,5 @@
 import {Workplace} from '../types';
-import {api} from '../../../common/utils/api';
+import {api} from '../../../common/api';
 
 /**
  * 매장 관리 서비스

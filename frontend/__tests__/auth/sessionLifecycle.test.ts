@@ -1,8 +1,8 @@
 import authService from '../../src/features/auth/services/authService';
-import TokenManager from '../../src/services/TokenManager';
-import api from '../../src/common/utils/api';
+import TokenManager from '../../src/common/auth/tokenStore';
+import api from '../../src/common/api/client';
 
-jest.mock('../../src/common/utils/api', () => ({
+jest.mock('../../src/common/api/client', () => ({
     __esModule: true,
     default: {
         get: jest.fn(),
@@ -13,7 +13,7 @@ jest.mock('../../src/common/utils/api', () => ({
     },
 }));
 
-jest.mock('../../src/services/TokenManager', () => ({
+jest.mock('../../src/common/auth/tokenStore', () => ({
     __esModule: true,
     default: {
         getAccess: jest.fn(),

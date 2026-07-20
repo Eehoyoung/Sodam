@@ -3,11 +3,9 @@
  * 단일 소유자 (Phase E, WP-02 2단계).
  *
  * `common/api/client.ts`에 있던 `refreshAccessToken()` 구현을 그대로 옮겼다(동작 변경 없음).
- * TokenManager는 일부러 구 경로(`services/TokenManager`)에서 import한다 — 다수 기존 테스트가
- * `jest.mock('.../services/TokenManager', ...)`로 이 경로를 모킹하고 있어(sessionLifecycle.test.ts
- * 등), 코디네이터가 신 경로(`common/auth/tokenStore`)를 직접 import하면 그 모킹이 우회돼 실제
- * storage I/O를 타게 된다. `services/TokenManager.ts` 자체가 `tokenStore.ts`의 재-export이므로
- * 런타임 객체는 동일하다 — WP-10에서 구 경로 호출부가 모두 이관된 뒤에만 이 import를 정리한다.
+ * TokenManager는 `services/TokenManager.ts` 호환 shim이 삭제된 뒤(WP-10) `common/auth/tokenStore`를
+ * 정식 경로로 import한다 — `jest.mock('.../common/auth/tokenStore', ...)`로 모킹하는 테스트
+ * (sessionLifecycle.test.ts 등)도 동일 경로로 갱신되어 있다.
  *
  * login/kakaoLogin/appleLogin/logout — 실제 HTTP 호출·응답 매핑·토큰 반영 구현은 여전히
  * `features/auth/services/authService.ts`가 소유한다. 이 파일은 계획서가 요구하는 최종 형태
@@ -27,7 +25,7 @@
  */
 import axios from 'axios';
 import authService, {type AuthResponse, type LoginRequest} from '../../features/auth/services/authService';
-import TokenManager from '../../services/TokenManager';
+import TokenManager from './tokenStore';
 import {env} from '../config/env';
 
 const BASE_URL = env.apiBaseUrl;

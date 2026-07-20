@@ -1,7 +1,6 @@
 // tokenStore — AsyncStorage-backed token storage using unifiedStorage (WP-02).
-// `services/TokenManager.ts`에 있던 구현을 그대로 옮겼다 — 메서드 시그니처는 바꾸지 않는다
-// (기존 250여 개 호출부·테스트의 jest.mock('services/TokenManager', ...) 호환을 위해
-// services/TokenManager.ts는 이 파일을 재-export하는 호환 shim으로 남는다).
+// `services/TokenManager.ts`에 있던 구현을 그대로 옮겼다(메서드 시그니처 동일) — 호환 shim은
+// WP-10에서 기존 호출부·테스트를 모두 이 경로로 이관한 뒤 삭제했다.
 
 import {unifiedStorage} from '../utils/unifiedStorage';
 import type {AuthTokens} from './types';

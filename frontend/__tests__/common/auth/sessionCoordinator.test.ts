@@ -1,7 +1,7 @@
 import axios from 'axios';
 import {refresh, subscribeSessionExpired} from '../../../src/common/auth/sessionCoordinator';
 import {emitSessionExpired, __testing__ as eventsTesting} from '../../../src/common/auth/events';
-import TokenManager from '../../../src/services/TokenManager';
+import TokenManager from '../../../src/common/auth/tokenStore';
 
 let AxiosMockAdapter: any;
 try {

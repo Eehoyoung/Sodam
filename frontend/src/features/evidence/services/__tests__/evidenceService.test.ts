@@ -1,7 +1,7 @@
 import {fetchEvidencePackage, toIsoDate} from '../evidenceService';
-import api from '../../../../common/utils/api';
+import api from '../../../../common/api/client';
 
-jest.mock('../../../../common/utils/api', () => ({
+jest.mock('../../../../common/api/client', () => ({
     __esModule: true,
     default: {get: jest.fn()},
 }));

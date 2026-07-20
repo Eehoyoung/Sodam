@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /**
  * 근무 시프트(B10/E-NEW-05).

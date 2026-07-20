@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /**
  * 근무 증거 패키지(L-NEW-05). 사장 전용.

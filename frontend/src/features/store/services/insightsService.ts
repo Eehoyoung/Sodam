@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /** 사장용 주간 인사이트(A6). BE: GET /api/stores/{storeId}/insights/weekly */
 export interface InsightItem {

@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 const accountService = {
     // [API Mapping] PUT /api/user/me — 본인 계정 정보(이름 등) 수정

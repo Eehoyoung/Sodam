@@ -1,7 +1,7 @@
 import attendanceService from '../../src/features/attendance/services/attendanceService';
 
 // Mock api client used by attendanceService
-jest.mock('../../src/common/utils/api', () => {
+jest.mock('../../src/common/api/client', () => {
   const post = jest.fn();
   const get = jest.fn();
   const put = jest.fn();
@@ -13,7 +13,7 @@ jest.mock('../../src/common/utils/api', () => {
   };
 });
 
-import apiDefault, { api } from '../../src/common/utils/api';
+import apiDefault, { api } from '../../src/common/api/client';
 
 // Helper to get the mock functions regardless of default/named import
 const getPostMock = () => (api.post as jest.Mock) || ((apiDefault as any).post as jest.Mock);

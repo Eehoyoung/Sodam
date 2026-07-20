@@ -4,8 +4,8 @@
  * BE 가 플랜 부족으로 402 + {code:'PLAN_REQUIRED', data:{requiredPlan,currentPlan}} 를 반환하면
  * setOnPlanRequired 로 등록한 콜백이 호출되고, 원본 에러는 그대로 reject 되어야 한다.
  */
-import api, {__testing__, setOnPlanRequired} from '../../../src/common/utils/api';
-import TokenManager from '../../../src/services/TokenManager';
+import api, {__testing__, setOnPlanRequired} from '../../../src/common/api/client';
+import TokenManager from '../../../src/common/auth/tokenStore';
 
 // axios-mock-adapter 가 없으면 최소 폴리필 (api.test.ts 패턴과 동일)
 let AxiosMockAdapter: any;

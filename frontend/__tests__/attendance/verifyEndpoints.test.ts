@@ -1,7 +1,7 @@
 import { verifyCheckInByNFC, verifyCheckOutByNFC } from '../../src/features/attendance/services/nfcAttendanceService';
 import { verifyCheckInByLocation, verifyCheckOutByLocation } from '../../src/features/attendance/services/locationAttendanceService';
 
-jest.mock('../../src/common/utils/api', () => {
+jest.mock('../../src/common/api', () => {
   const post = jest.fn();
   return {
     __esModule: true,
@@ -10,7 +10,7 @@ jest.mock('../../src/common/utils/api', () => {
   };
 });
 
-import apiDefault, { api } from '../../src/common/utils/api';
+import apiDefault, { api } from '../../src/common/api';
 
 const getPostMock = () => (api.post as jest.Mock) || ((apiDefault as any).post as jest.Mock);
 

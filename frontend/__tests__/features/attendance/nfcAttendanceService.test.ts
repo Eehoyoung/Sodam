@@ -2,9 +2,9 @@ import {
     verifyCheckInByNFC,
     verifyCheckOutByNFC,
 } from '../../../src/features/attendance/services/nfcAttendanceService';
-import {api} from '../../../src/common/utils/api';
+import {api} from '../../../src/common/api';
 
-jest.mock('../../../src/common/utils/api', () => ({
+jest.mock('../../../src/common/api', () => ({
     __esModule: true,
     api: {
         get: jest.fn(),

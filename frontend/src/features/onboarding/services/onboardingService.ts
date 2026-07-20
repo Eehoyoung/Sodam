@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /** 직원 온보딩 체크리스트(M-NEW-05/E-NEW-08). */
 export interface OnboardingStep {

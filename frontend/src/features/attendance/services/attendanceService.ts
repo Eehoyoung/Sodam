@@ -3,7 +3,7 @@
  * 출퇴�?기록 조회, 출근, ?�근, ?�정 �??�계 기능???�공?�니??
  */
 
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 import {
     AttendanceFilter,
     AttendanceRecord,

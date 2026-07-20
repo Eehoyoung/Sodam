@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /**
  * 연소근로자(만 18세 미만) 가드 (L-NEW-01).

@@ -425,7 +425,7 @@ describe('WP-00 계약 기준선 — 화면 직접 API 호출 (계획서 §3.2 "
     'salary/screens/PayrollRunScreen.tsx',
   ];
 
-  it('화면이 common/utils/api 를 직접 import 하는 지점이 15개로 고정되어 있다(WP-01/04에서 feature service 뒤로 이관 대상)', () => {
+  it('화면이 common/api 를 직접 import 하는 지점이 15개로 고정되어 있다(WP-01/04에서 feature service 뒤로 이관 대상)', () => {
     expect(DIRECT_SCREENS).toHaveLength(15);
     expect(new Set(DIRECT_SCREENS).size).toBe(15);
   });

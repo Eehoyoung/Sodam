@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /**
  * 법정 장부 자료(B8/L-NEW-03) — 임금대장(§48①)·근로자명부(§41).

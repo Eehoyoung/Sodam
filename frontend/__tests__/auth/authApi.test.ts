@@ -1,7 +1,7 @@
-import api from '../../src/common/utils/api';
+import api from '../../src/common/api/client';
 import authApi from '../../src/features/auth/services/authApi';
 
-jest.mock('../../src/common/utils/api', () => ({
+jest.mock('../../src/common/api/client', () => ({
   __esModule: true,
   default: {
     get: jest.fn(),
@@ -33,7 +33,7 @@ describe('authApi', () => {
 
     await authApi.checkEmail('user@example.com');
 
-    // api.get(url, params) — the second arg IS the params object (see common/utils/api.ts).
+    // api.get(url, params) — the second arg IS the params object (see common/api.ts).
     // Passing {params: {email}} here double-wraps it and the query string never gets sent.
     expect(api.get).toHaveBeenCalledWith('/api/auth/email-check', {email: 'user@example.com'});
   });

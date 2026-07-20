@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /** 직원 서류함(A5). BE: /api/stores/{storeId}/employees/{employeeId}/documents */
 export type DocumentType = 'HEALTH_CERTIFICATE' | 'LABOR_CONTRACT' | 'BANKBOOK' | 'ID_CARD' | 'ETC';

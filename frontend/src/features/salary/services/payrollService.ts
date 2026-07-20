@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 // [API Mapping] Payroll endpoints per Phase 1 (2025-10-02)
 // - POST /api/payroll/calculate

@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /** 긱워커 연간 사업소득·환급(B3). BE: GET /api/personal-users/{userId}/annual-tax-summary (ApiResponse 래핑) */
 export interface WorkplaceIncome {

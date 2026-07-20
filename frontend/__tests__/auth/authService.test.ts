@@ -1,8 +1,8 @@
-import api from '../../src/common/utils/api';
+import api from '../../src/common/api/client';
 import authService from '../../src/features/auth/services/authService';
-import TokenManager from '../../src/services/TokenManager';
+import TokenManager from '../../src/common/auth/tokenStore';
 
-jest.mock('../../src/common/utils/api', () => ({
+jest.mock('../../src/common/api/client', () => ({
   __esModule: true,
   default: {
     get: jest.fn(),

@@ -1,7 +1,7 @@
 import wageService from '../../src/features/wage/services/wageService';
 
 // Mock api client used by wageService
-jest.mock('../../src/common/utils/api', () => {
+jest.mock('../../src/common/api/client', () => {
   const post = jest.fn();
   const get = jest.fn();
   const put = jest.fn();
@@ -13,7 +13,7 @@ jest.mock('../../src/common/utils/api', () => {
   };
 });
 
-import apiDefault, { api } from '../../src/common/utils/api';
+import apiDefault, { api } from '../../src/common/api/client';
 
 const getPostMock = () => (api.post as jest.Mock) || ((apiDefault as any).post as jest.Mock);
 const getGetMock = () => (api.get as jest.Mock) || ((apiDefault as any).get as jest.Mock);

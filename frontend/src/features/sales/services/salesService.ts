@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /**
  * 일일 매출 + 인건비율 — 사장이 하루 매출을 기록하면 정산주기/일별 인건비율을 보여준다.

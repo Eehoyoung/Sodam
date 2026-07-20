@@ -3,7 +3,7 @@
  * 정부 지원 정책 정보 조회 및 관리 기능을 제공합니다.
  */
 
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 import {PolicyInfo, InfoCategory, InfoDto} from '../types';
 
 // 공통 DTO -> UI 타입 매퍼

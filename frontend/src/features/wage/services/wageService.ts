@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 // [API Mapping] Wage endpoints standardization per Phase 1 (2025-10-02)
 // - PUT /api/wages/store/{storeId}/standard?standardHourlyWage=<number>

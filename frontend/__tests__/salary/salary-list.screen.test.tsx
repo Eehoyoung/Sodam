@@ -33,7 +33,7 @@ RNModule.FlatList = ({data, renderItem, keyExtractor, ListEmptyComponent, conten
 // 취급했다. 그 결과 금액·기간이 안 보이고 payrollId 는 항상 undefined/0 이 되어 상세화면 진입이
 // 막혔다.
 //
-// 여기서는 payrollService 를 목하지 않고 common/utils/api(axios 래퍼)만 목해 BE 원본 응답 형태를
+// 여기서는 payrollService 를 목하지 않고 common/api(axios 래퍼)만 목해 BE 원본 응답 형태를
 // 그대로 흘려보낸다 — service 의 정규화 + 화면의 렌더링을 함께(엔드투엔드로) 검증하기 위함이다.
 
 const mockNavigate = jest.fn();
@@ -52,7 +52,7 @@ jest.mock('../../src/common/realtime/useStoreLiveSync', () => ({
   default: jest.fn(),
 }));
 
-jest.mock('../../src/common/utils/api', () => {
+jest.mock('../../src/common/api/client', () => {
   const get = jest.fn();
   return {
     __esModule: true,
@@ -61,7 +61,7 @@ jest.mock('../../src/common/utils/api', () => {
   };
 });
 
-import api from '../../src/common/utils/api';
+import api from '../../src/common/api/client';
 import SalaryListScreen from '../../src/features/salary/screens/SalaryListScreen';
 
 const getMock = api.get as jest.Mock;

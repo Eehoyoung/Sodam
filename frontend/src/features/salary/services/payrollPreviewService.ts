@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /** 급여 미리보기(D0 aha). BE: GET /api/stores/{storeId}/payroll-preview */
 export interface PayrollPreview {

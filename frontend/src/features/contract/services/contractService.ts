@@ -2,7 +2,7 @@
  * S1 전자 근로계약서 — API 클라이언트.
  * BE LaborContractController 엔드포인트와 1:1 매핑.
  */
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 import type {
     LaborContract,
     LaborContractContext,

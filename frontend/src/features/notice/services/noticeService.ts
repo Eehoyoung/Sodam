@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /**
  * 매장 공지 + 읽음확인 (M-NEW-04/E-NEW-06).

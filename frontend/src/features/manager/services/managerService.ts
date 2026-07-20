@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 import type {DelegationAudit, ManagedStore, ManagerPermission, StoreManager} from '../types';
 
 export interface AppointManagerResult {

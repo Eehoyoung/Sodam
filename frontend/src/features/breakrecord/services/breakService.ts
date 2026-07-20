@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /**
  * 휴게 부여 증빙(L-NEW-04, 근로기준법 §54).

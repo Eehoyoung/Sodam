@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 export type PlanType = 'FREE' | 'STARTER' | 'PRO' | 'PREMIUM';
 export type SubscriptionStatus =

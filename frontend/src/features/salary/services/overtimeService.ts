@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /**
  * 연장근로 한도(주 52h, §53) 경보 (B5/L-NEW-02).

@@ -51,7 +51,7 @@ jest.mock('../../../src/contexts/AuthContext', () => ({
     AuthProvider: ({children}: any) => children,
 }));
 
-jest.mock('../../../src/common/utils/api', () => {
+jest.mock('../../../src/common/api/client', () => {
     const api = {
         get: jest.fn(),
         post: jest.fn(),
@@ -72,7 +72,7 @@ jest.mock('../../../src/features/manager/hooks/useManagedStores', () => ({
 jest.mock('../../../src/theme/tokens', () => jest.requireActual('../../../src/theme/tokens'));
 
 import EmployeeAttendanceHome from '../../../src/features/attendance/screens/EmployeeAttendanceHome';
-import api from '../../../src/common/utils/api';
+import api from '../../../src/common/api/client';
 
 const apiMock = api as jest.Mocked<typeof api>;
 

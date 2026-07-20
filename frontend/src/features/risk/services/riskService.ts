@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /**
  * 노무 리스크 + 채용 비용 시뮬레이션 (계약 기반 — FE 선행 구현).

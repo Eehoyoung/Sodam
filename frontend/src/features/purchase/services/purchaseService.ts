@@ -3,7 +3,7 @@
  *
  * 전부 사장(@MasterOnly) API. 일부 BE 가 {data: T} 래핑일 수 있어 방어적 파싱.
  */
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 import {
     Purchase,
     PriceTrend,

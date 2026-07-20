@@ -1,4 +1,4 @@
-import {api} from '../../../common/utils/api';
+import {api} from '../../../common/api';
 
 // [API Mapping] NFC verify standardized; legacy NFC verify endpoint fallback removed per Phase 0 AC (2025-10-02).
 

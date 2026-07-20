@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /**
  * 매장 NFC 태그 관리(사장 전용) — 대리출근 방지를 위한 매장-태그 매핑.

@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /**
  * 세무사 송부 (인건비 내역서). BE: /api/stores/{storeId}/tax-reports

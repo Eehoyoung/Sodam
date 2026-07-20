@@ -1,5 +1,5 @@
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 import {AppToast} from '../../../common/components/ds';
 import {logger} from '../../../utils/logger';
 

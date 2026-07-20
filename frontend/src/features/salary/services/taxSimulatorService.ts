@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /** 세무 시뮬레이터(T-NEW-05). BE: GET /api/tax/simulate?income=&expenses= */
 export interface TaxSimulation {

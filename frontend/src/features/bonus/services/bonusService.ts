@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /**
  * 즉시 보너스(비정기 포상금) — "오늘 바빠서 1만원 더" 같은 사장의 즉흥 지급 결정.

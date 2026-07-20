@@ -1,4 +1,4 @@
-import TokenManager from '../../src/services/TokenManager';
+import TokenManager from '../../src/common/auth/tokenStore';
 
 describe('TokenManager', () => {
   beforeEach(async () => {

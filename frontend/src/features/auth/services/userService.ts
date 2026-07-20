@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 // [API Mapping] User APIs — Phase 2 minimal integration
 // - POST /api/users/{userId}/purpose

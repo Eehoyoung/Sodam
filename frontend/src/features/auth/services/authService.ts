@@ -1,5 +1,5 @@
-import api from '../../../common/utils/api';
-import TokenManager from '../../../services/TokenManager';
+import api from '../../../common/api/client';
+import TokenManager from '../../../common/auth/tokenStore';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
 import {logger} from '../../../utils/logger';
 

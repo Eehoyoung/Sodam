@@ -1,4 +1,4 @@
-import {api} from '../../../common/utils/api';
+import {api} from '../../../common/api';
 
 export interface LocationVerifyRequest {
     employeeId: number;

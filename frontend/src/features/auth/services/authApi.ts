@@ -1,5 +1,5 @@
 import { Linking } from 'react-native';
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 import {env as sodamEnv} from '../../../common/config/env';
 
 // Lightweight auth API wrapper for RN client

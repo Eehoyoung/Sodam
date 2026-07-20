@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /**
  * 원천세 월 신고 요약 + 부가세 분기 기한 (B6/T-NEW-04·06).

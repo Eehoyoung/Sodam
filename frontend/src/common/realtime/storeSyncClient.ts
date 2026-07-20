@@ -12,7 +12,7 @@
  */
 import {Client, type IMessage, type StompSubscription} from '@stomp/stompjs';
 import {env} from '../config/env';
-import TokenManager from '../../services/TokenManager';
+import TokenManager from '../auth/tokenStore';
 
 export interface SyncEvent {
     type: 'EMPLOYEES_CHANGED' | 'ATTENDANCE_CHANGED' | 'STORE_UPDATED' | 'PAYROLL_CHANGED' | string;

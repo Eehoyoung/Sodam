@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /** 두루누리·고용지원금 자격(B7). BE: GET /api/stores/{storeId}/subsidy/eligibility */
 export interface SubsidyCandidate {

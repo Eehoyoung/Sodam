@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /** 간이지급명세서 자료(A2). BE: GET /api/stores/{storeId}/tax/withholding-statement */
 export interface WithholdingLine {

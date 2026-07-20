@@ -1,4 +1,4 @@
-import api from '../utils/api';
+import api from '../api/client';
 import {Platform} from 'react-native';
 
 export type DevicePlatform = 'ANDROID' | 'IOS' | 'WEB';

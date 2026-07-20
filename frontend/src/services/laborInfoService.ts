@@ -1,4 +1,4 @@
-import api from '../common/utils/api';
+import api from '../common/api/client';
 
 /**
  * 노무 정보 DTO

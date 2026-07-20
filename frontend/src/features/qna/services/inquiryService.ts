@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 // Q&A 화면 1:1 문의 접수. 공개 팁/FAQ 콘텐츠(qnaService)와는 별개 API — 혼용 금지.
 

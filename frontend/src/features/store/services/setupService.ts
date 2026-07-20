@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /**
  * 매장 설정 완성도 + 다음 한 가지 액션 (GR-NEW-06).

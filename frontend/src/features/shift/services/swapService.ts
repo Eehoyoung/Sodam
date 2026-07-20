@@ -1,4 +1,4 @@
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 
 /**
  * 대타(시프트 교대) 모집 — 사장이 시프트에 대해 모집을 열고, 지원자 중 1명을 확정한다.

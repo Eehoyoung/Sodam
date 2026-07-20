@@ -47,12 +47,12 @@ jest.mock('react-native-linear-gradient', () => 'LinearGradient');
 
 jest.mock('../../../src/theme/tokens', () => jest.requireActual('../../../src/theme/tokens'));
 
-jest.mock('../../../src/common/utils/api', () => {
+jest.mock('../../../src/common/api/client', () => {
     const api = {get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn()};
     return {__esModule: true, default: api, setOnUnauthorized: jest.fn()};
 });
 
-import api from '../../../src/common/utils/api';
+import api from '../../../src/common/api/client';
 import MyContractScreen from '../../../src/features/contract/screens/MyContractScreen';
 import ContractSignScreen from '../../../src/features/contract/screens/ContractSignScreen';
 import SendContractScreen from '../../../src/features/contract/screens/SendContractScreen';

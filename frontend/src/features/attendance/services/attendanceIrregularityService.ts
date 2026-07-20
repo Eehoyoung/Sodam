@@ -2,7 +2,7 @@
  * 월급제 정규직 지각/조퇴/결근 — API 클라이언트.
  * BE AttendanceIrregularityController 엔드포인트와 1:1 매핑.
  */
-import api from '../../../common/utils/api';
+import api from '../../../common/api/client';
 import type {AttendanceIrregularity, AttendanceNoticeType} from '../types';
 
 export const attendanceIrregularityService = {
