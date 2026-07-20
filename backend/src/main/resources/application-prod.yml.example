@@ -54,7 +54,8 @@ spring:
             client-id: ${KAKAO_CLIENT_ID}
             client-secret: ${KAKAO_CLIENT_SECRET}
             # 앱 전용 커스텀 스킴(sodam://) — FE(env.ts kakaoRedirectUri)·Kakao Developers 콘솔 등록값과 일치 필요
-            redirect-uri: sodam://oauth/kakao
+            # .env 의 KAKAO_REDIRECT_URI 로 즉시 override 가능(값을 안 채우면 기본값 사용) — application.yml 과 동일 패턴
+            redirect-uri: ${KAKAO_REDIRECT_URI:sodam://oauth/kakao}
 
 jwt:
   secret: ${JWT_SECRET}
