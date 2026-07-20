@@ -1,0 +1,5 @@
+# git worktree 생성 시 복사할 미추적 파일 (로컬 시크릿/환경 파일)
+.env
+backend/.env
+frontend/.env
+frontend/android/local.properties

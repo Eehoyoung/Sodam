@@ -1,0 +1,21 @@
+# graphify가 그래프 생성 시 스캔하면 안 되는 민감 데이터.
+# .gitignore를 존중하지만, git에 추적되지 않으면서 아직 .gitignore 패턴에
+# 안 걸리는 항목(예: 서명 완료된 근로계약서 실물 PDF)을 여기서 명시적으로 덧붙인다.
+# .gitignore 규칙 위에 추가로만 제외하며, 이미 제외된 걸 다시 포함시키지 않는다.
+
+# 실서명 근로계약서/전자서명 산출물 (PII: 성명·서명·계약조건)
+backend/private-esign-objects/
+
+# 실 운영 시크릿 (example만 커밋 대상, 실파일은 애초에 있으면 안 됨)
+application-prod.yml
+**/application-prod.yml
+!**/application-prod.yml.example
+
+# 서명/인증서/키 (아직 저장소에 없지만 iOS 출시 진행 중 유입 예정)
+*.p8
+*.jks
+GoogleService-Info.plist
+google-services.json
+
+# graphify 자체 산출물 (스캔 대상으로 재수집 방지)
+graphify-out/

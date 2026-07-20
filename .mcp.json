@@ -1,0 +1,58 @@
+{
+  "mcpServers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer ${GITHUB_PAT}"
+      }
+    },
+    "mysql": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@benborla29/mcp-server-mysql"],
+      "env": {
+        "MYSQL_HOST": "127.0.0.1",
+        "MYSQL_PORT": "13306",
+        "MYSQL_USER": "sodam",
+        "MYSQL_PASS": "${SODAM_DB_PASSWORD:-sodam_dev_pass}",
+        "MYSQL_DB": "sodam",
+        "ALLOW_INSERT_OPERATION": "false",
+        "ALLOW_UPDATE_OPERATION": "false",
+        "ALLOW_DELETE_OPERATION": "false"
+      }
+    },
+    "mobile": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@mobilenext/mobile-mcp@latest"]
+    },
+    "context7": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@upstash/context7-mcp"],
+      "env": {
+        "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY:-}"
+      }
+    },
+    "serena": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": [
+        "/c", "uvx",
+        "--from", "git+https://github.com/oraios/serena",
+        "serena", "start-mcp-server",
+        "--context", "ide-assistant",
+        "--project", "C:\\Users\\LeeHoYoung\\Downloads\\Project_sodam"
+      ]
+    },
+    "semgrep": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": ["/c", "docker", "run", "-i", "--rm", "ghcr.io/semgrep/mcp", "-t", "stdio"],
+      "env": {
+        "SEMGREP_APP_TOKEN": "${SEMGREP_APP_TOKEN:-}"
+      }
+    }
+  }
+}

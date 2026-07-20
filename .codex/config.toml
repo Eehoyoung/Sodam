@@ -1,0 +1,74 @@
+[agents]
+max_threads = 6
+max_depth = 1
+
+[mcp_servers.context7]
+command = "cmd"
+args = [
+    "/c",
+    "npx",
+    "-y",
+    "@upstash/context7-mcp",
+]
+env_vars = ["CONTEXT7_API_KEY"]
+
+[mcp_servers.github]
+url = "https://api.githubcopilot.com/mcp/"
+bearer_token_env_var = "GITHUB_PAT"
+
+[mcp_servers.mobile]
+command = "cmd"
+args = [
+    "/c",
+    "npx",
+    "-y",
+    "@mobilenext/mobile-mcp@latest",
+]
+
+[mcp_servers.semgrep]
+command = "cmd"
+args = [
+    "/c",
+    "docker",
+    "run",
+    "-i",
+    "--rm",
+    "ghcr.io/semgrep/mcp",
+    "-t",
+    "stdio",
+]
+env_vars = ["SEMGREP_APP_TOKEN"]
+
+[mcp_servers.mysql]
+command = "cmd"
+args = [
+    "/c",
+    "npx",
+    "-y",
+    "@benborla29/mcp-server-mysql",
+]
+
+[mcp_servers.mysql.env]
+MYSQL_HOST = "127.0.0.1"
+MYSQL_PORT = "13306"
+MYSQL_USER = "sodam"
+MYSQL_PASS = "sodam_dev_pass"
+MYSQL_DB = "sodam"
+ALLOW_INSERT_OPERATION = "false"
+ALLOW_UPDATE_OPERATION = "false"
+ALLOW_DELETE_OPERATION = "false"
+
+[mcp_servers.serena]
+command = "cmd"
+args = [
+    "/c",
+    "uvx",
+    "--from",
+    "git+https://github.com/oraios/serena",
+    "serena",
+    "start-mcp-server",
+    "--context",
+    "ide-assistant",
+    "--project",
+    'C:\Users\LeeHoYoung\Downloads\Project_sodam',
+]

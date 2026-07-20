@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc '\"$(git rev-parse --show-toplevel)/.codex/hooks/block-secrets.sh\"'",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& (Join-Path (git rev-parse --show-toplevel) '.codex\\hooks\\block-secrets.ps1')\"",
+            "statusMessage": "Checking for secrets"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc '\"$(git rev-parse --show-toplevel)/.codex/hooks/format-on-save.sh\"'",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& (Join-Path (git rev-parse --show-toplevel) '.codex\\hooks\\format-on-save.ps1')\"",
+            "statusMessage": "Formatting frontend source"
+          }
+        ]
+      }
+    ]
+  }
+}
