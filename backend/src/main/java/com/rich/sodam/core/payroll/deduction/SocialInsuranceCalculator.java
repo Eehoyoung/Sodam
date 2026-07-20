@@ -5,7 +5,9 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.LocalDate;
+import java.util.Objects;
 
 /**
  * 4대보험 근로자 부담 공제 계산기 (2026). 단일 책임(SRP).
@@ -15,6 +17,12 @@ import java.time.LocalDate;
  */
 @Component
 public class SocialInsuranceCalculator {
+
+    private final Clock clock;
+
+    public SocialInsuranceCalculator(Clock clock) {
+        this.clock = Objects.requireNonNull(clock, "clock");
+    }
 
     public int totalEmployeeDeduction(int grossWage) {
         return nationalPension(grossWage)
@@ -33,12 +41,14 @@ public class SocialInsuranceCalculator {
     }
 
     public int nationalPension(int grossWage) {
-        return nationalPension(grossWage, LocalDate.now());
+        return nationalPension(grossWage, LocalDate.now(clock));
     }
 
     /**
      * 국민연금 근로자 부담액. 기준소득월액 상·하한 캡은 {@code onDate} 기준 적용분으로 분기한다
-     * (캡은 매년 7.1 갱신). 기존 무인자 버전은 현재 일자를 사용해 호환을 유지한다.
+     * (캡은 매년 7.1 갱신). 기존 무인자 버전은 주입된 {@link Clock}(Asia/Seoul, {@code TimeConfig})
+     * 기준 오늘 일자를 사용해 호환을 유지하되, 벽시계 직접 호출을 제거해 테스트에서 결정론적으로
+     * 고정할 수 있게 한다.
      */
     public int nationalPension(int grossWage, LocalDate onDate) {
         BigDecimal base = BigDecimal.valueOf(grossWage)
