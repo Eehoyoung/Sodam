@@ -49,7 +49,7 @@ jest.mock('../../../src/theme/tokens', () => jest.requireActual('../../../src/th
 
 jest.mock('../../../src/common/api/client', () => {
     const api = {get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn()};
-    return {__esModule: true, default: api, setOnUnauthorized: jest.fn()};
+    return {__esModule: true, default: api};
 });
 
 import api from '../../../src/common/api/client';

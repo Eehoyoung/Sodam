@@ -57,11 +57,6 @@ apiClient.interceptors.request.use(
 // 401 처리 상태
 let isRefreshing = false;
 let refreshQueue: Array<(token: string | null) => void> = [];
-let onUnauthorized: (() => void) | null = null;
-
-export const setOnUnauthorized = (cb: (() => void) | null) => {
-    onUnauthorized = cb;
-};
 
 // 402 처리: 플랜이 부족할 때 BE 가 PLAN_REQUIRED 로 거절 → FE 가 페이월을 띄움
 export interface PlanRequiredInfo {
@@ -144,10 +139,7 @@ apiClient.interceptors.response.use(
                     refreshQueue = [];
                     await TokenManager.clear();
                     try { await unifiedStorage.removeItem('userToken'); } catch (_) { /* empty */ }
-                    // WP-02 2단계: subscribeSessionExpired(다중 구독) 신설 — 기존 setOnUnauthorized
-                    // (단일 콜백) 계약을 보호하는 api.test.ts/client.test.ts를 그대로 두기 위해 병행 호출.
-                    // AuthContext는 이번 커밋에서 subscribeSessionExpired로 이관했다.
-                    if (onUnauthorized) {onUnauthorized();}
+                    // 세션 만료 알림 — AuthContext가 subscribeSessionExpired로 구독한다(WP-02 2단계).
                     emitSessionExpired();
                     return Promise.reject(e);
                 } finally {

@@ -149,7 +149,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
     // 전역 401(리프레시 실패 등) 발생 시 인증 상태 재확인 + 세션 만료 안내 (갭분석 A1)
     // 1회 등록 — refetchAuthRef 통해 항상 최신 함수 호출.
     // WP-02 2단계(Phase E): 기존 setOnUnauthorized(단일 콜백)에서 subscribeSessionExpired(다중
-    // 구독)로 이관 — client.ts는 두 메커니즘을 당분간 병행 호출한다(WP-10에서 구 경로 정리 예정).
+    // 구독)로 이관 완료(구 API는 WP-10에서 삭제).
     useEffect(() => {
         return subscribeSessionExpired(() => {
             // 여기서 user 를 비우면 Protected(!user → Login reset)가 의도된 SessionExpired 안내 화면을

@@ -60,7 +60,7 @@ jest.mock('../../../src/common/api/client', () => {
         put: jest.fn(),
         delete: jest.fn(),
     };
-    return {__esModule: true, default: api, setOnUnauthorized: jest.fn()};
+    return {__esModule: true, default: api};
 });
 
 jest.mock('../../../src/features/manager/hooks/useManagedStores', () => ({

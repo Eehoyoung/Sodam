@@ -7,7 +7,7 @@ import PaywallSheet from './PaywallSheet';
  * 전역 페이월 호스트. BE가 402(PLAN_REQUIRED)를 반환하면 api 인터셉터가 setOnPlanRequired 콜백을
  * 호출하고, 여기서 디자이너의 {@link PaywallSheet}를 띄운다. 업그레이드 시 구독 화면으로 이동.
  *
- * 401(setOnUnauthorized)과 동일하게 앱 루트(AuthProvider)에 1회 마운트한다.
+ * 401(subscribeSessionExpired)과 동일하게 앱 루트(AuthProvider)에 1회 마운트한다.
  */
 const PLAN_LABELS: Record<string, string> = {
     FREE: '무료',

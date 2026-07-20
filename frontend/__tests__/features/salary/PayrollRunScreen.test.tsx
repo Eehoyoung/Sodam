@@ -51,7 +51,7 @@ jest.mock('../../../src/common/api/client', () => {
         put: jest.fn(),
         delete: jest.fn(),
     };
-    return {__esModule: true, default: api, setOnUnauthorized: jest.fn()};
+    return {__esModule: true, default: api};
 });
 
 // AppToast 는 listener 패턴(emit→listeners.forEach)으로 동작 — 테스트에서 host 미마운트면 no-op.
