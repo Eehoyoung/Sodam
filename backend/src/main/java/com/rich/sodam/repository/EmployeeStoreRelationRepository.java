@@ -29,6 +29,12 @@ public interface EmployeeStoreRelationRepository extends JpaRepository<EmployeeS
     List<EmployeeStoreRelation> findByEmployeeProfile(EmployeeProfile employeeProfile);
 
     /**
+     * 특정 직원의 활성 매장 관계만 조회 (퇴사·비활성 매장 제외).
+     * v3 "링 & 패스"(docs/260720 계획서 G-2) — 매장 패스 전환 UI에 퇴사 매장이 섞여 나오는 것을 방지.
+     */
+    List<EmployeeStoreRelation> findByEmployeeProfileAndIsActiveTrue(EmployeeProfile employeeProfile);
+
+    /**
      * 특정 매장의 모든 직원 관계 조회
      */
     List<EmployeeStoreRelation> findByStore(Store store);

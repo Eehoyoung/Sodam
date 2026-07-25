@@ -5,15 +5,22 @@ import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.TimeOff;
 import com.rich.sodam.domain.type.TimeOffStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
+import jakarta.persistence.LockModeType;
 
 @Repository
 public interface TimeOffRepository extends JpaRepository<TimeOff, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM TimeOff t WHERE t.id = :id")
+    Optional<TimeOff> findByIdForUpdate(@Param("id") Long id);
 
     // 특정 매장의 모든 휴가 신청 조회
     List<TimeOff> findByStore(Store store);

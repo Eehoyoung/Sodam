@@ -3,6 +3,11 @@ package com.rich.sodam.repository;
 import com.rich.sodam.domain.JobApplication;
 import com.rich.sodam.domain.type.JobResponseStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,6 +19,10 @@ import java.util.Optional;
  * 이 레포지토리의 조회 메서드는 사용자 친화적 409를 위한 사전 체크 용도다(이중 방어의 앞단).</p>
  */
 public interface JobApplicationRepository extends JpaRepository<JobApplication, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from JobApplication a where a.id = :id")
+    Optional<JobApplication> findByIdForUpdate(@Param("id") Long id);
 
     /** 공고의 지원자 목록(최신순) — 사장 지원자 리스트. */
     List<JobApplication> findByPosting_IdOrderByCreatedAtDesc(Long postingId);

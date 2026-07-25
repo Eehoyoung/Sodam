@@ -3,11 +3,14 @@ package com.rich.sodam.repository;
 import com.rich.sodam.domain.Subscription;
 import com.rich.sodam.domain.type.SubscriptionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+
+import jakarta.persistence.LockModeType;
 
 public interface SubscriptionRepository extends JpaRepository<Subscription, Long> {
 
@@ -15,11 +18,13 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
     Optional<Subscription> findByCustomerKey(String customerKey);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from Subscription s " +
             "where s.status = com.rich.sodam.domain.type.SubscriptionStatus.ACTIVE " +
             "  and s.nextBillingAt <= :now")
     List<Subscription> findDueForBilling(LocalDateTime now);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from Subscription s " +
             "where s.status = com.rich.sodam.domain.type.SubscriptionStatus.PAST_DUE " +
             "  and s.nextBillingAt <= :now")

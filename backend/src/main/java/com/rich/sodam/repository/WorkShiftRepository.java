@@ -2,11 +2,21 @@ package com.rich.sodam.repository;
 
 import com.rich.sodam.domain.WorkShift;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface WorkShiftRepository extends JpaRepository<WorkShift, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from WorkShift s where s.id = :id")
+    Optional<WorkShift> findByIdForUpdate(@Param("id") Long id);
 
     /** 매장 기간 조회(사장) — 시프트 일자 오름차순. */
     List<WorkShift> findByStoreIdAndShiftDateBetweenOrderByShiftDateAsc(Long storeId, LocalDate from, LocalDate to);
@@ -14,9 +24,11 @@ public interface WorkShiftRepository extends JpaRepository<WorkShift, Long> {
     List<WorkShift> findByStoreIdAndShiftDateBetweenAndConfirmedAtIsNotNullOrderByShiftDateAsc(
             Long storeId, LocalDate from, LocalDate to);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<WorkShift> findByStoreIdAndShiftDateBetweenAndConfirmedAtIsNullOrderByShiftDateAsc(
             Long storeId, LocalDate from, LocalDate to);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<WorkShift> findByStoreIdAndShiftDateBetweenAndConfirmedAtIsNotNullAndConfirmationNotificationSentAtIsNullOrderByShiftDateAsc(
             Long storeId, LocalDate from, LocalDate to);
 
