@@ -19,12 +19,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 /**
  * 매장 공지 + 읽음확인 (M-NEW-04/E-NEW-06) 통합 테스트.
@@ -41,6 +45,7 @@ class StoreNoticeServiceTest {
     @Autowired private StoreRepository storeRepository;
     @Autowired private EmployeeProfileRepository employeeProfileRepository;
     @Autowired private EmployeeStoreRelationRepository relationRepository;
+    @MockBean private LiveSyncPublisher liveSyncPublisher;
 
     private int bizSeq = 0;
 
@@ -86,12 +91,15 @@ class StoreNoticeServiceTest {
         Store store = store();
         EmployeeProfile emp = employee("e1@x.com", "직원1", store);
         StoreNoticeResponse notice = noticeService.create(store.getId(), req("공지", "본문"));
+        reset(liveSyncPublisher);
 
         noticeService.ack(notice.id(), emp.getId());
         noticeService.ack(notice.id(), emp.getId());
         noticeService.ack(notice.id(), emp.getId());
 
         assertThat(readRepository.countByNoticeId(notice.id())).isEqualTo(1);
+        verify(liveSyncPublisher, times(1))
+                .publishStore(store.getId(), LiveSyncPublisher.SyncType.NOTICE_CHANGED);
     }
 
     @Test

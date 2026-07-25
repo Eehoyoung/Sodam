@@ -1,6 +1,7 @@
 package com.rich.sodam.controller;
 
 import com.rich.sodam.domain.Store;
+import com.rich.sodam.repository.AttendanceCorrectionRequestRepository;
 import com.rich.sodam.repository.AttendanceRepository;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
 import com.rich.sodam.repository.PayrollRepository;
@@ -48,6 +49,8 @@ class StoreStatsControllerTest {
     @Mock
     PayrollRepository payrollRepository;
     @Mock
+    AttendanceCorrectionRequestRepository attendanceCorrectionRequestRepository;
+    @Mock
     StoreAuthorizationPolicy guard;
 
     StoreStatsController controller;
@@ -57,7 +60,8 @@ class StoreStatsControllerTest {
     @BeforeEach
     void setUp() {
         StoreStatsService storeStatsService = new StoreStatsService(
-                storeRepository, employeeStoreRelationRepository, attendanceRepository, payrollRepository);
+                storeRepository, employeeStoreRelationRepository, attendanceRepository, payrollRepository,
+                attendanceCorrectionRequestRepository);
         controller = new StoreStatsController(storeStatsService, guard);
     }
 

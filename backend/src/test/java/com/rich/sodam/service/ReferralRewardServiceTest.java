@@ -32,7 +32,7 @@ class ReferralRewardServiceTest {
         when(referrer.getId()).thenReturn(100L);
         User referee = mock(User.class);
         Referral referral = Referral.register("CODE1234", referrer, referee); // REGISTERED
-        when(referralRepository.findByReferee_Id(20L)).thenReturn(Optional.of(referral));
+        when(referralRepository.findByRefereeIdForUpdate(20L)).thenReturn(Optional.of(referral));
 
         Optional<ReferralRewardResult> result = service.processRefereeFirstPayment(20L);
 
@@ -48,7 +48,7 @@ class ReferralRewardServiceTest {
     @Test
     @DisplayName("레퍼럴 없으면 빈 결과")
     void noReferral() {
-        when(referralRepository.findByReferee_Id(30L)).thenReturn(Optional.empty());
+        when(referralRepository.findByRefereeIdForUpdate(30L)).thenReturn(Optional.empty());
         assertThat(service.processRefereeFirstPayment(30L)).isEmpty();
     }
 
