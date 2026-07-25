@@ -2,6 +2,10 @@
  * S1 — 내 근로계약서 (직원).
  * 목록 → 상세(근로조건 카드) → 하단 CTA "내용 확인하고 서명" → ContractSignScreen.
  * 이미 서명한 계약은 서명 완료 배지를 보여주고 CTA 를 숨긴다.
+ *
+ * v3 시안(sodam-v3-08-contract.html C3) 정렬: 상세 상단에 목록 카드와 동일한 요약(계약명·
+ * 상태배지·임금/시작일) 유지, "근로조건을 확인해 주세요"는 섹션 라벨로 축소, 서명완료 안내는
+ * info-card 로 감싸 시각적으로 구분.
  */
 import React, {useCallback, useState} from 'react';
 import {Share, StyleSheet, View} from 'react-native';
@@ -11,6 +15,7 @@ import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {
     AppBadge,
     AppButton,
+    AppCard,
     AppHeader,
     AppListItem,
     AppText,
@@ -123,24 +128,38 @@ const MyContractScreen: React.FC = () => {
                         />
                     </CtaStack>
                 }>
-                <View style={styles.detailHead}>
-                    <AppText variant="headingSm">근로조건을 확인해 주세요</AppText>
-                    {selected.signed ? (
-                        <AppBadge label="서명 완료" tone="success" />
-                    ) : (
-                        <AppBadge label="서명 대기" tone="warning" />
-                    )}
-                </View>
-                <AppText variant="bodyMd" tone="secondary" style={styles.detailSub}>
-                    아래 근로조건을 꼼꼼히 확인하신 뒤 서명해 주세요.
+                {/* v3 시안(C3): 목록 카드와 같은 요약(계약명·상태배지·임금/시작일)을 상세 상단에도 유지 */}
+                <AppCard variant="flat" style={styles.summaryCard}>
+                    <View style={styles.detailHead}>
+                        <AppText variant="titleMd" numberOfLines={1} style={styles.flex}>
+                            {titleFor(selected)}
+                        </AppText>
+                        {selected.signed ? (
+                            <AppBadge label="서명 완료" tone="success" />
+                        ) : (
+                            <AppBadge label="서명 대기" tone="warning" />
+                        )}
+                    </View>
+                    <AppText variant="caption" tone="secondary">{subtitleFor(selected)}</AppText>
+                </AppCard>
+
+                <AppText variant="caption" tone="secondary" weight="800" style={styles.sectionLabel}>
+                    근로조건을 확인해 주세요
                 </AppText>
+                {selected.signed ? null : (
+                    <AppText variant="bodyMd" tone="secondary" style={styles.detailSub}>
+                        아래 근로조건을 꼼꼼히 확인하신 뒤 서명해 주세요.
+                    </AppText>
+                )}
 
                 <ContractTermsCard contract={selected} />
 
                 {selected.signed && selected.signedAt ? (
-                    <AppText variant="caption" tone="tertiary" style={styles.signedNote}>
-                        {formatSignedAt(selected.signedAt)}에 서명을 완료했어요.
-                    </AppText>
+                    <AppCard variant="flat" style={styles.signedNote}>
+                        <AppText variant="caption" tone="secondary">
+                            {formatSignedAt(selected.signedAt)}에 서명을 완료했어요.
+                        </AppText>
+                    </AppCard>
                 ) : null}
             </ScreenContainer>
         );
@@ -162,7 +181,7 @@ const MyContractScreen: React.FC = () => {
                     {contracts.map(item => (
                         <AppListItem
                             key={String(item.id)}
-                            title={item.workLocation ? `${item.workLocation} 근로계약서` : '근로계약서'}
+                            title={titleFor(item)}
                             subtitle={subtitleFor(item)}
                             right={
                                 item.signed ? (
@@ -179,6 +198,10 @@ const MyContractScreen: React.FC = () => {
         </ScreenContainer>
     );
 };
+
+function titleFor(c: LaborContract): string {
+    return c.workLocation ? `${c.workLocation} 근로계약서` : '근로계약서';
+}
 
 function subtitleFor(c: LaborContract): string {
     // 월급제는 hourlyWage 가 환산 통상시급을 담고 있어 그대로 쓰면 "시급"으로 오라벨링된다.
@@ -198,13 +221,16 @@ function formatSignedAt(iso: string): string {
 
 const styles = StyleSheet.create({
     list: {gap: spacing.sm},
+    summaryCard: {gap: spacing.xs, marginBottom: spacing.md},
     detailHead: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: spacing.sm,
     },
-    detailSub: {marginTop: spacing.sm, marginBottom: spacing.lg},
+    flex: {flex: 1, minWidth: 0},
+    sectionLabel: {letterSpacing: 0.4, marginBottom: spacing.sm},
+    detailSub: {marginBottom: spacing.lg},
     signedNote: {marginTop: spacing.md},
 });
 

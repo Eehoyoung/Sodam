@@ -116,7 +116,9 @@ const ManagerAppointSection: React.FC<Props> = ({storeId, employeeId, employeeNa
     });
 
     return (
-        <AppCard variant="warm" style={styles.card}>
+        // v3 링&패스: 아티팩트 N5는 중립 카드(info-card/list-item 톤)를 쓴다 — warm(카드2) 대신 flat으로 정렬.
+        // ⚠️ 위임 로직(useAppointManager/useUpdateManagerPermissions 등)은 무변경 — 카드 톤만 조정.
+        <AppCard variant="flat" style={styles.card}>
             <View style={styles.headingRow}>
                 <View style={styles.flex}>
                     <AppText variant="titleMd">매니저 권한 위임</AppText>

@@ -1,8 +1,8 @@
 /**
- * ④ PriceTrendScreen — 품목 입력/선택 → 단가 가격비교.
+ * B4 PriceTrendScreen — v3 시안(sodam-v3-10-business.html) 1:1(핵심 섹션) + 단가 추이 막대(additive, 시안 미포함).
  *
- * 현재단가 히어로 + 지난번 대비 ±% + 단가 추이(간단 막대, 외부 차트 라이브러리 금지)
- * + 거래처별 최저가(☆) 표시.
+ * 품목 입력 → MoneyCard(현재단가, sub에 지난번 대비 ±%·전후값 통합) + 단가 추이(간단 막대,
+ * 외부 차트 라이브러리 금지, 시안엔 없으나 기존 기능 유지) + 거래처별 최저가(☆) 표시.
  */
 import React, {useState} from 'react';
 import {StyleSheet, View} from 'react-native';
@@ -16,7 +16,7 @@ import {
     AppText,
     AppToast,
     EmptyState,
-    HeroNumber,
+    MoneyCard,
     ScreenContainer,
 } from '../../../common/components/ds';
 import {radius, spacing} from '../../../theme/tokens';
@@ -65,9 +65,14 @@ export default function PriceTrendScreen({route, navigation}: Props) {
         }
         const up = trend.changeRatePercent >= 0;
         const sign = up ? '+' : '';
+        const arrow = up ? '▲' : '▼';
+        const prevNow =
+            trend.previousUnitPrice !== undefined
+                ? ` (${trend.previousUnitPrice.toLocaleString()} → ${trend.currentUnitPrice.toLocaleString()})`
+                : '';
         return {
             up,
-            text: `지난번 대비 ${sign}${trend.changeRatePercent.toFixed(1)}%`,
+            text: `지난번 대비 ${arrow} ${sign}${trend.changeRatePercent.toFixed(1)}%${prevNow}`,
         };
     })();
 
@@ -112,32 +117,11 @@ export default function PriceTrendScreen({route, navigation}: Props) {
             ) : (
                 <>
                     <View style={styles.hero}>
-                        <HeroNumber
+                        <MoneyCard
                             label={`${trend.itemName} 현재 단가`}
                             value={`${trend.currentUnitPrice.toLocaleString()}원${trend.unit ? `/${trend.unit}` : ''}`}
-                            accent
+                            sub={changeText?.text}
                         />
-                        {changeText ? (
-                            <View style={styles.changeRow}>
-                                <Ionicons
-                                    name={changeText.up ? 'arrow-up' : 'arrow-down'}
-                                    size={16}
-                                    color={changeText.up ? c.error : c.success}
-                                />
-                                <AppText
-                                    variant="bodyMd"
-                                    weight="700"
-                                    tone={changeText.up ? 'error' : 'success'}
-                                    style={styles.changeText}>
-                                    {changeText.text}
-                                </AppText>
-                                {trend.previousUnitPrice !== undefined ? (
-                                    <AppText variant="caption" tone="tertiary" style={styles.prevText}>
-                                        ({trend.previousUnitPrice.toLocaleString()} → {trend.currentUnitPrice.toLocaleString()})
-                                    </AppText>
-                                ) : null}
-                            </View>
-                        ) : null}
                     </View>
 
                     <AppText variant="titleMd" tone="secondary" style={styles.sectionLabel}>
@@ -237,9 +221,6 @@ const styles = StyleSheet.create({
     searchBtn: {marginTop: spacing.md},
     placeholder: {marginTop: spacing.huge},
     hero: {marginTop: spacing.xxl},
-    changeRow: {flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm, flexWrap: 'wrap'},
-    changeText: {marginLeft: spacing.xs},
-    prevText: {marginLeft: spacing.sm},
     sectionLabel: {marginTop: spacing.xxl, marginBottom: spacing.md},
     bars: {gap: spacing.md},
     barRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},

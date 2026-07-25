@@ -25,7 +25,7 @@ import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {AppBadge, AppCard, AppText, AppToast, EmptyState, ErrorState, LoadingState} from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
-import {recruit, spacing} from '../../../theme/tokens';
+import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {useMyJobApplications, useMyJobOffers, useRespondToJobOffer} from '../hooks/useRecruitmentQueries';
 import {
@@ -167,12 +167,15 @@ const OfferCard: React.FC<OfferCardProps> = ({offer, responding, onAccept, onDec
             </AppText>
 
             {offer.message ? (
-                <AppText variant="caption" tone="tertiary" numberOfLines={2}>"{offer.message}"</AppText>
+                <View style={[styles.messageBox, {backgroundColor: c.surfaceMuted}]}>
+                    <AppText variant="caption" tone="secondary" numberOfLines={2}>"{offer.message}"</AppText>
+                </View>
             ) : null}
 
             {offer.status === 'PENDING' ? (
                 <>
-                    <AppText variant="caption" style={{color: recruit.primary}} testID={`job-offer-remaining-${offer.id}`}>
+                    {/* 남은 시간 강조 = 코랄(v3 시안 sodam-v3-07-recruitment.html R2 --coral) */}
+                    <AppText variant="caption" style={{color: c.brandPrimary}} testID={`job-offer-remaining-${offer.id}`}>
                         {formatRemaining(offer.expiresAt)}
                     </AppText>
                     <View style={styles.actionRow}>
@@ -189,7 +192,7 @@ const OfferCard: React.FC<OfferCardProps> = ({offer, responding, onAccept, onDec
                             onPress={onAccept}
                             disabled={responding}
                             accessibilityRole="button"
-                            style={[styles.actionBtn, {backgroundColor: recruit.primary}]}>
+                            style={[styles.actionBtn, {backgroundColor: c.brandPrimary}]}>
                             <AppText variant="bodyMd" weight="700" style={{color: c.textInverse}}>수락</AppText>
                         </Pressable>
                     </View>
@@ -247,16 +250,17 @@ const InviteCodeBanner: React.FC<{storeCode: string; onJoin: () => void; testIDP
     testIDPrefix,
 }) => {
     const c = useThemeColors();
+    // 초대코드 배너 = 틸(v3 시안 R2 초대코드 info-card: background/border/text 모두 --teal 계열)
     return (
-        <View style={[styles.inviteBanner, {backgroundColor: recruit.primarySoft}]} testID={`${testIDPrefix}-invite-banner`}>
-            <AppText variant="bodyMd" weight="700" style={{color: recruit.primary}}>
+        <View style={[styles.inviteBanner, {backgroundColor: c.successBg}]} testID={`${testIDPrefix}-invite-banner`}>
+            <AppText variant="bodyMd" weight="700" style={{color: c.success}}>
                 초대코드: {storeCode}
             </AppText>
             <Pressable
                 testID={`${testIDPrefix}-join-button`}
                 onPress={onJoin}
                 accessibilityRole="button"
-                style={[styles.joinBtn, {backgroundColor: recruit.primary}]}>
+                style={[styles.joinBtn, {backgroundColor: c.success}]}>
                 <AppText variant="bodyMd" weight="700" style={{color: c.textInverse}}>매장 가입하기</AppText>
             </Pressable>
         </View>
@@ -273,6 +277,7 @@ const styles = StyleSheet.create({
     cardTopRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm},
     flex1: {flex: 1, minWidth: 0},
     badgeRow: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs},
+    messageBox: {borderRadius: 10, paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.sm},
     actionRow: {flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm},
     actionBtn: {flex: 1, minHeight: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center'},
     declineBtn: {borderWidth: 1},

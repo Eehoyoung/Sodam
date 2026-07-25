@@ -1,5 +1,6 @@
 import {
     AppButton,
+    AppCard,
     AppHeader,
     AppInput,
     AppText,
@@ -22,6 +23,9 @@ import type {AttendanceNoticeType} from '../types';
 /**
  * 지각/조퇴/결근 사전 신고 — 직원 본인. 사장에게 알리는 용도일 뿐 임금 계산에는 영향이 없다.
  * 실제 공제 여부는 사후에 사장이 "지각/조퇴/결근" 확인 화면에서 결정한다.
+ *
+ * v3 시안(sodam-v3-09-schedule.html S10) 정렬: 상단 안내 히어로를 spot-card(AppCard
+ * variant="spot")로 표시.
  */
 
 const TYPE_OPTIONS: Array<{label: string; value: AttendanceNoticeType}> = [
@@ -90,13 +94,14 @@ const AttendanceNoticeScreen: React.FC = () => {
                     <AppButton label="사장님께 알리기" loading={loading} onPress={submit} />
                 </CtaStack>
             }>
-            <View style={styles.hero}>
+            {/* v3 시안(S10): 안내 히어로를 spot-card 로 표시 */}
+            <AppCard variant="spot" style={styles.hero}>
                 <AppText variant="headingMd">미리 알려주세요</AppText>
                 <AppText variant="bodyMd" tone="secondary" style={styles.sub}>
                     이 신고는 사장님께 알림만 가고 임금에는 영향을 주지 않아요. 실제 공제/연차 전환 여부는
                     사장님이 나중에 확인해 처리해요.
                 </AppText>
-            </View>
+            </AppCard>
 
             <View style={styles.form}>
                 <View>

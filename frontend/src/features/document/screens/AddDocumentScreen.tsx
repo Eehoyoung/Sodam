@@ -2,7 +2,6 @@
 import {StyleSheet} from 'react-native';
 import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
 import {
-    AppButton,
     AppHeader,
     AppInput,
     AppText,
@@ -21,7 +20,10 @@ import {DATE_DIGITS_HELPER, dateDigitsToIso, isValidDateDigits, sanitizeDateDigi
 type Route = RouteProp<{A: {storeId: number; employeeId: number}}, 'A'>;
 
 /**
- * A5 ?쒕쪟 異붽? ??醫낅쪟쨌?쒕ぉ쨌諛쒓툒/留뚮즺???낅젰 ????? ?먮낯 ?뚯씪? ??ν븯吏 ?딆쓬(硫뷀?留?.
+ * A5 서류 추가 — 종류·제목·발급/만료일 입력 화면. 원본 파일은 저장하지 않음(메타만).
+ *
+ * v3 시안(sodam-v3-08-contract.html C5) 정렬: 저장 액션을 하단 CTA 대신 헤더 우측 액션으로
+ * 이동(다른 v3 화면들과 동일한 "헤더 액션 = 저장/추가" 패턴).
  */
 const AddDocumentScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -40,8 +42,11 @@ const AddDocumentScreen: React.FC = () => {
     const type: DocumentType = DOC_TYPE_ORDER[typeIdx];
 
     const save = async () => {
+        if (saving) {
+            return;
+        }
         if (!title.trim()) {
-            setError('?쒕쪟 ?쒕ぉ???낅젰??二쇱꽭??');
+            setError('서류 제목을 입력해 주세요.');
             return;
         }
         if (issuedAt && !isValidDateDigits(issuedAt)) {
@@ -63,7 +68,7 @@ const AddDocumentScreen: React.FC = () => {
             });
             navigation.goBack();
         } catch {
-            setError('??μ뿉 ?ㅽ뙣?덉뼱?? ?좎떆 ???ㅼ떆 ?쒕룄??二쇱꽭??');
+            setError('저장에 실패했어요. 잠시 후 다시 시도해 주세요.');
             setSaving(false);
         }
     };
@@ -71,8 +76,13 @@ const AddDocumentScreen: React.FC = () => {
     return (
         <ScreenContainer
             scroll
-            header={<AppHeader title="서류 추가" onBack={() => navigation.goBack()} />}
-            footer={<AppButton label="저장" onPress={save} loading={saving} />}>
+            header={
+                <AppHeader
+                    title="서류 추가"
+                    onBack={() => navigation.goBack()}
+                    actions={[{label: saving ? '저장 중…' : '저장', onPress: save}]}
+                />
+            }>
             <AppText variant="caption" tone="secondary" style={styles.label}>종류</AppText>
             <SegmentedControl
                 options={DOC_TYPE_ORDER.map(t => DOC_TYPE_LABEL[t])}

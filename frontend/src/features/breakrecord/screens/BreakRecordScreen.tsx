@@ -30,7 +30,7 @@ type Route = RouteProp<
 >;
 
 
-// ?뷀븳 ?닿쾶 遺???⑥쐞(遺?. 짠54: 4h??30遺? 8h??60遺?
+// 휴게 부여 단위(분) — 근로기준법 §54(4시간당 30분, 8시간당 60분)를 참고한 선택지.
 const MINUTE_OPTIONS = [30, 60, 90];
 
 function todayStr(): string {
@@ -41,10 +41,10 @@ function todayStr(): string {
 }
 
 /**
- * ?닿쾶 遺??利앸튃(L-NEW-04, 洹쇰줈湲곗?踰?짠54) ???ъ옣 ?꾩슜.
+ * 휴게 부여 증빙(L-NEW-04, 근로기준법 §54) — 사장 전용.
  *
- * 吏곸썝蹂꾨줈 "?닿쾶瑜??ㅼ젣濡?以щ떎"??湲곕줉???④릿?? ?꾧툑 怨듭젣媛 ?꾨땲??遺???섎Т??
- * 利앸튃???놁쑝硫??꾧툑泥대텋 吏꾩젙 ???ъ옣??遺덈━?섎떎. ?꾧툑怨꾩궛怨쇰뒗 ?낅┰??湲곕줉.
+ * 직원별로 "휴게를 실제로 줬다"는 기록을 남긴다. 지금 당장 문제가 아니더라도 부여
+ * 증빙이 없으면 나중처럼 진정 시 사장님이 불리하다. 임금계산과는 별개로 기록만.
  */
 const BreakRecordScreen: React.FC = () => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
@@ -100,10 +100,10 @@ const BreakRecordScreen: React.FC = () => {
                 memo: memo.trim() || undefined,
             });
             setMemo('');
-            AppToast.success('?닿쾶 遺??湲곕줉??異붽??덉뼱??');
+            AppToast.success('휴게 기록을 추가했어요.');
             await load();
         } catch {
-            setFormError('??μ뿉 ?ㅽ뙣?덉뼱?? ?좎떆 ???ㅼ떆 ?쒕룄??二쇱꽭??');
+            setFormError('저장에 실패했어요. 잠시 후 다시 시도해 주세요.');
         } finally {
             setSaving(false);
         }
@@ -111,22 +111,22 @@ const BreakRecordScreen: React.FC = () => {
 
     const confirmDelete = (item: BreakRecord) =>
         ConfirmSheet.confirm({
-            title: '?닿쾶 湲곕줉????젣?좉퉴??',
-            description: `${item.workDate} 쨌 ${item.breakMinutes}遺?湲곕줉????젣?쇱슂. 利앸튃 ?먮즺媛 ?щ씪吏???좎쨷????젣??二쇱꽭??`,
+            title: '휴게 기록을 삭제할까요?',
+            description: `${item.workDate} · ${item.breakMinutes}분 기록을 삭제해요. 증빙이 여전히 필요하면 삭제하지 마세요.`,
             primary: {
-                label: '??젣',
+                label: '삭제',
                 destructive: true,
                 onPress: async () => {
                     try {
                         await deleteBreak(storeId, employeeId, item.id);
-                        AppToast.success('?닿쾶 湲곕줉????젣?덉뼱??');
+                        AppToast.success('휴게 기록을 삭제했어요.');
                         await load();
                     } catch {
-                        AppToast.error('??젣???ㅽ뙣?덉뼱?? ?좎떆 ???ㅼ떆 ?쒕룄??二쇱꽭??');
+                        AppToast.error('삭제에 실패했어요. 잠시 후 다시 시도해 주세요.');
                     }
                 },
             },
-            secondary: {label: '痍⑥냼'},
+            secondary: {label: '취소'},
         });
 
     return (
@@ -134,7 +134,8 @@ const BreakRecordScreen: React.FC = () => {
             scroll
             header={
                 <AppHeader
-                    title={employeeName ? `${employeeName} · 휴게 기록` : '휴게 기록'}
+                    title="휴게 기록"
+                    subtitle={employeeName}
                     onBack={() => navigation.goBack()}
                 />
             }
@@ -191,9 +192,9 @@ const BreakRecordScreen: React.FC = () => {
                 <LoadingState />
             ) : error ? (
                 <ErrorState
-                    title="?닿쾶 湲곕줉??遺덈윭?ㅼ? 紐삵뻽?댁슂"
-                    description="?좎떆 ???ㅼ떆 ?쒕룄??二쇱꽭??"
-                    primary={{label: '?ㅼ떆 ?쒕룄', onPress: load}}
+                    title="휴게 기록을 불러오지 못했어요"
+                    description="잠시 후 다시 시도해 주세요."
+                    primary={{label: '다시 시도', onPress: load}}
                 />
             ) : items.length === 0 ? (
                 <EmptyState

@@ -7,7 +7,7 @@ import {
     AppHeader,
     AppInput,
     AppText,
-    HeroNumber,
+    MoneyCard,
     ScreenContainer,
 } from '../../../common/components/ds';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
@@ -19,8 +19,10 @@ type PreviewRoute = RouteProp<{Preview: {storeId: number; hourlyWage?: number}},
 const won = (n: number) => `${n.toLocaleString()}원`;
 
 /**
- * A1 급여 미리보기(D0 aha). 시급·주 근로시간 → 주휴 포함 월 예상급여.
- * 영속화 없음(사장을 직원으로 등록하지 않음) — 추정치 면책 동반.
+ * W1 PayrollPreviewScreen(A1, D0 aha) — v3 시안(sodam-v3-11-taxwage.html) 1:1.
+ *
+ * info-card 안내 + 시급·주 근로시간 필드 + CTA "예상 급여 보기" + MoneyCard(이번 달 예상 급여) +
+ * 평이한 2행(월 기본급/월 주휴수당, 카드·합계행 없이 시안과 동일). 영속화 없음(사장을 직원으로 등록하지 않음) — 추정치 면책 동반.
  */
 const PayrollPreviewScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -63,9 +65,11 @@ const PayrollPreviewScreen: React.FC = () => {
                     loading={loading}
                 />
             }>
-            <AppText variant="bodyMd" tone="secondary" style={styles.intro}>
-                시급과 주 근로시간만 넣으면 주휴수당까지 포함한 한 달 예상 급여를 보여드려요.
-            </AppText>
+            <AppCard variant="flat" style={styles.intro}>
+                <AppText variant="bodyMd" tone="secondary">
+                    시급과 주 근로시간만 넣으면 주휴수당까지 포함한 한 달 예상 급여를 보여드려요.
+                </AppText>
+            </AppCard>
 
             <AppText variant="caption" tone="secondary" style={styles.label}>시급 (원)</AppText>
             <AppInput
@@ -89,20 +93,17 @@ const PayrollPreviewScreen: React.FC = () => {
 
             {result ? (
                 <View style={styles.resultWrap}>
-                    <HeroNumber
+                    <MoneyCard
                         label="이번 달 예상 급여 (세전)"
                         value={won(result.monthlyGross)}
                         sub={result.weeklyAllowanceEligible
                             ? `주휴수당 ${won(result.monthlyAllowance)} 포함`
                             : '주 15시간 미만이라 주휴수당은 없어요'}
-                        accent
                     />
-                    <AppCard variant="flat" style={styles.breakdown}>
+                    <View style={styles.breakdown}>
                         <Row label="월 기본급" value={won(result.monthlyBasic)} c={c} />
                         <Row label="월 주휴수당" value={won(result.monthlyAllowance)} c={c} />
-                        <View style={[styles.divider, {backgroundColor: c.divider}]} />
-                        <Row label="세전 합계" value={won(result.monthlyGross)} c={c} strong />
-                    </AppCard>
+                    </View>
                     <AppText variant="caption" tone="tertiary" style={styles.disclaimer}>
                         {result.disclaimer}
                     </AppText>
@@ -139,7 +140,6 @@ const styles = StyleSheet.create({
     breakdown: {marginTop: spacing.lg},
     row: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.xs},
     rowValue: {flexShrink: 1, marginLeft: spacing.md},
-    divider: {height: 1, marginVertical: spacing.sm},
     disclaimer: {marginTop: spacing.md},
 });
 

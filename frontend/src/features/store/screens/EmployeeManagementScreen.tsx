@@ -7,6 +7,7 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {
     AppToast,
+    AppBadge,
     AppButton,
     AppHeader,
     AppListItem,
@@ -36,10 +37,15 @@ const ROLE_LABEL: Record<string, string> = {
     EMPLOYEE: '직원',
 };
 
+/** 매니저는 success(teal) 배지, 일반 직원은 neutral 배지 — 아티팩트 O3 list-item 배지 톤. */
+const isManagerGrade = (grade?: string): boolean => grade === 'ROLE_MANAGER' || grade === 'MANAGER';
+
 /**
  * 직원 관리 — 매장 소속 직원 명부. (GET /api/stores/{storeId}/employees)
  * '직원 관리' 퀵메뉴 전용. 매장 운영(StoreDetail)과 분리해 직원 정보만 보여준다.
  * 행 탭 → EmployeeDetail. 비어있으면 초대 유도.
+ * 목록 행 우측에 역할 배지(직원/매니저)를 추가해 아티팩트 O3 list-item과 정렬
+ * (docs/260720/artifacts/sodam-v3-13-ops.html O3 대조 반영).
  */
 export default function EmployeeManagementScreen({route, navigation}: Props) {
     const {storeId, managerMode = false} = route.params;
@@ -135,9 +141,20 @@ export default function EmployeeManagementScreen({route, navigation}: Props) {
                             <AppListItem
                                 key={emp.id}
                                 title={emp.name}
-                                subtitle={emp.phone ? emp.phone : (ROLE_LABEL[emp.userGrade ?? ''] ?? '직원')}
+                                subtitle={emp.phone}
                                 onPress={managerMode ? undefined : () => navigation.navigate('EmployeeDetail', {employeeId: emp.id, storeId})}
-                                right={managerMode ? undefined : <Ionicons name="chevron-forward" size={20} color={c.textTertiary} />}
+                                right={
+                                    // 아티팩트 O3: 이름 옆 역할 배지(직원/매니저) + 상세 진입 chevron 동시 표기.
+                                    <View style={styles.rightRow}>
+                                        <AppBadge
+                                            label={ROLE_LABEL[emp.userGrade ?? ''] ?? '직원'}
+                                            tone={isManagerGrade(emp.userGrade) ? 'success' : 'neutral'}
+                                        />
+                                        {managerMode ? null : (
+                                            <Ionicons name="chevron-forward" size={20} color={c.textTertiary} />
+                                        )}
+                                    </View>
+                                }
                                 left={
                                     <View style={[styles.avatar, {backgroundColor: c.brandPrimarySoft}]}>
                                         <AppText variant="titleMd" tone="brand">{emp.name.slice(0, 1)}</AppText>
@@ -167,6 +184,7 @@ const styles = StyleSheet.create({
     section: {marginTop: spacing.md},
     sectionTitle: {marginBottom: spacing.md},
     list: {gap: spacing.sm},
+    rightRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.xs},
     avatar: {
         width: 40,
         height: 40,

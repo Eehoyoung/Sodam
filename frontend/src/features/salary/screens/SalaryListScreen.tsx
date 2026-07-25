@@ -1,4 +1,4 @@
-import {AmountText, AppToast, AppBadge, AppButton, AppCard, AppHeader, AppText, CtaStack, EmptyState, ErrorState, LoadingState, ScreenContainer, SegmentedControl} from '../../../common/components/ds';
+import {AmountText, AppToast, AppBadge, AppButton, AppCard, AppHeader, AppText, CtaStack, EmptyState, ErrorState, LoadingState, MoneyCard, ScreenContainer, SegmentedControl} from '../../../common/components/ds';
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {FlatList, RefreshControl, StyleSheet, View} from 'react-native';
 import {useNavigation, useFocusEffect} from '@react-navigation/native';
@@ -15,6 +15,7 @@ type SalaryStackParamList = {
     SalaryList: undefined;
     SalaryDetail: { payrollId: number };
     PayrollRun: { storeId?: number } | undefined;
+    SalaryArchive: undefined;
 };
 
 type SalaryListScreenNavigationProp = NativeStackNavigationProp<SalaryStackParamList, 'SalaryList'>;
@@ -131,9 +132,10 @@ const SalaryListScreen = () => {
                     {item.employeeName ?? `근로자 ${item.employeeId}`}
                 </AppText>
                 {item.status ? (
+                    // v3 아티팩트 28: 대기(DRAFT)=amber, 발급/확정(CONFIRMED)·완료(PAID)=teal, 취소=error
                     <AppBadge
                         label={STATUS_LABEL[item.status] ?? item.status}
-                        tone={item.status === 'PAID' ? 'success' : item.status === 'CANCELLED' ? 'error' : 'warning'}
+                        tone={item.status === 'CANCELLED' ? 'error' : item.status === 'DRAFT' ? 'warning' : 'success'}
                     />
                 ) : null}
             </View>
@@ -159,15 +161,15 @@ const SalaryListScreen = () => {
         </AppCard>
     );
 
+    // v3 아티팩트 28 SalaryList(sodam-v3-04-payroll.html)의 .money-card — 정산 예상 총액 요약.
     const listHeader =
         rows.length > 0 ? (
-            <View style={styles.heroBlock}>
-                <AppText variant="caption" tone="secondary" weight="700">이번 정산 총액</AppText>
-                <AmountText size={40} tone="brand" style={styles.heroAmount}>
-                    {formatMoney(totalPay)}
-                </AmountText>
-                <AppText variant="caption" tone="tertiary">{rows.length}명 · 직원별 명세는 아래에서 확인해요</AppText>
-            </View>
+            <MoneyCard
+                label="이번 정산 예상"
+                value={formatMoney(totalPay)}
+                sub={`${rows.length}명 · 직원별 명세는 아래에서 확인해요`}
+                style={styles.heroBlock}
+            />
         ) : null;
 
     return (
@@ -176,7 +178,8 @@ const SalaryListScreen = () => {
             header={<AppHeader title="급여" />}
             footer={
                 <CtaStack bordered>
-                    <AppButton label="급여 정산하기" onPress={() => navigation.navigate('PayrollRun', undefined)} />
+                    <AppButton label="급여 정산 시작" onPress={() => navigation.navigate('PayrollRun', undefined)} />
+                    <AppButton label="과거 내역 보기" variant="outline" onPress={() => navigation.navigate('SalaryArchive')} />
                 </CtaStack>
             }>
             <View style={[styles.container, {backgroundColor: c.surfaceCanvas}]}>
@@ -227,8 +230,7 @@ const styles = StyleSheet.create({
     storePicker: {paddingHorizontal: spacing.xxl, paddingTop: spacing.lg, paddingBottom: spacing.xs},
     list: {paddingHorizontal: spacing.xxl, paddingTop: spacing.md, paddingBottom: spacing.xxxl, gap: spacing.md},
     flexCenter: {flexGrow: 1, justifyContent: 'center'},
-    heroBlock: {paddingTop: spacing.lg, paddingBottom: spacing.xl, gap: spacing.xs},
-    heroAmount: {marginVertical: spacing.xs},
+    heroBlock: {marginTop: spacing.lg, marginBottom: spacing.md},
     card: {gap: spacing.md},
     cardTop: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm},
     empName: {flexShrink: 1},

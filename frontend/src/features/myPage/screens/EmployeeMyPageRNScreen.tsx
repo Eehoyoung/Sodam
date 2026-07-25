@@ -29,6 +29,10 @@ interface LaborInfo {
 /**
  * 41 EmployeeMyPage — 확정 시안.
  * 직원 마이페이지. RoleSlots/testID/load/AttendanceSummaryPanel 로직 보존.
+ * 헤더 "설정" 액션은 Settings(39, 허브)로 진입 — 화면 표시(다크모드 등)는 그 안의
+ * "화면 표시" 항목에서 AccountSettings(42)로 이어진다(docs/260720 v3 감사 후속).
+ * 인사말 히어로는 AppCard variant="spot"(코랄 테두리)으로 전환 완료
+ * (docs/260720/artifacts/sodam-v3-12-notice.html N6 대조 반영).
  */
 const EmployeeMyPageRNScreen: React.FC = () => {
     const navigation = useNavigation<NavigationProp<HomeStackParamList>>();
@@ -90,14 +94,17 @@ const EmployeeMyPageRNScreen: React.FC = () => {
                     title="내 정보"
                     actions={[
                         {label: '내역', onPress: goToAttendance},
-                        {label: '설정', onPress: () => navigation.navigate('AccountSettings')},
+                        {label: '설정', onPress: () => navigation.navigate('Settings')},
                     ]}
                 />
             }>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 <HeroSlot testID="slotHero">
-                    <AppText variant="headingMd">안녕하세요, {user?.name ?? '직원'}님</AppText>
-                    <AppText variant="bodyMd" tone="secondary" style={styles.sub}>오늘도 수고하세요! 💪</AppText>
+                    {/* v3 링&패스: 인사말 히어로는 spot 카드(코랄 테두리)로 존재감을 준다 (아티팩트 N6). */}
+                    <AppCard variant="spot">
+                        <AppText variant="headingMd">안녕하세요, {user?.name ?? '직원'}님</AppText>
+                        <AppText variant="bodyMd" tone="secondary" style={styles.sub}>오늘도 수고하세요! 💪</AppText>
+                    </AppCard>
                 </HeroSlot>
 
                 <SummarySlot testID="slotSummary">

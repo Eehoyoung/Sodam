@@ -2,7 +2,6 @@ import React, {useCallback, useState} from 'react';
 import {StyleSheet, TouchableOpacity, View} from 'react-native';
 import {RouteProp, useFocusEffect, useNavigation, useRoute} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
     AppBadge,
     AppCard,
@@ -14,8 +13,7 @@ import {
     SuccessState,
 } from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
-import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import {radius, spacing} from '../../../theme/tokens';
+import {spacing} from '../../../theme/tokens';
 import {fetchLaborRisks, LaborRiskItem, LaborRiskType} from '../services/riskService';
 
 type Route = RouteProp<HomeStackParamList, 'LaborRisk'>;
@@ -30,13 +28,15 @@ const TYPE_META: Record<LaborRiskType, {icon: string; title: string}> = {
 };
 
 /**
- * 노무 리스크 대시보드 — 매장 직원별 노무 리스크(주휴 경계·52시간·미서명 계약 등)를
- * 심각도와 함께 보여주고, 항목 탭 시 해결 화면(계약서 발송/직원 상세)으로 딥링크한다.
+ * B11 LaborRiskDashboardScreen — v3 시안(sodam-v3-10-business.html) 1:1.
+ *
+ * 상단 요약 배지(위험 N건/주의 N건, badge--coral·badge--amber) + list-item 리스트(상단 행:
+ * "유형 · 직원명" + 심각도 배지, 메타 한 줄: 리스크 메시지). 아이콘 아바타·chevron 제거로 시안 단순화.
+ * 항목 탭 시 해결 화면(계약서 발송/직원 상세)으로 딥링크한다.
  */
 const LaborRiskDashboardScreen: React.FC = () => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const route = useRoute<Route>();
-    const c = useThemeColors();
     const {storeId} = route.params;
 
     const [items, setItems] = useState<LaborRiskItem[]>([]);
@@ -84,33 +84,19 @@ const LaborRiskDashboardScreen: React.FC = () => {
     const renderItem = (item: LaborRiskItem, index: number) => {
         const meta = TYPE_META[item.type] ?? {icon: 'alert-circle-outline', title: '노무 리스크'};
         const danger = item.severity === 'DANGER';
-        const iconBg = danger ? c.errorBg : c.warningBg;
-        const iconColor = danger ? c.error : c.warning;
         return (
             <TouchableOpacity
                 key={`${item.type}-${item.employeeId}-${index}`}
                 activeOpacity={0.75}
                 onPress={() => openItem(item)}>
                 <AppCard variant="flat">
-                    <View style={styles.rowTop}>
-                        <View style={[styles.iconWrap, {backgroundColor: iconBg}]}>
-                            <Ionicons name={meta.icon} size={20} color={iconColor} />
-                        </View>
-                        <View style={styles.rowBody}>
-                            <View style={styles.titleRow}>
-                                <AppText variant="titleMd" weight="700" numberOfLines={1} style={styles.title}>
-                                    {meta.title}
-                                </AppText>
-                                <AppBadge label={danger ? '위험' : '주의'} tone={danger ? 'error' : 'warning'} />
-                            </View>
-                            <AppText variant="caption" tone="secondary">
-                                {item.employeeName}
-                                {item.value ? ` · ${item.value}` : ''}
-                            </AppText>
-                        </View>
-                        <Ionicons name="chevron-forward" size={16} color={c.textTertiary} />
+                    <View style={styles.titleRow}>
+                        <AppText variant="titleMd" weight="700" numberOfLines={1} style={styles.title}>
+                            {meta.title} · {item.employeeName}
+                        </AppText>
+                        <AppBadge label={danger ? '위험' : '주의'} tone={danger ? 'error' : 'warning'} />
                     </View>
-                    <AppText variant="bodyMd" tone="secondary" style={styles.message}>
+                    <AppText variant="caption" tone="secondary" style={styles.message}>
                         {item.message}
                     </AppText>
                 </AppCard>
@@ -138,18 +124,8 @@ const LaborRiskDashboardScreen: React.FC = () => {
             ) : (
                 <>
                     <View style={styles.summaryRow}>
-                        <View style={[styles.summaryChip, {backgroundColor: c.errorBg}]}>
-                            <Ionicons name="alert-circle" size={14} color={c.error} />
-                            <AppText variant="caption" weight="700" style={{color: c.error}}>
-                                위험 {dangerCount}건
-                            </AppText>
-                        </View>
-                        <View style={[styles.summaryChip, {backgroundColor: c.warningBg}]}>
-                            <Ionicons name="warning" size={14} color={c.warning} />
-                            <AppText variant="caption" weight="700" style={{color: c.warning}}>
-                                주의 {warnCount}건
-                            </AppText>
-                        </View>
+                        <AppBadge label={`위험 ${dangerCount}건`} tone="error" />
+                        <AppBadge label={`주의 ${warnCount}건`} tone="warning" />
                     </View>
 
                     <View style={styles.list}>{items.map(renderItem)}</View>
@@ -161,28 +137,10 @@ const LaborRiskDashboardScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
     summaryRow: {flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg},
-    summaryChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 5,
-        paddingHorizontal: spacing.md,
-        paddingVertical: 7,
-        borderRadius: radius.pill,
-    },
     list: {gap: spacing.sm},
-    rowTop: {flexDirection: 'row', alignItems: 'center', gap: spacing.md},
-    iconWrap: {
-        width: 40,
-        height: 40,
-        borderRadius: radius.lg,
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-    },
-    rowBody: {flex: 1, minWidth: 0, gap: 2},
-    titleRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
-    title: {flexShrink: 1},
-    message: {marginTop: spacing.sm},
+    titleRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm},
+    title: {flex: 1, minWidth: 0},
+    message: {marginTop: spacing.xs},
 });
 
 export default LaborRiskDashboardScreen;

@@ -40,6 +40,9 @@ type Route = RouteProp<{E: {storeId: number; employeeId: number; employeeName?: 
  * 근무 시프트 등록 (B10/E-NEW-05) — 사장이 특정 직원의 근무 일정 추가·조회·삭제.
  * 날짜(YYYY-MM-DD)·시작/종료(HH:MM)·메모 입력 후 등록. 외부 picker 없이 텍스트 입력.
  * 스코프: 등록·조회만 — 자동배정·채용 없음(Non-Goal).
+ *
+ * v3 시안(sodam-v3-09-schedule.html S1) 정렬: 헤더를 "근무 시프트"(라벨) + 직원명(굵게, 2줄)
+ * 컨텍스트 헤더로 표시(AppHeader subtitle).
  */
 const EditShiftScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -139,10 +142,11 @@ const EditShiftScreen: React.FC = () => {
         <ScreenContainer
             scroll
             header={
-                <AppHeader
-                    title={employeeName ? `${employeeName} · 근무 시프트` : '근무 시프트'}
-                    onBack={() => navigation.goBack()}
-                />
+                employeeName ? (
+                    <AppHeader title="근무 시프트" subtitle={employeeName} onBack={() => navigation.goBack()} />
+                ) : (
+                    <AppHeader title="근무 시프트" onBack={() => navigation.goBack()} />
+                )
             }
             footer={<AppButton label="근무 일정 등록" onPress={save} loading={saving} />}>
             <AppText variant="caption" tone="secondary" style={styles.label}>근무 날짜</AppText>

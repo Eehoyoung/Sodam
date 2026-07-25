@@ -19,8 +19,8 @@ const MaintenanceScreen: React.FC<Props> = ({onRetry, note}) => {
     return (
         <ScreenContainer edges={['top', 'bottom']}>
             <ErrorState
-                glyph={<Ionicons name="construct-outline" size={40} color={c.textInverse} />}
-                markColor={c.brandSecondary}
+                glyph={<Ionicons name="construct-outline" size={40} color={c.warning} />}
+                markColor={c.warningBg}
                 title="잠시 점검 중이에요"
                 description={note ?? '더 안정적인 서비스를 위해 점검하고 있어요. 잠시 후 다시 시도해 주세요.'}
                 primary={{label: '다시 시도', onPress: onRetry}}

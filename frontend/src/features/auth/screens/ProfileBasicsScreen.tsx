@@ -54,6 +54,11 @@ const isValidBirthDate = (raw: string): boolean => {
     return year >= 1900 && year <= new Date().getFullYear();
 };
 
+/**
+ * 프로필 기본정보 — 가입 마지막 필수 단계(이름·휴대폰·생년월일).
+ * 히어로 카드는 AppCard variant="spot"으로 전환 완료
+ * (docs/260720/artifacts/sodam-v3-12-notice.html N12 spot-card 대조 반영).
+ */
 export default function ProfileBasicsScreen({navigation, route}: Props) {
     const {user} = useAuth();
     const queryClient = useQueryClient();
@@ -169,7 +174,8 @@ export default function ProfileBasicsScreen({navigation, route}: Props) {
             <View style={styles.logoRow}>
                 <SodamLogo size={56} variant="default" />
             </View>
-            <AppCard variant="warm" hero>
+            {/* v3 링&패스: 마지막 필수 설정 히어로는 spot 카드(코랄 테두리)로 전환 (아티팩트 N12 spot-card). */}
+            <AppCard variant="spot">
                 <AppText variant="headingMd">마지막 필수 설정이에요</AppText>
                 <AppText variant="bodyLg" tone="secondary" style={[styles.heroSub, {marginTop: titleMargin / 2}]}>
                     연락 가능한 기본 정보만 확인하면 끝이에요.

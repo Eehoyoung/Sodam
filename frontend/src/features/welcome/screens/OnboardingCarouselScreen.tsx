@@ -1,4 +1,5 @@
 /* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
+/* eslint-disable react-native/no-color-literals -- 다크 인트로 톤(Splash/RoleStart/WelcomeMain/KakaoLogin과 동일 계열) 고정 색상. */
 import React, {useMemo, useRef, useState} from 'react';
 import {
     FlatList,
@@ -12,40 +13,33 @@ import {
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
-import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
 import {tokens} from '../../../theme/tokens';
-import {AppButton} from '../../../common/components/ds';
-import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
+import {AppButton, Brandmark} from '../../../common/components/ds';
 import {useResponsive} from '../../../common/hooks/useResponsive';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
 
 interface Slide {
-    icon: string;
     headline: string;
     body: string;
-    gradient: [string, string];
 }
 
-// 이모지(📲💰🌿) 대신 Ionicons 라인 아이콘 — Android 렌더 차이·픽셀 일관성·고대비 가독성 우위.
+// 아티팩트(sodam-v3-01-auth.html "03 OnboardingCarousel")는 슬라이드별 색 아이콘이 아니라
+// Splash/RoleStart/WelcomeMain/KakaoLogin과 동일한 마스코트 brandmark-logo를 그대로 쓴다 —
+// 슬라이드마다 다른 그라디언트 아이콘 서클로 분화했던 이전 구현을 시안대로 통일.
+// 1번째 슬라이드 카피는 아티팩트와 1:1 — "출근 기록을 서로 믿게" / "매장 반경과 NFC 태그로 기록의 기준을 만들어요."
 const SLIDES: Slide[] = [
     {
-        icon: 'phone-portrait-outline',
-        headline: '출퇴근,\nNFC 한 번이면 끝',
-        body: '카운터 위 스티커에 폰만 대면 자동 출근.\n부정 출근 걱정 끝이에요.',
-        gradient: ['#FFB48F', '#FF6B35'],
+        headline: '출근 기록을\n서로 믿게',
+        body: '매장 반경과 NFC 태그로 기록의 기준을 만들어요.',
     },
     {
-        icon: 'cash-outline',
         headline: '급여,\n자동으로 정확하게',
         body: '주휴수당·연장·야간 시급 자동 계산.\n월말 30분이면 정산 끝나요.',
-        gradient: ['#FF9B63', '#FF5722'],
     },
     {
-        icon: 'shield-checkmark-outline',
         headline: '출퇴근 기록이\n분쟁의 증거가 돼요',
         body: 'NFC·GPS로 남는 출퇴근 기록.\n노무 분쟁 때 사장님을 지켜줘요.',
-        gradient: ['#FF9B63', '#E5552A'],
     },
 ];
 
@@ -53,14 +47,13 @@ const OnboardingCarouselScreen: React.FC = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 크로스 네비게이터: Auth 스택에서 루트(Welcome)로 reset
     const navigation = useNavigation<any>();
     const {width: WIDTH} = useWindowDimensions();
-    const c = useThemeColors();
     const {pick, isCompactHeight} = useResponsive();
     // 작은/짧은 화면(iPhone SE, 360×640)에서 글리프가 폴드 아래로 밀리거나 헤드라인과 겹치는 것 방지.
     const illoSize = pick({compact: 160, default: 220});
     const illoMarginTop = isCompactHeight ? tokens.spacing.lg : tokens.spacing.huge;
     const styles = useMemo(
-        () => makeStyles(c, illoSize, illoMarginTop),
-        [c, illoSize, illoMarginTop],
+        () => makeStyles(illoSize, illoMarginTop),
+        [illoSize, illoMarginTop],
     );
     const [index, setIndex] = useState(0);
     const listRef = useRef<FlatList<Slide>>(null);
@@ -88,68 +81,72 @@ const OnboardingCarouselScreen: React.FC = () => {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-            <View style={styles.skipRow}>
-                <Pressable
-                    onPress={handleSkip}
-                    style={({pressed}) => [styles.skipBtn, pressed && {opacity: 0.5}]}
-                    accessibilityRole="button"
-                    accessibilityLabel="온보딩 건너뛰기"
-                >
-                    <Text style={styles.skipText}>건너뛰기</Text>
-                </Pressable>
-            </View>
+        <LinearGradient
+            colors={tokens.gradient.darkScreen}
+            start={{x: 0, y: 0}}
+            end={{x: 1, y: 1}}
+            style={styles.flex}>
+            <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
+                <View style={styles.skipRow}>
+                    <Pressable
+                        onPress={handleSkip}
+                        style={({pressed}) => [styles.skipBtn, pressed && {opacity: 0.5}]}
+                        accessibilityRole="button"
+                        accessibilityLabel="온보딩 건너뛰기"
+                    >
+                        <Text style={styles.skipText}>건너뛰기</Text>
+                    </Pressable>
+                </View>
 
-            <FlatList
-                ref={listRef}
-                data={SLIDES}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={onMomentumEnd}
-                keyExtractor={(_, i) => String(i)}
-                renderItem={({item}) => <SlideCard slide={item} width={WIDTH} iconSize={illoSize * 0.42} styles={styles} />}
-            />
-
-            <View style={styles.indicators}>
-                {SLIDES.map((_, i) => (
-                    <View
-                        key={i}
-                        style={[
-                            styles.dot,
-                            i === index ? styles.dotActive : styles.dotInactive,
-                        ]}
-                    />
-                ))}
-            </View>
-
-            <View style={styles.footer}>
-                <AppButton
-                    label={index === SLIDES.length - 1 ? '시작하기' : '다음'}
-                    onPress={handleNext}
+                <FlatList
+                    ref={listRef}
+                    data={SLIDES}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    onMomentumScrollEnd={onMomentumEnd}
+                    keyExtractor={(_, i) => String(i)}
+                    renderItem={({item}) => <SlideCard slide={item} width={WIDTH} logoSize={illoSize} styles={styles} />}
                 />
-            </View>
-        </SafeAreaView>
+
+                <View style={styles.indicators}>
+                    {SLIDES.map((_, i) => (
+                        <View
+                            key={i}
+                            style={[
+                                styles.dot,
+                                i === index ? styles.dotActive : styles.dotInactive,
+                            ]}
+                        />
+                    ))}
+                </View>
+
+                <View style={styles.footer}>
+                    <AppButton
+                        label={index === SLIDES.length - 1 ? '시작하기' : '다음'}
+                        onPress={handleNext}
+                    />
+                </View>
+            </SafeAreaView>
+        </LinearGradient>
     );
 };
 
-const SlideCard: React.FC<{slide: Slide; width: number; iconSize: number; styles: ReturnType<typeof makeStyles>}> = ({slide, width, iconSize, styles}) => (
+const SlideCard: React.FC<{slide: Slide; width: number; logoSize: number; styles: ReturnType<typeof makeStyles>}> = ({slide, width, logoSize, styles}) => (
     <View style={[styles.slide, {width}]}>
-        <LinearGradient
-            colors={slide.gradient}
-            start={{x: 0, y: 0}}
-            end={{x: 1, y: 1}}
-            style={styles.illustrationBox}
-        >
-            <Ionicons name={slide.icon} size={iconSize} color="#FFFFFF" />
-        </LinearGradient>
+        <View style={styles.illustrationBox}>
+            <Brandmark size={logoSize} />
+        </View>
         <Text style={styles.headline}>{slide.headline}</Text>
         <Text style={styles.body}>{slide.body}</Text>
     </View>
 );
 
-const makeStyles = (c: ThemeColors, illoSize: number, illoMarginTop: number) => StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: c.background},
+// 아티팩트(sodam-v3-01-auth.html "03 OnboardingCarousel")는 device__screen--dark(다크 인트로 톤,
+// Splash/RoleStart/WelcomeMain/KakaoLogin과 동일 gradient.darkScreen) — 테마 토큰(useThemeColors)이
+// 아니라 다크 화면 고정 색을 직접 쓴다(라이트 테마에서도 배경은 항상 다크 그라디언트이므로).
+const makeStyles = (illoSize: number, illoMarginTop: number) => StyleSheet.create({
+    flex: {flex: 1},
     skipRow: {
         flexDirection: 'row' as const,
         justifyContent: 'flex-end' as const,
@@ -161,7 +158,7 @@ const makeStyles = (c: ThemeColors, illoSize: number, illoMarginTop: number) => 
         paddingVertical: tokens.spacing.sm,
     },
     skipText: {
-        color: c.textSecondary,
+        color: 'rgba(245,243,239,0.72)',
         fontSize: tokens.typography.sizes.md,
         fontWeight: tokens.typography.weights.medium,
     },
@@ -172,27 +169,23 @@ const makeStyles = (c: ThemeColors, illoSize: number, illoMarginTop: number) => 
         paddingHorizontal: tokens.spacing.xl,
     },
     illustrationBox: {
-        width: illoSize,
-        height: illoSize,
-        borderRadius: illoSize / 2,
         alignItems: 'center' as const,
         justifyContent: 'center' as const,
         marginTop: illoMarginTop,
-        ...tokens.shadow.brand,
     },
     headline: {
         marginTop: tokens.spacing.xxxl,
         fontSize: 30,
         lineHeight: 38,
         fontWeight: '800' as const,
-        color: c.textPrimary,
+        color: '#F5F3EF',
         textAlign: 'center' as const,
         letterSpacing: -1,
     },
     body: {
         marginTop: tokens.spacing.lg,
         fontSize: tokens.typography.sizes.lg,
-        color: c.textSecondary,
+        color: 'rgba(245,243,239,0.72)',
         textAlign: 'center' as const,
         lineHeight: 26,
     },
@@ -207,8 +200,8 @@ const makeStyles = (c: ThemeColors, illoSize: number, illoMarginTop: number) => 
         height: 8,
         borderRadius: 4,
     },
-    dotActive: {backgroundColor: c.brandPrimary, width: 24},
-    dotInactive: {backgroundColor: c.surfaceMuted},
+    dotActive: {backgroundColor: '#FF7288', width: 24},
+    dotInactive: {backgroundColor: 'rgba(245,243,239,0.3)'},
     footer: {
         paddingHorizontal: tokens.spacing.lg,
         paddingBottom: tokens.spacing.lg,

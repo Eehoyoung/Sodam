@@ -45,6 +45,8 @@ const todayIso = () => new Date().toISOString().slice(0, 10);
  * 급여명세서 다운로드(SalaryDetailScreen)와 동일한 후처리 패턴:
  * PDF 바이트 수신 확인 → PdfPreview 라우트로 미리보기 + Share 공유.
  * (이 프로젝트에는 네이티브 파일 저장 라이브러리가 없다.)
+ *
+ * v3 시안(sodam-v3-08-contract.html C9) 정렬: 하단 설명 카드에 증명서 종류 굵은 타이틀 추가.
  */
 const MyCertificateScreen: React.FC<Props> = ({route}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
@@ -229,10 +231,11 @@ const MyCertificateScreen: React.FC<Props> = ({route}) => {
             <SegmentedControl options={TYPE_OPTIONS} value={typeIdx} onChange={setTypeIdx} />
 
             <AppCard variant="flat" style={styles.descCard}>
+                <AppText variant="titleMd" weight="800" style={styles.descTitle}>{typeLabel}</AppText>
                 <AppText variant="bodyMd" tone="secondary">
                     {type === 'EMPLOYMENT'
-                        ? '재직증명서는 현재 이 매장에서 일하고 있음을 증명해요.'
-                        : '경력증명서는 이 매장에서 일한 기간과 이력을 증명해요.'}
+                        ? '현재 이 매장에서 일하고 있음을 증명해요.'
+                        : '이 매장에서 일한 기간과 이력을 증명해요.'}
                 </AppText>
             </AppCard>
         </ScreenContainer>
@@ -254,6 +257,7 @@ const styles = StyleSheet.create({
         maxWidth: '100%',
     },
     descCard: {marginTop: spacing.lg},
+    descTitle: {marginBottom: spacing.xs},
 });
 
 export default MyCertificateScreen;

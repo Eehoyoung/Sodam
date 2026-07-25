@@ -1,8 +1,14 @@
+/**
+ * B6 DailySalesEntryScreen — v3 시안(sodam-v3-10-business.html) 1:1.
+ *
+ * info-card 안내 + 매출 일자·금액 필드(카드 미포함, 시안과 동일) + CTA "매출 저장" +
+ * section-label "최근 7일" + 단일 리스트 카드(행마다 하단 구분선, 라벨 좌측·값/미입력배지 우측).
+ * 같은 날짜 재저장은 서버 upsert 로 수정.
+ */
 import React, {useCallback, useState} from 'react';
 import {StyleSheet, TouchableOpacity, View} from 'react-native';
 import {RouteProp, useFocusEffect, useNavigation, useRoute} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
     AppBadge,
     AppButton,
@@ -153,39 +159,35 @@ const DailySalesEntryScreen: React.FC = () => {
             scroll
             header={<AppHeader title="일일 매출 입력" onBack={() => navigation.goBack()} />}
             footer={<AppButton label="매출 저장" onPress={save} loading={saving} />}>
-            <View style={[styles.notice, {backgroundColor: c.surfaceMuted}]}>
-                <Ionicons name="information-circle-outline" size={20} color={c.textSecondary} />
-                <AppText variant="caption" tone="secondary" style={styles.noticeText}>
+            <AppCard variant="flat" style={styles.notice}>
+                <AppText variant="bodyMd" tone="secondary">
                     하루 매출을 기록하면 인건비율을 자동으로 계산해 드려요.
                     같은 날짜로 다시 저장하면 금액이 수정돼요.
                 </AppText>
-            </View>
-
-            <AppCard variant="flat" style={styles.formCard}>
-                <AppText variant="caption" tone="secondary" style={styles.label}>매출 일자</AppText>
-                <AppInput
-                    value={dateDigits}
-                    onChangeText={setDateDigits}
-                    placeholder={todayDigits()}
-                    keyboardType="number-pad"
-                    maxLength={8}
-                    helper={DATE_DIGITS_HELPER}
-                />
-
-                <AppText variant="caption" tone="secondary" style={styles.label}>매출 금액(원)</AppText>
-                <AppInput
-                    value={amount}
-                    onChangeText={v => setAmount(formatAmountInput(v))}
-                    placeholder="예: 450,000"
-                    keyboardType="number-pad"
-                />
-
-                {formError ? (
-                    <AppText variant="caption" tone="error" style={styles.error}>{formError}</AppText>
-                ) : null}
             </AppCard>
 
-            <AppText variant="titleMd" style={styles.listTitle}>최근 7일</AppText>
+            <AppInput
+                label="매출 일자"
+                value={dateDigits}
+                onChangeText={setDateDigits}
+                placeholder={todayDigits()}
+                keyboardType="number-pad"
+                maxLength={8}
+                helper={DATE_DIGITS_HELPER}
+            />
+            <View style={styles.gap} />
+            <AppInput
+                label="매출 금액(원)"
+                value={amount}
+                onChangeText={v => setAmount(formatAmountInput(v))}
+                placeholder="예: 450,000"
+                keyboardType="number-pad"
+            />
+            {formError ? (
+                <AppText variant="caption" tone="error" style={styles.error}>{formError}</AppText>
+            ) : null}
+
+            <AppText variant="titleMd" tone="secondary" style={styles.listTitle}>최근 7일</AppText>
 
             {loading ? (
                 <LoadingState />
@@ -196,50 +198,48 @@ const DailySalesEntryScreen: React.FC = () => {
                     primary={{label: '다시 시도', onPress: load}}
                 />
             ) : (
-                <View style={styles.list}>
-                    {rows.map(row => (
-                        <TouchableOpacity key={row.iso} activeOpacity={0.75} onPress={() => prefill(row.iso)}>
-                            <AppCard variant="flat">
-                                <View style={styles.row}>
-                                    <View style={[styles.iconWrap, {backgroundColor: c.surfaceMuted}]}>
-                                        <Ionicons
-                                            name={row.amount !== null ? 'cash-outline' : 'create-outline'}
-                                            size={20}
-                                            color={c.textSecondary}
-                                        />
-                                    </View>
-                                    <View style={styles.flex}>
-                                        <AppText variant="titleMd" numberOfLines={1}>{isoToLabel(row.iso)}</AppText>
-                                        <AppText variant="caption" tone="tertiary">{row.iso}</AppText>
-                                    </View>
-                                    {row.amount !== null ? (
-                                        <AppText variant="titleMd" weight="700">
-                                            {row.amount.toLocaleString('ko-KR')}원
-                                        </AppText>
-                                    ) : (
-                                        <AppBadge label="미입력" tone="warning" />
-                                    )}
-                                </View>
-                            </AppCard>
+                <AppCard variant="plain">
+                    {rows.map((row, i) => (
+                        <TouchableOpacity
+                            key={row.iso}
+                            activeOpacity={0.75}
+                            onPress={() => prefill(row.iso)}
+                            style={[
+                                styles.row,
+                                i < rows.length - 1 && styles.rowBordered,
+                                i < rows.length - 1 && {borderBottomColor: c.divider},
+                            ]}>
+                            <AppText variant="bodyMd" tone="secondary" numberOfLines={1}>
+                                {isoToLabel(row.iso)}
+                            </AppText>
+                            {row.amount !== null ? (
+                                <AppText variant="bodyMd" weight="700" numberOfLines={1}>
+                                    {row.amount.toLocaleString('ko-KR')}원
+                                </AppText>
+                            ) : (
+                                <AppBadge label="미입력" tone="warning" />
+                            )}
                         </TouchableOpacity>
                     ))}
-                </View>
+                </AppCard>
             )}
         </ScreenContainer>
     );
 };
 
 const styles = StyleSheet.create({
-    notice: {flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, padding: spacing.md, borderRadius: 14},
-    noticeText: {flex: 1, lineHeight: 18},
-    formCard: {marginTop: spacing.lg},
-    label: {marginTop: spacing.md, marginBottom: spacing.xs},
+    notice: {marginBottom: spacing.lg},
+    gap: {height: spacing.md},
     error: {marginTop: spacing.sm},
     listTitle: {marginTop: spacing.xxl, marginBottom: spacing.sm},
-    list: {gap: spacing.sm},
-    row: {flexDirection: 'row', alignItems: 'center', gap: spacing.md},
-    iconWrap: {width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center'},
-    flex: {flex: 1},
+    row: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: spacing.md,
+        paddingVertical: spacing.sm + 2,
+    },
+    rowBordered: {borderBottomWidth: 1},
 });
 
 export default DailySalesEntryScreen;

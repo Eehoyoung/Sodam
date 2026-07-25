@@ -1,19 +1,17 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {Linking, StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
     AppButton,
     AppCard,
     AppHeader,
     AppText,
     ErrorState,
-    HeroNumber,
     LoadingState,
+    MoneyCard,
     ScreenContainer,
 } from '../../../common/components/ds';
-import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import {spacing, radius} from '../../../theme/tokens';
+import {spacing} from '../../../theme/tokens';
 import {
     fetchVatDeadline,
     fetchWithholdingMonthly,
@@ -50,14 +48,15 @@ const fmtDate = (iso: string): string => {
 };
 
 /**
- * B6 세금 신고 기한 — 이번 달 원천세(익월 10일) D-day + 부가세 분기 기한 안내.
+ * W3 TaxDeadlineScreen — v3 시안(sodam-v3-11-taxwage.html) 1:1.
  *
- * <p>요약·기한 알림까지만(신고·납부는 홈택스 위임). 추정치이므로 면책 동반.
+ * MoneyCard(원천세 D-day) + 단일 행(원천징수세액 추정) + section-label "부가가치세 분기 기한" +
+ * 단일 행(분기·D-day) + info-card(안내·면책 통합) + 하단 CTA "홈택스에서 신고하기".
+ * 요약·기한 알림까지만(신고·납부는 홈택스 위임). 추정치이므로 면책 동반.
  */
 const TaxDeadlineScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute<Route>();
-    const c = useThemeColors();
     const {storeId} = route.params;
     const {year, month} = targetMonth();
 
@@ -87,8 +86,6 @@ const TaxDeadlineScreen: React.FC = () => {
         load();
     }, [load]);
 
-    const withholdingUrgent = withholding !== null && withholding !== undefined && withholding.daysUntilDue <= 5;
-
     return (
         <ScreenContainer
             scroll
@@ -96,7 +93,6 @@ const TaxDeadlineScreen: React.FC = () => {
             footer={
                 <AppButton
                     label="홈택스에서 신고하기"
-                    variant="secondary"
                     onPress={() => Linking.openURL(HOMETAX_URL)}
                 />
             }>
@@ -110,53 +106,30 @@ const TaxDeadlineScreen: React.FC = () => {
                 />
             ) : (
                 <View>
-                    <HeroNumber
+                    <MoneyCard
                         label={`${withholding.month}월분 원천세 신고`}
                         value={ddayLabel(withholding.daysUntilDue)}
                         sub={`${fmtDate(withholding.dueDate)}까지`}
-                        accent={withholdingUrgent}
                     />
 
-                    <AppCard variant="flat" style={styles.card}>
-                        <View style={styles.row}>
-                            <AppText variant="caption" tone="secondary">원천징수세액(추정)</AppText>
-                            <AppText variant="titleMd" numberOfLines={1} adjustsFontSizeToFit>
-                                {won(withholding.totalWithheld)}
-                            </AppText>
-                        </View>
-                        <View style={styles.row}>
-                            <AppText variant="caption" tone="secondary">신고 기한</AppText>
-                            <AppText variant="bodyMd">{fmtDate(withholding.dueDate)}</AppText>
-                        </View>
-                        <AppText variant="caption" tone="tertiary" style={styles.note}>
-                            {withholding.disclaimer}
+                    <View style={styles.row}>
+                        <AppText variant="bodyMd" tone="secondary">원천징수세액(추정)</AppText>
+                        <AppText variant="bodyMd" weight="700" numberOfLines={1} adjustsFontSizeToFit>
+                            {won(withholding.totalWithheld)}
                         </AppText>
-                    </AppCard>
+                    </View>
 
                     <AppText variant="caption" tone="secondary" style={styles.sectionLabel}>
                         부가가치세 분기 기한
                     </AppText>
-                    <AppCard variant="flat" style={styles.card}>
-                        <View style={styles.vatHeader}>
-                            <View
-                                style={[
-                                    styles.iconWrap,
-                                    {backgroundColor: c.brandPrimarySoft},
-                                ]}>
-                                <Ionicons name="calendar-outline" size={20} color={c.brandPrimary} />
-                            </View>
-                            <View style={styles.flex}>
-                                <AppText variant="titleMd">{vat.quarter}</AppText>
-                                <AppText variant="caption" tone="secondary">
-                                    {fmtDate(vat.dueDate)} · {ddayLabel(vat.daysUntilDue)}
-                                </AppText>
-                            </View>
-                        </View>
-                        <AppText variant="caption" tone="secondary" style={styles.guidance}>
-                            {vat.guidance}
-                        </AppText>
-                        <AppText variant="caption" tone="tertiary" style={styles.note}>
-                            {vat.disclaimer}
+                    <View style={styles.row}>
+                        <AppText variant="bodyMd" tone="secondary">{vat.quarter}</AppText>
+                        <AppText variant="bodyMd" weight="700">{ddayLabel(vat.daysUntilDue)}</AppText>
+                    </View>
+
+                    <AppCard variant="flat" style={styles.note}>
+                        <AppText variant="caption" tone="tertiary">
+                            {vat.guidance} {withholding.disclaimer} {vat.disclaimer}
                         </AppText>
                     </AppCard>
                 </View>
@@ -166,20 +139,9 @@ const TaxDeadlineScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-    card: {marginTop: spacing.lg, gap: spacing.xs},
-    row: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.xs},
+    row: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md},
     sectionLabel: {marginTop: spacing.xl, marginBottom: spacing.xs},
-    vatHeader: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
-    iconWrap: {
-        width: 40,
-        height: 40,
-        borderRadius: radius.md,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    flex: {flex: 1},
-    guidance: {marginTop: spacing.sm},
-    note: {marginTop: spacing.sm},
+    note: {marginTop: spacing.lg},
 });
 
 export default TaxDeadlineScreen;

@@ -6,7 +6,7 @@ import {useFocusEffect, type RouteProp} from '@react-navigation/native';
 import {useStoreLiveSync} from '../../../common/realtime/useStoreLiveSync';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
-import {radius, spacing} from '../../../theme/tokens';
+import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {InviteShareSheet} from '../components/StoreSheets';
 import storeService, {StoreDetailDto} from '../services/storeService';
@@ -127,6 +127,13 @@ export default function StoreDetailScreen({route, navigation}: StoreDetailScreen
                         title="운영시간 설정"
                         subtitle="요일별 영업·휴무 시간"
                         onPress={() => navigation.navigate('StoreOperatingHours', {storeId})}
+                    />
+                    <ManageItem
+                        c={c}
+                        icon="checkbox-outline"
+                        title="근태 관리"
+                        subtitle="오늘·이번 주·이번 달 출퇴근 현황 한눈에 보기"
+                        onPress={() => navigation.navigate('AttendanceOverview', {storeId})}
                     />
                     <ManageItem
                         c={c}
@@ -290,7 +297,8 @@ const styles = StyleSheet.create({
     iconWrap: {
         width: 40,
         height: 40,
-        borderRadius: radius.lg,
+        // v3 시안은 원형 아이콘 배지 — radius.lg(둥근 사각)가 아니라 지름의 절반으로 완전한 원을 만든다.
+        borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
     },

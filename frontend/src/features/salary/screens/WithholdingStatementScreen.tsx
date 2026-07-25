@@ -8,11 +8,12 @@ import {
     AppText,
     EmptyState,
     ErrorState,
-    HeroNumber,
     LoadingState,
+    MoneyCard,
     ScreenContainer,
     SegmentedControl,
 } from '../../../common/components/ds';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {spacing} from '../../../theme/tokens';
 import {fetchWithholdingStatement, WithholdingStatement} from '../services/taxStatementService';
 
@@ -23,11 +24,16 @@ const won = (n: number) => `${n.toLocaleString()}원`;
 const THIS_YEAR = new Date().getFullYear();
 
 /**
- * A2 세무 자료 — 간이지급명세서 인별 연간 집계. 자료정리까지만(신고는 홈택스 위임).
+ * W6 WithholdingStatementScreen(A2) — v3 시안(sodam-v3-11-taxwage.html) 1:1.
+ *
+ * 연도 SegmentedControl + MoneyCard(원천징수세액) + 단일 리스트 카드(행마다 하단 구분선,
+ * 이름 좌측(지급총액 additive 캡션)·원천징수액 우측) + 하단 아웃라인 CTA "홈택스에서 제출하기".
+ * 간이지급명세서 인별 연간 집계. 자료정리까지만(신고는 홈택스 위임).
  */
 const WithholdingStatementScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute<Route>();
+    const c = useThemeColors();
     const {storeId} = route.params;
 
     const [tab, setTab] = useState(0); // 0 올해 1 작년
@@ -81,31 +87,34 @@ const WithholdingStatementScreen: React.FC = () => {
                 />
             ) : (
                 <View>
-                    <HeroNumber
+                    <MoneyCard
                         label={`${year}년 원천징수세액`}
                         value={won(data.totalWithheld)}
                         sub={`직원 ${data.employeeCount}명 · 지급총액 ${won(data.totalPaid)}`}
-                        accent
                     />
-                    <View style={styles.list}>
-                        {data.items.map(it => (
-                            <AppCard key={it.employeeId} variant="flat">
-                                <AppText variant="titleMd">{it.employeeName}</AppText>
-                                <View style={styles.row}>
-                                    <AppText variant="caption" tone="secondary">지급총액</AppText>
-                                    <AppText variant="bodyMd" numberOfLines={1} adjustsFontSizeToFit>
-                                        {won(it.paidTotal)}
+                    <AppCard variant="plain" style={styles.list}>
+                        {data.items.map((it, i, arr) => (
+                            <View
+                                key={it.employeeId}
+                                style={[
+                                    styles.row,
+                                    i < arr.length - 1 && styles.rowBordered,
+                                    i < arr.length - 1 && {borderBottomColor: c.divider},
+                                ]}>
+                                <View style={styles.rowLeft}>
+                                    <AppText variant="bodyMd" tone="secondary" numberOfLines={1}>
+                                        {it.employeeName}
+                                    </AppText>
+                                    <AppText variant="caption" tone="tertiary">
+                                        지급총액 {won(it.paidTotal)}
                                     </AppText>
                                 </View>
-                                <View style={styles.row}>
-                                    <AppText variant="caption" tone="secondary">원천징수</AppText>
-                                    <AppText variant="bodyMd" numberOfLines={1} adjustsFontSizeToFit>
-                                        {won(it.withheldTotal)}
-                                    </AppText>
-                                </View>
-                            </AppCard>
+                                <AppText variant="bodyMd" weight="700" numberOfLines={1} adjustsFontSizeToFit>
+                                    {won(it.withheldTotal)}
+                                </AppText>
+                            </View>
                         ))}
-                    </View>
+                    </AppCard>
                     <AppText variant="caption" tone="tertiary" style={styles.disclaimer}>
                         {data.disclaimer}
                     </AppText>
@@ -116,8 +125,16 @@ const WithholdingStatementScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-    list: {marginTop: spacing.lg, gap: spacing.sm},
-    row: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.xs},
+    list: {marginTop: spacing.lg},
+    row: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: spacing.md,
+        paddingVertical: spacing.sm + 2,
+    },
+    rowBordered: {borderBottomWidth: 1},
+    rowLeft: {flex: 1, minWidth: 0},
     disclaimer: {marginTop: spacing.md},
 });
 

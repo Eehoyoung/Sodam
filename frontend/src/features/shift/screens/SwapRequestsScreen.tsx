@@ -41,6 +41,9 @@ function dateLabel(iso: string): string {
 /**
  * 대타 구하기 — 사장이 확정 시프트에 대해 대타 모집을 열고,
  * 지원한 직원 중 한 명을 골라 확정한다.
+ *
+ * v3 시안(sodam-v3-09-schedule.html S5) 정렬: "대타 모집 열기"(시작 CTA) 섹션을 "모집 중"
+ * 목록보다 위로 재배치(만들기 동작이 현황보다 먼저 보이도록).
  */
 const SwapRequestsScreen: React.FC = () => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
@@ -171,7 +174,8 @@ const SwapRequestsScreen: React.FC = () => {
                                 지원자 {request.applicants.length}명
                             </AppText>
                         </View>
-                        {request.applicants.length > 0 && <AppBadge label={`지원 ${request.applicants.length}`} tone="info" />}
+                        {/* v3 시안(S5): 지원 건수 배지는 amber(warning) — 대기/확인 필요 신호 */}
+                        {request.applicants.length > 0 && <AppBadge label={`지원 ${request.applicants.length}`} tone="warning" />}
                         <Ionicons
                             name={expanded ? 'chevron-up' : 'chevron-down'}
                             size={16}
@@ -256,20 +260,8 @@ const SwapRequestsScreen: React.FC = () => {
                 />
             ) : (
                 <>
-                    {/* ── 모집 중 ── */}
-                    <AppText variant="headingSm" style={styles.sectionTitle}>모집 중</AppText>
-                    {requests.length === 0 ? (
-                        <AppCard variant="flat">
-                            <AppText variant="bodyMd" tone="secondary" center>
-                                지금 모집 중인 대타가 없어요.
-                            </AppText>
-                        </AppCard>
-                    ) : (
-                        <View style={styles.list}>{requests.map(renderRequest)}</View>
-                    )}
-
-                    {/* ── 대타 모집 열기 ── */}
-                    <AppText variant="headingSm" style={styles.sectionTitleGap}>대타 모집 열기</AppText>
+                    {/* ── 대타 모집 열기 (v3 시안 S5: 모집 시작 CTA·후보 선택이 목록보다 위) ── */}
+                    <AppText variant="headingSm" style={styles.sectionTitle}>대타 모집 열기</AppText>
                     <AppText variant="caption" tone="tertiary" style={styles.sectionHint}>
                         오늘부터 7일 안의 근무 중 대타가 필요한 근무를 선택하세요.
                     </AppText>
@@ -290,6 +282,18 @@ const SwapRequestsScreen: React.FC = () => {
                                 style={styles.startBtn}
                             />
                         </>
+                    )}
+
+                    {/* ── 모집 중 ── */}
+                    <AppText variant="headingSm" style={styles.sectionTitleGap}>모집 중</AppText>
+                    {requests.length === 0 ? (
+                        <AppCard variant="flat">
+                            <AppText variant="bodyMd" tone="secondary" center>
+                                지금 모집 중인 대타가 없어요.
+                            </AppText>
+                        </AppCard>
+                    ) : (
+                        <View style={styles.list}>{requests.map(renderRequest)}</View>
                     )}
                 </>
             )}

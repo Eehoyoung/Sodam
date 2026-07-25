@@ -30,7 +30,7 @@ const PdfPreviewScreen: React.FC = () => {
                     <AppButton label="공유하기" variant={onDownload ? 'secondary' : 'primary'} onPress={() => onShare?.()} />
                 </CtaStack>
             }>
-            <AppCard variant="flat" style={[styles.page, {backgroundColor: c.surfaceMuted}]}>
+            <AppCard variant="flat" style={[styles.page, {backgroundColor: c.background}]}>
                 <View style={styles.doc}>
                     <AppText variant="titleMd">{title}</AppText>
                     {sub ? <AppText variant="caption" tone="tertiary" style={styles.sub}>{sub}</AppText> : null}
@@ -41,7 +41,8 @@ const PdfPreviewScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-    page: {height: 360, alignItems: 'center', justifyContent: 'center'},
+    // v3 아티팩트 70 PDFPreview(sodam-v3-04-payroll.html)의 .pdf-preview: height 320, 흰 카드.
+    page: {height: 320, alignItems: 'center', justifyContent: 'center'},
     doc: {alignItems: 'center'},
     sub: {marginTop: spacing.xs},
 });

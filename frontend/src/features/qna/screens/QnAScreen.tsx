@@ -1,10 +1,9 @@
 /* eslint-disable react-native/no-color-literals -- 카카오 채널 버튼 브랜드 고정색(다크/라이트 무관) */
-import {AppButton, AppCard, AppHeader, AppInput, AppText, AppToast, ScreenContainer} from '../../../common/components/ds';
+import {AppBadge, AppCard, AppHeader, AppInput, AppText, AppToast, BottomSheet, ScreenContainer} from '../../../common/components/ds';
 import React, {useState} from 'react';
 import {Linking, Pressable, StyleSheet, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {spacing} from '../../../theme/tokens';
-import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import inquiryService from '../services/inquiryService';
 
 const faqData = [
@@ -19,18 +18,31 @@ const faqData = [
 ];
 
 /**
- * 37 QnA — 확정 시안.
- * FAQ 아코디언 + 1:1 문의 + 카카오 채팅. 토글/제출/링크 로직 보존.
+ * 37 QnA + 73 QnACompose — 확정 시안.
+ * FAQ 아코디언 + 1:1 문의(하단 시트) + 카카오 채팅. 토글/제출/링크 로직 보존.
+ * 헤더 "글쓰기"는 73 QnACompose 시트를 연다(이전엔 즉시 handleInquirySubmit 을 호출해
+ * 빈 폼이면 곧장 경고 토스트만 뜨는 버그였음 — docs/260720 v3 감사 후속).
+ * 시안의 제목/카테고리 선택 필드는 BE `/api/inquiries` 스키마(name/email/content 뿐)에
+ * 대응하는 필드가 없어 실제 존재하는 이름/이메일/문의내용 3필드로 대체했다.
  */
 const QnAScreen: React.FC = () => {
-    const c = useThemeColors();
     const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [query, setQuery] = useState('');
+    const [composeVisible, setComposeVisible] = useState(false);
     const [inquiryName, setInquiryName] = useState('');
     const [inquiryEmail, setInquiryEmail] = useState('');
     const [inquiryContent, setInquiryContent] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
     const toggleFaq = (id: string) => setExpandedId(expandedId === id ? null : id);
+
+    // v3 아티팩트 37 QnA(sodam-v3-05-info.html)의 .field 검색창 — 질문/답변 텍스트로 클라이언트 필터.
+    const visibleFaq = query.trim()
+        ? faqData.filter(faq => {
+            const q = query.trim().toLowerCase();
+            return faq.question.toLowerCase().includes(q) || faq.answer.toLowerCase().includes(q);
+        })
+        : faqData;
 
     const handleInquirySubmit = async () => {
         if (!inquiryName.trim() || !inquiryEmail.trim() || !inquiryContent.trim()) {
@@ -49,6 +61,7 @@ const QnAScreen: React.FC = () => {
             setInquiryName('');
             setInquiryEmail('');
             setInquiryContent('');
+            setComposeVisible(false);
         } catch (_e) {
             AppToast.error('문의 접수에 실패했어요. 잠시 후 다시 시도해 주세요.');
         } finally {
@@ -63,16 +76,31 @@ const QnAScreen: React.FC = () => {
     };
 
     return (
-        <ScreenContainer scroll header={<AppHeader title="Q&A" actions={[{label: '글쓰기', onPress: handleInquirySubmit}]} />}>
+        <ScreenContainer scroll header={<AppHeader title="Q&A" actions={[{label: '글쓰기', onPress: () => setComposeVisible(true)}]} />}>
+            <AppInput
+                placeholder="궁금한 내용을 검색하세요"
+                value={query}
+                onChangeText={setQuery}
+                containerStyle={styles.searchInput}
+            />
+
             <AppText variant="headingSm" style={styles.sectionTitle}>자주 묻는 질문</AppText>
             <View style={styles.list}>
-                {faqData.map(faq => {
+                {visibleFaq.map(faq => {
                     const open = expandedId === faq.id;
                     return (
                         <AppCard key={faq.id} variant="plain" onPress={() => toggleFaq(faq.id)}>
                             <View style={styles.faqRow}>
-                                <AppText variant="titleMd" style={styles.flex}>{faq.question}</AppText>
-                                <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={20} color={c.textTertiary} />
+                                <View style={styles.flex}>
+                                    <AppText variant="titleMd" numberOfLines={1}>{faq.question}</AppText>
+                                    {!open ? (
+                                        <AppText variant="caption" tone="secondary" numberOfLines={1} style={styles.faqPreview}>
+                                            {faq.answer}
+                                        </AppText>
+                                    ) : null}
+                                </View>
+                                {/* v3 아티팩트 37: list-item 우측 badge--teal "답변" */}
+                                <AppBadge label="답변" tone="success" />
                             </View>
                             {open ? (
                                 <AppText variant="bodyMd" tone="secondary" style={styles.answer}>{faq.answer}</AppText>
@@ -80,14 +108,11 @@ const QnAScreen: React.FC = () => {
                         </AppCard>
                     );
                 })}
-            </View>
-
-            <AppText variant="headingSm" style={styles.sectionTitle}>1:1 문의</AppText>
-            <View style={styles.form}>
-                <AppInput label="이름" value={inquiryName} onChangeText={setInquiryName} placeholder="이름을 입력하세요" />
-                <AppInput label="이메일" value={inquiryEmail} onChangeText={setInquiryEmail} placeholder="이메일을 입력하세요" keyboardType="email-address" autoCapitalize="none" />
-                <AppInput label="문의 내용" value={inquiryContent} onChangeText={setInquiryContent} placeholder="문의 내용을 입력하세요" multiline multilineMinHeight={120} />
-                <AppButton label="문의하기" onPress={handleInquirySubmit} loading={submitting} testID="qna-inquiry-submit" />
+                {visibleFaq.length === 0 ? (
+                    <AppText variant="bodyMd" tone="tertiary" center style={styles.noResult}>
+                        검색 결과가 없어요.
+                    </AppText>
+                ) : null}
             </View>
 
             <AppText variant="headingSm" style={styles.sectionTitle}>카카오톡 채팅 문의</AppText>
@@ -95,15 +120,38 @@ const QnAScreen: React.FC = () => {
                 <Ionicons name="chatbubble" size={20} color="#3C1E1E" />
                 <AppText variant="titleMd" style={styles.kakaoText}>카카오톡 채팅 문의하기</AppText>
             </Pressable>
+
+            {/* 73 QnACompose — 헤더 "글쓰기"로 진입하는 1:1 문의 작성 시트 */}
+            <BottomSheet
+                visible={composeVisible}
+                onClose={() => setComposeVisible(false)}
+                title="질문 남기기"
+                scrollable
+                primary={{
+                    label: '질문 등록',
+                    onPress: handleInquirySubmit,
+                    loading: submitting,
+                    testID: 'qna-inquiry-submit',
+                }}
+                secondary={{label: '닫기', onPress: () => setComposeVisible(false)}}>
+                <View style={styles.form}>
+                    <AppInput label="이름" value={inquiryName} onChangeText={setInquiryName} placeholder="이름을 입력하세요" />
+                    <AppInput label="이메일" value={inquiryEmail} onChangeText={setInquiryEmail} placeholder="이메일을 입력하세요" keyboardType="email-address" autoCapitalize="none" />
+                    <AppInput label="문의 내용" value={inquiryContent} onChangeText={setInquiryContent} placeholder="궁금한 내용을 적어 주세요" multiline multilineMinHeight={120} />
+                </View>
+            </BottomSheet>
         </ScreenContainer>
     );
 };
 
 const styles = StyleSheet.create({
+    searchInput: {marginTop: spacing.sm},
     sectionTitle: {marginTop: spacing.xxl, marginBottom: spacing.md},
     list: {gap: spacing.sm},
-    faqRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
+    faqRow: {flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm},
     flex: {flex: 1},
+    faqPreview: {marginTop: 2},
+    noResult: {paddingVertical: spacing.xl},
     answer: {marginTop: spacing.md, lineHeight: 22},
     form: {gap: spacing.md},
     kakaoBtn: {

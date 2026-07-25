@@ -1,7 +1,8 @@
 /**
- * ⑤ ReorderHintScreen — 품목별 매입주기·마지막 매입(발주 참고).
+ * B5 ReorderHintScreen — v3 시안(sodam-v3-10-business.html) 1:1.
  *
- * 스코프 라인 가시화: 상단에 "참고용 — 재고 자동 차감은 하지 않아요" 면책을 반드시 노출.
+ * info-card 면책("참고용이에요 — 재고 자동 차감은 하지 않아요") + section-label "자주 사는 품목" +
+ * 보조 info-card(30일 안내) + 리스트(상단 행: 품목명+평균주기 배지, 메타 한 줄: 마지막일자·수량·매입횟수).
  * (재고관리 아님 — POS Non-Goal 경계를 사용자에게 명시)
  */
 import React, {useCallback, useState} from 'react';
@@ -9,6 +10,7 @@ import {StyleSheet, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {RouteProp, NavigationProp, useFocusEffect} from '@react-navigation/native';
 import {
+    AppBadge,
     AppCard,
     AppHeader,
     AppText,
@@ -17,7 +19,7 @@ import {
     LoadingState,
     ScreenContainer,
 } from '../../../common/components/ds';
-import {radius, spacing} from '../../../theme/tokens';
+import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import purchaseService from '../services/purchaseService';
 import {ReorderHint} from '../types';
@@ -59,12 +61,11 @@ export default function ReorderHintScreen({route, navigation}: Props) {
 
     // 스코프 라인 면책 — 모든 상태에서 노출되도록 컴포넌트로 분리.
     const disclaimer = (
-        <View style={[styles.notice, {backgroundColor: c.warningBg}]}>
-            <Ionicons name="information-circle-outline" size={18} color={c.warning} />
-            <AppText variant="caption" tone="secondary" style={styles.noticeText}>
+        <AppCard variant="flat" style={styles.notice}>
+            <AppText variant="bodyMd" tone="secondary">
                 참고용이에요 — 재고 자동 차감은 하지 않아요.
             </AppText>
-        </View>
+        </AppCard>
     );
 
     if (loading) {
@@ -93,12 +94,14 @@ export default function ReorderHintScreen({route, navigation}: Props) {
         <ScreenContainer scroll header={header}>
             {disclaimer}
 
-            <AppText variant="headingSm" style={styles.title}>
+            <AppText variant="titleMd" tone="secondary" style={styles.title}>
                 자주 사는 품목
             </AppText>
-            <AppText variant="caption" tone="tertiary" style={styles.subtitle}>
-                최근 30일 매입을 바탕으로 한 매입 주기예요.
-            </AppText>
+            <AppCard variant="flat" style={styles.subtitleCard}>
+                <AppText variant="caption" tone="tertiary">
+                    최근 30일 매입을 바탕으로 한 매입 주기예요.
+                </AppText>
+            </AppCard>
 
             {hints.length === 0 ? (
                 <View style={styles.empty}>
@@ -112,32 +115,16 @@ export default function ReorderHintScreen({route, navigation}: Props) {
                 <View style={styles.list}>
                     {hints.map((h, i) => (
                         <AppCard key={`${h.itemName}-${i}`} variant="flat">
-                            <View style={styles.row}>
-                                <View style={styles.left}>
-                                    <AppText variant="titleMd" numberOfLines={1}>
-                                        {h.itemName}
-                                    </AppText>
-                                    <AppText
-                                        variant="caption"
-                                        tone="tertiary"
-                                        numberOfLines={1}
-                                        style={styles.metaSub}>
-                                        마지막 {h.lastPurchaseDate} · {h.lastQuantity.toLocaleString()}
-                                        {h.unit ? h.unit : ''}
-                                    </AppText>
-                                </View>
-                                <View style={styles.right}>
-                                    <View style={[styles.cycle, {backgroundColor: c.brandPrimarySoft}]}>
-                                        <Ionicons name="repeat-outline" size={14} color={c.brandPrimary} />
-                                        <AppText variant="caption" tone="brand" weight="800" style={styles.cycleText}>
-                                            평균 {Math.round(h.avgIntervalDays)}일
-                                        </AppText>
-                                    </View>
-                                    <AppText variant="caption" tone="tertiary" style={styles.count}>
-                                        {h.purchaseCount}회 매입
-                                    </AppText>
-                                </View>
+                            <View style={styles.itemTop}>
+                                <AppText variant="titleMd" numberOfLines={1} style={styles.itemName}>
+                                    {h.itemName}
+                                </AppText>
+                                <AppBadge label={`평균 ${Math.round(h.avgIntervalDays)}일`} tone="success" />
                             </View>
+                            <AppText variant="caption" tone="tertiary" numberOfLines={1}>
+                                마지막 {h.lastPurchaseDate} · {h.lastQuantity.toLocaleString()}
+                                {h.unit ? h.unit : ''} · {h.purchaseCount}회 매입
+                            </AppText>
                         </AppCard>
                     ))}
                 </View>
@@ -147,31 +134,17 @@ export default function ReorderHintScreen({route, navigation}: Props) {
 }
 
 const styles = StyleSheet.create({
-    notice: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.sm,
-        padding: spacing.md,
-        borderRadius: radius.lg,
-        marginBottom: spacing.lg,
-    },
-    noticeText: {flex: 1},
+    notice: {marginBottom: spacing.lg},
     title: {marginTop: spacing.xs},
-    subtitle: {marginTop: spacing.xs},
+    subtitleCard: {marginTop: spacing.sm, marginBottom: spacing.sm},
     empty: {marginTop: spacing.huge},
     list: {marginTop: spacing.lg, gap: spacing.sm},
-    row: {flexDirection: 'row', alignItems: 'center', gap: spacing.md},
-    left: {flex: 1, minWidth: 0},
-    metaSub: {marginTop: spacing.xs},
-    right: {flexShrink: 0, alignItems: 'flex-end', gap: spacing.xs},
-    cycle: {
+    itemTop: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: spacing.xs,
-        paddingHorizontal: spacing.sm,
-        paddingVertical: spacing.xs,
-        borderRadius: radius.pill,
+        justifyContent: 'space-between',
+        gap: spacing.sm,
+        marginBottom: spacing.xs,
     },
-    cycleText: {marginLeft: 2},
-    count: {marginTop: 2},
+    itemName: {flex: 1, minWidth: 0},
 });

@@ -8,6 +8,7 @@
  *   ghost           — 리스트/헤더 경량 액션
  *   destructive     — 삭제/탈퇴 (확인 단계에서만)
  *   invertedPrimary — 어두운 배경 위 흰 버튼
+ *   kakao           — 카카오 브랜드 버튼(#FEE500 배경 + 다크 텍스트), 로그인 화면 전용
  *
  * 크기: sm(시각36/터치44 hitSlop) · md(48) · lg(52~56)
  * 로딩: busy 시 spinner + disabled, label 유지.
@@ -33,7 +34,8 @@ export type ButtonVariant =
     | 'outline'
     | 'ghost'
     | 'destructive'
-    | 'invertedPrimary';
+    | 'invertedPrimary'
+    | 'kakao';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface AppButtonProps {
@@ -135,6 +137,9 @@ const getPalette = (
             return {bg: c.background, fg: c.error, border: c.border};
         case 'invertedPrimary':
             return {bg: c.background, fg: c.brandSecondary};
+        case 'kakao':
+            // 카카오 공식 브랜드 컬러 고정(테마 무관) — v3 아티팩트 .btn--kakao 1:1.
+            return {bg: '#FEE500', fg: '#1F1A0E'};
         default:
             return {bg: c.brandPrimary, fg: c.textInverse};
     }

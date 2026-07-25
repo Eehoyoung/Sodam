@@ -5,8 +5,13 @@
  * 라우트 파라미터로 리스트 항목(`JobSeekerListItem`)을 그대로 전달받는다 — **추가 조회 API
  * 없음**(v1). 뒤로가기 시 리스트가 `useFocusEffect` refetch 로 정합성을 회복한다.
  *
- * 히어로는 그린 그라디언트(`recruit.gradient`, §7.0 다크배경 금지) + 화이트 텍스트.
+ * 히어로는 v3 시안(sodam-v3-07-recruitment.html R4)에 맞춰 흰 배경 + 회색 테두리(--border) spot
+ * 카드로 구성하고, 체크마크 "인증" 배지 문구를 그대로 붙인다(§7.0 다크배경 금지 원칙은 유지).
  * 하단 CTA "채용 제안 보내기"는 `JobOfferComposeSheet`(§15.5 R-11)를 연다(Phase 6 실연결).
+ * ⚠️ 2026-07-11 초안 주석은 히어로 테두리를 "recruit 그린"이라 잘못 인용했었다 — 실제 아티팩트는
+ * 중립 회색 테두리 spot-card이고, "인증된 구직자"(.verified) 문구는 틸(`c.success`), "오늘 바로
+ * 출근 가능" 배지는 코랄(`badge--coral`)이다. 2026-07-20 확정에 따라 recruit 그린 토큰은
+ * 참조하지 않고 코랄/틸/앰버 3색만 사용한다.
  *
  * ⚠️ 실 DTO 범위 한계: `JobSeekerListItemResponse` 는 희망지역을 문자열 배열(`desiredLocations`)
  * + 단일 최단거리(`distanceMeters`)로만 내려준다(지역별 개별 거리 없음). §7.4-2 시안은
@@ -17,11 +22,10 @@ import React, {useState} from 'react';
 import {Pressable, StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {AppBadge, AppHeader, AppText, ScreenContainer} from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
-import {radius, recruit, spacing} from '../../../theme/tokens';
+import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {JobOfferComposeSheet} from '../components/JobOfferComposeSheet';
 import {
@@ -60,7 +64,7 @@ const JobSeekerDetailScreen: React.FC = () => {
                         accessibilityRole="button"
                         style={({pressed}) => [
                             styles.cta,
-                            {backgroundColor: recruit.primary},
+                            {backgroundColor: c.brandPrimary},
                             pressed ? styles.ctaPressed : null,
                         ]}>
                         <AppText variant="bodyLg" weight="700" style={{color: c.textInverse}}>
@@ -69,26 +73,29 @@ const JobSeekerDetailScreen: React.FC = () => {
                     </Pressable>
                 </View>
             }>
-            <LinearGradient
-                colors={recruit.gradient}
-                start={{x: 0, y: 0}}
-                end={{x: 1, y: 1}}
-                style={styles.hero}
-                testID="job-seeker-hero-gradient">
-                <AppText variant="headingSm" style={styles.heroName}>
+            <View
+                style={[styles.hero, {backgroundColor: c.background, borderColor: c.border}]}
+                testID="job-seeker-hero-card">
+                <AppText variant="headingSm" weight="800">
                     {seeker.name}
                     {seeker.age !== null ? ` · ${seeker.age}세` : ''}
                 </AppText>
-                <AppText variant="bodyMd" style={styles.heroSub}>
-                    소담 출퇴근 이력으로 인증된 구직자예요 · {formatDistanceKm(seeker.distanceMeters)}
-                </AppText>
+                {/* "인증된 구직자" = 틸(v3 시안 .verified) */}
+                <View style={styles.verifiedRow}>
+                    <Ionicons name="checkmark-circle" size={14} color={c.success} />
+                    <AppText variant="caption" weight="700" style={{color: c.success}}>
+                        소담 출퇴근 이력으로 인증된 구직자예요 · {formatDistanceKm(seeker.distanceMeters)}
+                    </AppText>
+                </View>
                 <View style={styles.heroBadgeRow}>
-                    {seeker.availableToday ? <HeroPill label="오늘 바로출근 가능" /> : null}
+                    {/* "오늘 바로 출근 가능" = 코랄(v3 시안 badge--coral). AppBadge 는 별도 coral
+                        톤이 없어 error 톤(v3 팔레트에서 error=coral #FF4D6D)을 그대로 재사용한다. */}
+                    {seeker.availableToday ? <AppBadge label="오늘 바로 출근 가능" tone="error" /> : null}
                     {seeker.seekingTypes.map(type => (
-                        <HeroPill key={type} label={SEEKING_TYPE_LABELS[type]} />
+                        <AppBadge key={type} label={SEEKING_TYPE_LABELS[type]} tone="neutral" />
                     ))}
                 </View>
-            </LinearGradient>
+            </View>
 
             <Section title="인증 경력">
                 {seeker.currentEmployment ? (
@@ -110,14 +117,14 @@ const JobSeekerDetailScreen: React.FC = () => {
                                 style={[
                                     styles.categoryChip,
                                     {
-                                        borderColor: highlighted ? recruit.primary : c.border,
-                                        backgroundColor: highlighted ? recruit.primarySoft : c.background,
+                                        borderColor: highlighted ? c.brandPrimary : c.border,
+                                        backgroundColor: highlighted ? c.brandPrimarySoft : c.background,
                                     },
                                 ]}>
                                 <AppText
                                     variant="bodyMd"
                                     weight="700"
-                                    style={{color: highlighted ? recruit.primary : c.textSecondary}}>
+                                    style={{color: highlighted ? c.brandPrimary : c.textSecondary}}>
                                     {JOB_CATEGORY_LABELS[code]}
                                 </AppText>
                             </View>
@@ -125,7 +132,7 @@ const JobSeekerDetailScreen: React.FC = () => {
                     })}
                 </View>
                 {seeker.categoryMatched ? (
-                    <AppText variant="caption" style={[styles.matchedNote, {color: recruit.primary}]}>
+                    <AppText variant="caption" style={[styles.matchedNote, {color: c.brandPrimary}]}>
                         우리 매장과 업종 일치
                     </AppText>
                 ) : null}
@@ -154,7 +161,7 @@ const JobSeekerDetailScreen: React.FC = () => {
                 <View style={styles.locationList}>
                     {seeker.desiredLocations.map((address, idx) => (
                         <View key={`${address}-${idx}`} style={styles.locationRow}>
-                            <Ionicons name="location-outline" size={16} color={recruit.primary} />
+                            <Ionicons name="location-outline" size={16} color={c.brandPrimary} />
                             <AppText variant="bodyMd" style={styles.locationText} numberOfLines={2}>
                                 {address}
                             </AppText>
@@ -166,9 +173,11 @@ const JobSeekerDetailScreen: React.FC = () => {
                 </AppText>
             </Section>
 
-            <AppText variant="caption" tone="tertiary" style={styles.privacy}>
-                연락처는 비공개예요 — 제안을 수락하면 초대코드로 매장에 합류할 수 있어요.
-            </AppText>
+            <View style={[styles.privacyBox, {backgroundColor: c.surfaceMuted}]}>
+                <AppText variant="caption" tone="secondary" style={styles.privacyText}>
+                    연락처는 비공개예요 — 제안을 수락하면 초대코드로 매장에 합류할 수 있어요.
+                </AppText>
+            </View>
 
             <JobOfferComposeSheet
                 visible={offerSheetVisible}
@@ -187,29 +196,16 @@ const Section: React.FC<{title: string; children: React.ReactNode}> = ({title, c
     </View>
 );
 
-const HeroPill: React.FC<{label: string}> = ({label}) => (
-    <View style={styles.heroPill}>
-        <AppText variant="caption" weight="700" style={styles.heroPillText}>{label}</AppText>
-    </View>
-);
-
 const styles = StyleSheet.create({
     hero: {
         borderRadius: radius.xxl,
+        borderWidth: 1.5,
         padding: spacing.xl,
         marginBottom: spacing.lg,
         gap: spacing.xs,
     },
-    heroName: {color: '#FFFFFF'},
-    heroSub: {color: 'rgba(255,255,255,0.92)'},
+    verifiedRow: {flexDirection: 'row', alignItems: 'center', gap: 4},
     heroBadgeRow: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.sm},
-    heroPill: {
-        paddingHorizontal: spacing.sm + 2,
-        paddingVertical: 6,
-        borderRadius: radius.pill,
-        backgroundColor: 'rgba(255,255,255,0.22)',
-    },
-    heroPillText: {color: '#FFFFFF'},
     section: {marginBottom: spacing.lg, gap: spacing.xs},
     sectionTitle: {marginBottom: spacing.xs},
     chipWrap: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm},
@@ -227,7 +223,8 @@ const styles = StyleSheet.create({
     locationRow: {flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm},
     locationText: {flex: 1, minWidth: 0},
     distanceNote: {marginTop: spacing.xs},
-    privacy: {lineHeight: 18, paddingHorizontal: 2, marginBottom: spacing.xxl},
+    privacyBox: {borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.xxl},
+    privacyText: {lineHeight: 18},
     footer: {
         paddingHorizontal: spacing.xxl,
         paddingTop: spacing.md,

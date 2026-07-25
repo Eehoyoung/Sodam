@@ -1,11 +1,11 @@
 /* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
 import React, {useEffect, useMemo, useState} from 'react';
-import {Platform, Pressable, StyleSheet, Switch, Text, View} from 'react-native';
+import {Platform, Pressable, StyleSheet, Text, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import DateTimePicker, {DateTimePickerEvent} from '@react-native-community/datetimepicker';
 import {tokens} from '../../../theme/tokens';
-import {AppCard, AppHeader, AppText, ScreenContainer} from '../../../common/components/ds';
+import {AppBadge, AppHeader, AppListItem, AppText, ScreenContainer} from '../../../common/components/ds';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
 
@@ -39,7 +39,9 @@ const useStyles = () => {
 };
 
 /**
- * 알림 설정 (Settings · Notification).
+ * 40 NotificationSettings — v3 아티팩트(sodam-v3-06-settings.html) 반영.
+ * Switch 대신 배지형 리스트(AppListItem + AppBadge "켜짐"/"꺼짐") — 행 전체를 탭하면 토글된다.
+ * on/off 저장 로직(update/AsyncStorage)은 그대로 유지, 시각 표현만 배지로 교체.
  * AsyncStorage 에 즉시 저장. BE 동기화는 P1.
  *
  * TODO[P1 BE]: PUT /api/notifications/prefs — 서버 동기화 + 디바이스 간 일관성.
@@ -181,29 +183,23 @@ const NotificationSettingsScreen: React.FC = () => {
 interface RowProps {
     label: string;
     sub?: string;
+    /** 헤딩 성격 행(예: "알림 받기" 마스터 스위치) 여부 — AppListItem 은 title 이 항상 굵어 시각적으로 이미 반영됨 */
     bold?: boolean;
     value: boolean;
     disabled?: boolean;
     onChange: (v: boolean) => void;
 }
 
-const Row: React.FC<RowProps> = ({label, sub, bold, value, disabled, onChange}) => {
-    const styles = useStyles();
-    const c = useThemeColors();
+// v3 아티팩트 40: Switch 대신 배지(켜짐=teal/success, 꺼짐=neutral) — 행 전체 탭으로 토글.
+const Row: React.FC<RowProps> = ({label, sub, value, disabled, onChange}) => {
     return (
-        <View style={[styles.row, disabled && styles.rowDisabled]}>
-            <View style={{flex: 1}}>
-                <Text style={[styles.rowLabel, bold && styles.rowLabelBold]}>{label}</Text>
-                {sub ? <Text style={styles.rowSub}>{sub}</Text> : null}
-            </View>
-            <Switch
-                value={value}
-                onValueChange={onChange}
-                disabled={disabled}
-                trackColor={{false: c.border, true: c.brandPrimary}}
-                thumbColor={c.background}
-            />
-        </View>
+        <AppListItem
+            title={label}
+            subtitle={sub}
+            onPress={disabled ? undefined : () => onChange(!value)}
+            style={disabled ? {opacity: 0.5} : undefined}
+            right={<AppBadge label={value ? '켜짐' : '꺼짐'} tone={value ? 'success' : 'neutral'} />}
+        />
     );
 };
 
@@ -216,7 +212,7 @@ const Section: React.FC<{
     return (
         <View style={[styles.section, disabled && {opacity: 0.5}]}>
             <Text style={styles.sectionTitle}>{title}</Text>
-            <AppCard variant="plain">{children}</AppCard>
+            <View style={styles.list}>{children}</View>
         </View>
     );
 };
@@ -253,16 +249,8 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         marginBottom: tokens.spacing.sm,
         marginLeft: 2,
     },
-    row: {
-        flexDirection: 'row' as const,
-        alignItems: 'center' as const,
-        justifyContent: 'space-between' as const,
-        paddingVertical: tokens.spacing.sm + 2,
-    },
-    rowDisabled: {opacity: 0.5},
-    rowLabel: {fontSize: tokens.typography.sizes.md, color: c.textPrimary},
-    rowLabelBold: {fontWeight: tokens.typography.weights.bold},
-    rowSub: {fontSize: tokens.typography.sizes.xs, color: c.textTertiary, marginTop: 2},
+    // v3 아티팩트 40: AppListItem 행을 간격만 두고 쌓는다(카드 안 카드 금지 — AppCard 래핑 제거).
+    list: {gap: tokens.spacing.sm},
     quietRow: {flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-around' as const, paddingVertical: tokens.spacing.md},
     quietTilde: {color: c.textTertiary},
     timePicker: {alignItems: 'center' as const},

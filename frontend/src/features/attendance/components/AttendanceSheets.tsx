@@ -15,6 +15,7 @@ import {
 import {formatMoney} from '../../../common/format/money';
 import {formatTimer} from '../../../common/format/dateTime';
 import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {
     DATE_DIGITS_HELPER,
     TIME_DIGITS_HELPER,
@@ -26,7 +27,7 @@ import {
     timeDigitsToHHmm,
 } from '../../../common/utils/dateTimeInput';
 
-/* 58 Attendance Filter Sheet */
+/* 58 Attendance Filter Sheet — AttendanceOverviewScreen(헤더 필터 아이콘, 인라인 SegmentedControl과 병행 배치)에서 사용 */
 const RANGES = ['오늘', '이번 주', '이번 달'];
 export const AttendanceFilterSheet: React.FC<{
     visible: boolean;
@@ -60,7 +61,9 @@ export const CheckoutConfirmSheet: React.FC<{
     />
 );
 
-/* 79 Break Timer Sheet */
+/* 79 Break Timer Sheet — EmployeeAttendanceHome "휴게 기록" 버튼에서 사용.
+   과거엔 사장 전용 BreakRecordScreen(@MasterOnly)으로 직원을 보내던 대상 불일치 버그가 있었고,
+   직원용 휴게 시작/종료 API 가 아직 서버에 없어 onStart/onManual 은 로컬 안내만 한다(§ EmployeeAttendanceHome 주석 참고). */
 export const BreakTimerSheet: React.FC<{
     visible: boolean;
     onClose: () => void;
@@ -77,7 +80,7 @@ export const BreakTimerSheet: React.FC<{
     />
 );
 
-/* 78 Manual Record Sheet */
+/* 78 Manual Record Sheet — myPage/PersonalUserScreen(MultiStoreWorkScreen) "수동 시간 입력" 버튼에서 사용 */
 export const ManualRecordSheet: React.FC<{
     visible: boolean;
     onClose: () => void;
@@ -152,19 +155,22 @@ export const PersonalRecordEditSheet: React.FC<{
     );
 };
 
-/* 60 NFC Unsupported (screen) */
-export const NfcUnsupportedScreen: React.FC<{onGps: () => void; onManual: () => void}> = ({onGps, onManual}) => (
-    <ScreenContainer>
-        <ErrorState
-            glyph="!"
-            markColor="#F59E0B"
-            title={'이 기기는 NFC를\n지원하지 않아요'}
-            description="GPS 출근 또는 사장님께 수동 요청을 사용할 수 있어요."
-            primary={{label: 'GPS로 출근하기', onPress: onGps}}
-            secondary={{label: '사장님께 수동 요청', onPress: onManual}}
-        />
-    </ScreenContainer>
-);
+/* 60 NFC Unsupported (screen) — 아티팩트 icon-circle: amber(경고), 코랄(error) 아님 */
+export const NfcUnsupportedScreen: React.FC<{onGps: () => void; onManual: () => void}> = ({onGps, onManual}) => {
+    const c = useThemeColors();
+    return (
+        <ScreenContainer>
+            <ErrorState
+                glyph="!"
+                markColor={c.warning}
+                title={'이 기기는 NFC를\n지원하지 않아요'}
+                description="GPS 출근 또는 사장님께 수동 요청을 사용할 수 있어요."
+                primary={{label: 'GPS로 출근하기', onPress: onGps}}
+                secondary={{label: '사장님께 수동 요청', onPress: onManual}}
+            />
+        </ScreenContainer>
+    );
+};
 
 /* 62 Punch Success */
 export const PunchSuccessScreen: React.FC<{time: string; storeName: string; wage: number; onStart: () => void}> = ({time, storeName, wage, onStart}) => (
@@ -177,19 +183,22 @@ export const PunchSuccessScreen: React.FC<{time: string; storeName: string; wage
     </ScreenContainer>
 );
 
-/* 63 Punch Failed (radius) */
-export const PunchFailedScreen: React.FC<{onRetry: () => void; onManual: () => void}> = ({onRetry, onManual}) => (
-    <ScreenContainer>
-        <ErrorState
-            glyph="!"
-            markColor="#F59E0B"
-            title="매장 반경 밖이에요"
-            description="매장 근처에서 다시 시도하거나 사장님께 수동 처리를 요청하세요."
-            primary={{label: '다시 시도', onPress: onRetry}}
-            secondary={{label: '수동 요청', onPress: onManual}}
-        />
-    </ScreenContainer>
-);
+/* 63 Punch Failed (radius) — 아티팩트 icon-circle: amber(경고), 코랄(error) 아님 */
+export const PunchFailedScreen: React.FC<{onRetry: () => void; onManual: () => void}> = ({onRetry, onManual}) => {
+    const c = useThemeColors();
+    return (
+        <ScreenContainer>
+            <ErrorState
+                glyph="!"
+                markColor={c.warning}
+                title="매장 반경 밖이에요"
+                description="매장 근처에서 다시 시도하거나 사장님께 수동 처리를 요청하세요."
+                primary={{label: '다시 시도', onPress: onRetry}}
+                secondary={{label: '수동 요청', onPress: onManual}}
+            />
+        </ScreenContainer>
+    );
+};
 
 const styles = StyleSheet.create({
     form: {gap: spacing.md, marginTop: spacing.xs},

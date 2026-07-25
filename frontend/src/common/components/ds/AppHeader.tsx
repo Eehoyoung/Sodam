@@ -6,6 +6,10 @@
  *   title 은 화면 목적을 명사로 ("급여", "매장 운영"). 동사 남발 금지.
  *   액션 아이콘은 시각 36 / 터치 44 (hitSlop).
  *   다크 헤더(dark)는 투명 배경 + 흰 텍스트.
+ *
+ * subtitle (v3 "컨텍스트 헤더", sodam-v3-09-schedule.html S1/S11): 특정 직원·매장 컨텍스트를
+ * 보여줄 때 title 을 작은 라벨로, subtitle 을 굵은 큰 텍스트로 좌측 정렬 2줄 표시. 생략 시
+ * 기존 가운데 정렬 1줄 title 그대로(하위 호환).
  */
 import React, {ReactNode} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
@@ -21,6 +25,11 @@ export interface HeaderAction {
 
 interface AppHeaderProps {
     title?: string;
+    /**
+     * v3 시안 "컨텍스트 헤더"(예: 특정 직원 근무 시프트/근무일지) — 있으면 title 을 작은
+     * 라벨로, subtitle 을 굵은 큰 텍스트로 좌측 정렬 2줄로 그린다(기본 가운데 1줄 title 대체).
+     */
+    subtitle?: string;
     onBack?: () => void;
     /** 우측 액션 최대 2개 */
     actions?: HeaderAction[];
@@ -30,7 +39,7 @@ interface AppHeaderProps {
     rightText?: string;
 }
 
-export const AppHeader: React.FC<AppHeaderProps> = ({title, onBack, actions = [], dark = false, rightText}) => {
+export const AppHeader: React.FC<AppHeaderProps> = ({title, subtitle, onBack, actions = [], dark = false, rightText}) => {
     const c = useThemeColors();
     const fg = dark ? c.textInverse : c.textPrimary;
     const trimmed = actions.slice(0, 2);
@@ -56,9 +65,20 @@ export const AppHeader: React.FC<AppHeaderProps> = ({title, onBack, actions = []
                 ) : null}
             </View>
 
-            <Text numberOfLines={1} style={[styles.title, {color: fg}]}>
-                {title}
-            </Text>
+            {subtitle ? (
+                <View style={styles.stack}>
+                    <Text numberOfLines={1} style={[styles.stackLabel, {color: c.textSecondary}]}>
+                        {title}
+                    </Text>
+                    <Text numberOfLines={1} style={[styles.stackValue, {color: fg}]}>
+                        {subtitle}
+                    </Text>
+                </View>
+            ) : (
+                <Text numberOfLines={1} style={[styles.title, {color: fg}]}>
+                    {title}
+                </Text>
+            )}
 
             <View style={[styles.side, styles.right]}>
                 {rightText ? (
@@ -95,6 +115,9 @@ const styles = StyleSheet.create({
     backBtn: {width: 40, height: 44, alignItems: 'flex-start', justifyContent: 'center'},
     backIcon: {fontSize: 30, fontWeight: '400', lineHeight: 32, marginTop: -2},
     title: {flex: 1, fontSize: 18, fontWeight: '800', textAlign: 'center'},
+    stack: {flex: 1},
+    stackLabel: {fontSize: 12, fontWeight: '600'},
+    stackValue: {fontSize: 16, fontWeight: '800', marginTop: 2},
     action: {
         minWidth: 36,
         height: 36,

@@ -61,9 +61,9 @@ export const RoleTabBar: React.FC<RoleTabBarProps> = ({active}) => {
     const {user} = useAuth();
     const c = useThemeColors();
 
-    // 사장 첫 매장 id — 탭을 처음 누르는 시점에만 조회해 캐시 (렌더 지연/불필요 API 호출 방지).
+    // 사장 매장 목록 — 탭을 처음 누르는 시점에만 조회해 캐시 (렌더 지연/불필요 API 호출 방지).
     // undefined = 미조회, null = 매장 없음.
-    const masterStoreIdRef = useRef<number | null | undefined>(undefined);
+    const masterStoresRef = useRef<Array<{id: number}> | null | undefined>(undefined);
     const busyRef = useRef(false);
 
     const grade = resolveUserGrade(user);
@@ -74,13 +74,13 @@ export const RoleTabBar: React.FC<RoleTabBarProps> = ({active}) => {
 
     const activeIndex = tabs.findIndex(tab => tab.key === active);
 
-    const resolveMasterStoreId = async (): Promise<number | null> => {
-        if (masterStoreIdRef.current !== undefined) {
-            return masterStoreIdRef.current;
+    const resolveMasterStores = async (): Promise<Array<{id: number}> | null> => {
+        if (masterStoresRef.current !== undefined) {
+            return masterStoresRef.current;
         }
         const stores = await storeService.getMasterStores(user.id);
-        masterStoreIdRef.current = stores[0]?.id ?? null;
-        return masterStoreIdRef.current;
+        masterStoresRef.current = stores.length > 0 ? stores.map(s => ({id: s.id})) : null;
+        return masterStoresRef.current;
     };
 
     const handleTabPress = async (index: number) => {
@@ -97,13 +97,19 @@ export const RoleTabBar: React.FC<RoleTabBarProps> = ({active}) => {
         }
         busyRef.current = true;
         try {
-            const storeId = await resolveMasterStoreId();
-            if (storeId === null) {
+            const stores = await resolveMasterStores();
+            if (!stores) {
                 AppToast.show('먼저 매장을 등록해 주세요.');
                 navigation.navigate('StoreRegistration');
                 return;
             }
-            navigation.navigate(tab.screen, {storeId});
+            // 매장 탭만 다매장이면 목록(11 StoreList)으로, 단일 매장이면 기존처럼 바로 상세로 보낸다
+            // (11 StoreList 신설 — §4.1, 단일 매장 사장의 기존 빠른 경로는 그대로 보존).
+            if (tab.key === 'store' && stores.length > 1) {
+                navigation.navigate('StoreList');
+                return;
+            }
+            navigation.navigate(tab.screen, {storeId: stores[0].id});
         } catch {
             AppToast.error('매장 정보를 불러오지 못했어요.');
         } finally {

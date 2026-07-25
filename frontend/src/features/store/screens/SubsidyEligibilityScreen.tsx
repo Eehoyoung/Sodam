@@ -8,8 +8,8 @@ import {
     AppHeader,
     AppText,
     ErrorState,
-    HeroNumber,
     LoadingState,
+    MoneyCard,
     ScreenContainer,
 } from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
@@ -21,7 +21,11 @@ const DURUNURI_URL = 'https://www.gov.kr';
 const won = (n?: number | null) => (typeof n === 'number' ? `${n.toLocaleString()}원` : '—');
 
 /**
- * B7 두루누리·고용지원금 자격 — 사장 지원금 신호. 신청은 정부24·근로복지공단 위임.
+ * B9 SubsidyEligibilityScreen — v3 시안(sodam-v3-10-business.html) 1:1.
+ *
+ * MoneyCard(두루누리 지원 가능 직원) + 안내문 + 후보 리스트(상단 행: 이름+지원가능배지, 메타: 월보수추정) +
+ * 하단 아웃라인 CTA "정부24에서 신청 알아보기" + footnote(두루누리 제도 안내).
+ * 두루누리·고용지원금 자격 — 사장 지원금 신호. 신청은 정부24·근로복지공단 위임.
  */
 const SubsidyEligibilityScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -69,13 +73,12 @@ const SubsidyEligibilityScreen: React.FC = () => {
                 />
             ) : data ? (
                 <View>
-                    <HeroNumber
+                    <MoneyCard
                         label="두루누리 지원 가능 직원"
                         value={`${data.eligibleCount}명`}
                         sub={data.storeUnder10
                             ? `전체 ${data.employeeCount}명 · 10인 미만 사업장`
                             : `전체 ${data.employeeCount}명 · 10인 이상은 대상 아님`}
-                        accent={data.eligibleCount > 0}
                     />
                     <AppText variant="bodyMd" tone="secondary" style={styles.guidance}>
                         {data.guidance}

@@ -8,17 +8,18 @@ import {
     AppText,
     EmptyState,
     ErrorState,
-    HeroNumber,
     LoadingState,
+    MoneyCard,
     ScreenContainer,
 } from '../../../common/components/ds';
-import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {spacing} from '../../../theme/tokens';
 import myWageService, {MyWageHistory, MyWageHistoryEntry} from '../services/myWageService';
 
 /**
- * B1 내 시급 이력 (E-NEW-02). 직원 본인 전용 읽기.
- * 현재 시급 HeroNumber + 변경 타임라인(날짜·금액·사유). 사장 메모/변경자는 BE 응답에 없음.
+ * W7 MyWageHistoryScreen(E-NEW-02) — v3 시안(sodam-v3-11-taxwage.html) 1:1.
+ *
+ * MoneyCard(현재 시급) + section-label "시급 변경 이력" + list-item 카드별 이력(상단 행: 시급+구분배지,
+ * 메타 한 줄: 적용일·사유 통합). 직원 본인 전용 읽기. 사장 메모/변경자는 BE 응답에 없음.
  */
 const MyWageHistoryScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -55,11 +56,10 @@ const MyWageHistoryScreen: React.FC = () => {
                 />
             ) : data ? (
                 <View>
-                    <HeroNumber
+                    <MoneyCard
                         label="현재 시급"
                         value={data.currentHourlyWage !== null ? `${formatWon(data.currentHourlyWage)}원` : '미설정'}
                         sub="매장 기본 또는 개별 시급이 적용돼요."
-                        accent
                     />
 
                     <AppText variant="caption" tone="secondary" style={styles.sectionLabel}>
@@ -72,15 +72,11 @@ const MyWageHistoryScreen: React.FC = () => {
                             description="시급이 바뀌면 여기에 날짜와 금액이 기록돼요."
                         />
                     ) : (
-                        <AppCard variant="flat">
+                        <View style={styles.list}>
                             {data.history.map((h, idx) => (
-                                <WageRow
-                                    key={`${h.effectiveFrom}-${h.scope}-${idx}`}
-                                    entry={h}
-                                    last={idx === data.history.length - 1}
-                                />
+                                <WageRow key={`${h.effectiveFrom}-${h.scope}-${idx}`} entry={h} />
                             ))}
-                        </AppCard>
+                        </View>
                     )}
                 </View>
             ) : null}
@@ -88,27 +84,22 @@ const MyWageHistoryScreen: React.FC = () => {
     );
 };
 
-const WageRow: React.FC<{entry: MyWageHistoryEntry; last: boolean}> = ({entry, last}) => {
-    const c = useThemeColors();
+const WageRow: React.FC<{entry: MyWageHistoryEntry}> = ({entry}) => {
     const isOverride = entry.scope === 'EMPLOYEE_OVERRIDE';
     return (
-        <View style={[styles.row, {borderBottomColor: c.divider}, last && styles.rowLast]}>
+        <AppCard variant="flat">
             <View style={styles.rowTop}>
                 <AppText variant="titleMd">{`${formatWon(entry.hourlyWage)}원`}</AppText>
                 <AppBadge
                     label={isOverride ? '개별 시급' : '매장 기본'}
-                    tone={isOverride ? 'info' : 'neutral'}
+                    tone={isOverride ? 'success' : 'neutral'}
                 />
             </View>
             <AppText variant="caption" tone="tertiary" style={styles.date}>
                 {`${formatDate(entry.effectiveFrom)}부터 적용`}
+                {entry.reason ? ` · ${entry.reason}` : ''}
             </AppText>
-            {entry.reason ? (
-                <AppText variant="bodyMd" tone="secondary" style={styles.reason}>
-                    {entry.reason}
-                </AppText>
-            ) : null}
-        </View>
+        </AppCard>
     );
 };
 
@@ -127,11 +118,9 @@ function formatDate(iso: string): string {
 
 const styles = StyleSheet.create({
     sectionLabel: {marginTop: spacing.xl, marginBottom: spacing.xs},
-    row: {paddingVertical: spacing.md, borderBottomWidth: 1},
-    rowLast: {borderBottomWidth: 0},
+    list: {gap: spacing.sm},
     rowTop: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm},
     date: {marginTop: spacing.xs},
-    reason: {marginTop: spacing.xs},
 });
 
 export default MyWageHistoryScreen;

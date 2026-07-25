@@ -27,7 +27,7 @@ import {
     ErrorState,
     LoadingState,
 } from '../../../common/components/ds';
-import {radius, recruit, spacing} from '../../../theme/tokens';
+import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {
     useMyJobPosting,
@@ -194,7 +194,7 @@ const OurPostingScreen: React.FC<OurPostingScreenProps> = ({storeId}) => {
                             setDirty(true);
                             setOpen(v);
                         }}
-                        trackColor={{false: c.border, true: recruit.primary}}
+                        trackColor={{false: c.border, true: c.brandPrimary}}
                         thumbColor={c.background}
                     />
                 </View>
@@ -216,11 +216,11 @@ const OurPostingScreen: React.FC<OurPostingScreenProps> = ({storeId}) => {
                                 style={[
                                     styles.chip,
                                     {
-                                        borderColor: selected ? recruit.primary : c.border,
-                                        backgroundColor: selected ? recruit.primarySoft : c.background,
+                                        borderColor: selected ? c.brandPrimary : c.border,
+                                        backgroundColor: selected ? c.brandPrimarySoft : c.background,
                                     },
                                 ]}>
-                                <AppText variant="bodyMd" weight="700" style={{color: selected ? recruit.primary : c.textSecondary}}>
+                                <AppText variant="bodyMd" weight="700" style={{color: selected ? c.brandPrimary : c.textSecondary}}>
                                     {SEEKING_TYPE_LABELS[type]}
                                 </AppText>
                             </Pressable>
@@ -245,11 +245,11 @@ const OurPostingScreen: React.FC<OurPostingScreenProps> = ({storeId}) => {
                                 style={[
                                     styles.chip,
                                     {
-                                        borderColor: selected ? recruit.primary : c.border,
-                                        backgroundColor: selected ? recruit.primarySoft : c.background,
+                                        borderColor: selected ? c.brandPrimary : c.border,
+                                        backgroundColor: selected ? c.brandPrimarySoft : c.background,
                                     },
                                 ]}>
-                                <AppText variant="bodyMd" weight="700" style={{color: selected ? recruit.primary : c.textSecondary}}>
+                                <AppText variant="bodyMd" weight="700" style={{color: selected ? c.brandPrimary : c.textSecondary}}>
                                     {JOB_CATEGORY_LABELS[code]}
                                 </AppText>
                             </Pressable>
@@ -339,7 +339,7 @@ const OurPostingScreen: React.FC<OurPostingScreenProps> = ({storeId}) => {
                     accessibilityState={{disabled: upsertMutation.isPending, busy: upsertMutation.isPending}}
                     style={({pressed}) => [
                         styles.saveBtn,
-                        {backgroundColor: upsertMutation.isPending ? c.surfaceMuted : recruit.primary},
+                        {backgroundColor: upsertMutation.isPending ? c.surfaceMuted : c.brandPrimary},
                         pressed && !upsertMutation.isPending ? styles.savePressed : null,
                     ]}>
                     <AppText variant="bodyLg" weight="700" style={{color: c.textInverse}}>
@@ -405,9 +405,9 @@ const ApplicantCard: React.FC<ApplicantCardProps> = ({application, onAccept, onD
             )}
 
             {application.message ? (
-                <AppText variant="bodyMd" tone="secondary" style={styles.messageText}>
-                    "{application.message}"
-                </AppText>
+                <View style={[styles.messageBox, {backgroundColor: c.surfaceMuted}]}>
+                    <AppText variant="caption" tone="secondary">"{application.message}"</AppText>
+                </View>
             ) : null}
 
             {application.status === 'PENDING' ? (
@@ -423,7 +423,7 @@ const ApplicantCard: React.FC<ApplicantCardProps> = ({application, onAccept, onD
                         testID={`applicant-accept-${application.applicationId}`}
                         onPress={onAccept}
                         accessibilityRole="button"
-                        style={[styles.actionBtn, {backgroundColor: recruit.primary}]}>
+                        style={[styles.actionBtn, {backgroundColor: c.brandPrimary}]}>
                         <AppText variant="bodyMd" weight="700" style={{color: c.textInverse}}>수락</AppText>
                     </Pressable>
                 </View>
@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
     applicantCard: {gap: spacing.xs},
     cardTopRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm},
     badgeGap: {marginTop: 2},
-    messageText: {marginTop: spacing.xs},
+    messageBox: {borderRadius: 10, paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.sm, marginTop: spacing.xs},
     actionRow: {flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm},
     actionBtn: {flex: 1, minHeight: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center'},
     declineBtn: {borderWidth: 1},

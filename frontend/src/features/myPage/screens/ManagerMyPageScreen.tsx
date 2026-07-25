@@ -51,7 +51,8 @@ const ManagerMyPageScreen: React.FC = () => {
                     <EmptyState title="위임받은 매장이 없어요"
                         description="사업주가 위임장을 만들면 서명 대기 상태부터 이곳에 표시됩니다." />
                 ) : stores.data?.map(store => (
-                    <AppCard key={store.storeId} variant={store.active ? 'plain' : 'warm'}>
+                    // v3 링&패스: 아티팩트 N7의 list-item은 활성 여부와 무관하게 동일한 중립 카드 톤을 쓴다 — flat으로 통일.
+                    <AppCard key={store.storeId} variant="flat">
                         <View style={styles.headingRow}>
                             <View style={styles.flex}>
                                 <AppText variant="headingSm">{store.storeName}</AppText>
@@ -85,6 +86,8 @@ const ManagerMyPageScreen: React.FC = () => {
                     <AppText variant="titleMd">운영 바로가기</AppText>
                     <AppListItem title="알림 센터" subtitle="승인 요청과 서명 상태 변경을 확인해요."
                         right="›" onPress={() => navigation.navigate('NotificationCenter')} />
+                    <AppListItem title="설정" subtitle="프로필, 알림, 고객지원 등을 한곳에서 확인해요."
+                        right="›" onPress={() => navigation.navigate('Settings')} />
                     <AppListItem title="계정 설정" subtitle="전자서명에 필요한 휴대전화·생년월일을 관리해요."
                         right="›" onPress={() => navigation.navigate('AccountSettings')} />
                 </View>

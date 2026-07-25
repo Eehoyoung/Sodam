@@ -5,7 +5,6 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
     AppBadge,
-    AppButton,
     AppCard,
     AppHeader,
     AppText,
@@ -40,6 +39,9 @@ const STATUS: Record<ExpiryStatus, {tone: BadgeTone; text: (d?: number | null) =
 
 /**
  * A5 직원 서류함 — 보건증 등 보관 + 만료 경보. 사장 전용.
+ *
+ * v3 시안(sodam-v3-08-contract.html C6) 정렬: "서류 추가"를 하단 CTA 대신 헤더 우측 액션으로
+ * 이동, 만료 경보 배너를 AppCard(variant="danger")로 통일.
  */
 const EmployeeDocumentsScreen: React.FC = () => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
@@ -104,11 +106,11 @@ const EmployeeDocumentsScreen: React.FC = () => {
     return (
         <ScreenContainer
             scroll
-            header={<AppHeader title={employeeName ? `${employeeName} · 서류함` : '서류함'} onBack={() => navigation.goBack()} />}
-            footer={
-                <AppButton
-                    label="서류 추가"
-                    onPress={() => navigation.navigate('AddDocument', {storeId, employeeId})}
+            header={
+                <AppHeader
+                    title={employeeName ? `${employeeName} · 서류함` : '서류함'}
+                    onBack={() => navigation.goBack()}
+                    actions={[{label: '서류 추가', onPress: () => navigation.navigate('AddDocument', {storeId, employeeId})}]}
                 />
             }>
             {loading ? (
@@ -129,12 +131,12 @@ const EmployeeDocumentsScreen: React.FC = () => {
             ) : (
                 <View>
                     {expiringCount > 0 ? (
-                        <View style={[styles.banner, {backgroundColor: c.warningBg}]}>
+                        <AppCard variant="danger" style={styles.banner}>
                             <Ionicons name="alert-circle-outline" size={20} color={c.warning} />
                             <AppText variant="caption" style={[styles.bannerText, {color: c.warning}]}>
                                 만료 임박·만료된 서류가 {expiringCount}건 있어요. 갱신을 챙겨주세요.
                             </AppText>
-                        </View>
+                        </AppCard>
                     ) : null}
                     <View style={styles.list}>
                         {items.map(it => {
@@ -177,7 +179,7 @@ const EmployeeDocumentsScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-    banner: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderRadius: 14},
+    banner: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
     bannerText: {flex: 1},
     list: {marginTop: spacing.lg, gap: spacing.sm},
     row: {flexDirection: 'row', alignItems: 'center', gap: spacing.md},

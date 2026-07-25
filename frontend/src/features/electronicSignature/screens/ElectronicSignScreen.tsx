@@ -93,12 +93,12 @@ const ElectronicSignScreen: React.FC = () => {
             <ScrollView
                 contentContainerStyle={styles.content}
                 refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} />}>
-                <AppCard variant="navy" hero>
-                    <AppText variant="caption" tone="inverse">{subjectLabel(envelope.subjectType)}</AppText>
-                    <AppText variant="headingMd" tone="inverse" style={styles.cardTitle}>
+                <AppCard variant="spot" hero>
+                    <AppText variant="caption" tone="secondary">{subjectLabel(envelope.subjectType)}</AppText>
+                    <AppText variant="headingMd" tone="primary" style={styles.cardTitle}>
                         {envelope.status === 'VERIFIED' ? '모든 서명이 검증됐어요' : '서명 순서를 확인해 주세요'}
                     </AppText>
-                    <AppText variant="bodyMd" tone="inverse" style={styles.mutedInverse}>
+                    <AppText variant="bodyMd" tone="secondary" style={styles.mutedInverse}>
                         문서 버전 {envelope.documentVersion} · {shortHash(envelope.documentSha256)}
                     </AppText>
                 </AppCard>

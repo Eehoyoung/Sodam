@@ -1,18 +1,19 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {NavigationProp, RouteProp} from '@react-navigation/native';
 import {
+    AppBadge,
     AppButton,
     AppCard,
-    AppHeader,
     AppInput,
+    AppListItem,
     AppText,
     AppToast,
+    BottomSheet,
     CtaStack,
-    ScreenContainer,
     SegmentedControl,
+    StepScaffold,
 } from '../../../common/components/ds';
-import SodamLogo from '../../../common/components/logo/SodamLogo';
 import {spacing} from '../../../theme/tokens';
 import authApi from '../services/authApi';
 import ConsentBlock, {ConsentValue} from '../components/ConsentBlock';
@@ -53,7 +54,18 @@ const indexForPurpose = (purpose?: AuthPurpose) => {
     return index >= 0 ? index : 0;
 };
 
+const REQUIRED_CONSENT_KEYS: (keyof ConsentValue)[] = ['age', 'terms', 'privacy', 'locationService'];
+
+/**
+ * 회원가입 — v3 아티팩트(sodam-v3-01-auth.html "05 Signup": "회원가입" 헤더 + 틸 "n/3" 배지 +
+ * 요약형 동의 행 + CTA "다음")를 기준으로 StepScaffold 3단계 위저드로 재구성했다
+ * (1단계 기본정보 → 2단계 약관동의 요약 → 3단계 확인). 제출 로직(authApi.join 호출,
+ * 이메일 중복확인, 비밀번호 정책)은 기존 그대로이고 UI 구조만 3단계로 나눴다.
+ * 약관 동의는 법적으로 항목별 체크가 필요해 기존 ConsentBlock 전체 UI를 그대로 쓰되,
+ * 화면에는 아티팩트처럼 요약 행(제목+상태 배지)만 보여주고 탭하면 BottomSheet로 펼친다.
+ */
 const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
+    const [step, setStep] = useState<0 | 1 | 2>(0);
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -64,10 +76,12 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
     const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null);
     const [checkedEmail, setCheckedEmail] = useState('');
     const [pwError, setPwError] = useState<string | undefined>();
+    const [consentSheetOpen, setConsentSheetOpen] = useState(false);
     const [consent, setConsent] = useState<ConsentValue>({
         age: false,
         terms: false,
         privacy: false,
+        locationService: false,
         marketing: false,
     });
 
@@ -78,6 +92,7 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
     }, [route.params?.selectedPurpose]);
 
     const role = ROLES[roleIndex];
+    const allRequiredConsentChecked = REQUIRED_CONSENT_KEYS.every(k => consent[k]);
 
     const checkEmailAvailability = async (showToast = false): Promise<boolean> => {
         const normalizedEmail = email.trim().toLowerCase();
@@ -125,6 +140,50 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
         }
     };
 
+    // 1단계 → 2단계 게이트: 이름/이메일(중복확인 포함)/비밀번호 정책 — handleSignup 의 검증과
+    // 동일 규칙이다(제출 로직은 건드리지 않고 게이트만 앞으로 당겨왔다).
+    const validateBasicInfo = async (): Promise<boolean> => {
+        if (!name.trim() || !email.trim() || !password) {
+            AppToast.show('이름, 이메일, 비밀번호를 모두 입력해 주세요.');
+            return false;
+        }
+        if (name.trim().length < 2) {
+            AppToast.warn('이름은 2자 이상 입력해 주세요.');
+            return false;
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+        if (!isValidEmail(normalizedEmail)) {
+            setEmailError('올바른 이메일 형식으로 입력해 주세요.');
+            return false;
+        }
+        if (emailAvailable !== true || checkedEmail !== normalizedEmail) {
+            const available = await checkEmailAvailability(true);
+            if (!available) {
+                return false;
+            }
+        }
+        if (!isValidPassword(password)) {
+            setPwError(`비밀번호: ${PW_POLICY}`);
+            return false;
+        }
+        return true;
+    };
+
+    const goToConsentStep = async () => {
+        if (await validateBasicInfo()) {
+            setStep(1);
+        }
+    };
+
+    const goToConfirmStep = () => {
+        if (!allRequiredConsentChecked) {
+            AppToast.warn('서비스 이용을 위해 필수 약관에 동의해 주세요.');
+            return;
+        }
+        setStep(2);
+    };
+
     const handleSignup = async () => {
         if (isLoading) {
             return;
@@ -153,7 +212,7 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
             setPwError(`비밀번호: ${PW_POLICY}`);
             return;
         }
-        if (!consent.age || !consent.terms || !consent.privacy) {
+        if (!consent.age || !consent.terms || !consent.privacy || !consent.locationService) {
             AppToast.warn('서비스 이용을 위해 필수 약관에 동의해 주세요.');
             return;
         }
@@ -184,33 +243,97 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
         }
     };
 
-    const footer = useMemo(
-        () => (
-            <CtaStack bordered>
-                <AppButton
-                    label="가입 완료"
-                    loading={isLoading}
-                    loadingLabel="가입 중..."
-                    onPress={handleSignup}
+    if (step === 1) {
+        return (
+            <StepScaffold
+                progress={2 / 3}
+                title="약관 동의"
+                subtitle="필수 약관에 동의하면 다음 단계로 진행할 수 있어요."
+                onBack={() => setStep(0)}
+                footer={
+                    <CtaStack bordered>
+                        <AppButton label="다음" onPress={goToConfirmStep} />
+                    </CtaStack>
+                }>
+                <View style={styles.badgeRow}>
+                    <AppBadge tone="success" label="2/3" />
+                </View>
+                <AppListItem
+                    title="필수 약관 동의"
+                    subtitle="이용약관 · 개인정보 처리방침 · 위치기반 서비스 · 만 14세 이상"
+                    right={
+                        <AppBadge
+                            tone={allRequiredConsentChecked ? 'success' : 'warning'}
+                            label={allRequiredConsentChecked ? '확인' : '미확인'}
+                        />
+                    }
+                    onPress={() => setConsentSheetOpen(true)}
                 />
-            </CtaStack>
-        ),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [isLoading, name, email, password, roleIndex, consent, emailAvailable, checkedEmail],
-    );
+                <AppText variant="caption" tone="tertiary" style={styles.consentHint}>
+                    마케팅 정보 수신(선택)도 위 항목을 눌러 함께 설정할 수 있어요.
+                </AppText>
 
+                <BottomSheet
+                    visible={consentSheetOpen}
+                    onClose={() => setConsentSheetOpen(false)}
+                    title="약관 동의"
+                    scrollable
+                    primary={{label: '확인', onPress: () => setConsentSheetOpen(false)}}>
+                    <ConsentBlock value={consent} onChange={setConsent} />
+                </BottomSheet>
+            </StepScaffold>
+        );
+    }
+
+    if (step === 2) {
+        return (
+            <StepScaffold
+                progress={1}
+                title="확인"
+                subtitle="입력한 정보로 가입을 완료해요."
+                onBack={() => setStep(1)}
+                footer={
+                    <CtaStack bordered>
+                        <AppButton
+                            label="가입 완료"
+                            loading={isLoading}
+                            loadingLabel="가입 중..."
+                            onPress={handleSignup}
+                        />
+                    </CtaStack>
+                }>
+                <View style={styles.badgeRow}>
+                    <AppBadge tone="success" label="3/3" />
+                </View>
+                <AppCard variant="plain" style={styles.confirmCard}>
+                    <ConfirmRow label="역할" value={purposeLabel(role.id)} />
+                    <ConfirmRow label="이름" value={name.trim() || '-'} />
+                    <ConfirmRow label="이메일" value={email.trim() || '-'} />
+                    <ConfirmRow label="약관 동의" value={allRequiredConsentChecked ? '완료' : '미완료'} />
+                </AppCard>
+            </StepScaffold>
+        );
+    }
+
+    // step === 0: 기본 정보 — 아티팩트 "05 Signup" 화면과 1:1 (세그먼트 + info-card + 필드 3종)
     return (
-        <ScreenContainer
-            scroll
-            header={<AppHeader onBack={() => navigation.goBack()} />}
-            footer={footer}>
-            <View style={styles.logoRow}>
-                <SodamLogo size={56} variant="default" />
+        <StepScaffold
+            progress={1 / 3}
+            title="기본 정보"
+            onBack={() => navigation.goBack()}
+            footer={
+                <CtaStack bordered>
+                    <AppButton
+                        label="다음"
+                        loading={emailChecking}
+                        loadingLabel="확인 중..."
+                        onPress={goToConsentStep}
+                    />
+                </CtaStack>
+            }>
+            <View style={styles.badgeRow}>
+                <AppBadge tone="success" label="1/3" />
             </View>
-            <AppText variant="headingLg" style={styles.title}>
-                소담을 시작해요
-            </AppText>
-
             <AppText variant="titleMd" tone="secondary" style={styles.sectionLabel}>
                 어떤 역할인가요?
             </AppText>
@@ -274,23 +397,34 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
                     error={pwError}
                 />
             </View>
-
-            <View style={styles.consent}>
-                <ConsentBlock value={consent} onChange={setConsent} />
-            </View>
-        </ScreenContainer>
+        </StepScaffold>
     );
 };
 
+const ConfirmRow: React.FC<{label: string; value: string}> = ({label, value}) => (
+    <View style={styles.confirmRow}>
+        <AppText variant="bodyMd" tone="secondary">{label}</AppText>
+        <AppText variant="bodyMd" weight="700" numberOfLines={1} style={styles.confirmValue}>{value}</AppText>
+    </View>
+);
+
 const styles = StyleSheet.create({
-    logoRow: {alignItems: 'center', marginBottom: spacing.lg},
-    title: {marginBottom: spacing.xxl},
+    badgeRow: {marginBottom: spacing.md},
     sectionLabel: {marginBottom: spacing.sm},
     hint: {marginTop: spacing.md},
     hintSub: {marginTop: 4},
     form: {marginTop: spacing.xxl, gap: spacing.md},
     emailGroup: {gap: spacing.sm},
-    consent: {marginTop: spacing.xxl},
+    consentHint: {marginTop: spacing.sm, marginLeft: 2},
+    confirmCard: {gap: spacing.sm},
+    confirmRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: spacing.xs,
+        gap: spacing.md,
+    },
+    confirmValue: {flexShrink: 1, textAlign: 'right'},
 });
 
 export default SignUpScreen;

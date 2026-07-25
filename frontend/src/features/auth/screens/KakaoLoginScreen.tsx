@@ -94,8 +94,11 @@ const KakaoLoginScreen: React.FC = () => {
         <LinearGradient colors={gradient.darkScreen} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={styles.flex}>
             <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
                 <View style={styles.center}>
-                    <Brandmark size={64} label="K" backgroundColor="#FEE500" textColor="#191600" />
-                    <AppText variant="display" tone="inverse" center style={styles.title}>
+                    {/* 아티팩트 07 KakaoLogin icon-circle: bg #FEE500, color #1F1A0E "K" */}
+                    <Brandmark size={64} label="K" backgroundColor="#FEE500" textColor="#1F1A0E" />
+                    {/* 아티팩트 07 카드 h3 기본 크기(23px, lg클래스 없음) — 형제 다크화면(Login headingLg)과
+                        스케일 일관성을 맞춰 headingLg 사용. 이전 'display'(32)는 지나치게 컸다. */}
+                    <AppText variant="headingLg" tone="inverse" center style={styles.title}>
                         {'카카오로\n간편하게 계속'}
                     </AppText>
                     <AppText variant="bodyLg" tone="inverse" center style={styles.copy}>
@@ -104,9 +107,10 @@ const KakaoLoginScreen: React.FC = () => {
                 </View>
 
                 <View style={[styles.footer, {paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.sm}]}>
+                    {/* 아티팩트 07 KakaoLogin: btn--kakao(#FEE500/#1F1A0E) "카카오 동의 계속하기" 1:1 */}
                     <AppButton
-                        label={status === 'waiting' ? '카카오 인증 다시 열기' : '카카오 인증 시작'}
-                        variant="secondary"
+                        label={status === 'waiting' ? '카카오 인증 다시 열기' : '카카오 동의 계속하기'}
+                        variant="kakao"
                         loading={status === 'opening'}
                         onPress={startKakao}
                     />

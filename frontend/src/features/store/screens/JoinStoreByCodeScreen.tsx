@@ -47,7 +47,7 @@ const JoinStoreByCodeScreen: React.FC = () => {
             <ScreenContainer header={<AppHeader title="매장 가입" onBack={() => navigation.goBack()} />}>
                 <SuccessState
                     title={`${joinedStore}에\n가입했어요`}
-                    description="오늘부터 출퇴근 기록과 급여명세를 확인할 수 있어요."
+                    description="오늘부터 출퇴근 기록과 급여명세를 확인할 수 있어요. 기존 매장 기록은 그대로예요."
                     primary={{label: '출근 화면으로', onPress: () => navigation.goBack()}}
                 />
             </ScreenContainer>
@@ -63,10 +63,10 @@ const JoinStoreByCodeScreen: React.FC = () => {
                     <AppButton label="매장 가입하기" loading={loading} disabled={code.trim().length < 8} onPress={submit} />
                 </CtaStack>
             }>
-            <AppCard variant="navy" hero>
-                <AppText variant="headingSm" tone="inverse">사장님께 받은 코드를 입력하세요</AppText>
-                <AppText variant="bodyMd" tone="inverse" style={styles.heroSub}>
-                    가입하면 오늘부터 출퇴근과 급여명세를 확인할 수 있어요.
+            <AppCard variant="spot" hero>
+                <AppText variant="headingSm" tone="primary">사장님께 받은 코드를 입력하세요</AppText>
+                <AppText variant="bodyMd" tone="secondary" style={styles.heroSub}>
+                    가입하면 오늘부터 출퇴근과 급여명세를 확인할 수 있어요. 기존에 소속된 매장 기록은 그대로 유지돼요.
                 </AppText>
             </AppCard>
 

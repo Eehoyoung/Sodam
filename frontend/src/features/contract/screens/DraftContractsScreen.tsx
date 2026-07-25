@@ -2,6 +2,8 @@
  * 임시저장(미발송) 근로계약서 관리 — 사장 전용.
  * create()는 성공했는데 send()가 실패하거나 화면을 벗어나 방치된 초안을 나중에 다시 찾아
  * 발송하거나 삭제할 수 있게 한다(그렇지 않으면 영구히 안 보이는 고아 계약서로 남는다).
+ *
+ * v3 시안(sodam-v3-08-contract.html C2) 정렬: 카드 타이틀=직원명, 메타 한 줄=임금·작성일시 결합.
  */
 import React, {useCallback, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
@@ -41,6 +43,12 @@ function createdAtLabel(c: LaborContract): string {
     }
     const [date, time] = c.createdAt.split('T');
     return time ? `${date} ${time.slice(0, 5)} 작성` : `${date} 작성`;
+}
+
+/** v3 시안: 임금 요약 · 작성일시를 한 줄 메타로 합쳐 표시 */
+function draftMeta(c: LaborContract): string {
+    const created = createdAtLabel(c);
+    return created ? `${wageSummary(c)} · ${created}` : wageSummary(c);
 }
 
 const DraftContractsScreen: React.FC = () => {
@@ -152,8 +160,10 @@ const DraftContractsScreen: React.FC = () => {
                             <AppCard key={item.id} variant="flat" style={styles.card}>
                                 <View style={styles.cardHead}>
                                     <View style={styles.flex}>
-                                        <AppText variant="titleMd">{wageSummary(item)}</AppText>
-                                        <AppText variant="caption" tone="secondary">{createdAtLabel(item)}</AppText>
+                                        <AppText variant="titleMd" numberOfLines={1}>
+                                            {employeeName ?? wageSummary(item)}
+                                        </AppText>
+                                        <AppText variant="caption" tone="secondary">{draftMeta(item)}</AppText>
                                     </View>
                                     <AppBadge label="미발송" tone="warning" />
                                 </View>

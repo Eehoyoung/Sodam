@@ -30,7 +30,7 @@ export const RadiusSelectorSheet: React.FC<{
             primary={{label: '반경 적용', onPress: () => onApply(meters)}}>
             <SegmentedControl options={RADII} value={idx} onChange={setIdx} />
             <View style={styles.radiusPreview}>
-                <View style={[styles.radiusCircle, {borderColor: c.brandPrimary}]}>
+                <View style={[styles.radiusCircle, {borderColor: c.brandPrimary, backgroundColor: c.brandPrimarySoft}]}>
                     <AppText variant="titleMd" tone="brand">{meters}m</AppText>
                 </View>
             </View>
@@ -194,7 +194,8 @@ export const WageEditSheet: React.FC<{
 
 const styles = StyleSheet.create({
     radiusPreview: {alignItems: 'center', marginTop: spacing.lg},
-    radiusCircle: {width: 150, height: 150, borderRadius: 75, backgroundColor: 'rgba(255,107,53,0.14)', borderWidth: 2, alignItems: 'center', justifyContent: 'center'},
+    // 아티팩트 54 radius-vis: 132x132, coral-soft 배경 + 2px coral 테두리(색은 useThemeColors 로 인라인 적용)
+    radiusCircle: {width: 132, height: 132, borderRadius: 66, borderWidth: 2, alignItems: 'center', justifyContent: 'center'},
     codeBox: {alignItems: 'center', borderRadius: radius.xl, paddingVertical: spacing.lg, marginTop: spacing.xs},
     code: {letterSpacing: 4},
     quick: {flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md},

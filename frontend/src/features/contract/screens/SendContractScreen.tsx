@@ -6,6 +6,9 @@
  * 근로조건 입력은 당사자정보(읽기전용, /context 조회) → 계약기간 → 임금 → 근로시간·휴일
  * (주 15시간 미만이면 §18③ 에 따라 휴일·연차 자동 비활성화) → 요일별근무시간표(선택, 단시간근로자)
  * → 취업장소·업무 → 연차 → 수습(선택) → 4대보험 순으로 섹션화했다.
+ *
+ * v3 시안(sodam-v3-08-contract.html C4) 정렬: 4대보험 섹션을 안내문+적용현황 배지가 한 카드에
+ * 담기도록 시각 레이어만 조정(계산 로직·게이트 대상 파일은 미변경).
  */
 import React, {useCallback, useEffect, useState} from 'react';
 import {Pressable, Share, StyleSheet, View} from 'react-native';
@@ -1710,17 +1713,19 @@ const SendContractScreen: React.FC = () => {
                     ) : null}
 
                     <HelpSectionTitle topic="insurance">4대보험 적용</HelpSectionTitle>
-                    <AppCard variant="outlined">
-                        <AppText variant="caption" tone="secondary">
+                    {/* v3 시안(C4): 안내문 + 적용현황을 하나의 info-card 로 묶어 표시 */}
+                    <AppCard variant="flat">
+                        <AppText variant="bodyMd" weight="800">4대보험 적용</AppText>
+                        <AppText variant="caption" tone="secondary" style={styles.insuranceHint}>
                             계약기간, 주 소정근로시간, 예상 월 소득, 생년월일 기준으로 자동 적용돼요. 산재보험은 모든 근로자에게 적용돼요.
                         </AppText>
+                        <View style={styles.insuranceRow}>
+                            <ToggleChip label="고용보험" on={employmentInsurance} onPress={() => {}} disabled />
+                            <ToggleChip label="산재보험" on={industrialAccidentInsurance} onPress={() => {}} disabled />
+                            <ToggleChip label="국민연금" on={nationalPension} onPress={() => {}} disabled />
+                            <ToggleChip label="건강보험" on={healthInsurance} onPress={() => {}} disabled />
+                        </View>
                     </AppCard>
-                    <View style={styles.insuranceRow}>
-                        <ToggleChip label="고용보험" on={employmentInsurance} onPress={() => {}} disabled />
-                        <ToggleChip label="산재보험" on={industrialAccidentInsurance} onPress={() => {}} disabled />
-                        <ToggleChip label="국민연금" on={nationalPension} onPress={() => {}} disabled />
-                        <ToggleChip label="건강보험" on={healthInsurance} onPress={() => {}} disabled />
-                    </View>
                 </View>
             </StepScaffold>
         );
@@ -1791,6 +1796,7 @@ const styles = StyleSheet.create({
     scheduleMwBadge: {marginTop: spacing.sm},
     toggleHint: {marginTop: spacing.xs},
     toggleChip: {minWidth: 0},
+    insuranceHint: {marginTop: spacing.xs, marginBottom: spacing.sm},
     insuranceRow: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs},
     partyRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
     partyRowGap: {marginTop: spacing.sm},

@@ -1,14 +1,13 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
     AppCard,
     AppHeader,
     AppText,
     ErrorState,
-    HeroNumber,
     LoadingState,
+    MoneyCard,
     ScreenContainer,
 } from '../../../common/components/ds';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
@@ -17,17 +16,11 @@ import {fetchWeeklyInsights, WeeklyInsights} from '../services/insightsService';
 
 type InsightsRoute = RouteProp<{Insights: {storeId: number}}, 'Insights'>;
 
-const ICON: Record<string, string> = {
-    STORE_CREATED: 'storefront-outline',
-    PAYROLL_PREVIEW_VIEWED: 'calculator-outline',
-    PURCHASE_SAVED: 'receipt-outline',
-    EMPLOYEE_REGISTERED: 'person-add-outline',
-    PAYSLIP_ISSUED: 'document-text-outline',
-    SUBSCRIPTION_STARTED: 'card-outline',
-};
-
 /**
- * A6 사장용 주간 인사이트 — 최근 7일 매장 활동 요약(퍼널 계측 집계).
+ * B8 WeeklyInsightsScreen(A6) — v3 시안(sodam-v3-10-business.html) 1:1.
+ *
+ * MoneyCard(최근 7일 활동) + 단일 리스트 카드(행마다 하단 구분선, 라벨 좌측·건수 우측, 아이콘 없음).
+ * 사장용 주간 인사이트 — 최근 7일 매장 활동 요약(퍼널 계측 집계).
  */
 const WeeklyInsightsScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -69,31 +62,32 @@ const WeeklyInsightsScreen: React.FC = () => {
                 />
             ) : (
                 <View>
-                    <HeroNumber
+                    <MoneyCard
                         label="최근 7일 활동"
                         value={`${total}건`}
                         sub="매장에서 일어난 주요 활동 수예요"
-                        accent
                     />
-                    <View style={styles.list}>
-                        {data?.items.map(it => (
-                            <AppCard key={it.eventType} variant="flat">
-                                <View style={styles.row}>
-                                    <View style={[styles.iconWrap, {backgroundColor: c.surfaceMuted}]}>
-                                        <Ionicons
-                                            name={ICON[it.eventType] ?? 'ellipse-outline'}
-                                            size={20}
-                                            color={c.textSecondary}
-                                        />
-                                    </View>
-                                    <AppText variant="bodyMd" style={styles.flex}>{it.label}</AppText>
-                                    <AppText variant="titleMd" style={{color: it.count > 0 ? c.brandPrimary : c.textTertiary}}>
-                                        {it.count}
-                                    </AppText>
-                                </View>
-                            </AppCard>
+                    <AppCard variant="plain" style={styles.list}>
+                        {data?.items.map((it, i, arr) => (
+                            <View
+                                key={it.eventType}
+                                style={[
+                                    styles.row,
+                                    i < arr.length - 1 && styles.rowBordered,
+                                    i < arr.length - 1 && {borderBottomColor: c.divider},
+                                ]}>
+                                <AppText variant="bodyMd" tone="secondary" style={styles.flex}>
+                                    {it.label}
+                                </AppText>
+                                <AppText
+                                    variant="bodyMd"
+                                    weight="700"
+                                    style={{color: it.count > 0 ? c.brandPrimary : c.textTertiary}}>
+                                    {it.count}건
+                                </AppText>
+                            </View>
                         ))}
-                    </View>
+                    </AppCard>
                 </View>
             )}
         </ScreenContainer>
@@ -101,9 +95,15 @@ const WeeklyInsightsScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-    list: {marginTop: spacing.lg, gap: spacing.sm},
-    row: {flexDirection: 'row', alignItems: 'center', gap: spacing.md},
-    iconWrap: {width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center'},
+    list: {marginTop: spacing.lg},
+    row: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: spacing.md,
+        paddingVertical: spacing.sm + 2,
+    },
+    rowBordered: {borderBottomWidth: 1},
     flex: {flex: 1},
 });
 

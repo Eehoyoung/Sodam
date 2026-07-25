@@ -25,7 +25,8 @@ export type CardVariant =
     | 'navy'
     | 'danger'
     | 'plain'
-    | 'hero';
+    | 'hero'
+    | 'spot';
 
 /** v3 토스식 기본 카드 라운드(20). hero/바텀시트는 24(radius.xxl). */
 const CARD_RADIUS = 20;
@@ -98,7 +99,12 @@ const variantStyle = (variant: CardVariant, c: ThemeColors): ViewStyle => {
             // v3: 테두리 제거 — 따뜻한 배경 + 소프트 그림자로 구분
             return {backgroundColor: c.surfaceWarm, borderWidth: 0, ...shadow.sm};
         case 'navy':
+            // v3: 카드 배경은 항상 흰색/카드색 원칙(D-2) — navy(어두운 배경) 변형은 더 이상 신규 사용 금지.
+            // 기존 호출부 호환을 위해 남겨두되, 신규 화면은 반드시 'spot'을 사용할 것.
             return {backgroundColor: c.brandSecondary, borderWidth: 0, ...shadow.md};
+        case 'spot':
+            // v3 "링 & 패스" 강조 카드 — 흰 배경 + 코랄 테두리로 존재감을 준다(D-2: 어두운 배경 카드 금지).
+            return {backgroundColor: c.background, borderWidth: 1.5, borderColor: c.brandPrimary, ...shadow.sm};
         case 'danger':
             return {backgroundColor: c.warningBg, borderWidth: 1, borderColor: c.warning};
         case 'plain':

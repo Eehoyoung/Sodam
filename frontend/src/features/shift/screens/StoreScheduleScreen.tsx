@@ -9,6 +9,12 @@
  * 5. 직원 선택 칩 → 인라인 드롭다운으로 교체 (직원 수 많아도 정상 표시).
  * 6. 확정·알림 버튼을 보드 주 헤더에 배치 → 항상 노출.
  * 7. 보드 빈 칸 "+" → onAddShift로 바텀시트 오픈.
+ *
+ * [v3 "링 & 패스" 잔재 정리 — 2026-07-21]
+ * EMP_COLORS(직원 구분용 6색 팔레트)의 처음 2색이 v2 하드코딩 리터럴(logo/Colors.ts 의
+ * SODAM_ORANGE #FF6B35 · SODAM_BLUE #243B4A)이었던 것을 theme/tokens 의 v3 브랜드 토큰
+ * (colors.brandPrimary 코랄 · colors.success 틸)으로 교체. 나머지 4색은 직원 구분용
+ * 카테고리 색이라 그대로 유지.
  */
 import React, {useCallback, useMemo, useRef, useState} from 'react';
 import {ActivityIndicator, Pressable, StyleSheet, View} from 'react-native';
@@ -30,8 +36,7 @@ import {
 } from '../../../common/components/ds';
 import AppCalendar from '../../../common/components/AppCalendar';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import {radius, spacing} from '../../../theme/tokens';
-import {COLORS} from '../../../common/components/logo/Colors';
+import {colors, radius, spacing} from '../../../theme/tokens';
 import {
     TIME_DIGITS_HELPER,
     compactTimeFromApi,
@@ -65,6 +70,7 @@ import {
     WorkShiftUpdateBody,
 } from '../services/shiftService';
 import WeeklyShiftBoard from '../components/WeeklyShiftBoard';
+import {useStoreLiveSync} from '../../../common/realtime/useStoreLiveSync';
 
 type StoreScheduleRouteProp = RouteProp<HomeStackParamList, 'StoreSchedule'>;
 type StoreScheduleNavProp = NativeStackNavigationProp<HomeStackParamList, 'StoreSchedule'>;
@@ -76,7 +82,7 @@ interface Props {
 
 type TabMode = 'calendar' | 'board' | 'template';
 
-const EMP_COLORS = [COLORS.SODAM_ORANGE, COLORS.SODAM_BLUE, '#10B981', '#8B5CF6', '#F59E0B', '#EC4899'];
+const EMP_COLORS = [colors.brandPrimary, colors.success, '#10B981', '#8B5CF6', '#F59E0B', '#EC4899'];
 const DOW_ENUM: DayOfWeek[] = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 const WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -267,6 +273,12 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
         }, [loadBase]),
     );
 
+    useStoreLiveSync([storeId], event => {
+        if (event.type === 'SHIFT_CHANGED') {
+            loadShiftsForMonth(calMonth);
+        }
+    });
+
     // ── 캘린더 월 이동 ───────────────────────────────────────────────────────
     const handleMonthChange = (ym: string) => {
         setCalMonth(ym);
@@ -303,7 +315,7 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
         const marks: Record<string, {dots: string[]}> = {};
         shifts.forEach(s => {
             if (!marks[s.shiftDate]) { marks[s.shiftDate] = {dots: []}; }
-            const color = employeeColorMap[s.employeeId] ?? COLORS.SODAM_ORANGE;
+            const color = employeeColorMap[s.employeeId] ?? colors.brandPrimary;
             if (!marks[s.shiftDate].dots.includes(color) && marks[s.shiftDate].dots.length < 3) {
                 marks[s.shiftDate].dots.push(color);
             }
@@ -712,7 +724,7 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
                                         const overnight =
                                             shift.crossesMidnight ??
                                             isOvernight(shift.startTime, shift.endTime);
-                                        const empColor = employeeColorMap[shift.employeeId] ?? COLORS.SODAM_ORANGE;
+                                        const empColor = employeeColorMap[shift.employeeId] ?? colors.brandPrimary;
                                         return (
                                             <Pressable
                                                 key={shift.id}
@@ -937,7 +949,7 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
                                                 styles.dropdownItem,
                                                 emp.id === formEmployee && {backgroundColor: c.brandPrimarySoft},
                                             ]}>
-                                            <View style={[styles.empColorDot, {backgroundColor: employeeColorMap[emp.id] ?? COLORS.SODAM_ORANGE}]} />
+                                            <View style={[styles.empColorDot, {backgroundColor: employeeColorMap[emp.id] ?? colors.brandPrimary}]} />
                                             <AppText
                                                 variant="titleMd"
                                                 style={{color: emp.id === formEmployee ? c.brandPrimary : c.textPrimary}}>
@@ -1089,7 +1101,7 @@ const styles = StyleSheet.create({
     hintRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.xs},
     // ─ 템플릿 탭 ─
     tplForm: {gap: spacing.md},
-    tplIcon: {width: 36, height: 36, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center'},
+    tplIcon: {width: 36, height: 36, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center'},
     // ─ 바텀시트 ─
     sheetContent: {gap: spacing.md, paddingTop: spacing.sm},
     dateBadge: {

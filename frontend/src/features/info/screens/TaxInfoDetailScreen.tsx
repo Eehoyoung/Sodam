@@ -19,6 +19,7 @@ import {
 import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import taxInfoService from '../services/taxInfoService';
+import {InfoChecklist, buildContentChecklist} from '../components/InfoChecklist';
 
 interface TaxInfoDetail {
     id: number;
@@ -32,9 +33,10 @@ interface TaxInfoDetail {
 type TaxInfoDetailScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'TaxInfoDetail'>;
 
 /**
- * 35 TaxInfoDetail — 확정 시안.
+ * 35 TaxInfoDetail — v3 아티팩트(sodam-v3-05-info.html) 반영.
  * 세무 정보 상세. GET /api/tax-info/{id}(taxInfoService.getTaxInfoById) 실API 연동.
  * BE(TaxInfoResponseDto)에 관련 링크 필드가 없어 해당 UI는 제거.
+ * InfoChecklist(번호매김 체크리스트) 추가.
  */
 const TaxInfoDetailScreen = () => {
     const navigation = useNavigation<TaxInfoDetailScreenNavigationProp>();
@@ -146,6 +148,9 @@ const TaxInfoDetailScreen = () => {
             <AppText variant="headingLg" style={styles.title}>{taxInfo.title}</AppText>
             <AppText variant="bodyMd" tone="tertiary" style={styles.meta}>{taxInfo.author} · {taxInfo.date}</AppText>
 
+            {/* v3 아티팩트 35 TaxInfoDetail의 .checklist — 원문 content를 3항목으로 요약 */}
+            <InfoChecklist items={buildContentChecklist(taxInfo.content)} style={styles.checklist} />
+
             <AppText variant="bodyLg" style={styles.content}>{taxInfo.content}</AppText>
 
             <AppText variant="headingSm" style={styles.relatedTitle}>관련 세무 정보</AppText>
@@ -164,6 +169,7 @@ const styles = StyleSheet.create({
     kicker: {marginTop: spacing.xs},
     title: {marginTop: spacing.sm},
     meta: {marginTop: spacing.md},
+    checklist: {marginTop: spacing.lg},
     content: {marginTop: spacing.xxl, lineHeight: 28},
     relatedTitle: {marginTop: spacing.xxxl, marginBottom: spacing.md},
     list: {gap: spacing.sm},

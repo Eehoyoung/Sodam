@@ -26,9 +26,18 @@ type InfoType = 'LABOR' | 'TAX' | 'POLICY' | 'TIPS';
 const TYPES: InfoType[] = ['LABOR', 'TAX', 'POLICY', 'TIPS'];
 const TYPE_LABELS = ['노동법', '세금', '정책', '팁'];
 
+// v3 아티팩트 32 InfoList(sodam-v3-05-info.html)의 "이번 달 꼭 확인" 인트로 카드.
+// 아티팩트는 노무 탭 전용 데모 문구라, 탭(유형)별로 안내문을 다르게 둬 어느 탭에서도 어색하지 않게 한다.
+const INTRO_COPY: Record<InfoType, {title: string; desc: string}> = {
+    LABOR: {title: '이번 달 꼭 확인', desc: '주휴수당·최저임금처럼 사장님이 자주 헷갈리는 노무 기준부터 확인해 보세요.'},
+    TAX: {title: '이번 달 꼭 확인', desc: '원천징수·부가세 신고처럼 자주 헷갈리는 세무 기준부터 확인해 보세요.'},
+    POLICY: {title: '이번 달 꼭 확인', desc: '지금 신청할 수 있는 소상공인 지원 정책부터 확인해 보세요.'},
+    TIPS: {title: '이번 달 꼭 확인', desc: '매장 운영에 바로 적용할 수 있는 실전 팁부터 확인해 보세요.'},
+};
+
 /**
- * 32 InfoList — 확정 시안.
- * 노무/세무/정책/팁 정보 센터. 서비스 조회·라우팅 로직 보존.
+ * 32 InfoList — v3 아티팩트(sodam-v3-05-info.html) 반영.
+ * 노무/세무/정책/팁 정보 센터. 서비스 조회·라우팅 로직 보존 + "이번 달 꼭 확인" 인트로 카드 추가.
  */
 const InfoListScreen = () => {
     const navigation = useNavigation<InfoListScreenNavigationProp>();
@@ -185,6 +194,17 @@ const InfoListScreen = () => {
                 />
             </View>
 
+            {!query.trim() ? (
+                <View style={styles.introWrap}>
+                    <AppCard variant="warm" style={styles.introCard}>
+                        <AppText variant="titleMd" weight="800">{INTRO_COPY[selectedType].title}</AppText>
+                        <AppText variant="caption" tone="secondary" style={styles.introDesc}>
+                            {INTRO_COPY[selectedType].desc}
+                        </AppText>
+                    </AppCard>
+                </View>
+            ) : null}
+
             {loading ? (
                 <LoadingState title="불러오는 중" description="정보를 불러오고 있어요" />
             ) : (
@@ -222,6 +242,9 @@ const InfoListScreen = () => {
 
 const styles = StyleSheet.create({
     controls: {paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: spacing.md},
+    introWrap: {paddingHorizontal: spacing.lg, paddingTop: spacing.md},
+    introCard: {gap: spacing.xs},
+    introDesc: {lineHeight: 18},
     categoryList: {marginBottom: spacing.sm},
     categoryContent: {gap: spacing.sm, paddingRight: spacing.lg},
     chip: {paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill},

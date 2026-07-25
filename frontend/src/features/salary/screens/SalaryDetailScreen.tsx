@@ -8,6 +8,7 @@ import payrollService, {PayrollDetailItem, PayrollSummary} from '../services/pay
 import {formatMoney} from '../../../common/format/money';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {spacing} from '../../../theme/tokens';
+import PayrollCalculationDetailModal from '../components/PayrollCalculationDetailModal';
 
 interface RouteParams {
     payrollId?: number | null;
@@ -33,6 +34,7 @@ const SalaryDetailScreen: React.FC<Props> = ({route}) => {
     const [error, setError] = useState<string | null>(null);
     const [summary, setSummary] = useState<PayrollSummary | null>(null);
     const [items, setItems] = useState<PayrollDetailItem[]>([]);
+    const [calcDetailVisible, setCalcDetailVisible] = useState(false);
 
     useEffect(() => {
         if (!payrollId || typeof payrollId !== 'number' || payrollId <= 0) {
@@ -128,6 +130,7 @@ const SalaryDetailScreen: React.FC<Props> = ({route}) => {
                 <CtaStack bordered>
                     <AppButton label="명세서 미리보기" onPress={openPreview} />
                     <AppButton label="명세서 공유하기" variant="secondary" onPress={handleShare} />
+                    <AppButton label="계산 근거 보기" variant="ghost" onPress={() => setCalcDetailVisible(true)} />
                 </CtaStack>
             }>
             <View style={styles.heroBlock}>
@@ -172,6 +175,13 @@ const SalaryDetailScreen: React.FC<Props> = ({route}) => {
                     ))}
                 </AppCard>
             )}
+
+            <PayrollCalculationDetailModal
+                visible={calcDetailVisible}
+                onClose={() => setCalcDetailVisible(false)}
+                summary={summary}
+                items={items}
+            />
         </ScreenContainer>
     );
 };

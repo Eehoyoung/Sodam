@@ -38,7 +38,7 @@ import {
     LoadingState,
 } from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
-import {radius, recruit, spacing} from '../../../theme/tokens';
+import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import AddressSearchModal, {AddressSearchResult} from '../../store/components/AddressSearchModal';
 import {useMyJobSeeking, useUpdateMyJobSeeking} from '../hooks/useRecruitmentQueries';
@@ -324,7 +324,7 @@ const JobSeekingSettingsScreen: React.FC = () => {
                             setDirty(true);
                             setSeeking(v);
                         }}
-                        trackColor={{false: c.border, true: recruit.primary}}
+                        trackColor={{false: c.border, true: c.brandPrimary}}
                         thumbColor={c.background}
                     />
                 </View>
@@ -345,11 +345,11 @@ const JobSeekingSettingsScreen: React.FC = () => {
                                 style={[
                                     styles.chip,
                                     {
-                                        borderColor: selected ? recruit.primary : c.border,
-                                        backgroundColor: selected ? recruit.primarySoft : c.background,
+                                        borderColor: selected ? c.brandPrimary : c.border,
+                                        backgroundColor: selected ? c.brandPrimarySoft : c.background,
                                     },
                                 ]}>
-                                <AppText variant="bodyMd" weight="700" style={{color: selected ? recruit.primary : c.textSecondary}}>
+                                <AppText variant="bodyMd" weight="700" style={{color: selected ? c.brandPrimary : c.textSecondary}}>
                                     {SEEKING_TYPE_LABELS[type]}
                                 </AppText>
                             </Pressable>
@@ -378,11 +378,11 @@ const JobSeekingSettingsScreen: React.FC = () => {
                                 style={[
                                     styles.chip,
                                     {
-                                        borderColor: selected ? recruit.primary : c.border,
-                                        backgroundColor: selected ? recruit.primarySoft : c.background,
+                                        borderColor: selected ? c.brandPrimary : c.border,
+                                        backgroundColor: selected ? c.brandPrimarySoft : c.background,
                                     },
                                 ]}>
-                                <AppText variant="bodyMd" weight="700" style={{color: selected ? recruit.primary : c.textSecondary}}>
+                                <AppText variant="bodyMd" weight="700" style={{color: selected ? c.brandPrimary : c.textSecondary}}>
                                     {JOB_CATEGORY_LABELS[code]}
                                 </AppText>
                             </Pressable>
@@ -400,7 +400,7 @@ const JobSeekingSettingsScreen: React.FC = () => {
                             testID={`job-seeking-location-row-${idx}`}
                             onPress={() => setAddressSlot(idx)}
                             style={[styles.locationRow, {borderColor: c.border}]}>
-                            <Ionicons name="location-outline" size={18} color={recruit.primary} />
+                            <Ionicons name="location-outline" size={18} color={c.brandPrimary} />
                             <AppText variant="bodyMd" style={styles.locationText} numberOfLines={1}>
                                 {locations[idx] ? locations[idx] : `희망지역 ${idx + 1} 선택`}
                             </AppText>
@@ -415,6 +415,8 @@ const JobSeekingSettingsScreen: React.FC = () => {
                 <AppText variant="caption" tone="secondary" style={styles.sectionSub}>
                     요일을 탭해 켜고, 켠 요일을 다시 탭하면 시작/종료 시간을 설정할 수 있어요.
                 </AppText>
+                {/* 요일칩(.week-chip--on)만 시안에서 틸 — 나머지 칩(구직유형·업종)은 코랄이라
+                    선택 상태 색으로 구분해 둔다(§6 요일칩만 별도 톤). */}
                 <View style={styles.dayGrid}>
                     {JOB_DAY_ORDER.map(day => {
                         const entry = availability.find(a => a.day === day);
@@ -429,15 +431,15 @@ const JobSeekingSettingsScreen: React.FC = () => {
                                 style={[
                                     styles.dayChip,
                                     {
-                                        borderColor: selected ? recruit.primary : c.border,
-                                        backgroundColor: selected ? recruit.primarySoft : c.background,
+                                        borderColor: selected ? c.success : c.border,
+                                        backgroundColor: selected ? c.successBg : c.background,
                                     },
                                 ]}>
-                                <AppText variant="bodyMd" weight="700" style={{color: selected ? recruit.primary : c.textSecondary}}>
+                                <AppText variant="bodyMd" weight="700" style={{color: selected ? c.success : c.textSecondary}}>
                                     {JOB_DAY_LABELS_KO[day]}
                                 </AppText>
                                 {entry ? (
-                                    <AppText variant="caption" style={{color: recruit.primary}} numberOfLines={1}>
+                                    <AppText variant="caption" style={{color: c.success}} numberOfLines={1}>
                                         {formatTimeSummary(entry.startTime, entry.endTime)}
                                     </AppText>
                                 ) : null}
@@ -447,9 +449,11 @@ const JobSeekingSettingsScreen: React.FC = () => {
                 </View>
             </AppCard>
 
-            <AppText variant="caption" tone="tertiary" style={styles.privacy}>
-                사장님께는 이름·나이·경력·근무가능 정보만 공개돼요. 연락처는 공개되지 않아요.
-            </AppText>
+            <View style={[styles.privacyBox, {backgroundColor: c.surfaceMuted}]}>
+                <AppText variant="caption" tone="secondary" style={styles.privacyText}>
+                    사장님께는 이름·나이·경력·근무가능 정보만 공개돼요. 연락처는 공개되지 않아요.
+                </AppText>
+            </View>
 
             <Pressable
                 testID="job-seeking-save-button"
@@ -459,7 +463,7 @@ const JobSeekingSettingsScreen: React.FC = () => {
                 accessibilityState={{disabled: saving, busy: saving}}
                 style={({pressed}) => [
                     styles.saveBtn,
-                    {backgroundColor: saving ? c.surfaceMuted : recruit.primary},
+                    {backgroundColor: saving ? c.surfaceMuted : c.brandPrimary},
                     pressed && !saving ? styles.savePressed : null,
                 ]}>
                 {saving ? (
@@ -565,7 +569,8 @@ const styles = StyleSheet.create({
         paddingVertical: spacing.sm,
         gap: 2,
     },
-    privacy: {lineHeight: 18, paddingHorizontal: 2},
+    privacyBox: {borderRadius: radius.lg, padding: spacing.md},
+    privacyText: {lineHeight: 18},
     saveBtn: {
         minHeight: 52,
         borderRadius: 18,

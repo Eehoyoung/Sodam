@@ -11,6 +11,7 @@ import storeService from '../services/storeService';
 import PayrollCycleEditor, {PayrollCycleForm, defaultPayrollCycle, fromStorePayrollCycle, toPayrollCyclePayload} from '../components/PayrollCycleEditor';
 import BusinessTypePicker from '../components/BusinessTypePicker';
 import AddressSearchModal, {AddressSearchResult} from '../components/AddressSearchModal';
+import {RadiusSelectorSheet} from '../components/StoreSheets';
 
 /**
  * 14 StoreEdit — 확정 시안.
@@ -34,6 +35,7 @@ const StoreEditScreen: React.FC = () => {
     const [initialAddress, setInitialAddress] = useState('');
     const [coords, setCoords] = useState<{latitude: number; longitude: number} | null>(null);
     const [showAddressModal, setShowAddressModal] = useState(false);
+    const [showRadiusSheet, setShowRadiusSheet] = useState(false);
 
     // 급여 정산 주기(시작/마감/지급일)
     const [cycle, setCycle] = useState<PayrollCycleForm>(defaultPayrollCycle());
@@ -158,6 +160,14 @@ const StoreEditScreen: React.FC = () => {
                     helper="50~1000m 권장 · 위치를 바꾸면 직원 출퇴근 가능 반경도 함께 변경돼요."
                     containerStyle={styles.gap}
                 />
+                <AppButton
+                    label="추천 반경에서 빠르게 선택"
+                    variant="ghost"
+                    size="md"
+                    onPress={() => setShowRadiusSheet(true)}
+                    leftIcon={<Ionicons name="locate-outline" size={16} color={c.brandPrimary} />}
+                    style={styles.radiusQuickBtn}
+                />
             </Section>
 
             <Section title="급여">
@@ -180,6 +190,16 @@ const StoreEditScreen: React.FC = () => {
                 onSelect={selectAddress}
                 onClose={() => setShowAddressModal(false)}
             />
+            {/* 54 반경 설정 시트 배선 — 죽은 코드였던 RadiusSelectorSheet 를 실제 화면에 연결(§4.1) */}
+            <RadiusSelectorSheet
+                visible={showRadiusSheet}
+                onClose={() => setShowRadiusSheet(false)}
+                value={[50, 80, 120].indexOf(parseInt(radius, 10)) >= 0 ? [50, 80, 120].indexOf(parseInt(radius, 10)) : 1}
+                onApply={meters => {
+                    setRadius(String(meters));
+                    setShowRadiusSheet(false);
+                }}
+            />
         </ScreenContainer>
     );
 };
@@ -196,6 +216,7 @@ const styles = StyleSheet.create({
     sectionTitle: {marginBottom: spacing.md},
     form: {gap: spacing.md},
     gap: {marginTop: spacing.xs},
+    radiusQuickBtn: {marginTop: spacing.xs, alignSelf: 'flex-start'},
     addressBlock: {gap: spacing.sm},
     addressBtn: {alignSelf: 'flex-start'},
     fieldLabel: {marginBottom: spacing.xs},

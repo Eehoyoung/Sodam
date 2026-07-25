@@ -35,6 +35,7 @@ export interface JoinOptions {
     terms: boolean;
     privacy: boolean;
     marketing?: boolean;
+    locationService?: boolean;
   };
 }
 
@@ -59,6 +60,7 @@ export const authApi = {
       termsAgreed?: boolean;
       privacyAgreed?: boolean;
       marketingAgreed?: boolean;
+      locationInfoAgreed?: boolean;
     } = { ...payload };
     if (purposeSlug) { body.purpose = purposeSlug; }
     if (options?.userGrade) { body.userGrade = options.userGrade; }
@@ -68,6 +70,7 @@ export const authApi = {
       body.termsAgreed = !!options.consent.terms;
       body.privacyAgreed = !!options.consent.privacy;
       body.marketingAgreed = !!options.consent.marketing;
+      body.locationInfoAgreed = !!options.consent.locationService;
     }
     const res = await api.post(`/api/join`, body, { headers });
     return res.data as any;

@@ -10,7 +10,7 @@
  * accent/색은 항상 useThemeColors() 에서 받아 다크 모드 안전.
  */
 import React from 'react';
-import {StyleSheet, View} from 'react-native';
+import {Pressable, StyleSheet, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {AppBadge, AppCard, AppText} from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
@@ -37,6 +37,8 @@ export interface SubscriptionPlanCardProps {
     /** 현재 이용 중 → "이용 중" 배지 */
     isCurrent: boolean;
     onPress: () => void;
+    /** 72 PlanDetail — 제공 시 카드 헤더에 상세보기 아이콘 노출(플랜 선택과 별개 동작) */
+    onDetailPress?: () => void;
 }
 
 /** 티어별 accent 색 — 다크 모드 대응 위해 테마에서 매번 해석한다. */
@@ -71,6 +73,7 @@ export const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
     selected,
     isCurrent,
     onPress,
+    onDetailPress,
 }) => {
     const c = useThemeColors();
     const r = useResponsive();
@@ -110,6 +113,16 @@ export const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
                 <View style={styles.badges}>
                     {isAnchor ? <AppBadge label="추천" tone="warning" /> : null}
                     {isCurrent ? <AppBadge label="이용 중" tone="success" /> : null}
+                    {onDetailPress ? (
+                        <Pressable
+                            onPress={onDetailPress}
+                            hitSlop={8}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${view.displayName} 플랜 자세히 보기`}
+                            style={styles.detailBtn}>
+                            <Ionicons name="information-circle-outline" size={20} color={c.textTertiary} />
+                        </Pressable>
+                    ) : null}
                 </View>
             </View>
 
@@ -143,6 +156,7 @@ const styles = StyleSheet.create({
     emoji: {fontSize: 28},
     price: {marginTop: 2},
     badges: {alignItems: 'flex-end', gap: spacing.xs},
+    detailBtn: {marginTop: 2},
     divider: {height: 1, marginVertical: spacing.md},
     highlights: {gap: spacing.xs},
     row: {flexDirection: 'row', alignItems: 'flex-start'},

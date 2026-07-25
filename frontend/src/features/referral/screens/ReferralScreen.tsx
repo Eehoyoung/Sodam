@@ -47,9 +47,9 @@ const ReferralScreen: React.FC = () => {
 
     return (
         <ScreenContainer scroll header={<AppHeader title="친구 추천" actions={[{label: '공유', onPress: share}]} />}>
-            <AppCard variant="navy" hero>
-                <AppText variant="headingSm" tone="inverse">사장님 친구에게 소담을 알려주세요</AppText>
-                <AppText variant="bodyMd" tone="inverse" style={styles.heroSub}>
+            <AppCard variant="spot" hero>
+                <AppText variant="headingSm" tone="primary">사장님 친구에게 소담을 알려주세요</AppText>
+                <AppText variant="bodyMd" tone="secondary" style={styles.heroSub}>
                     추천받은 사장님이 유료 플랜을 시작(첫 결제)하면 양쪽 모두 혜택을 드려요.
                 </AppText>
             </AppCard>

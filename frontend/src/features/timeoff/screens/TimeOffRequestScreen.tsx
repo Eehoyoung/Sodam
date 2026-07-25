@@ -151,9 +151,11 @@ const TimeOffRequestScreen: React.FC = () => {
             scroll
             header={<AppHeader title="휴가 신청" onBack={() => navigation.goBack()} />}
             footer={
+                <View style={styles.tabSafeFooter}>
                 <CtaStack>
                     <AppButton label="휴가 신청하기" loading={loading} onPress={submit} />
                 </CtaStack>
+                </View>
             }>
             <View style={styles.hero}>
                 <AppText variant="headingMd">휴가를 신청해요</AppText>
@@ -231,6 +233,8 @@ const styles = StyleSheet.create({
     fieldLabel: {marginBottom: spacing.xs, marginLeft: 2},
     timeRow: {flexDirection: 'row', gap: spacing.md},
     timeField: {flex: 1},
+    // HomeNavigator의 역할 탭바가 stack 화면 위에 겹치므로 CTA를 탭바 높이만큼 올린다.
+    tabSafeFooter: {marginBottom: spacing.xxxl + spacing.xl},
 });
 
 export default TimeOffRequestScreen;

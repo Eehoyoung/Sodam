@@ -12,20 +12,17 @@ import {
     AppHeader,
     AppListItem,
     AppText,
-    AmountText,
     CtaStack,
     EmptyState,
     ErrorState,
-    HeroNumber,
     LoadingState,
     ScreenContainer,
 } from '../../../common/components/ds';
-import {recruit, spacing} from '../../../theme/tokens';
+import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {formatMoney} from '../../../common/format/money';
-import StoreSelector, {SelectableStore} from '../../../common/components/store/StoreSelector';
+import StoreSwitcherSheet from '../../../common/components/store/StoreSwitcherSheet';
 import {StoreSetupCard} from '../../store/components/StoreSetupCard';
-import {useAuth} from '../../../contexts/AuthContext';
 import storeService from '../../store/services/storeService';
 import {fetchDashboardStats, fetchTodayStats, MonthPayrollStats, TodayStats} from '../../store/services/insightsService';
 import {useSubscription} from '../../subscription/hooks/useSubscription';
@@ -35,21 +32,26 @@ import type {ManagerPermission} from '../../manager/types';
 
 type MonthPayroll = MonthPayrollStats;
 
+interface SimpleStore {
+    id: number;
+    storeName: string;
+}
+
 /**
- * OwnerHome / Dashboard — v3 토스식 재디자인.
- * 숫자 히어로(이번 달 예상 인건비) 상단 + 출근 현황 + 빠른 액션 리스트(Ionicons).
- * 1차 행동(급여 정산)은 하단 풀폭 CTA. load/StoreSelector/네비게이션 보존.
+ * 08 OwnerHome — v3 "링 & 패스" 시안 구조.
+ * spot-card "오늘 처리할 일" → stat-grid(출근/예상급여/남은일) → 오늘 출근 현황.
+ * "빠르게 하기"·"인사이트"는 10 OwnerDashboardDetail(별도 라우트)로 분리했다
+ * (docs/260720/owner-dashboard-code-vs-artifact.html 실사 결과 반영).
  */
 const OwnerDashboardContent: React.FC = () => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
-    const {user} = useAuth();
     const c = useThemeColors();
     // 결제 실패(PAST_DUE) 침묵 이탈 방지 — 카드 재등록 유도 배너 노출용 (T1-6)
     const {current: subscription} = useSubscription();
     const isPastDue = subscription?.status === 'PAST_DUE';
     const goReRegisterCard = useCallback(() => navigation.navigate('Subscribe'), [navigation]);
     const [refreshing, setRefreshing] = useState(false);
-    const [stores, setStores] = useState<SelectableStore[]>([]);
+    const [stores, setStores] = useState<SimpleStore[]>([]);
     const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
     const [today, setToday] = useState<TodayStats | null>(null);
     const [monthly, setMonthly] = useState<MonthPayroll | null>(null);
@@ -61,7 +63,7 @@ const OwnerDashboardContent: React.FC = () => {
         try {
             setError(false);
             const masterStores = await storeService.getMasterStores('current');
-            const storeList: SelectableStore[] = masterStores.map(s => ({
+            const storeList: SimpleStore[] = masterStores.map(s => ({
                 id: s.id,
                 storeName: s.storeName,
             }));
@@ -87,6 +89,7 @@ const OwnerDashboardContent: React.FC = () => {
                     checkedInCount: 0,
                     totalActiveEmployees: 0,
                     pendingEmployees: [],
+                    pendingCorrectionCount: 0,
                 },
             );
             setMonthly(
@@ -123,7 +126,9 @@ const OwnerDashboardContent: React.FC = () => {
     };
 
     const pending = today?.pendingEmployees ?? [];
-    const allIn = today ? today.checkedInCount === today.totalActiveEmployees : false;
+    const checkedInCount = today?.checkedInCount ?? 0;
+    const totalActiveEmployees = today?.totalActiveEmployees ?? 0;
+    const todoCount = pending.length;
 
     // 핵심 데이터 로드 실패 — 에러/재시도 노출 (조용한 실패 금지)
     if (error) {
@@ -158,12 +163,24 @@ const OwnerDashboardContent: React.FC = () => {
             header={
                 <AppHeader
                     title={today?.storeName ?? '카페 소담'}
-                    actions={[{
-                        label: '알림',
-                        icon: <Ionicons name="notifications-outline" size={20} color={c.brandPrimary} />,
-                        accessibilityLabel: '알림',
-                        onPress: () => navigation.navigate('NotificationCenter'),
-                    }]}
+                    actions={[
+                        {
+                            label: '상세',
+                            icon: <Ionicons name="stats-chart-outline" size={20} color={c.brandPrimary} />,
+                            accessibilityLabel: '운영 대시보드 상세',
+                            onPress: () => {
+                                if (selectedStoreId !== null) {
+                                    navigation.navigate('OwnerDashboardDetail', {storeId: selectedStoreId});
+                                }
+                            },
+                        },
+                        {
+                            label: '알림',
+                            icon: <Ionicons name="notifications-outline" size={20} color={c.brandPrimary} />,
+                            accessibilityLabel: '알림',
+                            onPress: () => navigation.navigate('NotificationCenter'),
+                        },
+                    ]}
                 />
             }
             footer={
@@ -177,7 +194,13 @@ const OwnerDashboardContent: React.FC = () => {
                 showsVerticalScrollIndicator={false}>
                 {isPastDue ? <PastDueBanner onPress={goReRegisterCard} /> : null}
 
-                <StoreSelector stores={stores} selectedId={selectedStoreId} onSelect={setSelectedStoreId} />
+                {/* 52 매장 전환 시트 — 사장 소유 매장 다건일 때만 노출(§3.2: 직원 소속매장 패스칩과는 다른 개념) */}
+                <StoreSwitcherSheet
+                    stores={stores}
+                    selectedId={selectedStoreId}
+                    onSelect={setSelectedStoreId}
+                    onRegisterNew={() => navigation.navigate('StoreRegistration')}
+                />
 
                 {/* 매장 설정 완성도 + 다음 한 가지 (GR-NEW-06) — 유령매장 절벽 완화 */}
                 {selectedStoreId !== null ? (
@@ -189,30 +212,20 @@ const OwnerDashboardContent: React.FC = () => {
                     />
                 ) : null}
 
-                {/* 숫자 히어로 — 이번 달 예상 인건비 */}
-                <View style={styles.hero}>
-                    <HeroNumber
-                        label={`${user?.name ?? '사장님'}님, 이번 달 예상 인건비`}
-                        value={formatMoney(monthly?.totalGross ?? 0)}
-                        sub={`정산까지 ${monthly?.daysRemainingInMonth ?? 0}일 · 실수령 예상 ${formatMoney(monthly?.totalNet ?? 0)}`}
-                        accent
-                    />
-                </View>
-
-                {/* 오늘 처리할 일 — 네이비 히어로 카드 */}
-                <AppCard variant="navy" hero style={styles.taskCard}>
+                {/* 오늘 처리할 일 — v3 스팟 카드(흰 배경 + 코랄 테두리, D-2), 시안상 진입 직후 1번째 블록 */}
+                <AppCard variant="spot" hero style={styles.taskCard}>
                     <View style={styles.taskTop}>
                         <Ionicons
-                            name={pending.length > 0 ? 'alert-circle' : 'checkmark-circle'}
+                            name={todoCount > 0 ? 'alert-circle' : 'checkmark-circle'}
                             size={22}
-                            color={c.textInverse}
+                            color={todoCount > 0 ? c.brandPrimary : c.success}
                         />
-                        <AppText variant="headingSm" tone="inverse" style={styles.taskTitle}>
-                            {pending.length > 0 ? `오늘 처리할 일 ${pending.length}건` : '오늘 처리할 일이 없어요'}
+                        <AppText variant="headingSm" tone="primary" style={styles.taskTitle}>
+                            {todoCount > 0 ? `오늘 처리할 일 ${todoCount}건` : '오늘 처리할 일이 없어요'}
                         </AppText>
                     </View>
-                    <AppText variant="bodyMd" tone="inverse" style={styles.taskSub}>
-                        출근 {today?.checkedInCount ?? 0}/{today?.totalActiveEmployees ?? 0}명 · 총 근무 {(monthly?.totalWorkingHours ?? 0).toFixed(1)}h
+                    <AppText variant="bodyMd" tone="secondary" style={styles.taskSub}>
+                        출근 {checkedInCount}/{totalActiveEmployees}명 · 총 근무 {(monthly?.totalWorkingHours ?? 0).toFixed(1)}h
                     </AppText>
                     <AppButton
                         label="이상 출퇴근 확인"
@@ -222,17 +235,16 @@ const OwnerDashboardContent: React.FC = () => {
                     />
                 </AppCard>
 
-                {/* 오늘 출근 현황 */}
+                {/* stat-grid — 출근/예상급여/남은일 3분할 (시안 08) */}
+                <View style={styles.statGrid}>
+                    <StatTile label="출근" value={`${checkedInCount}/${totalActiveEmployees}`} tone={c.success} />
+                    <StatTile label="예상급여" value={formatMoney(monthly?.totalGross ?? 0)} tone={c.brandPrimary} />
+                    <StatTile label="남은일" value={`${monthly?.daysRemainingInMonth ?? 0}일`} tone={c.textPrimary} />
+                </View>
+
+                {/* 오늘 출근 현황 — 미출근 + 정상 출근 요약을 한 리스트로 통합 */}
                 <View style={styles.section}>
-                    <View style={styles.statusHeader}>
-                        <AppText variant="headingSm">오늘 출근 현황</AppText>
-                        <View style={styles.countPill}>
-                            <Ionicons name="people-outline" size={16} color={allIn ? c.success : c.warning} />
-                            <AppText variant="titleMd" style={{color: allIn ? c.success : c.warning}}>
-                                {`${today?.checkedInCount ?? 0}/${today?.totalActiveEmployees ?? 0}`}
-                            </AppText>
-                        </View>
-                    </View>
+                    <AppText variant="headingSm">오늘 출근 현황</AppText>
                     {pending.length > 0 ? (
                         <View style={styles.list}>
                             {pending.map(name => (
@@ -244,6 +256,16 @@ const OwnerDashboardContent: React.FC = () => {
                                     right={<AppBadge label="알림" tone="warning" />}
                                 />
                             ))}
+                            {/* ⚠️ 갭: 근무중 직원 개별 경과시간(누가 몇 시부터 근무중인지)은 BE 응답(TodayStats)에
+                                없어 시안처럼 이름별 행으로는 표시하지 못한다 — 집계 수치만 정직하게 보여준다. */}
+                            {checkedInCount > 0 ? (
+                                <AppListItem
+                                    title={`정상 출근 ${checkedInCount}명`}
+                                    subtitle="근무중 · 매장 반경 내"
+                                    left={<Ionicons name="checkmark-circle-outline" size={26} color={c.success} />}
+                                    right={<AppBadge label="정상" tone="success" />}
+                                />
+                            ) : null}
                         </View>
                     ) : (
                         <AppCard variant="plain">
@@ -256,69 +278,18 @@ const OwnerDashboardContent: React.FC = () => {
                         </AppCard>
                     )}
                 </View>
-
-                {/* 빠른 메뉴 — 토스식 큰 리스트 (4분할 아이콘 그리드 제거) */}
-                <View style={styles.section}>
-                    <AppText variant="headingSm" style={styles.sectionTitle}>빠르게 하기</AppText>
-                    <View style={styles.list}>
-                        <AppListItem
-                            title="직원 추가"
-                            subtitle="새 직원 초대·시급 설정"
-                            left={<Ionicons name="people-outline" size={24} color={c.brandPrimary} />}
-                            right="›"
-                            onPress={() => {
-                                // StoreDetail 은 storeId 필수 — 미선택 시 진입 차단(빈 파라미터 크래시 방지)
-                                if (selectedStoreId !== null) {
-                                    navigation.navigate('StoreDetail', {storeId: selectedStoreId});
-                                }
-                            }}
-                        />
-                        <AppListItem
-                            title="위치·반경 설정"
-                            subtitle="출퇴근 인증 반경 조정"
-                            left={<Ionicons name="location-outline" size={24} color={c.brandPrimary} />}
-                            right="›"
-                            onPress={() => navigation.navigate('StoreRegistration')}
-                        />
-                        <AppListItem
-                            title="노무·세무 팁"
-                            subtitle="사장님을 위한 안내"
-                            left={<Ionicons name="book-outline" size={24} color={c.brandPrimary} />}
-                            right="›"
-                            onPress={() => navigation.navigate('InfoList')}
-                        />
-                        <AppListItem
-                            testID="owner-quick-menu-job-seekers"
-                            title="주변 구직자·채용"
-                            subtitle="반경 4km 인증 구직자 확인"
-                            left={<Ionicons name="person-add-outline" size={24} color={recruit.primary} />}
-                            right="›"
-                            onPress={() => {
-                                // JobSeekerList 는 storeId 필수 — 미선택 시 진입 차단(빈 파라미터 크래시 방지)
-                                if (selectedStoreId !== null) {
-                                    navigation.navigate('JobSeekerList', {storeId: selectedStoreId});
-                                }
-                            }}
-                        />
-                    </View>
-                </View>
-
-                {/* 인사이트 */}
-                <AppCard variant="warm" style={styles.insightCard}>
-                    <View style={styles.insightTop}>
-                        <Ionicons name="bulb-outline" size={20} color={c.brandPrimary} />
-                        <AppText variant="titleMd" style={styles.insightTitle}>인사이트</AppText>
-                    </View>
-                    <AppText variant="bodyMd" tone="secondary" style={styles.insightBody}>
-                        이번 달 야간 근무가 지난달 대비 늘었어요. 정산 전 연장·야간 수당을 확인하세요.
-                    </AppText>
-                    <View style={styles.insightAmountRow}>
-                        <AppText variant="caption" tone="tertiary">이번 달 누적 급여</AppText>
-                        <AmountText size={26} tone="primary">{formatMoney(monthly?.totalGross ?? 0)}</AmountText>
-                    </View>
-                </AppCard>
             </ScrollView>
         </ScreenContainer>
+    );
+};
+
+const StatTile: React.FC<{label: string; value: string; tone: string}> = ({label, value, tone}) => {
+    const c = useThemeColors();
+    return (
+        <View style={[styles.statTile, {borderColor: c.border, backgroundColor: c.background}]}>
+            <AppText variant="caption" tone="secondary" style={styles.statLabel}>{label}</AppText>
+            <AppText variant="titleMd" weight="800" style={{color: tone}}>{value}</AppText>
+        </View>
     );
 };
 
@@ -379,12 +350,12 @@ const ManagerDashboardContent: React.FC<{storeId: number}> = ({storeId}) => {
                     await Promise.all([load(), managedStores.refetch()]);
                     setRefreshing(false);
                 }} />}>
-                <AppCard variant="navy" hero style={styles.taskCard}>
-                    <AppText variant="caption" tone="inverse">매니저 운영 모드</AppText>
-                    <AppText variant="headingSm" tone="inverse">
+                <AppCard variant="spot" hero style={styles.taskCard}>
+                    <AppText variant="caption" tone="secondary">매니저 운영 모드</AppText>
+                    <AppText variant="headingSm" tone="primary">
                         오늘 출근 {today.checkedInCount}/{today.totalActiveEmployees}명
                     </AppText>
-                    <AppText variant="bodyMd" tone="inverse" style={styles.taskSub}>
+                    <AppText variant="bodyMd" tone="secondary" style={styles.taskSub}>
                         급여·구독·직원 추가·매장 설정 정보는 이 화면에서 조회하지 않습니다.
                     </AppText>
                 </AppCard>
@@ -396,6 +367,19 @@ const ManagerDashboardContent: React.FC<{storeId: number}> = ({storeId}) => {
                             left={<Ionicons name="person-circle-outline" size={26} color={c.warning} />}
                             right={<AppBadge label="확인" tone="warning" />} />
                     )) : <AppCard variant="plain"><AppText variant="bodyLg" tone="success">모든 직원이 출근했어요.</AppText></AppCard>}
+                    {has('ATTENDANCE_APPROVE') ? (
+                        <AppListItem
+                            title="정정 요청"
+                            subtitle={today.pendingCorrectionCount > 0
+                                ? `대기 ${today.pendingCorrectionCount}건`
+                                : '대기 중인 요청 없음'}
+                            left={<Ionicons name="create-outline" size={26}
+                                color={today.pendingCorrectionCount > 0 ? c.brandPrimary : c.success} />}
+                            right={<AppBadge
+                                label={today.pendingCorrectionCount > 0 ? '요청' : '완료'}
+                                tone={today.pendingCorrectionCount > 0 ? 'error' : 'success'} />}
+                        />
+                    ) : null}
                 </View>
 
                 <View style={styles.section}>
@@ -431,24 +415,18 @@ function daysLeftInMonth(): number {
 
 const styles = StyleSheet.create({
     content: {paddingHorizontal: spacing.xxl, paddingTop: spacing.lg, paddingBottom: spacing.xxxl, gap: spacing.xxl},
-    hero: {marginTop: spacing.sm},
     taskCard: {gap: spacing.xs},
     taskTop: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
     taskTitle: {flexShrink: 1},
     taskSub: {marginTop: spacing.xs, opacity: 0.85},
     taskCta: {marginTop: spacing.lg},
+    statGrid: {flexDirection: 'row', gap: spacing.sm},
+    statTile: {flex: 1, minWidth: 0, borderWidth: 1, borderRadius: 12, padding: spacing.sm, gap: 4},
+    statLabel: {marginBottom: 2},
     section: {gap: spacing.md},
-    sectionTitle: {marginBottom: spacing.xs},
-    statusHeader: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
-    countPill: {flexDirection: 'row', alignItems: 'center', gap: spacing.xs},
     list: {gap: spacing.sm},
     allInRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
     allInText: {flexShrink: 1},
-    insightCard: {gap: spacing.sm},
-    insightTop: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
-    insightTitle: {flexShrink: 1},
-    insightBody: {marginTop: spacing.xs, lineHeight: 22},
-    insightAmountRow: {marginTop: spacing.md, gap: 2},
 });
 
 export default OwnerDashboardScreen;

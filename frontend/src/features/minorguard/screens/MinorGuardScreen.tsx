@@ -24,6 +24,10 @@ type Route = RouteProp<
  * 연소근로자(만 18세 미만) 확인 (L-NEW-01) — 사장 보호 기능.
  * 미성년이면 경고 카드(만 나이·1일7h/주35h·야간 제한·친권자 동의 필요)와 안내,
  * 미성년이 아니면 "해당 없음" 안내를 보여준다.
+ *
+ * v3 시안(sodam-v3-08-contract.html C10) 정렬: 헤더 타이틀에 직원명을 실제로 반영(기존에는
+ * 계산만 해두고 헤더에는 미반영된 채 본문에 중복 제목을 따로 그리던 버그를 겸해 정리),
+ * 본문 중복 페이지 타이틀 제거.
  */
 /** A4 — 친권자(법정대리인) 동의 표준 안내. 원본 PII 는 앱에 저장하지 않음을 명시. */
 const GUARDIAN_CONSENT_NOTICE =
@@ -57,7 +61,7 @@ const MinorGuardScreen: React.FC = () => {
     const title = employeeName ? `${employeeName} · 연소근로자 확인` : '연소근로자 확인';
 
     return (
-        <ScreenContainer scroll header={<AppHeader title="연소근로자 확인" onBack={() => navigation.goBack()} />}>
+        <ScreenContainer scroll header={<AppHeader title={title} onBack={() => navigation.goBack()} />}>
             {loading ? (
                 <LoadingState title="확인하는 중" description="직원 정보를 불러오고 있어요" />
             ) : error ? (
@@ -68,10 +72,6 @@ const MinorGuardScreen: React.FC = () => {
                 />
             ) : data?.minor ? (
                 <View>
-                    <AppText variant="headingSm" style={styles.pageTitle}>
-                        {title}
-                    </AppText>
-
                     <AppCard variant="flat" style={[styles.warnCard, {backgroundColor: c.brandPrimarySoft}]}>
                         <View style={styles.warnRow}>
                             <Ionicons name="warning" size={22} color={c.warning} />
@@ -173,7 +173,6 @@ const Rule: React.FC<{
 };
 
 const styles = StyleSheet.create({
-    pageTitle: {marginBottom: spacing.md},
     flex: {flex: 1},
     warnCard: {marginTop: spacing.xs},
     consentCard: {marginTop: spacing.md},

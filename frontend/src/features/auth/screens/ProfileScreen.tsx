@@ -1,5 +1,5 @@
-import React from 'react';
-import {StyleSheet, View} from 'react-native';
+import React, {useState} from 'react';
+import {Pressable, StyleSheet, View} from 'react-native';
 import {useAuth} from '../../../contexts/AuthContext';
 import {useCurrentUser} from '../hooks/useAuthQueries';
 import {
@@ -10,18 +10,24 @@ import {
     AppText,
     AppToast,
     Brandmark,
+    ImagePickerSheet,
     LoadingState,
     ScreenContainer,
 } from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
+import {pickReceiptImage as pickPhoto} from '../../purchase/utils/imagePicker';
 
 /**
  * 43 Profile — 확정 시안.
  * 아바타 마크 + 계정 정보 리스트. (읽기 + 새로고침)
+ * 아바타를 탭하면 77 ImagePickerSheet 가 열린다(docs/260720 v3 감사 후속) — 단, 프로필
+ * 이미지를 저장하는 BE 필드/엔드포인트가 아직 없어 선택 결과는 서버에 반영되지 않고
+ * 안내 토스트만 보여준다(User 타입에 avatarUrl 없음, authService.ts 참고).
  */
 const ProfileScreen: React.FC = () => {
     const {user} = useAuth();
     const currentUserQuery = useCurrentUser();
+    const [pickerVisible, setPickerVisible] = useState(false);
 
     const displayedUser = user ?? currentUserQuery.data ?? null;
     const loading = currentUserQuery.isLoading;
@@ -54,12 +60,27 @@ const ProfileScreen: React.FC = () => {
 
     const initial = (displayedUser.name || '소').charAt(0);
 
+    const handlePickPhoto = async (source: 'camera' | 'album') => {
+        setPickerVisible(false);
+        const picked = await pickPhoto(source);
+        if (picked) {
+            AppToast.show('사진을 선택했어요. 프로필 사진 업로드는 아직 준비 중이에요.');
+        } else {
+            AppToast.show('사진 선택 기능은 아직 준비 중이에요.');
+        }
+    };
+
     return (
         <ScreenContainer scroll header={<AppHeader title="프로필" />}>
-            <AppCard variant="flat" style={styles.avatarCard}>
-                <Brandmark size={56} label={initial} />
-                <AppText variant="caption" tone="tertiary" style={styles.avatarHint}>프로필 사진</AppText>
-            </AppCard>
+            <Pressable
+                onPress={() => setPickerVisible(true)}
+                accessibilityRole="button"
+                accessibilityLabel="프로필 사진 변경">
+                <AppCard variant="flat" style={styles.avatarCard}>
+                    <Brandmark size={56} label={initial} />
+                    <AppText variant="caption" tone="tertiary" style={styles.avatarHint}>프로필 사진 · 탭해서 변경</AppText>
+                </AppCard>
+            </Pressable>
 
             <View style={styles.list}>
                 <AppListItem title="ID" right={<AppText variant="titleMd">{String(displayedUser.id)}</AppText>} />
@@ -75,6 +96,13 @@ const ProfileScreen: React.FC = () => {
                 loadingLabel="새로고침 중..."
                 onPress={handleRefresh}
                 style={styles.refresh}
+            />
+
+            <ImagePickerSheet
+                visible={pickerVisible}
+                onClose={() => setPickerVisible(false)}
+                onCamera={() => handlePickPhoto('camera')}
+                onAlbum={() => handlePickPhoto('album')}
             />
         </ScreenContainer>
     );

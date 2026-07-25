@@ -269,16 +269,18 @@ const PayrollRunScreen: React.FC = () => {
         );
     }
 
-    // CONFIRM
+    // CONFIRM — v3 아티팩트 "68 PayrollIssueConfirm"(sodam-v3-04-payroll.html)의
+    // icon-circle 확인 패턴으로 시각 레이아웃만 재배치. 비밀번호 재입력(stepUpPassword)과
+    // issuePayrolls 확정 로직은 원문 그대로 유지 — 절대 제거 금지(PAYROLL_CONFIRM 인접 영역).
     return (
         <StepScaffold
             progress={1}
             title="3단계: 확인"
-            subtitle="발급하면 직원 앱에 자동으로 알림이 전송돼요."
             onBack={() => setStep('PREVIEW')}
             footer={
                 <CtaStack>
                     <AppButton label="명세서 발급하기" loading={loading} onPress={issuePayrolls} />
+                    <AppButton label="다시 확인" variant="outline" onPress={() => setStep('PREVIEW')} />
                 </CtaStack>
             }>
             <ConfirmBlock
@@ -286,14 +288,8 @@ const PayrollRunScreen: React.FC = () => {
                 endDate={endDate}
                 previews={previews}
                 totalNet={totalNet}
-            />
-            <Input
-                label="비밀번호 재확인"
-                value={stepUpPassword}
-                onChangeText={setStepUpPassword}
-                secureTextEntry
-                autoComplete="current-password"
-                helperText="급여 확정 권한과 현재 계정을 한 번 더 확인해요. 비밀번호는 저장되지 않아요."
+                stepUpPassword={stepUpPassword}
+                setStepUpPassword={setStepUpPassword}
             />
         </StepScaffold>
     );
@@ -536,27 +532,57 @@ const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust}) => {
     );
 };
 
-const ConfirmBlock: React.FC<any> = ({startDate, endDate, previews, totalNet}) => {
+// v3 아티팩트 68 PayrollIssueConfirm: icon-circle(₩, amber) + 질문형 타이틀 + 안내문 →
+// 발급 상세 카드(금액은 원래 값 그대로) → 비밀번호 재입력 순서로 배치.
+const ConfirmBlock: React.FC<any> = ({
+    startDate,
+    endDate,
+    previews,
+    totalNet,
+    stepUpPassword,
+    setStepUpPassword,
+}) => {
     const styles = useStyles();
+    const c = useThemeColors();
     return (
         <View style={fieldStyles.gap}>
-            <HeroNumber label="발급 총액" value={won(totalNet)} sub={`직원 ${previews.length}명`} accent />
+            <View style={styles.confirmCenter}>
+                <View style={[styles.confirmIconCircle, {backgroundColor: c.warningBg}]}>
+                    <Text style={[styles.confirmIconText, {color: c.warning}]}>₩</Text>
+                </View>
+                <AppText variant="headingMd" center style={styles.confirmTitle}>
+                    명세서를 발급할까요?
+                </AppText>
+                <AppText variant="bodyMd" tone="secondary" center style={styles.confirmDesc}>
+                    {`직원 ${previews.length}명에게 급여명세 알림이 전송돼요. 발급 후 24시간 안에는 취소할 수 있어요.`}
+                </AppText>
+            </View>
             <AppCard variant="warm" style={styles.confirmCard}>
                 <KV label="기간" value={`${startDate} ~ ${endDate}`} />
                 <KV label="직원" value={`${previews.length}명`} />
                 <KV label="총액" value={won(totalNet)} highlight />
             </AppCard>
-            <AppText variant="caption" tone="tertiary" style={styles.confirmNote}>
-                발급 후 24시간 이내 취소할 수 있어요.
-            </AppText>
+            <Input
+                label="비밀번호 재확인"
+                value={stepUpPassword}
+                onChangeText={setStepUpPassword}
+                secureTextEntry
+                autoComplete="current-password"
+                helperText="급여 확정 권한과 현재 계정을 한 번 더 확인해요. 비밀번호는 저장되지 않아요."
+            />
         </View>
     );
 };
 
+// 69 발급완료(PayrollIssueSuccess) — 아이콘/카피만 v3 아티팩트에 맞춤(계산값은 그대로 전달만).
 const DoneBlock: React.FC<{totalNet: number; count: number}> = ({totalNet, count}) => {
     const styles = useStyles();
+    const c = useThemeColors();
     return (
         <View style={styles.doneBox}>
+            <View style={[styles.doneIconCircle, {backgroundColor: c.successBg}]}>
+                <Ionicons name="checkmark" size={28} color={c.success} />
+            </View>
             <HeroNumber
                 label="명세서 발급이 끝났어요"
                 value={won(totalNet)}
@@ -648,8 +674,23 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
 
     confirmCard: {gap: tokens.spacing.xs},
     confirmNote: {textAlign: 'center' as const, lineHeight: 18},
+    // v3 아티팩트 68 icon-circle 확인 패턴 — 진짜 원(50%), 60px 기준 30 라운드.
+    confirmCenter: {alignItems: 'center', marginBottom: tokens.spacing.sm},
+    confirmIconCircle: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: tokens.spacing.md,
+    },
+    confirmIconText: {fontSize: 22, fontWeight: '800' as const},
+    confirmTitle: {marginBottom: tokens.spacing.xs},
+    confirmDesc: {maxWidth: 280, alignSelf: 'center' as const},
 
     doneBox: {flex: 1, alignItems: 'center', justifyContent: 'center', gap: tokens.spacing.md},
+    // v3 아티팩트 icon-circle: 진짜 원(50%) — 60px 기준 30 라운드.
+    doneIconCircle: {width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center'},
     doneCopy: {maxWidth: 280},
 
     modalBackdrop: {flex: 1, backgroundColor: c.overlayDark, justifyContent: 'flex-end'},

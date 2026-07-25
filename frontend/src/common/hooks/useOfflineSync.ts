@@ -344,17 +344,31 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
      * 뮤테이션 상태 모니터링
      */
     useEffect(() => {
+        let active = true;
         const unsubscribe = queryClient.getMutationCache().subscribe(() => {
             const mutations = queryClient.getMutationCache().getAll();
             const pendingCount = mutations.filter(m => m.state.status === 'pending').length;
 
-            setSyncState(prev => ({
-                ...prev,
-                pendingMutations: pendingCount,
-            }));
+            // MutationCache can notify synchronously while another component is
+            // creating a useMutation observer during render. Updating this hook's
+            // state in that callback makes React see a cross-component render-time
+            // update (for example ManagerAppointSection -> GlobalOfflineBanner).
+            // Move the notification to the next microtask so it is committed only
+            // after the current render has finished.
+            Promise.resolve().then(() => {
+                if (!active) {
+                    return;
+                }
+                setSyncState(prev => prev.pendingMutations === pendingCount
+                    ? prev
+                    : {...prev, pendingMutations: pendingCount});
+            });
         });
 
-        return unsubscribe;
+        return () => {
+            active = false;
+            unsubscribe();
+        };
     }, [queryClient]);
 
     /**

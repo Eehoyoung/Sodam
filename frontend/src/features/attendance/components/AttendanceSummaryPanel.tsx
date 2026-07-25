@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Platform } from 'react-native';
-import { COLORS } from '../../../common/components/logo/Colors';
+import { shadow } from '../../../theme/tokens';
+import { useThemeColors, ThemeColors } from '../../../common/hooks/useThemeColors';
 import useAttendance, { CheckMethod } from '../hooks/useAttendance';
 import { requestApproval } from '../services/attendanceApprovalService';
 
@@ -9,14 +10,20 @@ interface Props {
   onPressViewDetails?: () => void; // Navigate to AttendanceScreen
 }
 
-const MethodChip: React.FC<{ label: string; active: boolean; onPress: () => void }>
-  = ({ label, active, onPress }) => (
-  <TouchableOpacity style={[styles.methodChip, active && styles.methodChipActive]} onPress={onPress}>
-    <Text style={[styles.methodChipText, active && styles.methodChipTextActive]}>{label}</Text>
+const MethodChip: React.FC<{ label: string; active: boolean; onPress: () => void; c: ThemeColors }>
+  = ({ label, active, onPress, c }) => (
+  <TouchableOpacity
+    style={[
+      styles.methodChip,
+      { backgroundColor: active ? c.brandPrimary : c.surfaceMuted },
+    ]}
+    onPress={onPress}>
+    <Text style={[styles.methodChipText, { color: active ? c.textInverse : c.textSecondary }]}>{label}</Text>
   </TouchableOpacity>
 );
 
 export const AttendanceSummaryPanel: React.FC<Props> = ({ workplaceId, onPressViewDetails }) => {
+  const c = useThemeColors();
   const { method, setMethod, workplaceId: resolvedWorkplaceId, currentAttendance, loading, actions } = useAttendance({ workplaceId });
 
   // 근무 중 = 출근 기록 있고 아직 퇴근 안 함. (today 조회는 퇴근 후에도 기록을 주므로
@@ -47,47 +54,53 @@ export const AttendanceSummaryPanel: React.FC<Props> = ({ workplaceId, onPressVi
   };
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.title}>출퇴근 요약</Text>
+    <View style={[styles.card, { backgroundColor: c.background }, shadow.sm]}>
+      <Text style={[styles.title, { color: c.textPrimary }]}>출퇴근 요약</Text>
 
       <View style={styles.statusBox}>
         {isWorking && currentAttendance ? (
           <>
             <View style={styles.rowBetween}>
-              <Text style={styles.statusLabel}>상태</Text>
-              <Text style={[styles.statusValue, { color: COLORS.SUCCESS }]}>근무중</Text>
+              <Text style={[styles.statusLabel, { color: c.textSecondary }]}>상태</Text>
+              <Text style={[styles.statusValue, { color: c.success }]}>근무중</Text>
             </View>
             <View style={styles.rowBetween}>
-              <Text style={styles.statusLabel}>출근 시간</Text>
-              <Text style={styles.statusValue}>{new Date(currentAttendance.checkInTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>
+              <Text style={[styles.statusLabel, { color: c.textSecondary }]}>출근 시간</Text>
+              <Text style={[styles.statusValue, { color: c.textPrimary }]}>{new Date(currentAttendance.checkInTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>
             </View>
           </>
         ) : (
-          <Text style={styles.notWorking}>현재 근무 중이 아닙니다</Text>
+          <Text style={[styles.notWorking, { color: c.textSecondary }]}>현재 근무 중이 아닙니다</Text>
         )}
       </View>
 
       <View style={styles.methodRow}>
-        <MethodChip label="기본" active={method==='standard'} onPress={() => onChangeMethod('standard')} />
-        <MethodChip label="위치" active={method==='location'} onPress={() => onChangeMethod('location')} />
+        <MethodChip label="기본" active={method==='standard'} onPress={() => onChangeMethod('standard')} c={c} />
+        <MethodChip label="위치" active={method==='location'} onPress={() => onChangeMethod('location')} c={c} />
         {/* iOS는 CoreNFC 제약으로 1차 출시에서 NFC 출퇴근 제외 — GPS·사장승인 방식으로 대체 */}
         {Platform.OS !== 'ios' && (
-          <MethodChip label="NFC" active={method==='nfc'} onPress={() => onChangeMethod('nfc')} />
+          <MethodChip label="NFC" active={method==='nfc'} onPress={() => onChangeMethod('nfc')} c={c} />
         )}
       </View>
 
       <View style={styles.actions}>
         {!isWorking ? (
-          <TouchableOpacity style={[styles.primaryBtn, loading && styles.btnDisabled]} disabled={loading} onPress={actions.checkIn}>
-            {loading ? <ActivityIndicator color={COLORS.WHITE}/> : <Text style={styles.primaryBtnText}>
+          <TouchableOpacity
+            style={[styles.primaryBtn, { backgroundColor: c.brandPrimary }, loading && styles.btnDisabled]}
+            disabled={loading}
+            onPress={actions.checkIn}>
+            {loading ? <ActivityIndicator color={c.textInverse}/> : <Text style={[styles.primaryBtnText, { color: c.textInverse }]}>
               {method === 'standard' && '출근하기'}
               {method === 'location' && '위치 기반 출근하기'}
               {method === 'nfc' && 'NFC로 출근하기 (상세에서 스캔)'}
             </Text>}
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity style={[styles.secondaryBtn, loading && styles.btnDisabled]} disabled={loading} onPress={actions.checkOut}>
-            {loading ? <ActivityIndicator color={COLORS.WHITE}/> : <Text style={styles.secondaryBtnText}>
+          <TouchableOpacity
+            style={[styles.secondaryBtn, { backgroundColor: c.brandSecondary }, loading && styles.btnDisabled]}
+            disabled={loading}
+            onPress={actions.checkOut}>
+            {loading ? <ActivityIndicator color={c.textInverse}/> : <Text style={[styles.secondaryBtnText, { color: c.textInverse }]}>
               {method === 'standard' && '퇴근하기'}
               {method === 'location' && '위치 기반 퇴근하기'}
               {method === 'nfc' && 'NFC로 퇴근하기 (상세에서 스캔)'}
@@ -96,19 +109,19 @@ export const AttendanceSummaryPanel: React.FC<Props> = ({ workplaceId, onPressVi
         )}
 
         <TouchableOpacity
-          style={[styles.approvalBtn, approvalBusy && styles.btnDisabled]}
+          style={[styles.approvalBtn, { borderColor: c.brandSecondary }, approvalBusy && styles.btnDisabled]}
           disabled={approvalBusy}
           onPress={onRequestApproval}>
-          {approvalBusy ? <ActivityIndicator color={COLORS.SODAM_BLUE}/> : (
-            <Text style={styles.approvalBtnText}>
+          {approvalBusy ? <ActivityIndicator color={c.brandSecondary}/> : (
+            <Text style={[styles.approvalBtnText, { color: c.brandSecondary }]}>
               {isWorking ? '사장님 승인으로 퇴근 요청' : '사장님 승인으로 출근 요청'}
             </Text>
           )}
         </TouchableOpacity>
-        {approvalMsg ? <Text style={styles.approvalMsg}>{approvalMsg}</Text> : null}
+        {approvalMsg ? <Text style={[styles.approvalMsg, { color: c.textSecondary }]}>{approvalMsg}</Text> : null}
 
         <TouchableOpacity style={styles.linkBtn} onPress={onPressViewDetails}>
-          <Text style={styles.linkText}>자세히 보기</Text>
+          <Text style={[styles.linkText, { color: c.brandSecondary }]}>자세히 보기</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -117,19 +130,12 @@ export const AttendanceSummaryPanel: React.FC<Props> = ({ workplaceId, onPressVi
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: COLORS.WHITE,
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
   },
   title: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: COLORS.GRAY_800,
     marginBottom: 12,
   },
   statusBox: {
@@ -142,16 +148,13 @@ const styles = StyleSheet.create({
   },
   statusLabel: {
     fontSize: 14,
-    color: COLORS.GRAY_600,
   },
   statusValue: {
     fontSize: 14,
-    color: COLORS.GRAY_800,
     fontWeight: '600',
   },
   notWorking: {
     fontSize: 14,
-    color: COLORS.GRAY_600,
     fontStyle: 'italic',
   },
   methodRow: {
@@ -166,40 +169,28 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     marginHorizontal: 4,
-    backgroundColor: COLORS.GRAY_100,
-  },
-  methodChipActive: {
-    backgroundColor: COLORS.SODAM_ORANGE,
   },
   methodChipText: {
-    color: COLORS.GRAY_600,
     fontWeight: '500',
-  },
-  methodChipTextActive: {
-    color: COLORS.WHITE,
   },
   actions: {
     marginTop: 8,
   },
   primaryBtn: {
-    backgroundColor: COLORS.SODAM_ORANGE,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
   },
   primaryBtnText: {
-    color: COLORS.WHITE,
     fontSize: 16,
     fontWeight: '600',
   },
   secondaryBtn: {
-    backgroundColor: COLORS.SODAM_BLUE,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
   },
   secondaryBtnText: {
-    color: COLORS.WHITE,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -209,17 +200,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: COLORS.SODAM_BLUE,
   },
   approvalBtnText: {
-    color: COLORS.SODAM_BLUE,
     fontSize: 15,
     fontWeight: '600',
   },
   approvalMsg: {
     marginTop: 8,
     textAlign: 'center',
-    color: COLORS.GRAY_600,
     fontSize: 13,
   },
   linkBtn: {
@@ -227,7 +215,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: COLORS.SODAM_BLUE,
     fontWeight: '600',
   },
   btnDisabled: {

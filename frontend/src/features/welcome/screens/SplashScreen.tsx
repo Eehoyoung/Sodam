@@ -68,7 +68,7 @@ const SplashScreen: React.FC<Props> = ({minDurationMs = 800, onReady}) => {
 };
 
 const styles = StyleSheet.create({
-    safeArea: {flex: 1, backgroundColor: '#1B2A33'},
+    safeArea: {flex: 1, backgroundColor: '#15171B'},
     gradient: {flex: 1, alignItems: 'center', justifyContent: 'center'},
     center: {alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xxl},
     brandName: {

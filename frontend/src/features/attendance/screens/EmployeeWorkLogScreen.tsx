@@ -46,6 +46,13 @@ interface WorkLogRow {
 
 const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
+/**
+ * 근무일지 (직원) — 월별 출퇴근·일급여·보너스 요약 + 일자별 상세 테이블.
+ *
+ * v3 시안(sodam-v3-09-schedule.html S11) 정렬: 헤더를 "근무일지"(라벨) + 매장명(굵게, 2줄)
+ * 컨텍스트 헤더로 표시(AppHeader subtitle) — 기존에 월 내비게이션 바 안에 중복 표시되던
+ * 매장명은 제거.
+ */
 const EmployeeWorkLogScreen: React.FC = () => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const route = useRoute<RouteProp<HomeStackParamList, 'EmployeeWorkLog'>>();
@@ -153,7 +160,13 @@ const EmployeeWorkLogScreen: React.FC = () => {
         <ScreenContainer
             scroll
             padded={false}
-            header={<AppHeader title="근무일지" onBack={() => navigation.goBack()} />}>
+            header={
+                selectedStore ? (
+                    <AppHeader title="근무일지" subtitle={selectedStore.storeName} onBack={() => navigation.goBack()} />
+                ) : (
+                    <AppHeader title="근무일지" onBack={() => navigation.goBack()} />
+                )
+            }>
             <View style={styles.body}>
                 <View style={[styles.monthBar, {backgroundColor: c.surface, borderColor: c.border}]}>
                     <Pressable
@@ -166,9 +179,6 @@ const EmployeeWorkLogScreen: React.FC = () => {
                     </Pressable>
                     <View style={styles.monthTitleWrap}>
                         <AppText variant="headingMd" weight="800" center>{year}년 {month}월</AppText>
-                        <AppText variant="caption" tone="secondary" center numberOfLines={1}>
-                            {selectedStore?.storeName ?? '매장 없음'}
-                        </AppText>
                     </View>
                     <Pressable
                         accessibilityRole="button"

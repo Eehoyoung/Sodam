@@ -105,13 +105,13 @@ const MissingAttendanceCenterScreen: React.FC = () => {
                     />
                 ) : (
                     <>
-                        <AppCard variant="navy" hero style={styles.heroCard}>
-                            <AppText variant="caption" tone="inverse" style={styles.heroLabel}>정산 전 확인할 일</AppText>
+                        <AppCard variant="spot" hero style={styles.heroCard}>
+                            <AppText variant="caption" tone="secondary" style={styles.heroLabel}>정산 전 확인할 일</AppText>
                             <View style={styles.heroNumRow}>
-                                <AppText tone="inverse" style={styles.heroNumber}>{items.length}</AppText>
-                                <AppText variant="headingSm" tone="inverse" style={styles.heroUnit}>건</AppText>
+                                <AppText tone="brand" style={styles.heroNumber}>{items.length}</AppText>
+                                <AppText variant="headingSm" tone="primary" style={styles.heroUnit}>건</AppText>
                             </View>
-                            <AppText variant="bodyMd" tone="inverse" style={styles.heroSub}>
+                            <AppText variant="bodyMd" tone="secondary" style={styles.heroSub}>
                                 퇴근 누락과 미출근 기록을 먼저 정리하세요.
                             </AppText>
                         </AppCard>

@@ -1,8 +1,8 @@
 /**
- * ① PurchaseScanScreen — 영수증 촬영/선택 → OCR 초안 → 확인 화면으로.
+ * B2 PurchaseScanScreen — v3 시안(sodam-v3-10-business.html) 1:1.
  *
- * 한 화면=한 가지: "영수증을 비춰주세요". 하단 풀폭 CTA 1개(영수증 촬영) + 보조(직접 입력).
- * OCR 미설정(ocrAvailable=false)이면 안내 후 수기 입력 경로로 유도.
+ * cam-frame("영수증을 비춰주세요") + 단일 info-card(AppCard flat, 촬영+직접입력 안내 통합) +
+ * 하단 CTA 2개(영수증 촬영/직접 입력하기). OCR 미설정(ocrAvailable=false)이면 안내 후 수기 입력 경로로 유도.
  */
 import React, {useState} from 'react';
 import {StyleSheet, View} from 'react-native';
@@ -10,6 +10,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import {RouteProp, NavigationProp} from '@react-navigation/native';
 import {
     AppButton,
+    AppCard,
     AppHeader,
     AppText,
     AppToast,
@@ -121,12 +122,12 @@ export default function PurchaseScanScreen({route, navigation}: Props) {
                 </AppText>
             </View>
 
-            <AppText variant="bodyMd" tone="secondary" center style={styles.help}>
-                야채·주류 영수증을 찍으면 품목·단가가 자동으로 입력돼요.
-            </AppText>
-            <AppText variant="caption" tone="tertiary" center style={styles.helpSub}>
-                자동 인식이 어려우면 직접 입력하기로 기록할 수 있어요.
-            </AppText>
+            <AppCard variant="flat" style={styles.help}>
+                <AppText variant="bodyMd" tone="secondary">
+                    야채·주류 영수증을 찍으면 품목·단가가 자동으로 입력돼요. 자동 인식이 어려우면 직접
+                    입력할 수 있어요.
+                </AppText>
+            </AppCard>
 
             <ImagePickerSheet
                 visible={sheetVisible}
@@ -157,5 +158,4 @@ const styles = StyleSheet.create({
     },
     frameTitle: {marginTop: spacing.lg},
     help: {marginTop: spacing.xxl},
-    helpSub: {marginTop: spacing.sm},
 });

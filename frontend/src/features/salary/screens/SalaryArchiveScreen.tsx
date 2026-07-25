@@ -5,6 +5,7 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {
     AppBadge,
+    AppCard,
     AppHeader,
     AppListItem,
     AppText,
@@ -20,8 +21,11 @@ import {useAuth} from '../../../contexts/AuthContext';
 import payrollService, {ArchiveItem} from '../services/payrollService';
 
 /**
- * A12 명세서 보관함 / 지난 급여명세 (갭분석 추가).
- * 퇴사 후·세무 목적의 과거 명세 재열람. 본인 employeeId 의 급여 목록을 연도로 조회.
+ * W2 SalaryArchiveScreen(A12) — v3 시안(sodam-v3-11-taxwage.html) 1:1.
+ *
+ * info-card 안내 + 연도 SegmentedControl(올해/작년) + list-item 리스트("기간 · 이름" +
+ * 발급/대기 배지, 메타: "실수령액 N원"). 퇴사 후·세무 목적의 과거 명세 재열람.
+ * 본인 employeeId 의 급여 목록을 연도로 조회.
  */
 const SalaryArchiveScreen: React.FC = () => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
@@ -65,9 +69,11 @@ const SalaryArchiveScreen: React.FC = () => {
             scroll
             header={<AppHeader title="지난 급여명세" onBack={() => navigation.goBack()} />}
             footer={<RoleTabBar active="salary" />}>
-            <AppText variant="bodyMd" tone="secondary" style={styles.intro}>
-                퇴사·세무 목적의 과거 명세서를 다시 열어볼 수 있어요.
-            </AppText>
+            <AppCard variant="flat" style={styles.intro}>
+                <AppText variant="bodyMd" tone="secondary">
+                    퇴사·세무 목적의 과거 명세서를 다시 열어볼 수 있어요.
+                </AppText>
+            </AppCard>
             <SegmentedControl options={['올해', '작년']} value={year} onChange={setYear} />
 
             {loading ? (
@@ -84,7 +90,7 @@ const SalaryArchiveScreen: React.FC = () => {
                         <AppListItem
                             key={it.payrollId}
                             title={`${it.period} · ${it.employeeName}`}
-                            subtitle={formatMoney(it.netPay)}
+                            subtitle={`실수령액 ${formatMoney(it.netPay)}`}
                             right={<AppBadge label={it.issued ? '발급' : '대기'} tone={it.issued ? 'success' : 'warning'} />}
                             onPress={() => navigation.navigate('SalaryDetail', {payrollId: it.payrollId})}
                         />

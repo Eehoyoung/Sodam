@@ -45,6 +45,8 @@ function formatRequestedTime(iso: string): string {
 /**
  * 사장 승인 출퇴근 — 직원이 위치/NFC 없이 요청한 출퇴근을 사장이 승인/거절.
  * 승인 시 직원이 요청한 시각으로 출퇴근이 기록된다.
+ *
+ * v3 시안(sodam-v3-09-schedule.html S8) 정렬: 상단 안내문을 info-card(AppCard)로 감싸 표시.
  */
 export default function AttendanceApprovalScreen({route, navigation}: Props) {
     const {storeId} = route.params;
@@ -111,12 +113,13 @@ export default function AttendanceApprovalScreen({route, navigation}: Props) {
 
     return (
         <ScreenContainer scroll header={header}>
-            <View style={styles.intro}>
-                <AppText variant="headingSm">대기 중인 출퇴근 요청</AppText>
-                <AppText variant="bodyMd" tone="secondary">
+            {/* v3 시안(S8): 안내문을 info-card 로 감싸 표시 */}
+            <AppCard variant="flat" style={styles.intro}>
+                <AppText variant="titleMd" weight="800">대기 중인 출퇴근 요청</AppText>
+                <AppText variant="bodyMd" tone="secondary" style={styles.introBody}>
                     승인하면 직원이 요청한 시각으로 출퇴근이 기록돼요.
                 </AppText>
-            </View>
+            </AppCard>
 
             {items.length === 0 ? (
                 <EmptyState
@@ -178,7 +181,8 @@ export default function AttendanceApprovalScreen({route, navigation}: Props) {
 }
 
 const styles = StyleSheet.create({
-    intro: {gap: spacing.xs, marginBottom: spacing.lg},
+    intro: {marginBottom: spacing.lg},
+    introBody: {marginTop: spacing.xs},
     list: {gap: spacing.md},
     card: {gap: spacing.md, paddingVertical: spacing.md},
     cardHead: {flexDirection: 'row', alignItems: 'center', gap: spacing.md},

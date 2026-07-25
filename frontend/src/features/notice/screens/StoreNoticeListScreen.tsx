@@ -18,6 +18,7 @@ import {
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {spacing} from '../../../theme/tokens';
+import {useStoreLiveSync} from '../../../common/realtime/useStoreLiveSync';
 import {fetchStoreNotices, fetchNoticeReads, formatNoticeDate, NoticeRead, StoreNotice} from '../services/noticeService';
 
 type Route = RouteProp<{N: {storeId: number}}, 'N'>;
@@ -49,21 +50,34 @@ const StoreNoticeListScreen: React.FC = () => {
     const [reads, setReads] = useState<NoticeRead[]>([]);
     const [readsLoading, setReadsLoading] = useState(false);
 
-    const load = useCallback(async () => {
-        setLoading(true);
+    const load = useCallback(async (silent = false) => {
+        if (!silent) { setLoading(true); }
         setError(false);
         try {
             setItems(await fetchStoreNotices(storeId));
         } catch {
             setError(true);
         } finally {
-            setLoading(false);
+            if (!silent) { setLoading(false); }
         }
     }, [storeId]);
 
     useFocusEffect(useCallback(() => {
         load();
+        const fallback = setInterval(() => load(true), 3000);
+        return () => clearInterval(fallback);
     }, [load]));
+
+    useStoreLiveSync([storeId], event => {
+        if (event.type === 'NOTICE_CHANGED') {
+            load();
+            if (expandedId !== null) {
+                fetchNoticeReads(storeId, expandedId)
+                    .then(setReads)
+                    .catch(() => setReads([]));
+            }
+        }
+    });
 
     const toggleReads = useCallback(async (noticeId: number) => {
         if (expandedId === noticeId) {

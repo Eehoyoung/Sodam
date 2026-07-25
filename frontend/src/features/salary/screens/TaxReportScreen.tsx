@@ -50,8 +50,12 @@ const fmtDateTime = (isoStr: string): string => {
 };
 
 /**
- * 세무사 송부 — 정산기간 인건비 내역서(PDF 직원별 집계 + CSV 건별 상세)를
- * 매장에 등록된 세무사 이메일로 발송. 확정·지급완료 급여만 포함.
+ * W5 TaxReportScreen — v3 시안(sodam-v3-11-taxwage.html) 1:1.
+ *
+ * 세무사 이메일 필드(카드 미포함, 저장 버튼은 additive) + mini-nav 월 선택(카드 미포함) +
+ * info-card(확정·지급완료만 포함 안내) + section-label "발송 이력" + list-item 발송 이력.
+ * 정산기간 인건비 내역서(PDF 직원별 집계 + CSV 건별 상세)를 매장에 등록된 세무사 이메일로 발송.
+ * 확정·지급완료 급여만 포함.
  */
 const TaxReportScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -167,52 +171,46 @@ const TaxReportScreen: React.FC = () => {
                 />
             ) : (
                 <View>
-                    <AppText variant="caption" tone="secondary" style={styles.sectionLabel}>
-                        세무사 이메일
-                    </AppText>
-                    <AppCard variant="flat" style={styles.card}>
-                        <AppInput
-                            label="신고 자료를 받을 이메일"
-                            value={email}
-                            onChangeText={setEmail}
-                            placeholder="cpa@example.com"
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                        />
-                        <AppButton
-                            label={savingEmail ? '저장 중…' : '이메일 저장'}
-                            variant="secondary"
-                            size="sm"
-                            disabled={savingEmail || email.trim() === (savedEmail ?? '')}
-                            onPress={saveEmail}
-                        />
-                    </AppCard>
+                    <AppInput
+                        label="세무사 이메일"
+                        value={email}
+                        onChangeText={setEmail}
+                        placeholder="cpa@example.com"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                    />
+                    <AppButton
+                        label={savingEmail ? '저장 중…' : '이메일 저장'}
+                        variant="secondary"
+                        size="sm"
+                        disabled={savingEmail || email.trim() === (savedEmail ?? '')}
+                        onPress={saveEmail}
+                        style={styles.saveEmailBtn}
+                    />
 
-                    <AppText variant="caption" tone="secondary" style={styles.sectionLabel}>
-                        정산기간
-                    </AppText>
+                    <View style={styles.monthRow}>
+                        <TouchableOpacity
+                            style={styles.monthArrow}
+                            onPress={() => setMonthOffset(o => o - 1)}
+                            accessibilityLabel="이전 달">
+                            <Ionicons name="chevron-back" size={22} color={c.textPrimary} />
+                        </TouchableOpacity>
+                        <AppText variant="titleMd">{monthLabel}</AppText>
+                        <TouchableOpacity
+                            style={styles.monthArrow}
+                            onPress={() => setMonthOffset(o => Math.min(0, o + 1))}
+                            accessibilityLabel="다음 달">
+                            <Ionicons
+                                name="chevron-forward"
+                                size={22}
+                                color={monthOffset >= 0 ? c.textTertiary : c.textPrimary}
+                            />
+                        </TouchableOpacity>
+                    </View>
+
                     <AppCard variant="flat" style={styles.card}>
-                        <View style={styles.monthRow}>
-                            <TouchableOpacity
-                                style={styles.monthArrow}
-                                onPress={() => setMonthOffset(o => o - 1)}
-                                accessibilityLabel="이전 달">
-                                <Ionicons name="chevron-back" size={22} color={c.textPrimary} />
-                            </TouchableOpacity>
-                            <AppText variant="titleMd">{monthLabel}</AppText>
-                            <TouchableOpacity
-                                style={styles.monthArrow}
-                                onPress={() => setMonthOffset(o => Math.min(0, o + 1))}
-                                accessibilityLabel="다음 달">
-                                <Ionicons
-                                    name="chevron-forward"
-                                    size={22}
-                                    color={monthOffset >= 0 ? c.textTertiary : c.textPrimary}
-                                />
-                            </TouchableOpacity>
-                        </View>
-                        <AppText variant="caption" tone="tertiary">
-                            확정(CONFIRMED)·지급완료(PAID) 급여만 포함돼요. 작성중 급여는 정산에서 먼저 확정해 주세요.
+                        <AppText variant="bodyMd" tone="secondary">
+                            확정·지급완료 급여만 포함돼요. 작성중 급여는 정산에서 먼저 확정해 주세요.
                         </AppText>
                     </AppCard>
 
@@ -254,8 +252,14 @@ const TaxReportScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
     sectionLabel: {marginTop: spacing.xl, marginBottom: spacing.xs},
-    card: {marginTop: spacing.xs, gap: spacing.sm},
-    monthRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
+    card: {marginTop: spacing.md, gap: spacing.sm},
+    saveEmailBtn: {marginTop: spacing.sm, alignSelf: 'flex-start'},
+    monthRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: spacing.xl,
+    },
     monthArrow: {padding: spacing.xs},
     historyHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
 });

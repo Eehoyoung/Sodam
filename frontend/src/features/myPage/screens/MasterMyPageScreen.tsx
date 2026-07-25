@@ -14,7 +14,7 @@ import {NavigationProp, useFocusEffect} from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {gradient, radius, shadow, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import {AppToast, AppText, AmountText, ScreenContainer} from '../../../common/components/ds';
+import {AppToast, AppText, AmountText, QuickMenuGrid, ScreenContainer} from '../../../common/components/ds';
 import {useAuth} from '../../../contexts/AuthContext';
 import policyService from '../../info/services/policyService';
 import storeService from '../../store/services/storeService';
@@ -62,22 +62,27 @@ interface LaborInfo {
     overtimeRate: number;
 }
 
-// 매장마다 다른 그라디언트 색으로 구분
+// 매장마다 다른 그라디언트 색으로 구분 — v3 링&패스 토큰(코랄/틸/앰버/코랄→틸 링)
 const STORE_GRADIENTS: Array<[string, string]> = [
-    ['#FF7A1A', '#FF5722'],   // 브랜드 오렌지
-    ['#263F4F', '#172932'],   // 네이비
-    ['#2563EB', '#1D4ED8'],   // 블루
-    ['#7C3AED', '#6D28D9'],   // 퍼플
+    gradient.brand,
+    gradient.success,
+    gradient.warning,
+    gradient.ring,
 ];
 
+/**
+ * 153 MasterMyPage — 사장 "홈" 랜딩 (RoleTabBar MASTER_TABS 의 home 탭 대상).
+ * v3 시안: docs/260720/artifacts/sodam-v3-02-owner.html의 "153 MasterMyPage" 카드.
+ * 인사말+날짜 → 총 인건비 히어로(운영매장/전체직원/오늘출근 3분할) → 오늘의 현황
+ * (근무중/지각/미출근 + 출근률 바) → 내 매장 그라디언트 캐러셀 → 매장관리 QuickMenuGrid
+ * → 정책/노무 정보 카드 순서로 시안과 1:1 대응.
+ */
 export default function MasterMyPageScreen({navigation}: MasterMyPageScreenProps) {
     const c = useThemeColors();
     const {user} = useAuth();
     const {width} = useWindowDimensions();
 
     const CARD_WIDTH = width * 0.75;
-    // 퀵메뉴 3열 — 좌우 패딩(xl*2) + 간격(sm*2) 제외 후 3등분
-    const MENU_ITEM_W = (width - spacing.xl * 2 - spacing.sm * 2) / 3;
 
     const [stores, setStores] = useState<StoreInfo[]>([]);
     const [policies, setPolicies] = useState<PolicyInfo[]>([]);
@@ -207,6 +212,8 @@ export default function MasterMyPageScreen({navigation}: MasterMyPageScreenProps
         fn();
     };
 
+    // 첫 3개(직원 관리/스케줄/급여 관리) 순서·색상은 v3 시안 "153 MasterMyPage" qm-grid와
+    // 1:1 대응(amber/teal/neutral) — QuickMenuGrid가 3열이라 이 3개가 첫 행에 그대로 노출된다.
     const quickMenus = [
         {
             key: 'employee', label: '직원 관리', icon: 'people-outline',
@@ -214,24 +221,24 @@ export default function MasterMyPageScreen({navigation}: MasterMyPageScreenProps
             color: {bg: c.warningBg, icon: c.warning},
         },
         {
+            key: 'schedule', label: '스케줄', icon: 'calendar-outline',
+            onPress: requireStore(() => navigation.navigate('StoreSchedule', {storeId: primaryStoreId})),
+            color: {bg: c.infoBg, icon: c.info},
+        },
+        {
+            key: 'payroll', label: '급여 관리', icon: 'card-outline',
+            onPress: requireStore(() => navigation.navigate('PayrollRun', {storeId: primaryStoreId})),
+            color: {bg: c.surfaceMuted, icon: c.textSecondary},
+        },
+        {
             key: 'attendance', label: '근태 관리', icon: 'time-outline',
             onPress: () => navigation.navigate('MissingAttendanceCenter'),
             color: {bg: c.brandPrimarySoft, icon: c.brandPrimary},
         },
         {
-            key: 'payroll', label: '급여 관리', icon: 'card-outline',
-            onPress: requireStore(() => navigation.navigate('PayrollRun', {storeId: primaryStoreId})),
-            color: {bg: c.infoBg, icon: c.info},
-        },
-        {
             key: 'dashboard', label: '대시보드', icon: 'grid-outline',
             onPress: () => navigation.navigate('OwnerDashboard'),
             color: {bg: c.brandPrimarySoft, icon: c.brandPrimary},
-        },
-        {
-            key: 'schedule', label: '스케줄', icon: 'calendar-outline',
-            onPress: requireStore(() => navigation.navigate('StoreSchedule', {storeId: primaryStoreId})),
-            color: {bg: c.surfaceMuted, icon: c.textSecondary},
         },
         {
             key: 'approval', label: '출근 승인', icon: 'checkmark-done-outline',
@@ -364,7 +371,7 @@ export default function MasterMyPageScreen({navigation}: MasterMyPageScreenProps
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.iconBtn, {backgroundColor: c.surfaceCanvas, borderColor: c.border}]}
-                            onPress={() => navigation.navigate('AccountSettings')}>
+                            onPress={() => navigation.navigate('Settings')}>
                             <Ionicons name="settings-outline" size={20} color={c.textSecondary} />
                         </TouchableOpacity>
                     </View>
@@ -406,32 +413,29 @@ export default function MasterMyPageScreen({navigation}: MasterMyPageScreenProps
                     </ScrollView>
                 )}
 
-                {/* ── 히어로 KPI 카드 ── */}
+                {/* ── 히어로 KPI 카드(153 MasterMyPage) ──
+                    ⚠️ 'spot' 강조(코랄 테두리)는 OwnerDashboardScreen의 "오늘 처리할 일" 같은
+                    CTA 콜아웃 전용 — 여기는 숫자 요약(KPI)이라 일반 카드 테두리를 쓴다. */}
                 <View style={styles.section}>
-                    <LinearGradient
-                        colors={gradient.brandStrong}
-                        style={styles.heroCard}
-                        start={{x: 0, y: 0}}
-                        end={{x: 1, y: 1}}>
-                        <View style={styles.heroDecor} />
-                        <AppText variant="caption" tone="inverse" style={styles.heroLabel}>이번달 총 인건비</AppText>
-                        <AmountText size={28} tone="inverse">{fmt(masterInfo.monthlyTotalLaborCost)}원</AmountText>
-                        <View style={styles.heroDivider} />
+                    <View style={[styles.heroCard, {backgroundColor: c.background, borderWidth: 1, borderColor: c.border}]}>
+                        <AppText variant="caption" tone="secondary" style={styles.heroLabel}>이번달 총 인건비</AppText>
+                        <AmountText size={28} tone="brand">{fmt(masterInfo.monthlyTotalLaborCost)}원</AmountText>
+                        <View style={[styles.heroDivider, {backgroundColor: c.border}]} />
                         <View style={styles.heroStats}>
                             <View style={styles.heroStat}>
-                                <AppText variant="headingSm" tone="inverse">{masterInfo.totalStores}</AppText>
-                                <AppText variant="caption" tone="inverse" style={styles.heroStatLbl}>운영 매장</AppText>
+                                <AppText variant="headingSm" tone="primary">{masterInfo.totalStores}</AppText>
+                                <AppText variant="caption" tone="secondary" style={styles.heroStatLbl}>운영 매장</AppText>
                             </View>
-                            <View style={[styles.heroStat, styles.heroStatDivider]}>
-                                <AppText variant="headingSm" tone="inverse">{masterInfo.totalEmployees}명</AppText>
-                                <AppText variant="caption" tone="inverse" style={styles.heroStatLbl}>전체 직원</AppText>
+                            <View style={[styles.heroStat, styles.heroStatDivider, {borderLeftColor: c.border}]}>
+                                <AppText variant="headingSm" tone="primary">{masterInfo.totalEmployees}명</AppText>
+                                <AppText variant="caption" tone="secondary" style={styles.heroStatLbl}>전체 직원</AppText>
                             </View>
-                            <View style={[styles.heroStat, styles.heroStatDivider]}>
-                                <AppText variant="headingSm" tone="inverse">{totalToday}명</AppText>
-                                <AppText variant="caption" tone="inverse" style={styles.heroStatLbl}>오늘 출근</AppText>
+                            <View style={[styles.heroStat, styles.heroStatDivider, {borderLeftColor: c.border}]}>
+                                <AppText variant="headingSm" tone="primary">{totalToday}명</AppText>
+                                <AppText variant="caption" tone="secondary" style={styles.heroStatLbl}>오늘 출근</AppText>
                             </View>
                         </View>
-                    </LinearGradient>
+                    </View>
                 </View>
 
                 {/* ── 오늘의 현황 ── */}
@@ -517,36 +521,10 @@ export default function MasterMyPageScreen({navigation}: MasterMyPageScreenProps
                     )}
                 </View>
 
-                {/* ── 매장 관리 퀵메뉴 (3×2) ── */}
+                {/* ── 매장 관리 퀵메뉴 (v3 공용 QuickMenuGrid, docs/260720 WP-02) ── */}
                 <View style={styles.section}>
                     <AppText variant="headingSm" style={styles.secTitle}>매장 관리</AppText>
-                    <View style={styles.quickGrid}>
-                        {quickMenus.map(menu => (
-                            <TouchableOpacity
-                                key={menu.key}
-                                style={[styles.quickItem, {width: MENU_ITEM_W, backgroundColor: c.surface, borderColor: c.border}]}
-                                onPress={menu.onPress}
-                                activeOpacity={0.75}>
-                                {menu.badge !== undefined && (
-                                    <View style={[styles.urgentBadge, {backgroundColor: c.error}]}>
-                                        <AppText
-                                            variant="caption"
-                                            tone="inverse"
-                                            weight="700"
-                                            style={styles.badgeText}>
-                                            {menu.badge}
-                                        </AppText>
-                                    </View>
-                                )}
-                                <View style={[styles.quickIconWrap, {backgroundColor: menu.color.bg}]}>
-                                    <Ionicons name={menu.icon} size={22} color={menu.color.icon} />
-                                </View>
-                                <AppText variant="caption" weight="600" tone="secondary" center numberOfLines={1}>
-                                    {menu.label}
-                                </AppText>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                    <QuickMenuGrid items={quickMenus} />
                 </View>
 
                 {/* ── 정부 지원 정책 ── */}
@@ -676,20 +654,14 @@ const styles = StyleSheet.create({
         borderRadius: radius.xxl,
         padding: spacing.xl,
         overflow: 'hidden',
-        ...shadow.lg,
+        ...shadow.sm,
     },
-    heroDecor: {
-        position: 'absolute', top: -24, right: -24,
-        width: 120, height: 120,
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        borderRadius: 60,
-    },
-    heroLabel: {opacity: 0.8, marginBottom: spacing.xs},
-    heroDivider: {height: 1, backgroundColor: 'rgba(255,255,255,0.18)', marginVertical: spacing.md},
+    heroLabel: {marginBottom: spacing.xs},
+    heroDivider: {height: 1, marginVertical: spacing.md},
     heroStats: {flexDirection: 'row'},
     heroStat: {flex: 1, alignItems: 'center', gap: 3},
-    heroStatDivider: {borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.18)'},
-    heroStatLbl: {opacity: 0.75},
+    heroStatDivider: {borderLeftWidth: 1},
+    heroStatLbl: {},
 
     /* ── 카드 공통 ── */
     card: {borderRadius: radius.xl, padding: spacing.lg, borderWidth: 1},
@@ -748,24 +720,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10, paddingVertical: 4,
     },
 
-    /* ── 퀵메뉴 ── */
-    quickGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm},
-    quickItem: {
-        alignItems: 'center', gap: spacing.sm,
-        borderRadius: radius.xl, paddingVertical: spacing.md,
-        borderWidth: 1, position: 'relative',
-    },
-    quickIconWrap: {
-        width: 48, height: 48, borderRadius: radius.lg,
-        alignItems: 'center', justifyContent: 'center',
-    },
-    urgentBadge: {
-        position: 'absolute', top: 8, right: 8,
-        minWidth: 18, height: 18, borderRadius: 9,
-        alignItems: 'center', justifyContent: 'center',
-        paddingHorizontal: 3,
-    },
-    badgeText: {fontSize: 10, lineHeight: 14},
+    /* ── 퀵메뉴는 QuickMenuGrid(ds)로 승격됨(WP-02) ── */
 
     /* ── 빈 매장 ── */
     emptyCard: {alignItems: 'center', paddingVertical: spacing.xxxl},

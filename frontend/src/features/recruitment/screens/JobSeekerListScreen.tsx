@@ -25,7 +25,7 @@ import {
     SegmentedControl,
 } from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
-import {recruit, spacing} from '../../../theme/tokens';
+import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {useJobSeekers} from '../hooks/useRecruitmentQueries';
 import {
@@ -180,15 +180,18 @@ const JobSeekerCard: React.FC<JobSeekerCardProps> = ({seeker, onPress}) => {
                     {seeker.name}
                     {seeker.age !== null ? ` · ${seeker.age}세` : ''}
                 </AppText>
-                <AppText variant="caption" style={{color: recruit.primary}}>
-                    {formatDistanceKm(seeker.distanceMeters)}
-                </AppText>
+                {/* 거리 = 코랄 필(badge--coral). AppBadge 는 별도 coral 톤이 없어 error 톤(v3
+                    팔레트에서 error=coral #FF4D6D)을 재사용한다 — 캡션 텍스트 대신 시안의 pill 형태. */}
+                <AppBadge label={formatDistanceKm(seeker.distanceMeters)} tone="error" />
             </View>
 
             {seeker.currentEmployment ? (
-                <AppText variant="caption" tone="secondary">
-                    {seeker.currentEmployment.storeName} · {seeker.currentEmployment.hireDate} ~ 현재
-                </AppText>
+                <View style={styles.verifiedRow}>
+                    <Ionicons name="checkmark-circle" size={12} color={c.success} />
+                    <AppText variant="caption" weight="700" style={{color: c.success}}>
+                        {seeker.currentEmployment.storeName} · {seeker.currentEmployment.hireDate} ~ 현재
+                    </AppText>
+                </View>
             ) : (
                 <AppBadge label="휴직중" tone="neutral" style={styles.badgeGap} />
             )}
@@ -234,6 +237,7 @@ const styles = StyleSheet.create({
     cardTopRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm},
     nameText: {flex: 1, minWidth: 0},
     badgeGap: {marginTop: 2},
+    verifiedRow: {flexDirection: 'row', alignItems: 'center', gap: 4},
     badgeRow: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs},
     locationRow: {flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2},
     locationText: {flex: 1, minWidth: 0},

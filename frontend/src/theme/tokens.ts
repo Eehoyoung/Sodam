@@ -1,66 +1,68 @@
 /**
  * 소담 디자인 토큰 — 단일 진실 공급원 (Single Source of Truth).
  *
- * 브랜드 톤:
- *   - 소상공인 페르소나를 위한 따뜻한 오렌지 (시프티의 파랑, 알밤의 초록과 차별화)
- *   - 한국 전통의 감 색감을 모티프로 한 #FF6B35
+ * 브랜드 톤: v3 "링 & 패스" (2026-07-20 확정, docs/260720 계획서)
+ *   - 코랄(#FF4D6D)→틸(#12B8A6) 그라디언트 진행률 링이 시그니처
+ *   - 10대~70대 전 연령이 학습 없이 읽는 형태를 우선(장부/스탬프 등 세대색 짙은 모티프 배제)
+ *   - 이전 v2(오렌지 #FF6B35/네이비)는 대체됨 — 히스토리는 메모리 design-system-v2 참조
  *
  * 모든 색/간격/타이포는 이 파일에서만 정의하고,
  * 다른 곳에서는 반드시 import { tokens } from './tokens' 으로 사용.
+ * 키는 v2 때와 동일하게 유지(참조 764개 안전) — 이번에도 값만 교체.
  */
 
 export const colors = {
-    // === Brand === (launch-redesign/design-tokens.json 2026.05.25 확정)
-    brandPrimary: '#FF6B35',       // 소담 시그니처 오렌지 — 화면당 1차 행동에만
-    brandPrimaryDark: '#E85A2A',   // pressed
-    brandPrimaryLight: '#FF9B63',
-    brandPrimarySoft: '#FFF0E8',   // 연한 브랜드 배경
-    brandPrimaryMuted: '#FFB48F',
-    brandSecondary: '#243B4A',     // 네이비 — HeroCard/진한 헤더 텍스트
-    brandAccent: '#F4A261',        // 보조 강조 (배지/포인트)
+    // === Brand === (v3 "링 & 패스" 2026-07-20 확정)
+    brandPrimary: '#FF4D6D',       // 코랄 — 화면당 1차 행동에만 (구 오렌지 대체)
+    brandPrimaryDark: '#E63E5C',   // pressed
+    brandPrimaryLight: '#FF7C93',
+    brandPrimarySoft: '#FFE1E6',   // 연한 코랄 배경
+    brandPrimaryMuted: '#FFB0C0',
+    brandSecondary: '#15171B',     // 잉크 — 진한 헤더 텍스트(네이비 대체, 카드 배경 용도 금지 — D-2)
+    brandAccent: '#C97F00',        // 앰버 — 보조 강조 (배지/포인트)
 
     // === Surface ===
     background: '#FFFFFF',          // 기본 화면/카드
     surface: '#FFFFFF',            // 기본 카드 (명시용 별칭)
-    surfaceCanvas: '#F7F4EF',       // 앱 배경 (스크린 캔버스)
-    surfaceWarm: '#FFFBF5',         // 따뜻한 카드 (추천/인사이트)
-    surfaceMuted: '#F1EEE9',        // 비활성/disabled 배경
-    surfaceMint: '#EEF8F4',         // 성공/출근 보조 배경
-    surfaceSky: '#EEF5FF',          // 정보 보조 배경
-    surfaceInverse: '#201A17',      // 다크 시트
-    border: '#E8E0D8',
-    borderStrong: '#D8CDC3',
-    borderFocus: '#FF6B35',
-    divider: '#EFE7DF',
+    surfaceCanvas: '#F7F7F4',       // 앱 배경 (클라우드 캔버스)
+    surfaceWarm: '#F1F1EC',         // 카드2(중립 톤 — v3는 "따뜻한" 강조 대신 중립 카드로 통일)
+    surfaceMuted: '#F1F1EC',        // 비활성/disabled 배경
+    surfaceMint: '#DCF6F1',         // 틸소프트 — 성공/출근 보조 배경
+    surfaceSky: '#DCF6F1',          // 틸소프트 — 정보 보조 배경(v3는 info를 틸로 통합)
+    surfaceInverse: '#15171B',      // 다크 시트(잉크)
+    border: '#E7E7E2',
+    borderStrong: '#C9C9C2',
+    borderFocus: '#FF4D6D',
+    divider: '#EDEDE7',
 
     // === Text ===
-    textPrimary: '#201A17',
-    textSecondary: '#625B55',
-    textTertiary: '#9A9189',
+    textPrimary: '#15171B',
+    textSecondary: '#6A6E76',
+    textTertiary: '#9A9DA3',
     textInverse: '#FFFFFF',
-    textBrand: '#FF6B35',
-    textDisabled: '#C9C0B8',
+    textBrand: '#FF4D6D',
+    textDisabled: '#C6C6C0',
 
     // === Status === (색 단독 의미전달 금지 — 텍스트 배지와 함께)
-    success: '#12A87B',
-    successBg: '#DFF6ED',
-    warning: '#F59E0B',
-    warningBg: '#FEF3C7',
-    error: '#E5484D',
-    errorBg: '#FEE2E2',
-    info: '#3B82F6',
-    infoBg: '#DBEAFE',
+    success: '#12B8A6',
+    successBg: '#DCF6F1',
+    warning: '#C97F00',
+    warningBg: '#FFEDCC',
+    error: '#FF4D6D',
+    errorBg: '#FFE1E6',
+    info: '#12B8A6',                // v3는 별도 파랑 없이 info를 틸로 통합(13개 아티팩트 전체가 이 3색 체계)
+    infoBg: '#DCF6F1',
 
     // === Domain colors (status badges 등) ===
-    attendanceCheckedIn: '#12A87B',
-    attendanceCheckedOut: '#3B82F6',
-    payrollPaid: '#12A87B',
-    payrollPending: '#F59E0B',
-    payrollCancelled: '#E5484D',
+    attendanceCheckedIn: '#FF4D6D',  // 근무중=코랄(링 시작색과 통일)
+    attendanceCheckedOut: '#12B8A6', // 완료=틸(링 마감색과 통일)
+    payrollPaid: '#12B8A6',
+    payrollPending: '#C97F00',
+    payrollCancelled: '#FF4D6D',
 
     // === Translucent ===
-    overlayDark: 'rgba(32, 26, 23, 0.55)',
-    shadowColor: '#243B4A',
+    overlayDark: 'rgba(21, 23, 27, 0.55)',
+    shadowColor: '#15171B',
 } as const;
 
 /**
@@ -70,48 +72,48 @@ export const colors = {
  *   (반쪽 다크는 라이트 잔재와 섞여 깨져 보임). 활성화는 일괄 마이그레이션 후.
  */
 export const darkColors: Record<keyof typeof colors, string> = {
-    brandPrimary: '#FF7A45',
-    brandPrimaryDark: '#E85A2A',
-    brandPrimaryLight: '#FF9B63',
-    brandPrimarySoft: '#3A2A22',
-    brandPrimaryMuted: '#7A4A33',
-    brandSecondary: '#9FB6C4',
-    brandAccent: '#F4A261',
+    brandPrimary: '#FF7288',
+    brandPrimaryDark: '#E63E5C',
+    brandPrimaryLight: '#FF9BAC',
+    brandPrimarySoft: '#3A222A',
+    brandPrimaryMuted: '#6B3844',
+    brandSecondary: '#F2F1EE',
+    brandAccent: '#FFC24D',
 
-    background: '#1B1714',
-    surface: '#241F1B',
-    surfaceCanvas: '#161311',
-    surfaceWarm: '#241F1B',
-    surfaceMuted: '#2E2823',
-    surfaceMint: '#15302A',
-    surfaceSky: '#15263A',
-    surfaceInverse: '#F7F4EF',
-    border: '#3A332E',
-    borderStrong: '#4A433D',
-    borderFocus: '#FF7A45',
-    divider: '#2E2823',
+    background: '#12141B',
+    surface: '#1B1E26',
+    surfaceCanvas: '#12141B',
+    surfaceWarm: '#20232C',
+    surfaceMuted: '#20232C',
+    surfaceMint: '#173330',
+    surfaceSky: '#173330',
+    surfaceInverse: '#F2F1EE',
+    border: '#2A2E37',
+    borderStrong: '#3A3F4A',
+    borderFocus: '#FF7288',
+    divider: '#2A2E37',
 
-    textPrimary: '#F5EFE9',
-    textSecondary: '#C9C0B8',
-    textTertiary: '#9A9189',
-    textInverse: '#201A17',
-    textBrand: '#FF8A5C',
-    textDisabled: '#5A534D',
+    textPrimary: '#F2F1EE',
+    textSecondary: '#A6A9AE',
+    textTertiary: '#8A8D93',
+    textInverse: '#15171B',
+    textBrand: '#FF7288',
+    textDisabled: '#565A62',
 
-    success: '#3FC79A',
-    successBg: '#15302A',
-    warning: '#F5B53D',
-    warningBg: '#3A2E14',
-    error: '#FF6B6F',
-    errorBg: '#3A1E1F',
-    info: '#5B9BFF',
-    infoBg: '#15263A',
+    success: '#2DD4BF',
+    successBg: '#173330',
+    warning: '#FFC24D',
+    warningBg: '#3A2C14',
+    error: '#FF7288',
+    errorBg: '#3A222A',
+    info: '#2DD4BF',
+    infoBg: '#173330',
 
-    attendanceCheckedIn: '#3FC79A',
-    attendanceCheckedOut: '#5B9BFF',
-    payrollPaid: '#3FC79A',
-    payrollPending: '#F5B53D',
-    payrollCancelled: '#FF6B6F',
+    attendanceCheckedIn: '#FF7288',
+    attendanceCheckedOut: '#2DD4BF',
+    payrollPaid: '#2DD4BF',
+    payrollPending: '#FFC24D',
+    payrollCancelled: '#FF7288',
 
     overlayDark: 'rgba(0, 0, 0, 0.6)',
     shadowColor: '#000000',
@@ -220,14 +222,15 @@ export const shadow = {
  *   <LinearGradient colors={tokens.gradient.brand} ... />
  */
 export const gradient = {
-    brand: ['#FF6B35', '#FF9B63'] as [string, string],       // 확정 시안 마크/펀치 버튼
-    brandStrong: ['#FF7A1A', '#FF5722'] as [string, string], // 진한 히어로 배경
-    brandSoft: ['#FFB48F', '#FF9B63'] as [string, string],
-    navy: ['#263F4F', '#172932'] as [string, string],        // 다크 스크린 배경
-    darkScreen: ['#263F4F', '#172932', '#2B2019'] as [string, string, string],
-    success: ['#34D399', '#12A87B'] as [string, string],
-    warning: ['#FBBF24', '#F59E0B'] as [string, string],
-    surfaceWarm: ['#FFFBF5', '#FFF5EC'] as [string, string],
+    brand: ['#FF4D6D', '#FF8DA0'] as [string, string],       // 코랄 그라디언트 — 마크/펀치 버튼
+    brandStrong: ['#E63E5C', '#FF4D6D'] as [string, string], // 진한 히어로 배경
+    brandSoft: ['#FFC2CE', '#FF8DA0'] as [string, string],
+    ring: ['#FF4D6D', '#12B8A6'] as [string, string],        // 진행률 링 시그니처(코랄→틸)
+    navy: ['#1E1A33', '#17151F'] as [string, string],        // 다크 스크린 배경(온보딩 등)
+    darkScreen: ['#1E1A33', '#17151F', '#1C1712'] as [string, string, string],
+    success: ['#3FE0CB', '#12B8A6'] as [string, string],
+    warning: ['#FFD27A', '#C97F00'] as [string, string],
+    surfaceWarm: ['#FBF9F6', '#F5F3EE'] as [string, string],
 } as const;
 
 /**
@@ -248,6 +251,42 @@ export const recruit = {
     primarySoft: '#E9F7EF',    // soft bg (배지/선택 칩 배경)
     gradient: ['#1FA566', '#43B986'] as [string, string], // 히어로/강조 카드
 } as const;
+
+/**
+ * v3("링 & 패스") 디자인 방향 — 2026-07-20 확정, 단계적 롤아웃 중(docs/260720 계획서).
+ * 기존 colors/darkColors(v2, 764개 참조)는 손대지 않고 별도 네임스페이스로 추가한다.
+ * 화면 전환이 충분히 진행된 뒤 WP-10에서 colors 본체 스왑 여부를 결정한다.
+ * recruit 팔레트와 동일한 "별도 네임스페이스 추가" 원칙을 따름.
+ */
+export const v3Colors = {
+    ink: '#15171B',
+    inkSoft: '#6A6E76',
+    bg: '#F7F7F4',
+    card: '#FFFFFF',
+    card2: '#F1F1EC',
+    coral: '#FF4D6D',
+    coralSoft: '#FFE1E6',
+    teal: '#12B8A6',
+    tealSoft: '#DCF6F1',
+    amber: '#C97F00',
+    amberSoft: '#FFEDCC',
+    border: '#E7E7E2',
+} as const;
+
+export const darkV3Colors: Record<keyof typeof v3Colors, string> = {
+    ink: '#F2F1EE',
+    inkSoft: '#A6A9AE',
+    bg: '#12141B',
+    card: '#1B1E26',
+    card2: '#20232C',
+    coral: '#FF7288',
+    coralSoft: '#3A222A',
+    teal: '#2DD4BF',
+    tealSoft: '#173330',
+    amber: '#FFC24D',
+    amberSoft: '#3A2C14',
+    border: '#2A2E37',
+};
 
 export const layout = {
     minTouchTarget: 44, // iOS HIG / Android: 최소 터치 영역
@@ -286,9 +325,11 @@ export const tokens = {
     motion,
     breakpoints,
     recruit,
+    v3Colors,
 } as const;
 
 export type Tokens = typeof tokens;
 export type ColorKey = keyof typeof colors;
 export type SpacingKey = keyof typeof spacing;
+export type V3ColorKey = keyof typeof v3Colors;
 export default tokens;

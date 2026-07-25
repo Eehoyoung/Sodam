@@ -5,16 +5,20 @@
  * (`JobPostingNearbyItem`)을 그대로 전달받는다 — `JobSeekerDetailScreen`(§7.4-2)과 동일하게
  * 추가 조회 API 없음(v1). 선택 메시지 입력 후 "지원하기" 버튼으로 지원한다(§19.1).
  *
- * 히어로는 그린 그라디언트(`recruit.gradient`, §7.0 다크배경 금지) + 화이트 텍스트.
+ * 히어로는 v3 시안(sodam-v3-07-recruitment.html R3)에 맞춰 흰 배경 + 회색 테두리(--border)
+ * spot 카드로 구성한다(§7.0 다크배경 금지 원칙은 유지 — 그라디언트 대신 화이트 카드로 충족).
+ * ⚠️ 2026-07-11 초안 주석은 이 테두리를 "recruit 그린"이라 잘못 인용했었다 — 실제 아티팩트의
+ * `.spot-card`는 중립 회색 테두리이고, 색이 들어가는 요소는 시급 강조용 `.money-card`(22px
+ * 모노스페이스, 코랄과 무관한 중립 카드)와 지원하기 CTA(코랄)뿐이다. 2026-07-20 확정에 따라
+ * 코랄(#FF4D6D, `c.brandPrimary`)만 액션 강조로 사용하고 recruit 그린 토큰은 참조하지 않는다.
  */
 import React, {useState} from 'react';
-import {Pressable, StyleSheet, View} from 'react-native';
+import {Platform, Pressable, StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import LinearGradient from 'react-native-linear-gradient';
-import {AppHeader, AppInput, AppText, AppToast, ScreenContainer} from '../../../common/components/ds';
+import {AppBadge, AppHeader, AppInput, AppText, AppToast, ScreenContainer} from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
-import {radius, recruit, spacing} from '../../../theme/tokens';
+import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {useApplyToJobPosting} from '../hooks/useRecruitmentQueries';
 import {
@@ -76,7 +80,7 @@ const JobPostingDetailScreen: React.FC = () => {
                         accessibilityState={{disabled: applyMutation.isPending || applied, busy: applyMutation.isPending}}
                         style={({pressed}) => [
                             styles.cta,
-                            {backgroundColor: applied ? c.surfaceMuted : recruit.primary},
+                            {backgroundColor: applied ? c.surfaceMuted : c.brandPrimary},
                             pressed && !applyMutation.isPending && !applied ? styles.ctaPressed : null,
                         ]}>
                         <AppText variant="bodyLg" weight="700" style={{color: applied ? c.textSecondary : c.textInverse}}>
@@ -85,32 +89,32 @@ const JobPostingDetailScreen: React.FC = () => {
                     </Pressable>
                 </View>
             }>
-            <LinearGradient
-                colors={recruit.gradient}
-                start={{x: 0, y: 0}}
-                end={{x: 1, y: 1}}
-                style={styles.hero}
-                testID="job-posting-hero-gradient">
-                <AppText variant="headingSm" style={styles.heroName}>
-                    {posting.storeName}
-                </AppText>
-                <AppText variant="bodyMd" style={styles.heroSub}>
+            <View
+                style={[styles.hero, {backgroundColor: c.background, borderColor: c.border}]}
+                testID="job-posting-hero-card">
+                <View style={styles.heroTopRow}>
+                    <AppText variant="headingSm" weight="800" numberOfLines={1} style={styles.heroNameFlex}>
+                        {posting.storeName}
+                    </AppText>
+                    <AppBadge label={SEEKING_TYPE_LABELS[posting.workType]} tone="info" />
+                </View>
+                <AppText variant="bodyMd" tone="secondary">
                     {formatDistanceKm(posting.distanceMeters)} · {JOB_CATEGORY_LABELS[posting.jobCategory]}
                 </AppText>
-                <View style={styles.heroBadgeRow}>
-                    <HeroPill label={SEEKING_TYPE_LABELS[posting.workType]} />
-                </View>
-            </LinearGradient>
+            </View>
 
             <Section title="근무 정보">
-                <AppText variant="bodyMd" tone="secondary">
-                    {posting.workDate ? `${posting.workDate} · ` : ''}
-                    {formatTimeRange(posting.startTime, posting.endTime)}
-                </AppText>
-                <AppText variant="bodyMd" tone="secondary" style={styles.wageText}>
-                    시급 {posting.hourlyWage.toLocaleString('ko-KR')}원
-                </AppText>
+                <InfoRow label="근무일" value={posting.workDate ?? '수시'} />
+                <InfoRow label="시간" value={formatTimeRange(posting.startTime, posting.endTime)} last />
             </Section>
+
+            {/* 시급 강조 박스 — v3 시안 R3 `.money-card`(22px 모노스페이스) 1:1 재현 */}
+            <View style={[styles.moneyCard, {backgroundColor: c.background, borderColor: c.border}]} testID="job-posting-money-card">
+                <AppText variant="caption" tone="secondary" style={styles.moneyLabel}>시급</AppText>
+                <AppText weight="800" style={[styles.moneyValue, {color: c.textPrimary}]}>
+                    {posting.hourlyWage.toLocaleString('ko-KR')}원
+                </AppText>
+            </View>
 
             {posting.message ? (
                 <Section title="한줄 소개">
@@ -129,9 +133,11 @@ const JobPostingDetailScreen: React.FC = () => {
                 />
             </Section>
 
-            <AppText variant="caption" tone="tertiary" style={styles.privacy}>
-                소담 출퇴근 이력이 있어야 지원할 수 있어요. 지원을 수락하면 초대코드로 매장에 합류할 수 있어요.
-            </AppText>
+            <View style={[styles.privacyBox, {backgroundColor: c.surfaceMuted}]}>
+                <AppText variant="caption" tone="secondary" style={styles.privacyText}>
+                    소담 출퇴근 이력이 있어야 지원할 수 있어요. 지원을 수락하면 초대코드로 매장에 합류할 수 있어요.
+                </AppText>
+            </View>
         </ScreenContainer>
     );
 };
@@ -143,33 +149,51 @@ const Section: React.FC<{title: string; children: React.ReactNode}> = ({title, c
     </View>
 );
 
-const HeroPill: React.FC<{label: string}> = ({label}) => (
-    <View style={styles.heroPill}>
-        <AppText variant="caption" weight="700" style={styles.heroPillText}>{label}</AppText>
-    </View>
-);
+/** 시안 `.row`(라벨-값, 마지막 행은 하단 보더 없음) 1:1 — 근무일/시간 표기. */
+const InfoRow: React.FC<{label: string; value: string; last?: boolean}> = ({label, value, last}) => {
+    const c = useThemeColors();
+    return (
+        <View style={[styles.infoRow, {borderBottomColor: c.border}, last ? styles.infoRowLast : null]}>
+            <AppText variant="bodyMd" tone="secondary">{label}</AppText>
+            <AppText variant="bodyMd" weight="700">{value}</AppText>
+        </View>
+    );
+};
 
 const styles = StyleSheet.create({
     hero: {
         borderRadius: radius.xxl,
+        borderWidth: 1.5,
         padding: spacing.xl,
         marginBottom: spacing.lg,
         gap: spacing.xs,
     },
-    heroName: {color: '#FFFFFF'},
-    heroSub: {color: 'rgba(255,255,255,0.92)'},
-    heroBadgeRow: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.sm},
-    heroPill: {
-        paddingHorizontal: spacing.sm + 2,
-        paddingVertical: 6,
-        borderRadius: radius.pill,
-        backgroundColor: 'rgba(255,255,255,0.22)',
-    },
-    heroPillText: {color: '#FFFFFF'},
+    heroTopRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm},
+    heroNameFlex: {flex: 1, minWidth: 0},
     section: {marginBottom: spacing.lg, gap: spacing.xs},
     sectionTitle: {marginBottom: spacing.xs},
-    wageText: {marginTop: 2},
-    privacy: {lineHeight: 18, paddingHorizontal: 2, marginBottom: spacing.xxl},
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: spacing.sm + 1,
+        borderBottomWidth: 1,
+    },
+    infoRowLast: {borderBottomWidth: 0},
+    moneyCard: {
+        borderWidth: 1,
+        borderRadius: radius.xl,
+        padding: spacing.lg,
+        marginBottom: spacing.lg,
+    },
+    moneyLabel: {marginBottom: spacing.xs},
+    moneyValue: {
+        fontSize: 22,
+        lineHeight: 27,
+        fontFamily: Platform.select({ios: 'Menlo', android: 'monospace', default: 'monospace'}),
+    },
+    privacyBox: {borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.xxl},
+    privacyText: {lineHeight: 18},
     footer: {
         paddingHorizontal: spacing.xxl,
         paddingTop: spacing.md,

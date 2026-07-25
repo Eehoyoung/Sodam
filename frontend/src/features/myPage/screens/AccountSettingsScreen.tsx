@@ -1,5 +1,5 @@
 /* eslint-disable react-native/no-color-literals -- 미선택 토글 배경(transparent) 고정 */
-import {AppToast, ConfirmSheet, AppButton, AppCard, AppHeader, AppInput, AppText, ScreenContainer} from '../../../common/components/ds';
+import {AppToast, ConfirmSheet, AppButton, AppCard, AppHeader, AppInput, AppText, BottomSheet, ScreenContainer} from '../../../common/components/ds';
 import React, {useState} from 'react';
 import {Pressable, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
@@ -9,9 +9,12 @@ import accountService from '../services/accountService';
 import {useAuth} from '../../../contexts/AuthContext';
 import {useTheme, useThemeColors, ThemeMode} from '../../../common/hooks/useThemeColors';
 
+// 76 AccountDeleteFlow — 탈퇴는 파괴적 작업이라 되돌릴 수 없다는 걸 손으로 입력해서 재확인시킨다.
+const WITHDRAW_CONFIRM_PHRASE = '회원탈퇴';
+
 /**
- * 42 AccountSettings — 확정 시안.
- * 이름 변경 + 회원 탈퇴. saveName/withdraw 로직 보존.
+ * 42 AccountSettings + 76 AccountDeleteFlow — 확정 시안.
+ * 이름 변경 + 회원 탈퇴(확인 문구 직접 입력). saveName/withdraw 로직 보존.
  */
 const AccountSettingsScreen: React.FC = () => {
     const {user, logout} = useAuth();
@@ -21,6 +24,9 @@ const AccountSettingsScreen: React.FC = () => {
     const [name, setName] = useState(user?.name ?? '');
     const [saving, setSaving] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
+    const [withdrawSheetVisible, setWithdrawSheetVisible] = useState(false);
+    const [withdrawConfirmText, setWithdrawConfirmText] = useState('');
+    const [withdrawing, setWithdrawing] = useState(false);
 
     const handleLogout = () => {
         ConfirmSheet.confirm({
@@ -62,34 +68,40 @@ const AccountSettingsScreen: React.FC = () => {
         }
     };
 
-    const withdraw = () => {
+    const openWithdrawSheet = () => {
         if (!user?.id) {
             return;
         }
-        ConfirmSheet.confirm({
-            title: '정말 탈퇴하시겠어요?',
-            description: '활성 구독이 있으면 차단돼요. 90일 후 개인정보가 자동 익명화되며, 이 작업은 되돌릴 수 없어요.',
-            primary: {
-                label: '탈퇴하기',
-                destructive: true,
-                onPress: async () => {
-                    try {
-                        await accountService.withdraw(user.id);
-                        AppToast.success('탈퇴가 완료됐어요. 이용해 주셔서 감사해요.');
-                        try {
-                            await logout?.();
-                        } catch (_) {/* ignore */}
-                        navigation.reset({index: 0, routes: [{name: 'Auth'}]});
-                    } catch (e: any) {
-                        const msg =
-                            e?.response?.data?.message ??
-                            (e?.response?.status === 400 ? '활성 구독을 먼저 해지해 주세요.' : '탈퇴 처리에 실패했어요.');
-                        AppToast.error(msg);
-                    }
-                },
-            },
-            secondary: {label: '취소'},
-        });
+        setWithdrawConfirmText('');
+        setWithdrawSheetVisible(true);
+    };
+
+    const closeWithdrawSheet = () => {
+        setWithdrawSheetVisible(false);
+        setWithdrawConfirmText('');
+    };
+
+    const withdraw = async () => {
+        if (!user?.id || withdrawConfirmText.trim() !== WITHDRAW_CONFIRM_PHRASE) {
+            return;
+        }
+        setWithdrawing(true);
+        try {
+            await accountService.withdraw(user.id);
+            setWithdrawSheetVisible(false);
+            AppToast.success('탈퇴가 완료됐어요. 이용해 주셔서 감사해요.');
+            try {
+                await logout?.();
+            } catch (_) {/* ignore */}
+            navigation.reset({index: 0, routes: [{name: 'Auth'}]});
+        } catch (e: any) {
+            const msg =
+                e?.response?.data?.message ??
+                (e?.response?.status === 400 ? '활성 구독을 먼저 해지해 주세요.' : '탈퇴 처리에 실패했어요.');
+            AppToast.error(msg);
+        } finally {
+            setWithdrawing(false);
+        }
     };
 
     return (
@@ -157,9 +169,32 @@ const AccountSettingsScreen: React.FC = () => {
                 <AppText variant="caption" tone="secondary" style={styles.helper}>
                     탈퇴 후에는 출퇴근·급여 데이터를 다시 조회할 수 없어요.
                 </AppText>
-                <AppButton label="회원 탈퇴" variant="destructive" size="md" onPress={withdraw} style={styles.cta} />
+                <AppButton label="회원 탈퇴" variant="destructive" size="md" onPress={openWithdrawSheet} style={styles.cta} />
             </AppCard>
             <View style={styles.bottomGap} />
+
+            <BottomSheet
+                visible={withdrawSheetVisible}
+                onClose={closeWithdrawSheet}
+                title="정말 탈퇴하시겠어요?"
+                description="활성 구독이 있으면 차단돼요. 90일 후 개인정보가 자동 익명화되며, 이 작업은 되돌릴 수 없어요."
+                primary={{
+                    label: '탈퇴하기',
+                    variant: 'destructive',
+                    disabled: withdrawConfirmText.trim() !== WITHDRAW_CONFIRM_PHRASE,
+                    loading: withdrawing,
+                    onPress: withdraw,
+                }}
+                secondary={{label: '취소', variant: 'ghost', onPress: closeWithdrawSheet}}>
+                <AppInput
+                    label={`확인을 위해 "${WITHDRAW_CONFIRM_PHRASE}"를 입력해 주세요`}
+                    value={withdrawConfirmText}
+                    onChangeText={setWithdrawConfirmText}
+                    placeholder={WITHDRAW_CONFIRM_PHRASE}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                />
+            </BottomSheet>
         </ScreenContainer>
     );
 };

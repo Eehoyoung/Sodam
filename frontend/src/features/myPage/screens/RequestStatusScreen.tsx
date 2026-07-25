@@ -16,6 +16,8 @@ import {
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {spacing} from '../../../theme/tokens';
 import {fetchMyRequests} from '../services/requestService';
+import {useStoreLiveSync} from '../../../common/realtime/useStoreLiveSync';
+import {useEmployeeStoreIds} from '../../store/hooks/useEmployeeStoreIds';
 
 type ReqType = 'correction' | 'timeoff' | 'inquiry';
 type ReqStatus = 'pending' | 'approved' | 'rejected';
@@ -44,6 +46,7 @@ const STATUS: Record<ReqStatus, {label: string; tone: 'warning' | 'success' | 'e
 const RequestStatusScreen: React.FC = () => {
     const navigation = useNavigation();
     const c = useThemeColors();
+    const storeIds = useEmployeeStoreIds();
     const [tab, setTab] = useState(0); // 0 전체 1 대기 2 처리됨
 
     const [items, setItems] = useState<RequestItem[]>([]);
@@ -73,6 +76,12 @@ const RequestStatusScreen: React.FC = () => {
     useEffect(() => {
         load();
     }, [load]);
+
+    useStoreLiveSync(storeIds, event => {
+        if (event.type === 'TIME_OFF_CHANGED' || event.type === 'ATTENDANCE_CHANGED') {
+            load();
+        }
+    });
 
     const filtered = items.filter(it =>
         tab === 0 ? true : tab === 1 ? it.status === 'pending' : it.status !== 'pending',

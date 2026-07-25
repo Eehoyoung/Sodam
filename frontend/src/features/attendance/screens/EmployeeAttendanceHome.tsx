@@ -1,6 +1,5 @@
-/* eslint-disable react-native/no-color-literals -- 그라디언트 카드 위 데코/디바이더(rgba) 고정값. MasterMyPageScreen과 동일 패턴. */
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, TouchableOpacity, useWindowDimensions, View} from 'react-native';
+import {Pressable, ScrollView, StyleSheet, TouchableOpacity, View} from 'react-native';
 import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import LinearGradient from 'react-native-linear-gradient';
@@ -13,7 +12,9 @@ import {
     AppText,
     AppToast,
     LoadingState,
+    QuickMenuGrid,
     ScreenContainer,
+    StorePassRow,
 } from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {useAuth} from '../../../contexts/AuthContext';
@@ -28,6 +29,8 @@ import {
 } from '../../shift/services/shiftService';
 import storeService from '../../store/services/storeService';
 import attendanceService, {MonthlyAttendanceItem} from '../services/attendanceService';
+import EmployeeWorkingRing from '../components/EmployeeWorkingRing';
+import {BreakTimerSheet} from '../components/AttendanceSheets';
 import {wageService} from '../../wage/services/wageService';
 import {requestApproval} from '../services/attendanceApprovalService';
 import {useStoreLiveSync} from '../../../common/realtime/useStoreLiveSync';
@@ -71,11 +74,7 @@ const EmployeeAttendanceHome: React.FC = () => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const {user} = useAuth();
     const c = useThemeColors();
-    const {width} = useWindowDimensions();
     const managedStores = useManagedStores();
-
-    // 본문 좌우 여백(spacing.lg) + 퀵메뉴 2개 간격(spacing.sm) 제외 후 3등분
-    const QUICK_ITEM_W = (width - spacing.lg * 2 - spacing.sm * 2) / 3;
 
     const [state, setState] = useState<AttendanceState>('LOADING');
     const [stores, setStores] = useState<MyStore[]>([]);
@@ -83,7 +82,6 @@ const EmployeeAttendanceHome: React.FC = () => {
     const [todayRecord, setTodayRecord] = useState<TodayAttendance | null>(null);
     const [weekShifts, setWeekShifts] = useState<WorkShift[]>([]);
     const [monthlyAttendances, setMonthlyAttendances] = useState<TodayAttendance[]>([]);
-    const [selectorOpen, setSelectorOpen] = useState(false);
     const [tick, setTick] = useState(0);
     const [policies, setPolicies] = useState<PolicyInfo[]>([]);
     const [pendingContractCount, setPendingContractCount] = useState(0);
@@ -256,12 +254,14 @@ const EmployeeAttendanceHome: React.FC = () => {
         }, []),
     );
 
-    const workingDuration = useMemo(() => {
+    // 22 EmployeeWorking(중복 통합) — AttendanceScreen 과 공유하는 EmployeeWorkingRing 이
+    // 초 단위 값을 받아 자체적으로 포맷하므로, 여기서는 formatTimer 문자열이 아니라 raw seconds 를 넘긴다.
+    const workingSeconds = useMemo(() => {
         if (state !== 'WORKING' || !todayRecord?.checkInTime) {
-            return '00:00:00';
+            return 0;
         }
         const start = parseServerDateTime(todayRecord.checkInTime).getTime();
-        return formatTimer(Math.max(0, Date.now() - start) / 1000);
+        return Math.max(0, Date.now() - start) / 1000;
     }, [state, todayRecord?.checkInTime, tick]);
 
     const todaySchedule = useMemo(() => {
@@ -327,6 +327,10 @@ const EmployeeAttendanceHome: React.FC = () => {
     const isWorking = state === 'WORKING';
 
     const [approvalBusy, setApprovalBusy] = useState(false);
+    // 79 BreakTimerSheet — "휴게 기록" 버튼이 사장 전용 BreakRecordScreen(@MasterOnly, 매장 소유자만
+    // assertMasterOwnsStore 통과)으로 이동해 직원이 열면 403 나던 대상 불일치를 수정.
+    // 직원용 휴게 기능이 서버에 아직 없어(휴게 부여 증빙 API는 사장 전용) 로컬 확인 시트로만 안내한다.
+    const [breakSheetVisible, setBreakSheetVisible] = useState(false);
 
     // 위치/NFC 없이 사장 승인으로 출퇴근 — 요청 버튼. 누르면 사장에게 알림이 가고, 승인 시 요청 시각으로 처리된다.
     const requestApprovalPunch = async () => {
@@ -438,6 +442,12 @@ const EmployeeAttendanceHome: React.FC = () => {
             key: 'wage', label: '시급 이력', icon: 'trending-up-outline',
             onPress: () => navigation.navigate('MyWageHistory'),
             color: {bg: c.brandPrimarySoft, icon: c.brandPrimary},
+        },
+        {
+            // 15 WorkplaceList 진입점 — 소속 근무지 목록/상세(v3 §4.1 신규 화면).
+            key: 'workplaces', label: '근무지 관리', icon: 'briefcase-outline',
+            onPress: () => navigation.navigate('WorkplaceList'),
+            color: {bg: c.surfaceMint, icon: c.success},
         },
         {
             key: 'notice', label: '공지사항', icon: 'megaphone-outline',
@@ -558,11 +568,7 @@ const EmployeeAttendanceHome: React.FC = () => {
                 ) : null}
 
                 <View style={styles.body}>
-                    <Pressable
-                        style={[styles.storeSelector, {borderColor: c.border, backgroundColor: c.surface}]}
-                        onPress={() => setSelectorOpen(open => !open)}
-                        accessibilityRole="button"
-                        accessibilityLabel="매장 선택">
+                    <View style={[styles.storeSelector, {borderColor: c.border, backgroundColor: c.surface}]}>
                         <View style={styles.storeSelectorMain}>
                             <Ionicons name="storefront-outline" size={18} color={c.brandPrimary} />
                             <AppText variant="titleMd" numberOfLines={1} style={styles.flex}>
@@ -573,66 +579,45 @@ const EmployeeAttendanceHome: React.FC = () => {
                             <AppText variant="caption" tone="secondary" numberOfLines={1}>
                                 시급 {formatWage(currentWage)}
                             </AppText>
-                            <Ionicons name={selectorOpen ? 'chevron-up' : 'chevron-down'} size={18} color={c.textSecondary} />
                         </View>
-                    </Pressable>
+                    </View>
 
-                    {selectorOpen && stores.length > 1 ? (
-                        <View style={styles.storeChips}>
-                            {stores.map(store => {
-                                const selected = store.id === selectedStore?.id;
-                                return (
-                                    <Pressable
-                                        key={store.id}
-                                        style={[
-                                            styles.storeChip,
-                                            {borderColor: c.border, backgroundColor: c.surface},
-                                            selected ? {borderColor: c.brandPrimary, backgroundColor: c.brandPrimarySoft} : null,
-                                        ]}
-                                        onPress={() => {
-                                            setSelectedStoreId(store.id);
-                                            setSelectorOpen(false);
-                                        }}>
-                                        <AppText
-                                            variant="caption"
-                                            tone={selected ? 'brand' : 'secondary'}
-                                            numberOfLines={1}>
-                                            {store.storeName}
-                                        </AppText>
-                                    </Pressable>
-                                );
-                            })}
-                        </View>
+                    {/* 매장 패스 — 2개 이상 소속 매장을 상시 노출 칩으로 전환 (v3 "링 & 패스" 시그니처) */}
+                    <StorePassRow
+                        items={stores.map(store => ({id: store.id, name: store.storeName}))}
+                        selectedId={selectedStore?.id ?? null}
+                        onSelect={setSelectedStoreId}
+                        style={styles.storeChips}
+                    />
+                    {stores.length > 1 ? (
+                        <AppText variant="caption" tone="tertiary" style={styles.multiStoreNote}>
+                            {stores.length}개 매장 소속 · 근무 예정 매장 기준으로 표시
+                        </AppText>
                     ) : null}
 
-                    {/* ── 매장이 있을 때만: 그라디언트 KPI 히어로 카드 ── */}
+                    {/* ── 매장이 있을 때만: KPI 히어로 카드(v3 — 흰 스팟 카드, D-2 준수) ── */}
                     {selectedStore ? (
-                        <LinearGradient
-                            colors={gradient.brandStrong}
-                            style={styles.heroCard}
-                            start={{x: 0, y: 0}}
-                            end={{x: 1, y: 1}}>
-                            <View style={styles.heroDecor} />
-                            <AppText variant="caption" tone="inverse" style={styles.heroLabel}>이번 달 예상 급여</AppText>
-                            <AmountText size={28} tone="inverse">
+                        <AppCard variant="spot" hero style={styles.heroCard}>
+                            <AppText variant="caption" tone="secondary" style={styles.heroLabel}>이번 달 예상 급여</AppText>
+                            <AmountText size={28} tone="brand">
                                 {monthlySummary.estimatedWage.toLocaleString('ko-KR')}원
                             </AmountText>
-                            <View style={styles.heroDivider} />
+                            <View style={[styles.heroDivider, {backgroundColor: c.border}]} />
                             <View style={styles.heroStats}>
                                 <View style={styles.heroStat}>
-                                    <AppText variant="headingSm" tone="inverse">{monthlySummary.attendanceDays}일</AppText>
-                                    <AppText variant="caption" tone="inverse" style={styles.heroStatLbl}>출근 일수</AppText>
+                                    <AppText variant="headingSm" tone="primary">{monthlySummary.attendanceDays}일</AppText>
+                                    <AppText variant="caption" tone="secondary" style={styles.heroStatLbl}>출근 일수</AppText>
                                 </View>
-                                <View style={[styles.heroStat, styles.heroStatDivider]}>
-                                    <AppText variant="headingSm" tone="inverse">{monthlyWorkedHoursLabel}</AppText>
-                                    <AppText variant="caption" tone="inverse" style={styles.heroStatLbl}>이번 달 근무</AppText>
+                                <View style={[styles.heroStat, styles.heroStatDivider, {borderLeftColor: c.border}]}>
+                                    <AppText variant="headingSm" tone="primary">{monthlyWorkedHoursLabel}</AppText>
+                                    <AppText variant="caption" tone="secondary" style={styles.heroStatLbl}>이번 달 근무</AppText>
                                 </View>
-                                <View style={[styles.heroStat, styles.heroStatDivider]}>
-                                    <AppText variant="headingSm" tone="inverse">{formatWage(currentWage)}</AppText>
-                                    <AppText variant="caption" tone="inverse" style={styles.heroStatLbl}>적용 시급</AppText>
+                                <View style={[styles.heroStat, styles.heroStatDivider, {borderLeftColor: c.border}]}>
+                                    <AppText variant="headingSm" tone="primary">{formatWage(currentWage)}</AppText>
+                                    <AppText variant="caption" tone="secondary" style={styles.heroStatLbl}>적용 시급</AppText>
                                 </View>
                             </View>
-                        </LinearGradient>
+                        </AppCard>
                     ) : null}
 
                     {/* ── 출퇴근 상태 카드(펀치 카드) ── */}
@@ -677,26 +662,28 @@ const EmployeeAttendanceHome: React.FC = () => {
                                 </View>
                             </View>
 
-                            <LinearGradient
-                                colors={gradient.brandStrong}
-                                style={styles.timerPanel}
-                                start={{x: 0, y: 0}}
-                                end={{x: 1, y: 1}}>
-                                <AppText variant="caption" tone="inverse" style={styles.timerLabel}>
-                                    {state === 'WORKING' ? '현재 근무 시간' : '오늘 누적 근무'}
-                                </AppText>
-                                <AppText tone="inverse" style={styles.timerText}>
-                                    {state === 'WORKING'
-                                        ? workingDuration
-                                        : formatTimer(todayWorkedSeconds(todayRecord))}
-                                </AppText>
+                            <View style={[styles.timerPanel, {backgroundColor: c.brandPrimarySoft, borderWidth: 1, borderColor: c.brandPrimary}]}>
+                                {state === 'WORKING' ? (
+                                    // 22 EmployeeWorking(중복 통합) — AttendanceScreen 의 isWorking 히어로와
+                                    // 동일한 EmployeeWorkingRing 을 사용(코랄→틸 진행률 링).
+                                    <EmployeeWorkingRing elapsedSeconds={workingSeconds} subLabel="현재 근무 시간" />
+                                ) : (
+                                    <>
+                                        <AppText variant="caption" tone="secondary" weight="700" style={styles.timerLabel}>
+                                            오늘 누적 근무
+                                        </AppText>
+                                        <AppText tone="brand" style={styles.timerText}>
+                                            {formatTimer(todayWorkedSeconds(todayRecord))}
+                                        </AppText>
+                                    </>
+                                )}
                                 <View style={styles.timerMeta}>
-                                    <AppText variant="caption" tone="inverse">출근 {formatTime(todayRecord?.checkInTime)}</AppText>
-                                    <AppText variant="caption" tone="inverse">
+                                    <AppText variant="caption" tone="secondary">출근 {formatTime(todayRecord?.checkInTime)}</AppText>
+                                    <AppText variant="caption" tone="secondary">
                                         {todaySchedule ? `예정 퇴근 ${shortTime(todaySchedule.endTime)}` : '예정 없음'}
                                     </AppText>
                                 </View>
-                            </LinearGradient>
+                            </View>
 
                             <AppButton
                                 label={state === 'WORKING' ? '퇴근하기' : state === 'DONE' ? '퇴근 완료' : '출근하기'}
@@ -725,11 +712,7 @@ const EmployeeAttendanceHome: React.FC = () => {
                                     style={styles.secondaryAction}
                                     onPress={() => {
                                         if (!selectedStore) {return;}
-                                        navigation.navigate('BreakRecord', {
-                                            storeId: selectedStore.id,
-                                            employeeId: user?.id ?? 0,
-                                            employeeName: user?.name,
-                                        });
+                                        setBreakSheetVisible(true);
                                     }}
                                 />
                                 <AppButton
@@ -763,34 +746,7 @@ const EmployeeAttendanceHome: React.FC = () => {
 
                     {/* ── 빠른 메뉴(9칸) — 매장 유무와 무관하게 항상 표시 ── */}
                     <SectionTitle title="빠른 메뉴" />
-                    <View style={styles.quickGrid}>
-                        {quickMenus.map(menu => (
-                            <TouchableOpacity
-                                key={menu.key}
-                                style={[styles.quickItem, {width: QUICK_ITEM_W, backgroundColor: c.surface, borderColor: c.border}]}
-                                onPress={menu.onPress}
-                                activeOpacity={0.75}>
-                                {menu.badge ? (
-                                    <View style={[styles.quickBadge, {backgroundColor: c.error}]}>
-                                        <AppText variant="caption" tone="inverse" weight="700" style={styles.quickBadgeText}>
-                                            {menu.badge}
-                                        </AppText>
-                                    </View>
-                                ) : null}
-                                {menu.isNew ? (
-                                    <View style={[styles.quickNewTag, {backgroundColor: c.info}]}>
-                                        <AppText variant="caption" tone="inverse" weight="800" style={styles.quickNewTagText}>N</AppText>
-                                    </View>
-                                ) : null}
-                                <View style={[styles.quickIconWrap, {backgroundColor: menu.color.bg}]}>
-                                    <Ionicons name={menu.icon} size={20} color={menu.color.icon} />
-                                </View>
-                                <AppText variant="caption" weight="600" tone="secondary" center numberOfLines={1}>
-                                    {menu.label}
-                                </AppText>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                    <QuickMenuGrid items={quickMenus} />
 
                     {/* ── 정부 지원 정책 — 매장 유무와 무관하게 항상 표시 ── */}
                     <SectionCard>
@@ -828,6 +784,22 @@ const EmployeeAttendanceHome: React.FC = () => {
                     </SectionCard>
                 </View>
             </ScrollView>
+
+            <BreakTimerSheet
+                visible={breakSheetVisible}
+                onClose={() => setBreakSheetVisible(false)}
+                onStart={() => {
+                    setBreakSheetVisible(false);
+                    // 직원용 휴게 시작/종료를 서버에 기록하는 API 가 아직 없다(현재 BE 는 사장이 사후
+                    // 부여를 증빙하는 BreakRecordController(@MasterOnly)뿐) — 급여/근태 판정에는 영향이
+                    // 없는 로컬 알림으로만 안내한다. 실제 서버 기록이 필요하면 BE API 추가가 선행돼야 한다.
+                    AppToast.success('휴게 시작을 기록했어요.');
+                }}
+                onManual={() => {
+                    setBreakSheetVisible(false);
+                    AppToast.warn('휴게 직접 입력 기능은 아직 준비 중이에요.');
+                }}
+            />
         </ScreenContainer>
     );
 };
@@ -988,19 +960,11 @@ const styles = StyleSheet.create({
         maxWidth: '45%',
     },
     storeChips: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: spacing.sm,
-        marginTop: -spacing.xs,
+        marginTop: spacing.xs,
     },
-    storeChip: {
-        minHeight: 34,
-        maxWidth: '48%',
-        borderRadius: radius.pill,
-        borderWidth: 1,
-        paddingHorizontal: spacing.md,
-        alignItems: 'center',
-        justifyContent: 'center',
+    multiStoreNote: {
+        marginTop: spacing.xs,
+        marginBottom: spacing.xs,
     },
 
     /* ── 히어로 KPI 카드 ── */
@@ -1010,18 +974,12 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         ...shadow.lg,
     },
-    heroDecor: {
-        position: 'absolute', top: -24, right: -24,
-        width: 120, height: 120,
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        borderRadius: 60,
-    },
-    heroLabel: {opacity: 0.85, marginBottom: spacing.xs},
-    heroDivider: {height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: spacing.md},
+    heroLabel: {marginBottom: spacing.xs},
+    heroDivider: {height: 1, marginVertical: spacing.md},
     heroStats: {flexDirection: 'row'},
     heroStat: {flex: 1, alignItems: 'center', gap: 3},
-    heroStatDivider: {borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.2)'},
-    heroStatLbl: {opacity: 0.8},
+    heroStatDivider: {borderLeftWidth: 1},
+    heroStatLbl: {},
 
     /* ── 펀치 카드 ── */
     punchCard: {
@@ -1109,43 +1067,7 @@ const styles = StyleSheet.create({
         paddingVertical: spacing.xs,
     },
 
-    /* ── 빠른 메뉴(3×3) ── */
-    quickGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: spacing.sm,
-    },
-    quickItem: {
-        minHeight: 82,
-        borderRadius: radius.xl,
-        borderWidth: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: spacing.sm,
-        paddingVertical: spacing.md,
-        paddingHorizontal: spacing.xs,
-        position: 'relative',
-    },
-    quickIconWrap: {
-        width: 44,
-        height: 44,
-        borderRadius: radius.lg,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    quickBadge: {
-        position: 'absolute', top: 8, right: 8,
-        minWidth: 18, height: 18, borderRadius: 9,
-        alignItems: 'center', justifyContent: 'center',
-        paddingHorizontal: 3,
-    },
-    quickBadgeText: {fontSize: 10, lineHeight: 14},
-    quickNewTag: {
-        position: 'absolute', top: 8, right: 8,
-        paddingHorizontal: 4, paddingVertical: 2,
-        borderRadius: 5,
-    },
-    quickNewTagText: {fontSize: 9, lineHeight: 11},
+    /* ── 빠른 메뉴는 QuickMenuGrid(ds) 로 승격됨(WP-02) ── */
 
     /* ── 정책 ── */
     policyList: {gap: 0},

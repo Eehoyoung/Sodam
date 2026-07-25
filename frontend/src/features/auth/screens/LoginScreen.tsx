@@ -1,11 +1,21 @@
+/* eslint-disable react-native/no-color-literals -- 다크 인트로 톤(Splash/RoleStart/KakaoLogin과 동일 계열) 고정 필드 오버레이 색상. */
 import React, {useState} from 'react';
-import {KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View} from 'react-native';
+import {
+    KeyboardAvoidingView,
+    KeyboardTypeOptions,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    View,
+} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import {NavigationProp, RouteProp} from '@react-navigation/native';
-import {AppButton, AppInput, AppText, AppToast} from '../../../common/components/ds';
+import {AppButton, AppText, AppToast} from '../../../common/components/ds';
 import {AppleSignInCancelledError, requestAppleIdentityToken} from '../native/appleSignIn';
-import {spacing} from '../../../theme/tokens';
-import {useThemeColors} from '../../../common/hooks/useThemeColors';
+import {gradient, spacing} from '../../../theme/tokens';
 import {useResponsive} from '../../../common/hooks/useResponsive';
 import SodamLogo from '../../../common/components/logo/SodamLogo';
 import authApi from '../services/authApi';
@@ -28,12 +38,68 @@ interface LoginScreenProps {
 const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
 /**
- * 로그인 — 홈 화면과 같은 라이트 캔버스 톤. 네비 헤더는 끄고(headerShown:false,
- * AuthNavigator 참고) 큰 마스코트 로고 하나만 브랜드 신호로 남긴다(작은 네비 로고와
- * 중복되지 않도록). 뒤로가기는 하드웨어 back/스와이프 제스처로 충분 — 별도 버튼 불필요.
+ * DarkField — 로그인 화면 전용 다크 필드(아티팩트 04 Login `.field--dark` 1:1).
+ * 공용 AppInput은 테마 토큰(useThemeColors)을 그대로 써서 라이트 배경 전제라, 이 화면만
+ * 강제로 다크 그라디언트 위에 얹으려면 필드 배경/보더/텍스트색을 직접 오버라이드해야 한다.
+ * 공용 컴포넌트를 건드리지 않고 이 화면 로컬로만 존재 — 다른 화면에 영향 없음.
+ */
+interface DarkFieldProps {
+    label: string;
+    placeholder?: string;
+    value: string;
+    onChangeText: (text: string) => void;
+    onBlur?: () => void;
+    secureTextEntry?: boolean;
+    keyboardType?: KeyboardTypeOptions;
+    autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+    autoCorrect?: boolean;
+    error?: string;
+}
+
+const DarkField: React.FC<DarkFieldProps> = ({
+    label,
+    placeholder,
+    value,
+    onChangeText,
+    onBlur,
+    secureTextEntry,
+    keyboardType,
+    autoCapitalize,
+    autoCorrect,
+    error,
+}) => (
+    <View style={styles.darkFieldContainer}>
+        <AppText variant="caption" tone="inverse" weight="700" style={styles.darkLabel}>
+            {label}
+        </AppText>
+        <View style={[styles.darkField, error ? styles.darkFieldErrorBorder : null]}>
+            <TextInput
+                value={value}
+                onChangeText={onChangeText}
+                onBlur={onBlur}
+                placeholder={placeholder}
+                placeholderTextColor="rgba(245,243,239,0.4)"
+                secureTextEntry={secureTextEntry}
+                keyboardType={keyboardType}
+                autoCapitalize={autoCapitalize}
+                autoCorrect={autoCorrect}
+                style={styles.darkInput}
+            />
+        </View>
+        {error ? (
+            <AppText variant="caption" style={styles.darkErrorText}>{error}</AppText>
+        ) : null}
+    </View>
+);
+
+/**
+ * 로그인 — v3 아티팩트(sodam-v3-01-auth.html "04 Login")와 동일한 다크 인트로 톤
+ * (gradient.darkScreen, Splash/RoleStart/WelcomeMain/KakaoLogin과 동일 계열) + 다크 필드.
+ * 네비 헤더는 끄고(headerShown:false, AuthNavigator 참고) 큰 마스코트 로고 하나만
+ * 브랜드 신호로 남긴다(작은 네비 로고와 중복되지 않도록). 뒤로가기는 하드웨어 back/
+ * 스와이프 제스처로 충분 — 별도 버튼 불필요.
  */
 export default function LoginScreen({navigation, route}: LoginScreenProps) {
-    const c = useThemeColors();
     const r = useResponsive();
     const logoSize = r.pick({compact: 88, default: 108});
     const scrollPadTop = r.isCompactHeight ? spacing.lg : spacing.xxl;
@@ -138,79 +204,82 @@ export default function LoginScreen({navigation, route}: LoginScreenProps) {
     };
 
     return (
-        <SafeAreaView style={[styles.flex, {backgroundColor: c.surfaceCanvas}]} edges={['top', 'bottom']}>
-            <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-                <ScrollView
-                    contentContainerStyle={[styles.scroll, {paddingTop: scrollPadTop}]}
-                    keyboardShouldPersistTaps="handled"
-                    showsVerticalScrollIndicator={false}>
-                    <View style={styles.hero}>
-                        <SodamLogo size={logoSize} variant="default" />
-                        <AppText variant="headingLg" style={[styles.title, {marginTop: titleMargin}]}>
-                            {'다시 오셨네요.\n바로 시작해요'}
-                        </AppText>
-                        <AppText variant="bodyLg" tone="secondary" style={styles.copy}>
-                            {route.params?.fromSignup
-                                ? '로그인하면 약관 동의와 기본 정보 설정을 이어서 진행해요.'
-                                : '로그인 후 남은 설정이 있으면 먼저 안내해 드릴게요.'}
-                        </AppText>
-                    </View>
-
-                    <View style={[styles.form, {marginTop: formMargin, gap: formGap}]}>
-                        <AppInput
-                            label="이메일"
-                            placeholder="example@sodam.dev"
-                            value={email}
-                            onChangeText={t => {
-                                setEmail(t);
-                                if (emailError) {
-                                    setEmailError(undefined);
-                                }
-                            }}
-                            onBlur={() => setEmailError(email && !isValidEmail(email) ? '올바른 이메일 형식으로 입력해 주세요.' : undefined)}
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                            error={emailError}
-                        />
-                        <AppInput
-                            label="비밀번호"
-                            placeholder="비밀번호"
-                            value={password}
-                            onChangeText={setPassword}
-                            secureTextEntry={!showPassword}
-                            autoCapitalize="none"
-                        />
-                        <Pressable onPress={() => setShowPassword(s => !s)} hitSlop={8} style={styles.toggle}>
-                            <AppText variant="caption" tone="brand" weight="700">
-                                {showPassword ? '비밀번호 숨기기' : '비밀번호 표시'}
+        <LinearGradient colors={gradient.darkScreen} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={styles.flex}>
+            <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
+                <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                    <ScrollView
+                        contentContainerStyle={[styles.scroll, {paddingTop: scrollPadTop}]}
+                        keyboardShouldPersistTaps="handled"
+                        showsVerticalScrollIndicator={false}>
+                        <View style={styles.hero}>
+                            <SodamLogo size={logoSize} variant="default" />
+                            <AppText variant="headingLg" tone="inverse" style={[styles.title, {marginTop: titleMargin}]}>
+                                {'다시 오셨네요.\n바로 시작해요'}
                             </AppText>
-                        </Pressable>
+                            <AppText variant="bodyLg" tone="inverse" style={styles.copy}>
+                                {route.params?.fromSignup
+                                    ? '로그인하면 약관 동의와 기본 정보 설정을 이어서 진행해요.'
+                                    : '로그인 후 남은 설정이 있으면 먼저 안내해 드릴게요.'}
+                            </AppText>
+                        </View>
 
-                        <AppButton label="로그인" loading={isLoading} onPress={handleLogin} style={styles.cta} />
-                        <AppButton label="카카오로 계속" variant="secondary" onPress={handleKakao} />
-                        {Platform.OS === 'ios' && (
-                            <AppButton
-                                label="Apple로 계속"
-                                variant="secondary"
-                                loading={isAppleLoading}
-                                onPress={handleApple}
+                        <View style={[styles.form, {marginTop: formMargin, gap: formGap}]}>
+                            <DarkField
+                                label="이메일"
+                                placeholder="example@sodam.dev"
+                                value={email}
+                                onChangeText={t => {
+                                    setEmail(t);
+                                    if (emailError) {
+                                        setEmailError(undefined);
+                                    }
+                                }}
+                                onBlur={() => setEmailError(email && !isValidEmail(email) ? '올바른 이메일 형식으로 입력해 주세요.' : undefined)}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                                error={emailError}
                             />
-                        )}
-                    </View>
+                            <DarkField
+                                label="비밀번호"
+                                placeholder="비밀번호"
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry={!showPassword}
+                                autoCapitalize="none"
+                            />
+                            <Pressable onPress={() => setShowPassword(s => !s)} hitSlop={8} style={styles.toggle}>
+                                <AppText variant="caption" tone="brand" weight="700">
+                                    {showPassword ? '비밀번호 숨기기' : '비밀번호 표시'}
+                                </AppText>
+                            </Pressable>
 
-                    <View style={styles.footerRow}>
-                        <Pressable onPress={() => navigation.navigate('PasswordReset')} hitSlop={8}>
-                            <AppText variant="caption" tone="secondary" style={styles.link}>비밀번호 찾기</AppText>
-                        </Pressable>
-                        <AppText variant="caption" tone="tertiary">·</AppText>
-                        <Pressable onPress={() => navigation.navigate('Signup', {selectedPurpose})} hitSlop={8}>
-                            <AppText variant="caption" tone="brand" weight="800">회원가입</AppText>
-                        </Pressable>
-                    </View>
-                </ScrollView>
-            </KeyboardAvoidingView>
-        </SafeAreaView>
+                            <AppButton label="로그인" loading={isLoading} onPress={handleLogin} style={styles.cta} />
+                            <AppButton label="카카오로 계속" variant="kakao" onPress={handleKakao} />
+                            {Platform.OS === 'ios' && (
+                                <AppButton
+                                    label="Apple로 계속"
+                                    variant="secondary"
+                                    loading={isAppleLoading}
+                                    onPress={handleApple}
+                                />
+                            )}
+                        </View>
+
+                        <View style={styles.footerRow}>
+                            {/* 아티팩트 04 Login .footlink--dark: 전체 한 줄, <b> 미사용 — 균일한 muted 톤(0.65) */}
+                            <Pressable onPress={() => navigation.navigate('PasswordReset')} hitSlop={8}>
+                                <AppText variant="caption" tone="inverse" style={styles.link}>비밀번호 찾기</AppText>
+                            </Pressable>
+                            <AppText variant="caption" tone="inverse" style={styles.link}> · </AppText>
+                            <Pressable onPress={() => navigation.navigate('Signup', {selectedPurpose})} hitSlop={8}>
+                                <AppText variant="caption" tone="inverse" style={styles.link}>회원가입</AppText>
+                            </Pressable>
+                        </View>
+                    </ScrollView>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+        </LinearGradient>
     );
 }
 
@@ -219,10 +288,31 @@ const styles = StyleSheet.create({
     scroll: {flexGrow: 1, paddingHorizontal: spacing.xxl, paddingBottom: spacing.xl},
     hero: {alignItems: 'center'},
     title: {textAlign: 'center', letterSpacing: -0.6},
-    copy: {marginTop: spacing.md, textAlign: 'center'},
+    copy: {marginTop: spacing.md, textAlign: 'center', opacity: 0.72},
     form: {marginTop: spacing.xl},
     toggle: {alignSelf: 'flex-end', marginTop: -spacing.xs},
     cta: {marginTop: spacing.sm},
-    footerRow: {flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, marginTop: spacing.lg},
-    link: {fontWeight: '700'},
+    footerRow: {flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: spacing.lg},
+    // 아티팩트 .footlink--dark: color rgba(245,243,239,.65), font-weight 미지정(기본 400)
+    link: {opacity: 0.65},
+    // 아티팩트 .field--dark: border rgba(245,243,239,.22) · bg rgba(255,255,255,.06) · text rgba(245,243,239,.7)
+    darkFieldContainer: {gap: spacing.xs},
+    darkLabel: {opacity: 0.75, marginLeft: 2},
+    darkField: {
+        minHeight: 48,
+        borderRadius: 15,
+        borderWidth: 1,
+        borderColor: 'rgba(245,243,239,0.22)',
+        backgroundColor: 'rgba(255,255,255,0.06)',
+        justifyContent: 'center',
+        paddingHorizontal: spacing.md + 2,
+    },
+    darkFieldErrorBorder: {borderColor: '#FF7288'},
+    darkInput: {
+        fontSize: 15,
+        fontWeight: '500',
+        color: 'rgba(245,243,239,0.9)',
+        padding: 0,
+    },
+    darkErrorText: {color: '#FF9BAC', marginLeft: 2},
 });

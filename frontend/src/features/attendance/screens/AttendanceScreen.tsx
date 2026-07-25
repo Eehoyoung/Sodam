@@ -20,6 +20,8 @@ import {PERMISSIONS, request, RESULTS} from 'react-native-permissions';
 import NfcManager, {Ndef, NfcTech} from 'react-native-nfc-manager';
 import attendanceService from '../services/attendanceService';
 import storeService from '../../store/services/storeService';
+import {wageService} from '../../wage/services/wageService';
+import {CheckoutConfirmSheet, NfcUnsupportedScreen, PunchFailedScreen, PunchSuccessScreen} from '../components/AttendanceSheets';
 import {AttendanceRecord, AttendanceStatus, CheckInRequest, CheckOutRequest} from '../types';
 import {format} from 'date-fns';
 import {ko} from 'date-fns/locale';
@@ -29,6 +31,7 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import { useThemeColors, ThemeColors } from '../../../common/hooks/useThemeColors';
 import {parseServerDateTime} from '../../../common/format/dateTime';
+import EmployeeWorkingRing from '../components/EmployeeWorkingRing';
 
 type CheckInMethod = 'standard' | 'location' | 'nfc';
 // iOS는 CoreNFC 제약(entitlement·실기기 전용 등)으로 1차 출시에서 NFC 출퇴근을 제외 — GPS·사장승인 방식으로 대체
@@ -54,6 +57,13 @@ const AttendanceScreen = () => {
     const [checkInMethod, setCheckInMethod] = useState<CheckInMethod>('standard');
     // 근무 중 경과 시간 표시를 매초 갱신하기 위한 더미 tick (실제 값은 항상 Date.now() 재계산 — drift 누적 방지)
     const [tick, setTick] = useState(0);
+    // 60/61/62/63 죽은 코드 배선(v3 §7) — 판정 로직(GPS 반경 계산·NFC 태그 판독·check-in/out API 호출)은
+    // 절대 건드리지 않고, 그 호출 앞뒤에 확인/성공/실패 UI만 추가로 씌운다.
+    const [selectedWage, setSelectedWage] = useState(0);
+    const [nfcUnsupportedVisible, setNfcUnsupportedVisible] = useState(false);
+    const [checkoutConfirmVisible, setCheckoutConfirmVisible] = useState(false);
+    const [punchSuccess, setPunchSuccess] = useState<{time: string; storeName: string; wage: number} | null>(null);
+    const [punchFailed, setPunchFailed] = useState(false);
 
     // Refs to track location services and component mount status for proper cleanup
     const locationWatchId = useRef<number | null>(null);
@@ -64,7 +74,8 @@ const AttendanceScreen = () => {
         try {
             const isSupported = await NfcManager.isSupported();
             if (!isSupported) {
-                AppToast.warn('이 기기는 NFC를 지원하지 않아요. 다른 출퇴근 방법을 이용해 주세요.');
+                // 60 NFCUnsupported — 토스트 대신 전체화면 안내로 교체(§4.2)
+                setNfcUnsupportedVisible(true);
                 return false;
             }
 
@@ -313,6 +324,17 @@ const AttendanceScreen = () => {
         return () => clearInterval(id);
     }, [currentAttendance]);
 
+    // 61 CheckoutConfirmSheet/62 PunchSuccess 표기용 적용 시급 — 조회 실패해도 화면 진행에는 영향 없음(best-effort).
+    useEffect(() => {
+        if (!selectedWorkplaceId || !Number.isFinite(employeeIdNum)) {
+            setSelectedWage(0);
+            return;
+        }
+        wageService.getEmployeeWage(employeeIdNum, Number(selectedWorkplaceId))
+            .then(res => setSelectedWage(res.hourlyWage ?? 0))
+            .catch(() => setSelectedWage(0));
+    }, [selectedWorkplaceId, employeeIdNum]);
+
     // 새로고침 처리
     const handleRefresh = () => {
         setRefreshing(true);
@@ -331,6 +353,12 @@ const AttendanceScreen = () => {
             return { ok: false };
         }
         return { ok: true, loc: currentLocation };
+    };
+
+    // 62 PunchSuccess 데이터 조립 — 이미 완료된 출근 처리 결과를 어떻게 보여줄지만 담당(판정 로직과 무관).
+    const showPunchSuccess = () => {
+        const storeName = workplaces.find(w => w.id === selectedWorkplaceId)?.name ?? '매장';
+        setPunchSuccess({time: format(new Date(), 'HH:mm'), storeName, wage: selectedWage});
     };
 
     // 기본 출근 처리
@@ -352,7 +380,8 @@ const AttendanceScreen = () => {
             };
 
             const response = await attendanceService.checkIn(checkInData);
-            AppToast.success('출근 처리됐어요.');
+            // 62 PunchSuccess — 토스트 대신 전체화면 성공 안내(§4.2). 판정/기록 로직은 그대로.
+            showPunchSuccess();
             setCurrentAttendance(response);
             fetchAttendanceRecords();
         } catch (error) {
@@ -396,7 +425,8 @@ const AttendanceScreen = () => {
             );
 
             if (!verifyResult.success) {
-                AppToast.warn(verifyResult.message ?? '위치 인증에 실패했어요. 매장 반경 내에서 다시 시도해 주세요.');
+                // 63 PunchFailedRadius — 반경 이탈은 토스트 대신 전체화면 안내(§4.2). 판정 로직은 그대로.
+                setPunchFailed(true);
                 return;
             }
 
@@ -409,7 +439,7 @@ const AttendanceScreen = () => {
             };
 
             const response = await attendanceService.checkIn(checkInData);
-            AppToast.success('위치 기반 출근 처리됐어요.');
+            showPunchSuccess();
             setCurrentAttendance(response);
             fetchAttendanceRecords();
         } catch (error) {
@@ -598,19 +628,17 @@ const AttendanceScreen = () => {
         }
     };
 
-    // 현재 근무 시간(시:분) 계산 — WORKING 상태 보조 표기
-    // tick 에 의존해 1초마다 재계산(위 useEffect 가 근무 중일 때 tick 을 올림). 값 자체는 항상
-    // Date.now() - checkInTime 실제 시각차를 재계산하므로 setInterval 지연/스로틀링에 drift 가 쌓이지 않음.
-    const elapsedLabel = useMemo((): string => {
+    // 현재 근무 경과 초(WORKING 상태 링 표기, 22 EmployeeWorking) — tick 에 의존해 1초마다 재계산
+    // (위 useEffect 가 근무 중일 때 tick 을 올림). 값 자체는 항상 Date.now() - checkInTime 실제
+    // 시각차를 재계산하므로 setInterval 지연/스로틀링에 drift 가 쌓이지 않음.
+    const elapsedSeconds = useMemo((): number => {
         if (!currentAttendance) {
-            return '';
+            return 0;
         }
-        // 음수 방지: 기기/서버 시간대 skew(예: 기기 UTC, 서버 KST)로 경과가 음수가 되면 "-9시간"처럼
-        // 표기되던 것을 0으로 클램프. (실 운영은 기기·서버 모두 KST라 정상.)
+        // 음수 방지: 기기/서버 시간대 skew(예: 기기 UTC, 서버 KST)로 경과가 음수가 되는 것을 0으로 클램프.
+        // (실 운영은 기기·서버 모두 KST라 정상.)
         const ms = Math.max(0, new Date().getTime() - parseServerDateTime(currentAttendance.checkInTime).getTime());
-        const h = Math.floor(ms / (1000 * 60 * 60));
-        const m = Math.floor(ms / (1000 * 60)) % 60;
-        return `${h}시간 ${m}분`;
+        return ms / 1000;
         // eslint-disable-next-line react-hooks/exhaustive-deps -- tick 은 값 자체가 아니라 매초 재계산을 트리거하는 용도로만 필요
     }, [currentAttendance, tick]);
 
@@ -620,11 +648,19 @@ const AttendanceScreen = () => {
         else if (checkInMethod === 'location') {handleCheckInWithLocation();}
         else {openNFCReader();}
     };
-    // 선택된 방식에 따른 퇴근 핸들러
+    // 선택된 방식에 따른 퇴근 핸들러 — standard/location 은 61 CheckoutConfirmSheet 확인 후
+    // 기존 핸들러를 그대로 호출한다(NFC 는 태그를 대는 동작 자체가 확인 절차라 시트를 끼우지 않음).
     const onCheckOutPress = () => {
-        if (checkInMethod === 'standard') {handleCheckOut();}
-        else if (checkInMethod === 'location') {handleCheckOutWithLocation();}
-        else {openNFCReader();}
+        if (checkInMethod === 'nfc') {
+            openNFCReader();
+            return;
+        }
+        setCheckoutConfirmVisible(true);
+    };
+    const confirmCheckOut = () => {
+        setCheckoutConfirmVisible(false);
+        if (checkInMethod === 'location') {handleCheckOutWithLocation();}
+        else {handleCheckOut();}
     };
 
     // 근무 중 = 오늘 출근 기록이 있고 아직 퇴근 안 함. checkOutTime 을 봐야 한다.
@@ -695,46 +731,42 @@ const AttendanceScreen = () => {
         </View>
     );
 
-    // NFC 리더 렌더링
+    // 59 NFCScanModal 렌더링(v3 §4.1 "59 NFCScanModal" 카드) — 다크 state-center 패턴으로 재작성.
+    // 판정 로직(태그 스캔 콜백 startNFCScan/handleNFCTagScanned, 취소 cancelNFCScan)은 절대 건드리지 않고
+    // 시각 레이어만 교체 — 기존 초록 헤더 풀스크린 Modal 대신 원형 틸 아이콘 + 진행바 + outline-dark 취소.
     const renderNFCReader = () => (
         <Modal
             visible={showNFCReader}
-            animationType="slide"
+            animationType="fade"
             onRequestClose={cancelNFCScan}
         >
-            <View style={styles.nfcContainer}>
-                <View style={styles.nfcHeader}>
-                    <TouchableOpacity
-                        onPress={cancelNFCScan}
-                        style={styles.closeButton}
-                    >
-                        <Ionicons name="close" size={24} color={c.textInverse}/>
-                    </TouchableOpacity>
-                    <Text style={styles.nfcTitle}>NFC 태그 읽기</Text>
+            <View style={styles.nfcDarkContainer}>
+                <View style={styles.nfcIconCircle}>
+                    <Ionicons name="wifi" size={36} color="#2DD4BF" />
                 </View>
 
-                <View style={styles.nfcReaderContainer}>
-                    <View style={styles.nfcIconContainer}>
-                        <Ionicons name="wifi" size={72} color={c.success}/>
+                <Text style={styles.nfcDarkTitle}>
+                    NFC 태그를{'\n'}가까이 대세요
+                </Text>
+                <Text style={styles.nfcDarkSub}>
+                    태그가 감지되면 자동으로 출퇴근 처리됩니다.
+                </Text>
+
+                <View style={styles.nfcProgressCard}>
+                    <View style={styles.nfcProgressTrack}>
+                        <View style={styles.nfcProgressFill} />
                     </View>
-
-                    <Text style={styles.nfcInstructions}>
-                        NFC 태그를 기기 뒷면에 가까이 대주세요
-                    </Text>
-
-                    <Text style={styles.nfcSubInstructions}>
-                        태그가 감지되면 자동으로 출퇴근 처리됩니다
-                    </Text>
-
-                    <View style={styles.nfcStatusContainer}>
-                        <ActivityIndicator size="large" color={c.success}/>
-                        <Text style={styles.nfcStatusText}>NFC 태그를 기다리는 중...</Text>
-                    </View>
+                    <Text style={styles.nfcProgressLabel}>태그를 기다리는 중…</Text>
                 </View>
 
-                <View style={styles.nfcFooter}>
-                    <AppButton label="취소" variant="destructive" onPress={cancelNFCScan} />
-                </View>
+                <TouchableOpacity
+                    onPress={cancelNFCScan}
+                    style={styles.nfcCancelBtn}
+                    activeOpacity={0.75}
+                    accessibilityRole="button"
+                    accessibilityLabel="NFC 스캔 취소">
+                    <Text style={styles.nfcCancelText}>취소</Text>
+                </TouchableOpacity>
             </View>
         </Modal>
     );
@@ -753,6 +785,57 @@ const AttendanceScreen = () => {
                 </CtaStack>
             }>
             {renderNFCReader()}
+
+            {/* 60 NFCUnsupported — checkNFCSupport() 가 미지원 판정했을 때만 노출 */}
+            <Modal visible={nfcUnsupportedVisible} animationType="slide" onRequestClose={() => setNfcUnsupportedVisible(false)}>
+                <NfcUnsupportedScreen
+                    onGps={() => {
+                        setNfcUnsupportedVisible(false);
+                        setCheckInMethod('location');
+                        if (!locationPermissionGranted) {requestLocationPermission();}
+                    }}
+                    onManual={() => {
+                        setNfcUnsupportedVisible(false);
+                        AppToast.show('사장님께 수동 출퇴근 처리를 요청해 주세요.');
+                    }}
+                />
+            </Modal>
+
+            {/* 62 PunchSuccess — 기본/위치 출근 API 성공 이후 표시(판정·기록 로직 이후 UI 전용) */}
+            <Modal visible={!!punchSuccess} animationType="slide" onRequestClose={() => setPunchSuccess(null)}>
+                {punchSuccess ? (
+                    <PunchSuccessScreen
+                        time={punchSuccess.time}
+                        storeName={punchSuccess.storeName}
+                        wage={punchSuccess.wage}
+                        onStart={() => setPunchSuccess(null)}
+                    />
+                ) : null}
+            </Modal>
+
+            {/* 63 PunchFailedRadius — 위치 인증 실패(반경 이탈) 시 표시 */}
+            <Modal visible={punchFailed} animationType="slide" onRequestClose={() => setPunchFailed(false)}>
+                <PunchFailedScreen
+                    onRetry={() => {
+                        setPunchFailed(false);
+                        handleCheckInWithLocation();
+                    }}
+                    onManual={() => {
+                        setPunchFailed(false);
+                        AppToast.show('사장님께 수동 출퇴근 처리를 요청해 주세요.');
+                    }}
+                />
+            </Modal>
+
+            {/* 61 CheckoutConfirmSheet — standard/location 퇴근 전 확인. onConfirm 은 기존 핸들러 그대로 호출 */}
+            <CheckoutConfirmSheet
+                visible={checkoutConfirmVisible}
+                onClose={() => setCheckoutConfirmVisible(false)}
+                workedSeconds={elapsedSeconds}
+                expectedPay={Math.round((elapsedSeconds / 3600) * selectedWage)}
+                onConfirm={confirmCheckOut}
+            />
+
             <FlatList
                 data={loading ? [] : attendanceRecords}
                 renderItem={renderAttendanceItem}
@@ -791,7 +874,8 @@ const AttendanceScreen = () => {
                             </Text>
                             {isWorking && currentAttendance ? (
                                 <>
-                                    <AmountText size={44} tone="primary">{elapsedLabel}</AmountText>
+                                    {/* 22 EmployeeWorking — EmployeeAttendanceHome 과 공유하는 근무중 진행률 링 */}
+                                    <EmployeeWorkingRing elapsedSeconds={elapsedSeconds} subLabel="근무중" />
                                     <Text style={styles.heroSub}>
                                         {(() => { const d = new Date(currentAttendance.checkInTime); return isNaN(d.getTime()) ? '' : `${format(d, 'HH:mm')} 출근 · `; })()}퇴근하려면 아래 버튼을 눌러주세요
                                     </Text>
@@ -823,6 +907,28 @@ const AttendanceScreen = () => {
                                 }}
                             />
                         </View>
+
+                        {/* 20 AttendanceScreen(인증방식) info-card — 선택한 방식에 대한 안내만 표시(판정 로직 무관, 시각 전용) */}
+                        {checkInMethod === 'location' ? (
+                            <AppCard variant="outlined" style={styles.methodInfoCard}>
+                                <AppText variant="titleMd">
+                                    {locationPermissionGranted ? 'GPS 인증 정상' : 'GPS 권한이 필요해요'}
+                                </AppText>
+                                <AppText variant="bodyMd" tone="secondary" style={styles.methodInfoBody}>
+                                    {locationPermissionGranted
+                                        ? '현재 위치가 매장 반경 안에 있는지 출근 시 확인해요.'
+                                        : '위치 권한을 허용하면 매장 반경 안에서 출근할 수 있어요.'}
+                                </AppText>
+                            </AppCard>
+                        ) : null}
+                        {checkInMethod === 'nfc' ? (
+                            <AppCard variant="outlined" style={styles.methodInfoCard}>
+                                <AppText variant="titleMd">NFC 태그</AppText>
+                                <AppText variant="bodyMd" tone="secondary" style={styles.methodInfoBody}>
+                                    태그를 휴대폰 뒷면에 가까이 대면 자동 처리됩니다. (Android 전용)
+                                </AppText>
+                            </AppCard>
+                        ) : null}
 
                         {/* 최근 기록 섹션 타이틀 */}
                         <AppText variant="headingSm" style={styles.recordsTitle}>최근 출퇴근 기록</AppText>
@@ -903,6 +1009,12 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         color: c.textSecondary,
         marginBottom: 10,
     },
+    methodInfoCard: {
+        marginTop: 14,
+    },
+    methodInfoBody: {
+        marginTop: 4,
+    },
     recordsTitle: {
         marginTop: 32,
         marginBottom: 12,
@@ -982,79 +1094,77 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         color: c.textTertiary,
         textAlign: 'center',
     },
-    // NFC 리더 관련 스타일
-    nfcContainer: {
+    // 59 NFCScanModal — 항상 다크(라이트/다크 모드 설정과 무관, 시안 device__screen--dark 고정)라
+    // 테마 토큰(c.*) 대신 고정 hex 를 쓴다(§ v3 03-employee.html "59 NFCScanModal").
+    nfcDarkContainer: {
         flex: 1,
-        backgroundColor: c.surfaceCanvas,
-    },
-    nfcHeader: {
-        flexDirection: 'row',
+        backgroundColor: '#12141B',
         alignItems: 'center',
-        paddingTop: 50,
-        paddingHorizontal: 20,
-        paddingBottom: 20,
-        backgroundColor: c.success,
-    },
-    closeButton: {
-        padding: 10,
-    },
-    nfcTitle: {
-        flex: 1,
-        color: c.textInverse,
-        fontSize: 18,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        marginRight: 44, // closeButton 크기만큼 오프셋
-    },
-    nfcReaderContainer: {
-        flex: 1,
         justifyContent: 'center',
+        paddingHorizontal: 32,
+    },
+    nfcIconCircle: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        backgroundColor: '#173330',
         alignItems: 'center',
-        padding: 40,
+        justifyContent: 'center',
+        marginBottom: 24,
     },
-    nfcIconContainer: {
-        marginBottom: 30,
-        padding: 24,
-        borderRadius: 60,
-        backgroundColor: c.surface,
-        shadowColor: c.shadowColor,
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-    },
-    nfcInstructions: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: c.textPrimary,
+    nfcDarkTitle: {
+        fontSize: 22,
+        lineHeight: 30,
+        fontWeight: '800',
+        color: '#F5F3EF',
         textAlign: 'center',
-        marginBottom: 10,
     },
-    nfcSubInstructions: {
-        fontSize: 14,
-        color: c.textSecondary,
-        textAlign: 'center',
-        marginBottom: 30,
-        lineHeight: 20,
-    },
-    nfcStatusContainer: {
-        alignItems: 'center',
-        marginTop: 20,
-    },
-    nfcStatusText: {
-        fontSize: 16,
-        color: c.success,
+    nfcDarkSub: {
         marginTop: 10,
-        fontWeight: '500',
+        fontSize: 14,
+        lineHeight: 21,
+        color: 'rgba(245,243,239,0.7)',
+        textAlign: 'center',
     },
-    nfcFooter: {
-        padding: 20,
-        backgroundColor: c.surface,
-        borderTopWidth: 1,
-        borderTopColor: c.border,
+    nfcProgressCard: {
+        width: '100%',
+        marginTop: 28,
+        padding: 16,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255,255,255,0.06)',
+        borderWidth: 1,
+        borderColor: 'rgba(245,243,239,0.2)',
+    },
+    nfcProgressTrack: {
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: 'rgba(255,255,255,0.12)',
+        overflow: 'hidden',
+    },
+    nfcProgressFill: {
+        width: '66%',
+        height: '100%',
+        borderRadius: 3,
+        backgroundColor: '#2DD4BF',
+    },
+    nfcProgressLabel: {
+        marginTop: 8,
+        fontSize: 13,
+        color: 'rgba(245,243,239,0.7)',
+    },
+    nfcCancelBtn: {
+        marginTop: 20,
+        alignSelf: 'stretch',
+        paddingVertical: 14,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: 'rgba(245,243,239,0.35)',
+        alignItems: 'center',
+    },
+    nfcCancelText: {
+        color: '#F5F3EF',
+        fontSize: 15,
+        fontWeight: '700',
     },
 });
 

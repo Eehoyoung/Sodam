@@ -1,21 +1,23 @@
 /**
- * PunchButton — 직원 출근/퇴근용 대형 원형 CTA (확정 시안 .punch).
+ * PunchButton — 직원 출근/퇴근용 대형 원형 CTA.
+ * v3 "링 & 패스"(docs/260720 계획서) — 코랄→틸 그라디언트 ProgressRing으로 재구현.
+ * 외부 API는 v2 시절과 최대한 동일하게 유지해 호출부 영향을 최소화했다(progress만 신규 옵션).
  *
- * (08 §17 EmployeeAttendanceHome) 근무 중에는 타이머가 최상위 정보.
  * 반응형: 폭/높이 compact 에서 축소 (min 176 ~ max 220).
- * 상태색: idle=brand, working=amber.
  */
 import React from 'react';
 import {Pressable, StyleProp, StyleSheet, Text, View, ViewStyle} from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import {useResponsive} from '../../hooks/useResponsive';
 import {useThemeColors} from '../../hooks/useThemeColors';
+import {ProgressRing} from './ProgressRing';
 
 interface PunchButtonProps {
     title: string;
     subtitle?: string;
     onPress?: () => void;
     state?: 'idle' | 'working';
+    /** 0~1, 근무 경과 비율(예: elapsedMs / 8h). 미지정 시 idle=0, working=장식용 0.5 */
+    progress?: number;
     disabled?: boolean;
     style?: StyleProp<ViewStyle>;
     testID?: string;
@@ -26,6 +28,7 @@ export const PunchButton: React.FC<PunchButtonProps> = ({
     subtitle,
     onPress,
     state = 'idle',
+    progress,
     disabled = false,
     style,
     testID,
@@ -34,11 +37,7 @@ export const PunchButton: React.FC<PunchButtonProps> = ({
     const c = useThemeColors();
     // compact 높이에서 축소
     const size = isCompactHeight ? 176 : clamp(184, 220);
-    // 테마-반응형 그라디언트 (다크에서도 브랜드/Amber 톤은 동일 의미)
-    const gradients: Record<'idle' | 'working', [string, string]> = {
-        idle: [c.brandPrimary, '#FF8954'],
-        working: [c.warning, '#FFBA45'],
-    };
+    const resolvedProgress = progress ?? (state === 'working' ? 0.5 : 0);
 
     return (
         <Pressable
@@ -49,24 +48,12 @@ export const PunchButton: React.FC<PunchButtonProps> = ({
             accessibilityLabel={`${title}${subtitle ? `, ${subtitle}` : ''}`}
             accessibilityState={{disabled}}
             style={({pressed}) => [styles.wrap, pressed && !disabled ? styles.pressed : null, style]}>
-            <LinearGradient
-                colors={gradients[state]}
-                start={{x: 0.2, y: 0.1}}
-                end={{x: 1, y: 1}}
-                style={[
-                    styles.circle,
-                    {
-                        width: size,
-                        height: size,
-                        borderRadius: size / 2,
-                        shadowColor: c.brandPrimary,
-                    },
-                ]}>
+            <ProgressRing progress={resolvedProgress} size={size} strokeWidth={Math.round(size * 0.045)}>
                 <View style={styles.inner}>
-                    <Text style={[styles.title, {color: c.textInverse}]}>{title}</Text>
-                    {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+                    <Text style={[styles.title, {color: c.textPrimary}]}>{title}</Text>
+                    {subtitle ? <Text style={[styles.subtitle, {color: c.textSecondary}]}>{subtitle}</Text> : null}
                 </View>
-            </LinearGradient>
+            </ProgressRing>
         </Pressable>
     );
 };
@@ -74,17 +61,9 @@ export const PunchButton: React.FC<PunchButtonProps> = ({
 const styles = StyleSheet.create({
     wrap: {alignItems: 'center', justifyContent: 'center', alignSelf: 'center'},
     pressed: {opacity: 0.95, transform: [{scale: 0.97}]},
-    circle: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowOffset: {width: 0, height: 20},
-        shadowOpacity: 0.32,
-        shadowRadius: 40,
-        elevation: 10,
-    },
     inner: {alignItems: 'center', paddingHorizontal: 16},
-    title: {fontSize: 26, fontWeight: '900', textAlign: 'center'},
-    subtitle: {marginTop: 8, color: '#FFE3D7', fontSize: 12, fontWeight: '800', textAlign: 'center'},
+    title: {fontSize: 22, fontWeight: '800', textAlign: 'center'},
+    subtitle: {marginTop: 8, fontSize: 12, fontWeight: '700', textAlign: 'center'},
 });
 
 export default PunchButton;

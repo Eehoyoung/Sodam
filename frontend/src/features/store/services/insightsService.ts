@@ -29,6 +29,8 @@ export interface TodayStats {
   checkedInCount: number;
   totalActiveEmployees: number;
   pendingEmployees: string[];
+  /** 정정 요청 대기 건수 (매니저 홈 v3 46 ManagerHome 표시용, G-6) */
+  pendingCorrectionCount: number;
 }
 
 export interface MonthPayrollStats {

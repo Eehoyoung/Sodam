@@ -7,7 +7,7 @@
  *   높이: action(content) / form(60~86vh) / confirm(content, max 420).
  */
 import React, {ReactNode} from 'react';
-import {Modal, Pressable, ScrollView, StyleSheet, View} from 'react-native';
+import {Modal, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../hooks/useThemeColors';
@@ -33,6 +33,8 @@ interface BottomSheetProps {
     secondary?: SheetAction;
     /** form 시트 — 더 큰 높이 허용 (키보드 대응 스크롤) */
     scrollable?: boolean;
+    /** 핸들 아래 원형 아이콘 배지 (문자/이모지 또는 커스텀 노드). 아티팩트 sheet__icon. */
+    icon?: ReactNode;
 }
 
 export const BottomSheet: React.FC<BottomSheetProps> = ({
@@ -44,6 +46,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     primary,
     secondary,
     scrollable = false,
+    icon,
 }) => {
     const insets = useSafeAreaInsets();
     const c = useThemeColors();
@@ -51,9 +54,18 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     const body = (
         <>
             <View style={[styles.handle, {backgroundColor: c.border}]} />
-            {title ? <AppText variant="headingSm" style={styles.title}>{title}</AppText> : null}
+            {icon ? (
+                <View style={[styles.iconBadge, {backgroundColor: c.brandPrimarySoft}]}>
+                    {typeof icon === 'string' ? (
+                        <Text style={[styles.iconText, {color: c.brandPrimary}]}>{icon}</Text>
+                    ) : (
+                        icon
+                    )}
+                </View>
+            ) : null}
+            {title ? <AppText variant="headingSm" style={styles.title} center={Boolean(icon)}>{title}</AppText> : null}
             {description ? (
-                <AppText variant="bodyMd" tone="secondary" style={styles.desc}>{description}</AppText>
+                <AppText variant="bodyMd" tone="secondary" style={styles.desc} center={Boolean(icon)}>{description}</AppText>
             ) : null}
             {children}
             {primary ? (
@@ -109,6 +121,16 @@ const styles = StyleSheet.create({
         maxHeight: '86%',
     },
     handle: {width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.md},
+    iconBadge: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        alignSelf: 'center',
+        marginBottom: spacing.sm,
+    },
+    iconText: {fontSize: 20, fontWeight: '800'},
     title: {marginBottom: spacing.xs},
     desc: {marginBottom: spacing.md},
     cta: {marginTop: spacing.md},

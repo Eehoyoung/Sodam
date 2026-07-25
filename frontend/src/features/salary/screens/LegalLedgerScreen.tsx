@@ -8,8 +8,8 @@ import {
     AppText,
     EmptyState,
     ErrorState,
-    HeroNumber,
     LoadingState,
+    MoneyCard,
     ScreenContainer,
     SegmentedControl,
 } from '../../../common/components/ds';
@@ -28,7 +28,12 @@ const won = (n: number) => `${n.toLocaleString()}원`;
 const NOW = new Date();
 
 /**
- * B8 법정 장부 — 임금대장(§48①)·근로자명부(§41). 근로감독·체불진정 1순위 요구 서류. 사장 전용.
+ * W9 LegalLedgerScreen(B8) — v3 시안(sodam-v3-11-taxwage.html) 1:1(핵심 섹션) +
+ * 직원별 상세 내역(additive, 시안 미포함— 임금대장 법정 요건상 개인별 기록 유지).
+ *
+ * SegmentedControl(임금대장/근로자명부) + mini-nav 월 선택 + MoneyCard(총 지급액) +
+ * 합계 행 4종(기본급·주휴수당·공제 합계·실수령액 코랄강조) + section-label "직원별 내역" + 직원별 카드.
+ * 임금대장(§48①)·근로자명부(§41). 근로감독·체불진정 1순위 요구 서류. 사장 전용.
  * 자료정리까지만(법정 서식 보완은 사장 몫). 주민번호 미저장. 면책 동반.
  */
 const LegalLedgerScreen: React.FC = () => {
@@ -81,14 +86,26 @@ const LegalLedgerScreen: React.FC = () => {
                 />
             );
         }
+        const totalRegular = wage.items.reduce((sum, it) => sum + it.regularWage, 0);
+        const totalWeeklyAllowance = wage.items.reduce((sum, it) => sum + it.weeklyAllowance, 0);
+
         return (
             <View>
-                <HeroNumber
+                <MoneyCard
                     label={`${year}년 ${month}월 총 지급액`}
                     value={won(wage.totalGross)}
                     sub={`직원 ${wage.employeeCount}명 · 실수령 합계 ${won(wage.totalNet)}`}
-                    accent
                 />
+                <View style={styles.summary}>
+                    <LedgerRow label="기본급" value={won(totalRegular)} />
+                    <LedgerRow label="주휴수당" value={won(totalWeeklyAllowance)} />
+                    <LedgerRow label="공제 합계" value={`–${won(wage.totalDeduction)}`} />
+                    <LedgerRow label="실수령액" value={won(wage.totalNet)} strong accent />
+                </View>
+
+                <AppText variant="caption" tone="secondary" style={styles.sectionLabel}>
+                    직원별 내역
+                </AppText>
                 <View style={styles.list}>
                     {wage.items.map(it => (
                         <AppCard key={it.employeeId} variant="flat">
@@ -123,7 +140,7 @@ const LegalLedgerScreen: React.FC = () => {
         }
         return (
             <View>
-                <HeroNumber
+                <MoneyCard
                     label="근로자명부"
                     value={`${roster.employeeCount}명`}
                     sub="입사일·시급·재직상태"
@@ -203,13 +220,18 @@ interface LedgerRowProps {
     label: string;
     value: string;
     strong?: boolean;
+    /** 실수령액처럼 브랜드 코랄로 강조할 값 */
+    accent?: boolean;
 }
 
-const LedgerRow: React.FC<LedgerRowProps> = ({label, value, strong}) => (
+const LedgerRow: React.FC<LedgerRowProps> = ({label, value, strong, accent}) => (
     <View style={styles.row}>
-        <AppText variant="caption" tone="secondary">{label}</AppText>
+        <AppText variant="caption" tone={strong ? 'primary' : 'secondary'} weight={strong ? '700' : undefined}>
+            {label}
+        </AppText>
         <AppText
             variant={strong ? 'titleMd' : 'bodyMd'}
+            tone={accent ? 'brand' : undefined}
             numberOfLines={1}
             adjustsFontSizeToFit>
             {value}
@@ -226,7 +248,9 @@ const styles = StyleSheet.create({
         marginTop: spacing.lg,
     },
     monthBtn: {padding: spacing.xs},
-    list: {marginTop: spacing.lg, gap: spacing.sm},
+    summary: {marginTop: spacing.sm},
+    sectionLabel: {marginTop: spacing.xl, marginBottom: spacing.xs},
+    list: {gap: spacing.sm},
     row: {
         flexDirection: 'row',
         justifyContent: 'space-between',

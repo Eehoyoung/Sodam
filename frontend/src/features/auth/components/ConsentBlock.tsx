@@ -4,11 +4,13 @@ import {Modal, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {tokens} from '../../../theme/tokens';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
+import {AppBadge} from '../../../common/components/ds/AppBadge';
 
 export interface ConsentValue {
     age: boolean;
     terms: boolean;
     privacy: boolean;
+    locationService: boolean;
     marketing: boolean;
 }
 
@@ -19,8 +21,8 @@ export interface ConsentBlockProps {
     legalTexts?: {terms?: string; privacy?: string; marketing?: string};
 }
 
-type ItemKey = 'age' | 'terms' | 'privacy' | 'marketing';
-const REQUIRED: ItemKey[] = ['age', 'terms', 'privacy'];
+type ItemKey = 'age' | 'terms' | 'privacy' | 'locationService' | 'marketing';
+const REQUIRED: ItemKey[] = ['age', 'terms', 'privacy', 'locationService'];
 
 /**
  * 회원가입 약관 동의 묶음 (PRD_GUEST G-A1~G-A4).
@@ -41,7 +43,7 @@ const ConsentBlock: React.FC<ConsentBlockProps> = ({value, onChange, legalTexts}
 
     const toggleAll = () => {
         const next = !allChecked;
-        onChange({age: next, terms: next, privacy: next, marketing: next});
+        onChange({age: next, terms: next, privacy: next, locationService: next, marketing: next});
     };
 
     const docText = useMemo(() => {
@@ -77,11 +79,13 @@ const ConsentBlock: React.FC<ConsentBlockProps> = ({value, onChange, legalTexts}
                 required
                 onPress={() => toggle('age')}
             />
+            {/* 아티팩트 51 TermsSheet 행 라벨 1:1(서비스 이용약관/개인정보 처리방침/위치기반 서비스/마케팅 알림)
+                + badge--coral(필수)/badge--teal(선택) 색상. 체크박스는 실제 동의 토글에 필요해 유지. */}
             <ConsentRow
                 styles={styles}
                 checkColor={c.textInverse}
                 checked={value.terms}
-                label="이용약관 동의"
+                label="서비스 이용약관"
                 required
                 onPress={() => toggle('terms')}
                 onPressView={() => setOpenedDoc('terms')}
@@ -90,7 +94,7 @@ const ConsentBlock: React.FC<ConsentBlockProps> = ({value, onChange, legalTexts}
                 styles={styles}
                 checkColor={c.textInverse}
                 checked={value.privacy}
-                label="개인정보 처리방침 동의"
+                label="개인정보 처리방침"
                 required
                 onPress={() => toggle('privacy')}
                 onPressView={() => setOpenedDoc('privacy')}
@@ -98,8 +102,18 @@ const ConsentBlock: React.FC<ConsentBlockProps> = ({value, onChange, legalTexts}
             <ConsentRow
                 styles={styles}
                 checkColor={c.textInverse}
+                checked={value.locationService}
+                label="위치기반 서비스"
+                required
+                onPress={() => toggle('locationService')}
+                onPressView={() => setOpenedDoc('privacy')}
+            />
+            <ConsentRow
+                styles={styles}
+                checkColor={c.textInverse}
                 checked={value.marketing}
-                label="마케팅 정보 수신 (선택)"
+                label="마케팅 알림"
+                optional
                 onPress={() => toggle('marketing')}
                 onPressView={() => setOpenedDoc('marketing')}
             />
@@ -139,6 +153,8 @@ interface ConsentRowProps {
     checked: boolean;
     label: string;
     required?: boolean;
+    /** 아티팩트 badge--teal "선택" — 필수 항목이 아님을 알리는 배지 */
+    optional?: boolean;
     bold?: boolean;
     onPress: () => void;
     onPressView?: () => void;
@@ -150,6 +166,7 @@ const ConsentRow: React.FC<ConsentRowProps> = ({
     checked,
     label,
     required,
+    optional,
     bold,
     onPress,
     onPressView,
@@ -167,10 +184,10 @@ const ConsentRow: React.FC<ConsentRowProps> = ({
             <View style={[styles.checkBox, checked && styles.checkBoxOn]}>
                 {checked ? <Ionicons name="checkmark" size={16} color={checkColor} /> : null}
             </View>
-            <Text style={[styles.label, bold && styles.labelBold]}>
-                {label}
-                {required ? <Text style={styles.required}>  (필수)</Text> : null}
-            </Text>
+            <Text style={[styles.label, bold && styles.labelBold]}>{label}</Text>
+            {/* 아티팩트 51: badge--coral(필수) / badge--teal(선택) */}
+            {required ? <AppBadge tone="error" label="필수" style={styles.rowBadge} /> : null}
+            {optional ? <AppBadge tone="success" label="선택" style={styles.rowBadge} /> : null}
         </Pressable>
         {onPressView ? (
             <Pressable onPress={onPressView} hitSlop={8}>
@@ -228,7 +245,7 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         flexShrink: 1,
     },
     labelBold: {fontWeight: tokens.typography.weights.bold},
-    required: {color: c.error, fontSize: tokens.typography.sizes.xs},
+    rowBadge: {marginLeft: tokens.spacing.sm},
     viewBtn: {
         color: c.brandPrimary,
         fontSize: tokens.typography.sizes.sm,

@@ -23,7 +23,6 @@ import AppCalendar from '../../../common/components/AppCalendar';
 import RoleTabBar from '../../../common/components/navigation/RoleTabBar';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {spacing} from '../../../theme/tokens';
-import {COLORS} from '../../../common/components/logo/Colors';
 import {
     currentYearMonth,
     fetchMyShifts,
@@ -33,6 +32,8 @@ import {
     todayIso,
     WorkShift,
 } from '../services/shiftService';
+import {useStoreLiveSync} from '../../../common/realtime/useStoreLiveSync';
+import {useEmployeeStoreIds} from '../../store/hooks/useEmployeeStoreIds';
 
 const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -46,6 +47,7 @@ function formatDateFull(iso: string): string {
 export default function MyShiftScreen() {
     const navigation = useNavigation();
     const c = useThemeColors();
+    const storeIds = useEmployeeStoreIds();
 
     const [month, setMonth] = useState(currentYearMonth);
     const [selectedDate, setSelectedDate] = useState<string | null>(todayIso);
@@ -74,6 +76,12 @@ export default function MyShiftScreen() {
         }, [loadMonth]),
     );
 
+    useStoreLiveSync(storeIds, event => {
+        if (event.type === 'SHIFT_CHANGED') {
+            loadMonth(month);
+        }
+    });
+
     const handleMonthChange = (ym: string) => {
         setMonth(ym);
         loadMonth(ym);
@@ -85,11 +93,11 @@ export default function MyShiftScreen() {
         shifts.forEach(s => {
             if (!marks[s.shiftDate]) {marks[s.shiftDate] = {dots: []};}
             if (marks[s.shiftDate].dots.length < 3) {
-                marks[s.shiftDate].dots.push(COLORS.SODAM_ORANGE);
+                marks[s.shiftDate].dots.push(c.brandPrimary);
             }
         });
         return marks;
-    }, [shifts]);
+    }, [shifts, c.brandPrimary]);
 
     // 선택 날 근무
     const dayShifts = useMemo(() => {

@@ -93,6 +93,7 @@ const ProgressBar: React.FC<{step: Step}> = ({step}) => {
 // ───── Step 1: 이메일 입력 ─────
 const StepEmail: React.FC<{onNext: () => void}> = ({onNext}) => {
     const styles = useStyles();
+    const c = useThemeColors();
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -116,8 +117,12 @@ const StepEmail: React.FC<{onNext: () => void}> = ({onNext}) => {
 
     return (
         <View>
-            <Text style={styles.title}>비밀번호 찾기</Text>
-            <Text style={styles.subtitle}>
+            {/* 아티팩트 06 PasswordReset: icon-circle(coral-soft bg + coral "?") */}
+            <View style={[styles.iconCircle, {backgroundColor: c.errorBg}]}>
+                <Text style={[styles.iconCircleText, {color: c.error}]}>?</Text>
+            </View>
+            <Text style={[styles.title, styles.titleCenter]}>비밀번호 찾기</Text>
+            <Text style={[styles.subtitle, styles.subtitleCenter]}>
                 가입하신 이메일로 6자리 인증번호를 보내드릴게요.
             </Text>
             <Input
@@ -418,6 +423,16 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         fontSize: tokens.typography.sizes.xs,
         color: c.textSecondary,
     },
+    iconCircle: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
+        alignSelf: 'center' as const,
+        marginBottom: tokens.spacing.lg,
+    },
+    iconCircleText: {fontSize: 20, fontWeight: '800' as const},
     title: {
         fontSize: 28,
         lineHeight: 36,
@@ -426,6 +441,10 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         letterSpacing: -0.8,
         marginBottom: tokens.spacing.sm,
     },
+    // 아티팩트 06 PasswordReset(state-center)만 중앙정렬 — 나머지 스텝(OTP/새 비번)은
+    // 입력폼이라 좌측정렬 유지가 자연스러워 이 스텝에만 로컬로 덮어쓴다.
+    titleCenter: {textAlign: 'center' as const},
+    subtitleCenter: {textAlign: 'center' as const},
     subtitle: {
         fontSize: tokens.typography.sizes.lg,
         color: c.textSecondary,

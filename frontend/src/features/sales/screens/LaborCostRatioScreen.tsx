@@ -1,9 +1,7 @@
-/* eslint-disable react-native/no-color-literals -- 히어로 그라디언트 위 반투명 데코/디바이더 고정 색 */
 import React, {useCallback, useState} from 'react';
 import {StyleSheet, TouchableOpacity, View} from 'react-native';
 import {RouteProp, useFocusEffect, useNavigation, useRoute} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
     AmountText,
@@ -17,7 +15,7 @@ import {
 } from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import {gradient, radius, shadow, spacing} from '../../../theme/tokens';
+import {radius, shadow, spacing} from '../../../theme/tokens';
 import {
     CycleLaborRatio,
     DailyLaborRatio,
@@ -101,19 +99,14 @@ const LaborCostRatioScreen: React.FC = () => {
             return null;
         }
         return (
-            <LinearGradient
-                colors={gradient.brandStrong}
-                style={styles.heroCard}
-                start={{x: 0, y: 0}}
-                end={{x: 1, y: 1}}>
-                <View style={styles.heroDecor} />
-                <AppText variant="caption" tone="inverse" style={styles.heroLabel}>이번 정산기간 인건비율</AppText>
+            <View style={[styles.heroCard, {backgroundColor: c.background, borderWidth: 1.5, borderColor: c.brandPrimary}]}>
+                <AppText variant="caption" tone="secondary" style={styles.heroLabel}>이번 정산기간 인건비율</AppText>
                 {cyclePct !== null ? (
-                    <AmountText size={36} tone="inverse">{cyclePct.toFixed(1)}%</AmountText>
+                    <AmountText size={36} tone="brand">{cyclePct.toFixed(1)}%</AmountText>
                 ) : (
-                    <AppText variant="headingSm" tone="inverse">매출 입력이 필요해요</AppText>
+                    <AppText variant="headingSm" tone="primary">매출 입력이 필요해요</AppText>
                 )}
-                <AppText variant="caption" tone="inverse" style={styles.heroRange}>
+                <AppText variant="caption" tone="secondary" style={styles.heroRange}>
                     {cycle.cycleStart} ~ {cycle.cycleEnd}
                 </AppText>
                 {deltaPct !== null && (
@@ -121,27 +114,27 @@ const LaborCostRatioScreen: React.FC = () => {
                         <Ionicons
                             name={deltaPct >= 0 ? 'arrow-up' : 'arrow-down'}
                             size={13}
-                            color={c.textInverse}
+                            color={deltaPct >= 0 ? c.error : c.success}
                         />
-                        <AppText variant="caption" tone="inverse" weight="700">
+                        <AppText variant="caption" weight="700" style={{color: deltaPct >= 0 ? c.error : c.success}}>
                             지난 주기 대비 {deltaPct >= 0 ? '+' : ''}{deltaPct.toFixed(1)}%p
                         </AppText>
                     </View>
                 )}
-                <View style={styles.heroDivider} />
+                <View style={[styles.heroDivider, {backgroundColor: c.border}]} />
                 <View style={styles.heroStats}>
                     <View style={styles.heroStat}>
-                        <AppText variant="caption" tone="inverse" style={styles.heroStatLbl}>누적 인건비</AppText>
-                        <AmountText size={18} tone="inverse">{cycle.laborCost.toLocaleString('ko-KR')}원</AmountText>
+                        <AppText variant="caption" tone="secondary" style={styles.heroStatLbl}>누적 인건비</AppText>
+                        <AmountText size={18} tone="primary">{cycle.laborCost.toLocaleString('ko-KR')}원</AmountText>
                     </View>
-                    <View style={[styles.heroStat, styles.heroStatDivider]}>
-                        <AppText variant="caption" tone="inverse" style={styles.heroStatLbl}>누적 매출</AppText>
-                        <AmountText size={18} tone="inverse">
+                    <View style={[styles.heroStat, styles.heroStatDivider, {borderLeftColor: c.border}]}>
+                        <AppText variant="caption" tone="secondary" style={styles.heroStatLbl}>누적 매출</AppText>
+                        <AmountText size={18} tone="primary">
                             {cycle.sales !== null ? `${cycle.sales.toLocaleString('ko-KR')}원` : '미입력'}
                         </AmountText>
                     </View>
                 </View>
-            </LinearGradient>
+            </View>
         );
     };
 
@@ -224,22 +217,16 @@ const styles = StyleSheet.create({
         borderRadius: radius.xxl,
         padding: spacing.xl,
         overflow: 'hidden',
-        ...shadow.lg,
+        ...shadow.sm,
     },
-    heroDecor: {
-        position: 'absolute', top: -24, right: -24,
-        width: 120, height: 120,
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        borderRadius: 60,
-    },
-    heroLabel: {opacity: 0.8, marginBottom: spacing.xs},
-    heroRange: {opacity: 0.75, marginTop: spacing.xs},
+    heroLabel: {marginBottom: spacing.xs},
+    heroRange: {marginTop: spacing.xs},
     heroDeltaRow: {flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.sm},
-    heroDivider: {height: 1, backgroundColor: 'rgba(255,255,255,0.18)', marginVertical: spacing.md},
+    heroDivider: {height: 1, marginVertical: spacing.md},
     heroStats: {flexDirection: 'row'},
     heroStat: {flex: 1, alignItems: 'center', gap: 3},
-    heroStatDivider: {borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.18)'},
-    heroStatLbl: {opacity: 0.75},
+    heroStatDivider: {borderLeftWidth: 1},
+    heroStatLbl: {},
 
     listTitle: {marginTop: spacing.xxl, marginBottom: spacing.sm},
     list: {gap: spacing.sm},

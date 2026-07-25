@@ -1,8 +1,9 @@
 /**
- * ③ PurchaseLedgerScreen — 이번 달 매입 합계 히어로 + 분류 필터 + 매입 카드 리스트.
+ * B1 PurchaseLedgerScreen — v3 시안(sodam-v3-10-business.html) 1:1.
  *
- * 항목 탭 → 상세(Confirm 수정). 하단 CTA "가격 비교 보기". 빈 상태 EmptyState.
- * 우상단 액션으로 매입 추가(Scan 이동).
+ * MoneyCard(이번 달 매입 합계) + 분류 SegmentedControl + 매입 카드 리스트(상단 행: 거래처명+임시배지,
+ * 메타: 일자·분류, 하단 우측정렬: 합계금액). 항목 탭 → 상세(Confirm 수정). 하단 CTA "가격 비교 보기".
+ * 빈 상태 EmptyState. 우상단 액션으로 매입 추가(Scan 이동).
  */
 import React, {useCallback, useMemo, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
@@ -17,8 +18,8 @@ import {
     CtaStack,
     EmptyState,
     ErrorState,
-    HeroNumber,
     LoadingState,
+    MoneyCard,
     SegmentedControl,
     ScreenContainer,
 } from '../../../common/components/ds';
@@ -160,7 +161,7 @@ export default function PurchaseLedgerScreen({route, navigation}: Props) {
                     />
                 </CtaStack>
             }>
-            <HeroNumber
+            <MoneyCard
                 label="이번 달 매입 합계"
                 value={`${monthTotal.toLocaleString()}원`}
                 sub="이번 달 들어온 매입을 모았어요"
@@ -190,27 +191,19 @@ export default function PurchaseLedgerScreen({route, navigation}: Props) {
                                 navigation.navigate('PurchaseConfirm', {storeId, purchaseId: p.id})
                             }
                             accessibilityLabel={`${p.vendorName} ${p.totalAmount.toLocaleString()}원`}>
-                            <View style={styles.cardRow}>
-                                <View style={styles.cardLeft}>
-                                    <AppText variant="titleMd" numberOfLines={1}>
-                                        {p.vendorName}
-                                    </AppText>
-                                    <AppText
-                                        variant="caption"
-                                        tone="tertiary"
-                                        numberOfLines={1}
-                                        style={styles.cardSub}>
-                                        {p.purchaseDate} · {p.categoryLabel}
-                                    </AppText>
-                                </View>
-                                <View style={styles.cardRight}>
-                                    <AppText variant="titleMd" weight="800" numberOfLines={1}>
-                                        {p.totalAmount.toLocaleString()}원
-                                    </AppText>
-                                    {p.status === 'DRAFT' ? (
-                                        <AppBadge label="임시" tone="warning" style={styles.badge} />
-                                    ) : null}
-                                </View>
+                            <View style={styles.cardTop}>
+                                <AppText variant="titleMd" numberOfLines={1} style={styles.cardTitle}>
+                                    {p.vendorName}
+                                </AppText>
+                                {p.status === 'DRAFT' ? <AppBadge label="임시" tone="warning" /> : null}
+                            </View>
+                            <AppText variant="caption" tone="tertiary" numberOfLines={1}>
+                                {p.purchaseDate} · {p.categoryLabel}
+                            </AppText>
+                            <View style={styles.cardValueRow}>
+                                <AppText variant="titleMd" weight="800" numberOfLines={1}>
+                                    {p.totalAmount.toLocaleString()}원
+                                </AppText>
                             </View>
                         </AppCard>
                     ))
@@ -223,9 +216,13 @@ export default function PurchaseLedgerScreen({route, navigation}: Props) {
 const styles = StyleSheet.create({
     filter: {marginTop: spacing.xxl},
     list: {marginTop: spacing.lg, gap: spacing.sm},
-    cardRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.md},
-    cardLeft: {flex: 1, minWidth: 0},
-    cardSub: {marginTop: spacing.xs},
-    cardRight: {flexShrink: 0, alignItems: 'flex-end', maxWidth: '45%'},
-    badge: {marginTop: spacing.xs},
+    cardTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: spacing.sm,
+        marginBottom: spacing.xs,
+    },
+    cardTitle: {flex: 1, minWidth: 0},
+    cardValueRow: {marginTop: spacing.xs, flexDirection: 'row', justifyContent: 'flex-end'},
 });

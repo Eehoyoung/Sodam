@@ -16,6 +16,8 @@ import {
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {spacing} from '../../../theme/tokens';
 import {ackNotice, fetchMyNotices, formatNoticeDate, StoreNotice} from '../services/noticeService';
+import {useStoreLiveSync} from '../../../common/realtime/useStoreLiveSync';
+import {useEmployeeStoreIds} from '../../store/hooks/useEmployeeStoreIds';
 
 /**
  * 내 공지 (E-NEW-06) — 직원 본인 소속 매장의 공지 + "확인했어요" 읽음확인.
@@ -23,6 +25,7 @@ import {ackNotice, fetchMyNotices, formatNoticeDate, StoreNotice} from '../servi
 const MyNoticeScreen: React.FC = () => {
     const navigation = useNavigation();
     const c = useThemeColors();
+    const storeIds = useEmployeeStoreIds();
 
     const [items, setItems] = useState<StoreNotice[]>([]);
     const [loading, setLoading] = useState(true);
@@ -44,6 +47,12 @@ const MyNoticeScreen: React.FC = () => {
     useFocusEffect(useCallback(() => {
         load();
     }, [load]));
+
+    useStoreLiveSync(storeIds, event => {
+        if (event.type === 'NOTICE_CHANGED') {
+            load();
+        }
+    });
 
     const ack = useCallback(async (noticeId: number) => {
         setAcking(noticeId);

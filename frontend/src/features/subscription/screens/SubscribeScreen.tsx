@@ -1,4 +1,4 @@
-import {AppToast, AppButton, AppHeader, AppText, CtaStack, ScreenContainer, SegmentedControl} from '../../../common/components/ds';
+import {AppToast, AppButton, AppCard, AppHeader, AppText, CtaStack, ScreenContainer, SegmentedControl} from '../../../common/components/ds';
 import React, {useEffect, useMemo, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
@@ -8,6 +8,8 @@ import {spacing} from '../../../theme/tokens';
 import {useResponsive} from '../../../common/hooks/useResponsive';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import {SubscriptionPlanCard, PlanCardView} from '../components/SubscriptionPlanCard';
+import PlanDetailSheet from '../components/PlanDetailSheet';
+import BillingMethodSheet from '../components/BillingMethodSheet';
 import {isTossLive} from '../../../common/config/env';
 import subscriptionApi, {
     BillingCycle,
@@ -75,6 +77,9 @@ const buildPlanVisuals = (c: ThemeColors): Record<PlanType, {emoji: string; acce
 /**
  * 31 Subscribe — 확정 시안.
  * 플랜 선택. ⚠️ 결제 로직(subscribeFree/TossBillingAuth)은 변경 없이 표현만 교체.
+ * "결제 수단 관리" 버튼(ACTIVE/PAUSED 구독 보유 시)이 71 BillingMethodSheet 를 열고,
+ * 시트의 "결제 수단 변경"은 현재 plan/billingCycle 로 TossBillingAuth 재인증 흐름을 태운다
+ * (docs/260720 v3 감사 후속 — 이전에는 BillingMethodSheet 가 어디서도 열리지 않았음).
  */
 const SubscribeScreen: React.FC = () => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
@@ -90,6 +95,8 @@ const SubscribeScreen: React.FC = () => {
     const [cycleIndex, setCycleIndex] = useState(0);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
+    const [detailView, setDetailView] = useState<PlanCardView | null>(null);
+    const [billingSheetVisible, setBillingSheetVisible] = useState(false);
 
     const billingCycle: BillingCycle = CYCLE_BY_INDEX[cycleIndex] ?? 'MONTHLY';
     const isPaidSelected = selectedPlan !== null && selectedPlan !== 'FREE';
@@ -181,6 +188,17 @@ const SubscribeScreen: React.FC = () => {
         }
     };
 
+    // 71 BillingMethodSheet 오픈 → "토스에서 결제 수단 변경" 선택 시 현재 플랜/주기로 재인증(TossBillingAuth)
+    // 이동. 카드 정보는 소담이 저장하지 않으므로(빌링키만 보유) 이 경로가 결제수단 변경의 유일한 창구다.
+    const openBillingMethodSheet = () => setBillingSheetVisible(true);
+    const handleManageViaToss = () => {
+        setBillingSheetVisible(false);
+        if (!current?.plan || current.plan === 'FREE') {
+            return;
+        }
+        navigation.navigate('TossBillingAuth', {plan: current.plan, billingCycle: current.billingCycle ?? 'MONTHLY'});
+    };
+
     const renderPlan = (plan: PlanCatalogItem) => {
         const v = planVisuals[plan.name];
         const isSelected = selectedPlan === plan.name;
@@ -202,6 +220,7 @@ const SubscribeScreen: React.FC = () => {
                 selected={isSelected}
                 isCurrent={isCurrent}
                 onPress={() => setSelectedPlan(plan.name)}
+                onDetailPress={() => setDetailView(view)}
             />
         );
     };
@@ -221,6 +240,21 @@ const SubscribeScreen: React.FC = () => {
                     <AppText variant="caption" tone="tertiary" center>구독 시 이용약관·개인정보 처리방침에 동의하게 됩니다.</AppText>
                 </CtaStack>
             }>
+            {!loading && current && (isActive || isPaused) ? (
+                <AppCard variant="spot" style={styles.currentPlanCard}>
+                    <AppText variant="caption" tone="secondary" weight="700">현재 플랜</AppText>
+                    <AppText variant="headingSm" tone="brand" style={styles.currentPlanName}>
+                        {describeCurrentPlan(current, plans).displayName}
+                    </AppText>
+                    <AppText variant="caption" tone="secondary">
+                        {[
+                            isPaused ? '일시정지 중' : null,
+                            current.nextBillingAt ? `다음 결제일 ${current.nextBillingAt.slice(0, 10)}` : null,
+                            describeCurrentPlan(current, plans).priceLabel,
+                        ].filter(Boolean).join(' · ')}
+                    </AppText>
+                </AppCard>
+            ) : null}
             <AppText variant="headingLg" style={styles.title}>매장에 딱 맞는 플랜을 골라요</AppText>
             <AppText variant="bodyLg" tone="secondary" style={[styles.subtitle, {marginBottom: subtitleMargin}]}>
                 언제든 해지·변경할 수 있어요. 대부분의 사장님은 프로를 선택해요.
@@ -254,8 +288,34 @@ const SubscribeScreen: React.FC = () => {
                         loading={processing}
                         onPress={isPaused ? handleResume : handlePause}
                     />
+                    <AppButton
+                        label="결제 수단 관리"
+                        variant="outline"
+                        style={styles.billingMethodBtn}
+                        onPress={openBillingMethodSheet}
+                    />
                 </View>
             ) : null}
+
+            <PlanDetailSheet
+                visible={detailView !== null}
+                onClose={() => setDetailView(null)}
+                view={detailView}
+                onSelect={() => {
+                    if (detailView) {
+                        setSelectedPlan(detailView.name);
+                    }
+                    setDetailView(null);
+                }}
+            />
+
+            <BillingMethodSheet
+                visible={billingSheetVisible}
+                onClose={() => setBillingSheetVisible(false)}
+                currentMethod={current?.cardLabel ?? undefined}
+                nextBillingDate={current?.nextBillingAt ? current.nextBillingAt.slice(0, 10) : undefined}
+                onManageViaToss={handleManageViaToss}
+            />
         </ScreenContainer>
     );
 };
@@ -276,7 +336,18 @@ function formatPrice(p: PlanCatalogItem): string {
     return `월 ${p.monthlyPriceKrw.toLocaleString('ko-KR')}원`;
 }
 
+/** 현재 구독 중인 플랜의 표시명/가격 — 카탈로그(plans)에서 찾아 조합, 없으면 plan 코드만. */
+function describeCurrentPlan(current: SubscriptionResponse, plans: PlanCatalogItem[]): {displayName: string; priceLabel?: string} {
+    const found = plans.find(p => p.name === current.plan);
+    if (!found) {
+        return {displayName: current.plan};
+    }
+    return {displayName: found.displayName, priceLabel: formatPrice(found)};
+}
+
 const styles = StyleSheet.create({
+    currentPlanCard: {marginTop: spacing.sm, marginBottom: spacing.lg, gap: 4},
+    currentPlanName: {marginTop: 2},
     title: {marginTop: spacing.sm},
     subtitle: {marginTop: spacing.sm, marginBottom: spacing.lg},
     loadingText: {marginVertical: spacing.xl},
@@ -284,7 +355,8 @@ const styles = StyleSheet.create({
     cycleBlock: {marginBottom: spacing.xl, gap: spacing.sm},
     cycleTitle: {fontWeight: '700'},
     cycleHint: {marginTop: spacing.xs},
-    manageBlock: {marginTop: spacing.xxl},
+    manageBlock: {marginTop: spacing.xxl, gap: spacing.sm},
+    billingMethodBtn: {marginTop: spacing.xs},
 });
 
 export default SubscribeScreen;

@@ -68,6 +68,9 @@ function scopeLabel(scope: string): string {
  * 근무 증거 패키지 (L-NEW-05) — 임금체불 진정 대비 셀프 증거 묶음. 사장 전용.
  * 한 직원의 근태·급여·계약·시급이력을 한 기간 기준으로 묶어 보여준다(집계만).
  * 주민번호 등 PII 미노출. 면책 동반.
+ *
+ * v3 시안(sodam-v3-08-contract.html C8) 정렬: 안내문을 info-card 로 감싸고, 하단 공유 CTA를
+ * 1차 버튼(coral)으로 통일.
  */
 const EvidencePackageScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -142,15 +145,18 @@ const EvidencePackageScreen: React.FC = () => {
             }
             footer={
                 data && data.attendance.recordCount + data.payroll.payslipCount > 0 ? (
-                    <AppButton label="요약 공유하기" variant="secondary" onPress={shareSummary} />
+                    <AppButton label="요약 공유하기" onPress={shareSummary} />
                 ) : undefined
             }>
             <AppText variant="titleMd" style={styles.name}>
                 {data?.employeeName ?? employeeName ?? '직원'}
             </AppText>
-            <AppText variant="caption" tone="secondary" style={styles.sub}>
-                임금체불 진정 등 분쟁에 대비한 근무 기록 묶음이에요.
-            </AppText>
+            {/* v3 시안(C8): 안내문을 info-card 로 감싸 표시 */}
+            <AppCard variant="flat" style={styles.introCard}>
+                <AppText variant="caption" tone="secondary">
+                    임금체불 진정 등 분쟁에 대비한 근무 기록 묶음이에요.
+                </AppText>
+            </AppCard>
 
             <SegmentedControl
                 options={[...RANGE_OPTIONS]}
@@ -291,7 +297,7 @@ const useStyles = () =>
         () =>
             StyleSheet.create({
                 name: {marginTop: spacing.sm},
-                sub: {marginTop: spacing.xs},
+                introCard: {marginTop: spacing.xs},
                 segment: {marginTop: spacing.lg, marginBottom: spacing.lg},
                 list: {gap: spacing.sm},
                 row: {

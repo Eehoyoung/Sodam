@@ -7,7 +7,7 @@ import {
     AppHeader,
     AppInput,
     AppText,
-    HeroNumber,
+    MoneyCard,
     ScreenContainer,
 } from '../../../common/components/ds';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
@@ -17,7 +17,11 @@ import {fetchTaxSimulation, TaxSimulation} from '../services/taxSimulatorService
 const won = (n: number) => `${n.toLocaleString()}원`;
 
 /**
- * T-NEW-05 세무 시뮬레이터 — 매출·지출 입력 → 예상 종합소득세(참고용). 저장 없음.
+ * W4 TaxSimulatorScreen(T-NEW-05) — v3 시안(sodam-v3-11-taxwage.html) 1:1(핵심 섹션) +
+ * 매출/경비/과세표준 상세 breakdown(additive, 시안 미포함).
+ *
+ * info-card 안내 + 연 매출·경비 필드 + CTA "예상 세금 계산" + MoneyCard(예상 종합소득세).
+ * 매출·지출 입력 → 예상 종합소득세(참고용). 저장 없음.
  */
 const TaxSimulatorScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -52,9 +56,11 @@ const TaxSimulatorScreen: React.FC = () => {
             scroll
             header={<AppHeader title="세무 시뮬레이터" onBack={() => navigation.goBack()} />}
             footer={<AppButton label={result ? '다시 계산' : '예상 세금 계산'} onPress={submit} loading={loading} />}>
-            <AppText variant="bodyMd" tone="secondary" style={styles.intro}>
-                연 매출과 경비를 넣으면 예상 종합소득세를 대략 알려드려요.
-            </AppText>
+            <AppCard variant="flat" style={styles.intro}>
+                <AppText variant="bodyMd" tone="secondary">
+                    연 매출과 경비를 넣으면 예상 종합소득세를 대략 알려드려요.
+                </AppText>
+            </AppCard>
 
             <AppText variant="caption" tone="secondary" style={styles.label}>연 매출 (원)</AppText>
             <AppInput value={income} onChangeText={setIncome} keyboardType="number-pad" placeholder="예: 60000000" />
@@ -68,11 +74,10 @@ const TaxSimulatorScreen: React.FC = () => {
 
             {result ? (
                 <View style={styles.resultWrap}>
-                    <HeroNumber
+                    <MoneyCard
                         label="예상 종합소득세"
                         value={won(result.estimatedTax)}
                         sub={`과세표준 ${won(result.taxableIncome)} · 실효세율 ${result.effectiveRate}%`}
-                        accent
                     />
                     <AppCard variant="flat" style={styles.breakdown}>
                         <Row label="연 매출" value={won(result.income)} />

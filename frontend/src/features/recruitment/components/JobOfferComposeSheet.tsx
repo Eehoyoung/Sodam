@@ -14,7 +14,7 @@
 import React, {useEffect, useState} from 'react';
 import {Pressable, StyleSheet, View} from 'react-native';
 import {AppInput, AppText, AppToast, BottomSheet} from '../../../common/components/ds';
-import {radius, recruit, spacing} from '../../../theme/tokens';
+import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {useSendJobOffer} from '../hooks/useRecruitmentQueries';
 import {
@@ -203,15 +203,15 @@ export const JobOfferComposeSheet: React.FC<JobOfferComposeSheetProps> = ({
                                 style={[
                                     styles.chip,
                                     {
-                                        borderColor: selected ? recruit.primary : c.border,
-                                        backgroundColor: selected ? recruit.primarySoft : c.background,
+                                        borderColor: selected ? c.brandPrimary : c.border,
+                                        backgroundColor: selected ? c.brandPrimarySoft : c.background,
                                         opacity: enabled ? 1 : 0.4,
                                     },
                                 ]}>
                                 <AppText
                                     variant="bodyMd"
                                     weight="700"
-                                    style={{color: selected ? recruit.primary : c.textSecondary}}>
+                                    style={{color: selected ? c.brandPrimary : c.textSecondary}}>
                                     {SEEKING_TYPE_LABELS[type]}
                                 </AppText>
                             </Pressable>
@@ -236,14 +236,14 @@ export const JobOfferComposeSheet: React.FC<JobOfferComposeSheetProps> = ({
                                     style={[
                                         styles.chip,
                                         {
-                                            borderColor: selected ? recruit.primary : c.border,
-                                            backgroundColor: selected ? recruit.primarySoft : c.background,
+                                            borderColor: selected ? c.brandPrimary : c.border,
+                                            backgroundColor: selected ? c.brandPrimarySoft : c.background,
                                         },
                                     ]}>
                                     <AppText
                                         variant="bodyMd"
                                         weight="700"
-                                        style={{color: selected ? recruit.primary : c.textSecondary}}>
+                                        style={{color: selected ? c.brandPrimary : c.textSecondary}}>
                                         {WORK_DATE_LABELS[option]} ({addDaysWithDay(referenceNow, option === 'TODAY' ? 0 : 1).iso})
                                     </AppText>
                                 </Pressable>

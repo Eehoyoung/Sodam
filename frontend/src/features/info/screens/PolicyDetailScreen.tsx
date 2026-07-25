@@ -19,6 +19,7 @@ import {
 import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import policyService from '../services/policyService';
+import {InfoChecklist, buildContentChecklist} from '../components/InfoChecklist';
 
 interface PolicyDetail {
     id: number;
@@ -31,9 +32,10 @@ interface PolicyDetail {
 type PolicyDetailScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'PolicyDetail'>;
 
 /**
- * 34 PolicyDetail — 확정 시안.
+ * 34 PolicyDetail — v3 아티팩트(sodam-v3-05-info.html) 반영.
  * 정책 정보 상세. GET /api/policy-info/{id}(policyService.getPolicyById) 실API 연동.
  * BE(PolicyInfoResponseDto)에 신청기간/지원대상/지원내용/신청링크 필드가 없어 해당 UI는 제거.
+ * InfoChecklist(번호매김 체크리스트) 추가.
  */
 const PolicyDetailScreen = () => {
     const navigation = useNavigation<PolicyDetailScreenNavigationProp>();
@@ -145,6 +147,9 @@ const PolicyDetailScreen = () => {
             <AppText variant="headingLg" style={styles.title}>{policy.title}</AppText>
             <AppText variant="bodyMd" tone="tertiary" style={styles.meta}>등록일 {policy.date}</AppText>
 
+            {/* v3 아티팩트 34 PolicyDetail의 .checklist — 원문 content를 3항목으로 요약 */}
+            <InfoChecklist items={buildContentChecklist(policy.content)} style={styles.checklist} />
+
             <AppText variant="bodyLg" style={styles.content}>{policy.content}</AppText>
 
             <AppText variant="headingSm" style={styles.relatedTitle}>관련 정책</AppText>
@@ -163,6 +168,7 @@ const styles = StyleSheet.create({
     kicker: {marginTop: spacing.xs},
     title: {marginTop: spacing.sm},
     meta: {marginTop: spacing.md},
+    checklist: {marginTop: spacing.lg},
     content: {marginTop: spacing.xxl, lineHeight: 28},
     relatedTitle: {marginTop: spacing.xxxl, marginBottom: spacing.md},
     list: {gap: spacing.sm},

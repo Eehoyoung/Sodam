@@ -1,9 +1,7 @@
-/* eslint-disable react-native/no-color-literals -- 히어로 그라디언트 위 반투명 데코 고정 색 */
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
     AmountText,
@@ -16,7 +14,7 @@ import {
 } from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import {gradient, radius, shadow, spacing} from '../../../theme/tokens';
+import {radius, shadow, spacing} from '../../../theme/tokens';
 import {fetchHiringCost, HiringCostEstimate} from '../services/riskService';
 
 const DEFAULT_HOURLY_WAGE = '10030'; // 현행 최저임금 수준
@@ -161,21 +159,16 @@ const HiringCostSimulatorScreen: React.FC = () => {
                         </View>
                     </AppCard>
 
-                    {/* ── 월 총 고용비용 히어로 ── */}
-                    <LinearGradient
-                        colors={gradient.brandStrong}
-                        style={styles.heroCard}
-                        start={{x: 0, y: 0}}
-                        end={{x: 1, y: 1}}>
-                        <View style={styles.heroDecor} />
-                        <AppText variant="caption" tone="inverse" style={styles.heroLabel}>
+                    {/* ── 월 총 고용비용 히어로(v3 — 흰 스팟 카드, D-2 준수) ── */}
+                    <AppCard variant="spot" hero style={styles.heroCard}>
+                        <AppText variant="caption" tone="secondary" style={styles.heroLabel}>
                             월 총 고용비용
                         </AppText>
-                        <AmountText size={32} tone="inverse">{fmt(result.monthlyTotalCost)}원</AmountText>
-                        <AppText variant="caption" tone="inverse" style={styles.heroSub}>
+                        <AmountText size={32} tone="brand">{fmt(result.monthlyTotalCost)}원</AmountText>
+                        <AppText variant="caption" tone="secondary" style={styles.heroSub}>
                             급여 + 사업주 보험료 + 퇴직금 적립 포함
                         </AppText>
-                    </LinearGradient>
+                    </AppCard>
                 </>
             ) : null}
 
@@ -207,16 +200,10 @@ const styles = StyleSheet.create({
         borderRadius: radius.xxl,
         padding: spacing.xl,
         overflow: 'hidden',
-        ...shadow.lg,
+        ...shadow.sm,
     },
-    heroDecor: {
-        position: 'absolute', top: -24, right: -24,
-        width: 120, height: 120,
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        borderRadius: 60,
-    },
-    heroLabel: {opacity: 0.8, marginBottom: spacing.xs},
-    heroSub: {opacity: 0.75, marginTop: spacing.xs},
+    heroLabel: {marginBottom: spacing.xs},
+    heroSub: {marginTop: spacing.xs},
 
     footnote: {marginTop: spacing.lg, marginBottom: spacing.md},
 });

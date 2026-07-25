@@ -1,8 +1,9 @@
 /**
- * ② PurchaseConfirmScreen — OCR 초안/수기 입력 보정 → 매입 저장(create) 또는 기존 수정(update).
+ * B3 PurchaseConfirmScreen — v3 시안(sodam-v3-10-business.html) 1:1.
  *
- * 거래처·일자·분류 + 품목 리스트(품목·수량·단위·단가, 행 추가/삭제, 단가×수량 자동합계).
- * 하단 풀폭 CTA 1개(매입 저장). params: draft(신규) 또는 purchaseId(수정).
+ * 거래처·일자 필드 + 분류 단일 chip-row(7종, segmented 미사용) + 품목 리스트(품목·수량·단위·단가,
+ * 행 추가/삭제, 단가×수량 자동합계) + 합계 행(코랄 강조) + 하단 풀폭 CTA(매입 저장).
+ * OCR 초안/수기 입력 보정 → 매입 저장(create) 또는 기존 수정(update). params: draft(신규) 또는 purchaseId(수정).
  */
 import React, {useEffect, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, View} from 'react-native';
@@ -19,7 +20,6 @@ import {
     CtaStack,
     ErrorState,
     LoadingState,
-    SegmentedControl,
     ScreenContainer,
     SuccessState,
 } from '../../../common/components/ds';
@@ -274,14 +274,8 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
             <AppText variant="titleMd" tone="secondary" style={styles.sectionLabel}>
                 분류
             </AppText>
-            <SegmentedControl
-                options={PURCHASE_CATEGORY_ORDER.slice(0, 4).map(k => PURCHASE_CATEGORY_LABELS[k])}
-                value={categoryIndex < 4 ? categoryIndex : 0}
-                onChange={setCategoryIndex}
-            />
             <View style={styles.chipRow}>
-                {PURCHASE_CATEGORY_ORDER.slice(4).map((k, i) => {
-                    const idx = i + 4;
+                {PURCHASE_CATEGORY_ORDER.map((k, idx) => {
                     const on = categoryIndex === idx;
                     return (
                         <Pressable

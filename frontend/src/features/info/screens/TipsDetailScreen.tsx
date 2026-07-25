@@ -17,6 +17,7 @@ import {
 } from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 import tipsService from '../services/tipsService';
+import {InfoChecklist, buildContentChecklist} from '../components/InfoChecklist';
 
 interface TipDetail {
     id: number;
@@ -31,9 +32,10 @@ interface TipDetail {
 type TipsDetailScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'TipsDetail'>;
 
 /**
- * 36 TipsDetail — 확정 시안.
+ * 36 TipsDetail — v3 아티팩트(sodam-v3-05-info.html) 반영.
  * 운영 팁 상세. GET /api/tip-info/{id}(tipsService.getTipById) 실API 연동.
  * BE(TipInfoResponseDto)에 관련 링크 필드가 없어 해당 UI는 제거.
+ * InfoChecklist(번호매김 체크리스트) 추가.
  */
 const TipsDetailScreen = () => {
     const navigation = useNavigation<TipsDetailScreenNavigationProp>();
@@ -144,6 +146,9 @@ const TipsDetailScreen = () => {
                 ))}
             </View>
 
+            {/* v3 아티팩트 36 TipsDetail의 .checklist — 원문 content를 3항목으로 요약 */}
+            <InfoChecklist items={buildContentChecklist(tip.content)} style={styles.checklist} />
+
             <AppText variant="bodyLg" style={styles.content}>{tip.content}</AppText>
 
             <Toast visible={showToast} message={toastMessage} type={toastType} onClose={() => setShowToast(false)} duration={3000} />
@@ -157,6 +162,7 @@ const styles = StyleSheet.create({
     summary: {marginTop: spacing.sm},
     meta: {marginTop: spacing.md},
     tags: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.lg},
+    checklist: {marginTop: spacing.lg},
     content: {marginTop: spacing.xxl, lineHeight: 28},
 });
 

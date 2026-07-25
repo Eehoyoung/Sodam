@@ -23,7 +23,7 @@ export const ImagePickerSheet: React.FC<Props> = ({visible, onClose, onCamera, o
             <AppListItem title="카메라로 촬영" subtitle="새 사진 찍기" right="›" onPress={onCamera} />
             <AppListItem title="앨범에서 선택" subtitle="기존 사진 선택" right="›" onPress={onAlbum} />
             {onReset ? (
-                <AppListItem title="기본 이미지로 변경" subtitle="사진 삭제" right={<AppBadge label="삭제" tone="warning" />} onPress={onReset} />
+                <AppListItem title="기본 이미지로 변경" subtitle="사진 삭제" right={<AppBadge label="삭제" tone="error" />} onPress={onReset} />
             ) : null}
         </View>
     </BottomSheet>

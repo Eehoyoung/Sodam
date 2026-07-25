@@ -15,6 +15,7 @@ import {
 import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import laborInfoService from '../services/laborInfoService';
+import {InfoChecklist, buildContentChecklist} from '../components/InfoChecklist';
 
 export type RootStackParamList = {
     LaborInfoDetail: {infoId: string};
@@ -33,8 +34,8 @@ interface LaborInfoDetail {
 type LaborInfoDetailScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'LaborInfoDetail'>;
 
 /**
- * 33 LaborInfoDetail — 확정 시안.
- * 노무 정보 상세. fetch/bookmark/share/Toast 로직 보존.
+ * 33 LaborInfoDetail — v3 아티팩트(sodam-v3-05-info.html) 반영.
+ * 노무 정보 상세. fetch/bookmark/share/Toast 로직 보존 + InfoChecklist(번호매김 체크리스트) 추가.
  */
 const LaborInfoDetailScreen = () => {
     const navigation = useNavigation<LaborInfoDetailScreenNavigationProp>();
@@ -143,6 +144,9 @@ const LaborInfoDetailScreen = () => {
                 {laborInfo.author} · {laborInfo.date}
             </AppText>
 
+            {/* v3 아티팩트 33 LaborInfoDetail의 .checklist — 원문 content를 3항목으로 요약 */}
+            <InfoChecklist items={buildContentChecklist(laborInfo.content)} style={styles.checklist} />
+
             <AppText variant="bodyLg" style={styles.content}>{laborInfo.content}</AppText>
 
             <AppText variant="headingSm" style={styles.relatedTitle}>관련 정보</AppText>
@@ -166,6 +170,7 @@ const styles = StyleSheet.create({
     kicker: {marginTop: spacing.xs},
     title: {marginTop: spacing.sm},
     meta: {marginTop: spacing.md},
+    checklist: {marginTop: spacing.lg},
     content: {marginTop: spacing.xxl, lineHeight: 28},
     relatedTitle: {marginTop: spacing.xxxl, marginBottom: spacing.md},
     list: {gap: spacing.sm},

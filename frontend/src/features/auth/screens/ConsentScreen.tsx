@@ -33,11 +33,12 @@ export default function ConsentScreen({navigation, route}: Props) {
         age: false,
         terms: false,
         privacy: false,
+        locationService: false,
         marketing: false,
     });
     const [submitting, setSubmitting] = useState(false);
 
-    const requiredOk = consent.age && consent.terms && consent.privacy;
+    const requiredOk = consent.age && consent.terms && consent.privacy && consent.locationService;
 
     const handleSubmit = async () => {
         if (!requiredOk) {
@@ -59,6 +60,7 @@ export default function ConsentScreen({navigation, route}: Props) {
                 terms: consent.terms,
                 privacy: consent.privacy,
                 marketing: consent.marketing,
+                locationInfo: consent.locationService,
             });
 
             const nextUser = {...user, consentCompleted: true};
@@ -91,10 +93,11 @@ export default function ConsentScreen({navigation, route}: Props) {
                     </AppText>
                 </CtaStack>
             }>
+            {/* 아티팩트 51 TermsSheet info-card 문구 1:1 */}
             <AppCard variant="warm" hero>
-                <AppText variant="headingMd">서비스 이용을 위한 설정</AppText>
+                <AppText variant="headingMd">필수 약관을 확인해 주세요</AppText>
                 <AppText variant="bodyLg" tone="secondary" style={styles.heroSub}>
-                    처음 한 번만 필요한 약관 동의 단계예요.
+                    서비스 이용과 개인정보 처리를 위해 꼭 필요한 항목입니다.
                 </AppText>
             </AppCard>
 

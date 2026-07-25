@@ -2,6 +2,7 @@
  * 71 Billing Method Sheet (확정 시안).
  * ⚠️ 프로젝트 운영 기준 금지: 카드번호 직접 저장 금지 — 토스 빌링키만.
  *   따라서 raw 카드 입력을 받지 않고, 현재 수단 표시 + 토스 빌링 관리로 위임한다.
+ * SubscribeScreen(31) "결제 수단 관리" 버튼에서 오픈된다(docs/260720 v3 감사 후속).
  */
 import React from 'react';
 import {StyleSheet, View} from 'react-native';

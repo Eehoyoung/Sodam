@@ -3,6 +3,8 @@
  *
  * 공제 자체는 정산(PayrollService) 시점에 스케줄-출퇴근 대조로 이미 자동 계산되므로, 이 화면은
  * "그대로 둘지(공제 확인) / 취소할지(공제 없음) / 연차로 대체할지"를 사장이 결정하는 창구다.
+ *
+ * v3 시안(sodam-v3-09-schedule.html S9) 정렬: 상단 안내문을 info-card(AppCard)로 감싸 표시.
  */
 import React, {useCallback, useMemo, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
@@ -149,12 +151,13 @@ const AttendanceIrregularitiesScreen: React.FC = () => {
 
     return (
         <ScreenContainer scroll header={header}>
-            <View style={styles.intro}>
+            {/* v3 시안(S9): 안내문을 info-card 로 감싸 표시 */}
+            <AppCard variant="flat" style={styles.intro}>
                 <AppText variant="bodyMd" tone="secondary">
                     최근 14일간 스케줄 대비 지각/조퇴/결근이 자동으로 감지돼요. 공제는 이미 이번 정산에
                     반영되어 있으니, 사유가 있으면 공제 없이 처리하거나 연차로 대체할 수 있어요.
                 </AppText>
-            </View>
+            </AppCard>
 
             {items.length === 0 ? (
                 <EmptyState

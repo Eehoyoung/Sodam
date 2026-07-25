@@ -131,7 +131,8 @@ const SendBonusScreen: React.FC = () => {
             scroll
             header={
                 <AppHeader
-                    title={employeeName ? `${employeeName} · 즉시 보너스` : '즉시 보너스'}
+                    title="즉시 보너스"
+                    subtitle={employeeName}
                     onBack={() => navigation.goBack()}
                 />
             }

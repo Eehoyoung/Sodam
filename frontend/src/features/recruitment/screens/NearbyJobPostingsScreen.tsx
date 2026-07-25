@@ -28,7 +28,7 @@ import {
     SegmentedControl,
 } from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
-import {recruit, spacing} from '../../../theme/tokens';
+import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {useNearbyJobPostings} from '../hooks/useRecruitmentQueries';
 import {
@@ -163,11 +163,11 @@ const CategoryChip: React.FC<{label: string; selected: boolean; onPress: () => v
             style={[
                 styles.categoryChip,
                 {
-                    borderColor: selected ? recruit.primary : c.border,
-                    backgroundColor: selected ? recruit.primarySoft : c.background,
+                    borderColor: selected ? c.brandPrimary : c.border,
+                    backgroundColor: selected ? c.brandPrimarySoft : c.background,
                 },
             ]}>
-            <AppText variant="bodyMd" weight="700" style={{color: selected ? recruit.primary : c.textSecondary}}>
+            <AppText variant="bodyMd" weight="700" style={{color: selected ? c.brandPrimary : c.textSecondary}}>
                 {label}
             </AppText>
         </Pressable>
@@ -180,6 +180,7 @@ interface NearbyPostingCardProps {
 }
 
 const NearbyPostingCard: React.FC<NearbyPostingCardProps> = ({posting, onPress}) => {
+    const c = useThemeColors();
     const timeRange = formatTimeRange(posting.startTime, posting.endTime);
     return (
         <AppCard
@@ -191,9 +192,8 @@ const NearbyPostingCard: React.FC<NearbyPostingCardProps> = ({posting, onPress})
                 <AppText variant="titleMd" weight="700" numberOfLines={1} style={styles.flex1}>
                     {posting.storeName}
                 </AppText>
-                <AppText variant="caption" style={{color: recruit.primary}}>
-                    {formatDistanceKm(posting.distanceMeters)}
-                </AppText>
+                {/* 거리 = 코랄 필(badge--coral) — 캡션 텍스트 대신 시안의 pill 형태로 통일 */}
+                <AppBadge label={formatDistanceKm(posting.distanceMeters)} tone="error" />
             </View>
 
             <View style={styles.badgeRow}>
@@ -207,9 +207,11 @@ const NearbyPostingCard: React.FC<NearbyPostingCardProps> = ({posting, onPress})
             </AppText>
 
             {posting.message ? (
-                <AppText variant="caption" tone="tertiary" numberOfLines={2}>
-                    {posting.message}
-                </AppText>
+                <View style={[styles.messageBox, {backgroundColor: c.surfaceMuted}]}>
+                    <AppText variant="caption" tone="secondary" numberOfLines={2}>
+                        {posting.message}
+                    </AppText>
+                </View>
             ) : null}
         </AppCard>
     );
@@ -232,6 +234,7 @@ const styles = StyleSheet.create({
     cardTopRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm},
     flex1: {flex: 1, minWidth: 0},
     badgeRow: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs},
+    messageBox: {borderRadius: 10, paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.sm},
 });
 
 export default NearbyJobPostingsScreen;

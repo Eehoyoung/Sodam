@@ -3,9 +3,12 @@
  *
  * 소속 매장의 OPEN 대타 모집을 보여주고, 직원이 [지원하기]로 본인 지원.
  * 여러 매장 소속이면 칩으로 매장 선택. 지원 완료 항목은 배지 표시.
+ *
+ * v3 시안(sodam-v3-09-schedule.html S4) 정렬: 멀티매장 전환 칩을 화면 자체 인라인 스타일 대신
+ * 공용 StorePassRow(`common/components/ds`)로 통일 — 다른 v3 화면들과 동일한 매장 패스 UI.
  */
 import React, {useCallback, useMemo, useRef, useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
+import {ScrollView, StyleSheet, View} from 'react-native';
 import {useFocusEffect, useNavigation} from '@react-navigation/native';
 import {
     AppBadge,
@@ -19,10 +22,10 @@ import {
     ErrorState,
     LoadingState,
     ScreenContainer,
+    StorePassRow,
 } from '../../../common/components/ds';
 import {useAuth} from '../../../contexts/AuthContext';
-import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import {radius, spacing} from '../../../theme/tokens';
+import {spacing} from '../../../theme/tokens';
 import storeService from '../../store/services/storeService';
 import {shortTime} from '../services/shiftService';
 import {applySwap, fetchOpenSwaps, SwapRequest} from '../services/swapBoardService';
@@ -47,7 +50,6 @@ function formatDateLabel(iso: string): string {
 const SwapBoardScreen: React.FC = () => {
     const navigation = useNavigation();
     const {user} = useAuth();
-    const c = useThemeColors();
 
     const [phase, setPhase] = useState<'loading' | 'error' | 'ready'>('loading');
     const [stores, setStores] = useState<MyStore[]>([]);
@@ -200,34 +202,13 @@ const SwapBoardScreen: React.FC = () => {
     return (
         <ScreenContainer header={header} padded={false}>
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                {stores.length > 1 ? (
-                    <View style={styles.chipRow}>
-                        {stores.map(store => {
-                            const active = store.id === selectedStore?.id;
-                            return (
-                                <Pressable
-                                    key={store.id}
-                                    accessibilityRole="button"
-                                    accessibilityState={{selected: active}}
-                                    onPress={() => selectStore(store.id)}
-                                    style={[
-                                        styles.chip,
-                                        {
-                                            backgroundColor: active ? c.brandPrimarySoft : c.surface,
-                                            borderColor: active ? c.brandPrimary : c.border,
-                                        },
-                                    ]}>
-                                    <AppText
-                                        variant="titleMd"
-                                        tone={active ? 'brand' : 'secondary'}
-                                        weight={active ? '700' : '500'}>
-                                        {store.storeName}
-                                    </AppText>
-                                </Pressable>
-                            );
-                        })}
-                    </View>
-                ) : null}
+                {/* v3 시안(S4): 멀티매장 전환을 공용 StorePassRow(매장 패스 칩)로 통일 */}
+                <StorePassRow
+                    items={stores.map(store => ({id: store.id, name: store.storeName}))}
+                    selectedId={selectedStore?.id ?? null}
+                    onSelect={selectStore}
+                    style={styles.passRow}
+                />
 
                 {swaps.length === 0 ? (
                     <View style={styles.emptyWrap}>
@@ -281,18 +262,7 @@ const styles = StyleSheet.create({
         paddingBottom: spacing.xl,
         flexGrow: 1,
     },
-    chipRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: spacing.sm,
-        marginBottom: spacing.md,
-    },
-    chip: {
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.xs,
-        borderRadius: radius.pill,
-        borderWidth: 1,
-    },
+    passRow: {marginBottom: spacing.md},
     emptyWrap: {flex: 1},
     card: {marginBottom: spacing.md},
     cardTop: {

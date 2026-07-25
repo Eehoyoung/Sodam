@@ -7,7 +7,7 @@
  */
 import React, {ReactNode} from 'react';
 import {ActivityIndicator, StyleSheet, Text, View} from 'react-native';
-import {radius, spacing} from '../../../theme/tokens';
+import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../hooks/useThemeColors';
 import {AppButton} from './AppButton';
 
@@ -119,7 +119,8 @@ const styles = StyleSheet.create({
     mark: {
         width: 56,
         height: 56,
-        borderRadius: radius.xl,
+        // v3 아티팩트 icon-circle: 진짜 원(50%) — 둥근사각(radius.xl) 안티패턴 제거.
+        borderRadius: 28,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: spacing.md,

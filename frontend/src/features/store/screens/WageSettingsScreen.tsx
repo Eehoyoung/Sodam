@@ -1,4 +1,4 @@
-import {AppToast, ConfirmSheet, AppButton, AppCard, AppHeader, AppInput, AppListItem, AmountText, AppText, CtaStack, ScreenContainer} from '../../../common/components/ds';
+import {AppBadge, AppToast, ConfirmSheet, AppButton, AppCard, AppHeader, AppInput, AppListItem, AmountText, AppText, CtaStack, ScreenContainer} from '../../../common/components/ds';
 import React, {useEffect, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
@@ -7,6 +7,13 @@ import {spacing} from '../../../theme/tokens';
 import {formatWage} from '../../../common/format/money';
 import storeService from '../services/storeService';
 import {wageService} from '../../wage/services/wageService';
+
+interface EmployeeWageRow {
+    id: number;
+    name: string;
+    appliedWage?: number;
+    isCustom: boolean;
+}
 
 /**
  * 18 WageSettings — v3 토스식.
@@ -21,6 +28,7 @@ const WageSettingsScreen: React.FC = () => {
     const [currentWage, setCurrentWage] = useState<number | null>(null);
     const [standardWage, setStandardWage] = useState('');
     const [history, setHistory] = useState<Array<any>>([]);
+    const [employeeWages, setEmployeeWages] = useState<EmployeeWageRow[]>([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -40,6 +48,25 @@ const WageSettingsScreen: React.FC = () => {
                 const list = await wageService.getStandardWageHistory(storeId);
                 setHistory(list);
             } catch (_) {/* TODO[P2 BE]: WageHistory 조회 API 미노출 */}
+            // 18 WageSettings 시안의 "직원별 적용 시급" 리스트 — 매장 기본/개별 시급 구분 배지.
+            try {
+                const employees = await storeService.getStoreEmployees(storeId);
+                const rows = await Promise.all(employees.map(async emp => {
+                    try {
+                        const info = await wageService.getEmployeeWage(emp.id, storeId);
+                        const isCustom = info.useStoreStandardWage === false && !!info.customHourlyWage;
+                        return {
+                            id: emp.id,
+                            name: emp.name,
+                            appliedWage: info.hourlyWage ?? info.customHourlyWage ?? undefined,
+                            isCustom,
+                        };
+                    } catch (_) {
+                        return {id: emp.id, name: emp.name, appliedWage: undefined, isCustom: false};
+                    }
+                }));
+                setEmployeeWages(rows);
+            } catch (_) {/* ignore */}
         })();
     }, [storeId]);
 
@@ -93,6 +120,28 @@ const WageSettingsScreen: React.FC = () => {
                     직원별 개별 시급이 없으면 이 시급이 적용돼요.
                 </AppText>
             </View>
+
+            {/* 직원별 적용 시급 — 아티팩트 18: 매장 기본/개별 시급 구분 배지 */}
+            {employeeWages.length > 0 ? (
+                <View style={styles.section}>
+                    <AppText variant="titleMd" tone="secondary" style={styles.sectionTitle}>직원별 적용 시급</AppText>
+                    <View style={styles.list}>
+                        {employeeWages.map(row => (
+                            <AppListItem
+                                key={row.id}
+                                title={row.name}
+                                subtitle={row.isCustom ? '개별 시급 적용' : '기본 시급 적용'}
+                                right={
+                                    <AppBadge
+                                        label={row.appliedWage ? formatWage(row.appliedWage) : '-'}
+                                        tone={row.isCustom ? 'error' : 'success'}
+                                    />
+                                }
+                            />
+                        ))}
+                    </View>
+                </View>
+            ) : null}
 
             <View style={styles.inputSection}>
                 <AppInput

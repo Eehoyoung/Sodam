@@ -1,11 +1,19 @@
-/* eslint-disable react-native/no-color-literals -- 브랜드 히어로 위 흰 오버레이 고정(레거시 화면, P2 재디자인 대상) */
+/**
+ * 45 PersonalHome — v3("링 & 패스") 적용 완료(2026-07-21).
+ * 시안: docs/260720/artifacts/sodam-v3-03-employee.html "45 PersonalHome" 카드
+ *   (spot-card 현재 매장 근무 현황 + cols3 칩버튼(출근/휴게/퇴근) + money-card 이번 달 요약).
+ * 기능(다중 근무지 출퇴근 기록, 수동 시간 입력, 월별 통계 모달 등)은 기존 그대로이며 시각 레이어만 v3 토큰으로 전환.
+ * "수동 시간 입력" 버튼은 78 ManualRecordSheet(AttendanceSheets.tsx)로 배선(2026-07-21) —
+ *   레거시 자체 모달(매장선택+유형+시/분 피커)을 대체. 제출 로직은 handleManualSave 에 그대로 유지
+ *   (서버 API 미사용, 이 화면의 로컬 기록장에만 저장 — 기존 동작 무변경).
+ */
 /* eslint-disable react-native/no-unused-styles -- styles built via createStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
-import {AppToast, AppButton, AppCard, AppText, AmountText} from '../../../common/components/ds';
-import React, { useState, useEffect, useMemo, useContext } from 'react';
+import {AppToast, AppButton, AppCard, AppText, AmountText, MoneyCard} from '../../../common/components/ds';
+import {ManualRecordSheet} from '../../attendance/components/AttendanceSheets';
+import React, { useState, useEffect, useMemo, useCallback, useContext } from 'react';
 import {
     View,
     ScrollView,
-    TextInput,
     Modal,
     StyleSheet,
     StatusBar,
@@ -13,9 +21,8 @@ import {
     TouchableOpacity,
 } from 'react-native';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import {radius, shadow, spacing} from '../../../theme/tokens';
+import {colors, radius, shadow, spacing} from '../../../theme/tokens';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import AuthContext from '../../../contexts/AuthContext';
 import storeService from '../../store/services/storeService';
@@ -99,13 +106,6 @@ const MultiStoreWorkScreen: React.FC = () => {
     const [showManualModal, setShowManualModal] = useState<boolean>(false);
     const [showMonthlyView, setShowMonthlyView] = useState<boolean>(false);
     const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7));
-
-    const [manualRecord, setManualRecord] = useState({
-        type: '출근' as WorkRecord['type'],
-        hour: '',
-        minute: '',
-        storeId: '',
-    });
 
     // 현재 선택된 매장 정보
     const currentStore = useMemo(() => {
@@ -217,22 +217,20 @@ const MultiStoreWorkScreen: React.FC = () => {
         return summary;
     }, [todayRecords, workSessions, stores, today]);
 
-    // 월별 통계
-    const monthlyStats = useMemo((): MonthlyStats => {
+    // 월별 통계 계산기 — monthKey 를 인자로 받아, 모달의 selectedMonth 뿐 아니라
+    // 홈 화면 money-card(이번 달 요약)에도 동일 로직을 재사용한다.
+    const computeMonthlyStats = useCallback((monthKey: string): MonthlyStats => {
         const monthRecords = allRecords.filter(record =>
-            record.date.startsWith(selectedMonth)
+            record.date.startsWith(monthKey)
         );
 
         const stats: MonthlyStats = {
-            month: selectedMonth,
+            month: monthKey,
             totalWorkTime: 0,
             totalEarnings: 0,
             workDays: 0,
             storeBreakdown: {},
         };
-
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const dailySummaries: { [date: string]: DailyWorkSummary } = {};
 
         // 날짜별로 그룹화
         const dateGroups: { [date: string]: WorkRecord[] } = {};
@@ -324,7 +322,13 @@ const MultiStoreWorkScreen: React.FC = () => {
         });
 
         return stats;
-    }, [allRecords, selectedMonth, stores]);
+    }, [allRecords, stores]);
+
+    const monthlyStats = useMemo(() => computeMonthlyStats(selectedMonth), [computeMonthlyStats, selectedMonth]);
+
+    // 이번 달(실제 현재 달, 모달의 selectedMonth 와 독립) — 홈 화면 money-card 전용.
+    const currentMonthKey = useMemo(() => today.slice(0, 7), [today]);
+    const thisMonthStats = useMemo(() => computeMonthlyStats(currentMonthKey), [computeMonthlyStats, currentMonthKey]);
 
     // 매장 데이터 로딩 (API 연동)
     useEffect(() => {
@@ -343,7 +347,7 @@ const MultiStoreWorkScreen: React.FC = () => {
                 const mappedStores: Store[] = storesData.map((store: any) => ({
                     id: String(store.id),
                     name: store.storeName,
-                    color: store.color || '#FF6B35', // 기본 색상
+                    color: store.color || colors.brandPrimary, // 기본 색상 (v3 브랜드 코랄, 테마 독립 정적 토큰)
                     hourlyWage: store.storeStandardHourWage || 10000,
                 }));
 
@@ -352,7 +356,6 @@ const MultiStoreWorkScreen: React.FC = () => {
                 // 첫 번째 매장을 기본 선택
                 if (mappedStores.length > 0) {
                     setSelectedStoreId(mappedStores[0].id);
-                    setManualRecord(prev => ({ ...prev, storeId: mappedStores[0].id }));
                 }
             } catch (error) {
                 console.error('매장 로딩 실패:', error);
@@ -538,8 +541,8 @@ const MultiStoreWorkScreen: React.FC = () => {
         }
     };
 
-    // 기록 추가
-    const addRecord = (type: WorkRecord['type'], time: string, storeId: string) => {
+    // 기록 추가 (date 생략 시 오늘 날짜)
+    const addRecord = (type: WorkRecord['type'], time: string, storeId: string, date: string = today) => {
         const store = stores.find(s => s.id === storeId);
         if (!store) {return;}
 
@@ -549,26 +552,32 @@ const MultiStoreWorkScreen: React.FC = () => {
             storeName: store.name,
             type,
             time,
-            date: today,
+            date,
             timestamp: Date.now(),
         };
 
         setAllRecords(prev => [...prev, newRecord]);
     };
 
-    // 수동 기록 추가
-    const addManualRecord = () => {
-        if (manualRecord.hour && manualRecord.minute) {
-            const time = `${manualRecord.hour.padStart(2, '0')}:${manualRecord.minute.padStart(2, '0')}`;
-            addRecord(manualRecord.type, time, manualRecord.storeId);
-            setShowManualModal(false);
-            setManualRecord({ type: '출근', hour: '', minute: '', storeId: stores[0].id });
+    // 78 ManualRecordSheet 저장 — 현재 선택된 매장(currentStore) 기준으로 출근/퇴근 기록을 한 번에 추가한다.
+    // 사장 승인 없이 이 화면의 로컬 기록장에만 저장되는 기존 동작(서버 API 미사용)은 그대로 유지.
+    const handleManualSave = (v: {date: string; checkIn: string; checkOut: string; breakMin: string}) => {
+        const isValidIsoDate = /^\d{4}-\d{2}-\d{2}$/.test(v.date);
+        const isValidHHmm = (t: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(t);
 
-            const store = stores.find(s => s.id === manualRecord.storeId);
-            AppToast.success(`${store?.name}에 ${manualRecord.type} 기록이 추가됐어요!`);
-        } else {
-            AppToast.warn('시간과 분을 모두 입력해 주세요.');
+        if (!isValidIsoDate || !isValidHHmm(v.checkIn) || !isValidHHmm(v.checkOut)) {
+            AppToast.warn('근무일과 출퇴근 시간을 올바르게 입력해 주세요.');
+            return;
         }
+        if (!currentStore.id) {
+            AppToast.warn('먼저 매장을 선택해 주세요.');
+            return;
+        }
+
+        addRecord('출근', v.checkIn, currentStore.id, v.date);
+        addRecord('퇴근', v.checkOut, currentStore.id, v.date);
+        setShowManualModal(false);
+        AppToast.success(`${currentStore.name}에 수동 기록이 추가됐어요!`);
     };
 
     // 매장 선택
@@ -604,49 +613,38 @@ const MultiStoreWorkScreen: React.FC = () => {
 
     return (
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-            <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+            <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
 
-            {/* 헤더 */}
-            <LinearGradient
-                colors={[currentStore.color, c.brandSecondary]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.header}
-            >
-                <AppText variant="headingMd" tone="inverse">{user?.name ?? '회원'}님</AppText>
-                <AppText variant="bodyMd" tone="inverse" style={styles.currentTime}>{currentTime}</AppText>
+            {/* 상단 헤더 — v3: 어두운 그라디언트 히어로 대신 흰 배경 헤더(D-2 준수) */}
+            <View style={[styles.topHeader, {borderBottomColor: c.divider, backgroundColor: c.background}]}>
+                <View style={styles.topHeaderMain}>
+                    <AppText variant="headingSm">{user?.name ?? '회원'}님</AppText>
+                    <AppText variant="caption" tone="tertiary" style={styles.currentTime}>{currentTime}</AppText>
+                </View>
 
                 {/* 매장 선택 버튼 */}
                 <TouchableOpacity
-                    style={styles.storeSelector}
+                    style={[styles.storeSwitchBtn, {borderColor: c.border, backgroundColor: c.surfaceCanvas}]}
                     onPress={() => setShowStoreSelector(true)}
                 >
-                    <AppText variant="headingSm" tone="inverse" numberOfLines={1}>{currentStore.name}</AppText>
-                    <View style={styles.storeChangeRow}>
-                        <AppText variant="caption" tone="inverse" style={styles.storeChangeText}>매장 변경</AppText>
-                        <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.85)" />
-                    </View>
+                    <AppText variant="caption" weight="700" numberOfLines={1} style={styles.storeSwitchLabel}>
+                        {currentStore.name}
+                    </AppText>
+                    <Ionicons name="chevron-down" size={14} color={c.textSecondary} />
                 </TouchableOpacity>
-
-                <View style={styles.workStatus}>
-                    <View style={styles.workStatusItem}>
-                        <AppText variant="caption" tone="inverse" style={styles.statusLabel}>근무 상태</AppText>
-                        <AppText variant="headingSm" tone="inverse">{getWorkStatusText()}</AppText>
-                    </View>
-                    <View style={styles.workStatusItem}>
-                        <AppText variant="caption" tone="inverse" style={styles.statusLabel}>오늘 총 근무시간</AppText>
-                        <AppText variant="headingSm" tone="inverse">{formatTime(todayWorkSummary.totalWorkTime)}</AppText>
-                    </View>
-                </View>
-            </LinearGradient>
+            </View>
 
             <ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
-                {/* 실시간 근무 현황 */}
-                <AppCard variant="hero" style={styles.card}>
-                    <View style={styles.cardHeader}>
-                        <Ionicons name="time-outline" size={20} color={c.brandPrimary} style={styles.cardIcon} />
-                        <AppText variant="headingSm">현재 매장 근무 현황</AppText>
-                    </View>
+                {/* 45 PersonalHome(시안) — spot-card: 현재 매장 근무 현황 */}
+                <AppCard variant="spot" style={styles.card}>
+                    <AppText variant="titleMd" weight="700">{currentStore.name}</AppText>
+                    <AppText variant="caption" tone="secondary" style={styles.spotDesc}>
+                        {currentSession.isWorking
+                            ? `${getWorkStatusText()} · 오늘 ${formatTime(todayWorkSummary.totalWorkTime)} 근무했어요.`
+                            : todayWorkSummary.totalWorkTime > 0
+                                ? `오늘 ${formatTime(todayWorkSummary.totalWorkTime)} 근무 기록이 있어요.`
+                                : '오늘 기록 없음 · 사장님 승인 없이 내 시간을 직접 기록해요.'}
+                    </AppText>
 
                     <View style={styles.statsGrid}>
                         <View style={styles.statBox}>
@@ -659,47 +657,40 @@ const MultiStoreWorkScreen: React.FC = () => {
                         </View>
                     </View>
 
-                    {/* 원터치 근태 기록 버튼들 */}
-                    <View style={styles.actionButtons}>
-                        <View style={styles.actionHalf}>
-                            <AppButton
-                                label="출근"
-                                size="md"
-                                onPress={clockIn}
-                                disabled={currentSession.isWorking}
-                                leftIcon={<Ionicons name="enter-outline" size={18} color={c.textInverse} />}
-                            />
-                        </View>
-                        <View style={styles.actionHalf}>
-                            <AppButton
-                                label="퇴근"
-                                size="md"
-                                variant="secondary"
-                                onPress={clockOut}
-                                disabled={!currentSession.isWorking}
-                                leftIcon={<Ionicons name="exit-outline" size={18} color={c.brandSecondary} />}
-                            />
-                        </View>
-                        <View style={styles.actionHalf}>
-                            <AppButton
-                                label="휴게시작"
-                                size="md"
-                                variant="outline"
-                                onPress={breakStart}
-                                disabled={!currentSession.isWorking || currentSession.isOnBreak}
-                                leftIcon={<Ionicons name="cafe-outline" size={18} color={c.brandPrimary} />}
-                            />
-                        </View>
-                        <View style={styles.actionHalf}>
-                            <AppButton
-                                label="휴게종료"
-                                size="md"
-                                variant="outline"
-                                onPress={breakEnd}
-                                disabled={!currentSession.isWorking || !currentSession.isOnBreak}
-                                leftIcon={<Ionicons name="play-outline" size={18} color={c.brandPrimary} />}
-                            />
-                        </View>
+                    {/* 원터치 근태 기록 3버튼(시안 cols3 — 출근/휴게/퇴근) */}
+                    <View style={styles.chipRow}>
+                        <AppButton
+                            label="출근"
+                            size="sm"
+                            onPress={clockIn}
+                            disabled={currentSession.isWorking}
+                            style={styles.chipBtn}
+                            leftIcon={<Ionicons name="enter-outline" size={16} color={c.textInverse} />}
+                        />
+                        <AppButton
+                            label={currentSession.isOnBreak ? '휴게 종료' : '휴게'}
+                            size="sm"
+                            variant="outline"
+                            onPress={currentSession.isOnBreak ? breakEnd : breakStart}
+                            disabled={!currentSession.isWorking}
+                            style={styles.chipBtn}
+                            leftIcon={
+                                <Ionicons
+                                    name={currentSession.isOnBreak ? 'play-outline' : 'cafe-outline'}
+                                    size={16}
+                                    color={c.brandPrimary}
+                                />
+                            }
+                        />
+                        <AppButton
+                            label="퇴근"
+                            size="sm"
+                            variant="secondary"
+                            onPress={clockOut}
+                            disabled={!currentSession.isWorking}
+                            style={styles.chipBtn}
+                            leftIcon={<Ionicons name="exit-outline" size={16} color={c.brandSecondary} />}
+                        />
                     </View>
 
                     <AppButton
@@ -710,6 +701,14 @@ const MultiStoreWorkScreen: React.FC = () => {
                         leftIcon={<Ionicons name="create-outline" size={18} color={c.brandPrimary} />}
                     />
                 </AppCard>
+
+                {/* money-card(시안) — 이번 달 요약 */}
+                <MoneyCard
+                    label="이번 달"
+                    value={`${(thisMonthStats.totalWorkTime / 3600).toFixed(1)}h · ₩${thisMonthStats.totalEarnings.toLocaleString()}`}
+                    sub={`${thisMonthStats.workDays}일 근무 · 매장 ${Object.keys(thisMonthStats.storeBreakdown).length}곳`}
+                    style={styles.card}
+                />
 
                 {/* 오늘의 매장별 근무 기록 */}
                 <AppCard variant="plain" style={styles.card}>
@@ -831,105 +830,14 @@ const MultiStoreWorkScreen: React.FC = () => {
                 </View>
             </Modal>
 
-            {/* 수동 시간 입력 모달 */}
-            <Modal
+            {/* 78 ManualRecordSheet — 레거시 자체 수동기록 모달(매장선택+유형+시/분) 대체.
+                제출 로직(로컬 기록장에만 저장, 서버 API 미사용)은 handleManualSave 로 그대로 유지,
+                UI만 확정 시안 바텀시트로 교체(현재 선택된 매장 currentStore 기준 출근·퇴근 동시 기록). */}
+            <ManualRecordSheet
                 visible={showManualModal}
-                transparent={true}
-                animationType="slide"
-                onRequestClose={() => setShowManualModal(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <AppText variant="headingSm">수동 시간 입력</AppText>
-                            <TouchableOpacity onPress={() => setShowManualModal(false)} hitSlop={8}>
-                                <Ionicons name="close" size={22} color={c.textSecondary} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={styles.inputGroup}>
-                            <AppText variant="caption" weight="600" tone="secondary" style={styles.inputLabel}>매장 선택</AppText>
-                            <View style={styles.pickerContainer}>
-                                {stores.map((store) => (
-                                    <TouchableOpacity
-                                        key={store.id}
-                                        style={[
-                                            styles.pickerItem,
-                                            manualRecord.storeId === store.id && styles.pickerItemSelected
-                                        ]}
-                                        onPress={() => setManualRecord(prev => ({ ...prev, storeId: store.id }))}
-                                    >
-                                        <View style={[styles.storeColorDot, { backgroundColor: store.color }]} />
-                                        <AppText
-                                            variant="caption"
-                                            weight={manualRecord.storeId === store.id ? '700' : '400'}
-                                            tone={manualRecord.storeId === store.id ? 'inverse' : 'secondary'}
-                                            numberOfLines={1}>
-                                            {store.name}
-                                        </AppText>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
-
-                        <View style={styles.inputGroup}>
-                            <AppText variant="caption" weight="600" tone="secondary" style={styles.inputLabel}>기록 유형</AppText>
-                            <View style={styles.pickerContainer}>
-                                {['출근', '퇴근', '휴게시작', '휴게종료'].map((type) => (
-                                    <TouchableOpacity
-                                        key={type}
-                                        style={[
-                                            styles.pickerItem,
-                                            manualRecord.type === type && styles.pickerItemSelected
-                                        ]}
-                                        onPress={() => setManualRecord(prev => ({ ...prev, type: type as WorkRecord['type'] }))}
-                                    >
-                                        <AppText
-                                            variant="caption"
-                                            weight={manualRecord.type === type ? '700' : '400'}
-                                            tone={manualRecord.type === type ? 'inverse' : 'secondary'}>
-                                            {type}
-                                        </AppText>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
-
-                        <View style={styles.timeInputGrid}>
-                            <View style={styles.inputGroup}>
-                                <AppText variant="caption" weight="600" tone="secondary" style={styles.inputLabel}>시간</AppText>
-                                <TextInput
-                                    style={styles.inputField}
-                                    value={manualRecord.hour}
-                                    onChangeText={(text) => setManualRecord(prev => ({ ...prev, hour: text }))}
-                                    placeholder="시"
-                                    placeholderTextColor={c.textTertiary}
-                                    keyboardType="numeric"
-                                    maxLength={2}
-                                />
-                            </View>
-                            <View style={styles.inputGroup}>
-                                <AppText variant="caption" weight="600" tone="secondary" style={styles.inputLabel}>분</AppText>
-                                <TextInput
-                                    style={styles.inputField}
-                                    value={manualRecord.minute}
-                                    onChangeText={(text) => setManualRecord(prev => ({ ...prev, minute: text }))}
-                                    placeholder="분"
-                                    placeholderTextColor={c.textTertiary}
-                                    keyboardType="numeric"
-                                    maxLength={2}
-                                />
-                            </View>
-                        </View>
-
-                        <AppButton
-                            label="기록 추가"
-                            onPress={addManualRecord}
-                            leftIcon={<Ionicons name="checkmark-circle-outline" size={18} color={c.textInverse} />}
-                        />
-                    </View>
-                </View>
-            </Modal>
+                onClose={() => setShowManualModal(false)}
+                onSave={handleManualSave}
+            />
 
             {/* 월별 기록 모달 */}
             <Modal
@@ -1065,52 +973,33 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
         flex: 1,
         backgroundColor: c.surfaceCanvas,
     },
-    header: {
-        paddingHorizontal: spacing.xxl,
-        paddingTop: spacing.xxl,
-        paddingBottom: spacing.xxl,
+    topHeader: {
+        flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: spacing.xxl,
+        paddingVertical: spacing.md,
+        borderBottomWidth: 1,
+    },
+    topHeaderMain: {
+        flexShrink: 1,
+        minWidth: 0,
     },
     currentTime: {
-        opacity: 0.9,
-        marginTop: spacing.xs,
-        marginBottom: spacing.lg,
+        marginTop: 2,
     },
-    storeSelector: {
-        backgroundColor: 'rgba(255,255,255,0.18)',
-        borderRadius: radius.lg,
-        paddingVertical: spacing.md,
-        paddingHorizontal: spacing.lg,
-        marginBottom: spacing.lg,
-        alignItems: 'center',
-        width: '100%',
-    },
-    storeChangeRow: {
+    storeSwitchBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.xs,
-        marginTop: spacing.xs,
+        borderWidth: 1,
+        borderRadius: radius.pill,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm,
+        maxWidth: 160,
     },
-    storeChangeText: {
-        opacity: 0.85,
-    },
-    workStatus: {
-        backgroundColor: 'rgba(255,255,255,0.18)',
-        borderRadius: radius.lg,
-        padding: spacing.lg,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        width: '100%',
-        gap: spacing.lg,
-    },
-    workStatusItem: {
-        flex: 1,
-        minWidth: 0,
-    },
-    statusLabel: {
-        opacity: 0.85,
-        marginBottom: spacing.xs,
+    storeSwitchLabel: {
+        flexShrink: 1,
     },
     content: {
         flex: 1,
@@ -1146,15 +1035,17 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     statLabel: {
         marginBottom: spacing.xs,
     },
-    actionButtons: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: spacing.md,
+    spotDesc: {
+        marginTop: spacing.xs,
         marginBottom: spacing.lg,
     },
-    actionHalf: {
-        width: '47%',
-        flexGrow: 1,
+    chipRow: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+        marginBottom: spacing.lg,
+    },
+    chipBtn: {
+        flex: 1,
     },
     storeWorkSection: {
         marginBottom: spacing.lg,

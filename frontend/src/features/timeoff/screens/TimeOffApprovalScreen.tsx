@@ -22,6 +22,7 @@ import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import timeOffService from '../../myPage/services/timeOffService';
 import {formatConsumedDays, TIME_OFF_LEAVE_TYPE_LABEL, TIME_OFF_UNIT_LABEL, type TimeOffResponse} from '../types';
+import {useStoreLiveSync} from '../../../common/realtime/useStoreLiveSync';
 
 function formatPeriod(item: TimeOffResponse): string {
     const [, sm, sd] = item.startDate.split('-');
@@ -37,6 +38,8 @@ function formatPeriod(item: TimeOffResponse): string {
  * 사장 연차/휴가 승인 — 대기 중인 직원 휴가 신청을 승인/거부.
  * BE: GET /api/master/timeoff/pending, PUT /api/master/timeoff/{id}/approve|reject.
  * 거부는 사유 입력을 강제한다(§60⑤ 시기변경권이 유일한 법적 거부 근거).
+ *
+ * v3 시안(sodam-v3-09-schedule.html S6) 정렬: 상단 안내문을 info-card(AppCard)로 감싸 표시.
  */
 export default function TimeOffApprovalScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
@@ -68,6 +71,12 @@ export default function TimeOffApprovalScreen() {
     useFocusEffect(useCallback(() => {
         load();
     }, [load]));
+
+    useStoreLiveSync(storeId ? [storeId] : [], event => {
+        if (event.type === 'TIME_OFF_CHANGED') {
+            load();
+        }
+    });
 
     const approve = async (item: TimeOffResponse) => {
         setBusyId(item.id);
@@ -140,12 +149,13 @@ export default function TimeOffApprovalScreen() {
 
     return (
         <ScreenContainer scroll header={header}>
-            <View style={styles.intro}>
-                <AppText variant="headingSm">대기 중인 휴가 신청</AppText>
-                <AppText variant="bodyMd" tone="secondary">
+            {/* v3 시안(S6): 안내문을 info-card 로 감싸 표시 */}
+            <AppCard variant="flat" style={styles.intro}>
+                <AppText variant="titleMd" weight="800">대기 중인 휴가 신청</AppText>
+                <AppText variant="bodyMd" tone="secondary" style={styles.introBody}>
                     승인하면 연차인 경우 잔여 연차에서 자동으로 차감돼요.
                 </AppText>
-            </View>
+            </AppCard>
 
             {items.length === 0 ? (
                 <EmptyState
@@ -229,7 +239,8 @@ export default function TimeOffApprovalScreen() {
 }
 
 const styles = StyleSheet.create({
-    intro: {gap: spacing.xs, marginBottom: spacing.lg},
+    intro: {marginBottom: spacing.lg},
+    introBody: {marginTop: spacing.xs},
     list: {gap: spacing.md},
     card: {gap: spacing.md, paddingVertical: spacing.md},
     cardHead: {flexDirection: 'row', alignItems: 'center', gap: spacing.md},
