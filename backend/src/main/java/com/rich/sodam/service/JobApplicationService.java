@@ -131,7 +131,7 @@ public class JobApplicationService {
 
     @Transactional
     public JobApplicantListItemResponse respondToApplication(Long applicationId, Long masterId, boolean accept) {
-        JobApplication application = jobApplicationRepository.findById(applicationId)
+        JobApplication application = jobApplicationRepository.findByIdForUpdate(applicationId)
                 .orElseThrow(() -> new EntityNotFoundException("JobApplication", applicationId));
 
         Long storeId = application.getPosting().getStore().getId();

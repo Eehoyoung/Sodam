@@ -38,6 +38,7 @@ public class WorkShiftService {
     private final StoreRepository storeRepository;
     private final NotificationService notificationService;
     private final FixedScheduleService fixedScheduleService;
+    private final LiveSyncPublisher liveSyncPublisher;
 
     @Transactional
     public WorkShiftResponse create(Long storeId, WorkShiftCreateRequest req) {
@@ -46,6 +47,7 @@ public class WorkShiftService {
         WorkShift shift = repository.save(WorkShift.create(
                 req.getEmployeeId(), storeId, req.getShiftDate(),
                 req.getStartTime(), req.getEndTime(), req.getMemo()));
+        liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.SHIFT_CHANGED);
         return WorkShiftResponse.from(shift);
     }
 
@@ -55,13 +57,14 @@ public class WorkShiftService {
      */
     @Transactional
     public WorkShiftResponse update(Long storeId, Long shiftId, WorkShiftUpdateRequest req) {
-        WorkShift shift = repository.findById(shiftId)
+        WorkShift shift = repository.findByIdForUpdate(shiftId)
                 .orElseThrow(() -> new IllegalArgumentException("근무 일정을 찾을 수 없어요: " + shiftId));
         if (!shift.getStoreId().equals(storeId)) {
             throw new AccessDeniedException("해당 매장의 근무 일정이 아니에요.");
         }
         validateShiftTimes(req.getStartTime(), req.getEndTime());
         shift.update(req.getShiftDate(), req.getStartTime(), req.getEndTime(), req.getMemo());
+        liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.SHIFT_CHANGED);
         return WorkShiftResponse.from(shift);
     }
 
@@ -71,13 +74,14 @@ public class WorkShiftService {
      */
     @Transactional
     public WorkShift reassignEmployee(Long storeId, Long shiftId, Long newEmployeeId) {
-        WorkShift shift = repository.findById(shiftId)
+        WorkShift shift = repository.findByIdForUpdate(shiftId)
                 .orElseThrow(() -> new IllegalArgumentException("근무 일정을 찾을 수 없어요: " + shiftId));
         if (!shift.getStoreId().equals(storeId)) {
             throw new AccessDeniedException("해당 매장의 근무 일정이 아니에요.");
         }
         assertActiveEmployeeInStore(newEmployeeId, storeId);
         shift.reassignTo(newEmployeeId);
+        liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.SHIFT_CHANGED);
         return shift;
     }
 
@@ -115,6 +119,9 @@ public class WorkShiftService {
                 .findByStoreIdAndShiftDateBetweenAndConfirmedAtIsNotNullAndConfirmationNotificationSentAtIsNullOrderByShiftDateAsc(
                         storeId, req.getFrom(), req.getTo());
         if (notificationTargets.isEmpty()) {
+            if (!unconfirmed.isEmpty()) {
+                liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.SHIFT_CHANGED);
+            }
             return new WorkShiftNotifyResponse(storeId, req.getFrom(), req.getTo(), unconfirmed.size(), 0);
         }
 
@@ -138,17 +145,21 @@ public class WorkShiftService {
             notified++;
         }
 
+        if (!unconfirmed.isEmpty()) {
+            liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.SHIFT_CHANGED);
+        }
         return new WorkShiftNotifyResponse(storeId, req.getFrom(), req.getTo(), unconfirmed.size(), notified);
     }
 
     @Transactional
     public void delete(Long storeId, Long shiftId) {
-        WorkShift shift = repository.findById(shiftId)
+        WorkShift shift = repository.findByIdForUpdate(shiftId)
                 .orElseThrow(() -> new IllegalArgumentException("근무 일정을 찾을 수 없어요: " + shiftId));
         if (!shift.getStoreId().equals(storeId)) {
             throw new AccessDeniedException("해당 매장의 근무 일정이 아니에요.");
         }
         repository.delete(shift);
+        liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.SHIFT_CHANGED);
     }
 
     /**

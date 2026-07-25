@@ -32,7 +32,10 @@ public class LiveSyncPublisher {
         EMPLOYEES_CHANGED,   // 직원 입사/해지/활성토글 → 직원 목록·인원수
         ATTENDANCE_CHANGED,  // 출/퇴근 → 출근 인원·근무 상태
         STORE_UPDATED,       // 매장 정보·운영시간·시급
-        PAYROLL_CHANGED      // 급여 생성/확정/지급/취소 → 급여 목록·명세 상태
+        PAYROLL_CHANGED,     // 급여 생성/확정/지급/취소 → 급여 목록·명세 상태
+        NOTICE_CHANGED,      // 공지 발행/직원 읽음 확인 → 공지 목록·읽음 N/M
+        SHIFT_CHANGED,
+        TIME_OFF_CHANGED
     }
 
     /**

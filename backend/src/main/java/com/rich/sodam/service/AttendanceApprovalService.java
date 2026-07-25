@@ -44,7 +44,8 @@ public class AttendanceApprovalService {
     /** 직원이 사장 승인 출/퇴근을 요청. 요청 시각 = 서버시각(과거 위조 방지). */
     @Transactional
     public AttendanceApprovalResponseHolder request(Long employeeId, Long storeId, Type type) {
-        if (!relationRepository.existsByEmployeeProfile_IdAndStore_IdAndIsActiveTrue(employeeId, storeId)) {
+        if (relationRepository.findRelationForUpdate(employeeId, storeId)
+                .filter(r -> Boolean.TRUE.equals(r.getIsActive())).isEmpty()) {
             throw new AccessDeniedException("해당 매장에 소속된 직원이 아니에요.");
         }
         if (repository.existsByEmployeeIdAndStoreIdAndTypeAndStatus(employeeId, storeId, type, Status.PENDING)) {
@@ -57,6 +58,7 @@ public class AttendanceApprovalService {
                 AttendanceApprovalRequest.create(employeeId, storeId, type, LocalDateTime.now()));
 
         notifyMasters(employeeId, storeId, type);
+        liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.ATTENDANCE_CHANGED);
         return new AttendanceApprovalResponseHolder(saved, employeeName(employeeId));
     }
 
@@ -80,7 +82,7 @@ public class AttendanceApprovalService {
      */
     @Transactional
     public AttendanceApprovalResponseHolder approve(Long id) {
-        AttendanceApprovalRequest req = findRequest(id);
+        AttendanceApprovalRequest req = findRequestForUpdate(id);
         if (!req.isPending()) {
             throw new IllegalStateException("이미 처리된 요청이에요.");
         }
@@ -100,11 +102,12 @@ public class AttendanceApprovalService {
 
     @Transactional
     public AttendanceApprovalResponseHolder reject(Long id, String reason) {
-        AttendanceApprovalRequest req = findRequest(id);
+        AttendanceApprovalRequest req = findRequestForUpdate(id);
         if (!req.isPending()) {
             throw new IllegalStateException("이미 처리된 요청이에요.");
         }
         req.reject(reason);
+        liveSyncPublisher.publishStore(req.getStoreId(), LiveSyncPublisher.SyncType.ATTENDANCE_CHANGED);
         notifyEmployeeDecision(req, false, reason);
         return new AttendanceApprovalResponseHolder(req, employeeName(req.getEmployeeId()));
     }
@@ -118,6 +121,11 @@ public class AttendanceApprovalService {
     private AttendanceApprovalRequest findRequest(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("승인 요청을 찾을 수 없어요: " + id));
+    }
+
+    private AttendanceApprovalRequest findRequestForUpdate(Long id) {
+        return repository.findByIdForUpdate(id)
+                .orElseThrow(() -> new IllegalArgumentException("승인 요청을 찾을 수 없어요. " + id));
     }
 
     private void notifyMasters(Long employeeId, Long storeId, Type type) {

@@ -87,7 +87,7 @@ public class AttendanceCorrectionService {
      */
     @Transactional
     public AttendanceCorrectionRequest approve(Long id, Long approverUserId) {
-        AttendanceCorrectionRequest req = correctionRepo.findById(id)
+        AttendanceCorrectionRequest req = correctionRepo.findByIdForUpdate(id)
                 .orElseThrow(() -> new IllegalArgumentException("요청을 찾을 수 없어요."));
 
         Attendance att = req.getAttendance();
@@ -118,7 +118,7 @@ public class AttendanceCorrectionService {
      */
     @Transactional
     public AttendanceCorrectionRequest reject(Long id, Long rejecterUserId, String reason) {
-        AttendanceCorrectionRequest req = correctionRepo.findById(id)
+        AttendanceCorrectionRequest req = correctionRepo.findByIdForUpdate(id)
                 .orElseThrow(() -> new IllegalArgumentException("요청을 찾을 수 없어요."));
         if (req.getAttendance() == null || req.getAttendance().getStore() == null) {
             throw new IllegalArgumentException("정정 대상 매장을 확인할 수 없어요.");

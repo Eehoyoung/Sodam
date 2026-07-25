@@ -38,6 +38,7 @@ public class StoreNoticeService {
     private final NoticeReadRepository readRepository;
     private final EmployeeStoreRelationRepository relationRepository;
     private final NotificationService notificationService;
+    private final LiveSyncPublisher liveSyncPublisher;
 
     /** 사장 공지 생성 + 매장 직원들에게 알림 발행. */
     @Transactional
@@ -65,6 +66,8 @@ public class StoreNoticeService {
                     .data(Map.of("type", "NOTICE_POSTED"))
                     .build());
         }
+
+        liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.NOTICE_CHANGED);
 
         long total = relations.size();
         return StoreNoticeResponse.forOwner(notice, 0L, total);
@@ -114,6 +117,8 @@ public class StoreNoticeService {
             return; // 멱등: 이미 확인함
         }
         readRepository.save(NoticeRead.create(noticeId, employeeId));
+        // 읽음 레코드가 커밋된 뒤 사장 화면이 REST 재조회하도록 매장 토픽에 신호를 보낸다.
+        liveSyncPublisher.publishStore(notice.getStoreId(), LiveSyncPublisher.SyncType.NOTICE_CHANGED);
     }
 
     /** 한 공지를 읽은 직원 목록(사장). */

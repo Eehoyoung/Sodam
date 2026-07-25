@@ -40,7 +40,7 @@ public class ReferralRewardService {
      */
     @Transactional
     public Optional<ReferralRewardResult> processRefereeFirstPayment(Long refereeUserId) {
-        Optional<Referral> opt = referralRepository.findByReferee_Id(refereeUserId);
+        Optional<Referral> opt = referralRepository.findByRefereeIdForUpdate(refereeUserId);
         if (opt.isEmpty()) {
             return Optional.empty();
         }

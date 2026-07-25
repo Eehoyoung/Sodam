@@ -761,7 +761,7 @@ public class PayrollService {
      */
     @Transactional
     public Payroll issuePayroll(Long payrollId) {
-        Payroll payroll = payrollRepository.findById(payrollId)
+        Payroll payroll = payrollRepository.findByIdForUpdate(payrollId)
                 .orElseThrow(() -> new EntityNotFoundException("급여 내역을 찾을 수 없습니다."));
 
         switch (payroll.getStatus()) {
@@ -822,7 +822,7 @@ public class PayrollService {
     @Transactional
     public Payroll updatePayrollStatus(Long payrollId, PayrollStatus newStatus,
                                        LocalDate paymentDate, String cancelReason) {
-        Payroll payroll = payrollRepository.findById(payrollId)
+        Payroll payroll = payrollRepository.findByIdForUpdate(payrollId)
                 .orElseThrow(() -> new EntityNotFoundException("급여 내역을 찾을 수 없습니다."));
 
         // 현재 상태와 새 상태 확인

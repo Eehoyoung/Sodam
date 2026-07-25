@@ -42,7 +42,7 @@ public class TaxServiceOrderService {
      */
     @Transactional
     public TaxServiceOrder confirm(Long userId, String orderId, String paymentKey, int clientAmount) {
-        TaxServiceOrder order = orderRepository.findByOrderId(orderId)
+        TaxServiceOrder order = orderRepository.findByOrderIdForUpdate(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderId));
         if (!order.getUser().getId().equals(userId)) {
             throw new IllegalStateException("본인 주문만 결제할 수 있습니다.");

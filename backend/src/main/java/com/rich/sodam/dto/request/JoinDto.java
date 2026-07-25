@@ -33,4 +33,7 @@ public class JoinDto {
 
     /** 마케팅 정보 수신 동의 (선택, null/false 모두 비동의) */
     private Boolean marketingAgreed;
+
+    /** 위치정보 수집·이용 동의 (GPS 출퇴근 사용을 위해 가입 시점에 함께 수집, FE는 필수로 게이팅) */
+    private Boolean locationInfoAgreed;
 }

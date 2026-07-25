@@ -50,6 +50,7 @@ public class TimeOffService {
     private final NotificationService notificationService;
     private final StorePermissionRecipientService permissionRecipients;
     private final AnnualLeaveEntitlementResolver annualLeaveEntitlementResolver;
+    private final LiveSyncPublisher liveSyncPublisher;
 
     /**
      * 휴가 신청 생성(종일, 기존 호출부 호환). EmployeeProfile 이 없으면 자동 생성(셀프 신청 호환).
@@ -104,6 +105,7 @@ public class TimeOffService {
         TimeOff saved = timeOffRepository.save(timeOff);
 
         notifyMasters(saved);
+        liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.TIME_OFF_CHANGED);
         return toResponse(saved);
     }
 
@@ -112,7 +114,7 @@ public class TimeOffService {
      */
     @Transactional
     public TimeOffResponse approveTimeOffRequest(Long timeOffId) {
-        TimeOff timeOff = findTimeOff(timeOffId);
+        TimeOff timeOff = findTimeOffForUpdate(timeOffId);
         if (timeOff.getStatus() != TimeOffStatus.PENDING) {
             throw new IllegalStateException("이미 처리된 휴가 신청이에요.");
         }
@@ -125,6 +127,7 @@ public class TimeOffService {
         TimeOff saved = timeOffRepository.save(timeOff);
 
         notifyEmployeeDecision(saved, true, null);
+        liveSyncPublisher.publishStore(saved.getStore().getId(), LiveSyncPublisher.SyncType.TIME_OFF_CHANGED);
         return toResponse(saved);
     }
 
@@ -137,7 +140,7 @@ public class TimeOffService {
         if (rejectReason == null || rejectReason.isBlank()) {
             throw new IllegalArgumentException("거부 사유를 입력해 주세요.");
         }
-        TimeOff timeOff = findTimeOff(timeOffId);
+        TimeOff timeOff = findTimeOffForUpdate(timeOffId);
         if (timeOff.getStatus() != TimeOffStatus.PENDING) {
             throw new IllegalStateException("이미 처리된 휴가 신청이에요.");
         }
@@ -146,6 +149,7 @@ public class TimeOffService {
         TimeOff saved = timeOffRepository.save(timeOff);
 
         notifyEmployeeDecision(saved, false, rejectReason);
+        liveSyncPublisher.publishStore(saved.getStore().getId(), LiveSyncPublisher.SyncType.TIME_OFF_CHANGED);
         return toResponse(saved);
     }
 
@@ -214,6 +218,11 @@ public class TimeOffService {
     private TimeOff findTimeOff(Long timeOffId) {
         return timeOffRepository.findById(timeOffId)
                 .orElseThrow(() -> new NoSuchElementException("휴가 신청을 찾을 수 없습니다."));
+    }
+
+    private TimeOff findTimeOffForUpdate(Long timeOffId) {
+        return timeOffRepository.findByIdForUpdate(timeOffId)
+                .orElseThrow(() -> new NoSuchElementException("휴가 요청을 찾을 수 없습니다."));
     }
 
     private Store store(Long storeId) {

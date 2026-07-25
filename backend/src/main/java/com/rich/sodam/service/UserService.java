@@ -181,6 +181,10 @@ public class UserService {
         if (marketing) {
             user.setMarketingAgreedAt(now);
         }
+        boolean locationInfo = Boolean.TRUE.equals(joinDto.getLocationInfoAgreed());
+        if (locationInfo) {
+            user.setLocationInfoAgreedAt(now);
+        }
         User saved = userRepository.save(user);
 
         // 동의 입증·버전관리용 이력 적재 (PIPA — 동의 사실·시점·버전 보존)
@@ -188,6 +192,7 @@ public class UserService {
         recordAudit(saved.getId(), TermsType.TERMS_OF_SERVICE, true, now);
         recordAudit(saved.getId(), TermsType.PRIVACY_POLICY, true, now);
         recordAudit(saved.getId(), TermsType.MARKETING, marketing, now);
+        recordAudit(saved.getId(), TermsType.LOCATION_INFO, locationInfo, now);
         return saved;
     }
 

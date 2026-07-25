@@ -1,9 +1,11 @@
 package com.rich.sodam.service;
 
 import com.rich.sodam.domain.Attendance;
+import com.rich.sodam.domain.AttendanceCorrectionRequest;
 import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.Payroll;
 import com.rich.sodam.domain.Store;
+import com.rich.sodam.repository.AttendanceCorrectionRequestRepository;
 import com.rich.sodam.repository.AttendanceRepository;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
 import com.rich.sodam.repository.PayrollRepository;
@@ -33,6 +35,7 @@ public class StoreStatsService {
     private final EmployeeStoreRelationRepository employeeStoreRelationRepository;
     private final AttendanceRepository attendanceRepository;
     private final PayrollRepository payrollRepository;
+    private final AttendanceCorrectionRequestRepository attendanceCorrectionRequestRepository;
 
     @Transactional(readOnly = true)
     public Map<String, Object> today(Long storeId) {
@@ -87,12 +90,17 @@ public class StoreStatsService {
                         : "(이름 없음)")
                 .toList();
 
+        long pendingCorrections = attendanceCorrectionRequestRepository
+                .countByAttendance_Store_IdAndStatus(store.getId(), AttendanceCorrectionRequest.Status.PENDING);
+
         Map<String, Object> body = new HashMap<>();
         body.put("storeId", store.getId());
         body.put("storeName", store.getStoreName());
         body.put("checkedInCount", checkedIn);
         body.put("totalActiveEmployees", active.size());
         body.put("pendingEmployees", pending);
+        // 매니저 홈(v3 46 ManagerHome) "정정 요청 대기" 표시용 — G-6
+        body.put("pendingCorrectionCount", pendingCorrections);
         return body;
     }
 

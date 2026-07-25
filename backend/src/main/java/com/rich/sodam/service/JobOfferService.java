@@ -123,7 +123,7 @@ public class JobOfferService {
 
     @Transactional
     public JobOfferResponse respondToOffer(Long offerId, Long userId, boolean accept) {
-        JobOffer offer = jobOfferRepository.findById(offerId)
+        JobOffer offer = jobOfferRepository.findByIdForUpdate(offerId)
                 .orElseThrow(() -> new EntityNotFoundException("JobOffer", offerId));
         if (!offer.getTargetUser().getId().equals(userId)) {
             log.warn("권한 거부: user {} 가 offer {} 의 수신자가 아님", userId, offerId);

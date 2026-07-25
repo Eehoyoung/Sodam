@@ -49,7 +49,7 @@ public class SubscriptionService {
      */
     @Transactional
     public Subscription subscribeFree(Long userId) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
         cancelExistingActive(userId);
         String customerKey = buildCustomerKey(userId);
@@ -76,7 +76,7 @@ public class SubscriptionService {
         if (plan == PlanType.FREE) {
             return subscribeFree(userId);
         }
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
         cancelExistingActive(userId);
 
@@ -124,6 +124,7 @@ public class SubscriptionService {
      */
     @Transactional
     public void cancel(Long userId) {
+        lockUser(userId);
         Subscription s = currentSubscriptionOrThrow(userId);
         s.cancel();
     }
@@ -133,6 +134,7 @@ public class SubscriptionService {
      */
     @Transactional
     public Subscription pause(Long userId) {
+        lockUser(userId);
         Subscription s = currentSubscriptionOrThrow(userId);
         s.pause();
         return s;
@@ -143,6 +145,7 @@ public class SubscriptionService {
      */
     @Transactional
     public Subscription resume(Long userId) {
+        lockUser(userId);
         Subscription s = subscriptionRepository
                 .findFirstByUser_IdAndStatusIn(userId, List.of(SubscriptionStatus.PAUSED))
                 .orElseThrow(() -> new IllegalStateException("일시정지된 구독이 없습니다."));
@@ -165,6 +168,11 @@ public class SubscriptionService {
             throw new IllegalStateException("활성 구독이 없습니다.");
         }
         return s;
+    }
+
+    private User lockUser(Long userId) {
+        return userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
     }
 
     /**

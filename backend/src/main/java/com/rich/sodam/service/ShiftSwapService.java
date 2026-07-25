@@ -51,6 +51,7 @@ public class ShiftSwapService {
     private final StoreRepository storeRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final LiveSyncPublisher liveSyncPublisher;
 
     /* ==================== 조회 헬퍼(컨트롤러 가드용) ==================== */
 
@@ -83,6 +84,7 @@ public class ShiftSwapService {
                 ShiftSwapRequest.open(shiftId, shift.getStoreId(), shift.getEmployeeId()));
 
         notifyRecruitmentOpened(shift);
+        liveSyncPublisher.publishStore(shift.getStoreId(), LiveSyncPublisher.SyncType.SHIFT_CHANGED);
         return ShiftSwapRequestResponse.of(request, shift, List.of());
     }
 
@@ -122,7 +124,7 @@ public class ShiftSwapService {
 
     @Transactional
     public void apply(Long requestId, Long employeeId) {
-        ShiftSwapRequest request = findRequest(requestId);
+        ShiftSwapRequest request = findRequestForUpdate(requestId);
         if (!request.isOpen()) {
             throw new ConflictException("이미 마감된 대타 모집이에요.");
         }
@@ -136,13 +138,14 @@ public class ShiftSwapService {
             throw new ConflictException("이미 지원한 대타 모집이에요.");
         }
         applicantRepository.save(ShiftSwapApplicant.of(requestId, employeeId));
+        liveSyncPublisher.publishStore(request.getStoreId(), LiveSyncPublisher.SyncType.SHIFT_CHANGED);
     }
 
     /* ==================== 승인(사장) — 시프트 재배정 + FILLED ==================== */
 
     @Transactional
     public ShiftSwapRequestResponse approve(Long requestId, Long employeeId) {
-        ShiftSwapRequest request = findRequest(requestId);
+        ShiftSwapRequest request = findRequestForUpdate(requestId);
         if (!request.isOpen()) {
             throw new ConflictException("이미 마감된 대타 모집이에요.");
         }
@@ -162,11 +165,12 @@ public class ShiftSwapService {
 
     @Transactional
     public void cancel(Long requestId) {
-        ShiftSwapRequest request = findRequest(requestId);
+        ShiftSwapRequest request = findRequestForUpdate(requestId);
         if (!request.isOpen()) {
             throw new ConflictException("이미 마감된 대타 모집이에요.");
         }
         request.cancel();
+        liveSyncPublisher.publishStore(request.getStoreId(), LiveSyncPublisher.SyncType.SHIFT_CHANGED);
     }
 
     /* ==================== 내부 ==================== */
@@ -179,6 +183,11 @@ public class ShiftSwapService {
     private ShiftSwapRequest findRequest(Long requestId) {
         return swapRequestRepository.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("대타 모집을 찾을 수 없어요: " + requestId));
+    }
+
+    private ShiftSwapRequest findRequestForUpdate(Long requestId) {
+        return swapRequestRepository.findByIdForUpdate(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("대타 모집을 찾을 수 없어요. " + requestId));
     }
 
     private List<Applicant> applicantList(Long requestId) {
