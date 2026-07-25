@@ -3,6 +3,7 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
 import {AuthStackParamList, RootNavigationProp, RootStackParamList} from './types';
 import LoginScreen from '../features/auth/screens/LoginScreen';
+import RoleStartScreen from '../features/auth/screens/RoleStartScreen';
 import SignupScreen from '../features/auth/screens/SignupScreen';
 import PasswordResetScreen from '../features/auth/screens/PasswordResetScreen';
 import OnboardingCarouselScreen from '../features/welcome/screens/OnboardingCarouselScreen';
@@ -44,6 +45,12 @@ const AuthNavigator: React.FC = () => {
                 initialParams={route.params?.screen === 'Login' ? nestedParams : undefined}
                 // 화면 안에 이미 큰 로고+카피가 있어 네비 헤더(작은 로고+"로그인" 타이틀)를 얹으면
                 // 로고가 두 번 보인다 → 네비 헤더는 끄고 화면 자체 구성만 사용.
+                options={{headerShown: false}}
+            />
+            <Stack.Screen
+                name="RoleStart"
+                component={RoleStartScreen}
+                // 01 RoleStart(신규) — 다크 인트로 화면, 자체 구성만 사용(네비 헤더 끄기).
                 options={{headerShown: false}}
             />
             <Stack.Screen

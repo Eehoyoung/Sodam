@@ -14,6 +14,9 @@ jest.mock('react-native', () => ({
     // DS v2: ScreenContainer→KeyboardAvoidingView/StatusBar, PunchButton→useWindowDimensions(useResponsive)
     KeyboardAvoidingView: 'KeyboardAvoidingView',
     StatusBar: 'StatusBar',
+    // 79 BreakTimerSheet(AttendanceSheets.tsx)가 BottomSheet→Modal 을 렌더한다(visible=false 라도
+    // 엘리먼트 자체는 생성됨) — 이 모듈 전체 모킹에 Modal 이 없으면 "Element type is invalid" 로 크래시.
+    Modal: 'Modal',
     Alert: {alert: mockAlert},
     Platform: {OS: 'ios', select: (o: any) => o.ios},
     useWindowDimensions: () => ({width: 375, height: 812}),
@@ -291,13 +294,14 @@ describe('EmployeeAttendanceHome', () => {
             await flush();
         });
 
-        // 퀵메뉴 타일만 activeOpacity=0.75 로 고정돼 있어 다른 TouchableOpacity(알림/설정/알림스트립/
-        // 정책 리스트 등)와 구분 가능하다.
-        const quickTiles = renderer!.root
-            .findAllByType('TouchableOpacity')
-            .filter(n => n.props.activeOpacity === 0.75);
+        // 퀵메뉴는 v3(docs/260720)에서 공용 QuickMenuGrid(ds)로 승격되며 Pressable + testID
+        // (`qm-tile-*`) 기반으로 바뀌었다 — 다른 Pressable(매장 패스 칩 등)과는 testID로 구분한다.
+        const quickTiles = renderer!.root.findAll(
+            n => typeof n.props.testID === 'string' && n.props.testID.startsWith('qm-tile-'),
+        );
 
-        expect(quickTiles).toHaveLength(14);
+        // WP-05(v3 매장관리+출퇴근): 15 WorkplaceList 진입점 '근무지 관리' 타일 신규 추가로 14→15.
+        expect(quickTiles).toHaveLength(15);
 
         const labels = quickTiles.map(tile => {
             const texts = tile.findAllByType('Text').map(t => t.props.children);
@@ -313,6 +317,7 @@ describe('EmployeeAttendanceHome', () => {
             '채용·구직',
             '지각/조퇴/결근 알리기',
             '시급 이력',
+            '근무지 관리',
             '공지사항',
             '매장 합류',
             '노무 정보',

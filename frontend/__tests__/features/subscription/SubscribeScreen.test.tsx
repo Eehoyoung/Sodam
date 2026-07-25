@@ -9,6 +9,9 @@ jest.mock('react-native', () => ({
     ScrollView: 'ScrollView',
     Pressable: 'Pressable',
     ActivityIndicator: 'ActivityIndicator',
+    // BillingMethodSheet(71) 배선(docs/260720 v3 감사 후속)으로 SubscribeScreen 이 항상
+    // BottomSheet(Modal 기반)를 마운트하게 됨 — 최소 mock 에 Modal 이 없어 렌더가 깨졌었다.
+    Modal: 'Modal',
     // DS v2: ScreenContainer→KeyboardAvoidingView/StatusBar, CtaStack→useWindowDimensions(useResponsive)
     KeyboardAvoidingView: 'KeyboardAvoidingView',
     StatusBar: 'StatusBar',

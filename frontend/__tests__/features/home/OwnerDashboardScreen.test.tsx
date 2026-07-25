@@ -81,6 +81,7 @@ jest.mock('../../../src/features/manager/hooks/useManagedStores', () => ({
 jest.mock('../../../src/theme/tokens', () => jest.requireActual('../../../src/theme/tokens'));
 
 import OwnerDashboardScreen from '../../../src/features/home/screens/OwnerDashboardScreen';
+import OwnerDashboardDetailScreen from '../../../src/features/home/screens/OwnerDashboardDetailScreen';
 import api from '../../../src/common/api/client';
 
 const apiMock = api as jest.Mocked<typeof api>;
@@ -300,16 +301,21 @@ describe('OwnerDashboardScreen', () => {
         expect(texts).toContain('모든 직원이 출근했어요 ✅');
     });
 
-    test('"빠르게 하기": 설정 행이 주변 구직자·채용 행으로 교체되고 나머지 3행은 그대로다 (P4 §18-9)', async () => {
+});
+
+describe('OwnerDashboardDetailScreen (10 — 08 에서 분리된 "빠르게 하기"/"인사이트")', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+        mockRouteParams = {storeId: 10} as any;
+    });
+
+    test('빠른 메뉴 5개 타일(정산/직원/위치/노무·세무/구직자·채용) + 인사이트 카드 표시', async () => {
         apiMock.get.mockImplementation((url: string) => {
-            if (url === '/api/stores/master/current') {
-                return Promise.resolve({data: [{id: 10, storeName: '소담 광교점'}]}) as any;
-            }
             if (url.includes('/stats/dashboard')) {
                 return Promise.resolve({
                     data: {
-                        today: {storeId: 10, storeName: '소담 광교점', checkedInCount: 0, totalActiveEmployees: 0, pendingEmployees: []},
-                        payroll: {totalGross: 0, totalNet: 0, totalWorkingHours: 0, daysRemainingInMonth: 0},
+                        today: {storeId: 10, storeName: '소담 광교점', checkedInCount: 3, totalActiveEmployees: 5, pendingEmployees: []},
+                        payroll: {totalGross: 1000000, totalNet: 900000, totalWorkingHours: 80, daysRemainingInMonth: 5},
                     },
                 }) as any;
             }
@@ -318,25 +324,20 @@ describe('OwnerDashboardScreen', () => {
 
         let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
         await act(async () => {
-            renderer = ReactTestRenderer.create(<OwnerDashboardScreen />);
+            renderer = ReactTestRenderer.create(<OwnerDashboardDetailScreen />);
             await flush();
         });
 
         const texts = renderer!.root.findAllByType('Text').map(t => t.props.children);
-        // 교체된 행
-        expect(texts).toContain('주변 구직자·채용');
-        expect(texts).toContain('반경 4km 인증 구직자 확인');
-        // 폐기된 행은 더 이상 없어야 함
-        expect(texts).not.toContain('설정');
-        expect(texts).not.toContain('알림·계정·매장 관리');
-        // 나머지 3행 라벨은 무변경
-        expect(texts).toContain('직원 추가');
-        expect(texts).toContain('위치·반경 설정');
-        expect(texts).toContain('노무·세무 팁');
+        expect(texts).toContain('운영 인사이트');
+        expect(texts).toContain('정산');
+        expect(texts).toContain('직원');
+        expect(texts).toContain('위치');
+        expect(texts).toContain('노무·세무');
+        expect(texts).toContain('구직자·채용');
 
-        // AppListItem 은 testID 를 host Pressable 에 그대로 스프레드하므로 findAllByProps 는
-        // (컴포지트 + host) 2개가 매치될 수 있다 — onPress 를 가진 host 노드만 골라 호출한다.
-        const matches = renderer!.root.findAllByProps({testID: 'owner-quick-menu-job-seekers'});
+        // QuickMenuGrid 는 testID(`qm-tile-${key}`)를 host Pressable 에 그대로 스프레드한다.
+        const matches = renderer!.root.findAllByProps({testID: 'qm-tile-recruitment'});
         const host = matches.find(n => typeof n.props.onPress === 'function');
         act(() => {
             host!.props.onPress();

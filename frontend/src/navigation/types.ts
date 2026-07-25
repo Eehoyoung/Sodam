@@ -18,6 +18,7 @@ export type RootStackParamList = {
 
 export type AuthStackParamList = {
     Login: {selectedPurpose?: AuthPurpose; fromSignup?: boolean} | undefined;
+    RoleStart: undefined;
     Signup: {selectedPurpose?: AuthPurpose} | undefined;
     PasswordReset: undefined;
     OnboardingCarousel: undefined;

@@ -4,7 +4,9 @@ import ReactTestRenderer, {act} from 'react-test-renderer';
 // JobSeekerDetailScreen — 260711_작업통합.md Part 2 §7.4-2 / §8.3 (Phase 4) + §15.5(Phase 6).
 // 핵심 검증:
 //   1. 라우트 파라미터(seeker)만으로 렌더 — 추가 API 호출 없음(useJobSeekers/useMyJobSeeking 미사용)
-//   2. 히어로가 그린 그라디언트(recruit.gradient)로 렌더(다크 배경 금지, §7.0)
+//   2. 히어로가 v3 시안(sodam-v3-07-recruitment.html R4)에 맞춰 흰 배경 + 회색(--border) 테두리
+//      spot 카드로 렌더(다크 배경 금지, §7.0 — 그라디언트 대신 화이트 카드로 충족). 2026-07-20
+//      코랄/틸/앰버 전환으로 "오늘 바로 출근 가능" 배지=코랄, "인증된 구직자" 텍스트=틸.
 //   3. 인증 경력/업종 분류/요일별 시간/희망지역/프라이버시 안내 섹션 렌더
 //   4. "채용 제안 보내기" CTA 탭 → `JobOfferComposeSheet` 가 열린다(Phase 6 실연결, §15.5 R-11)
 
@@ -145,15 +147,20 @@ describe('JobSeekerDetailScreen', () => {
         expect(texts).toContain('휴직중');
     });
 
-    test('히어로가 그린 그라디언트(recruit.gradient)로 렌더된다 — 다크 배경 금지(§7.0)', async () => {
+    test('히어로가 흰 배경 + 회색(--border) 테두리 spot 카드로 렌더된다 — 다크 배경 금지(§7.0), v3 시안(sodam-v3-07-recruitment.html R4)은 중립 회색 테두리', async () => {
         let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
         await act(async () => {
             renderer = ReactTestRenderer.create(<JobSeekerDetailScreen />);
             await flush();
         });
 
-        const hero = findHostByTestId(renderer!, 'job-seeker-hero-gradient');
-        expect(hero.props.colors).toEqual(['#1FA566', '#43B986']);
+        const hero = findHostByTestId(renderer!, 'job-seeker-hero-card');
+        const flatStyle = Object.assign({}, ...[hero.props.style].flat(Infinity).filter(Boolean));
+        expect(flatStyle.backgroundColor).toBe('#FFFFFF');
+        expect(flatStyle.borderColor).toBe('#E7E7E2');
+
+        const flat = joinedTextNodes(renderer!);
+        expect(flat.some(t => t.includes('소담 출퇴근 이력으로 인증된 구직자예요'))).toBe(true);
     });
 
     test('프라이버시 안내 문구 노출', async () => {

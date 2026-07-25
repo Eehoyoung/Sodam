@@ -24,6 +24,11 @@ import StoreDetailScreen from '../features/store/screens/StoreDetailScreen';
 import AttendanceScreen from '../features/attendance/screens/AttendanceScreen';
 import EmployeeAttendanceHome from '../features/attendance/screens/EmployeeAttendanceHome';
 import OwnerDashboardScreen from '../features/home/screens/OwnerDashboardScreen';
+import OwnerDashboardDetailScreen from '../features/home/screens/OwnerDashboardDetailScreen';
+import StoreListScreen from '../features/store/screens/StoreListScreen';
+import WorkplaceListScreen from '../features/workplace/screens/WorkplaceListScreen';
+import WorkplaceDetailScreen from '../features/workplace/screens/WorkplaceDetailScreen';
+import AttendanceOverviewScreen from '../features/attendance/screens/AttendanceOverviewScreen';
 import EmployeeDetailScreen from '../features/store/screens/EmployeeDetailScreen';
 import EmployeeManagementScreen from '../features/store/screens/EmployeeManagementScreen';
 import NfcTagManagementScreen from '../features/store/screens/NfcTagManagementScreen';
@@ -93,6 +98,7 @@ import JobSeekerListScreen from '../features/recruitment/screens/JobSeekerListSc
 import JobSeekerDetailScreen from '../features/recruitment/screens/JobSeekerDetailScreen';
 import JobPostingDetailScreen from '../features/recruitment/screens/JobPostingDetailScreen';
 import ElectronicSignScreen from '../features/electronicSignature/screens/ElectronicSignScreen';
+import LegalWebviewScreen from '../features/system/screens/LegalWebviewScreen';
 import type {JobPostingNearbyItem, JobSeekerListItem} from '../features/recruitment/types';
 import type {ReceiptDraft} from '../features/purchase/types';
 import appHeaderOptions from './appHeaderOptions';
@@ -117,9 +123,16 @@ export type HomeStackParamList = {
     UserMyPageScreen: undefined;
     Settings: undefined;
     Profile: undefined;
+    // 74 LegalWebview — 약관/개인정보 처리방침. kind 미지정 시 privacy 기본, body 미지정 시 기본 문구.
+    LegalWebview: {kind?: 'privacy' | 'terms' | 'location'; body?: string} | undefined;
     StoreRegistration: undefined;
     StoreDetail: { storeId: number };
     OwnerDashboard: {storeId: number; managerMode: true} | undefined;
+    OwnerDashboardDetail: {storeId: number};
+    StoreList: undefined;
+    WorkplaceList: undefined;
+    WorkplaceDetail: {storeId: number; storeName?: string};
+    AttendanceOverview: {storeId: number};
     EmployeeAttendanceHome: undefined;
     ElectronicSign: {envelopeId: number};
     EmployeeDetail: { employeeId: number; storeId: number };
@@ -276,6 +289,11 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
                 component={ProfileScreen}
                 options={{headerShown: false}}
             />
+            <Stack.Screen
+                name="LegalWebview"
+                component={LegalWebviewScreen}
+                options={{headerShown: false}}
+            />
 
             <Stack.Screen
                 name="EmployeeMyPageScreen"
@@ -312,6 +330,15 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
                 component={OwnerDashboardScreen}
                 options={{headerShown: false}}
             />
+            <Stack.Screen
+                name="OwnerDashboardDetail"
+                component={OwnerDashboardDetailScreen}
+                options={{headerShown: false}}
+            />
+            <Stack.Screen name="StoreList" component={StoreListScreen} options={{headerShown: false}} />
+            <Stack.Screen name="WorkplaceList" component={WorkplaceListScreen} options={{headerShown: false}} />
+            <Stack.Screen name="WorkplaceDetail" component={WorkplaceDetailScreen} options={{headerShown: false}} />
+            <Stack.Screen name="AttendanceOverview" component={AttendanceOverviewScreen} options={{headerShown: false}} />
             <Stack.Screen
                 name="EmployeeAttendanceHome"
                 component={EmployeeAttendanceHome}

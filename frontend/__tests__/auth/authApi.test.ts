@@ -62,6 +62,7 @@ describe('authApi', () => {
         termsAgreed: true,
         privacyAgreed: true,
         marketingAgreed: false,
+        locationInfoAgreed: false,
       },
       {headers: {'X-User-Purpose': 'master'}},
     );

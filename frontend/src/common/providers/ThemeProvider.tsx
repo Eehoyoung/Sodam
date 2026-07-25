@@ -14,7 +14,7 @@
  */
 import React, {createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState} from 'react';
 import {Appearance, ColorSchemeName} from 'react-native';
-import {colors as lightColors, darkColors} from '../../theme/tokens';
+import {colors as lightColors, darkColors, v3Colors, darkV3Colors} from '../../theme/tokens';
 import {unifiedStorage} from '../utils/unifiedStorage';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
@@ -67,6 +67,14 @@ export const useTheme = (): ThemeContextValue => {
 export function useThemedValue<T>(light: T, dark: T): T {
     return useTheme().isDark ? dark : light;
 }
+
+/**
+ * v3("링 & 패스") 색상 진입점. useThemeColors()와 같은 isDark 판정을 공유하므로
+ * v2/v3 컴포넌트가 한 화면에 섞여도 라이트/다크 전환이 항상 같이 움직인다.
+ */
+export const useV3Colors = (): typeof v3Colors => {
+    return useTheme().isDark ? (darkV3Colors as typeof v3Colors) : v3Colors;
+};
 
 const resolveColors = (mode: ThemeMode, systemScheme: ColorSchemeName): {resolved: ResolvedTheme; palette: ThemeColors} => {
     const resolved: ResolvedTheme = mode === 'system'

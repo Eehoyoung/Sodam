@@ -37,7 +37,7 @@ describe('QnAScreen', () => {
 
     fireEvent.changeText(getByPlaceholderText('이름을 입력하세요'), '홍길동');
     fireEvent.changeText(getByPlaceholderText('이메일을 입력하세요'), 'hong@example.com');
-    fireEvent.changeText(getByPlaceholderText('문의 내용을 입력하세요'), '출퇴근 화면에서 오류가 나요.');
+    fireEvent.changeText(getByPlaceholderText('궁금한 내용을 적어 주세요'), '출퇴근 화면에서 오류가 나요.');
     fireEvent.press(getByTestId('qna-inquiry-submit'));
 
     await waitFor(() => {
@@ -69,7 +69,7 @@ describe('QnAScreen', () => {
 
     fireEvent.changeText(getByPlaceholderText('이름을 입력하세요'), '홍길동');
     fireEvent.changeText(getByPlaceholderText('이메일을 입력하세요'), 'hong@example.com');
-    fireEvent.changeText(getByPlaceholderText('문의 내용을 입력하세요'), '문의 내용');
+    fireEvent.changeText(getByPlaceholderText('궁금한 내용을 적어 주세요'), '문의 내용');
     fireEvent.press(getByTestId('qna-inquiry-submit'));
 
     await waitFor(() => {

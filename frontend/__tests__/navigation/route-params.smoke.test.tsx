@@ -10,7 +10,7 @@ jest.mock('../../src/contexts/AuthContext', () => ({
 describe('AppNavigator initial route', () => {
   test('initial route is Welcome (SodamLandingScreen)', async () => {
     const { findByText } = render(<AppNavigator />);
-    const el = await findByText('사장님의 가게 관리 파트너');
+    const el = await findByText('GPS·NFC 출퇴근, 자동 급여 계산, 직원 명세 확인을 한 번에.');
     expect(el).toBeTruthy();
   });
 });

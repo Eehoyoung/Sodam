@@ -1,5 +1,4 @@
 import React from 'react';
-import {ActivityIndicator, View} from 'react-native';
 import {useQueryClient} from '@tanstack/react-query';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
@@ -8,6 +7,7 @@ import AuthNavigator from './AuthNavigator';
 import HomeNavigator from './HomeNavigator';
 import Protected from '../components/Protected';
 import SodamLandingScreen from '../features/welcome/screens/SodamLandingScreen';
+import SplashScreen from '../features/welcome/screens/SplashScreen';
 import appHeaderOptions from './appHeaderOptions';
 import {navigationRef} from './navigationRef';
 import {RootStackParamList} from './types';
@@ -78,11 +78,10 @@ const AppNavigator: React.FC<Props> = ({appReady = true}) => {
     const initialRoute = resolveInitialRootRoute(user, isAuthenticated);
 
     if (!appReady || loading) {
-        return (
-            <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
-                <ActivityIndicator />
-            </View>
-        );
+        // v3 "링 & 패스"(docs/260720) — 부트 스피너 대신 브랜드 스플래시(이미 구현되어 있었으나
+        // 어느 네비게이터에도 연결되지 않았던 컴포넌트, WP-02). onReady 콜백 없이 표시만 담당하고,
+        // 실제 화면 전환은 이 조건(appReady/loading)이 바뀌면서 그대로 처리된다 — 라우팅 로직 불변.
+        return <SplashScreen />;
     }
 
     return (
