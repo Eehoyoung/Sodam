@@ -25,9 +25,12 @@ public class PayrollPolicyService {
 
     /**
      * 매장의 급여 정책 조회
-     * 정책이 없는 경우 기본 정책 생성
+     * 정책이 없는 경우 기본 정책 생성 — 조회 중 쓰기(lazy 생성)가 발생할 수 있어 readOnly 트랜잭션을 쓰지
+     * 않는다. MySQL Connector/J는 readOnly=true 커넥션에서 실제로 쓰기를 거부하므로(H2 테스트 프로필은
+     * 이 제약을 강제하지 않아 기존 테스트가 잡아내지 못했다), readOnly로 두면 정책이 없는 매장의 최초
+     * 조회가 500으로 실패한다.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public PayrollPolicy getPayrollPolicyByStore(Long storeId) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new EntityNotFoundException("매장을 찾을 수 없습니다."));

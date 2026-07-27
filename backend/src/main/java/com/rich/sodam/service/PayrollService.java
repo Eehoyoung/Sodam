@@ -42,7 +42,7 @@ public class PayrollService {
     private final EmployeeProfileRepository employeeProfileRepository;
     private final StoreRepository storeRepository;
     private final EmployeeStoreRelationRepository employeeStoreRelationRepository;
-    private final PayrollPolicyRepository payrollPolicyRepository;
+    private final PayrollPolicyService payrollPolicyService;
     private final PayrollDetailRepository payrollDetailRepository;
     private final PayrollRepository payrollRepository;
     private final WeeklyAllowanceCalculatorResolver weeklyAllowanceResolver;
@@ -487,9 +487,11 @@ public class PayrollService {
             }
         }
 
-        // 급여 정책 조회
-        PayrollPolicy policy = payrollPolicyRepository.findByStore(store)
-                .orElseThrow(() -> new EntityNotFoundException("급여 정책을 찾을 수 없습니다."));
+        // 급여 정책 조회 — 매장이 아직 정책 화면을 한 번도 열어본 적 없어도(정책 미생성 상태) 계산이
+        // 막히지 않도록, 정책 조회 API와 동일하게 없으면 기본 정책을 lazy 생성한다(2026-07-26 Phase3
+        // 정산 마법사 실사용 검증 중 발견 — 새 매장에서 정책 화면을 거치지 않고 바로 "정산 시작"을
+        // 누르면 404로 막히던 결함).
+        PayrollPolicy policy = payrollPolicyService.getPayrollPolicyByStore(storeId);
 
         // 해당 기간의 출근 기록 조회 (Fetch Join으로 N+1 쿼리 방지)
         List<Attendance> attendances = attendanceRepository
@@ -932,7 +934,11 @@ public class PayrollService {
      * @return PDF 바이트 배열 (현재는 UTF-8 텍스트)
      * @throws EntityNotFoundException 급여 내역을 찾을 수 없을 경우
      */
-    @Transactional(readOnly = true)
+    // readOnly 아님 — 무료발급 게이팅이 payslipFreeGrantService.tryConsumeFreeGrant()로 실제 쓰기를
+    // 한다(월 1회 소진 기록). REQUIRED 전파라 readOnly=true였으면 이 커넥션 자체가 읽기전용이 돼
+    // MySQL에서 그 내부 쓰기가 거부된다(2026-07-26 Phase3 실사용 검증 중 발견 — H2 테스트 프로필은
+    // 이 제약을 강제하지 않아 기존 테스트가 잡아내지 못했다. PayrollPolicyService의 동일 결함과 같은 패턴).
+    @Transactional
     public byte[] generatePayrollPdf(Long payrollId) {
         Payroll payroll = payrollRepository.findById(payrollId)
                 .orElseThrow(() -> new EntityNotFoundException("급여 내역을 찾을 수 없습니다. ID: " + payrollId));

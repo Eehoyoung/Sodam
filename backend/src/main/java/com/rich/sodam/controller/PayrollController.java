@@ -13,7 +13,9 @@ import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.service.PayrollService;
 import com.rich.sodam.service.PayrollStoreBatchService;
+import com.rich.sodam.service.PayrollCalculationLockService;
 import com.rich.sodam.service.PayrollHighRiskActionService;
+import com.rich.sodam.service.idempotency.RequestIdempotencyService;
 import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -48,6 +50,8 @@ public class PayrollController {
     private final PayrollStoreBatchService payrollStoreBatchService;
     private final StoreAuthorizationPolicy guard;
     private final PayrollHighRiskActionService payrollHighRiskActionService;
+    private final PayrollCalculationLockService payrollCalculationLockService;
+    private final RequestIdempotencyService requestIdempotencyService;
 
     private static boolean isMaster(UserPrincipal p) {
         if (p == null || p.getAuthorities() == null) return false;
@@ -129,22 +133,27 @@ public class PayrollController {
             @Valid @RequestBody PayrollCalculationRequestDto requestDto) {
         guard.assertMasterOwnsStore(principal.getId(), requestDto.getStoreId());
 
-        // 매장 일괄 계산 모드: employeeId 미지정 → 매장 활성 직원 전체
-        if (requestDto.getEmployeeId() == null) {
-            java.util.List<PayrollDto> all = payrollStoreBatchService.calculatePayrollForStore(
-                    requestDto.getStoreId(),
-                    requestDto.getStartDate(),
-                    requestDto.getEndDate());
-            return ResponseEntity.ok(all);
-        }
+        // 동일 매장·동일 기간에 대한 계산 요청이 웹/모바일에서 동시에 들어와도 하나만 처리되도록
+        // 분산 락으로 직렬화한다(05_동시성제어_및_고급아키텍처.md §7). 락 획득 실패 시 409.
+        return payrollCalculationLockService.<ResponseEntity<?>>runLocked(
+                requestDto.getStoreId(), requestDto.getStartDate(), requestDto.getEndDate(), () -> {
+                    // 매장 일괄 계산 모드: employeeId 미지정 → 매장 활성 직원 전체
+                    if (requestDto.getEmployeeId() == null) {
+                        java.util.List<PayrollDto> all = payrollStoreBatchService.calculatePayrollForStore(
+                                requestDto.getStoreId(),
+                                requestDto.getStartDate(),
+                                requestDto.getEndDate());
+                        return ResponseEntity.ok(all);
+                    }
 
-        Payroll payroll = payrollService.calculatePayroll(
-                requestDto.getEmployeeId(),
-                requestDto.getStoreId(),
-                requestDto.getStartDate(),
-                requestDto.getEndDate());
+                    Payroll payroll = payrollService.calculatePayroll(
+                            requestDto.getEmployeeId(),
+                            requestDto.getStoreId(),
+                            requestDto.getStartDate(),
+                            requestDto.getEndDate());
 
-        return ResponseEntity.ok(PayrollDto.from(payroll));
+                    return ResponseEntity.ok(PayrollDto.from(payroll));
+                });
     }
 
     @Operation(summary = "급여 상태 업데이트", description = "급여의 상태를 업데이트합니다 (확정, 지급완료, 취소 등).")
@@ -191,10 +200,21 @@ public class PayrollController {
     public ResponseEntity<PayrollDto> issuePayroll(
             @AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "급여 ID", required = true) @PathVariable Long payrollId,
+            @Parameter(description = "멱등성 키(선택) — 지정 시 동일 키 재요청은 재확정 없이 최초 결과를 그대로 반환합니다.")
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody PayrollIssueRequest request) {
-        Payroll payroll = payrollHighRiskActionService.issue(
-                principal.getId(), payrollId, request.stepUpPassword());
-        return ResponseEntity.ok(PayrollDto.from(payroll));
+        // 멱등 캐시 스코프 키(storeId)를 얻기 위한 조회 — 권한 검증은 아래 issue() 내부에서 수행된다.
+        Long storeId = payrollService.getPayrollById(payrollId).getStore().getId();
+        PayrollDto result = requestIdempotencyService.executeOptional(
+                idempotencyKey, "payroll-issue:" + storeId,
+                () -> {
+                    Payroll payroll = payrollHighRiskActionService.issue(
+                            principal.getId(), payrollId, request.stepUpPassword());
+                    return PayrollDto.from(payroll);
+                },
+                // 재요청(동일 Idempotency-Key): step-up 재검증·audit 재기록 없이 현재 상태만 재조회.
+                () -> PayrollDto.from(payrollService.getPayrollById(payrollId)));
+        return ResponseEntity.ok(result);
     }
 
     @Operation(summary = "직원 급여 내역 조회", description = "특정 직원의 급여 내역을 기간별로 조회합니다.")
