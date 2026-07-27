@@ -65,6 +65,11 @@ public class JobApplication {
                     + "(CASE WHEN \"status\" = 'PENDING' THEN CONCAT(\"posting_id\", '_', \"applicant_user_id\") ELSE NULL END)")
     private String pendingDedupKey;
 
+    /** 낙관적 락(사장 응답과 만료 lazy 판정 동시 충돌 감지용, 06_DB_마이그레이션계획.md §2.1). */
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     private JobApplication(JobPosting posting, User applicantUser, String message) {
         this.posting = posting;
         this.applicantUser = applicantUser;

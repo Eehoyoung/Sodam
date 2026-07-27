@@ -61,6 +61,11 @@ public class PayrollDetail {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    /** 낙관적 락(06_DB_마이그레이션계획.md §2.1). */
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();

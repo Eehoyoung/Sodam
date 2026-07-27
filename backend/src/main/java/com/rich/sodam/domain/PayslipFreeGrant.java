@@ -37,6 +37,11 @@ public class PayslipFreeGrant {
     @Column(name = "granted_at", nullable = false)
     private LocalDateTime grantedAt;
 
+    /** 낙관적 락(06_DB_마이그레이션계획.md §2.1) — 동시 발급 시도 시 unique 제약과 함께 이중 방어. */
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     private PayslipFreeGrant(Long storeId, String yearMonthKey) {
         this.storeId = storeId;
         this.yearMonthKey = yearMonthKey;

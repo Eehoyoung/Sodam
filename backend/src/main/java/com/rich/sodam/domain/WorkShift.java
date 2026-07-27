@@ -56,6 +56,11 @@ public class WorkShift {
     @Column(name = "confirmation_notification_sent_at")
     private LocalDateTime confirmationNotificationSentAt;
 
+    /** 낙관적 락(웹 콘솔·모바일 동시 편집 충돌 감지용, 06_DB_마이그레이션계획.md §2.1). */
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     private WorkShift(Long employeeId, Long storeId, LocalDate shiftDate,
                       LocalTime startTime, LocalTime endTime, String memo) {
         this.employeeId = employeeId;

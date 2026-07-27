@@ -54,6 +54,11 @@ public class AttendanceCorrectionRequest {
     private LocalDateTime requestedAt;
     private LocalDateTime decidedAt;
 
+    /** 낙관적 락(웹 콘솔·모바일 동시 편집 충돌 감지용, 06_DB_마이그레이션계획.md §2.1). */
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     public static AttendanceCorrectionRequest create(
             Attendance attendance, User requester,
             LocalDateTime proposedIn, LocalDateTime proposedOut, String reason) {

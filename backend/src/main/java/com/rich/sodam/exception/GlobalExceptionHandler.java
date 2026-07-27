@@ -199,6 +199,35 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 낙관적 락 충돌(409) — 웹 콘솔·모바일 앱이 같은 리소스(출퇴근·스케줄 등)를 동시에 수정할 때
+     * JPA/Hibernate 가 버전 불일치를 감지해 던지는 예외. Spring Data JPA 는 보통
+     * {@link org.springframework.orm.ObjectOptimisticLockingFailureException}(부모는
+     * {@link org.springframework.dao.OptimisticLockingFailureException})을 던진다 — 부모 타입으로
+     * 잡아 두 경우 모두 처리한다(05_동시성제어_및_고급아키텍처.md §2, 06_DB_마이그레이션계획.md §2.1).
+     */
+    @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+    public ResponseEntity<ApiResponse<Object>> handleOptimisticLockingFailure(
+            org.springframework.dao.OptimisticLockingFailureException e) {
+        log.warn("OptimisticLockingFailure: {}", e.getMessage());
+        ApiResponse<Object> response = ApiResponse.error(
+                "OPTIMISTIC_LOCK_CONFLICT", "다른 곳에서 먼저 수정되었어요. 새로고침 후 다시 시도해 주세요.");
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+    /**
+     * 순수 JPA 표준 낙관적 락 예외 — Spring Data JPA 리포지토리를 거치지 않고 직접
+     * {@code EntityManager}/{@code jakarta.persistence}를 사용하는 경로에서 던져질 수 있어 함께 처리한다.
+     */
+    @ExceptionHandler(jakarta.persistence.OptimisticLockException.class)
+    public ResponseEntity<ApiResponse<Object>> handleJpaOptimisticLockException(
+            jakarta.persistence.OptimisticLockException e) {
+        log.warn("OptimisticLockException: {}", e.getMessage());
+        ApiResponse<Object> response = ApiResponse.error(
+                "OPTIMISTIC_LOCK_CONFLICT", "다른 곳에서 먼저 수정되었어요. 새로고침 후 다시 시도해 주세요.");
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+    /**
      * IllegalArgumentException 처리
      */
     @ExceptionHandler(IllegalArgumentException.class)

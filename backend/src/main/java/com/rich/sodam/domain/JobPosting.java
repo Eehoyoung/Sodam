@@ -71,6 +71,11 @@ public class JobPosting {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    /** 낙관적 락(웹 콘솔·모바일 동시 upsert 충돌 감지용, 06_DB_마이그레이션계획.md §2.1). */
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     private JobPosting(Store store, JobWorkType workType, JobCategory jobCategory, LocalDate workDate,
                         LocalTime startTime, LocalTime endTime, Integer hourlyWage, String message) {
         this.store = store;

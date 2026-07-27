@@ -46,6 +46,11 @@ public class ShiftTemplateEntry {
     @Column(name = "memo", length = 200)
     private String memo;
 
+    /** 낙관적 락(웹 콘솔·모바일 동시 편집 충돌 감지용, 06_DB_마이그레이션계획.md §2.1). */
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     private ShiftTemplateEntry(Long employeeId, DayOfWeek dayOfWeek,
                                LocalTime startTime, LocalTime endTime, String memo) {
         this.employeeId = employeeId;

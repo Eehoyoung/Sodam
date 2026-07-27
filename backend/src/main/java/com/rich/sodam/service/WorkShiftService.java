@@ -54,6 +54,12 @@ public class WorkShiftService {
     /**
      * 시프트 수정(사장). 매장 소유 일관성 재확인 후 날짜·시각·메모 변경.
      * 변경 시 확정·알림 상태가 리셋되어 재확정·재알림이 필요해진다(직원 통보 정합성).
+     *
+     * <p>{@code findByIdForUpdate}가 PESSIMISTIC_WRITE 락으로 항상 "지금 시점의 최신" 엔티티를
+     * 읽어오기 때문에, 클라이언트가 마지막으로 읽은 버전을 명시적으로 보내지 않으면 Hibernate의
+     * 표준 낙관적 락(버전 비교)은 절대 불일치를 감지하지 못한다(같은 트랜잭션 안에서 막 읽은
+     * 값이라 항상 최신과 일치). 그래서 요청에 버전이 실려 있으면 여기서 직접 비교해
+     * 웹 콘솔·모바일 앱의 동시 편집을 감지한다(05_동시성제어_및_고급아키텍처.md §2).
      */
     @Transactional
     public WorkShiftResponse update(Long storeId, Long shiftId, WorkShiftUpdateRequest req) {
@@ -61,6 +67,9 @@ public class WorkShiftService {
                 .orElseThrow(() -> new IllegalArgumentException("근무 일정을 찾을 수 없어요: " + shiftId));
         if (!shift.getStoreId().equals(storeId)) {
             throw new AccessDeniedException("해당 매장의 근무 일정이 아니에요.");
+        }
+        if (req.getVersion() != null && !req.getVersion().equals(shift.getVersion())) {
+            throw new org.springframework.orm.ObjectOptimisticLockingFailureException(WorkShift.class, shiftId);
         }
         validateShiftTimes(req.getStartTime(), req.getEndTime());
         shift.update(req.getShiftDate(), req.getStartTime(), req.getEndTime(), req.getMemo());

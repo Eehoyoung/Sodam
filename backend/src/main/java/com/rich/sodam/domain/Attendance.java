@@ -75,6 +75,11 @@ public class Attendance {
     @Column(nullable = false)
     private Integer appliedHourlyWage;
 
+    /** 낙관적 락(웹 콘솔·모바일 동시 편집 충돌 감지용, 06_DB_마이그레이션계획.md §2.1). */
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     /**
      * 출퇴근 기록 생성자
      *

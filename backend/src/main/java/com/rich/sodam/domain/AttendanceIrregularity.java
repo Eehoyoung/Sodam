@@ -84,6 +84,11 @@ public class AttendanceIrregularity {
     @Column(name = "resolved_at")
     private LocalDateTime resolvedAt;
 
+    /** 낙관적 락(웹 콘솔·모바일 동시 편집 충돌 감지용, 06_DB_마이그레이션계획.md §2.1). */
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     public static AttendanceIrregularity detect(Long employeeId, Long storeId, Long workShiftId, Long attendanceId,
                                                  LocalDate shiftDate, AttendanceIrregularityType type, int minutesShort) {
         AttendanceIrregularity a = new AttendanceIrregularity();

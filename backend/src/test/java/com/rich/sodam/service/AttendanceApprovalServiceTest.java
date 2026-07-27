@@ -1,6 +1,7 @@
 package com.rich.sodam.service;
 
 import com.rich.sodam.domain.Attendance;
+import com.rich.sodam.domain.AttendanceApprovalRequest;
 import com.rich.sodam.domain.AttendanceApprovalRequest.Status;
 import com.rich.sodam.domain.AttendanceApprovalRequest.Type;
 import com.rich.sodam.domain.EmployeeProfile;
@@ -15,10 +16,13 @@ import com.rich.sodam.repository.EmployeeStoreRelationRepository;
 import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.repository.UserRepository;
 import com.rich.sodam.service.AttendanceApprovalService.AttendanceApprovalResponseHolder;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +48,7 @@ class AttendanceApprovalServiceTest {
     @Autowired private EmployeeProfileRepository empRepo;
     @Autowired private EmployeeStoreRelationRepository relRepo;
     @Autowired private AttendanceRepository attendanceRepo;
+    @PersistenceContext private EntityManager entityManager;
 
     private int bizSeq = 0;
 
@@ -167,5 +172,43 @@ class AttendanceApprovalServiceTest {
         service.approve(ids.get(0));
         assertThatThrownBy(() -> service.approve(ids.get(0)))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    /**
+     * @Version 배선 자체를 검증하는 순수 JPA 낙관적 락 테스트 (06_DB_마이그레이션계획.md §2.1).
+     *
+     * <p>{@link AttendanceApprovalService#approve}/{@code reject}는 PESSIMISTIC_WRITE 락으로
+     * 항상 최신 상태를 읽어온 뒤 승인/거절 여부(isPending())로 중복 처리를 막는 구조라, 그 경로만으로는
+     * Hibernate 표준 낙관적 락(버전 비교)이 실제로 발동하는지 검증할 수 없다. 그래서 리포지토리를 직접
+     * 사용해 "서로 다른 시점에 읽은 두 스냅샷" 을 만들고, 하나가 먼저 저장된 뒤 다른 하나(오래된 버전)를
+     * 저장하면 Hibernate가 버전 불일치를 감지해 {@link ObjectOptimisticLockingFailureException}을
+     * 던지는지 — 즉 @Version 컬럼/매핑이 올바르게 동작하는지 확인한다.
+     */
+    @Test
+    @DisplayName("낙관적 락 배선 검증: 오래된 버전으로 저장하면 ObjectOptimisticLockingFailureException 이 발생한다")
+    void optimisticLockConflictOnStaleSave() {
+        Store store = store();
+        EmployeeProfile emp = employee("ver@x.com", "버전직원");
+        assign(emp, store);
+
+        AttendanceApprovalRequest saved = repo.saveAndFlush(
+                AttendanceApprovalRequest.create(emp.getId(), store.getId(), Type.CHECK_IN, LocalDateTime.now()));
+        Long id = saved.getId();
+        entityManager.detach(saved);
+
+        // 두 "클라이언트"가 서로 다른 시점에 같은 요청을 읽었다고 가정 — 각각 독립된 관리 인스턴스로 분리.
+        AttendanceApprovalRequest copy1 = repo.findById(id).orElseThrow();
+        entityManager.detach(copy1);
+        AttendanceApprovalRequest copy2 = repo.findById(id).orElseThrow();
+        entityManager.detach(copy2);
+
+        // 첫 번째 저장 — 성공, DB 버전이 증가한다.
+        copy1.reject("first-writer");
+        repo.saveAndFlush(copy1);
+
+        // 두 번째(오래된 버전 스냅샷 기준) 저장 — 충돌 감지되어 예외.
+        copy2.reject("stale-writer");
+        assertThatThrownBy(() -> repo.saveAndFlush(copy2))
+                .isInstanceOf(ObjectOptimisticLockingFailureException.class);
     }
 }

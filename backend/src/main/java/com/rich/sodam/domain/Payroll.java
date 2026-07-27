@@ -80,6 +80,11 @@ public class Payroll {
 
     private LocalDateTime updatedAt;
 
+    /** 낙관적 락(웹 콘솔·모바일 동시 편집/중복 확정 충돌 감지용, 06_DB_마이그레이션계획.md §2.1). */
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     /**
      * 세금 계산
      */

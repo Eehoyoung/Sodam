@@ -174,6 +174,69 @@ class WorkShiftServiceTest {
     }
 
     @Test
+    @DisplayName("동시 편집: 오래된 버전으로 수정하면 낙관적 락 충돌(409 매핑 예외)이 발생한다")
+    void updateDetectsStaleVersionConflict() {
+        Store store = store();
+        EmployeeProfile emp = employee("verconf@x.com", "버전충돌");
+        assign(emp, store);
+
+        WorkShiftResponse created = workShiftService.create(store.getId(),
+                req(emp.getId(), LocalDate.of(2026, 6, 17), "초안"));
+        Long staleVersion = created.version();
+
+        // 사장 웹 콘솔: 조회 당시 버전으로 먼저 수정 — 성공한다.
+        WorkShiftUpdateRequest first = new WorkShiftUpdateRequest();
+        first.setShiftDate(LocalDate.of(2026, 6, 18));
+        first.setStartTime(LocalTime.of(10, 0));
+        first.setEndTime(LocalTime.of(19, 0));
+        first.setMemo("사장 수정");
+        first.setVersion(staleVersion);
+        workShiftService.update(store.getId(), created.id(), first);
+        // 테스트가 하나의 트랜잭션(persistence context)을 공유하므로, 실제 HTTP 요청 커밋 시 자연히
+        // 일어나는 버전 증가를 관찰하려면 명시적으로 플러시해야 한다(운영에서는 요청 트랜잭션 커밋 시점에
+        // 자동으로 발생 — 서비스 코드에 별도 flush 를 추가하지는 않는다).
+        workShiftRepository.flush();
+        WorkShift afterFirst = workShiftRepository.findById(created.id()).orElseThrow();
+        assertThat(afterFirst.getVersion()).isNotEqualTo(staleVersion);
+
+        // 직원 앱: 최초 조회 당시(오래된) 버전 그대로 수정 시도 — 낙관적 락 충돌
+        WorkShiftUpdateRequest second = new WorkShiftUpdateRequest();
+        second.setShiftDate(LocalDate.of(2026, 6, 19));
+        second.setStartTime(LocalTime.of(9, 0));
+        second.setEndTime(LocalTime.of(18, 0));
+        second.setMemo("직원 앱 수정(경쟁)");
+        second.setVersion(staleVersion);
+
+        assertThatThrownBy(() -> workShiftService.update(store.getId(), created.id(), second))
+                .isInstanceOf(org.springframework.orm.ObjectOptimisticLockingFailureException.class);
+
+        // 충돌한 두 번째 시도는 반영되지 않고 첫 번째 수정 내용이 유지된다
+        WorkShift reloaded = workShiftRepository.findById(created.id()).orElseThrow();
+        assertThat(reloaded.getMemo()).isEqualTo("사장 수정");
+    }
+
+    @Test
+    @DisplayName("버전을 보내지 않으면(구버전 클라이언트 호환) 낙관적 락 검증 없이 수정된다")
+    void updateWithoutVersionSkipsConflictCheck() {
+        Store store = store();
+        EmployeeProfile emp = employee("noverconf@x.com", "버전없음");
+        assign(emp, store);
+
+        WorkShiftResponse created = workShiftService.create(store.getId(),
+                req(emp.getId(), LocalDate.of(2026, 6, 17), "초안"));
+
+        WorkShiftUpdateRequest upd = new WorkShiftUpdateRequest();
+        upd.setShiftDate(LocalDate.of(2026, 6, 18));
+        upd.setStartTime(LocalTime.of(10, 0));
+        upd.setEndTime(LocalTime.of(19, 0));
+        upd.setMemo("버전 미지정 수정");
+        // upd.setVersion(...) 호출하지 않음 — null
+
+        WorkShiftResponse res = workShiftService.update(store.getId(), created.id(), upd);
+        assertThat(res.memo()).isEqualTo("버전 미지정 수정");
+    }
+
+    @Test
     @DisplayName("다른 매장의 시프트는 수정할 수 없다")
     void updateFailsForForeignStore() {
         Store store = store();

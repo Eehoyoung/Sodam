@@ -1,5 +1,6 @@
 package com.rich.sodam.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.rich.sodam.core.payroll.leave.TimeOffConsumptionCalculator;
 import com.rich.sodam.domain.type.TimeOffLeaveType;
 import com.rich.sodam.domain.type.TimeOffStatus;
@@ -62,6 +63,12 @@ public class TimeOff {
      */
     @Column(name = "reject_reason", length = 500)
     private String rejectReason;
+
+    /** 낙관적 락(웹 콘솔·모바일 동시 편집 충돌 감지용, 06_DB_마이그레이션계획.md §2.1). */
+    @Version
+    @JsonIgnore
+    @Column(nullable = false)
+    private Long version;
 
     // 생성자 — 종일 연차(기존 호출부 호환).
     public TimeOff(EmployeeProfile employee, Store store, LocalDate startDate, LocalDate endDate, String reason) {

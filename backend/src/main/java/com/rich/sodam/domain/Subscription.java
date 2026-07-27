@@ -74,6 +74,11 @@ public class Subscription {
     @Column(nullable = false)
     private Integer paymentFailureCount = 0;
 
+    /** 낙관적 락(웹 콘솔·모바일 동시 조작 충돌 감지용, 06_DB_마이그레이션계획.md §2.1). */
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 

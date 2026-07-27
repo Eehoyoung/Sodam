@@ -72,6 +72,11 @@ public class PayrollBonus {
 
     private LocalDateTime createdAt;
 
+    /** 낙관적 락(06_DB_마이그레이션계획.md §2.1). */
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @PrePersist
     void onCreate() {
         createdAt = LocalDateTime.now();

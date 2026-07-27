@@ -54,6 +54,11 @@ public class ShiftSwapRequest {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    /** 낙관적 락(웹 콘솔·모바일 동시 편집 충돌 감지용, 06_DB_마이그레이션계획.md §2.1). */
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     private ShiftSwapRequest(Long shiftId, Long storeId, Long originalEmployeeId) {
         this.shiftId = shiftId;
         this.storeId = storeId;
