@@ -25,6 +25,14 @@ public class PayrollHighRiskActionService {
     @Transactional
     public Payroll changeStatus(Long actorUserId, Long payrollId, PayrollStatus status,
                                 java.time.LocalDate paymentDate, String cancelReason, String stepUpPassword) {
+        return changeStatus(actorUserId, payrollId, status, paymentDate, cancelReason, stepUpPassword,
+                StoreDelegationAudit.AccessChannel.MOBILE);
+    }
+
+    @Transactional
+    public Payroll changeStatus(Long actorUserId, Long payrollId, PayrollStatus status,
+                                java.time.LocalDate paymentDate, String cancelReason, String stepUpPassword,
+                                StoreDelegationAudit.AccessChannel channel) {
         Payroll payroll = lock(payrollId);
         Long storeId = payroll.getStore().getId();
         if (status != PayrollStatus.CONFIRMED && status != PayrollStatus.PAID) {
@@ -35,19 +43,25 @@ public class PayrollHighRiskActionService {
                 authorityService.require(actorUserId, storeId, ManagerPermission.PAYROLL_CONFIRM);
         stepUpAuthenticationService.verifyPassword(actorUserId, stepUpPassword);
         Payroll saved = payrollService.updatePayrollStatus(payrollId, status, paymentDate, cancelReason);
-        record(saved, authority, status.name());
+        record(saved, authority, status.name(), channel);
         return saved;
     }
 
     @Transactional
     public Payroll issue(Long actorUserId, Long payrollId, String stepUpPassword) {
+        return issue(actorUserId, payrollId, stepUpPassword, StoreDelegationAudit.AccessChannel.MOBILE);
+    }
+
+    @Transactional
+    public Payroll issue(Long actorUserId, Long payrollId, String stepUpPassword,
+                         StoreDelegationAudit.AccessChannel channel) {
         Payroll payroll = lock(payrollId);
         Long storeId = payroll.getStore().getId();
         DelegatedActionAuthorityService.Authority authority =
                 authorityService.require(actorUserId, storeId, ManagerPermission.PAYROLL_CONFIRM);
         stepUpAuthenticationService.verifyPassword(actorUserId, stepUpPassword);
         Payroll saved = payrollService.issuePayroll(payrollId);
-        record(saved, authority, "ISSUED");
+        record(saved, authority, "ISSUED", channel);
         return saved;
     }
 
@@ -56,13 +70,14 @@ public class PayrollHighRiskActionService {
                 .orElseThrow(() -> new EntityNotFoundException("급여 내역을 찾을 수 없습니다."));
     }
 
-    private void record(Payroll payroll, DelegatedActionAuthorityService.Authority authority, String result) {
+    private void record(Payroll payroll, DelegatedActionAuthorityService.Authority authority, String result,
+                        StoreDelegationAudit.AccessChannel channel) {
         auditRepository.save(StoreDelegationAudit.of(
                 payroll.getStore().getId(), payroll.getEmployee().getId(), authority.ownerUserId(),
                 authority.actorUserId(), authority.owner() ? StoreDelegationAudit.ActorType.MASTER
                         : StoreDelegationAudit.ActorType.MANAGER,
                 StoreDelegationAudit.Action.PAYROLL_CONFIRMED, authority.permissions(),
                 authority.delegationVersion(), authority.delegationEnvelopeId(), null,
-                "password-step-up:" + result));
+                "password-step-up:" + result, channel));
     }
 }

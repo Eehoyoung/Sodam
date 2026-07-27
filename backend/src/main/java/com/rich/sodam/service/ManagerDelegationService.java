@@ -186,7 +186,7 @@ public class ManagerDelegationService {
                         storeId, org.springframework.data.domain.PageRequest.of(page, size)).stream()
                 .map(a -> new AuditView(a.getAction().name(), a.getEmployeeId(), a.getActorType().name(),
                         a.getPermissionsSnapshot(), a.getDelegationVersion(), a.getSignatureEnvelopeId(),
-                        a.getDocumentSha256(), a.getReason(), a.getCreatedAt())).toList();
+                        a.getDocumentSha256(), a.getReason(), a.getCreatedAt(), a.getAccessChannel().name())).toList();
     }
 
     private void validateSignerProfile(Long userId) {
@@ -210,5 +210,5 @@ public class ManagerDelegationService {
                                        Set<ManagerPermission> permissions) {}
     public record AuditView(String action, Long employeeId, String actorType, Set<ManagerPermission> permissions,
                             int delegationVersion, Long signatureEnvelopeId, String documentSha256,
-                            String reason, java.time.LocalDateTime createdAt) {}
+                            String reason, java.time.LocalDateTime createdAt, String accessChannel) {}
 }
