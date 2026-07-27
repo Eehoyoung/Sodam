@@ -30,6 +30,14 @@ import {
 
 type Route = RouteProp<HomeStackParamList, 'SwapRequests'>;
 
+/** 개발용 시각 검증에서만 쓰는 결정형 사장 대타 모집 상태. */
+export interface SwapRequestsVisualFixture {
+    storeId: number;
+    requests: SwapRequest[];
+    shifts: WorkShift[];
+    employeeNames: Record<number, string>;
+}
+
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
 function dateLabel(iso: string): string {
@@ -45,22 +53,25 @@ function dateLabel(iso: string): string {
  * v3 시안(sodam-v3-09-schedule.html S5) 정렬: "대타 모집 열기"(시작 CTA) 섹션을 "모집 중"
  * 목록보다 위로 재배치(만들기 동작이 현황보다 먼저 보이도록).
  */
-const SwapRequestsScreen: React.FC = () => {
+const SwapRequestsScreen: React.FC<{visualFixture?: SwapRequestsVisualFixture}> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const route = useRoute<Route>();
     const c = useThemeColors();
-    const {storeId} = route.params;
+    const storeId = visualFixture?.storeId ?? route.params.storeId;
 
-    const [requests, setRequests] = useState<SwapRequest[]>([]);
-    const [shifts, setShifts] = useState<WorkShift[]>([]);
-    const [employeeNames, setEmployeeNames] = useState<Record<number, string>>({});
-    const [loading, setLoading] = useState(true);
+    const [requests, setRequests] = useState<SwapRequest[]>(() => visualFixture?.requests ?? []);
+    const [shifts, setShifts] = useState<WorkShift[]>(() => visualFixture?.shifts ?? []);
+    const [employeeNames, setEmployeeNames] = useState<Record<number, string>>(() => visualFixture?.employeeNames ?? {});
+    const [loading, setLoading] = useState(!visualFixture);
     const [error, setError] = useState(false);
     const [expandedId, setExpandedId] = useState<number | null>(null);
     const [selectedShiftId, setSelectedShiftId] = useState<number | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
     const load = useCallback(async () => {
+        if (visualFixture) {
+            return;
+        }
         setError(false);
         try {
             const from = todayIso();
@@ -84,12 +95,14 @@ const SwapRequestsScreen: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [storeId]);
+    }, [storeId, visualFixture]);
 
     useFocusEffect(
         useCallback(() => {
-            load();
-        }, [load]),
+            if (!visualFixture) {
+                void load();
+            }
+        }, [load, visualFixture]),
     );
 
     // 이미 모집 중인 시프트는 후보에서 제외
@@ -106,6 +119,11 @@ const SwapRequestsScreen: React.FC = () => {
             primary: {
                 label: '확정하기',
                 onPress: async () => {
+                    if (visualFixture) {
+                        setRequests(current => current.filter(item => item.id !== request.id));
+                        setExpandedId(null);
+                        return;
+                    }
                     try {
                         await approveSwapRequest(request.id, employeeId);
                         AppToast.success(`${employeeName}님으로 확정했어요`);
@@ -128,6 +146,11 @@ const SwapRequestsScreen: React.FC = () => {
                 label: '모집 취소',
                 destructive: true,
                 onPress: async () => {
+                    if (visualFixture) {
+                        setRequests(current => current.filter(item => item.id !== request.id));
+                        setExpandedId(null);
+                        return;
+                    }
                     try {
                         await cancelSwapRequest(request.id);
                         AppToast.show('모집을 취소했어요');
@@ -144,6 +167,10 @@ const SwapRequestsScreen: React.FC = () => {
 
     const startRecruit = async () => {
         if (selectedShiftId === null || submitting) { return; }
+        if (visualFixture) {
+            setSelectedShiftId(null);
+            return;
+        }
         setSubmitting(true);
         try {
             await createSwapRequest(selectedShiftId);

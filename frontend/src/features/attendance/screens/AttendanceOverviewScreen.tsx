@@ -24,6 +24,26 @@ import {AttendanceStatistics} from '../types';
 
 const RANGES = ['오늘', '이번 주', '이번 달'];
 
+export interface AttendanceOverviewFixtureRow {
+    name: string;
+    subtitle: string;
+}
+
+/** 개발 시각 검증용 결정형 데이터. 실서비스 API 응답을 대체하지 않는다. */
+export interface AttendanceOverviewFixture {
+    storeId: number;
+    pendingEmployees: string[];
+    checkedInCount: number;
+    totalActiveEmployees: number;
+    pendingCorrectionCount: number;
+    checkedInEntries: AttendanceOverviewFixtureRow[];
+    checkoutRiskEntries: AttendanceOverviewFixtureRow[];
+}
+
+interface AttendanceOverviewScreenProps {
+    fixture?: AttendanceOverviewFixture;
+}
+
 function isoDate(d: Date): string {
     return d.toISOString().slice(0, 10);
 }
@@ -34,19 +54,19 @@ function isoDate(d: Date): string {
  * "이번 주"/"이번 달"은 개인별 목록 API 가 없어(§ OwnerHome 과 동일 갭), 매장 단위 집계
  * (GET /api/attendance/statistics/store/{storeId})로 대체 표기한다 — 이름별 행은 만들지 않는다.
  */
-const AttendanceOverviewScreen: React.FC = () => {
+const AttendanceOverviewScreen: React.FC<AttendanceOverviewScreenProps> = ({fixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const route = useRoute<RouteProp<HomeStackParamList, 'AttendanceOverview'>>();
     const c = useThemeColors();
-    const {storeId} = route.params;
+    const storeId = fixture?.storeId ?? route.params?.storeId ?? 0;
 
     const [range, setRange] = useState(0);
-    const [pendingEmployees, setPendingEmployees] = useState<string[]>([]);
-    const [checkedInCount, setCheckedInCount] = useState(0);
-    const [totalActiveEmployees, setTotalActiveEmployees] = useState(0);
-    const [pendingCorrectionCount, setPendingCorrectionCount] = useState(0);
+    const [pendingEmployees, setPendingEmployees] = useState<string[]>(fixture?.pendingEmployees ?? []);
+    const [checkedInCount, setCheckedInCount] = useState(fixture?.checkedInCount ?? 0);
+    const [totalActiveEmployees, setTotalActiveEmployees] = useState(fixture?.totalActiveEmployees ?? 0);
+    const [pendingCorrectionCount, setPendingCorrectionCount] = useState(fixture?.pendingCorrectionCount ?? 0);
     const [rangeStats, setRangeStats] = useState<AttendanceStatistics | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!fixture);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(false);
     // 58 AttendanceFilterSheet 배선 — 상단 인라인 SegmentedControl 과 병행 배치(교체 아님).
@@ -87,9 +107,19 @@ const AttendanceOverviewScreen: React.FC = () => {
     }, [storeId]);
 
     useFocusEffect(useCallback(() => {
+        if (fixture) {
+            setPendingEmployees(fixture.pendingEmployees);
+            setCheckedInCount(fixture.checkedInCount);
+            setTotalActiveEmployees(fixture.totalActiveEmployees);
+            setPendingCorrectionCount(fixture.pendingCorrectionCount);
+            setRangeStats(null);
+            setLoading(false);
+            setError(false);
+            return;
+        }
         load(range);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [load]));
+    }, [fixture, load]));
 
     const header = (
         <AppHeader
@@ -161,7 +191,15 @@ const AttendanceOverviewScreen: React.FC = () => {
                         ))}
                         {/* ⚠️ 갭: 개인별 "정상 출근"·"퇴근 누락" 행은 BE 응답에 근거 데이터가 없어
                             이름별로 만들지 않는다(OwnerHome 과 동일 사유) — 집계만 정직하게 보여준다. */}
-                        {checkedInCount > 0 ? (
+                        {fixture ? fixture.checkedInEntries.map(entry => (
+                            <AppListItem
+                                key={`checked-in-${entry.name}`}
+                                title={entry.name}
+                                subtitle={entry.subtitle}
+                                left={<Ionicons name="checkmark-circle-outline" size={26} color={c.success} />}
+                                right={<AppBadge label="정상" tone="success" />}
+                            />
+                        )) : checkedInCount > 0 ? (
                             <AppListItem
                                 title={`정상 출근 ${checkedInCount}명`}
                                 subtitle="매장 반경 내"
@@ -169,7 +207,16 @@ const AttendanceOverviewScreen: React.FC = () => {
                                 right={<AppBadge label="정상" tone="success" />}
                             />
                         ) : null}
-                        {pendingEmployees.length === 0 && checkedInCount === 0 ? (
+                        {fixture ? fixture.checkoutRiskEntries.map(entry => (
+                            <AppListItem
+                                key={`checkout-risk-${entry.name}`}
+                                title={entry.name}
+                                subtitle={entry.subtitle}
+                                left={<Ionicons name="alert-circle-outline" size={26} color={c.error} />}
+                                right={<AppBadge label="누락" tone="error" />}
+                            />
+                        )) : null}
+                        {pendingEmployees.length === 0 && checkedInCount === 0 && !fixture ? (
                             <AppText variant="bodyMd" tone="secondary" center style={styles.emptyText}>
                                 오늘 출근 예정 인원이 없어요.
                             </AppText>

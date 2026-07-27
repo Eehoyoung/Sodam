@@ -28,6 +28,13 @@ type EmployeeManagementRouteProp = RouteProp<HomeStackParamList, 'EmployeeManage
 interface Props {
     route: EmployeeManagementRouteProp;
     navigation: NativeStackNavigationProp<HomeStackParamList>;
+    /** 개발용 시각 검증에서만 쓰는 결정형 직원 명부. */
+    visualFixture?: EmployeeManagementVisualFixture;
+}
+
+export interface EmployeeManagementVisualFixture {
+    employees: StoreEmployeeDto[];
+    storeCode: string;
 }
 
 const ROLE_LABEL: Record<string, string> = {
@@ -47,16 +54,19 @@ const isManagerGrade = (grade?: string): boolean => grade === 'ROLE_MANAGER' || 
  * 목록 행 우측에 역할 배지(직원/매니저)를 추가해 아티팩트 O3 list-item과 정렬
  * (docs/260720/artifacts/sodam-v3-13-ops.html O3 대조 반영).
  */
-export default function EmployeeManagementScreen({route, navigation}: Props) {
+export default function EmployeeManagementScreen({route, navigation, visualFixture}: Props) {
     const {storeId, managerMode = false} = route.params;
     const c = useThemeColors();
-    const [employees, setEmployees] = useState<StoreEmployeeDto[]>([]);
-    const [storeCode, setStoreCode] = useState<string>('');
-    const [loading, setLoading] = useState(true);
+    const [employees, setEmployees] = useState<StoreEmployeeDto[]>(() => visualFixture?.employees ?? []);
+    const [storeCode, setStoreCode] = useState<string>(() => visualFixture?.storeCode ?? '');
+    const [loading, setLoading] = useState(!visualFixture);
     const [error, setError] = useState<string | null>(null);
     const [inviteVisible, setInviteVisible] = useState(false);
 
     const load = useCallback(async () => {
+        if (visualFixture) {
+            return;
+        }
         try {
             setLoading(true);
             setError(null);
@@ -67,21 +77,27 @@ export default function EmployeeManagementScreen({route, navigation}: Props) {
             setEmployees(list);
             if (store?.storeCode) {setStoreCode(store.storeCode);}
         } catch (err: any) {
-            setError(err?.message || '직원 정보를 불러오지 못했어요.');
+            setError(err?.message ?? '직원 정보를 불러오지 못했어요.');
         } finally {
             setLoading(false);
         }
-    }, [storeId, managerMode]);
+    }, [storeId, managerMode, visualFixture]);
 
     // 포커스마다 재조회 — 직원 입사(코드)·삭제 등으로 목록이 바뀐 뒤 복귀해도 최신 반영.
     useFocusEffect(
         useCallback(() => {
-            load();
-        }, [load]),
+            if (!visualFixture) {
+                void load();
+            }
+        }, [load, visualFixture]),
     );
 
     // 실시간 동기화 — 이 매장에 직원이 입사/활성토글되면(보고 있는 동안) 목록 즉시 갱신.
-    useStoreLiveSync(storeId ? [storeId] : [], () => load());
+    useStoreLiveSync(visualFixture ? [] : storeId ? [storeId] : [], () => {
+        if (!visualFixture) {
+            void load();
+        }
+    });
 
     const shareCode = async () => {
         if (!storeCode) {return;}

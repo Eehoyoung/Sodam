@@ -34,24 +34,36 @@ const TYPE_OPTIONS: Array<{label: string; value: AttendanceNoticeType}> = [
     {label: '결근', value: 'ABSENCE_EXPECTED'},
 ];
 
+/** 개발용 시각 검증에서만 쓰는 결정형 사전 신고 입력 상태. */
+export interface AttendanceNoticeVisualFixture {
+    storeId: number;
+    typeIdx: number;
+    forDate: string;
+    message: string;
+}
+
 function todayDigits(): string {
     const d = new Date();
     return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
 }
 
-const AttendanceNoticeScreen: React.FC = () => {
+const AttendanceNoticeScreen: React.FC<{visualFixture?: AttendanceNoticeVisualFixture}> = ({visualFixture}) => {
     const route = useRoute<RouteProp<HomeStackParamList, 'AttendanceNotice'>>();
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
-    const storeId = route.params?.storeId;
+    const storeId = visualFixture?.storeId ?? route.params?.storeId;
 
-    const [typeIdx, setTypeIdx] = useState(0);
-    const [forDate, setForDateValue] = useState(todayDigits());
+    const [typeIdx, setTypeIdx] = useState(visualFixture?.typeIdx ?? 0);
+    const [forDate, setForDateValue] = useState(visualFixture?.forDate ?? todayDigits());
     const setForDate = (value: string) => setForDateValue(sanitizeDateDigits(value));
-    const [message, setMessage] = useState('');
+    const [message, setMessage] = useState(visualFixture?.message ?? '');
     const [loading, setLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
 
     const submit = async () => {
+        if (visualFixture) {
+            setSubmitted(true);
+            return;
+        }
         if (!storeId) {
             AppToast.warn('매장 정보가 없어요.');
             return;

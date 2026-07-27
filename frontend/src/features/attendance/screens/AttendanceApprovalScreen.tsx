@@ -30,6 +30,12 @@ type AttendanceApprovalRouteProp = RouteProp<HomeStackParamList, 'AttendanceAppr
 interface Props {
     route: AttendanceApprovalRouteProp;
     navigation: NativeStackNavigationProp<HomeStackParamList>;
+    /** 개발용 시각 검증에서만 쓰는 결정형 승인 대기 목록. */
+    visualFixture?: AttendanceApprovalVisualFixture;
+}
+
+export interface AttendanceApprovalVisualFixture {
+    items: AttendanceApproval[];
 }
 
 function formatRequestedTime(iso: string): string {
@@ -48,34 +54,47 @@ function formatRequestedTime(iso: string): string {
  *
  * v3 시안(sodam-v3-09-schedule.html S8) 정렬: 상단 안내문을 info-card(AppCard)로 감싸 표시.
  */
-export default function AttendanceApprovalScreen({route, navigation}: Props) {
+export default function AttendanceApprovalScreen({route, navigation, visualFixture}: Props) {
     const {storeId} = route.params;
     const c = useThemeColors();
-    const [items, setItems] = useState<AttendanceApproval[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [items, setItems] = useState<AttendanceApproval[]>(() => visualFixture?.items ?? []);
+    const [loading, setLoading] = useState(!visualFixture);
     const [error, setError] = useState<string | null>(null);
     const [busyId, setBusyId] = useState<number | null>(null);
 
     const load = useCallback(async () => {
+        if (visualFixture) {
+            return;
+        }
         try {
             setLoading(true);
             setError(null);
             setItems(await fetchStoreApprovals(storeId, 'PENDING'));
         } catch (err: any) {
-            setError(err?.message || '승인 요청을 불러오지 못했어요.');
+            setError(err?.message ?? '승인 요청을 불러오지 못했어요.');
         } finally {
             setLoading(false);
         }
-    }, [storeId]);
+    }, [storeId, visualFixture]);
 
     useFocusEffect(useCallback(() => {
-        load();
-    }, [load]));
+        if (!visualFixture) {
+            void load();
+        }
+    }, [load, visualFixture]));
 
     // 직원이 요청하면(보고 있는 동안) 목록 즉시 갱신.
-    useStoreLiveSync(storeId ? [storeId] : [], () => load());
+    useStoreLiveSync(visualFixture ? [] : storeId ? [storeId] : [], () => {
+        if (!visualFixture) {
+            void load();
+        }
+    });
 
     const decide = async (item: AttendanceApproval, approve: boolean) => {
+        if (visualFixture) {
+            setItems(current => current.filter(candidate => candidate.id !== item.id));
+            return;
+        }
         const verb = item.type === 'CHECK_IN' ? '출근' : '퇴근';
         setBusyId(item.id);
         try {

@@ -1,6 +1,6 @@
 import {AppToast, AppButton, AppCard, AppHeader, AppInput, AppText, CtaStack, ScreenContainer, SuccessState} from '../../../common/components/ds';
 import React, {useState} from 'react';
-import {StyleSheet, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
@@ -19,12 +19,21 @@ import {
 
 type RouteParams = NonNullable<HomeStackParamList['AttendanceCorrectionRequest']>;
 
+/** 개발 시각 검증에서 API 호출 없이 정정 완료 상태를 고정한다. */
+export interface AttendanceCorrectionRequestVisualFixture {
+    submitted: boolean;
+}
+
+interface AttendanceCorrectionRequestScreenProps {
+    visualFixture?: AttendanceCorrectionRequestVisualFixture;
+}
+
 /**
  * 24 CorrectionRequest — 확정 시안.
  * 직원이 잘못 기록된 출퇴근을 사장에게 정정 요청.
  * POST /api/attendance/{attendanceId}/correction-request 로 실제 제출(사장 승인 워크플로).
  */
-const AttendanceCorrectionRequestScreen: React.FC = () => {
+const AttendanceCorrectionRequestScreen: React.FC<AttendanceCorrectionRequestScreenProps> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const route = useRoute<RouteProp<HomeStackParamList, 'AttendanceCorrectionRequest'>>();
     const c = useThemeColors();
@@ -36,7 +45,7 @@ const AttendanceCorrectionRequestScreen: React.FC = () => {
     const setCheckOut = (value: string) => setCheckOutValue(sanitizeTimeDigits(value));
     const [reason, setReason] = useState('');
     const [loading, setLoading] = useState(false);
-    const [submitted, setSubmitted] = useState(false);
+    const [submitted, setSubmitted] = useState(visualFixture?.submitted ?? false);
 
     const submit = async () => {
         if (!reason.trim() || reason.trim().length < 5) {
@@ -70,8 +79,10 @@ const AttendanceCorrectionRequestScreen: React.FC = () => {
 
     if (submitted) {
         return (
-            <ScreenContainer header={<AppHeader title="정정 요청" onBack={() => navigation.goBack()} />}>
+            <ScreenContainer header={<AppHeader title="정정 요청" rightText="닫기" onRightText={() => navigation.goBack()} />}>
                 <SuccessState
+                    glyph={<Text style={[styles.stateGlyph, {color: c.success}]}>✓</Text>}
+                    markColor={c.successBg}
                     title="정정 요청을 보냈어요"
                     description="사장님이 승인하면 기록에 반영됩니다."
                     primary={{label: '근무 기록으로', onPress: () => navigation.goBack()}}
@@ -156,6 +167,7 @@ const styles = StyleSheet.create({
     sub: {marginTop: 4},
     form: {marginTop: spacing.xl, gap: spacing.lg},
     disclaimer: {marginTop: spacing.xl, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs},
+    stateGlyph: {fontSize: 22, fontWeight: '900'},
 });
 
 export default AttendanceCorrectionRequestScreen;

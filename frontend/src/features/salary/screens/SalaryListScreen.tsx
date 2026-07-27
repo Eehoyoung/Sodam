@@ -32,15 +32,26 @@ const STATUS_LABEL: Record<string, string> = {
 // (payrollService.listByStore 가 BE PayrollDto[](id/netWage/평평한 startDate·endDate) 를 변환해서 반환).
 type SalaryRow = PayrollSummary;
 
-const SalaryListScreen = () => {
+export interface SalaryListFixture {
+    stores: {id: number; name: string}[];
+    rows: PayrollSummary[];
+    summaryLabel?: string;
+    summarySub?: string;
+}
+
+interface SalaryListScreenProps {
+    fixture?: SalaryListFixture;
+}
+
+const SalaryListScreen: React.FC<SalaryListScreenProps> = ({fixture}) => {
     const navigation = useNavigation<SalaryListScreenNavigationProp>();
     const c = useThemeColors();
-    const [rows, setRows] = useState<SalaryRow[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [rows, setRows] = useState<SalaryRow[]>(fixture?.rows ?? []);
+    const [loading, setLoading] = useState(!fixture);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(false);
-    const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
-    const [stores, setStores] = useState<{ id: number; name: string }[]>([]);
+    const [selectedStoreId, setSelectedStoreId] = useState<number | null>(fixture?.stores[0]?.id ?? null);
+    const [stores, setStores] = useState<{ id: number; name: string }[]>(fixture?.stores ?? []);
 
     // 매장 목록 — 실제 매장 선택 API 연동 전까지 보유 매장 placeholder.
     // (정산 목록은 매장 단위 /api/payroll/store/{id} 로만 조회 가능하므로 매장 선택이 필요)
@@ -77,29 +88,41 @@ const SalaryListScreen = () => {
     }, []);
 
     useEffect(() => {
+        if (fixture) {
+            return;
+        }
         fetchStores();
-    }, [fetchStores]);
+    }, [fixture, fetchStores]);
 
     useEffect(() => {
+        if (fixture) {
+            return;
+        }
         setLoading(true);
         fetchPayrolls(selectedStoreId);
-    }, [selectedStoreId, fetchPayrolls]);
+    }, [fixture, selectedStoreId, fetchPayrolls]);
 
     // 급여 생성(PayrollRun) 등 타 화면에서 돌아왔을 때 목록을 최신화한다.
     useFocusEffect(
         useCallback(() => {
+            if (fixture) {
+                return;
+            }
             fetchPayrolls(selectedStoreId);
-        }, [selectedStoreId, fetchPayrolls]),
+        }, [fixture, selectedStoreId, fetchPayrolls]),
     );
 
     // 화면을 보고 있는 동안 급여 생성/확정/지급이 일어나면 즉시 반영 (사장-직원 동시 조회 동기화)
-    useStoreLiveSync(selectedStoreId ? [selectedStoreId] : [], e => {
+    useStoreLiveSync(!fixture && selectedStoreId ? [selectedStoreId] : [], e => {
         if (e.type === 'PAYROLL_CHANGED') {
             fetchPayrolls(selectedStoreId);
         }
     });
 
     const handleRefresh = () => {
+        if (fixture) {
+            return;
+        }
         setRefreshing(true);
         fetchPayrolls(selectedStoreId);
     };
@@ -165,9 +188,9 @@ const SalaryListScreen = () => {
     const listHeader =
         rows.length > 0 ? (
             <MoneyCard
-                label="이번 정산 예상"
+                label={fixture?.summaryLabel ?? '이번 정산 예상'}
                 value={formatMoney(totalPay)}
-                sub={`${rows.length}명 · 직원별 명세는 아래에서 확인해요`}
+                sub={fixture?.summarySub ?? `${rows.length}명 · 직원별 명세는 아래에서 확인해요`}
                 style={styles.heroBlock}
             />
         ) : null;

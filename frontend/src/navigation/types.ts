@@ -14,6 +14,8 @@ export type RootStackParamList = {
     PermissionDenied: {kind?: string; secondaryLabel?: string} | undefined;
     PaymentFailed: undefined;
     SubscriptionGate: {mode?: string; featureName?: string} | undefined;
+    /** Development-only Android visual-regression route. */
+    V3Visual: {source: 'reference' | 'actual'; screenId: string};
 };
 
 export type AuthStackParamList = {

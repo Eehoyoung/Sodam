@@ -1,6 +1,6 @@
 import React from 'react';
 import {useQueryClient} from '@tanstack/react-query';
-import {NavigationContainer} from '@react-navigation/native';
+import {LinkingOptions, NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {authQueryKeys} from '../common/auth/queryKeys';
 import AuthNavigator from './AuthNavigator';
@@ -13,6 +13,7 @@ import {navigationRef} from './navigationRef';
 import {RootStackParamList} from './types';
 import {resolveInitialRootRoute} from './authFlow';
 import {useAuth} from '../contexts/AuthContext';
+import V3VisualHarnessScreen from '../features/visual/V3VisualHarnessScreen';
 import {
     SessionExpiredScreen,
     PermissionDeniedScreen,
@@ -21,6 +22,23 @@ import {
 } from '../features/system/screens';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+const visualLinking: LinkingOptions<RootStackParamList> | undefined = __DEV__
+    ? {
+        prefixes: ['sodam://'],
+        config: {
+            screens: {
+                V3Visual: {
+                    path: 'v3/:source/:screenId',
+                    parse: {
+                        source: value => value === 'reference' ? 'reference' : 'actual',
+                        screenId: value => value,
+                    },
+                },
+            },
+        },
+    }
+    : undefined;
 
 const SessionExpiredRoute: React.FC<any> = ({navigation}) => {
     const queryClient = useQueryClient();
@@ -85,7 +103,7 @@ const AppNavigator: React.FC<Props> = ({appReady = true}) => {
     }
 
     return (
-        <NavigationContainer ref={navigationRef}>
+        <NavigationContainer ref={navigationRef} linking={visualLinking}>
             <Stack.Navigator
                 initialRouteName={initialRoute.name}
                 screenOptions={appHeaderOptions}>
@@ -111,6 +129,13 @@ const AppNavigator: React.FC<Props> = ({appReady = true}) => {
                 <Stack.Screen name="PermissionDenied" component={PermissionDeniedRoute} options={{title: '권한 안내'}} />
                 <Stack.Screen name="PaymentFailed" component={PaymentFailedRoute} options={{title: '결제'}} />
                 <Stack.Screen name="SubscriptionGate" component={SubscriptionGateRoute} options={{title: '구독'}} />
+                {__DEV__ ? (
+                    <Stack.Screen
+                        name="V3Visual"
+                        component={V3VisualHarnessScreen}
+                        options={{headerShown: false, animation: 'none', gestureEnabled: false}}
+                    />
+                ) : null}
             </Stack.Navigator>
         </NavigationContainer>
     );

@@ -30,7 +30,7 @@ const KakaoLoginScreen: React.FC = () => {
     const route = useRoute<RouteProp<AuthStackParamList, 'KakaoLogin'>>();
     const insets = useSafeAreaInsets();
     const [status, setStatus] = useState<KakaoStatus>('idle');
-    const [message, setMessage] = useState('카카오 인증을 시작하면 브라우저가 열립니다.');
+    const [message, setMessage] = useState('처음 한 번만 동의하면 다음부터 바로 들어올 수 있어요.');
     const {kakaoLogin} = useAuth();
 
     const completeWithCode = useCallback(async (code: string) => {

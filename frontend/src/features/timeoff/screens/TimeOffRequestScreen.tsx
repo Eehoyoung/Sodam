@@ -10,11 +10,12 @@ import {
     SuccessState,
 } from '../../../common/components/ds';
 import React, {useState} from 'react';
-import {StyleSheet, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {spacing} from '../../../theme/tokens';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {
     DATE_DIGITS_HELPER,
     TIME_DIGITS_HELPER,
@@ -46,9 +47,19 @@ const UNIT_OPTIONS: Array<{label: string; value: TimeOffUnit}> = [
     {label: '시간단위', value: 'HOURS'},
 ];
 
-const TimeOffRequestScreen: React.FC = () => {
+/** 개발 시각 검증에서 서버 요청 없이 완료 상태를 재현한다. */
+export interface TimeOffRequestVisualFixture {
+    submitted: boolean;
+}
+
+interface TimeOffRequestScreenProps {
+    visualFixture?: TimeOffRequestVisualFixture;
+}
+
+const TimeOffRequestScreen: React.FC<TimeOffRequestScreenProps> = ({visualFixture}) => {
     const route = useRoute<RouteProp<HomeStackParamList, 'TimeOffRequest'>>();
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
+    const c = useThemeColors();
     const storeId = route.params?.storeId;
 
     const [leaveTypeIdx, setLeaveTypeIdx] = useState(0);
@@ -81,7 +92,7 @@ const TimeOffRequestScreen: React.FC = () => {
 
     const [reason, setReason] = useState('');
     const [loading, setLoading] = useState(false);
-    const [submitted, setSubmitted] = useState(false);
+    const [submitted, setSubmitted] = useState(visualFixture?.submitted ?? false);
 
     const submit = async () => {
         if (!storeId) {
@@ -135,12 +146,13 @@ const TimeOffRequestScreen: React.FC = () => {
 
     if (submitted) {
         return (
-            <ScreenContainer header={<AppHeader title="휴가 신청" onBack={() => navigation.goBack()} />}>
+            <ScreenContainer header={<AppHeader title="휴가 신청" rightText="닫기" onRightText={() => navigation.goBack()} />}>
                 <SuccessState
+                    glyph={<Text style={[styles.stateGlyph, {color: c.success}]}>✓</Text>}
+                    markColor={c.successBg}
                     title="휴가 신청을 보냈어요"
                     description="승인 결과는 알림으로 알려드릴게요."
                     primary={{label: '내 정보로 돌아가기', onPress: () => navigation.goBack()}}
-                    secondary={{label: '내 요청 확인하기', onPress: () => navigation.navigate('RequestStatus')}}
                 />
             </ScreenContainer>
         );
@@ -233,6 +245,7 @@ const styles = StyleSheet.create({
     fieldLabel: {marginBottom: spacing.xs, marginLeft: 2},
     timeRow: {flexDirection: 'row', gap: spacing.md},
     timeField: {flex: 1},
+    stateGlyph: {fontSize: 22, fontWeight: '900'},
     // HomeNavigator의 역할 탭바가 stack 화면 위에 겹치므로 CTA를 탭바 높이만큼 올린다.
     tabSafeFooter: {marginBottom: spacing.xxxl + spacing.xl},
 });

@@ -32,6 +32,12 @@ type NfcTagManagementRouteProp = RouteProp<HomeStackParamList, 'NfcTagManagement
 interface Props {
     route: NfcTagManagementRouteProp;
     navigation: NativeStackNavigationProp<HomeStackParamList>;
+    /** 개발용 시각 검증에서만 쓰는 결정형 NFC 태그 목록. */
+    visualFixture?: NfcTagManagementVisualFixture;
+}
+
+export interface NfcTagManagementVisualFixture {
+    tags: StoreNfcTag[];
 }
 
 function extractErrorMessage(err: unknown, fallback: string): string {
@@ -44,26 +50,36 @@ function extractErrorMessage(err: unknown, fallback: string): string {
  * "직원이 태그를 찍어 출퇴근하는" 검증 플로우와는 별개(대리출근 방지용 매장-태그 매핑 관리).
  * BE: NfcTagController (`/api/stores/{storeId}/nfc-tags`).
  */
-export default function NfcTagManagementScreen({route, navigation}: Props) {
+export default function NfcTagManagementScreen({route, navigation, visualFixture}: Props) {
     const {storeId} = route.params;
     const c = useThemeColors();
     const [tagId, setTagId] = useState('');
     const [label, setLabel] = useState('');
     const [busyTagPk, setBusyTagPk] = useState<number | null>(null);
+    const [fixtureTags, setFixtureTags] = useState<StoreNfcTag[]>(() => visualFixture?.tags ?? []);
 
-    const {data: tags = [], isLoading, isError, refetch} = useNfcTags(storeId);
+    const {data: queriedTags = [], isLoading: queryLoading, isError: queryError, refetch} = useNfcTags(storeId, !visualFixture);
     const registerMutation = useRegisterNfcTag(storeId);
     const deactivateMutation = useDeactivateNfcTag(storeId);
     const activateMutation = useActivateNfcTag(storeId);
+    const tags = visualFixture ? fixtureTags : queriedTags;
+    const isLoading = !visualFixture && queryLoading;
+    const isError = !visualFixture && queryError;
 
     // 포커스마다 재조회 — 태그 등록/비활성화 후 다른 화면 갔다 돌아와도 최신 반영.
     useFocusEffect(
         useCallback(() => {
-            refetch();
-        }, [refetch]),
+            if (!visualFixture) {
+                void refetch();
+            }
+        }, [refetch, visualFixture]),
     );
 
     const handleRegister = async () => {
+        if (visualFixture) {
+            AppToast.show('시각 검증 fixture에서는 태그를 변경하지 않아요.');
+            return;
+        }
         const trimmedTagId = tagId.trim();
         if (!trimmedTagId) {
             AppToast.error('태그 ID를 입력해 주세요.');
@@ -80,6 +96,10 @@ export default function NfcTagManagementScreen({route, navigation}: Props) {
     };
 
     const handleToggle = async (tag: StoreNfcTag) => {
+        if (visualFixture) {
+            setFixtureTags(current => current.map(item => item.id === tag.id ? {...item, active: !item.active} : item));
+            return;
+        }
         setBusyTagPk(tag.id);
         try {
             if (tag.active) {

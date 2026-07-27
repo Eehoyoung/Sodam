@@ -27,7 +27,7 @@ const SubscriptionGateScreen: React.FC<Props> = ({mode = 'gate', featureName = '
             <View style={styles.center}>
                 <Brandmark size={56} label={expired ? '!' : '✦'} backgroundColor={expired ? c.warning : c.brandPrimary} />
                 <AppText variant="headingMd" center style={styles.title}>
-                    {expired ? '구독이 만료됐어요' : '비즈니스 플랜에서 쓸 수 있어요'}
+                    {expired ? '구독이 만료됐어요' : '비즈니스 플랜에서\n쓸 수 있어요'}
                 </AppText>
                 <AppText variant="bodyMd" tone="secondary" center style={styles.desc}>
                     {expired

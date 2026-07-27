@@ -31,6 +31,13 @@ import type {AttendanceIrregularity, AttendanceIrregularityType} from '../types'
 
 type Route = RouteProp<{R: {storeId: number}}, 'R'>;
 
+/** Development-only deterministic data for the v3 Android visual harness. */
+export interface AttendanceIrregularitiesVisualFixture {
+    storeId: number;
+    items: AttendanceIrregularity[];
+    range?: {from: string; to: string};
+}
+
 const TYPE_LABEL: Record<AttendanceIrregularityType, string> = {
     LATE: '지각',
     EARLY_LEAVE: '조퇴',
@@ -49,25 +56,36 @@ function toDateInputString(d: Date): string {
     return d.toISOString().slice(0, 10);
 }
 
-const AttendanceIrregularitiesScreen: React.FC = () => {
+function shortDateLabel(date: string): string {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+    return match ? `${Number(match[2])}/${Number(match[3])}` : date;
+}
+
+const AttendanceIrregularitiesScreen: React.FC<{visualFixture?: AttendanceIrregularitiesVisualFixture}> = ({visualFixture}) => {
     const navigation = useNavigation<NavigationProp<HomeStackParamList>>();
     const route = useRoute<Route>();
     const c = useThemeColors();
-    const {storeId} = route.params;
+    const storeId = visualFixture?.storeId ?? route.params.storeId;
 
     const range = useMemo(() => {
+        if (visualFixture?.range) {
+            return visualFixture.range;
+        }
         const to = new Date();
         const from = new Date();
         from.setDate(from.getDate() - 13);
         return {from: toDateInputString(from), to: toDateInputString(to)};
-    }, []);
+    }, [visualFixture]);
 
-    const [items, setItems] = useState<AttendanceIrregularity[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [items, setItems] = useState<AttendanceIrregularity[]>(() => visualFixture?.items ?? []);
+    const [loading, setLoading] = useState(!visualFixture);
     const [error, setError] = useState(false);
     const [busyId, setBusyId] = useState<number | null>(null);
 
     const load = useCallback(async () => {
+        if (visualFixture) {
+            return;
+        }
         setLoading(true);
         setError(false);
         try {
@@ -77,17 +95,23 @@ const AttendanceIrregularitiesScreen: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [storeId, range]);
+    }, [storeId, range, visualFixture]);
 
     useFocusEffect(useCallback(() => {
-        load();
-    }, [load]));
+        if (!visualFixture) {
+            void load();
+        }
+    }, [load, visualFixture]));
 
     const runAction = async (
         item: AttendanceIrregularity,
         action: (storeId: number, id: number) => Promise<AttendanceIrregularity>,
         successMessage: string,
     ) => {
+        if (visualFixture) {
+            AppToast.success(successMessage);
+            return;
+        }
         setBusyId(item.id);
         try {
             await action(storeId, item.id);
@@ -154,8 +178,8 @@ const AttendanceIrregularitiesScreen: React.FC = () => {
             {/* v3 시안(S9): 안내문을 info-card 로 감싸 표시 */}
             <AppCard variant="flat" style={styles.intro}>
                 <AppText variant="bodyMd" tone="secondary">
-                    최근 14일간 스케줄 대비 지각/조퇴/결근이 자동으로 감지돼요. 공제는 이미 이번 정산에
-                    반영되어 있으니, 사유가 있으면 공제 없이 처리하거나 연차로 대체할 수 있어요.
+                    최근 14일간 스케줄 대비 지각/조퇴/결근이 자동으로 감지돼요. 공제는 이미 이번 정산에 반영되어 있어요.
+                    사유가 있으면 공제 없이 처리하거나 연차로 대체할 수 있어요.
                 </AppText>
             </AppCard>
 
@@ -179,12 +203,12 @@ const AttendanceIrregularitiesScreen: React.FC = () => {
                                             {item.employeeName ?? '직원'} · {TYPE_LABEL[item.type]}
                                         </AppText>
                                         <AppText variant="caption" tone="secondary">
-                                            {item.shiftDate} · {minutesLabel(item.minutesShort)}
+                                            {shortDateLabel(item.shiftDate)} · {minutesLabel(item.minutesShort)}
                                         </AppText>
                                     </View>
                                     <AppBadge
                                         label={
-                                            pending ? '미확인'
+                                            pending ? '미확정'
                                                 : item.resolution === 'WAIVED' ? '공제없음'
                                                 : item.resolution === 'DEDUCTED' ? '공제확인'
                                                 : '연차전환'
@@ -211,7 +235,7 @@ const AttendanceIrregularitiesScreen: React.FC = () => {
                                             onPress={() => convertToLeave(item)}
                                         />
                                         <AppButton
-                                            label="공제 확인"
+                                            label="공제 확정"
                                             fullWidth={false}
                                             loading={busy}
                                             disabled={busy}

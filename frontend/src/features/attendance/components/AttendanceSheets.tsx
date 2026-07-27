@@ -3,8 +3,9 @@
  * 시트는 BottomSheet, 성공/실패/미지원은 SuccessState/ErrorState 기반.
  */
 import React, {useState} from 'react';
-import {StyleSheet, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import {
+    AppHeader,
     AppInput,
     BottomSheet,
     ErrorState,
@@ -156,13 +157,13 @@ export const PersonalRecordEditSheet: React.FC<{
 };
 
 /* 60 NFC Unsupported (screen) — 아티팩트 icon-circle: amber(경고), 코랄(error) 아님 */
-export const NfcUnsupportedScreen: React.FC<{onGps: () => void; onManual: () => void}> = ({onGps, onManual}) => {
+export const NfcUnsupportedScreen: React.FC<{onGps: () => void; onManual: () => void; onClose?: () => void}> = ({onGps, onManual, onClose}) => {
     const c = useThemeColors();
     return (
-        <ScreenContainer>
+        <ScreenContainer header={<AppHeader title="NFC 미지원" rightText={onClose ? '닫기' : undefined} onRightText={onClose} />}>
             <ErrorState
-                glyph="!"
-                markColor={c.warning}
+                glyph={<Text style={[styles.stateGlyph, {color: c.warning}]}>!</Text>}
+                markColor={c.warningBg}
                 title={'이 기기는 NFC를\n지원하지 않아요'}
                 description="GPS 출근 또는 사장님께 수동 요청을 사용할 수 있어요."
                 primary={{label: 'GPS로 출근하기', onPress: onGps}}
@@ -173,24 +174,29 @@ export const NfcUnsupportedScreen: React.FC<{onGps: () => void; onManual: () => 
 };
 
 /* 62 Punch Success */
-export const PunchSuccessScreen: React.FC<{time: string; storeName: string; wage: number; onStart: () => void}> = ({time, storeName, wage, onStart}) => (
-    <ScreenContainer>
-        <SuccessState
-            title="출근 처리됐어요"
-            description={`${time} · ${storeName} · 시급 ${formatMoney(wage)}으로 기록했어요.`}
-            primary={{label: '근무 시작', onPress: onStart}}
-        />
-    </ScreenContainer>
-);
+export const PunchSuccessScreen: React.FC<{time: string; storeName: string; wage: number; onStart: () => void; onClose?: () => void}> = ({time, storeName, wage, onStart, onClose}) => {
+    const c = useThemeColors();
+    return (
+        <ScreenContainer header={<AppHeader title="출근 완료" rightText={onClose ? '닫기' : undefined} onRightText={onClose} />}>
+            <SuccessState
+                glyph={<Text style={[styles.stateGlyph, {color: c.success}]}>✓</Text>}
+                markColor={c.successBg}
+                title="출근 처리됐어요"
+                description={`${time} · ${storeName} · 시급 ${formatMoney(wage)}으로 기록했어요.`}
+                primary={{label: '근무 시작', onPress: onStart}}
+            />
+        </ScreenContainer>
+    );
+};
 
 /* 63 Punch Failed (radius) — 아티팩트 icon-circle: amber(경고), 코랄(error) 아님 */
 export const PunchFailedScreen: React.FC<{onRetry: () => void; onManual: () => void}> = ({onRetry, onManual}) => {
     const c = useThemeColors();
     return (
-        <ScreenContainer>
+        <ScreenContainer header={<AppHeader title="출근 실패" rightText="도움" onRightText={onManual} />}>
             <ErrorState
-                glyph="!"
-                markColor={c.warning}
+                glyph={<Text style={[styles.stateGlyph, {color: c.warning}]}>!</Text>}
+                markColor={c.warningBg}
                 title="매장 반경 밖이에요"
                 description="매장 근처에서 다시 시도하거나 사장님께 수동 처리를 요청하세요."
                 primary={{label: '다시 시도', onPress: onRetry}}
@@ -202,6 +208,7 @@ export const PunchFailedScreen: React.FC<{onRetry: () => void; onManual: () => v
 
 const styles = StyleSheet.create({
     form: {gap: spacing.md, marginTop: spacing.xs},
+    stateGlyph: {fontSize: 22, fontWeight: '900'},
 });
 
 export default {

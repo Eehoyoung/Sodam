@@ -91,19 +91,25 @@ interface LoadingStateProps {
     description?: string;
     /** spinner 대신 점진 막대 등 커스텀 */
     children?: ReactNode;
+    /** 결정형 상태 화면에서 기본 spinner 대신 표시할 glyph. */
+    glyph?: ReactNode;
+    /** glyph/spinner mark 배경을 상태별로 지정한다. */
+    markColor?: string;
 }
 
 export const LoadingState: React.FC<LoadingStateProps> = ({
     title = '불러오는 중',
     description = '매장 상태를 불러오고 있어요',
     children,
+    glyph,
+    markColor,
 }) => {
     const c = useThemeColors();
     return (
         <View style={styles.center}>
             <View style={styles.inner}>
-                <View style={[styles.mark, {backgroundColor: c.brandPrimary}]}>
-                    <ActivityIndicator color={c.textInverse} />
+                <View style={[styles.mark, {backgroundColor: markColor ?? c.brandPrimary}]}>
+                    {glyph === undefined ? <ActivityIndicator color={c.textInverse} /> : glyph}
                 </View>
                 <Text style={[styles.title, {color: c.textPrimary}]}>{title}</Text>
                 {description ? <Text style={[styles.copy, {color: c.textSecondary}]}>{description}</Text> : null}

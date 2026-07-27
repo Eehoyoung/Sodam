@@ -20,7 +20,7 @@ import {radius, spacing} from '../../../theme/tokens';
 import {isOvernight, shortTime, WorkShift} from '../services/shiftService';
 
 const ROW_HEIGHT = 84;
-const WEEKDAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
+const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
 interface Props {
     weekDates: string[];
@@ -115,7 +115,8 @@ function DayRow({
     disabled,
     colors: c,
 }: DayRowProps) {
-    const [, month, day] = date.split('-');
+    const [year, month, day] = date.split('-');
+    const weekday = WEEKDAY_LABELS[new Date(Number(year), Number(month) - 1, Number(day)).getDay()];
 
     const rowStyle = useAnimatedStyle(() => {
         const isTarget = dragging.value === 1 && targetIndex.value === index;
@@ -129,12 +130,14 @@ function DayRow({
         <Animated.View style={[styles.row, rowStyle]}>
             {/* 날짜 헤더 + "+" 버튼 */}
             <View style={styles.rowHeader}>
-                <AppText variant="caption" tone="secondary">{WEEKDAY_LABELS[index]}</AppText>
+                <AppText variant="caption" tone="secondary">{weekday}</AppText>
                 <AppText variant="titleMd">{Number(month)}/{Number(day)}</AppText>
                 {onAddShift && (
                     <Pressable
                         hitSlop={8}
                         onPress={() => onAddShift(date)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${date} 근무 추가`}
                         style={[styles.addBtn, {backgroundColor: c.surfaceMuted}]}>
                         <Ionicons name="add" size={14} color={c.brandPrimary} />
                     </Pressable>
@@ -262,6 +265,9 @@ function DraggableChip({
     return (
         <GestureDetector gesture={gesture}>
             <Animated.View
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel={`${name} ${shortTime(shift.startTime)}부터 ${shortTime(shift.endTime)}까지 근무`}
                 style={[
                     styles.chip,
                     {backgroundColor: c.surfaceSky, borderColor: c.border},

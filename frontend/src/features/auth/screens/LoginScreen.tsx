@@ -16,7 +16,6 @@ import {NavigationProp, RouteProp} from '@react-navigation/native';
 import {AppButton, AppText, AppToast} from '../../../common/components/ds';
 import {AppleSignInCancelledError, requestAppleIdentityToken} from '../native/appleSignIn';
 import {gradient, spacing} from '../../../theme/tokens';
-import {useResponsive} from '../../../common/hooks/useResponsive';
 import SodamLogo from '../../../common/components/logo/SodamLogo';
 import authApi from '../services/authApi';
 import {useAuth} from '../../../contexts/AuthContext';
@@ -45,6 +44,7 @@ const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
  */
 interface DarkFieldProps {
     label: string;
+    hideLabel?: boolean;
     placeholder?: string;
     value: string;
     onChangeText: (text: string) => void;
@@ -58,6 +58,7 @@ interface DarkFieldProps {
 
 const DarkField: React.FC<DarkFieldProps> = ({
     label,
+    hideLabel = false,
     placeholder,
     value,
     onChangeText,
@@ -69,11 +70,14 @@ const DarkField: React.FC<DarkFieldProps> = ({
     error,
 }) => (
     <View style={styles.darkFieldContainer}>
-        <AppText variant="caption" tone="inverse" weight="700" style={styles.darkLabel}>
-            {label}
-        </AppText>
+        {!hideLabel ? (
+            <AppText variant="caption" tone="inverse" weight="700" style={styles.darkLabel}>
+                {label}
+            </AppText>
+        ) : null}
         <View style={[styles.darkField, error ? styles.darkFieldErrorBorder : null]}>
             <TextInput
+                accessibilityLabel={label}
                 value={value}
                 onChangeText={onChangeText}
                 onBlur={onBlur}
@@ -83,6 +87,7 @@ const DarkField: React.FC<DarkFieldProps> = ({
                 keyboardType={keyboardType}
                 autoCapitalize={autoCapitalize}
                 autoCorrect={autoCorrect}
+                hitSlop={{top: 3, bottom: 3}}
                 style={styles.darkInput}
             />
         </View>
@@ -100,15 +105,13 @@ const DarkField: React.FC<DarkFieldProps> = ({
  * 스와이프 제스처로 충분 — 별도 버튼 불필요.
  */
 export default function LoginScreen({navigation, route}: LoginScreenProps) {
-    const r = useResponsive();
-    const logoSize = r.pick({compact: 88, default: 108});
-    const scrollPadTop = r.isCompactHeight ? spacing.lg : spacing.xxl;
-    const titleMargin = r.pick({compact: spacing.md, default: spacing.lg});
-    const formMargin = r.pick({compact: spacing.lg, default: spacing.xl});
-    const formGap = r.pick({compact: spacing.sm, default: spacing.md});
+    const logoSize = 42;
+    const scrollPadTop = 34;
+    const titleMargin = 13;
+    const formMargin = 17;
+    const formGap = 9;
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
     const [emailError, setEmailError] = useState<string | undefined>();
     const [isLoading, setIsLoading] = useState(false);
 
@@ -213,20 +216,21 @@ export default function LoginScreen({navigation, route}: LoginScreenProps) {
                         showsVerticalScrollIndicator={false}>
                         <View style={styles.hero}>
                             <SodamLogo size={logoSize} variant="default" />
-                            <AppText variant="headingLg" tone="inverse" style={[styles.title, {marginTop: titleMargin}]}>
+                            <AppText variant="headingLg" tone="inverse" weight="800" style={[styles.title, styles.darkInverseText, {marginTop: titleMargin}]}>
                                 {'다시 오셨네요.\n바로 시작해요'}
                             </AppText>
-                            <AppText variant="bodyLg" tone="inverse" style={styles.copy}>
+                            <AppText variant="bodyLg" tone="inverse" style={[styles.copy, styles.darkInverseText]}>
                                 {route.params?.fromSignup
                                     ? '로그인하면 약관 동의와 기본 정보 설정을 이어서 진행해요.'
-                                    : '로그인 후 남은 설정이 있으면 먼저 안내해 드릴게요.'}
+                                    : '매장 상태와 내 근무 기록을 이어서 확인합니다.'}
                             </AppText>
                         </View>
 
                         <View style={[styles.form, {marginTop: formMargin, gap: formGap}]}>
                             <DarkField
                                 label="이메일"
-                                placeholder="example@sodam.dev"
+                                hideLabel
+                                placeholder="이메일"
                                 value={email}
                                 onChangeText={t => {
                                     setEmail(t);
@@ -242,20 +246,29 @@ export default function LoginScreen({navigation, route}: LoginScreenProps) {
                             />
                             <DarkField
                                 label="비밀번호"
+                                hideLabel
                                 placeholder="비밀번호"
                                 value={password}
                                 onChangeText={setPassword}
-                                secureTextEntry={!showPassword}
+                                secureTextEntry
                                 autoCapitalize="none"
                             />
-                            <Pressable onPress={() => setShowPassword(s => !s)} hitSlop={8} style={styles.toggle}>
-                                <AppText variant="caption" tone="brand" weight="700">
-                                    {showPassword ? '비밀번호 숨기기' : '비밀번호 표시'}
-                                </AppText>
-                            </Pressable>
-
-                            <AppButton label="로그인" loading={isLoading} onPress={handleLogin} style={styles.cta} />
-                            <AppButton label="카카오로 계속" variant="kakao" onPress={handleKakao} />
+                            <AppButton
+                                label="로그인"
+                                loading={isLoading}
+                                onPress={handleLogin}
+                                size="sm"
+                                style={[styles.authButton, styles.primaryAuthButton]}
+                                textStyle={styles.primaryAuthButtonText}
+                            />
+                            <AppButton
+                                label="카카오로 계속"
+                                variant="kakao"
+                                onPress={handleKakao}
+                                size="sm"
+                                style={styles.authButton}
+                                textStyle={styles.authButtonText}
+                            />
                             {Platform.OS === 'ios' && (
                                 <AppButton
                                     label="Apple로 계속"
@@ -269,11 +282,11 @@ export default function LoginScreen({navigation, route}: LoginScreenProps) {
                         <View style={styles.footerRow}>
                             {/* 아티팩트 04 Login .footlink--dark: 전체 한 줄, <b> 미사용 — 균일한 muted 톤(0.65) */}
                             <Pressable onPress={() => navigation.navigate('PasswordReset')} hitSlop={8}>
-                                <AppText variant="caption" tone="inverse" style={styles.link}>비밀번호 찾기</AppText>
+                                <AppText variant="caption" tone="inverse" style={[styles.link, styles.darkInverseText]}>비밀번호 찾기</AppText>
                             </Pressable>
-                            <AppText variant="caption" tone="inverse" style={styles.link}> · </AppText>
+                            <AppText variant="caption" tone="inverse" style={[styles.link, styles.darkInverseText]}> · </AppText>
                             <Pressable onPress={() => navigation.navigate('Signup', {selectedPurpose})} hitSlop={8}>
-                                <AppText variant="caption" tone="inverse" style={styles.link}>회원가입</AppText>
+                                <AppText variant="caption" tone="inverse" style={[styles.link, styles.darkInverseText]}>회원가입</AppText>
                             </Pressable>
                         </View>
                     </ScrollView>
@@ -285,22 +298,25 @@ export default function LoginScreen({navigation, route}: LoginScreenProps) {
 
 const styles = StyleSheet.create({
     flex: {flex: 1},
-    scroll: {flexGrow: 1, paddingHorizontal: spacing.xxl, paddingBottom: spacing.xl},
-    hero: {alignItems: 'center'},
-    title: {textAlign: 'center', letterSpacing: -0.6},
-    copy: {marginTop: spacing.md, textAlign: 'center', opacity: 0.72},
+    scroll: {flexGrow: 1, paddingHorizontal: spacing.lg, paddingBottom: spacing.xl},
+    hero: {alignItems: 'flex-start'},
+    title: {textAlign: 'left', letterSpacing: -0.6, fontSize: 23, lineHeight: 29},
+    darkInverseText: {color: '#F5F3EF'},
+    copy: {marginTop: 11, textAlign: 'left', opacity: 0.72, fontSize: 13, lineHeight: 21},
     form: {marginTop: spacing.xl},
-    toggle: {alignSelf: 'flex-end', marginTop: -spacing.xs},
-    cta: {marginTop: spacing.sm},
-    footerRow: {flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: spacing.lg},
+    authButton: {minHeight: 46, borderRadius: 12},
+    primaryAuthButton: {marginTop: 2},
+    authButtonText: {fontSize: 14},
+    primaryAuthButtonText: {color: '#F5F3EF', fontSize: 14},
+    footerRow: {flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 18},
     // 아티팩트 .footlink--dark: color rgba(245,243,239,.65), font-weight 미지정(기본 400)
     link: {opacity: 0.65},
     // 아티팩트 .field--dark: border rgba(245,243,239,.22) · bg rgba(255,255,255,.06) · text rgba(245,243,239,.7)
     darkFieldContainer: {gap: spacing.xs},
     darkLabel: {opacity: 0.75, marginLeft: 2},
     darkField: {
-        minHeight: 48,
-        borderRadius: 15,
+        height: 43,
+        borderRadius: 10,
         borderWidth: 1,
         borderColor: 'rgba(245,243,239,0.22)',
         backgroundColor: 'rgba(255,255,255,0.06)',
@@ -309,10 +325,13 @@ const styles = StyleSheet.create({
     },
     darkFieldErrorBorder: {borderColor: '#FF7288'},
     darkInput: {
+        alignSelf: 'stretch',
+        flex: 1,
         fontSize: 15,
         fontWeight: '500',
         color: 'rgba(245,243,239,0.9)',
         padding: 0,
+        textAlignVertical: 'center',
     },
     darkErrorText: {color: '#FF9BAC', marginLeft: 2},
 });

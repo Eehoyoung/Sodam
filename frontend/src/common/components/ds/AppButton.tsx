@@ -50,6 +50,7 @@ interface AppButtonProps {
     fullWidth?: boolean;
     leftIcon?: React.ReactNode;
     style?: StyleProp<ViewStyle>;
+    textStyle?: StyleProp<TextStyle>;
     testID?: string;
 }
 
@@ -67,6 +68,7 @@ export const AppButton: React.FC<AppButtonProps> = ({
     fullWidth = true,
     leftIcon,
     style,
+    textStyle,
     testID,
 }) => {
     const c = useThemeColors();
@@ -95,7 +97,7 @@ export const AppButton: React.FC<AppButtonProps> = ({
                 <View style={styles.row}>
                     <ActivityIndicator size="small" color={palette.fg} />
                     {loadingLabel ? (
-                        <Text style={[styles.label, {color: palette.fg}, textSize(size)]}>
+                        <Text style={[styles.label, {color: palette.fg}, textSize(size), textStyle]}>
                             {'  '}
                             {loadingLabel}
                         </Text>
@@ -106,7 +108,7 @@ export const AppButton: React.FC<AppButtonProps> = ({
                     {leftIcon ? <View style={styles.icon}>{leftIcon}</View> : null}
                     <Text
                         numberOfLines={1}
-                        style={[styles.label, {color: palette.fg}, textSize(size)]}>
+                        style={[styles.label, {color: palette.fg}, textSize(size), textStyle]}>
                         {label}
                     </Text>
                 </View>

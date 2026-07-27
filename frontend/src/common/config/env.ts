@@ -25,17 +25,15 @@ const ENV_BASE_URL: string | undefined =
     (process.env.SODAM_API_BASE_URL) || undefined;
 
 function detectDefaultBaseUrl(): string {
-    // TEMP(2026-07-21, v3 아티팩트 검증 세션 한정): 도커 재빌드 BE를 6060으로 띄워 확인 중.
-    // 검증 끝나면 반드시 7070으로 되돌릴 것 — CLAUDE.md "포트 전 구간 7070 고정" 규칙 원복.
     if (Platform.OS === 'android') {
         // Android 에뮬레이터에서 호스트 PC 의 localhost 는 10.0.2.2
-        return 'http://10.0.2.2:6060';
+        return 'http://10.0.2.2:7070';
     }
     if (Platform.OS === 'ios') {
-        return 'http://localhost:6060';
+        return 'http://localhost:7070';
     }
     // web fallback
-    return 'http://localhost:6060';
+    return 'http://localhost:7070';
 }
 
 function detectEnv(): Env {

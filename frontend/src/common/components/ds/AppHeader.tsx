@@ -37,9 +37,11 @@ interface AppHeaderProps {
     dark?: boolean;
     /** 진행 단계 표시 등 우측 단순 텍스트 (예: '1/3') */
     rightText?: string;
+    /** rightText가 행동을 나타낼 때 사용하는 접근 가능한 터치 핸들러. */
+    onRightText?: () => void;
 }
 
-export const AppHeader: React.FC<AppHeaderProps> = ({title, subtitle, onBack, actions = [], dark = false, rightText}) => {
+export const AppHeader: React.FC<AppHeaderProps> = ({title, subtitle, onBack, actions = [], dark = false, rightText, onRightText}) => {
     const c = useThemeColors();
     const fg = dark ? c.textInverse : c.textPrimary;
     const trimmed = actions.slice(0, 2);
@@ -82,9 +84,22 @@ export const AppHeader: React.FC<AppHeaderProps> = ({title, subtitle, onBack, ac
 
             <View style={[styles.side, styles.right]}>
                 {rightText ? (
-                    <Text style={[styles.rightText, {color: dark ? c.textInverse : c.textSecondary}]}>
-                        {rightText}
-                    </Text>
+                    onRightText ? (
+                        <Pressable
+                            onPress={onRightText}
+                            hitSlop={8}
+                            accessibilityRole="button"
+                            accessibilityLabel={rightText}
+                            style={styles.rightTextButton}>
+                            <Text style={[styles.rightText, {color: dark ? c.textInverse : c.textSecondary}]}>
+                                {rightText}
+                            </Text>
+                        </Pressable>
+                    ) : (
+                        <Text style={[styles.rightText, {color: dark ? c.textInverse : c.textSecondary}]}>
+                            {rightText}
+                        </Text>
+                    )
                 ) : null}
                 {trimmed.map((a, i) => (
                     <Pressable
@@ -128,6 +143,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     actionLabel: {fontSize: 12, fontWeight: '800'},
+    rightTextButton: {minWidth: 44, minHeight: 44, alignItems: 'flex-end', justifyContent: 'center'},
     rightText: {fontSize: 13, fontWeight: '800'},
 });
 

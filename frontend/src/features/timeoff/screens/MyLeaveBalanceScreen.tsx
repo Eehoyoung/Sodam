@@ -17,6 +17,11 @@ import {formatConsumedDays as formatDays} from '../types';
 import {useStoreLiveSync} from '../../../common/realtime/useStoreLiveSync';
 import {useEmployeeStoreIds} from '../../store/hooks/useEmployeeStoreIds';
 
+/** 개발용 시각 검증에서만 쓰는 결정형 연차 잔여 상태. */
+export interface MyLeaveBalanceVisualFixture {
+    data: MyLeaveBalance;
+}
+
 /**
  * B2 내 잔여 연차 (E-NEW-03). 직원 본인 전용 읽기·추정.
  * 잔여 HeroNumber + 발생/사용 + 게이지 + 면책. 5인 미만이면 미적용 안내.
@@ -25,15 +30,18 @@ import {useEmployeeStoreIds} from '../../store/hooks/useEmployeeStoreIds';
  * (AppCard variant="spot")로 결합, 게이지를 사용/잔여 2색 세그먼트로 표시, 범례를 사용·잔여
  * 2항목(색 점 포함)으로 축소.
  */
-const MyLeaveBalanceScreen: React.FC = () => {
+const MyLeaveBalanceScreen: React.FC<{visualFixture?: MyLeaveBalanceVisualFixture}> = ({visualFixture}) => {
     const navigation = useNavigation();
     const storeIds = useEmployeeStoreIds();
 
-    const [data, setData] = useState<MyLeaveBalance | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [data, setData] = useState<MyLeaveBalance | null>(() => visualFixture?.data ?? null);
+    const [loading, setLoading] = useState(!visualFixture);
     const [error, setError] = useState(false);
 
     const load = useCallback(async () => {
+        if (visualFixture) {
+            return;
+        }
         setLoading(true);
         setError(false);
         try {
@@ -43,14 +51,16 @@ const MyLeaveBalanceScreen: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [visualFixture]);
 
     useEffect(() => {
-        load();
-    }, [load]);
+        if (!visualFixture) {
+            void load();
+        }
+    }, [load, visualFixture]);
 
-    useStoreLiveSync(storeIds, event => {
-        if (event.type === 'TIME_OFF_CHANGED') {
+    useStoreLiveSync(visualFixture ? [] : storeIds, event => {
+        if (!visualFixture && event.type === 'TIME_OFF_CHANGED') {
             load();
         }
     });

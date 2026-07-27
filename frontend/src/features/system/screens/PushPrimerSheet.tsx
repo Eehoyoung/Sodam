@@ -7,6 +7,7 @@ interface Props {
     visible: boolean;
     onAllow: () => void;
     onLater: () => void;
+    captureMarker?: string;
 }
 
 /**
@@ -15,13 +16,14 @@ interface Props {
  * 핸들 아래 원형 벨 아이콘 추가 — 아티팩트 O8 sheet__icon(🔔) 대조 반영
  * (docs/260720/artifacts/sodam-v3-13-ops.html).
  */
-const PushPrimerSheet: React.FC<Props> = ({visible, onAllow, onLater}) => {
+const PushPrimerSheet: React.FC<Props> = ({visible, onAllow, onLater, captureMarker}) => {
     const c = useThemeColors();
     return (
         <BottomSheet
             visible={visible}
             onClose={onLater}
             icon={<Ionicons name="notifications" size={22} color={c.brandPrimary} />}
+            captureMarker={captureMarker}
             title="중요한 알림만 보내드릴게요"
             description="직원 미출근, 정정 요청, 급여명세 발급 같은 꼭 필요한 소식만 알려드려요."
             primary={{label: '알림 받기', onPress: onAllow}}

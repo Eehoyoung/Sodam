@@ -1,5 +1,5 @@
 import React, {useCallback, useMemo, useRef, useState} from 'react';
-import {StyleSheet, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -68,6 +68,11 @@ function isBillingCycle(value: string): value is BillingCycle {
     return value === 'MONTHLY' || value === 'HALF_YEARLY' || value === 'YEARLY';
 }
 
+/** 개발용 시각 검증에서만 쓰는 결정형 결제 처리 상태. */
+export interface TossBillingVisualFixture {
+    processing: boolean;
+}
+
 // 토스 SDK 를 로드해 빌링 인증을 요청하는 인라인 HTML.
 function buildBillingHtml(clientKey: string, customerKey: string): string {
     return `<!DOCTYPE html>
@@ -101,7 +106,7 @@ function extractQueryParam(url: string, key: string): string | null {
     return match ? decodeURIComponent(match[1]) : null;
 }
 
-const TossBillingAuthScreen: React.FC = () => {
+const TossBillingAuthScreen: React.FC<{visualFixture?: TossBillingVisualFixture}> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const route = useRoute<RouteProp<HomeStackParamList, 'TossBillingAuth'>>();
     const c = useThemeColors();
@@ -111,7 +116,7 @@ const TossBillingAuthScreen: React.FC = () => {
     const plan: PlanType | null = isPlanType(planParam) ? planParam : null;
     const billingCycle: BillingCycle = isBillingCycle(cycleParam) ? cycleParam : 'MONTHLY';
 
-    const [processing, setProcessing] = useState(false);
+    const [processing, setProcessing] = useState(() => visualFixture?.processing ?? false);
     // 리다이렉트가 onShouldStartLoadWithRequest 로 2회 들어오는 경우(중복 처리) 방지.
     const handledRef = useRef(false);
 
@@ -211,9 +216,17 @@ const TossBillingAuthScreen: React.FC = () => {
     }
 
     if (processing) {
+        const visualLoadingGlyph = visualFixture ? (
+            <Text style={[styles.fixtureLoadingGlyph, {color: c.textSecondary}]}>…</Text>
+        ) : undefined;
         return (
             <ScreenContainer header={<AppHeader title="카드 등록" />}>
-                <LoadingState title="결제 처리 중" description="결제를 처리하고 있어요…" />
+                <LoadingState
+                    title="결제 처리 중"
+                    description="결제를 처리하고 있어요…"
+                    glyph={visualLoadingGlyph}
+                    markColor={visualFixture ? c.surfaceMuted : undefined}
+                />
             </ScreenContainer>
         );
     }
@@ -255,6 +268,7 @@ const styles = StyleSheet.create({
     },
     title: {marginTop: spacing.xl},
     desc: {marginTop: spacing.sm, maxWidth: 320},
+    fixtureLoadingGlyph: {fontSize: 22, fontWeight: '900', lineHeight: 24},
 });
 
 export default TossBillingAuthScreen;

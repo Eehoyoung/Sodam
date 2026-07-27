@@ -36,6 +36,18 @@ import {
 
 type Route = RouteProp<{E: {storeId: number; employeeId: number; employeeName?: string}}, 'E'>;
 
+/** 개발용 시각 검증에서만 쓰는 결정형 시프트 등록 화면 상태. */
+export interface EditShiftVisualFixture {
+    storeId: number;
+    employeeId: number;
+    employeeName: string;
+    shiftDate: string;
+    startTime: string;
+    endTime: string;
+    memo: string;
+    items: WorkShift[];
+}
+
 /**
  * 근무 시프트 등록 (B10/E-NEW-05) — 사장이 특정 직원의 근무 일정 추가·조회·삭제.
  * 날짜(YYYY-MM-DD)·시작/종료(HH:MM)·메모 입력 후 등록. 외부 picker 없이 텍스트 입력.
@@ -44,25 +56,28 @@ type Route = RouteProp<{E: {storeId: number; employeeId: number; employeeName?: 
  * v3 시안(sodam-v3-09-schedule.html S1) 정렬: 헤더를 "근무 시프트"(라벨) + 직원명(굵게, 2줄)
  * 컨텍스트 헤더로 표시(AppHeader subtitle).
  */
-const EditShiftScreen: React.FC = () => {
+const EditShiftScreen: React.FC<{visualFixture?: EditShiftVisualFixture}> = ({visualFixture}) => {
     const navigation = useNavigation();
     const route = useRoute<Route>();
     const c = useThemeColors();
-    const {storeId, employeeId, employeeName} = route.params;
+    const {storeId, employeeId, employeeName} = visualFixture ?? route.params;
 
-    const [shiftDate, setShiftDateValue] = useState('');
-    const [startTime, setStartTimeValue] = useState('');
-    const [endTime, setEndTimeValue] = useState('');
+    const [shiftDate, setShiftDateValue] = useState(visualFixture?.shiftDate ?? '');
+    const [startTime, setStartTimeValue] = useState(visualFixture?.startTime ?? '');
+    const [endTime, setEndTimeValue] = useState(visualFixture?.endTime ?? '');
     const setShiftDate = (value: string) => setShiftDateValue(sanitizeDateDigits(value));
     const setStartTime = (value: string) => setStartTimeValue(sanitizeTimeDigits(value));
     const setEndTime = (value: string) => setEndTimeValue(sanitizeTimeDigits(value));
-    const [memo, setMemo] = useState('');
+    const [memo, setMemo] = useState(visualFixture?.memo ?? '');
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
 
-    const [items, setItems] = useState<WorkShift[]>([]);
+    const [items, setItems] = useState<WorkShift[]>(() => visualFixture?.items ?? []);
 
     const load = useCallback(async () => {
+        if (visualFixture) {
+            return;
+        }
         try {
             const {from, to} = thisWeekRange();
             const all = await fetchStoreShifts(storeId, from, to);
@@ -70,13 +85,19 @@ const EditShiftScreen: React.FC = () => {
         } catch {
             AppToast.error('근무 일정을 불러오지 못했어요.');
         }
-    }, [storeId, employeeId]);
+    }, [storeId, employeeId, visualFixture]);
 
     useFocusEffect(useCallback(() => {
-        load();
-    }, [load]));
+        if (!visualFixture) {
+            void load();
+        }
+    }, [load, visualFixture]));
 
     const save = async () => {
+        if (visualFixture) {
+            AppToast.success('근무 일정 등록 fixture가 준비됐어요.');
+            return;
+        }
         if (!isValidDateDigits(shiftDate)) {
             setError(DATE_DIGITS_HELPER);
             return;

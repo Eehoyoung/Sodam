@@ -82,6 +82,19 @@ interface Props {
 
 type TabMode = 'calendar' | 'board' | 'template';
 
+/** 개발용 시각 검증에서만 쓰는 결정형 매장 스케줄 상태. */
+export interface StoreScheduleVisualFixture {
+    storeId: number;
+    tab: TabMode;
+    calMonth: string;
+    selectedDate: string | null;
+    boardWeekStart: string;
+    employees: StoreEmployeeDto[];
+    shifts: WorkShift[];
+    operatingHours: DayOperatingHours[];
+    templates: ShiftTemplate[];
+}
+
 const EMP_COLORS = [colors.brandPrimary, colors.success, '#10B981', '#8B5CF6', '#F59E0B', '#EC4899'];
 const DOW_ENUM: DayOfWeek[] = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 const WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
@@ -158,25 +171,25 @@ function computeWarnings(args: {
 }
 
 // ── 메인 컴포넌트 ────────────────────────────────────────────────────────────
-export default function StoreScheduleScreen({route, navigation}: Props) {
-    const {storeId} = route.params;
+export default function StoreScheduleScreen({route, navigation, visualFixture}: Props & {visualFixture?: StoreScheduleVisualFixture}) {
+    const storeId = visualFixture?.storeId ?? route.params.storeId;
     const c = useThemeColors();
 
     // ─ 화면 ─
-    const [tab, setTab] = useState<TabMode>('calendar');
-    const [calMonth, setCalMonth] = useState(currentYearMonth);
-    const [selectedDate, setSelectedDate] = useState<string | null>(todayIso);
-    const [boardWeekStart, setBoardWeekStart] = useState(() => weekRangeOf(todayIso()).from);
+    const [tab, setTab] = useState<TabMode>(visualFixture?.tab ?? 'calendar');
+    const [calMonth, setCalMonth] = useState(visualFixture?.calMonth ?? currentYearMonth);
+    const [selectedDate, setSelectedDate] = useState<string | null>(visualFixture?.selectedDate ?? todayIso);
+    const [boardWeekStart, setBoardWeekStart] = useState(() => visualFixture?.boardWeekStart ?? weekRangeOf(todayIso()).from);
 
     // ─ 데이터 ─
-    const [employees, setEmployees] = useState<StoreEmployeeDto[]>([]);
-    const [shifts, setShifts] = useState<WorkShift[]>([]);
-    const [operatingHours, setOperatingHours] = useState<DayOperatingHours[]>([]);
-    const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
+    const [employees, setEmployees] = useState<StoreEmployeeDto[]>(() => visualFixture?.employees ?? []);
+    const [shifts, setShifts] = useState<WorkShift[]>(() => visualFixture?.shifts ?? []);
+    const [operatingHours, setOperatingHours] = useState<DayOperatingHours[]>(() => visualFixture?.operatingHours ?? []);
+    const [templates, setTemplates] = useState<ShiftTemplate[]>(() => visualFixture?.templates ?? []);
     const loadedMonthsRef = useRef<Set<string>>(new Set()); // 이미 로드된 월 추적
 
     // ─ 로딩 (분리) ─
-    const [pageLoading, setPageLoading] = useState(true);   // 최초 1회 전체 스피너
+    const [pageLoading, setPageLoading] = useState(!visualFixture);   // 최초 1회 전체 스피너
     const [calLoading, setCalLoading] = useState(false);    // 달력 월 변경 시 인디케이터
     const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -206,6 +219,9 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
     /** 초기 전체 로드: 직원·운영시간·템플릿·시프트 */
     const loadBase = useCallback(
         async (ym: string) => {
+            if (visualFixture) {
+                return;
+            }
             setLoadError(null);
             try {
                 const {from, to} = monthRange(ym);
@@ -226,12 +242,15 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
                 setLoadError(msg);
             }
         },
-        [storeId],
+        [storeId, visualFixture],
     );
 
     /** 캘린더 월 이동: 시프트만 교체, 직원/운영시간은 유지 */
     const loadShiftsForMonth = useCallback(
         async (ym: string) => {
+            if (visualFixture) {
+                return;
+            }
             setCalLoading(true);
             try {
                 const {from, to} = monthRange(ym);
@@ -244,12 +263,15 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
                 setCalLoading(false);
             }
         },
-        [storeId],
+        [storeId, visualFixture],
     );
 
     /** 보드가 다른 월로 이동 시: 시프트 추가 병합 (calMonth 건드리지 않음) */
     const loadShiftsAdditive = useCallback(
         async (ym: string) => {
+            if (visualFixture) {
+                return;
+            }
             if (loadedMonthsRef.current.has(ym)) { return; }
             try {
                 const {from, to} = monthRange(ym);
@@ -261,20 +283,22 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
                 loadedMonthsRef.current.add(ym);
             } catch { /* 보드 이동 중 오류는 무시 — 다음 주 이동 시 재시도 */ }
         },
-        [storeId],
+        [storeId, visualFixture],
     );
 
     useFocusEffect(
         useCallback(() => {
-            loadedMonthsRef.current.clear(); // 포커스 복귀 시 캐시 초기화
-            setPageLoading(true);
-            loadBase(calMonth).finally(() => setPageLoading(false));
+            if (!visualFixture) {
+                loadedMonthsRef.current.clear(); // 포커스 복귀 시 캐시 초기화
+                setPageLoading(true);
+                void loadBase(calMonth).finally(() => setPageLoading(false));
+            }
             // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [loadBase]),
+        }, [loadBase, visualFixture]),
     );
 
-    useStoreLiveSync([storeId], event => {
-        if (event.type === 'SHIFT_CHANGED') {
+    useStoreLiveSync(visualFixture ? [] : [storeId], event => {
+        if (!visualFixture && event.type === 'SHIFT_CHANGED') {
             loadShiftsForMonth(calMonth);
         }
     });
@@ -760,7 +784,11 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
                     <View style={styles.section}>
                         {/* 주 이동 + 확정 버튼 (항상 노출) */}
                         <View style={[styles.weekHeader, {backgroundColor: c.surfaceMuted}]}>
-                            <Pressable hitSlop={12} onPress={() => goBoardWeek(-1)}>
+                            <Pressable
+                                hitSlop={12}
+                                onPress={() => goBoardWeek(-1)}
+                                accessibilityRole="button"
+                                accessibilityLabel="이전 주">
                                 <Ionicons name="chevron-back-outline" size={22} color={c.textPrimary} />
                             </Pressable>
                             <View style={styles.weekHeaderCenter}>
@@ -771,7 +799,11 @@ export default function StoreScheduleScreen({route, navigation}: Props) {
                                     <SummaryPill value={`${boardSummary.hours.toFixed(1)}h`} />
                                 </View>
                             </View>
-                            <Pressable hitSlop={12} onPress={() => goBoardWeek(1)}>
+                            <Pressable
+                                hitSlop={12}
+                                onPress={() => goBoardWeek(1)}
+                                accessibilityRole="button"
+                                accessibilityLabel="다음 주">
                                 <Ionicons name="chevron-forward-outline" size={22} color={c.textPrimary} />
                             </Pressable>
                         </View>

@@ -35,6 +35,13 @@ import {
 import {useStoreLiveSync} from '../../../common/realtime/useStoreLiveSync';
 import {useEmployeeStoreIds} from '../../store/hooks/useEmployeeStoreIds';
 
+/** 개발용 시각 검증에서만 쓰는 결정형 내 근무 일정 상태. */
+export interface MyShiftVisualFixture {
+    month: string;
+    selectedDate: string;
+    shifts: WorkShift[];
+}
+
 const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토'];
 
 function formatDateFull(iso: string): string {
@@ -44,18 +51,21 @@ function formatDateFull(iso: string): string {
     return `${m}월 ${d}일 (${wd})`;
 }
 
-export default function MyShiftScreen() {
+export default function MyShiftScreen({visualFixture}: {visualFixture?: MyShiftVisualFixture}) {
     const navigation = useNavigation();
     const c = useThemeColors();
     const storeIds = useEmployeeStoreIds();
 
-    const [month, setMonth] = useState(currentYearMonth);
-    const [selectedDate, setSelectedDate] = useState<string | null>(todayIso);
-    const [shifts, setShifts] = useState<WorkShift[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [month, setMonth] = useState(visualFixture?.month ?? currentYearMonth);
+    const [selectedDate, setSelectedDate] = useState<string | null>(visualFixture?.selectedDate ?? todayIso);
+    const [shifts, setShifts] = useState<WorkShift[]>(() => visualFixture?.shifts ?? []);
+    const [loading, setLoading] = useState(!visualFixture);
     const [error, setError] = useState(false);
 
     const loadMonth = useCallback(async (ym: string) => {
+        if (visualFixture) {
+            return;
+        }
         setLoading(true);
         setError(false);
         try {
@@ -67,24 +77,28 @@ export default function MyShiftScreen() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [visualFixture]);
 
     useFocusEffect(
         useCallback(() => {
-            loadMonth(month);
+            if (!visualFixture) {
+                void loadMonth(month);
+            }
             // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [loadMonth]),
+        }, [loadMonth, visualFixture]),
     );
 
-    useStoreLiveSync(storeIds, event => {
-        if (event.type === 'SHIFT_CHANGED') {
-            loadMonth(month);
+    useStoreLiveSync(visualFixture ? [] : storeIds, event => {
+        if (!visualFixture && event.type === 'SHIFT_CHANGED') {
+            void loadMonth(month);
         }
     });
 
     const handleMonthChange = (ym: string) => {
         setMonth(ym);
-        loadMonth(ym);
+        if (!visualFixture) {
+            void loadMonth(ym);
+        }
     };
 
     // 캘린더 마크: 날짜별 근무 점

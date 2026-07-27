@@ -35,6 +35,14 @@ interface MyStore {
     storeName: string;
 }
 
+/** 개발용 시각 검증에서만 쓰는 결정형 대타 지원 보드 상태. */
+export interface SwapBoardVisualFixture {
+    stores: MyStore[];
+    selectedStoreId: number;
+    currentEmployeeId: number;
+    swaps: SwapRequest[];
+}
+
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
 /** 'YYYY-MM-DD' → '7월 3일 (목)' */
@@ -47,14 +55,15 @@ function formatDateLabel(iso: string): string {
     return `${m}월 ${d}일 (${WEEKDAYS[date.getDay()]})`;
 }
 
-const SwapBoardScreen: React.FC = () => {
+const SwapBoardScreen: React.FC<{visualFixture?: SwapBoardVisualFixture}> = ({visualFixture}) => {
     const navigation = useNavigation();
     const {user} = useAuth();
+    const currentEmployeeId = visualFixture?.currentEmployeeId ?? user?.id;
 
-    const [phase, setPhase] = useState<'loading' | 'error' | 'ready'>('loading');
-    const [stores, setStores] = useState<MyStore[]>([]);
-    const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
-    const [swaps, setSwaps] = useState<SwapRequest[]>([]);
+    const [phase, setPhase] = useState<'loading' | 'error' | 'ready'>(visualFixture ? 'ready' : 'loading');
+    const [stores, setStores] = useState<MyStore[]>(() => visualFixture?.stores ?? []);
+    const [selectedStoreId, setSelectedStoreId] = useState<number | null>(() => visualFixture?.selectedStoreId ?? null);
+    const [swaps, setSwaps] = useState<SwapRequest[]>(() => visualFixture?.swaps ?? []);
     const [applyingId, setApplyingId] = useState<number | null>(null);
     // useFocusEffect 재실행 없이 현재 선택 매장을 읽기 위한 ref (chip 선택 시 이중 로드 방지)
     const selectedStoreIdRef = useRef<number | null>(null);
@@ -65,11 +74,17 @@ const SwapBoardScreen: React.FC = () => {
     );
 
     const loadSwaps = useCallback(async (storeId: number) => {
+        if (visualFixture) {
+            return;
+        }
         const list = await fetchOpenSwaps(storeId);
         setSwaps(list.filter(item => item.status === 'OPEN'));
-    }, []);
+    }, [visualFixture]);
 
     const loadAll = useCallback(async () => {
+        if (visualFixture) {
+            return;
+        }
         try {
             setPhase('loading');
             if (!user?.id) {
@@ -98,12 +113,14 @@ const SwapBoardScreen: React.FC = () => {
             console.warn('[SwapBoardScreen] load failed', error);
             setPhase('error');
         }
-    }, [user?.id, loadSwaps]);
+    }, [user?.id, loadSwaps, visualFixture]);
 
     useFocusEffect(
         useCallback(() => {
-            loadAll();
-        }, [loadAll]),
+            if (!visualFixture) {
+                void loadAll();
+            }
+        }, [loadAll, visualFixture]),
     );
 
     const selectStore = useCallback(
@@ -127,6 +144,12 @@ const SwapBoardScreen: React.FC = () => {
 
     const doApply = useCallback(
         async (swap: SwapRequest) => {
+            if (visualFixture) {
+                setSwaps(current => current.map(item => item.id === swap.id
+                    ? {...item, applicants: [...item.applicants, {employeeId: currentEmployeeId ?? -1, employeeName: '나', appliedAt: '2026-07-20T09:00:00'}]}
+                    : item));
+                return;
+            }
             try {
                 setApplyingId(swap.id);
                 await applySwap(swap.id);
@@ -151,7 +174,7 @@ const SwapBoardScreen: React.FC = () => {
                 setApplyingId(null);
             }
         },
-        [selectedStore, loadSwaps],
+        [currentEmployeeId, selectedStore, loadSwaps, visualFixture],
     );
 
     const confirmApply = useCallback(
@@ -220,7 +243,7 @@ const SwapBoardScreen: React.FC = () => {
                 ) : (
                     swaps.map(swap => {
                         const alreadyApplied = (swap.applicants ?? []).some(
-                            applicant => applicant.employeeId === user?.id,
+                            applicant => applicant.employeeId === currentEmployeeId,
                         );
                         return (
                             <AppCard key={swap.id} style={styles.card}>

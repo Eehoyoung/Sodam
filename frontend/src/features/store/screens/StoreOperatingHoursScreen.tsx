@@ -56,6 +56,11 @@ interface DayRow {
     isClosed: boolean;
 }
 
+/** 개발용 시각 검증에서만 쓰는 결정형 운영시간 상태. */
+export interface StoreOperatingHoursVisualFixture {
+    rows: DayRow[];
+}
+
 interface ApiDay {
     dayOfWeek: DayOfWeek;
     openTime?: string | null; // HH:mm:ss
@@ -91,18 +96,23 @@ function defaultRows(): DayRow[] {
  * GET /api/stores/{storeId}/operating-hours → 요일별 로드
  * PUT /api/stores/{storeId}/operating-hours → 7개 요일 모두 전송
  */
-const StoreOperatingHoursScreen: React.FC = () => {
+const StoreOperatingHoursScreen: React.FC<{visualFixture?: StoreOperatingHoursVisualFixture}> = ({visualFixture}) => {
     const route = useRoute<RouteProp<HomeStackParamList, 'StoreOperatingHours'>>();
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const c = useThemeColors();
     const storeId = route.params?.storeId;
 
-    const [rows, setRows] = useState<DayRow[]>(defaultRows());
-    const [loading, setLoading] = useState(true);
+    const [rows, setRows] = useState<DayRow[]>(() =>
+        visualFixture ? visualFixture.rows.map(row => ({...row})) : defaultRows(),
+    );
+    const [loading, setLoading] = useState(!visualFixture);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         (async () => {
+            if (visualFixture) {
+                return;
+            }
             if (!storeId) {
                 setLoading(false);
                 return;
@@ -129,13 +139,17 @@ const StoreOperatingHoursScreen: React.FC = () => {
                 setLoading(false);
             }
         })();
-    }, [storeId]);
+    }, [storeId, visualFixture]);
 
     const updateRow = (day: DayOfWeek, patch: Partial<DayRow>) => {
         setRows(prev => prev.map(r => (r.dayOfWeek === day ? {...r, ...patch} : r)));
     };
 
     const save = async () => {
+        if (visualFixture) {
+            AppToast.success('운영시간이 저장됐어요.');
+            return;
+        }
         if (!storeId) {
             AppToast.warn('매장 정보를 찾을 수 없어요.');
             return;

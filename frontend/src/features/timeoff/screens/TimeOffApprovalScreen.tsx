@@ -24,6 +24,11 @@ import timeOffService from '../../myPage/services/timeOffService';
 import {formatConsumedDays, TIME_OFF_LEAVE_TYPE_LABEL, TIME_OFF_UNIT_LABEL, type TimeOffResponse} from '../types';
 import {useStoreLiveSync} from '../../../common/realtime/useStoreLiveSync';
 
+/** 개발용 시각 검증에서만 쓰는 결정형 휴가 승인 대기 목록. */
+export interface TimeOffApprovalVisualFixture {
+    items: TimeOffResponse[];
+}
+
 function formatPeriod(item: TimeOffResponse): string {
     const [, sm, sd] = item.startDate.split('-');
     const [, em, ed] = item.endDate.split('-');
@@ -41,13 +46,13 @@ function formatPeriod(item: TimeOffResponse): string {
  *
  * v3 시안(sodam-v3-09-schedule.html S6) 정렬: 상단 안내문을 info-card(AppCard)로 감싸 표시.
  */
-export default function TimeOffApprovalScreen() {
+export default function TimeOffApprovalScreen({visualFixture}: {visualFixture?: TimeOffApprovalVisualFixture}) {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const route = useRoute<RouteProp<HomeStackParamList, 'TimeOffApproval'>>();
     const storeId = route.params?.storeId;
     const c = useThemeColors();
-    const [items, setItems] = useState<TimeOffResponse[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [items, setItems] = useState<TimeOffResponse[]>(() => visualFixture?.items ?? []);
+    const [loading, setLoading] = useState(!visualFixture);
     const [error, setError] = useState<string | null>(null);
     const [busyId, setBusyId] = useState<number | null>(null);
 
@@ -55,6 +60,9 @@ export default function TimeOffApprovalScreen() {
     const [rejectReason, setRejectReason] = useState('');
 
     const load = useCallback(async () => {
+        if (visualFixture) {
+            return;
+        }
         try {
             setLoading(true);
             setError(null);
@@ -66,19 +74,25 @@ export default function TimeOffApprovalScreen() {
         } finally {
             setLoading(false);
         }
-    }, [storeId]);
+    }, [storeId, visualFixture]);
 
     useFocusEffect(useCallback(() => {
-        load();
-    }, [load]));
+        if (!visualFixture) {
+            void load();
+        }
+    }, [load, visualFixture]));
 
-    useStoreLiveSync(storeId ? [storeId] : [], event => {
-        if (event.type === 'TIME_OFF_CHANGED') {
+    useStoreLiveSync(visualFixture ? [] : storeId ? [storeId] : [], event => {
+        if (!visualFixture && event.type === 'TIME_OFF_CHANGED') {
             load();
         }
     });
 
     const approve = async (item: TimeOffResponse) => {
+        if (visualFixture) {
+            setItems(current => current.filter(candidate => candidate.id !== item.id));
+            return;
+        }
         setBusyId(item.id);
         try {
             if (storeId) {
@@ -111,6 +125,11 @@ export default function TimeOffApprovalScreen() {
         const trimmed = rejectReason.trim();
         if (trimmed.length < 2) {
             AppToast.warn('거부 사유를 2자 이상 입력해 주세요.');
+            return;
+        }
+        if (visualFixture) {
+            setItems(current => current.filter(candidate => candidate.id !== rejectTarget.id));
+            closeReject();
             return;
         }
         setBusyId(rejectTarget.id);

@@ -28,6 +28,15 @@ interface MyStore {
     appliedHourlyWage: number;
 }
 
+/** 개발용 시각 검증에서만 쓰는 결정형 근무일지 상태. */
+export interface EmployeeWorkLogVisualFixture {
+    year: number;
+    month: number;
+    stores: Array<{id: number; storeName: string; appliedHourlyWage: number}>;
+    selectedStoreId: number;
+    workLog: AttendanceWorkLogResponse;
+}
+
 interface WorkLogRow {
     key: string;
     attendanceId?: number;
@@ -53,20 +62,20 @@ const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
  * 컨텍스트 헤더로 표시(AppHeader subtitle) — 기존에 월 내비게이션 바 안에 중복 표시되던
  * 매장명은 제거.
  */
-const EmployeeWorkLogScreen: React.FC = () => {
+const EmployeeWorkLogScreen: React.FC<{visualFixture?: EmployeeWorkLogVisualFixture}> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const route = useRoute<RouteProp<HomeStackParamList, 'EmployeeWorkLog'>>();
     const {user} = useAuth();
     const c = useThemeColors();
 
     const today = new Date();
-    const [year, setYear] = useState(today.getFullYear());
-    const [month, setMonth] = useState(today.getMonth() + 1);
-    const [stores, setStores] = useState<MyStore[]>([]);
-    const [selectedStoreId, setSelectedStoreId] = useState<number | null>(route.params?.storeId ?? null);
-    const [workLog, setWorkLog] = useState<AttendanceWorkLogResponse | null>(null);
-    const [loadingStores, setLoadingStores] = useState(true);
-    const [loadingRows, setLoadingRows] = useState(true);
+    const [year, setYear] = useState(visualFixture?.year ?? today.getFullYear());
+    const [month, setMonth] = useState(visualFixture?.month ?? today.getMonth() + 1);
+    const [stores, setStores] = useState<MyStore[]>(() => visualFixture?.stores ?? []);
+    const [selectedStoreId, setSelectedStoreId] = useState<number | null>(visualFixture?.selectedStoreId ?? route.params?.storeId ?? null);
+    const [workLog, setWorkLog] = useState<AttendanceWorkLogResponse | null>(() => visualFixture?.workLog ?? null);
+    const [loadingStores, setLoadingStores] = useState(!visualFixture);
+    const [loadingRows, setLoadingRows] = useState(!visualFixture);
     const [error, setError] = useState(false);
 
     const selectedStore = useMemo(
@@ -75,6 +84,9 @@ const EmployeeWorkLogScreen: React.FC = () => {
     );
 
     const loadStores = useCallback(async () => {
+        if (visualFixture) {
+            return;
+        }
         if (!user?.id) {
             setStores([]);
             setSelectedStoreId(null);
@@ -106,9 +118,12 @@ const EmployeeWorkLogScreen: React.FC = () => {
         } finally {
             setLoadingStores(false);
         }
-    }, [route.params?.storeId, user?.id]);
+    }, [route.params?.storeId, user?.id, visualFixture]);
 
     const loadRows = useCallback(async () => {
+        if (visualFixture) {
+            return;
+        }
         if (!user?.id || !selectedStore) {
             setWorkLog(null);
             setLoadingRows(false);
@@ -124,17 +139,21 @@ const EmployeeWorkLogScreen: React.FC = () => {
         } finally {
             setLoadingRows(false);
         }
-    }, [month, selectedStore, user?.id, year]);
+    }, [month, selectedStore, user?.id, visualFixture, year]);
 
     useFocusEffect(
         useCallback(() => {
-            loadStores();
-        }, [loadStores]),
+            if (!visualFixture) {
+                void loadStores();
+            }
+        }, [loadStores, visualFixture]),
     );
 
     useEffect(() => {
-        loadRows();
-    }, [loadRows]);
+        if (!visualFixture) {
+            void loadRows();
+        }
+    }, [loadRows, visualFixture]);
 
     const rows = useMemo(() => buildRows(workLog?.rows ?? []), [workLog?.rows]);
     const summary = useMemo(() => {

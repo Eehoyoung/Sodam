@@ -1,6 +1,6 @@
 import {AppToast, AppButton, AppCard, AppHeader, AppInput, AppText, CtaStack, ScreenContainer, SuccessState} from '../../../common/components/ds';
 import React, {useState} from 'react';
-import {Pressable, StyleSheet, View} from 'react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -13,12 +13,21 @@ import storeService from '../services/storeService';
  * 27 JoinStoreByCode — 확정 시안.
  * 직원이 사장 매장 코드로 가입. QR 은 추후 카메라 SDK. submit 로직 보존.
  */
-const JoinStoreByCodeScreen: React.FC = () => {
+/** 개발 시각 검증에서 매장 가입 성공 상태를 고정한다. */
+export interface JoinStoreByCodeVisualFixture {
+    joinedStore: string;
+}
+
+interface JoinStoreByCodeScreenProps {
+    visualFixture?: JoinStoreByCodeVisualFixture;
+}
+
+const JoinStoreByCodeScreen: React.FC<JoinStoreByCodeScreenProps> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const c = useThemeColors();
     const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
-    const [joinedStore, setJoinedStore] = useState<string | null>(null);
+    const [joinedStore, setJoinedStore] = useState<string | null>(visualFixture?.joinedStore ?? null);
 
     const submit = async () => {
         const normalized = code.trim().toUpperCase();
@@ -44,8 +53,10 @@ const JoinStoreByCodeScreen: React.FC = () => {
 
     if (joinedStore) {
         return (
-            <ScreenContainer header={<AppHeader title="매장 가입" onBack={() => navigation.goBack()} />}>
+            <ScreenContainer header={<AppHeader title="매장 가입" rightText="닫기" onRightText={() => navigation.goBack()} />}>
                 <SuccessState
+                    glyph={<Text style={[styles.stateGlyph, {color: c.success}]}>✓</Text>}
+                    markColor={c.successBg}
                     title={`${joinedStore}에\n가입했어요`}
                     description="오늘부터 출퇴근 기록과 급여명세를 확인할 수 있어요. 기존 매장 기록은 그대로예요."
                     primary={{label: '출근 화면으로', onPress: () => navigation.goBack()}}
@@ -117,6 +128,7 @@ const styles = StyleSheet.create({
     },
     qrBody: {marginTop: 2},
     helpRow: {alignItems: 'center', paddingVertical: spacing.lg},
+    stateGlyph: {fontSize: 22, fontWeight: '900'},
 });
 
 export default JoinStoreByCodeScreen;

@@ -34,32 +34,48 @@ import {parseServerDateTime} from '../../../common/format/dateTime';
 import EmployeeWorkingRing from '../components/EmployeeWorkingRing';
 
 type CheckInMethod = 'standard' | 'location' | 'nfc';
+export interface AttendanceVisualFixture {
+    workplaces: {id: string; name: string}[];
+    selectedWorkplaceId: string;
+    attendanceRecords: AttendanceRecord[];
+    currentAttendance: AttendanceRecord | null;
+    checkInMethod?: CheckInMethod;
+    locationPermissionGranted?: boolean;
+    currentLocation?: {latitude: number; longitude: number} | null;
+    selectedWage?: number;
+    elapsedSeconds?: number;
+}
+
+interface AttendanceScreenProps {
+    /** Development-only deterministic state used by the Android visual harness. */
+    visualFixture?: AttendanceVisualFixture;
+}
 // iOS는 CoreNFC 제약(entitlement·실기기 전용 등)으로 1차 출시에서 NFC 출퇴근을 제외 — GPS·사장승인 방식으로 대체
 const METHOD_ORDER: CheckInMethod[] = Platform.OS === 'ios' ? ['standard', 'location'] : ['standard', 'location', 'nfc'];
 const METHOD_LABELS = Platform.OS === 'ios' ? ['기본', '위치'] : ['기본', '위치', 'NFC'];
 
-const AttendanceScreen = () => {
+const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const c = useThemeColors();
     const styles = useMemo(() => makeStyles(c), [c]);
     const { user } = useAuth();
-    const employeeIdNum = Number(user?.id);
-    const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
-    const [loading, setLoading] = useState(true);
+    const employeeIdNum = visualFixture ? 1 : Number(user?.id);
+    const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(visualFixture?.attendanceRecords ?? []);
+    const [loading, setLoading] = useState(!visualFixture);
     const [refreshing, setRefreshing] = useState(false);
-    const [currentAttendance, setCurrentAttendance] = useState<AttendanceRecord | null>(null);
-    const [selectedWorkplaceId, setSelectedWorkplaceId] = useState<string>('');
-    const [workplaces, setWorkplaces] = useState<{ id: string; name: string }[]>([]);
-    const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
-    const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+    const [currentAttendance, setCurrentAttendance] = useState<AttendanceRecord | null>(visualFixture?.currentAttendance ?? null);
+    const [selectedWorkplaceId, setSelectedWorkplaceId] = useState<string>(visualFixture?.selectedWorkplaceId ?? '');
+    const [workplaces, setWorkplaces] = useState<{ id: string; name: string }[]>(visualFixture?.workplaces ?? []);
+    const [locationPermissionGranted, setLocationPermissionGranted] = useState(visualFixture?.locationPermissionGranted ?? false);
+    const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(visualFixture?.currentLocation ?? null);
     const [showNFCReader, setShowNFCReader] = useState(false);
     const [, setNfcTagId] = useState<string>('');
-    const [checkInMethod, setCheckInMethod] = useState<CheckInMethod>('standard');
+    const [checkInMethod, setCheckInMethod] = useState<CheckInMethod>(visualFixture?.checkInMethod ?? 'standard');
     // 근무 중 경과 시간 표시를 매초 갱신하기 위한 더미 tick (실제 값은 항상 Date.now() 재계산 — drift 누적 방지)
     const [tick, setTick] = useState(0);
     // 60/61/62/63 죽은 코드 배선(v3 §7) — 판정 로직(GPS 반경 계산·NFC 태그 판독·check-in/out API 호출)은
     // 절대 건드리지 않고, 그 호출 앞뒤에 확인/성공/실패 UI만 추가로 씌운다.
-    const [selectedWage, setSelectedWage] = useState(0);
+    const [selectedWage, setSelectedWage] = useState(visualFixture?.selectedWage ?? 0);
     const [nfcUnsupportedVisible, setNfcUnsupportedVisible] = useState(false);
     const [checkoutConfirmVisible, setCheckoutConfirmVisible] = useState(false);
     const [punchSuccess, setPunchSuccess] = useState<{time: string; storeName: string; wage: number} | null>(null);
@@ -301,6 +317,9 @@ const AttendanceScreen = () => {
 
     // 화면 로드 시 데이터 조회 및 위치 권한 요청
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         fetchWorkplaces();
         requestLocationPermission();
         // eslint-disable-next-line react-hooks/exhaustive-deps -- 마운트 1회 초기 로드(함수 의존 추가 시 반복 호출)
@@ -308,24 +327,33 @@ const AttendanceScreen = () => {
 
     // 선택된 근무지가 변경되면 출퇴근 기록 다시 조회
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         if (selectedWorkplaceId) {
             fetchAttendanceRecords();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps -- 근무지 변경 시에만 재조회(fetchAttendanceRecords 는 selectedWorkplaceId 를 읽으므로 의도된 트리거)
-    }, [selectedWorkplaceId]);
+    }, [selectedWorkplaceId, visualFixture]);
 
     // 근무 중일 때만 1초마다 tick 을 올려 elapsedLabel 이 매초 재계산되도록 강제 리렌더
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         const working = !!currentAttendance && !currentAttendance.checkOutTime;
         if (!working) {
             return;
         }
         const id = setInterval(() => setTick(t => t + 1), 1000);
         return () => clearInterval(id);
-    }, [currentAttendance]);
+    }, [currentAttendance, visualFixture]);
 
     // 61 CheckoutConfirmSheet/62 PunchSuccess 표기용 적용 시급 — 조회 실패해도 화면 진행에는 영향 없음(best-effort).
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         if (!selectedWorkplaceId || !Number.isFinite(employeeIdNum)) {
             setSelectedWage(0);
             return;
@@ -333,7 +361,7 @@ const AttendanceScreen = () => {
         wageService.getEmployeeWage(employeeIdNum, Number(selectedWorkplaceId))
             .then(res => setSelectedWage(res.hourlyWage ?? 0))
             .catch(() => setSelectedWage(0));
-    }, [selectedWorkplaceId, employeeIdNum]);
+    }, [selectedWorkplaceId, employeeIdNum, visualFixture]);
 
     // 새로고침 처리
     const handleRefresh = () => {
@@ -631,7 +659,7 @@ const AttendanceScreen = () => {
     // 현재 근무 경과 초(WORKING 상태 링 표기, 22 EmployeeWorking) — tick 에 의존해 1초마다 재계산
     // (위 useEffect 가 근무 중일 때 tick 을 올림). 값 자체는 항상 Date.now() - checkInTime 실제
     // 시각차를 재계산하므로 setInterval 지연/스로틀링에 drift 가 쌓이지 않음.
-    const elapsedSeconds = useMemo((): number => {
+    const calculatedElapsedSeconds = useMemo((): number => {
         if (!currentAttendance) {
             return 0;
         }
@@ -641,6 +669,7 @@ const AttendanceScreen = () => {
         return ms / 1000;
         // eslint-disable-next-line react-hooks/exhaustive-deps -- tick 은 값 자체가 아니라 매초 재계산을 트리거하는 용도로만 필요
     }, [currentAttendance, tick]);
+    const elapsedSeconds = visualFixture?.elapsedSeconds ?? calculatedElapsedSeconds;
 
     // 선택된 방식에 따른 출근 핸들러
     const onCheckInPress = () => {
@@ -789,6 +818,7 @@ const AttendanceScreen = () => {
             {/* 60 NFCUnsupported — checkNFCSupport() 가 미지원 판정했을 때만 노출 */}
             <Modal visible={nfcUnsupportedVisible} animationType="slide" onRequestClose={() => setNfcUnsupportedVisible(false)}>
                 <NfcUnsupportedScreen
+                    onClose={() => setNfcUnsupportedVisible(false)}
                     onGps={() => {
                         setNfcUnsupportedVisible(false);
                         setCheckInMethod('location');
@@ -809,6 +839,7 @@ const AttendanceScreen = () => {
                         storeName={punchSuccess.storeName}
                         wage={punchSuccess.wage}
                         onStart={() => setPunchSuccess(null)}
+                        onClose={() => setPunchSuccess(null)}
                     />
                 ) : null}
             </Modal>

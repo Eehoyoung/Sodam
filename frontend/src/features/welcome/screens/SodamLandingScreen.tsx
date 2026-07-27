@@ -52,7 +52,7 @@ export default function SodamLandingScreen({navigation}: Props) {
                         {opacity: fadeAnim, transform: [{translateY: slideAnim}]},
                     ]}>
                     <View style={styles.logoZone}>
-                        <Brandmark size={64} />
+                        <Brandmark size={64} style={styles.brandmark} />
                         <AppText variant="headingLg" tone="inverse" center style={styles.brandTitle}>
                             {'월말 정산이\n30분 안에 끝나요'}
                         </AppText>
@@ -64,11 +64,17 @@ export default function SodamLandingScreen({navigation}: Props) {
                     <View style={styles.buttons}>
                         <AppButton
                             label="무료로 시작하기"
+                            size="sm"
+                            style={styles.primaryButton}
+                            textStyle={styles.buttonLabel}
                             onPress={() => navigation.navigate('Auth', {screen: 'RoleStart'})}
                         />
                         <AppButton
                             label="이미 계정이 있어요"
-                            variant="secondary"
+                            variant="outline"
+                            size="sm"
+                            style={styles.darkOutlineButton}
+                            textStyle={styles.darkOutlineButtonLabel}
                             onPress={() => navigation.navigate('Auth', {screen: 'Login'})}
                         />
                     </View>
@@ -86,10 +92,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: spacing.xl,
-        paddingTop: spacing.sm,
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.xl,
     },
     headerTitle: {
+        color: '#F5F3EF',
         opacity: 0.65,
     },
     headerPill: {
@@ -103,27 +110,50 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        justifyContent: 'space-between',
-        paddingHorizontal: spacing.xxl,
+        justifyContent: 'center',
+        paddingHorizontal: 22,
         paddingBottom: spacing.xl,
         paddingTop: spacing.xl,
     },
     logoZone: {
-        flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
         gap: spacing.sm,
     },
+    brandmark: {
+        transform: [{translateY: -4}],
+    },
     brandTitle: {
-        marginTop: spacing.lg,
+        color: '#F5F3EF',
+        marginTop: spacing.xs,
         letterSpacing: -0.6,
     },
     tagline: {
-        marginTop: spacing.sm,
+        color: '#F5F3EF',
+        marginTop: 3,
         opacity: 0.78,
         maxWidth: 280,
     },
     buttons: {
-        gap: spacing.sm,
+        gap: 9,
+        marginTop: 19,
+    },
+    primaryButton: {
+        borderRadius: 12,
+        minHeight: 42,
+    },
+    darkOutlineButton: {
+        backgroundColor: 'transparent',
+        borderColor: 'rgba(245,245,239,0.3)',
+        borderRadius: 12,
+        minHeight: 42,
+    },
+    buttonLabel: {
+        color: '#F5F3EF',
+        fontSize: 14,
+    },
+    darkOutlineButtonLabel: {
+        color: '#F5F3EF',
+        fontSize: 14,
     },
 });

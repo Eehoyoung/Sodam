@@ -35,6 +35,8 @@ interface BottomSheetProps {
     scrollable?: boolean;
     /** 핸들 아래 원형 아이콘 배지 (문자/이모지 또는 커스텀 노드). 아티팩트 sheet__icon. */
     icon?: ReactNode;
+    /** 개발용 시각 캡처가 별도 Modal 창의 준비 상태를 확인하는 비가시 marker. */
+    captureMarker?: string;
 }
 
 export const BottomSheet: React.FC<BottomSheetProps> = ({
@@ -47,6 +49,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     secondary,
     scrollable = false,
     icon,
+    captureMarker,
 }) => {
     const insets = useSafeAreaInsets();
     const c = useThemeColors();
@@ -95,9 +98,10 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
             <Pressable style={[styles.backdrop, {backgroundColor: c.overlayDark}]} onPress={onClose}>
-                <Pressable
-                    style={[styles.sheet, {backgroundColor: c.background, paddingBottom: Math.max(insets.bottom, spacing.lg) + spacing.sm}]}
-                    onPress={e => e.stopPropagation()}>
+                    <Pressable
+                        style={[styles.sheet, {backgroundColor: c.background, paddingBottom: Math.max(insets.bottom, spacing.lg) + spacing.sm}]}
+                        onPress={e => e.stopPropagation()}>
+                    {captureMarker ? <Text style={styles.captureMarker}>{captureMarker}</Text> : null}
                     {scrollable ? (
                         <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                             {body}
@@ -135,6 +139,7 @@ const styles = StyleSheet.create({
     desc: {marginBottom: spacing.md},
     cta: {marginTop: spacing.md},
     ctaSub: {marginTop: spacing.sm},
+    captureMarker: {position: 'absolute', width: 1, height: 1, fontSize: 1, lineHeight: 1, color: 'transparent'},
 });
 
 export default BottomSheet;

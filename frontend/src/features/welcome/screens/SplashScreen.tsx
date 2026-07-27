@@ -12,18 +12,25 @@ interface Props {
     minDurationMs?: number;
     /** 표시 완료 콜백 (호출 측에서 인증 검증 후 navigation reset) */
     onReady?: () => void;
+    /** Development visual-regression capture: render the settled frame. */
+    disableAnimation?: boolean;
 }
 
 /**
  * 00 Splash — 확정 시안.
  * 다크 네이비 배경 + 브랜드 마크 페이드 인 + 슬로건. 최소 0.8초, 최대 1.6초 노출.
  */
-const SplashScreen: React.FC<Props> = ({minDurationMs = 800, onReady}) => {
-    const logoOpacity = useRef(new Animated.Value(0)).current;
-    const logoScale = useRef(new Animated.Value(0.9)).current;
-    const sloganOpacity = useRef(new Animated.Value(0)).current;
+const SplashScreen: React.FC<Props> = ({minDurationMs = 800, onReady, disableAnimation = false}) => {
+    const logoOpacity = useRef(new Animated.Value(disableAnimation ? 1 : 0)).current;
+    const logoScale = useRef(new Animated.Value(disableAnimation ? 1 : 0.9)).current;
+    const sloganOpacity = useRef(new Animated.Value(disableAnimation ? 1 : 0)).current;
 
     useEffect(() => {
+        if (disableAnimation) {
+            onReady?.();
+            return;
+        }
+
         const start = Date.now();
         Animated.parallel([
             Animated.timing(logoOpacity, {toValue: 1, duration: 400, useNativeDriver: true}),
@@ -44,7 +51,7 @@ const SplashScreen: React.FC<Props> = ({minDurationMs = 800, onReady}) => {
             clearTimeout(sloganTimer);
             clearTimeout(readyTimer);
         };
-    }, [logoOpacity, logoScale, sloganOpacity, minDurationMs, onReady]);
+    }, [logoOpacity, logoScale, sloganOpacity, minDurationMs, onReady, disableAnimation]);
 
     return (
         <SafeAreaView style={styles.safeArea}>

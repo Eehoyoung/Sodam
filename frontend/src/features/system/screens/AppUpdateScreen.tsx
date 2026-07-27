@@ -21,7 +21,7 @@ const AppUpdateScreen: React.FC<Props> = ({storeUrl, currentVersion}) => {
             <SuccessState
                 glyph={<Ionicons name="arrow-up-circle" size={40} color={c.brandPrimary} />}
                 markColor={c.brandPrimarySoft}
-                title="새 버전으로 업데이트해 주세요"
+                title={'새 버전으로\n업데이트해 주세요'}
                 description={`안정적인 사용을 위해 최신 버전이 필요해요. 잠깐이면 끝나요.${currentVersion ? `\n현재 버전 ${currentVersion}` : ''}`}
                 primary={{label: '업데이트하기', onPress: () => storeUrl && Linking.openURL(storeUrl)}}
             />
