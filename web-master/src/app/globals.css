@@ -1,0 +1,162 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  /* 소담 v3("링&패스") 브랜드 토큰 — SSOT: frontend/src/theme/tokens.ts (v3Colors/darkV3Colors/gradient.ring) */
+  --color-brand-coral: var(--brand-coral);
+  --color-brand-coral-soft: var(--brand-coral-soft);
+  --color-brand-teal: var(--brand-teal);
+  --color-brand-teal-soft: var(--brand-teal-soft);
+  --color-brand-amber: var(--brand-amber);
+  --color-brand-amber-soft: var(--brand-amber-soft);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-ink-soft: var(--brand-ink-soft);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/*
+ * 소담 v3("링&패스") 디자인 토큰 이식 — frontend/src/theme/tokens.ts 의 v3Colors/darkV3Colors 를
+ * shadcn/ui 시맨틱 슬롯에 매핑한다. 값 변경 시 SSOT(모바일 tokens.ts)와 이 파일을 함께 갱신할 것
+ * (03_UI_UX_설계가이드.md §2 — 두 프로젝트가 물리적으로 분리되어 자동 동기화되지 않는다).
+ */
+:root {
+  --background: #F7F7F4;          /* v3Colors.bg */
+  --foreground: #15171B;          /* v3Colors.ink */
+  --card: #FFFFFF;                /* v3Colors.card */
+  --card-foreground: #15171B;
+  --popover: #FFFFFF;
+  --popover-foreground: #15171B;
+  --primary: #FF4D6D;             /* v3Colors.coral */
+  --primary-foreground: #FFFFFF;
+  --secondary: #F1F1EC;           /* v3Colors.card2 */
+  --secondary-foreground: #15171B;
+  --muted: #F1F1EC;
+  --muted-foreground: #6A6E76;    /* v3Colors.inkSoft */
+  --accent: #DCF6F1;              /* v3Colors.tealSoft */
+  --accent-foreground: #15171B;
+  --destructive: #FF4D6D;         /* colors.error === brandPrimary (v3 원본과 동일) */
+  --border: #E7E7E2;              /* v3Colors.border */
+  --input: #E7E7E2;
+  --ring: #FF4D6D;                /* colors.borderFocus */
+  --chart-1: #FF4D6D;
+  --chart-2: #12B8A6;
+  --chart-3: #C97F00;
+  --chart-4: #6A6E76;
+  --chart-5: #15171B;
+  --radius: 0.75rem;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #15171B;
+  --sidebar-primary: #FF4D6D;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F1F1EC;
+  --sidebar-accent-foreground: #15171B;
+  --sidebar-border: #E7E7E2;
+  --sidebar-ring: #FF4D6D;
+
+  --brand-coral: #FF4D6D;
+  --brand-coral-soft: #FFE1E6;
+  --brand-teal: #12B8A6;
+  --brand-teal-soft: #DCF6F1;
+  --brand-amber: #C97F00;
+  --brand-amber-soft: #FFEDCC;
+  --brand-ink: #15171B;
+  --brand-ink-soft: #6A6E76;
+}
+
+.dark {
+  --background: #12141B;          /* darkV3Colors.bg */
+  --foreground: #F2F1EE;          /* darkV3Colors.ink */
+  --card: #1B1E26;
+  --card-foreground: #F2F1EE;
+  --popover: #1B1E26;
+  --popover-foreground: #F2F1EE;
+  --primary: #FF7288;             /* darkV3Colors.coral */
+  --primary-foreground: #15171B;
+  --secondary: #20232C;           /* darkV3Colors.card2 */
+  --secondary-foreground: #F2F1EE;
+  --muted: #20232C;
+  --muted-foreground: #A6A9AE;
+  --accent: #173330;              /* darkV3Colors.tealSoft */
+  --accent-foreground: #F2F1EE;
+  --destructive: #FF7288;
+  --border: #2A2E37;
+  --input: #2A2E37;
+  --ring: #FF7288;
+  --chart-1: #FF7288;
+  --chart-2: #2DD4BF;
+  --chart-3: #FFC24D;
+  --chart-4: #A6A9AE;
+  --chart-5: #F2F1EE;
+  --sidebar: #1B1E26;
+  --sidebar-foreground: #F2F1EE;
+  --sidebar-primary: #FF7288;
+  --sidebar-primary-foreground: #15171B;
+  --sidebar-accent: #20232C;
+  --sidebar-accent-foreground: #F2F1EE;
+  --sidebar-border: #2A2E37;
+  --sidebar-ring: #FF7288;
+
+  --brand-coral: #FF7288;
+  --brand-coral-soft: #3A222A;
+  --brand-teal: #2DD4BF;
+  --brand-teal-soft: #173330;
+  --brand-amber: #FFC24D;
+  --brand-amber-soft: #3A2C14;
+  --brand-ink: #F2F1EE;
+  --brand-ink-soft: #A6A9AE;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
