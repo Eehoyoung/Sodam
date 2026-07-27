@@ -44,7 +44,15 @@
     "predeploy": "npm run lint && npm run test:ci",
     "deploy:test": "npm run predeploy && npm run build:android:debug && npm run build:web",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "visual:v3:reference": "node ./scripts/v3-visual-regression.mjs reference",
+    "visual:v3:reference:strict-154": "node ./scripts/v3-visual-regression.mjs reference --expected-screen-count 154",
+    "visual:v3:compare": "node ./scripts/v3-visual-regression.mjs compare",
+    "visual:v3:catalog": "node ./scripts/v3-visual-catalog.mjs",
+    "visual:v3:compare:native": "node ./scripts/v3-visual-regression.mjs compare --reference-dir ../artifacts/v3-visual/native-reference --actual ../artifacts/v3-visual/actual --diff-dir ../artifacts/v3-visual/native-diff --report-file ../artifacts/v3-visual/native-strict-report.json --channel-threshold 0 --pixel-budget 0",
+    "visual:v3:prepare": "powershell -ExecutionPolicy Bypass -File .\\scripts\\prepare-v3-android-screen.ps1",
+    "visual:v3:capture": "powershell -ExecutionPolicy Bypass -File .\\scripts\\capture-v3-android-screen.ps1",
+    "visual:v3:capture:native": "powershell -ExecutionPolicy Bypass -File .\\scripts\\capture-v3-android-visual.ps1"
   },
   "dependencies": {
     "@invertase/react-native-apple-authentication": "^2.5.1",
@@ -107,6 +115,7 @@
     "eslint-plugin-storybook": "^10.4.1",
     "jest": "^29.6.3",
     "playwright": "^1.60.0",
+    "pngjs": "^7.0.0",
     "prettier": "2.8.8",
     "react-dom": "19.1.0",
     "react-native-web": "^0.21.2",

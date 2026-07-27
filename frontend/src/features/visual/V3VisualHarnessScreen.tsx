@@ -1,0 +1,2524 @@
+/**
+ * Development-only, renderer-stable v3 visual comparison harness.
+ *
+ * A canonical HTML card is a product-spec source, but Chromium and Android
+ * do not rasterise gradients, fonts, or text inputs identically. The runner
+ * captures (1) an independent native transcription of the card and (2) the
+ * actual service screen on the same Android renderer, density, and inset
+ * configuration. It never displays a PNG, HTML, or WebView.
+ */
+import React from 'react';
+import {Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import SodamLogo from '../../common/components/logo/SodamLogo';
+import {
+    AppButton,
+    AppBadge,
+    AppHeader,
+    AppInput,
+    AppListItem,
+    AppText,
+    AmountText,
+    Brandmark,
+    AppCard,
+    CtaStack,
+    EmptyState,
+    ErrorState,
+    HeroNumber,
+    LoadingState,
+    MoneyCard,
+    PermissionState,
+    ScreenContainer,
+    SegmentedControl,
+    StorePassRow,
+    StepScaffold,
+} from '../../common/components/ds';
+import {useThemeColors} from '../../common/hooks/useThemeColors';
+import LoginScreen from '../auth/screens/LoginScreen';
+import KakaoLoginScreen from '../auth/screens/KakaoLoginScreen';
+import SignupScreen from '../auth/screens/SignupScreen';
+import RoleStartScreen from '../auth/screens/RoleStartScreen';
+import SodamLandingScreen from '../welcome/screens/SodamLandingScreen';
+import SplashScreen from '../welcome/screens/SplashScreen';
+import OnboardingCarouselScreen from '../welcome/screens/OnboardingCarouselScreen';
+import AppUpdateScreen from '../system/screens/AppUpdateScreen';
+import MaintenanceScreen from '../system/screens/MaintenanceScreen';
+import PaymentSuccessScreen from '../system/screens/PaymentSuccessScreen';
+import SubscriptionGateScreen from '../system/screens/SubscriptionGateScreen';
+import PushPrimerSheet from '../system/screens/PushPrimerSheet';
+import HomeScreen from '../home/screens/HomeScreen';
+import AttendanceOverviewScreen, {AttendanceOverviewFixture} from '../attendance/screens/AttendanceOverviewScreen';
+import AttendanceScreen, {AttendanceVisualFixture} from '../attendance/screens/AttendanceScreen';
+import {AttendanceStatus} from '../attendance/types';
+import SalaryListScreen, {SalaryListFixture} from '../salary/screens/SalaryListScreen';
+import {NfcUnsupportedScreen, PunchFailedScreen, PunchSuccessScreen} from '../attendance/components/AttendanceSheets';
+import AttendanceCorrectionRequestScreen from '../attendance/screens/AttendanceCorrectionRequestScreen';
+import TimeOffRequestScreen from '../timeoff/screens/TimeOffRequestScreen';
+import JoinStoreByCodeScreen from '../store/screens/JoinStoreByCodeScreen';
+import StoreOperatingHoursScreen, {StoreOperatingHoursVisualFixture} from '../store/screens/StoreOperatingHoursScreen';
+import NfcTagManagementScreen, {NfcTagManagementVisualFixture} from '../store/screens/NfcTagManagementScreen';
+import EmployeeManagementScreen, {EmployeeManagementVisualFixture} from '../store/screens/EmployeeManagementScreen';
+import TossBillingAuthScreen from '../subscription/screens/TossBillingAuthScreen';
+import EditShiftScreen, {EditShiftVisualFixture} from '../shift/screens/EditShiftScreen';
+import AttendanceNoticeScreen, {AttendanceNoticeVisualFixture} from '../attendance/screens/AttendanceNoticeScreen';
+import MyLeaveBalanceScreen, {MyLeaveBalanceVisualFixture} from '../timeoff/screens/MyLeaveBalanceScreen';
+import TimeOffApprovalScreen, {TimeOffApprovalVisualFixture} from '../timeoff/screens/TimeOffApprovalScreen';
+import MyShiftScreen, {MyShiftVisualFixture} from '../shift/screens/MyShiftScreen';
+import AttendanceApprovalScreen, {AttendanceApprovalVisualFixture} from '../attendance/screens/AttendanceApprovalScreen';
+import AttendanceIrregularitiesScreen, {AttendanceIrregularitiesVisualFixture} from '../attendance/screens/AttendanceIrregularitiesScreen';
+import SwapBoardScreen, {SwapBoardVisualFixture} from '../shift/screens/SwapBoardScreen';
+import EmployeeWorkLogScreen, {EmployeeWorkLogVisualFixture} from '../attendance/screens/EmployeeWorkLogScreen';
+import SwapRequestsScreen, {SwapRequestsVisualFixture} from '../shift/screens/SwapRequestsScreen';
+import StoreScheduleScreen, {StoreScheduleVisualFixture} from '../shift/screens/StoreScheduleScreen';
+import {DATE_DIGITS_HELPER, TIME_DIGITS_HELPER} from '../../common/utils/dateTimeInput';
+import AppCalendar from '../../common/components/AppCalendar';
+import RoleTabBar from '../../common/components/navigation/RoleTabBar';
+import {radius, spacing} from '../../theme/tokens';
+import {RootStackParamList} from '../../navigation/types';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'V3Visual'>;
+
+export const V3_VISUAL_SCREEN_IDS = {
+    welcomeSplash: 'sodam-v3-01-auth--000',
+    authRoleStart: 'sodam-v3-01-auth--001',
+    authWelcomeMain: 'sodam-v3-01-auth--002',
+    authOnboarding: 'sodam-v3-01-auth--003',
+    authLogin: 'sodam-v3-01-auth--004',
+    authSignup: 'sodam-v3-01-auth--005',
+    authKakaoLogin: 'sodam-v3-01-auth--007',
+    employeeHome: 'sodam-v3-03-employee--009',
+    attendanceOverview: 'sodam-v3-03-employee--019',
+    attendanceAuthentication: 'sodam-v3-03-employee--020',
+    nfcUnsupported: 'sodam-v3-03-employee--060',
+    punchSuccess: 'sodam-v3-03-employee--062',
+    punchFailedRadius: 'sodam-v3-03-employee--063',
+    correctionSuccess: 'sodam-v3-03-employee--064',
+    timeOffSuccess: 'sodam-v3-03-employee--065',
+    joinStoreSuccess: 'sodam-v3-03-employee--066',
+    salaryList: 'sodam-v3-04-payroll--028',
+    commonEmpty: 'sodam-v3-06-settings--047',
+    commonError: 'sodam-v3-06-settings--048',
+    commonPermission: 'sodam-v3-06-settings--049',
+    commonLoading: 'sodam-v3-06-settings--050',
+    opsOperatingHours: 'sodam-v3-13-ops--O1',
+    opsNfcTags: 'sodam-v3-13-ops--O2',
+    opsEmployeeManagement: 'sodam-v3-13-ops--O3',
+    opsBillingProcessing: 'sodam-v3-13-ops--O4',
+    scheduleEditShift: 'sodam-v3-09-schedule--S1',
+    scheduleMyShift: 'sodam-v3-09-schedule--S2',
+    scheduleStoreSchedule: 'sodam-v3-09-schedule--S3',
+    scheduleSwapBoard: 'sodam-v3-09-schedule--S4',
+    scheduleSwapRequests: 'sodam-v3-09-schedule--S5',
+    scheduleTimeOffApproval: 'sodam-v3-09-schedule--S6',
+    scheduleLeaveBalance: 'sodam-v3-09-schedule--S7',
+    scheduleAttendanceApproval: 'sodam-v3-09-schedule--S8',
+    scheduleAttendanceIrregularities: 'sodam-v3-09-schedule--S9',
+    scheduleAttendanceNotice: 'sodam-v3-09-schedule--S10',
+    scheduleEmployeeWorkLog: 'sodam-v3-09-schedule--S11',
+    opsAppUpdate: 'sodam-v3-13-ops--O5',
+    opsMaintenance: 'sodam-v3-13-ops--O6',
+    opsPaymentSuccess: 'sodam-v3-13-ops--O7',
+    opsPushPrimer: 'sodam-v3-13-ops--O8',
+    opsSubscriptionGate: 'sodam-v3-13-ops--O9',
+} as const;
+
+type CommonStateKind = 'empty' | 'error' | 'permission' | 'loading';
+
+const COMMON_STATE_SPECS: Record<CommonStateKind, {
+    header: string;
+    headerAction?: string;
+    glyph: string;
+    title: string;
+    description: string;
+    primary?: string;
+    secondary?: string;
+    color: 'success' | 'error' | 'warning' | 'textSecondary';
+    background: 'successBg' | 'errorBg' | 'warningBg' | 'surfaceMuted';
+}> = {
+    empty: {
+        header: '직원', headerAction: '추가', glyph: '+',
+        title: '아직 직원이 없어요',
+        description: '초대 코드를 보내면 직원이 직접 가입하고 오늘부터 출퇴근을 찍을 수 있어요.',
+        primary: '초대 코드 만들기', color: 'success', background: 'successBg',
+    },
+    error: {
+        header: '연결 오류', headerAction: '재시도', glyph: '!',
+        title: '잠시 연결이 불안정해요',
+        description: '기록은 사라지지 않습니다. 네트워크가 복구되면 다시 불러올게요.',
+        primary: '다시 시도', secondary: '고객지원 보기', color: 'error', background: 'errorBg',
+    },
+    permission: {
+        header: '위치 권한', headerAction: '도움', glyph: '!',
+        title: '위치 권한이 필요해요',
+        description: '매장 근처에서 출근했는지 확인하기 위해 현재 위치를 한 번만 확인합니다.',
+        primary: '권한 켜기', secondary: '사장님께 수동 요청', color: 'warning', background: 'warningBg',
+    },
+    loading: {
+        header: '불러오는 중', glyph: '…',
+        title: '매장 상태를 확인하고 있어요',
+        description: '오늘 출근 기록과 급여 준비 상태를 정리하는 중입니다.',
+        color: 'textSecondary', background: 'surfaceMuted',
+    },
+};
+
+const StateProgress: React.FC = () => (
+    <View style={styles.stateProgressCard}>
+        <View style={styles.stateProgressTrack}>
+            <View style={styles.stateProgressValue} />
+        </View>
+    </View>
+);
+
+const NativeReferenceCommonState: React.FC<{kind: CommonStateKind}> = ({kind}) => {
+    const c = useThemeColors();
+    const spec = COMMON_STATE_SPECS[kind];
+
+    return (
+        <ScreenContainer header={<AppHeader title={spec.header} rightText={spec.headerAction} />}>
+            <View style={styles.stateCenter}>
+                <View style={styles.stateInner}>
+                    <View style={[styles.stateMark, {backgroundColor: c[spec.background]}]}>
+                        <Text style={[styles.stateMarkText, {color: c[spec.color]}]}>{spec.glyph}</Text>
+                    </View>
+                    <Text style={[styles.stateTitle, {color: c.textPrimary}]}>{spec.title}</Text>
+                    <Text style={[styles.stateCopy, {color: c.textSecondary}]}>{spec.description}</Text>
+                    {kind === 'loading' ? <StateProgress /> : null}
+                    {spec.primary ? <AppButton label={spec.primary} onPress={() => undefined} style={styles.stateCta} /> : null}
+                    {spec.secondary ? <AppButton label={spec.secondary} variant="secondary" onPress={() => undefined} style={styles.stateCtaSub} /> : null}
+                </View>
+            </View>
+        </ScreenContainer>
+    );
+};
+
+const ActualCommonState: React.FC<{kind: CommonStateKind}> = ({kind}) => {
+    const c = useThemeColors();
+    const spec = COMMON_STATE_SPECS[kind];
+    const glyph = <Text style={[styles.stateMarkText, {color: c[spec.color]}]}>{spec.glyph}</Text>;
+    const commonProps = {
+        title: spec.title,
+        description: spec.description,
+        glyph,
+        markColor: c[spec.background],
+        primary: spec.primary ? {label: spec.primary, onPress: () => undefined} : undefined,
+        secondary: spec.secondary ? {label: spec.secondary, onPress: () => undefined} : undefined,
+    };
+
+    return (
+        <ScreenContainer header={<AppHeader title={spec.header} rightText={spec.headerAction} />}>
+            {kind === 'empty' ? <EmptyState {...commonProps} /> : null}
+            {kind === 'error' ? <ErrorState {...commonProps} /> : null}
+            {kind === 'permission' ? <PermissionState {...commonProps} /> : null}
+            {kind === 'loading' ? <LoadingState title={spec.title} description={spec.description} glyph={glyph} markColor={c[spec.background]}><StateProgress /></LoadingState> : null}
+        </ScreenContainer>
+    );
+};
+
+type ServiceStateKind = 'update' | 'maintenance' | 'payment-success';
+
+const NativeReferenceServiceState: React.FC<{kind: ServiceStateKind}> = ({kind}) => {
+    const c = useThemeColors();
+    const spec = kind === 'update'
+        ? {
+            title: '새 버전으로\n업데이트해 주세요',
+            description: '안정적인 사용을 위해 최신 버전이 필요해요. 잠깐이면 끝나요.\n현재 버전 3.2.0',
+            primary: '업데이트하기',
+            mark: <Ionicons name="arrow-up-circle" size={40} color={c.brandPrimary} />,
+            markColor: c.brandPrimarySoft,
+        }
+        : kind === 'maintenance'
+            ? {
+                title: '잠시 점검 중이에요',
+                description: '더 안정적인 서비스를 위해 점검하고 있어요. 잠시 후 다시 시도해 주세요.',
+                primary: '다시 시도',
+                mark: <Ionicons name="construct-outline" size={40} color={c.warning} />,
+                markColor: c.warningBg,
+            }
+            : {
+                title: '결제가 완료됐어요',
+                description: '비즈니스 플랜이 다시 활성화됐어요. 멈췄던 기능을 바로 쓸 수 있어요.',
+                primary: '계속하기',
+                mark: <Text style={[styles.stateMarkText, {color: c.textInverse}]}>✓</Text>,
+                markColor: c.success,
+            };
+
+    return (
+        <ScreenContainer edges={['top', 'bottom']}>
+            <View style={styles.stateCenter}>
+                <View style={styles.stateInner}>
+                    <View style={[styles.stateMark, {backgroundColor: spec.markColor}]}>{spec.mark}</View>
+                    <Text style={[styles.stateTitle, {color: c.textPrimary}]}>{spec.title}</Text>
+                    <Text style={[styles.stateCopy, {color: c.textSecondary}]}>{spec.description}</Text>
+                    <AppButton label={spec.primary} onPress={() => undefined} style={styles.stateCta} />
+                </View>
+            </View>
+        </ScreenContainer>
+    );
+};
+
+const REFERENCE_TIME_HELPER = '숫자만 입력하세요. 시간은 24시간 형식 4자리 숫자로 입력하세요. 예: 1020, 2330';
+
+const OPERATING_HOURS_FIXTURE: StoreOperatingHoursVisualFixture = {
+    rows: [
+        {dayOfWeek: 'MONDAY', openTime: '0900', closeTime: '1800', isClosed: false},
+        {dayOfWeek: 'TUESDAY', openTime: '0900', closeTime: '1800', isClosed: false},
+        {dayOfWeek: 'WEDNESDAY', openTime: '0900', closeTime: '1800', isClosed: false},
+        {dayOfWeek: 'THURSDAY', openTime: '0900', closeTime: '1800', isClosed: false},
+        {dayOfWeek: 'FRIDAY', openTime: '0900', closeTime: '1800', isClosed: false},
+        {dayOfWeek: 'SATURDAY', openTime: '0900', closeTime: '1800', isClosed: false},
+        {dayOfWeek: 'SUNDAY', openTime: '0900', closeTime: '1800', isClosed: true},
+    ],
+};
+
+const DAY_LABELS: Record<string, string> = {
+    MONDAY: '월요일', TUESDAY: '화요일', WEDNESDAY: '수요일', THURSDAY: '목요일',
+    FRIDAY: '금요일', SATURDAY: '토요일', SUNDAY: '일요일',
+};
+
+const NativeReferenceOperatingHours: React.FC = () => {
+    const c = useThemeColors();
+    return (
+        <ScreenContainer
+            scroll
+            header={<AppHeader title="운영시간 설정" onBack={() => undefined} />}
+            footer={<CtaStack><AppButton label="운영시간 저장" onPress={() => undefined} /></CtaStack>}>
+            <AppText variant="headingSm" style={styles.opsHoursTitle}>요일별 영업 시간을{'\n'}설정해 주세요</AppText>
+            <AppText variant="bodyMd" tone="secondary" style={styles.opsHoursIntro}>
+                출퇴근 인증과 이상 알림에 사용돼요.
+            </AppText>
+            <View style={styles.opsHoursList}>
+                {OPERATING_HOURS_FIXTURE.rows.map(row => (
+                    <AppCard key={row.dayOfWeek} variant="plain" style={styles.opsHoursDayCard}>
+                        <View style={styles.opsHoursDayHeader}>
+                            <AppText variant="titleMd">{DAY_LABELS[row.dayOfWeek]}</AppText>
+                            <Pressable
+                                onPress={() => undefined}
+                                style={[
+                                    styles.opsHoursClosedToggle,
+                                    {backgroundColor: row.isClosed ? c.surfaceMuted : c.brandPrimarySoft},
+                                ]}>
+                                <Ionicons
+                                    name={row.isClosed ? 'moon-outline' : 'storefront-outline'}
+                                    size={14}
+                                    color={row.isClosed ? c.textSecondary : c.brandPrimary}
+                                />
+                                <AppText variant="caption" weight="700" tone={row.isClosed ? 'secondary' : 'brand'}>
+                                    {row.isClosed ? '휴무' : '영업'}
+                                </AppText>
+                            </Pressable>
+                        </View>
+                        {row.isClosed ? (
+                            <AppText variant="caption" tone="tertiary" style={styles.opsHoursClosedHint}>
+                                이 요일은 휴무로 설정됐어요.
+                            </AppText>
+                        ) : (
+                            <View style={styles.opsHoursTimeRow}>
+                                <AppInput
+                                    label="오픈"
+                                    value={row.openTime}
+                                    onChangeText={() => undefined}
+                                    placeholder="0900"
+                                    keyboardType="number-pad"
+                                    maxLength={4}
+                                    helper={REFERENCE_TIME_HELPER}
+                                    containerStyle={styles.opsHoursTimeInput}
+                                />
+                                <AppInput
+                                    label="마감"
+                                    value={row.closeTime}
+                                    onChangeText={() => undefined}
+                                    placeholder="1800"
+                                    keyboardType="number-pad"
+                                    maxLength={4}
+                                    helper={REFERENCE_TIME_HELPER}
+                                    containerStyle={styles.opsHoursTimeInput}
+                                />
+                            </View>
+                        )}
+                    </AppCard>
+                ))}
+            </View>
+        </ScreenContainer>
+    );
+};
+
+const NFC_TAGS_FIXTURE: NfcTagManagementVisualFixture = {
+    tags: [
+        {id: 1, storeId: 101, tagId: 'A3F291', label: '카운터 태그', active: true, createdAt: '2026-07-01T09:00:00Z'},
+        {id: 2, storeId: 101, tagId: 'B7C042', label: '주방 태그', active: false, createdAt: '2026-07-01T09:00:00Z'},
+    ],
+};
+
+const NativeReferenceNfcTags: React.FC = () => {
+    return (
+        <ScreenContainer scroll header={<AppHeader title="NFC 태그 관리" onBack={() => undefined} />}>
+            <AppText variant="headingSm" style={styles.opsNfcSectionTitle}>새 태그 등록</AppText>
+            <AppCard variant="flat" style={styles.opsNfcFormCard}>
+                <AppInput label="태그 ID" placeholder="태그에 인쇄된 고유 ID" value="" onChangeText={() => undefined} autoCapitalize="none" autoCorrect={false} />
+                <AppInput label="라벨 (선택)" placeholder="예: 카운터, 뒷문" value="" onChangeText={() => undefined} />
+                <AppButton label="등록하기" onPress={() => undefined} style={styles.opsNfcRegisterButton} />
+            </AppCard>
+            <AppText variant="headingSm" style={styles.opsNfcSectionTitleGap}>등록된 태그 2개</AppText>
+            <View style={styles.opsNfcList}>
+                {NFC_TAGS_FIXTURE.tags.map(tag => (
+                    <AppCard key={tag.id} variant="flat" style={styles.opsNfcTagCard}>
+                        <View style={styles.opsNfcTagRow}>
+                            <View style={styles.opsNfcFlex}>
+                                <AppText variant="titleMd" weight="700" numberOfLines={1}>{tag.label}</AppText>
+                                <AppText variant="caption" tone="secondary" numberOfLines={1}>ID {tag.tagId}</AppText>
+                            </View>
+                            <AppBadge label={tag.active ? '활성' : '비활성'} tone={tag.active ? 'success' : 'neutral'} />
+                        </View>
+                        <AppButton
+                            label={tag.active ? '비활성화' : '재활성화'}
+                            variant={tag.active ? 'destructive' : 'secondary'}
+                            size="sm"
+                            fullWidth={false}
+                            style={styles.opsNfcToggleButton}
+                            onPress={() => undefined}
+                        />
+                    </AppCard>
+                ))}
+            </View>
+        </ScreenContainer>
+    );
+};
+
+const EMPLOYEE_MANAGEMENT_FIXTURE: EmployeeManagementVisualFixture = {
+    storeCode: 'SODAM5',
+    employees: [
+        {id: 1, name: '김민지', phone: '010-****-1234', userGrade: 'EMPLOYEE'},
+        {id: 2, name: '이현수', phone: '010-****-5678', userGrade: 'MANAGER'},
+        {id: 3, name: '박도윤', phone: '010-****-2468', userGrade: 'EMPLOYEE'},
+        {id: 4, name: '최지아', phone: '010-****-1357', userGrade: 'EMPLOYEE'},
+        {id: 5, name: '한서준', phone: '010-****-9876', userGrade: 'EMPLOYEE'},
+    ],
+};
+
+const NativeReferenceEmployeeManagement: React.FC = () => {
+    const c = useThemeColors();
+    return (
+        <ScreenContainer
+            scroll
+            header={<AppHeader title="직원 관리" onBack={() => undefined} actions={[{label: '초대', onPress: () => undefined}]} />}
+            footer={<CtaStack><AppButton label="직원 초대하기" onPress={() => undefined} /></CtaStack>}>
+            <View style={styles.opsEmployeeSection}>
+                <AppText variant="titleMd" tone="secondary" style={styles.opsEmployeeSectionTitle}>직원 5명</AppText>
+                <View style={styles.opsEmployeeList}>
+                    {EMPLOYEE_MANAGEMENT_FIXTURE.employees.map(employee => {
+                        const isManager = employee.userGrade === 'ROLE_MANAGER' || employee.userGrade === 'MANAGER';
+                        return (
+                            <AppListItem
+                                key={employee.id}
+                                title={employee.name}
+                                subtitle={employee.phone}
+                                onPress={() => undefined}
+                                right={
+                                    <View style={styles.opsEmployeeRightRow}>
+                                        <AppBadge label={isManager ? '매니저' : '직원'} tone={isManager ? 'success' : 'neutral'} />
+                                        <Ionicons name="chevron-forward" size={20} color={c.textTertiary} />
+                                    </View>
+                                }
+                                left={
+                                    <View style={[styles.opsEmployeeAvatar, {backgroundColor: c.brandPrimarySoft}]}>
+                                        <AppText variant="titleMd" tone="brand">{employee.name.slice(0, 1)}</AppText>
+                                    </View>
+                                }
+                            />
+                        );
+                    })}
+                </View>
+            </View>
+        </ScreenContainer>
+    );
+};
+
+const NativeReferenceBillingProcessing: React.FC = () => {
+    const c = useThemeColors();
+    return (
+        <ScreenContainer header={<AppHeader title="카드 등록" />}>
+            <LoadingState
+                title="결제 처리 중"
+                description="결제를 처리하고 있어요…"
+                glyph={<Text style={[styles.opsBillingGlyph, {color: c.textSecondary}]}>…</Text>}
+                markColor={c.surfaceMuted}
+            />
+        </ScreenContainer>
+    );
+};
+
+const EDIT_SHIFT_FIXTURE: EditShiftVisualFixture = {
+    storeId: 101,
+    employeeId: 1,
+    employeeName: '김민지',
+    shiftDate: '20260629',
+    startTime: '1020',
+    endTime: '2330',
+    memo: '',
+    items: [],
+};
+
+const NativeReferenceEditShift: React.FC = () => {
+    const c = useThemeColors();
+    return (
+        <ScreenContainer
+            scroll
+            header={<AppHeader title="근무 시프트" subtitle="김민지" onBack={() => undefined} />}
+            footer={<AppButton label="근무 일정 등록" onPress={() => undefined} />}>
+            <AppText variant="caption" tone="secondary" style={styles.scheduleFieldLabel}>근무 날짜</AppText>
+            <AppInput value="20260629" onChangeText={() => undefined} placeholder="20260629" keyboardType="number-pad" maxLength={8} helper={DATE_DIGITS_HELPER} />
+            <View style={styles.scheduleTimeRow}>
+                <View style={styles.scheduleFlex}>
+                    <AppText variant="caption" tone="secondary" style={styles.scheduleFieldLabel}>시작</AppText>
+                    <AppInput value="1020" onChangeText={() => undefined} placeholder="1020" keyboardType="number-pad" maxLength={4} helper={TIME_DIGITS_HELPER} />
+                </View>
+                <View style={styles.scheduleFlex}>
+                    <AppText variant="caption" tone="secondary" style={styles.scheduleFieldLabel}>종료</AppText>
+                    <AppInput value="2330" onChangeText={() => undefined} placeholder="2330" keyboardType="number-pad" maxLength={4} helper={TIME_DIGITS_HELPER} />
+                </View>
+            </View>
+            <AppText variant="caption" tone="secondary" style={styles.scheduleFieldLabel}>메모 (선택)</AppText>
+            <AppInput value="" onChangeText={() => undefined} placeholder="예: 오픈 / 마감 / 홀" />
+            <AppText variant="titleMd" style={styles.scheduleListTitle}>이번 주 등록된 일정</AppText>
+            <EmptyState
+                glyph={<Ionicons name="calendar-outline" size={36} color={c.textTertiary} />}
+                markColor={c.surfaceMuted}
+                title="이번 주 등록된 일정이 없어요"
+                description="위에서 근무 날짜와 시간을 입력해 등록해 주세요."
+            />
+        </ScreenContainer>
+    );
+};
+
+const MY_SHIFT_FIXTURE: MyShiftVisualFixture = {
+    month: '2026-07',
+    selectedDate: '2026-07-20',
+    shifts: [
+        {id: 1, employeeId: 1, storeId: 101, shiftDate: '2026-07-01', startTime: '10:00', endTime: '18:00', memo: '오픈'},
+        {id: 2, employeeId: 1, storeId: 101, shiftDate: '2026-07-03', startTime: '10:00', endTime: '18:00'},
+        {id: 3, employeeId: 1, storeId: 101, shiftDate: '2026-07-05', startTime: '10:00', endTime: '18:00'},
+        {id: 4, employeeId: 1, storeId: 101, shiftDate: '2026-07-07', startTime: '10:00', endTime: '18:00'},
+        {id: 5, employeeId: 1, storeId: 101, shiftDate: '2026-07-09', startTime: '10:00', endTime: '18:00'},
+        {id: 6, employeeId: 1, storeId: 101, shiftDate: '2026-07-11', startTime: '10:00', endTime: '18:00'},
+        {id: 7, employeeId: 1, storeId: 101, shiftDate: '2026-07-13', startTime: '10:00', endTime: '18:00'},
+        {id: 8, employeeId: 1, storeId: 101, shiftDate: '2026-07-15', startTime: '10:00', endTime: '18:00'},
+        {id: 9, employeeId: 1, storeId: 101, shiftDate: '2026-07-17', startTime: '10:00', endTime: '18:00'},
+        {id: 10, employeeId: 1, storeId: 101, shiftDate: '2026-07-19', startTime: '10:00', endTime: '18:00'},
+        {id: 11, employeeId: 1, storeId: 101, shiftDate: '2026-07-20', startTime: '10:00', endTime: '18:00', memo: '오픈'},
+        {id: 12, employeeId: 1, storeId: 101, shiftDate: '2026-07-21', startTime: '10:00', endTime: '18:00'},
+    ],
+};
+
+const SCHEDULE_WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+function formatFixtureShiftDate(iso: string): string {
+    const [year, month, day] = iso.split('-').map(Number);
+    const weekday = SCHEDULE_WEEKDAYS[new Date(year, month - 1, day).getDay()];
+    return `${month}월 ${day}일 (${weekday})`;
+}
+
+const NativeReferenceMyShift: React.FC = () => {
+    const c = useThemeColors();
+    const marks: Record<string, {dots: string[]}> = {};
+    MY_SHIFT_FIXTURE.shifts.forEach(shift => {
+        marks[shift.shiftDate] = {dots: [c.brandPrimary]};
+    });
+    const selectedShift = MY_SHIFT_FIXTURE.shifts.find(shift => shift.shiftDate === MY_SHIFT_FIXTURE.selectedDate);
+
+    return (
+        <ScreenContainer
+            scroll
+            header={<AppHeader title="내 근무 일정" onBack={() => undefined} />}
+            footer={<RoleTabBar active="schedule" />}>
+            <View style={styles.myShiftContainer}>
+                <View style={[styles.myShiftSummaryBar, {backgroundColor: c.surfaceMuted}]}>
+                    <View style={styles.myShiftSummaryItem}>
+                        <AppText variant="caption" tone="secondary">이번 달 근무</AppText>
+                        <AppText variant="titleMd" weight="700">12건</AppText>
+                    </View>
+                    <View style={[styles.myShiftDivider, {backgroundColor: c.border}]} />
+                    <View style={styles.myShiftSummaryItem}>
+                        <AppText variant="caption" tone="secondary">총 근무 시간</AppText>
+                        <AppText variant="titleMd" weight="700">96.0h</AppText>
+                    </View>
+                </View>
+                <AppCalendar
+                    month="2026-07"
+                    onMonthChange={() => undefined}
+                    markedDates={marks}
+                    selectedDate="2026-07-20"
+                    onDayPress={() => undefined}
+                />
+                <View style={styles.myShiftDaySection}>
+                    <View style={styles.myShiftDaySectionHeader}>
+                        <Ionicons name="calendar-outline" size={16} color={c.brandPrimary} />
+                        <AppText variant="titleMd" weight="700">7월 20일 (월)</AppText>
+                    </View>
+                    {selectedShift ? (
+                        <AppCard variant="flat" style={styles.myShiftCard}>
+                            <View style={styles.myShiftRow}>
+                                <View style={[styles.myShiftIconWrap, {backgroundColor: c.brandPrimarySoft}]}>
+                                    <Ionicons name="time-outline" size={20} color={c.brandPrimary} />
+                                </View>
+                                <View style={styles.myShiftFlex}>
+                                    <AppText variant="titleMd">10:00 ~ 18:00</AppText>
+                                    <AppText variant="caption" tone="secondary">8.0시간 근무 · 오픈</AppText>
+                                </View>
+                            </View>
+                        </AppCard>
+                    ) : null}
+                </View>
+                <View style={styles.myShiftMonthList}>
+                    <AppText variant="caption" tone="secondary" style={styles.myShiftSectionTitle}>2026년 07월 전체 근무</AppText>
+                    {MY_SHIFT_FIXTURE.shifts.map(shift => (
+                        <AppCard key={shift.id} variant="flat" style={styles.myShiftListCard}>
+                            <View style={styles.myShiftRow}>
+                                <View style={[styles.myShiftIconWrap, {backgroundColor: c.surfaceMuted}]}>
+                                    <Ionicons name="calendar-outline" size={18} color={c.textSecondary} />
+                                </View>
+                                <View style={styles.myShiftFlex}>
+                                    <AppText variant="titleMd">{formatFixtureShiftDate(shift.shiftDate)}</AppText>
+                                    <AppText variant="caption" tone="secondary">
+                                        {shift.startTime} ~ {shift.endTime}{shift.memo ? ` · ${shift.memo}` : ''}
+                                    </AppText>
+                                </View>
+                            </View>
+                        </AppCard>
+                    ))}
+                </View>
+            </View>
+        </ScreenContainer>
+    );
+};
+
+const ATTENDANCE_APPROVAL_FIXTURE: AttendanceApprovalVisualFixture = {
+    items: [{
+        id: 1,
+        employeeId: 1,
+        employeeName: '김민지',
+        storeId: 101,
+        type: 'CHECK_IN',
+        requestedTime: '2026-07-20T09:58:00',
+        status: 'PENDING',
+        requestedAt: '2026-07-20T09:58:00',
+    }],
+};
+
+const NativeReferenceAttendanceApproval: React.FC = () => {
+    const c = useThemeColors();
+    return (
+        <ScreenContainer scroll header={<AppHeader title="출근 승인" onBack={() => undefined} />}>
+            <AppCard variant="flat" style={styles.scheduleApprovalIntro}>
+                <AppText variant="titleMd" weight="800">대기 중인 출퇴근 요청</AppText>
+                <AppText variant="bodyMd" tone="secondary" style={styles.scheduleApprovalIntroBody}>
+                    승인하면 직원이 요청한 시각으로 출퇴근이 기록돼요.
+                </AppText>
+            </AppCard>
+            <View style={styles.scheduleApprovalList}>
+                <AppCard variant="flat" style={styles.scheduleApprovalCard}>
+                    <View style={styles.scheduleApprovalCardHead}>
+                        <View style={[styles.scheduleApprovalIcon, {backgroundColor: c.brandPrimarySoft}]}>
+                            <Ionicons name="log-in-outline" size={20} color={c.brandPrimary} />
+                        </View>
+                        <View style={styles.scheduleApprovalFlex}>
+                            <AppText variant="titleMd" numberOfLines={1}>김민지님 출근 요청</AppText>
+                            <AppText variant="caption" tone="secondary">요청 시각 7/20 09:58</AppText>
+                        </View>
+                    </View>
+                    <View style={styles.scheduleApprovalActions}>
+                        <AppButton label="거절" variant="secondary" fullWidth={false} style={styles.scheduleApprovalFlex} onPress={() => undefined} />
+                        <AppButton
+                            label="승인"
+                            fullWidth={false}
+                            style={styles.scheduleApprovalFlex}
+                            leftIcon={<Ionicons name="checkmark-outline" size={18} color={c.textInverse} />}
+                            onPress={() => undefined}
+                        />
+                    </View>
+                </AppCard>
+            </View>
+        </ScreenContainer>
+    );
+};
+
+const TIME_OFF_APPROVAL_FIXTURE: TimeOffApprovalVisualFixture = {
+    items: [{
+        id: 1,
+        employeeId: 1,
+        employeeName: '김민지',
+        storeId: 101,
+        leaveType: 'ANNUAL',
+        unit: 'FULL_DAY',
+        startDate: '2026-07-20',
+        endDate: '2026-07-20',
+        startTime: null,
+        endTime: null,
+        consumedDays: 1,
+        reason: '가족 행사에 참석해야 해요.',
+        rejectReason: null,
+        status: 'PENDING',
+    }],
+};
+
+const NativeReferenceTimeOffApproval: React.FC = () => {
+    const c = useThemeColors();
+    return (
+        <ScreenContainer scroll header={<AppHeader title="휴가 승인" onBack={() => undefined} />}>
+            <AppCard variant="flat" style={styles.scheduleApprovalIntro}>
+                <AppText variant="titleMd" weight="800">대기 중인 휴가 신청</AppText>
+                <AppText variant="bodyMd" tone="secondary" style={styles.scheduleApprovalIntroBody}>
+                    승인하면 연차인 경우 잔여 연차에서 자동으로 차감돼요.
+                </AppText>
+            </AppCard>
+            <View style={styles.scheduleApprovalList}>
+                <AppCard variant="flat" style={styles.scheduleApprovalCard}>
+                    <View style={styles.scheduleApprovalCardHead}>
+                        <View style={[styles.scheduleApprovalIcon, {backgroundColor: c.surfaceMint}]}>
+                            <Ionicons name="umbrella-outline" size={20} color={c.success} />
+                        </View>
+                        <View style={styles.scheduleApprovalFlex}>
+                            <AppText variant="titleMd" numberOfLines={1}>김민지님 연차 신청</AppText>
+                            <AppText variant="caption" tone="secondary">07/20 · 종일 · 1일</AppText>
+                        </View>
+                        <AppBadge label="대기" tone="warning" />
+                    </View>
+                    <AppText variant="bodyMd" tone="secondary" numberOfLines={3}>가족 행사에 참석해야 해요.</AppText>
+                    <View style={styles.scheduleApprovalActions}>
+                        <AppButton label="거부" variant="secondary" fullWidth={false} style={styles.scheduleApprovalFlex} onPress={() => undefined} />
+                        <AppButton
+                            label="승인"
+                            fullWidth={false}
+                            style={styles.scheduleApprovalFlex}
+                            leftIcon={<Ionicons name="checkmark-outline" size={18} color={c.textInverse} />}
+                            onPress={() => undefined}
+                        />
+                    </View>
+                </AppCard>
+            </View>
+        </ScreenContainer>
+    );
+};
+
+const ATTENDANCE_IRREGULARITIES_FIXTURE: AttendanceIrregularitiesVisualFixture = {
+    storeId: 101,
+    range: {from: '2026-07-05', to: '2026-07-18'},
+    items: [{
+        id: 1,
+        employeeId: 1,
+        employeeName: '김민지',
+        storeId: 101,
+        shiftDate: '2026-07-18',
+        type: 'LATE',
+        minutesShort: 12,
+        resolution: 'PENDING',
+        deductedAmount: null,
+        note: null,
+        resolvedAt: null,
+    }],
+};
+
+const NativeReferenceAttendanceIrregularities: React.FC = () => (
+    <ScreenContainer scroll header={<AppHeader title="지각/조퇴/결근" onBack={() => undefined} />}>
+        <AppCard variant="flat" style={styles.scheduleApprovalIntro}>
+            <AppText variant="bodyMd" tone="secondary">
+                최근 14일간 스케줄 대비 지각/조퇴/결근이 자동으로 감지돼요. 공제는 이미 이번 정산에 반영되어 있어요.
+                사유가 있으면 공제 없이 처리하거나 연차로 대체할 수 있어요.
+            </AppText>
+        </AppCard>
+        <View style={styles.scheduleApprovalList}>
+            <AppCard variant="flat" style={styles.scheduleApprovalCard}>
+                <View style={styles.scheduleApprovalCardHead}>
+                    <View style={styles.scheduleApprovalFlex}>
+                        <AppText variant="titleMd">김민지 · 지각</AppText>
+                        <AppText variant="caption" tone="secondary">7/18 · 12분</AppText>
+                    </View>
+                    <AppBadge label="미확정" tone="warning" />
+                </View>
+                <View style={styles.scheduleApprovalActions}>
+                    <AppButton label="공제 없음" variant="secondary" fullWidth={false} style={styles.scheduleApprovalFlex} onPress={() => undefined} />
+                    <AppButton label="연차 전환" variant="secondary" fullWidth={false} style={styles.scheduleApprovalFlex} onPress={() => undefined} />
+                    <AppButton label="공제 확정" fullWidth={false} style={styles.scheduleApprovalFlex} onPress={() => undefined} />
+                </View>
+            </AppCard>
+        </View>
+    </ScreenContainer>
+);
+
+const SWAP_BOARD_FIXTURE: SwapBoardVisualFixture = {
+    stores: [{id: 101, storeName: '소담 카페 성수점'}],
+    selectedStoreId: 101,
+    currentEmployeeId: 1,
+    swaps: [{
+        id: 1,
+        shiftId: 1,
+        shiftDate: '2026-07-23',
+        startTime: '12:00:00',
+        endTime: '18:00:00',
+        status: 'OPEN',
+        originalEmployeeName: '도윤',
+        applicants: [],
+    }],
+};
+
+const NativeReferenceSwapBoard: React.FC = () => (
+    <ScreenContainer header={<AppHeader title="대타 지원" onBack={() => undefined} />} padded={false}>
+        <ScrollView contentContainerStyle={styles.scheduleSwapScroll} showsVerticalScrollIndicator={false}>
+            <StorePassRow
+                items={[{id: 101, name: '소담 카페 성수점'}]}
+                selectedId={101}
+                onSelect={() => undefined}
+                style={styles.scheduleSwapPassRow}
+            />
+            <AppCard style={styles.scheduleSwapCard}>
+                <View style={styles.scheduleSwapCardTop}>
+                    <View style={styles.scheduleSwapCardInfo}>
+                        <AppText variant="headingSm">7월 23일 (목)</AppText>
+                        <AppText variant="bodyMd" tone="secondary" style={styles.scheduleSwapTime}>12:00 ~ 18:00</AppText>
+                        <AppText variant="caption" tone="tertiary" style={styles.scheduleSwapOwner}>도윤 님의 근무</AppText>
+                    </View>
+                </View>
+                <AppButton label="지원하기" size="md" onPress={() => undefined} style={styles.scheduleSwapApply} />
+            </AppCard>
+        </ScrollView>
+    </ScreenContainer>
+);
+
+const STORE_SCHEDULE_FIXTURE: StoreScheduleVisualFixture = {
+    storeId: 101,
+    tab: 'board',
+    calMonth: '2026-07',
+    selectedDate: '2026-07-06',
+    boardWeekStart: '2026-07-02',
+    employees: [
+        {id: 1, name: '김민지'}, {id: 2, name: '박도담'}, {id: 3, name: '이현수'},
+        {id: 4, name: '최하늘'}, {id: 5, name: '윤서연'}, {id: 6, name: '정우진'},
+        {id: 7, name: '한유진'}, {id: 8, name: '오지훈'}, {id: 9, name: '문채원'},
+    ],
+    shifts: [
+        {id: 1, employeeId: 1, storeId: 101, shiftDate: '2026-07-02', startTime: '09:00:00', endTime: '16:30:00', memo: '오픈'},
+        {id: 2, employeeId: 2, storeId: 101, shiftDate: '2026-07-02', startTime: '16:30:00', endTime: '00:00:00', memo: '마감'},
+        {id: 3, employeeId: 3, storeId: 101, shiftDate: '2026-07-03', startTime: '09:00:00', endTime: '16:30:00', memo: '오픈'},
+        {id: 4, employeeId: 4, storeId: 101, shiftDate: '2026-07-03', startTime: '16:30:00', endTime: '00:00:00', memo: '마감'},
+        {id: 5, employeeId: 5, storeId: 101, shiftDate: '2026-07-04', startTime: '10:00:00', endTime: '18:00:00', memo: '주말'},
+        {id: 6, employeeId: 6, storeId: 101, shiftDate: '2026-07-05', startTime: '10:00:00', endTime: '18:00:00', memo: '주말'},
+        {id: 7, employeeId: 7, storeId: 101, shiftDate: '2026-07-06', startTime: '12:00:00', endTime: '17:30:00', memo: '피크'},
+        {id: 8, employeeId: 8, storeId: 101, shiftDate: '2026-07-07', startTime: '12:00:00', endTime: '17:30:00', memo: '피크'},
+        {id: 9, employeeId: 9, storeId: 101, shiftDate: '2026-07-08', startTime: '12:00:00', endTime: '17:30:00', memo: '피크'},
+    ],
+    operatingHours: [],
+    templates: [],
+};
+
+const NativeReferenceSchedulePill: React.FC<{value: string}> = ({value}) => {
+    const c = useThemeColors();
+    return (
+        <View style={[styles.scheduleStoreSummaryPill, {backgroundColor: c.background}]}>
+            <AppText variant="caption" weight="700" tone="secondary">{value}</AppText>
+        </View>
+    );
+};
+
+const NativeReferenceScheduleBoardRow: React.FC<{weekday: string; date: string; shifts: Array<{name: string; time: string}>}> = ({weekday, date, shifts}) => {
+    const c = useThemeColors();
+    return (
+        <View style={[styles.scheduleStoreBoardRow, {borderColor: c.border}]}> 
+            <View style={styles.scheduleStoreBoardHeader}>
+                <AppText variant="caption" tone="secondary">{weekday}</AppText>
+                <AppText variant="titleMd">{date}</AppText>
+                <Pressable hitSlop={8} onPress={() => undefined} accessibilityRole="button" accessibilityLabel={`${date} 근무 추가`} style={[styles.scheduleStoreBoardAdd, {backgroundColor: c.surfaceMuted}]}> 
+                    <Ionicons name="add" size={14} color={c.brandPrimary} />
+                </Pressable>
+            </View>
+            <View style={styles.scheduleStoreBoardBody}>
+                {shifts.map(shift => (
+                    <View key={`${date}-${shift.name}`} style={[styles.scheduleStoreBoardChip, {backgroundColor: c.surfaceSky, borderColor: c.border}]}> 
+                        <Ionicons name="time-outline" size={13} color={c.info} />
+                        <View style={styles.scheduleStoreBoardChipText}>
+                            <AppText variant="caption" numberOfLines={1}>{shift.name}</AppText>
+                            <AppText variant="caption" tone="secondary" numberOfLines={1}>{shift.time}</AppText>
+                        </View>
+                    </View>
+                ))}
+            </View>
+        </View>
+    );
+};
+
+const NativeReferenceStoreSchedule: React.FC = () => {
+    const c = useThemeColors();
+    const tabs: Array<{id: 'calendar' | 'board' | 'template'; label: string; icon: React.ComponentProps<typeof Ionicons>['name']}> = [
+        {id: 'calendar', label: '캘린더', icon: 'calendar-outline'},
+        {id: 'board', label: '보드', icon: 'grid-outline'},
+        {id: 'template', label: '템플릿', icon: 'documents-outline'},
+    ];
+    return (
+        <ScreenContainer scroll header={<AppHeader title="스케줄 관리" onBack={() => undefined} />}>
+            <View style={styles.scheduleStoreTabBar}>
+                {tabs.map(tab => {
+                    const active = tab.id === 'board';
+                    return (
+                        <Pressable
+                            key={tab.id}
+                            onPress={() => undefined}
+                            style={[styles.scheduleStoreTabButton, {backgroundColor: active ? c.brandPrimary : c.background, borderColor: active ? c.brandPrimary : c.border}]}> 
+                            <Ionicons name={tab.icon} size={16} color={active ? c.textInverse : c.textTertiary} />
+                            <AppText variant="caption" weight={active ? '700' : '400'} style={{color: active ? c.textInverse : c.textTertiary}}>{tab.label}</AppText>
+                        </Pressable>
+                    );
+                })}
+            </View>
+            <View style={styles.scheduleStoreSection}>
+                <View style={[styles.scheduleStoreWeekHeader, {backgroundColor: c.surfaceMuted}]}> 
+                    <Pressable hitSlop={12} onPress={() => undefined} accessibilityRole="button" accessibilityLabel="이전 주">
+                        <Ionicons name="chevron-back-outline" size={22} color={c.textPrimary} />
+                    </Pressable>
+                    <View style={styles.scheduleStoreWeekHeaderCenter}>
+                        <AppText variant="caption" tone="secondary">7/2 (목) ~ 7/8 (수)</AppText>
+                        <View style={styles.scheduleStoreSummaryPills}>
+                            <NativeReferenceSchedulePill value="9건" />
+                            <NativeReferenceSchedulePill value="9명" />
+                            <NativeReferenceSchedulePill value="62.5h" />
+                        </View>
+                    </View>
+                    <Pressable hitSlop={12} onPress={() => undefined} accessibilityRole="button" accessibilityLabel="다음 주">
+                        <Ionicons name="chevron-forward-outline" size={22} color={c.textPrimary} />
+                    </Pressable>
+                </View>
+                <View style={styles.scheduleStoreActionRow}>
+                    <AppButton label="지난주 복사" variant="secondary" size="md" fullWidth={false} style={styles.scheduleApprovalFlex} onPress={() => undefined} />
+                    <AppButton label="확정·알림" size="md" fullWidth={false} style={styles.scheduleApprovalFlex} onPress={() => undefined} />
+                </View>
+                <View style={styles.scheduleStoreHintRow}>
+                    <Ionicons name="hand-left-outline" size={13} color={c.textTertiary} />
+                    <AppText variant="caption" tone="tertiary">근무를 길게 눌러 끌면 요일 이동 · 탭하면 수정 · "+" 탭하면 추가</AppText>
+                </View>
+                <View style={styles.scheduleStoreBoard}>
+                    <NativeReferenceScheduleBoardRow weekday="목" date="7/2" shifts={[{name: '김민지', time: '09:00~16:30'}, {name: '박도담', time: '16:30~00:00 익일'}]} />
+                    <NativeReferenceScheduleBoardRow weekday="금" date="7/3" shifts={[{name: '이현수', time: '09:00~16:30'}, {name: '최하늘', time: '16:30~00:00 익일'}]} />
+                    <NativeReferenceScheduleBoardRow weekday="토" date="7/4" shifts={[{name: '윤서연', time: '10:00~18:00'}]} />
+                    <NativeReferenceScheduleBoardRow weekday="일" date="7/5" shifts={[{name: '정우진', time: '10:00~18:00'}]} />
+                    <NativeReferenceScheduleBoardRow weekday="월" date="7/6" shifts={[{name: '한유진', time: '12:00~17:30'}]} />
+                    <NativeReferenceScheduleBoardRow weekday="화" date="7/7" shifts={[{name: '오지훈', time: '12:00~17:30'}]} />
+                    <NativeReferenceScheduleBoardRow weekday="수" date="7/8" shifts={[{name: '문채원', time: '12:00~17:30'}]} />
+                </View>
+            </View>
+        </ScreenContainer>
+    );
+};
+
+const EMPLOYEE_WORK_LOG_FIXTURE: EmployeeWorkLogVisualFixture = {
+    year: 2026,
+    month: 7,
+    stores: [{id: 101, storeName: '굿모닝분식', appliedHourlyWage: 13125}],
+    selectedStoreId: 101,
+    workLog: {
+        employeeId: 1,
+        storeId: 101,
+        storeName: '굿모닝분식',
+        year: 2026,
+        month: 7,
+        summary: {
+            attendanceDays: 14,
+            totalWorkedMinutes: 6720,
+            totalDailyWage: 1470000,
+            totalBonusAmount: 50000,
+            totalGrossWage: 1520000,
+        },
+        rows: [
+            {
+                attendanceId: 1,
+                date: '2026-07-20',
+                checkInTime: '2026-07-20T09:58:00',
+                checkOutTime: '2026-07-20T18:03:00',
+                workedMinutes: 485,
+                dailyWage: 105000,
+                bonusAmount: 0,
+                memo: '정상',
+                status: 'CONFIRMED',
+            },
+            {
+                date: '2026-07-19',
+                workedMinutes: 0,
+                dailyWage: 0,
+                bonusAmount: 50000,
+                bonusReason: '격려 보너스',
+                status: 'BONUS_ONLY',
+            },
+        ],
+    },
+};
+
+const NativeWorkLogCell: React.FC<{width: number; children: React.ReactNode; strong?: boolean; header?: boolean; align?: 'left' | 'right'}> = ({width, children, strong, header, align = 'left'}) => {
+    const emphasized = strong === true || header === true;
+    return (
+        <View style={[styles.scheduleWorkLogCell, {width}]}> 
+            <AppText variant="caption" weight={emphasized ? '800' : '600'} tone={header ? 'secondary' : 'primary'} style={{textAlign: align}} numberOfLines={1}>
+                {children}
+            </AppText>
+        </View>
+    );
+};
+
+const NativeWorkLogMetric: React.FC<{label: string; value: string; tone?: 'brand' | 'info' | 'warning'}> = ({label, value, tone}) => {
+    const c = useThemeColors();
+    const backgroundColor = tone === 'brand' ? c.brandPrimarySoft : tone === 'info' ? c.infoBg : tone === 'warning' ? c.warningBg : c.surface;
+    const color = tone === 'brand' ? c.brandPrimary : tone === 'info' ? c.info : tone === 'warning' ? c.warning : c.textPrimary;
+    return (
+        <View style={[styles.scheduleWorkLogMetric, {backgroundColor, borderColor: c.border}]}> 
+            <AppText variant="caption" tone="secondary" numberOfLines={1}>{label}</AppText>
+            <AppText variant="titleMd" weight="800" style={{color}} numberOfLines={1} adjustsFontSizeToFit>{value}</AppText>
+        </View>
+    );
+};
+
+const NativeReferenceEmployeeWorkLog: React.FC = () => {
+    const c = useThemeColors();
+    return (
+        <ScreenContainer
+            scroll
+            padded={false}
+            header={<AppHeader title="근무일지" subtitle="굿모닝분식" onBack={() => undefined} />}>
+            <View style={styles.scheduleWorkLogBody}>
+                <View style={[styles.scheduleWorkLogMonthBar, {backgroundColor: c.surface, borderColor: c.border}]}> 
+                    <Pressable accessibilityRole="button" accessibilityLabel="이전 달" onPress={() => undefined} hitSlop={10} style={[styles.scheduleWorkLogMonthButton, {backgroundColor: c.surfaceMuted}]}> 
+                        <Ionicons name="chevron-back" size={22} color={c.brandPrimary} />
+                    </Pressable>
+                    <View style={styles.scheduleWorkLogMonthTitle}>
+                        <AppText variant="headingMd" weight="800" center>2026년 7월</AppText>
+                    </View>
+                    <Pressable accessibilityRole="button" accessibilityLabel="다음 달" onPress={() => undefined} hitSlop={10} style={[styles.scheduleWorkLogMonthButton, {backgroundColor: c.surfaceMuted}]}> 
+                        <Ionicons name="chevron-forward" size={22} color={c.brandPrimary} />
+                    </Pressable>
+                </View>
+                <View style={styles.scheduleWorkLogSummaryGrid}>
+                    <NativeWorkLogMetric label="출근일수" value="14일" tone="brand" />
+                    <NativeWorkLogMetric label="총근무시간" value="112h" tone="info" />
+                    <NativeWorkLogMetric label="일급여(세전)" value="1,470,000원" />
+                    <NativeWorkLogMetric label="보너스+기타" value="50,000원" tone="warning" />
+                </View>
+                <AppCard variant="plain" style={styles.scheduleWorkLogTotalCard}>
+                    <View style={styles.scheduleWorkLogTotalRow}>
+                        <View>
+                            <AppText variant="caption" tone="secondary">월 세전 합계</AppText>
+                            <AppText variant="headingMd" weight="800">1,520,000원</AppText>
+                        </View>
+                        <View style={[styles.scheduleWorkLogStatusChip, {backgroundColor: c.successBg}]}> 
+                            <AppText variant="caption" weight="800" style={{color: c.success}}>2건</AppText>
+                        </View>
+                    </View>
+                </AppCard>
+                <AppCard variant="plain" style={styles.scheduleWorkLogTableCard}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        <View>
+                            <View style={[styles.scheduleWorkLogTableRow, styles.scheduleWorkLogHeaderRow]}>
+                                <NativeWorkLogCell width={92} header>일자</NativeWorkLogCell>
+                                <NativeWorkLogCell width={84} header>출근시간</NativeWorkLogCell>
+                                <NativeWorkLogCell width={84} header>퇴근시간</NativeWorkLogCell>
+                                <NativeWorkLogCell width={104} header>총근무시간</NativeWorkLogCell>
+                                <NativeWorkLogCell width={120} header align="right">일급여(세전)</NativeWorkLogCell>
+                            </View>
+                            <View style={[styles.scheduleWorkLogTableRow, {borderColor: c.divider}]}> 
+                                <NativeWorkLogCell width={92} strong>07.20 월</NativeWorkLogCell>
+                                <NativeWorkLogCell width={84}>09:58</NativeWorkLogCell>
+                                <NativeWorkLogCell width={84}>18:03</NativeWorkLogCell>
+                                <NativeWorkLogCell width={104}>8h 5m</NativeWorkLogCell>
+                                <NativeWorkLogCell width={120} align="right">105,000원</NativeWorkLogCell>
+                            </View>
+                            <View style={[styles.scheduleWorkLogTableRow, {borderColor: c.divider}]}> 
+                                <NativeWorkLogCell width={92} strong>07.19 일</NativeWorkLogCell>
+                                <NativeWorkLogCell width={84}>-</NativeWorkLogCell>
+                                <NativeWorkLogCell width={84}>-</NativeWorkLogCell>
+                                <NativeWorkLogCell width={104}>-</NativeWorkLogCell>
+                                <NativeWorkLogCell width={120} align="right">-</NativeWorkLogCell>
+                            </View>
+                        </View>
+                    </ScrollView>
+                </AppCard>
+            </View>
+        </ScreenContainer>
+    );
+};
+
+const SWAP_REQUESTS_FIXTURE: SwapRequestsVisualFixture = {
+    storeId: 101,
+    employeeNames: {1: '김민지', 2: '도윤'},
+    shifts: [{
+        id: 2,
+        employeeId: 1,
+        storeId: 101,
+        shiftDate: '2026-07-22',
+        startTime: '10:00:00',
+        endTime: '16:00:00',
+        memo: '오픈',
+    }],
+    requests: [{
+        id: 1,
+        shiftId: 1,
+        shiftDate: '2026-07-23',
+        startTime: '12:00:00',
+        endTime: '18:00:00',
+        status: 'OPEN',
+        originalEmployeeName: '도윤',
+        applicants: [{employeeId: 1, employeeName: '김민지', appliedAt: '2026-07-20T09:00:00'}],
+    }],
+};
+
+const NativeReferenceSwapRequests: React.FC = () => {
+    const c = useThemeColors();
+    return (
+        <ScreenContainer scroll header={<AppHeader title="대타 구하기" onBack={() => undefined} />}>
+            <AppText variant="headingSm" style={styles.scheduleRequestsTitle}>대타 모집 열기</AppText>
+            <AppText variant="caption" tone="tertiary" style={styles.scheduleRequestsHint}>
+                오늘부터 7일 안의 근무 중 대타가 필요한 근무를 선택하세요.
+            </AppText>
+            <View style={styles.scheduleRequestsList}>
+                <View style={[styles.scheduleRequestsCandidate, {backgroundColor: c.surface, borderColor: c.border}]}>
+                    <Ionicons name="radio-button-off" size={18} color={c.textTertiary} />
+                    <View style={styles.scheduleApprovalFlex}>
+                        <AppText variant="titleMd" weight="600">7월 22일 (수) · 10:00~16:00</AppText>
+                        <AppText variant="caption" tone="secondary">김민지 · 오픈</AppText>
+                    </View>
+                </View>
+            </View>
+            <AppButton label="대타 모집 시작" disabled style={styles.scheduleRequestsStart} onPress={() => undefined} />
+
+            <AppText variant="headingSm" style={styles.scheduleRequestsTitleGap}>모집 중</AppText>
+            <View style={styles.scheduleRequestsList}>
+                <AppCard variant="flat">
+                    <View style={styles.scheduleRequestsRequestTop}>
+                        <View style={styles.scheduleApprovalFlex}>
+                            <AppText variant="titleMd" weight="700">7월 23일 (목) · 12:00~18:00</AppText>
+                            <AppText variant="caption" tone="secondary">원 배정: 도윤 · 지원자 1명</AppText>
+                        </View>
+                        <AppBadge label="지원 1" tone="warning" />
+                        <Ionicons name="chevron-down" size={16} color={c.textTertiary} />
+                    </View>
+                </AppCard>
+            </View>
+        </ScreenContainer>
+    );
+};
+
+const ATTENDANCE_NOTICE_FIXTURE: AttendanceNoticeVisualFixture = {
+    storeId: 101,
+    typeIdx: 0,
+    forDate: '20260620',
+    message: '',
+};
+
+const NativeReferenceAttendanceNotice: React.FC = () => (
+    <ScreenContainer
+        scroll
+        header={<AppHeader title="지각/조퇴/결근 알리기" onBack={() => undefined} />}
+        footer={<CtaStack><AppButton label="사장님께 알리기" onPress={() => undefined} /></CtaStack>}>
+        <AppCard variant="spot" style={styles.scheduleNoticeHero}>
+            <AppText variant="headingMd">미리 알려주세요</AppText>
+            <AppText variant="bodyMd" tone="secondary" style={styles.scheduleNoticeSub}>
+                이 신고는 사장님께 알림만 가고 임금에는 영향을 주지 않아요. 실제 공제/연차 전환 여부는
+                사장님이 나중에 확인해 처리해요.
+            </AppText>
+        </AppCard>
+        <View style={styles.scheduleNoticeForm}>
+            <View>
+                <AppText variant="caption" tone="secondary" style={styles.scheduleNoticeFieldLabel}>유형</AppText>
+                <SegmentedControl options={['지각', '조퇴', '결근']} value={0} onChange={() => undefined} />
+            </View>
+            <AppInput
+                label="날짜"
+                placeholder="20260601"
+                value="20260620"
+                onChangeText={() => undefined}
+                keyboardType="number-pad"
+                maxLength={8}
+                helper={DATE_DIGITS_HELPER}
+            />
+            <AppInput
+                label="메시지(선택)"
+                placeholder="예: 차가 막혀서 15분 정도 늦을 것 같아요"
+                value=""
+                onChangeText={() => undefined}
+                multiline
+                maxLength={300}
+                helper="0 / 300자"
+            />
+        </View>
+    </ScreenContainer>
+);
+
+const LEAVE_BALANCE_FIXTURE: MyLeaveBalanceVisualFixture = {
+    data: {
+        entitledDays: 11,
+        usedDays: 5,
+        remainingDays: 6,
+        fiveOrMoreApplicable: true,
+        disclaimer: '참고용 추정이에요. 실제와 다를 수 있어요.',
+    },
+};
+
+const NativeReferenceLeaveBalance: React.FC = () => {
+    const c = useThemeColors();
+    const usedRatio = 5 / 11;
+    const remainingRatio = 1 - usedRatio;
+    return (
+        <ScreenContainer scroll header={<AppHeader title="내 연차" onBack={() => undefined} />}>
+            <AppCard variant="spot" style={styles.scheduleLeaveSpotCard}>
+                <HeroNumber label="잔여 연차" value="6일" sub="발생 11일 중 5일 사용" accent />
+                <View style={[styles.scheduleLeaveTrack, {backgroundColor: c.surfaceMuted}]}>
+                    <View style={[styles.scheduleLeaveFill, {backgroundColor: c.brandPrimary, width: `${usedRatio * 100}%`}]} />
+                    <View style={[styles.scheduleLeaveFill, {backgroundColor: c.success, width: `${remainingRatio * 100}%`}]} />
+                </View>
+                <View style={styles.scheduleLeaveLegendRow}>
+                    <View style={styles.scheduleLeaveLegendItem}>
+                        <View style={styles.scheduleLeaveLegendLabelRow}>
+                            <View style={[styles.scheduleLeaveLegendDot, {backgroundColor: c.brandPrimary}]} />
+                            <AppText variant="caption" tone="secondary">사용</AppText>
+                        </View>
+                        <AppText variant="titleMd" tone="primary" style={styles.scheduleLeaveLegendValue}>5일</AppText>
+                    </View>
+                    <View style={styles.scheduleLeaveLegendItem}>
+                        <View style={styles.scheduleLeaveLegendLabelRow}>
+                            <View style={[styles.scheduleLeaveLegendDot, {backgroundColor: c.success}]} />
+                            <AppText variant="caption" tone="secondary">잔여</AppText>
+                        </View>
+                        <AppText variant="titleMd" tone="brand" style={styles.scheduleLeaveLegendValue}>6일</AppText>
+                    </View>
+                </View>
+            </AppCard>
+            <AppText variant="caption" tone="tertiary" style={styles.scheduleLeaveDisclaimer}>
+                참고용 추정이에요. 실제와 다를 수 있어요.
+            </AppText>
+        </ScreenContainer>
+    );
+};
+
+const NativeReferenceSubscriptionGate: React.FC = () => {
+    const c = useThemeColors();
+    return (
+        <ScreenContainer>
+            <View style={styles.subscriptionCenter}>
+                <Brandmark size={56} label="✦" backgroundColor={c.brandPrimary} />
+                <AppText variant="headingMd" center style={styles.subscriptionTitle}>
+                    {'비즈니스 플랜에서\n쓸 수 있어요'}
+                </AppText>
+                <AppText variant="bodyMd" tone="secondary" center style={styles.subscriptionDesc}>
+                    급여명세 발급은 비즈니스 플랜 기능이에요. 지금 시작하면 바로 직원에게 명세서를 보낼 수 있어요.
+                </AppText>
+                <AppCard variant="flat" style={[styles.subscriptionCard, {backgroundColor: c.brandPrimarySoft, borderWidth: 1.5, borderColor: c.brandPrimary}]}>
+                    <AppText variant="titleMd" tone="primary" weight="700">비즈니스 플랜</AppText>
+                    <AmountText size={20} tone="brand" style={styles.subscriptionPrice}>월 15,000원</AmountText>
+                    <AppText variant="caption" tone="tertiary" style={styles.subscriptionSub}>급여명세 발급 · 직원 알림 · 정산 준비 자동화</AppText>
+                </AppCard>
+                <View style={styles.subscriptionCtas}>
+                    <AppButton label="플랜 보기" onPress={() => undefined} />
+                    <AppButton label="나중에" variant="ghost" onPress={() => undefined} />
+                </View>
+            </View>
+        </ScreenContainer>
+    );
+};
+
+const VisualSheetBase: React.FC<{children: React.ReactNode}> = ({children}) => (
+    <ScreenContainer header={<AppHeader title="홈" />}>
+        {children}
+    </ScreenContainer>
+);
+
+const NativeReferencePushPrimer: React.FC<{captureMarker: string}> = ({captureMarker}) => {
+    const c = useThemeColors();
+    const insets = useSafeAreaInsets();
+    const onClose = () => undefined;
+
+    return (
+        <VisualSheetBase>
+            <Modal visible transparent animationType="none" onRequestClose={onClose}>
+                <Pressable style={[styles.pushBackdrop, {backgroundColor: c.overlayDark}]} onPress={onClose}>
+                    <Pressable
+                        style={[styles.pushSheet, {backgroundColor: c.background, paddingBottom: Math.max(insets.bottom, 16) + 8}]}
+                        onPress={event => event.stopPropagation()}>
+                        <Text style={styles.visualRouteMarker}>{captureMarker}</Text>
+                        <View style={[styles.pushHandle, {backgroundColor: c.border}]} />
+                        <View style={[styles.pushIcon, {backgroundColor: c.brandPrimarySoft}]}>
+                            <Ionicons name="notifications" size={22} color={c.brandPrimary} />
+                        </View>
+                        <AppText variant="headingSm" style={styles.pushTitle} center>중요한 알림만 보내드릴게요</AppText>
+                        <AppText variant="bodyMd" tone="secondary" style={styles.pushDescription} center>
+                            직원 미출근, 정정 요청, 급여명세 발급 같은 꼭 필요한 소식만 알려드려요.
+                        </AppText>
+                        <AppButton label="알림 받기" onPress={onClose} style={styles.pushPrimary} />
+                        <AppButton label="나중에" variant="ghost" onPress={onClose} style={styles.pushSecondary} />
+                    </Pressable>
+                </Pressable>
+            </Modal>
+        </VisualSheetBase>
+    );
+};
+
+const NativeReferenceEmployeeHome: React.FC = () => (
+    <ScreenContainer
+        scroll
+        header={<AppHeader title="오늘의 소담" actions={[{label: '알림', accessibilityLabel: '알림', onPress: () => undefined}]} />}>
+        <AppCard variant="flat" style={styles.homeIntro}>
+            <AppText variant="titleMd" weight="700">역할에 맞는 홈으로 이동해요</AppText>
+            <AppText variant="bodyMd" tone="secondary" style={styles.homeIntroCopy}>
+                사장님은 대시보드, 직원은 출근 버튼, 개인은 기록장으로 바로 진입합니다.
+            </AppText>
+        </AppCard>
+        <View style={styles.homeList}>
+            <AppListItem title="사장 홈" subtitle="매장 운영 현황 보기" right="›" onPress={() => undefined} />
+            <AppListItem title="직원 홈" subtitle="출근/퇴근 바로가기" right="›" onPress={() => undefined} />
+            <AppListItem title="개인 기록장" subtitle="내 근무 시간 직접 기록" right="›" onPress={() => undefined} />
+        </View>
+    </ScreenContainer>
+);
+
+const ATTENDANCE_OVERVIEW_FIXTURE: AttendanceOverviewFixture = {
+    storeId: 101,
+    pendingEmployees: ['민지'],
+    checkedInCount: 1,
+    totalActiveEmployees: 3,
+    pendingCorrectionCount: 2,
+    checkedInEntries: [{name: '도윤', subtitle: '09:54 출근 · 매장 반경 내'}],
+    checkoutRiskEntries: [{name: '지아', subtitle: '퇴근 누락 가능성'}],
+};
+
+const ATTENDANCE_AUTHENTICATION_FIXTURE: AttendanceVisualFixture = {
+    workplaces: [{id: '101', name: '카페 소담'}],
+    selectedWorkplaceId: '101',
+    attendanceRecords: [{
+        id: 'attendance-v3-20',
+        employeeId: '1',
+        employeeName: '민지',
+        workplaceId: '101',
+        workplaceName: '카페 소담',
+        date: '2026-07-20',
+        checkInTime: '2026-07-20T09:58:00+09:00',
+        checkOutTime: '2026-07-20T18:03:00+09:00',
+        status: AttendanceStatus.CHECKED_OUT,
+        workHours: 8,
+        createdAt: '2026-07-20T09:58:00+09:00',
+        updatedAt: '2026-07-20T18:03:00+09:00',
+    }],
+    currentAttendance: null,
+    checkInMethod: 'location',
+    locationPermissionGranted: true,
+    currentLocation: {latitude: 37.5665, longitude: 126.978},
+    selectedWage: 10500,
+};
+
+const NativeReferenceAttendanceAuthentication: React.FC = () => (
+    <ScreenContainer
+        padded={false}
+        header={<AppHeader title="출퇴근 인증" rightText="NFC" onRightText={() => undefined} />}
+        footer={<CtaStack bordered><AppButton label="NFC로 출근하기" onPress={() => undefined} /></CtaStack>}>
+        <ScrollView contentContainerStyle={styles.attendanceAuthContent} showsVerticalScrollIndicator={false}>
+            <SegmentedControl options={['기본', '위치', 'NFC']} value={1} onChange={() => undefined} />
+            <AppCard variant="spot" style={styles.attendanceAuthCard}>
+                <AppText variant="headingSm">GPS 인증 정상</AppText>
+                <AppText variant="bodyMd" tone="secondary" style={styles.attendanceAuthCopy}>
+                    현재 위치가 매장 반경 안에 있어요.
+                </AppText>
+            </AppCard>
+            <AppCard variant="flat" style={styles.attendanceAuthCard}>
+                <AppText variant="headingSm">NFC 태그</AppText>
+                <AppText variant="bodyMd" tone="secondary" style={styles.attendanceAuthCopy}>
+                    태그를 켠 뒤 가까이 대면 자동 처리됩니다. (Android 전용)
+                </AppText>
+            </AppCard>
+        </ScrollView>
+    </ScreenContainer>
+);
+
+const NativeReferenceAttendanceOverview: React.FC = () => {
+    const c = useThemeColors();
+    return (
+        <ScreenContainer
+            padded={false}
+            header={<AppHeader title="근태 관리" onBack={() => undefined} actions={[{icon: <Ionicons name="options-outline" size={20} color={c.textSecondary} />, accessibilityLabel: '근태 필터', onPress: () => undefined}]} />}>
+            <ScrollView contentContainerStyle={styles.attendanceContent} showsVerticalScrollIndicator={false}>
+                <AppCard variant="spot" hero style={styles.attendanceSpotCard}>
+                    <AppText variant="headingSm" tone="primary">누락 기록 2건</AppText>
+                    <AppText variant="bodyMd" tone="secondary" style={styles.attendanceSpotSub}>
+                        오늘 출근 1/3명 · 정산 전 확인이 필요해요.
+                    </AppText>
+                </AppCard>
+                <SegmentedControl options={['오늘', '이번 주', '이번 달']} value={0} onChange={() => undefined} style={styles.attendanceSegment} />
+                <View style={styles.attendanceList}>
+                    <AppListItem title="민지" subtitle="미출근" left={<Ionicons name="person-circle-outline" size={26} color={c.warning} />} right={<AppBadge label="확인" tone="warning" />} />
+                    <AppListItem title="도윤" subtitle="09:54 출근 · 매장 반경 내" left={<Ionicons name="checkmark-circle-outline" size={26} color={c.success} />} right={<AppBadge label="정상" tone="success" />} />
+                    <AppListItem title="지아" subtitle="퇴근 누락 가능성" left={<Ionicons name="alert-circle-outline" size={26} color={c.error} />} right={<AppBadge label="누락" tone="error" />} />
+                </View>
+            </ScrollView>
+        </ScreenContainer>
+    );
+};
+
+type AttendanceStateKind = 'nfc-unsupported' | 'punch-success' | 'punch-failed';
+
+const ATTENDANCE_STATE_SPECS: Record<AttendanceStateKind, {
+    header: string;
+    headerAction: string;
+    glyph: string;
+    title: string;
+    description: string;
+    primary: string;
+    secondary?: string;
+    color: 'success' | 'warning';
+    background: 'successBg' | 'warningBg';
+}> = {
+    'nfc-unsupported': {
+        header: 'NFC 미지원', headerAction: '닫기', glyph: '!',
+        title: '이 기기는 NFC를\n지원하지 않아요',
+        description: 'GPS 출근 또는 사장님께 수동 요청을 사용할 수 있어요.',
+        primary: 'GPS로 출근하기', secondary: '사장님께 수동 요청', color: 'warning', background: 'warningBg',
+    },
+    'punch-success': {
+        header: '출근 완료', headerAction: '닫기', glyph: '✓',
+        title: '출근 처리됐어요',
+        description: '09:58 · 카페 소담 · 시급 10,500원으로 기록했어요.',
+        primary: '근무 시작', color: 'success', background: 'successBg',
+    },
+    'punch-failed': {
+        header: '출근 실패', headerAction: '도움', glyph: '!',
+        title: '매장 반경 밖이에요',
+        description: '매장 근처에서 다시 시도하거나 사장님께 수동 처리를 요청하세요.',
+        primary: '다시 시도', secondary: '수동 요청', color: 'warning', background: 'warningBg',
+    },
+};
+
+const NativeReferenceAttendanceState: React.FC<{kind: AttendanceStateKind}> = ({kind}) => {
+    const c = useThemeColors();
+    const spec = ATTENDANCE_STATE_SPECS[kind];
+    return (
+        <ScreenContainer header={<AppHeader title={spec.header} rightText={spec.headerAction} onRightText={() => undefined} />}>
+            <View style={styles.stateCenter}>
+                <View style={styles.stateInner}>
+                    <View style={[styles.stateMark, {backgroundColor: c[spec.background]}]}>
+                        <Text style={[styles.stateMarkText, {color: c[spec.color]}]}>{spec.glyph}</Text>
+                    </View>
+                    <Text style={[styles.stateTitle, {color: c.textPrimary}]}>{spec.title}</Text>
+                    <Text style={[styles.stateCopy, {color: c.textSecondary}]}>{spec.description}</Text>
+                    <AppButton label={spec.primary} onPress={() => undefined} style={styles.stateCta} />
+                    {spec.secondary ? <AppButton label={spec.secondary} variant="secondary" onPress={() => undefined} style={styles.stateCtaSub} /> : null}
+                </View>
+            </View>
+        </ScreenContainer>
+    );
+};
+
+const ActualAttendanceState: React.FC<{kind: AttendanceStateKind}> = ({kind}) => {
+    if (kind === 'nfc-unsupported') {
+        return <NfcUnsupportedScreen onGps={() => undefined} onManual={() => undefined} onClose={() => undefined} />;
+    }
+    if (kind === 'punch-success') {
+        return <PunchSuccessScreen time="09:58" storeName="카페 소담" wage={10500} onStart={() => undefined} onClose={() => undefined} />;
+    }
+    return <PunchFailedScreen onRetry={() => undefined} onManual={() => undefined} />;
+};
+
+type SubmissionSuccessKind = 'correction' | 'time-off' | 'join-store';
+
+const SUBMISSION_SUCCESS_SPECS: Record<SubmissionSuccessKind, {
+    header: string;
+    title: string;
+    description: string;
+    primary: string;
+}> = {
+    correction: {
+        header: '정정 요청', title: '정정 요청을 보냈어요',
+        description: '사장님이 승인하면 기록에 반영됩니다.', primary: '근무 기록으로',
+    },
+    'time-off': {
+        header: '휴가 신청', title: '휴가 신청을 보냈어요',
+        description: '승인 결과는 알림으로 알려드릴게요.', primary: '내 정보로 돌아가기',
+    },
+    'join-store': {
+        header: '매장 가입', title: '카페 소담에\n가입했어요',
+        description: '오늘부터 출퇴근 기록과 급여명세를 확인할 수 있어요. 기존 매장 기록은 그대로예요.', primary: '출근 화면으로',
+    },
+};
+
+const NativeReferenceSubmissionSuccess: React.FC<{kind: SubmissionSuccessKind}> = ({kind}) => {
+    const c = useThemeColors();
+    const spec = SUBMISSION_SUCCESS_SPECS[kind];
+    return (
+        <ScreenContainer header={<AppHeader title={spec.header} rightText="닫기" onRightText={() => undefined} />}>
+            <View style={styles.stateCenter}>
+                <View style={styles.stateInner}>
+                    <View style={[styles.stateMark, {backgroundColor: c.successBg}]}>
+                        <Text style={[styles.stateMarkText, {color: c.success}]}>✓</Text>
+                    </View>
+                    <Text style={[styles.stateTitle, {color: c.textPrimary}]}>{spec.title}</Text>
+                    <Text style={[styles.stateCopy, {color: c.textSecondary}]}>{spec.description}</Text>
+                    <AppButton label={spec.primary} onPress={() => undefined} style={styles.stateCta} />
+                </View>
+            </View>
+        </ScreenContainer>
+    );
+};
+
+const ActualSubmissionSuccess: React.FC<{kind: SubmissionSuccessKind}> = ({kind}) => {
+    if (kind === 'correction') {
+        return <AttendanceCorrectionRequestScreen visualFixture={{submitted: true}} />;
+    }
+    if (kind === 'time-off') {
+        return <TimeOffRequestScreen visualFixture={{submitted: true}} />;
+    }
+    return <JoinStoreByCodeScreen visualFixture={{joinedStore: '카페 소담'}} />;
+};
+
+const SALARY_LIST_FIXTURE: SalaryListFixture = {
+    stores: [{id: 101, name: '카페 소담'}],
+    summaryLabel: '5월 정산 예상',
+    summarySub: '정산 준비율 83% · 누락 2건',
+    rows: [
+        {payrollId: 1, employeeId: 1, employeeName: '민지', storeId: 101, totalHours: 80, totalPay: 934122, status: 'DRAFT', period: {startDate: '2026-05-01', endDate: '2026-05-31'}},
+        {payrollId: 2, employeeId: 2, employeeName: '도윤', storeId: 101, totalHours: 72, totalPay: 821400, status: 'CONFIRMED', period: {startDate: '2026-05-01', endDate: '2026-05-31'}},
+        {payrollId: 3, employeeId: 3, employeeName: '지아', storeId: 101, totalHours: 64, totalPay: 662478, status: 'PAID', period: {startDate: '2026-05-01', endDate: '2026-05-31'}},
+    ],
+};
+
+const NativeReferenceSalaryList: React.FC = () => {
+    const c = useThemeColors();
+    return (
+        <ScreenContainer
+        padded={false}
+        header={<AppHeader title="급여" />}
+        footer={<CtaStack bordered><AppButton label="급여 정산 시작" onPress={() => undefined} /><AppButton label="과거 내역 보기" variant="outline" onPress={() => undefined} /></CtaStack>}>
+        <View style={[styles.salaryCanvas, {backgroundColor: c.surfaceCanvas}]}>
+            <View style={styles.salaryStorePicker}>
+                <SegmentedControl options={['카페 소담']} value={0} onChange={() => undefined} />
+            </View>
+            <ScrollView contentContainerStyle={styles.salaryListContent} showsVerticalScrollIndicator={false}>
+                <MoneyCard label="5월 정산 예상" value="2,418,000원" sub="정산 준비율 83% · 누락 2건" style={styles.salaryHeroBlock} />
+                <SalaryFixtureCard name="민지" status="준비 중" statusTone="warning" hours={80} amount="934,122원" />
+                <SalaryFixtureCard name="도윤" status="확정" statusTone="success" hours={72} amount="821,400원" />
+                <SalaryFixtureCard name="지아" status="지급 완료" statusTone="success" hours={64} amount="662,478원" />
+            </ScrollView>
+        </View>
+        </ScreenContainer>
+    );
+};
+
+const SalaryFixtureCard: React.FC<{name: string; status: string; statusTone: 'warning' | 'success'; hours: number; amount: string}> = ({name, status, statusTone, hours, amount}) => (
+    <AppCard variant="plain" style={styles.salaryCard} onPress={() => undefined}>
+        <View style={styles.salaryCardTop}>
+            <AppText variant="titleMd" numberOfLines={1} style={styles.salaryName}>{name}</AppText>
+            <AppBadge label={status} tone={statusTone} />
+        </View>
+        <View style={styles.salaryCardBottom}>
+            <View style={styles.salaryMeta}>
+                <AppText variant="caption" tone="secondary" numberOfLines={1}>2026-05-01 ~ 2026-05-31</AppText>
+                <AppText variant="caption" tone="tertiary">총 근무 {hours}h</AppText>
+            </View>
+            <AmountText size={24} tone="primary" style={styles.salaryAmount}>{amount}</AmountText>
+        </View>
+    </AppCard>
+);
+
+type ReferenceRoleOption = {
+    label: string;
+    hint: string;
+    ctaLabel: string;
+    recommended?: boolean;
+};
+
+const REFERENCE_ROLE_OPTIONS: readonly ReferenceRoleOption[] = [
+    {label: '사장님', hint: '미출근, 급여, 직원 초대', ctaLabel: '사장님으로 시작하기', recommended: true},
+    {label: '직원', hint: '출근, 퇴근, 급여명세', ctaLabel: '직원으로 시작하기'},
+    {label: '개인 기록', hint: '내 알바 시간 직접 기록', ctaLabel: '개인 기록 시작하기'},
+] as const;
+
+const NativeReferenceRoleStart: React.FC = () => {
+    const selectedOption = REFERENCE_ROLE_OPTIONS[0];
+
+    return (
+        <LinearGradient
+            colors={['#1E1A33', '#17151F', '#1C1712']}
+            start={{x: 0, y: 0}}
+            end={{x: 1, y: 1}}
+            style={styles.flex}>
+            <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
+                <View style={styles.roleBody}>
+                    <Brandmark size={42} style={styles.roleMark} />
+                    <AppText variant="headingMd" tone="inverse" style={styles.roleTitle}>
+                        {'오늘 가게 운영,\n여기서 끝내세요'}
+                    </AppText>
+                    <AppText variant="bodyMd" tone="inverse" style={styles.roleCopy}>
+                        출퇴근부터 급여명세까지 사장님과 직원이 같은 기록을 봅니다.
+                    </AppText>
+                    <View style={styles.roleList}>
+                        {REFERENCE_ROLE_OPTIONS.map((option, index) => {
+                            const isSelected = index === 0;
+                            return (
+                                <Pressable
+                                    key={option.label}
+                                    accessibilityRole="radio"
+                                    accessibilityState={{selected: isSelected}}
+                                    accessibilityLabel={`${option.label} 역할 선택`}
+                                    style={[styles.roleCard, isSelected && styles.roleCardSelected]}>
+                                    <View style={styles.roleCardText}>
+                                        <AppText variant="titleMd" tone="inverse" weight="700">
+                                            {option.label}
+                                        </AppText>
+                                        <AppText variant="caption" tone="inverse" style={styles.roleHint}>
+                                            {option.hint}
+                                        </AppText>
+                                    </View>
+                                    {option.recommended ? (
+                                        <View style={styles.roleRecommendBadge}>
+                                            <AppText variant="caption" weight="800" style={styles.roleRecommendText}>
+                                                추천
+                                            </AppText>
+                                        </View>
+                                    ) : null}
+                                </Pressable>
+                            );
+                        })}
+                    </View>
+                </View>
+                <View style={styles.roleFooter}>
+                    <AppButton label={selectedOption.ctaLabel} onPress={() => undefined} testID="role-start-cta" />
+                </View>
+            </SafeAreaView>
+        </LinearGradient>
+    );
+};
+
+const NativeReferenceOnboarding: React.FC = () => (
+    <LinearGradient
+        colors={['#1E1A33', '#17151F', '#1C1712']}
+        start={{x: 0, y: 0}}
+        end={{x: 1, y: 1}}
+        style={styles.flex}>
+        <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
+            <View style={styles.onboardingSkipRow}>
+                <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="온보딩 건너뛰기"
+                    style={styles.onboardingSkipButton}>
+                    <Text style={styles.onboardingSkipText}>건너뛰기</Text>
+                </Pressable>
+            </View>
+            <View style={styles.onboardingSlide}>
+                <View style={styles.onboardingIllustration}>
+                    <Brandmark size={160} />
+                </View>
+                <Text style={styles.onboardingHeadline}>{'출근 기록을\n서로 믿게'}</Text>
+                <Text style={styles.onboardingCopy}>매장 반경과 NFC 태그로 기록의 기준을 만들어요.</Text>
+            </View>
+            <View style={styles.onboardingIndicators}>
+                <View style={[styles.onboardingDot, styles.onboardingDotActive]} />
+                <View style={[styles.onboardingDot, styles.onboardingDotInactive]} />
+                <View style={[styles.onboardingDot, styles.onboardingDotInactive]} />
+            </View>
+            <View style={styles.onboardingFooter}>
+                <AppButton label="다음" onPress={() => undefined} />
+            </View>
+        </SafeAreaView>
+    </LinearGradient>
+);
+
+const NativeReferenceKakaoLogin: React.FC = () => {
+    const insets = useSafeAreaInsets();
+
+    return (
+        <LinearGradient
+            colors={['#1E1A33', '#17151F', '#1C1712']}
+            start={{x: 0, y: 0}}
+            end={{x: 1, y: 1}}
+            style={styles.flex}>
+            <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
+                <View style={styles.kakaoCenter}>
+                    <Brandmark size={64} label="K" backgroundColor="#FEE500" textColor="#1F1A0E" />
+                    <AppText variant="headingLg" tone="inverse" center style={styles.kakaoTitle}>
+                        {'카카오로\n간편하게 계속'}
+                    </AppText>
+                    <AppText variant="bodyLg" tone="inverse" center style={styles.kakaoCopy}>
+                        처음 한 번만 동의하면 다음부터 바로 들어올 수 있어요.
+                    </AppText>
+                </View>
+                <View style={[styles.kakaoFooter, {paddingBottom: Math.max(insets.bottom, 12) + 8}]}>
+                    <AppButton label="카카오 동의 계속하기" variant="kakao" onPress={() => undefined} />
+                    <AppButton label="이메일로 로그인" variant="ghost" onPress={() => undefined} />
+                </View>
+            </SafeAreaView>
+        </LinearGradient>
+    );
+};
+
+const NativeReferenceSplash: React.FC = () => (
+    <SafeAreaView style={styles.splashSafeArea}>
+        <LinearGradient
+            colors={['#1E1A33', '#17151F', '#1C1712']}
+            start={{x: 0, y: 0}}
+            end={{x: 1, y: 1}}
+            style={styles.splashGradient}>
+            <View style={styles.splashCenter}>
+                <View>
+                    <Brandmark size={64} />
+                </View>
+                <Text style={styles.splashBrandName}>소담</Text>
+                <Text style={styles.splashSlogan}>
+                    작은 가게의 오늘 할 일을 바로 끝내는 운영 비서
+                </Text>
+            </View>
+        </LinearGradient>
+    </SafeAreaView>
+);
+
+const NativeReferenceWelcomeMain: React.FC = () => (
+    <LinearGradient
+        colors={['#1E1A33', '#17151F', '#1C1712']}
+        start={{x: 0, y: 0}}
+        end={{x: 1, y: 1}}
+        style={styles.flex}>
+        <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
+            <View style={styles.landingHeader}>
+                <Text style={styles.landingHeaderTitle}>소담</Text>
+                <Pressable accessibilityRole="button" accessibilityLabel="로그인" style={styles.landingHeaderPill}>
+                    <Text style={styles.landingHeaderPillText}>로그인</Text>
+                </Pressable>
+            </View>
+            <View style={styles.landingContent}>
+                <View style={styles.landingLogoZone}>
+                    <Brandmark size={64} style={styles.landingBrandmark} />
+                    <Text style={styles.landingTitle}>{'월말 정산이\n30분 안에 끝나요'}</Text>
+                    <Text style={styles.landingTagline}>GPS·NFC 출퇴근, 자동 급여 계산, 직원 명세 확인까지 한 번에.</Text>
+                </View>
+                <View style={styles.landingButtons}>
+                    <LandingButton label="무료로 시작하기" primary />
+                    <LandingButton label="이미 계정이 있어요" />
+                </View>
+            </View>
+        </SafeAreaView>
+    </LinearGradient>
+);
+
+const LandingButton: React.FC<{label: string; primary?: boolean}> = ({label, primary = false}) => (
+    <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        style={[styles.landingButton, primary ? styles.landingPrimaryButton : styles.landingOutlineButton]}>
+        <View style={styles.buttonRow}>
+            <Text style={styles.landingButtonText}>{label}</Text>
+        </View>
+    </Pressable>
+);
+
+const NativeReferenceLogin: React.FC = () => (
+    <LinearGradient
+        colors={['#1E1A33', '#17151F', '#1C1712']}
+        start={{x: 0, y: 0}}
+        end={{x: 1, y: 1}}
+        style={styles.flex}>
+        <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
+            <ScrollView
+                contentContainerStyle={styles.scroll}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}>
+                <View style={styles.hero}>
+                    <SodamLogo size={42} variant="default" />
+                    <Text style={styles.title}>{'다시 오셨네요.\n바로 시작해요'}</Text>
+                    <Text style={styles.copy}>매장 상태와 내 근무 기록을 이어서 확인합니다.</Text>
+                </View>
+
+                <View style={styles.form}>
+                    <ReferenceField label="이메일" />
+                    <ReferenceField label="비밀번호" secureTextEntry />
+                    <ReferenceButton label="로그인" variant="primary" />
+                    <ReferenceButton label="카카오로 계속" variant="kakao" />
+                </View>
+
+                <View style={styles.footerRow}>
+                    <Text style={styles.footerText}>비밀번호 찾기</Text>
+                    <Text style={styles.footerText}> · </Text>
+                    <Text style={styles.footerText}>회원가입</Text>
+                </View>
+            </ScrollView>
+        </SafeAreaView>
+    </LinearGradient>
+);
+
+const NativeReferenceSignup: React.FC = () => (
+    <StepScaffold
+        progress={1 / 3}
+        title="기본 정보"
+        onBack={() => undefined}
+        footer={
+            <CtaStack bordered>
+                <AppButton label="다음" onPress={() => undefined} />
+            </CtaStack>
+        }>
+        <View style={styles.signupBadgeRow}>
+            <AppBadge tone="success" label="1/3" />
+        </View>
+        <AppText variant="titleMd" tone="secondary" style={styles.signupSectionLabel}>
+            어떤 역할인가요?
+        </AppText>
+        <SegmentedControl options={['사장님', '직원', '개인']} value={0} onChange={() => undefined} />
+        <AppCard variant="warm" style={styles.signupHint}>
+            <AppText variant="titleMd">사장님으로 시작합니다</AppText>
+            <AppText variant="caption" tone="secondary" style={styles.signupHintSub}>
+                매장 등록부터 직원 초대까지 이어서 준비할 수 있어요.
+            </AppText>
+        </AppCard>
+        <View style={styles.signupForm}>
+            <AppInput label="이름" placeholder="이름을 입력해 주세요" helper="실명 또는 닉네임 2자 이상" value="" onChangeText={() => undefined} />
+            <View style={styles.signupEmailGroup}>
+                <AppInput label="이메일" placeholder="name@example.com" value="" onChangeText={() => undefined} keyboardType="email-address" autoCapitalize="none" />
+                <AppButton label="이메일 중복 확인" variant="outline" size="md" onPress={() => undefined} />
+            </View>
+            <AppInput label="비밀번호" placeholder="비밀번호를 입력해 주세요" helper="8자 이상, 대문자/소문자/숫자/특수문자 중 3가지 이상" value="" onChangeText={() => undefined} secureTextEntry />
+        </View>
+    </StepScaffold>
+);
+
+const ReferenceField: React.FC<{label: string; secureTextEntry?: boolean}> = ({label, secureTextEntry}) => (
+    <View style={styles.field}>
+        <TextInput
+            accessibilityLabel={label}
+            placeholder={label}
+            placeholderTextColor="rgba(245,243,239,0.4)"
+            secureTextEntry={secureTextEntry}
+            autoCapitalize="none"
+            autoCorrect={false}
+            hitSlop={{top: 3, bottom: 3}}
+            style={styles.fieldInput}
+        />
+    </View>
+);
+
+const ReferenceButton: React.FC<{label: string; variant: 'primary' | 'kakao'}> = ({label, variant}) => {
+    const primary = variant === 'primary';
+    return (
+        <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={label}
+            style={[styles.button, primary ? styles.primaryButton : styles.kakaoButton]}>
+            <View style={styles.buttonRow}>
+                <Text style={[styles.buttonText, primary ? styles.primaryButtonText : styles.kakaoButtonText]}>{label}</Text>
+            </View>
+        </Pressable>
+    );
+};
+
+const VisualRouteFrame: React.FC<{source: 'reference' | 'actual'; screenId: string; children: React.ReactNode}> = ({source, screenId, children}) => (
+    <View style={styles.visualRoute}>
+        <Text
+            accessibilityLabel={`v3-visual-${source}-${screenId}`}
+            style={styles.visualRouteMarker}>
+            {`v3-visual-${source}-${screenId}`}
+        </Text>
+        {children}
+    </View>
+);
+
+const V3VisualHarnessScreen: React.FC<Props> = ({navigation, route}) => {
+    const {screenId, source} = route.params;
+    const visual = (content: React.ReactNode) => (
+        <VisualRouteFrame source={source} screenId={screenId}>{content}</VisualRouteFrame>
+    );
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.welcomeSplash) {
+        if (source === 'reference') {
+            return visual(<NativeReferenceSplash />);
+        }
+        return visual(<SplashScreen disableAnimation minDurationMs={0} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.authRoleStart) {
+        if (source === 'reference') {
+            return visual(<NativeReferenceRoleStart />);
+        }
+        return visual(<RoleStartScreen navigation={navigation as any} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.authOnboarding) {
+        if (source === 'reference') {
+            return visual(<NativeReferenceOnboarding />);
+        }
+        return visual(<OnboardingCarouselScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.authKakaoLogin) {
+        if (source === 'reference') {
+            return visual(<NativeReferenceKakaoLogin />);
+        }
+        return visual(<KakaoLoginScreen />);
+    }
+
+    const commonStateIds: Record<string, CommonStateKind> = {
+        [V3_VISUAL_SCREEN_IDS.commonEmpty]: 'empty',
+        [V3_VISUAL_SCREEN_IDS.commonError]: 'error',
+        [V3_VISUAL_SCREEN_IDS.commonPermission]: 'permission',
+        [V3_VISUAL_SCREEN_IDS.commonLoading]: 'loading',
+    };
+    const commonState = commonStateIds[screenId];
+    if (commonState) {
+        return visual(source === 'reference'
+            ? <NativeReferenceCommonState kind={commonState} />
+            : <ActualCommonState kind={commonState} />);
+    }
+
+    const opsStateIds: Record<string, 'operating-hours' | 'nfc-tags' | 'employee-management' | 'billing-processing'> = {
+        [V3_VISUAL_SCREEN_IDS.opsOperatingHours]: 'operating-hours',
+        [V3_VISUAL_SCREEN_IDS.opsNfcTags]: 'nfc-tags',
+        [V3_VISUAL_SCREEN_IDS.opsEmployeeManagement]: 'employee-management',
+        [V3_VISUAL_SCREEN_IDS.opsBillingProcessing]: 'billing-processing',
+    };
+    const opsState = opsStateIds[screenId];
+    if (opsState) {
+        if (source === 'reference') {
+            if (opsState === 'operating-hours') {
+                return visual(<NativeReferenceOperatingHours />);
+            }
+            if (opsState === 'nfc-tags') {
+                return visual(<NativeReferenceNfcTags />);
+            }
+            if (opsState === 'employee-management') {
+                return visual(<NativeReferenceEmployeeManagement />);
+            }
+            return visual(<NativeReferenceBillingProcessing />);
+        }
+        if (opsState === 'operating-hours') {
+            return visual(<StoreOperatingHoursScreen visualFixture={OPERATING_HOURS_FIXTURE} />);
+        }
+        if (opsState === 'nfc-tags') {
+            return visual(
+                <NfcTagManagementScreen
+                    route={{key: 'v3-visual-nfc-tags', name: 'NfcTagManagement', params: {storeId: 101}} as any}
+                    navigation={navigation as any}
+                    visualFixture={NFC_TAGS_FIXTURE}
+                />,
+            );
+        }
+        if (opsState === 'employee-management') {
+            return visual(
+                <EmployeeManagementScreen
+                    route={{key: 'v3-visual-employee-management', name: 'EmployeeManagement', params: {storeId: 101}} as any}
+                    navigation={navigation as any}
+                    visualFixture={EMPLOYEE_MANAGEMENT_FIXTURE}
+                />,
+            );
+        }
+        return visual(<TossBillingAuthScreen visualFixture={{processing: true}} />);
+    }
+
+    const scheduleStateIds: Record<string, 'edit-shift' | 'my-shift' | 'store-schedule' | 'swap-board' | 'swap-requests' | 'time-off-approval' | 'leave-balance' | 'attendance-approval' | 'attendance-irregularities' | 'attendance-notice' | 'employee-work-log'> = {
+        [V3_VISUAL_SCREEN_IDS.scheduleEditShift]: 'edit-shift',
+        [V3_VISUAL_SCREEN_IDS.scheduleMyShift]: 'my-shift',
+        [V3_VISUAL_SCREEN_IDS.scheduleStoreSchedule]: 'store-schedule',
+        [V3_VISUAL_SCREEN_IDS.scheduleSwapBoard]: 'swap-board',
+        [V3_VISUAL_SCREEN_IDS.scheduleSwapRequests]: 'swap-requests',
+        [V3_VISUAL_SCREEN_IDS.scheduleTimeOffApproval]: 'time-off-approval',
+        [V3_VISUAL_SCREEN_IDS.scheduleLeaveBalance]: 'leave-balance',
+        [V3_VISUAL_SCREEN_IDS.scheduleAttendanceApproval]: 'attendance-approval',
+        [V3_VISUAL_SCREEN_IDS.scheduleAttendanceIrregularities]: 'attendance-irregularities',
+        [V3_VISUAL_SCREEN_IDS.scheduleAttendanceNotice]: 'attendance-notice',
+        [V3_VISUAL_SCREEN_IDS.scheduleEmployeeWorkLog]: 'employee-work-log',
+    };
+    const scheduleState = scheduleStateIds[screenId];
+    if (scheduleState) {
+        if (source === 'reference') {
+            if (scheduleState === 'edit-shift') {
+                return visual(<NativeReferenceEditShift />);
+            }
+            if (scheduleState === 'my-shift') {
+                return visual(<NativeReferenceMyShift />);
+            }
+            if (scheduleState === 'store-schedule') {
+                return visual(<NativeReferenceStoreSchedule />);
+            }
+            if (scheduleState === 'swap-board') {
+                return visual(<NativeReferenceSwapBoard />);
+            }
+            if (scheduleState === 'swap-requests') {
+                return visual(<NativeReferenceSwapRequests />);
+            }
+            if (scheduleState === 'attendance-approval') {
+                return visual(<NativeReferenceAttendanceApproval />);
+            }
+            if (scheduleState === 'attendance-irregularities') {
+                return visual(<NativeReferenceAttendanceIrregularities />);
+            }
+            if (scheduleState === 'employee-work-log') {
+                return visual(<NativeReferenceEmployeeWorkLog />);
+            }
+            if (scheduleState === 'time-off-approval') {
+                return visual(<NativeReferenceTimeOffApproval />);
+            }
+            return visual(scheduleState === 'leave-balance'
+                ? <NativeReferenceLeaveBalance />
+                : <NativeReferenceAttendanceNotice />);
+        }
+        if (scheduleState === 'edit-shift') {
+            return visual(<EditShiftScreen visualFixture={EDIT_SHIFT_FIXTURE} />);
+        }
+        if (scheduleState === 'my-shift') {
+            return visual(<MyShiftScreen visualFixture={MY_SHIFT_FIXTURE} />);
+        }
+        if (scheduleState === 'store-schedule') {
+            return visual(
+                <StoreScheduleScreen
+                    route={{key: 'v3-visual-store-schedule', name: 'StoreSchedule', params: {storeId: 101}} as any}
+                    navigation={navigation as any}
+                    visualFixture={STORE_SCHEDULE_FIXTURE}
+                />,
+            );
+        }
+        if (scheduleState === 'swap-board') {
+            return visual(<SwapBoardScreen visualFixture={SWAP_BOARD_FIXTURE} />);
+        }
+        if (scheduleState === 'swap-requests') {
+            return visual(
+                <SwapRequestsScreen
+                    visualFixture={SWAP_REQUESTS_FIXTURE}
+                />,
+            );
+        }
+        if (scheduleState === 'attendance-approval') {
+            return visual(
+                <AttendanceApprovalScreen
+                    route={{key: 'v3-visual-attendance-approval', name: 'AttendanceApproval', params: {storeId: 101}} as any}
+                    navigation={navigation as any}
+                    visualFixture={ATTENDANCE_APPROVAL_FIXTURE}
+                />,
+            );
+        }
+        if (scheduleState === 'attendance-irregularities') {
+            return visual(<AttendanceIrregularitiesScreen visualFixture={ATTENDANCE_IRREGULARITIES_FIXTURE} />);
+        }
+        if (scheduleState === 'employee-work-log') {
+            return visual(<EmployeeWorkLogScreen visualFixture={EMPLOYEE_WORK_LOG_FIXTURE} />);
+        }
+        if (scheduleState === 'time-off-approval') {
+            return visual(<TimeOffApprovalScreen visualFixture={TIME_OFF_APPROVAL_FIXTURE} />);
+        }
+        return visual(scheduleState === 'leave-balance'
+            ? <MyLeaveBalanceScreen visualFixture={LEAVE_BALANCE_FIXTURE} />
+            : <AttendanceNoticeScreen visualFixture={ATTENDANCE_NOTICE_FIXTURE} />);
+    }
+
+    const serviceStateIds: Record<string, ServiceStateKind> = {
+        [V3_VISUAL_SCREEN_IDS.opsAppUpdate]: 'update',
+        [V3_VISUAL_SCREEN_IDS.opsMaintenance]: 'maintenance',
+        [V3_VISUAL_SCREEN_IDS.opsPaymentSuccess]: 'payment-success',
+    };
+    const serviceState = serviceStateIds[screenId];
+    if (serviceState) {
+        if (source === 'reference') {
+            return visual(<NativeReferenceServiceState kind={serviceState} />);
+        }
+        if (serviceState === 'update') {
+            return visual(<AppUpdateScreen currentVersion="3.2.0" storeUrl="https://example.com" />);
+        }
+        if (serviceState === 'maintenance') {
+            return visual(<MaintenanceScreen onRetry={() => undefined} />);
+        }
+        return visual(<PaymentSuccessScreen onDone={() => undefined} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.opsSubscriptionGate) {
+        return visual(source === 'reference'
+            ? <NativeReferenceSubscriptionGate />
+            : <SubscriptionGateScreen featureName="급여명세 발급" onPrimary={() => undefined} onSecondary={() => undefined} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.opsPushPrimer) {
+        const captureMarker = `v3-visual-${source}-${screenId}`;
+        return visual(source === 'reference'
+            ? <NativeReferencePushPrimer captureMarker={captureMarker} />
+            : <VisualSheetBase><PushPrimerSheet visible onAllow={() => undefined} onLater={() => undefined} captureMarker={captureMarker} /></VisualSheetBase>);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.employeeHome) {
+        return visual(source === 'reference' ? <NativeReferenceEmployeeHome /> : <HomeScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.attendanceOverview) {
+        return visual(source === 'reference'
+            ? <NativeReferenceAttendanceOverview />
+            : <AttendanceOverviewScreen fixture={ATTENDANCE_OVERVIEW_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.attendanceAuthentication) {
+        return visual(source === 'reference'
+            ? <NativeReferenceAttendanceAuthentication />
+            : <AttendanceScreen visualFixture={ATTENDANCE_AUTHENTICATION_FIXTURE} />);
+    }
+
+    const attendanceStateIds: Record<string, AttendanceStateKind> = {
+        [V3_VISUAL_SCREEN_IDS.nfcUnsupported]: 'nfc-unsupported',
+        [V3_VISUAL_SCREEN_IDS.punchSuccess]: 'punch-success',
+        [V3_VISUAL_SCREEN_IDS.punchFailedRadius]: 'punch-failed',
+    };
+    const attendanceState = attendanceStateIds[screenId];
+    if (attendanceState) {
+        return visual(source === 'reference'
+            ? <NativeReferenceAttendanceState kind={attendanceState} />
+            : <ActualAttendanceState kind={attendanceState} />);
+    }
+
+    const submissionSuccessIds: Record<string, SubmissionSuccessKind> = {
+        [V3_VISUAL_SCREEN_IDS.correctionSuccess]: 'correction',
+        [V3_VISUAL_SCREEN_IDS.timeOffSuccess]: 'time-off',
+        [V3_VISUAL_SCREEN_IDS.joinStoreSuccess]: 'join-store',
+    };
+    const submissionSuccess = submissionSuccessIds[screenId];
+    if (submissionSuccess) {
+        return visual(source === 'reference'
+            ? <NativeReferenceSubmissionSuccess kind={submissionSuccess} />
+            : <ActualSubmissionSuccess kind={submissionSuccess} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.salaryList) {
+        return visual(source === 'reference' ? <NativeReferenceSalaryList /> : <SalaryListScreen fixture={SALARY_LIST_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.authWelcomeMain) {
+        if (source === 'reference') {
+            return visual(<NativeReferenceWelcomeMain />);
+        }
+        return visual(<SodamLandingScreen navigation={navigation as any} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.authLogin) {
+        if (source === 'reference') {
+            return visual(<NativeReferenceLogin />);
+        }
+        // This is the actual service component, not a reference image or a
+        // simulated form. The harness only supplies ordinary stack props.
+        return visual(
+            <LoginScreen
+                navigation={navigation as any}
+                route={{key: 'v3-visual-login', name: 'Login', params: undefined} as any}
+            />
+        );
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.authSignup) {
+        if (source === 'reference') {
+            return visual(<NativeReferenceSignup />);
+        }
+        return visual(
+            <SignupScreen
+                navigation={navigation as any}
+                route={{key: 'v3-visual-signup', name: 'Signup', params: undefined} as any}
+            />
+        );
+    }
+
+    return visual(
+        <View style={styles.unsupported} accessibilityLabel="미배선 v3 시각 정본">
+            <Text style={styles.unsupportedTitle}>미배선 정본 화면</Text>
+            <Text style={styles.unsupportedCopy}>{screenId}</Text>
+        </View>
+    );
+};
+
+const styles = StyleSheet.create({
+    flex: {flex: 1},
+    visualRoute: {flex: 1},
+    visualRouteMarker: {position: 'absolute', width: 1, height: 1, fontSize: 1, lineHeight: 1, color: 'transparent'},
+    stateCenter: {flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20},
+    stateInner: {width: '100%', maxWidth: 320, alignItems: 'center'},
+    stateMark: {width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 12},
+    stateMarkText: {fontSize: 22, fontWeight: '900'},
+    stateTitle: {fontSize: 22, lineHeight: 30, fontWeight: '800', textAlign: 'center'},
+    stateCopy: {marginTop: 8, fontSize: 14, lineHeight: 21, textAlign: 'center'},
+    stateCta: {marginTop: 16, alignSelf: 'stretch'},
+    stateCtaSub: {marginTop: 8, alignSelf: 'stretch'},
+    stateProgressCard: {width: '100%', marginTop: 16, padding: 16, borderRadius: 16, backgroundColor: '#F1F1EC'},
+    stateProgressTrack: {height: 6, borderRadius: 999, backgroundColor: '#E7E7E2', overflow: 'hidden'},
+    stateProgressValue: {width: '48%', height: '100%', borderRadius: 999, backgroundColor: '#FF4D6D'},
+    subscriptionCenter: {flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20},
+    subscriptionTitle: {marginTop: 12},
+    subscriptionDesc: {marginTop: 8, maxWidth: 320},
+    subscriptionCard: {alignItems: 'center', alignSelf: 'stretch', marginTop: 16},
+    subscriptionPrice: {marginTop: 4},
+    subscriptionSub: {marginTop: 4, textAlign: 'center'},
+    subscriptionCtas: {alignSelf: 'stretch', marginTop: 16, gap: 8},
+    pushBackdrop: {flex: 1, justifyContent: 'flex-end'},
+    pushSheet: {borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 16, paddingTop: 12, maxHeight: '86%'},
+    pushHandle: {width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 12},
+    pushIcon: {width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 8},
+    pushTitle: {marginBottom: 4},
+    pushDescription: {marginBottom: 12},
+    pushPrimary: {marginTop: 12},
+    pushSecondary: {marginTop: 8},
+    homeIntro: {marginBottom: 24},
+    homeIntroCopy: {marginTop: 8},
+    homeList: {gap: 8},
+    opsHoursTitle: {marginBottom: spacing.xs},
+    opsHoursIntro: {marginBottom: spacing.xl, lineHeight: 22},
+    opsHoursList: {gap: spacing.md},
+    opsHoursDayCard: {gap: spacing.md},
+    opsHoursDayHeader: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
+    opsHoursClosedToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        minWidth: 70,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.xs + 2,
+        borderRadius: radius.pill,
+        justifyContent: 'center',
+    },
+    opsHoursClosedHint: {marginTop: 2},
+    opsHoursTimeRow: {flexDirection: 'row', gap: spacing.md},
+    opsHoursTimeInput: {flex: 1},
+    opsNfcSectionTitle: {marginBottom: spacing.md},
+    opsNfcSectionTitleGap: {marginTop: spacing.xxl, marginBottom: spacing.md},
+    opsNfcFormCard: {gap: spacing.md},
+    opsNfcRegisterButton: {marginTop: spacing.xs},
+    opsNfcList: {gap: spacing.sm},
+    opsNfcTagCard: {gap: spacing.md},
+    opsNfcTagRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
+    opsNfcFlex: {flex: 1, minWidth: 0},
+    opsNfcToggleButton: {alignSelf: 'flex-start', borderRadius: radius.lg},
+    opsEmployeeSection: {marginTop: spacing.md},
+    opsEmployeeSectionTitle: {marginBottom: spacing.md},
+    opsEmployeeList: {gap: spacing.sm},
+    opsEmployeeRightRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.xs},
+    opsEmployeeAvatar: {
+        width: 40,
+        height: 40,
+        borderRadius: radius.pill,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    opsBillingGlyph: {fontSize: 22, fontWeight: '900', lineHeight: 24},
+    scheduleFieldLabel: {marginTop: spacing.md, marginBottom: spacing.xs},
+    scheduleTimeRow: {flexDirection: 'row', gap: spacing.md},
+    scheduleFlex: {flex: 1},
+    scheduleListTitle: {marginTop: spacing.xl, marginBottom: spacing.sm},
+    scheduleNoticeHero: {marginBottom: spacing.sm},
+    scheduleNoticeSub: {marginTop: spacing.sm},
+    scheduleNoticeForm: {marginTop: spacing.xl, gap: spacing.md},
+    scheduleNoticeFieldLabel: {marginBottom: spacing.xs, marginLeft: 2},
+    myShiftContainer: {gap: spacing.lg},
+    myShiftSummaryBar: {
+        flexDirection: 'row',
+        borderRadius: 12,
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.lg,
+    },
+    myShiftSummaryItem: {flex: 1, alignItems: 'center', gap: 2},
+    myShiftDivider: {width: 1, marginVertical: spacing.xs},
+    myShiftDaySection: {gap: spacing.sm},
+    myShiftDaySectionHeader: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
+    myShiftCard: {paddingVertical: spacing.md},
+    myShiftRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.md},
+    myShiftIconWrap: {width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center'},
+    myShiftFlex: {flex: 1},
+    myShiftMonthList: {gap: spacing.sm},
+    myShiftSectionTitle: {marginBottom: -spacing.xs},
+    myShiftListCard: {paddingVertical: spacing.sm},
+    scheduleApprovalIntro: {marginBottom: spacing.lg},
+    scheduleApprovalIntroBody: {marginTop: spacing.xs},
+    scheduleApprovalList: {gap: spacing.md},
+    scheduleApprovalCard: {gap: spacing.md, paddingVertical: spacing.md},
+    scheduleApprovalCardHead: {flexDirection: 'row', alignItems: 'center', gap: spacing.md},
+    scheduleApprovalIcon: {width: 40, height: 40, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center'},
+    scheduleApprovalFlex: {flex: 1, minWidth: 0},
+    scheduleApprovalActions: {flexDirection: 'row', gap: spacing.sm},
+    scheduleSwapScroll: {paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl, flexGrow: 1},
+    scheduleSwapPassRow: {marginBottom: spacing.md},
+    scheduleSwapCard: {marginBottom: spacing.md},
+    scheduleSwapCardTop: {flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between'},
+    scheduleSwapCardInfo: {flex: 1, marginRight: spacing.sm},
+    scheduleSwapTime: {marginTop: 2},
+    scheduleSwapOwner: {marginTop: spacing.xs},
+    scheduleSwapApply: {marginTop: spacing.md},
+    scheduleStoreTabBar: {flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg},
+    scheduleStoreTabButton: {flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.sm, borderRadius: radius.pill, borderWidth: 1},
+    scheduleStoreSection: {gap: spacing.lg},
+    scheduleStoreWeekHeader: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: radius.lg, padding: spacing.md},
+    scheduleStoreWeekHeaderCenter: {flex: 1, alignItems: 'center', gap: spacing.xs},
+    scheduleStoreSummaryPills: {flexDirection: 'row', gap: spacing.xs},
+    scheduleStoreSummaryPill: {borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 2},
+    scheduleStoreActionRow: {flexDirection: 'row', gap: spacing.sm},
+    scheduleStoreHintRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.xs},
+    scheduleStoreBoard: {gap: spacing.xs},
+    scheduleStoreBoardRow: {minHeight: 84, height: 84, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.sm, borderRadius: radius.lg, borderWidth: 1},
+    scheduleStoreBoardHeader: {width: 52, alignItems: 'center', justifyContent: 'center', gap: 2},
+    scheduleStoreBoardAdd: {width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center'},
+    scheduleStoreBoardBody: {flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
+    scheduleStoreBoardChip: {flexDirection: 'row', alignItems: 'center', gap: spacing.xs, maxWidth: 150, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: radius.md, borderWidth: 1, shadowColor: '#000', shadowRadius: 6, shadowOffset: {width: 0, height: 3}},
+    scheduleStoreBoardChipText: {flexShrink: 1},
+    scheduleRequestsTitle: {marginBottom: spacing.sm},
+    scheduleRequestsTitleGap: {marginTop: spacing.xxl, marginBottom: spacing.xs},
+    scheduleRequestsHint: {marginBottom: spacing.sm},
+    scheduleRequestsList: {gap: spacing.sm},
+    scheduleRequestsCandidate: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: radius.lg, borderWidth: 1, padding: spacing.md},
+    scheduleRequestsStart: {marginTop: spacing.lg},
+    scheduleRequestsRequestTop: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
+    scheduleWorkLogBody: {paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xxxl, gap: spacing.md},
+    scheduleWorkLogMonthBar: {minHeight: 78, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
+    scheduleWorkLogMonthButton: {width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center'},
+    scheduleWorkLogMonthTitle: {flex: 1, paddingHorizontal: spacing.md},
+    scheduleWorkLogSummaryGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm},
+    scheduleWorkLogMetric: {width: '48.7%', minHeight: 78, borderWidth: 1, borderRadius: radius.md, padding: spacing.md, justifyContent: 'space-between'},
+    scheduleWorkLogTotalCard: {padding: spacing.lg},
+    scheduleWorkLogTotalRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md},
+    scheduleWorkLogStatusChip: {minHeight: 32, borderRadius: radius.pill, paddingHorizontal: spacing.md, alignItems: 'center', justifyContent: 'center'},
+    scheduleWorkLogTableCard: {padding: 0, overflow: 'hidden'},
+    scheduleWorkLogTableRow: {minHeight: 50, flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth},
+    scheduleWorkLogHeaderRow: {minHeight: 44},
+    scheduleWorkLogCell: {minHeight: 50, justifyContent: 'center', paddingHorizontal: spacing.sm},
+    scheduleLeaveSpotCard: {marginTop: spacing.lg, gap: spacing.md},
+    scheduleLeaveTrack: {flexDirection: 'row', height: 12, borderRadius: 6, overflow: 'hidden'},
+    scheduleLeaveFill: {height: 12},
+    scheduleLeaveLegendRow: {flexDirection: 'row', gap: spacing.lg},
+    scheduleLeaveLegendItem: {alignItems: 'flex-start'},
+    scheduleLeaveLegendLabelRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.xs},
+    scheduleLeaveLegendDot: {width: 8, height: 8, borderRadius: 4},
+    scheduleLeaveLegendValue: {marginTop: spacing.xs},
+    scheduleLeaveDisclaimer: {marginTop: spacing.md},
+    attendanceContent: {paddingHorizontal: 24, paddingTop: 16, paddingBottom: 32, gap: 16},
+    attendanceSpotCard: {gap: 4},
+    attendanceSpotSub: {marginTop: 2},
+    attendanceSegment: {marginTop: 0},
+    attendanceList: {gap: 8},
+    attendanceAuthContent: {paddingHorizontal: 24, paddingTop: 16, paddingBottom: 32, gap: spacing.md},
+    attendanceAuthCard: {gap: spacing.xs},
+    attendanceAuthCopy: {lineHeight: 22},
+    salaryCanvas: {flex: 1},
+    salaryStorePicker: {paddingHorizontal: 24, paddingTop: 16, paddingBottom: 4},
+    salaryListContent: {paddingHorizontal: 24, paddingTop: 12, paddingBottom: 32, gap: 12},
+    salaryHeroBlock: {marginTop: 16, marginBottom: 12},
+    salaryCard: {gap: 12},
+    salaryCardTop: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8},
+    salaryName: {flexShrink: 1},
+    salaryCardBottom: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12},
+    salaryMeta: {flexShrink: 1, gap: 2},
+    salaryAmount: {flexShrink: 0, maxWidth: '55%'},
+    splashSafeArea: {flex: 1, backgroundColor: '#15171B'},
+    splashGradient: {flex: 1, alignItems: 'center', justifyContent: 'center'},
+    splashCenter: {alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24},
+    splashBrandName: {
+        fontSize: 35,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        marginTop: 16,
+        marginBottom: 8,
+    },
+    splashSlogan: {
+        fontSize: 14,
+        lineHeight: 20,
+        color: '#FFFFFF',
+        textAlign: 'center',
+    },
+    roleBody: {flex: 1, paddingHorizontal: 24, paddingTop: 24},
+    roleMark: {marginBottom: 16},
+    roleTitle: {letterSpacing: -0.6},
+    roleCopy: {marginTop: 8, opacity: 0.72, marginBottom: 20},
+    roleList: {gap: 8},
+    roleCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: 'rgba(245,243,239,0.18)',
+        backgroundColor: 'rgba(255,255,255,0.04)',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+    },
+    roleCardSelected: {borderColor: '#FF7288', backgroundColor: 'rgba(255,255,255,0.09)'},
+    roleCardText: {flexShrink: 1},
+    roleHint: {marginTop: 2, opacity: 0.7},
+    roleRecommendBadge: {
+        backgroundColor: '#FFE1E6',
+        borderRadius: 999,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        marginLeft: 8,
+    },
+    roleRecommendText: {color: '#FF4D6D'},
+    roleFooter: {paddingHorizontal: 24, paddingBottom: 16},
+    onboardingSkipRow: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+    },
+    onboardingSkipButton: {paddingHorizontal: 12, paddingVertical: 8},
+    onboardingSkipText: {color: 'rgba(245,243,239,0.72)', fontSize: 15, fontWeight: '500'},
+    onboardingSlide: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        paddingHorizontal: 20,
+    },
+    onboardingIllustration: {alignItems: 'center', justifyContent: 'center', marginTop: 16},
+    onboardingHeadline: {
+        marginTop: 32,
+        fontSize: 30,
+        lineHeight: 38,
+        fontWeight: '800',
+        color: '#F5F3EF',
+        textAlign: 'center',
+        letterSpacing: -1,
+    },
+    onboardingCopy: {
+        marginTop: 16,
+        fontSize: 17,
+        color: 'rgba(245,243,239,0.72)',
+        textAlign: 'center',
+        lineHeight: 26,
+    },
+    onboardingIndicators: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 20,
+    },
+    onboardingDot: {width: 8, height: 8, borderRadius: 4},
+    onboardingDotActive: {backgroundColor: '#FF7288', width: 24},
+    onboardingDotInactive: {backgroundColor: 'rgba(245,243,239,0.3)'},
+    onboardingFooter: {paddingHorizontal: 16, paddingBottom: 16},
+    kakaoCenter: {flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24},
+    kakaoTitle: {marginTop: 24, letterSpacing: -1},
+    kakaoCopy: {marginTop: 12, opacity: 0.8, maxWidth: 320},
+    kakaoFooter: {paddingHorizontal: 24, gap: 8},
+    scroll: {flexGrow: 1, paddingTop: 34, paddingHorizontal: 16, paddingBottom: 20},
+    hero: {alignItems: 'flex-start'},
+    title: {
+        marginTop: 13,
+        color: '#F5F3EF',
+        fontSize: 23,
+        lineHeight: 29,
+        fontWeight: '800',
+        letterSpacing: -0.6,
+        textAlign: 'left',
+    },
+    copy: {
+        marginTop: 11,
+        color: '#F5F3EF',
+        fontSize: 13,
+        lineHeight: 21,
+        fontWeight: '400',
+        opacity: 0.72,
+        textAlign: 'left',
+    },
+    form: {marginTop: 17, gap: 9},
+    field: {
+        height: 43,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(245,243,239,0.22)',
+        backgroundColor: 'rgba(255,255,255,0.06)',
+        justifyContent: 'center',
+        paddingHorizontal: 14,
+    },
+    fieldInput: {
+        alignSelf: 'stretch',
+        flex: 1,
+        fontSize: 15,
+        fontWeight: '500',
+        color: 'rgba(245,243,239,0.9)',
+        padding: 0,
+        textAlignVertical: 'center',
+    },
+    signupBadgeRow: {marginBottom: 12},
+    signupSectionLabel: {marginBottom: 8},
+    signupHint: {marginTop: 12},
+    signupHintSub: {marginTop: 4},
+    signupForm: {marginTop: 24, gap: 12},
+    signupEmailGroup: {gap: 8},
+    button: {
+        minHeight: 46,
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        alignSelf: 'stretch',
+    },
+    primaryButton: {
+        marginTop: 2,
+        backgroundColor: '#FF7288',
+        // AppButton's v3 primary elevation is a coral glow. Keep this
+        // native reference independent, but use the canonical token value.
+        shadowColor: '#FF4D6D',
+        shadowOffset: {width: 0, height: 8},
+        shadowOpacity: 0.32,
+        shadowRadius: 16,
+        elevation: 8,
+    },
+    kakaoButton: {backgroundColor: '#FEE500'},
+    buttonRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center'},
+    buttonText: {fontSize: 14, fontWeight: '700', letterSpacing: -0.2, textAlign: 'center'},
+    primaryButtonText: {color: '#F5F3EF'},
+    kakaoButtonText: {color: '#1F1A0E'},
+    footerRow: {flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 18},
+    footerText: {color: '#F5F3EF', fontSize: 12, lineHeight: 16, fontWeight: '400', opacity: 0.65},
+    landingHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingTop: 20,
+    },
+    landingHeaderTitle: {color: '#F5F3EF', fontSize: 12, lineHeight: 16, fontWeight: '400', opacity: 0.65},
+    landingHeaderPill: {
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        borderRadius: 999,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+    },
+    landingHeaderPillText: {color: '#F5F3EF', fontSize: 12, lineHeight: 16, fontWeight: '700'},
+    landingContent: {flex: 1, justifyContent: 'center', paddingHorizontal: 22, paddingTop: 20, paddingBottom: 20},
+    landingLogoZone: {alignItems: 'center', justifyContent: 'center', gap: 8},
+    landingBrandmark: {transform: [{translateY: -4}]},
+    landingTitle: {
+        marginTop: 4,
+        color: '#F5F3EF',
+        fontSize: 26,
+        lineHeight: 34,
+        fontWeight: '700',
+        letterSpacing: -0.6,
+        textAlign: 'center',
+    },
+    landingTagline: {
+        marginTop: 3,
+        maxWidth: 280,
+        color: '#F5F3EF',
+        fontSize: 15,
+        lineHeight: 23,
+        fontWeight: '400',
+        opacity: 0.78,
+        textAlign: 'center',
+    },
+    landingButtons: {gap: 9, marginTop: 19},
+    landingButton: {
+        minHeight: 42,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 16,
+        alignSelf: 'stretch',
+    },
+    landingPrimaryButton: {
+        backgroundColor: '#FF7288',
+        shadowColor: '#FF4D6D',
+        shadowOffset: {width: 0, height: 8},
+        shadowOpacity: 0.32,
+        shadowRadius: 16,
+        elevation: 8,
+    },
+    landingOutlineButton: {
+        backgroundColor: 'transparent',
+        borderColor: 'rgba(245,245,239,0.3)',
+        borderWidth: 1,
+    },
+    landingButtonText: {color: '#F5F3EF', fontSize: 14, fontWeight: '700', letterSpacing: -0.2, textAlign: 'center'},
+    unsupported: {flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#12141B', padding: 24},
+    unsupportedTitle: {color: '#F2F1EE', fontSize: 18, fontWeight: '700'},
+    unsupportedCopy: {marginTop: 8, color: '#A6A9AE', textAlign: 'center'},
+});
+
+export default V3VisualHarnessScreen;
