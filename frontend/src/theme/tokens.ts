@@ -205,9 +205,9 @@ export const shadow = {
         shadowRadius: 14,
         elevation: 6,
     },
-    /** 브랜드 CTA 전용 — 강한 그림자 + 오렌지 라이트 글로우 (Android elevation 한계로 iOS 우선 효과) */
+    /** 브랜드 CTA 전용 — 강한 그림자 + 코랄 글로우 (Android elevation 한계로 iOS 우선 효과) */
     brand: {
-        shadowColor: '#FF6B35',
+        shadowColor: colors.brandPrimary,
         shadowOffset: {width: 0, height: 8},
         shadowOpacity: 0.32,
         shadowRadius: 16,

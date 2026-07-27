@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ViewStyle, TextStyle } from 'react-native';
-import { COLORS } from '../logo/Colors';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface SectionHeaderProps {
   title: string;
@@ -23,16 +23,17 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
   testID,
   accessibilityLabel,
 }) => {
+  const c = useThemeColors();
   return (
     <View style={[styles.container, containerStyle]} testID={testID} accessibilityRole="header" accessibilityLabel={accessibilityLabel ?? `${title} 섹션 헤더`}>
-      <Text style={[styles.title, titleStyle]}>{title}</Text>
+      <Text style={[styles.title, { color: c.textPrimary }, titleStyle]}>{title}</Text>
       {actionLabel && onPressAction ? (
         <TouchableOpacity
           onPress={onPressAction}
           accessibilityRole="button"
           accessibilityLabel={`${title} 섹션 ${actionLabel}`}
         >
-          <Text style={[styles.action, actionStyle]}>{actionLabel}</Text>
+          <Text style={[styles.action, { color: c.brandPrimary }, actionStyle]}>{actionLabel}</Text>
         </TouchableOpacity>
       ) : null}
     </View>
@@ -49,12 +50,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.GRAY_800,
   },
   action: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.SODAM_BLUE,
   },
 });
 

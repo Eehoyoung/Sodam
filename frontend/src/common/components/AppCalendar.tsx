@@ -9,7 +9,6 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import {AppText} from './ds';
 import {useThemeColors} from '../hooks/useThemeColors';
 import {radius, spacing} from '../../theme/tokens';
-import {COLORS} from './logo/Colors';
 
 export interface CalendarDayMark {
     /** hex 색상 문자열 배열. 최대 3개 표시. */
@@ -126,7 +125,7 @@ export default function AppCalendar({
                                     style={[
                                         styles.circle,
                                         isSel && {backgroundColor: c.brandPrimary},
-                                        !isSel && isTod && {backgroundColor: COLORS.SODAM_BLUE},
+                                        !isSel && isTod && {backgroundColor: c.brandPrimaryDark},
                                     ]}>
                                     <AppText
                                         variant="bodyMd"
