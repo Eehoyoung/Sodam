@@ -46,6 +46,21 @@ spring:
       password: ${REDIS_PASSWORD}
       timeout: 3000ms
 
+  # 사장님 웹 콘솔(Phase 0) 세션 저장소 — 캐시/JWT Redis 와 물리적으로 분리된 인스턴스.
+  session:
+    store-type: redis
+    timeout: 30m
+
+sodam:
+  session:
+    redis:
+      host: ${SESSION_REDIS_HOST}
+      port: ${SESSION_REDIS_PORT:6379}
+    cookie:
+      secure: ${SODAM_SESSION_COOKIE_SECURE:true}
+    csrf:
+      allowed-origins: ${SODAM_SESSION_CSRF_ALLOWED_ORIGINS:https://owner.sodam.app}
+
   security:
     oauth2:
       client:

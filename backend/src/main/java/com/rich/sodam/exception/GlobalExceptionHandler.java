@@ -98,10 +98,31 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(e.getCode(), e.getMessage()));
     }
 
+    /**
+     * 웹 콘솔 계정 임시 잠금(423) — 04_보안정책.md §4/§10. IP rate limit(429)과는 별개 방어선이므로
+     * 상태코드도 구분한다(AccountLockedException 클래스 주석 참고).
+     */
+    @ExceptionHandler(AccountLockedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleAccountLocked(AccountLockedException e) {
+        log.warn("계정 잠금: retryAfterSeconds={}", e.getRetryAfterSeconds());
+        Map<String, String> detail = new HashMap<>();
+        detail.put("retryAfterSeconds", String.valueOf(e.getRetryAfterSeconds()));
+        ApiResponse<Object> response = ApiResponse.error(AccountLockedException.ERROR_CODE, e.getMessage(), detail);
+        return new ResponseEntity<>(response, HttpStatus.LOCKED);
+    }
+
     @ExceptionHandler(com.rich.sodam.service.ElectronicSignatureRefreshLimiter.TooManySignatureRefreshesException.class)
     public ResponseEntity<ApiResponse<Object>> handleSignatureRefreshRateLimit(RuntimeException e) {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                 .body(ApiResponse.error("ESIGN-RATE-001", e.getMessage()));
+    }
+
+    /** 웹 콘솔 로그인 — 계정 기준 rate limit 초과(429). IP 기준은 RateLimitFilter 가 필터 단에서 처리. */
+    @ExceptionHandler(WebLoginRateLimitExceededException.class)
+    public ResponseEntity<ApiResponse<Object>> handleWebLoginRateLimit(WebLoginRateLimitExceededException e) {
+        log.warn("웹 로그인 계정 rate limit 초과");
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(ApiResponse.error("WEB_LOGIN_RATE_LIMITED", e.getMessage()));
     }
 
     /**

@@ -55,6 +55,12 @@ spring:
     init:
       mode: never
 
+  # 사장님 웹 콘솔 세션 — dev 는 실 Redis 없이 MapSessionRepository 로 폴백
+  # (WebSessionSecurityConfig.DevTestSessionConfig). store-type=none 아니면 Boot 가 classpath 의
+  # spring-session-data-redis 를 보고 자동으로 Redis 세션 저장소를 시도해 부팅/런타임이 깨진다.
+  session:
+    store-type: none
+
   # Kakao OAuth — 미설정 허용 (Mock 사용)
   security:
     oauth2:

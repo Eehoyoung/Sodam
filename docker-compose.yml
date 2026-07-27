@@ -8,10 +8,12 @@
 #   docker compose down -v            # 정지 + 볼륨 삭제 (DB 초기화)
 #
 # 포트 매핑 (8080/8081/8082/5432/6379 등 타 프로젝트 점유 회피, BE 7070 일관):
-#   - BE      : 7070  (호스트) → 7070 (컨테이너)   — 전 구간 7070 통일
-#   - MySQL   : 13306 (호스트) → 3306 (컨테이너)
-#   - Redis   : 16379 (호스트) → 6379 (컨테이너)
-#   - Adminer : 18080 (호스트) → 8080 (컨테이너, 이미지 기본)
+#   - BE           : 7070  (호스트) → 7070 (컨테이너)   — 전 구간 7070 통일
+#   - 웹 콘솔      : 3000  (호스트) → 3000 (컨테이너)   — 사장님 웹 콘솔(Phase 0, web-master/)
+#   - MySQL        : 13306 (호스트) → 3306 (컨테이너)
+#   - Redis(캐시)  : 16379 (호스트) → 6379 (컨테이너)
+#   - Redis(세션)  : 16380 (호스트) → 6379 (컨테이너)  — 사장님 웹 콘솔(Phase 0) 세션 전용, 물리 분리
+#   - Adminer      : 18080 (호스트) → 8080 (컨테이너, 이미지 기본)
 # =============================================================================
 
 services:
@@ -27,6 +29,8 @@ services:
         condition: service_healthy
       sodam-redis:
         condition: service_started
+      sodam-session-redis:
+        condition: service_started
     environment:
       # Spring 프로필 — dev (H2 사용) 또는 prod (MySQL 사용)
       SPRING_PROFILES_ACTIVE: prod
@@ -39,9 +43,16 @@ services:
       DB_USERNAME: sodam
       DB_PASSWORD: ${SODAM_DB_PASSWORD:-sodam_dev_pass}
       DB_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
-      # Redis
+      # Redis (캐시/JWT)
       REDIS_HOST: sodam-redis
       REDIS_PORT: 6379
+      # Redis (사장님 웹 콘솔 세션 전용 — 물리 분리 인스턴스, docs/260726/01_시스템아키텍처.md §4.2)
+      SESSION_REDIS_HOST: sodam-session-redis
+      SESSION_REDIS_PORT: 6379
+      # 로컬 docker-compose 는 기본적으로 TLS 종단이 없는 plain HTTP 이므로, 브라우저 실증 검증 시
+      # Secure 쿠키가 전송되지 않아 로그인 세션이 동작하지 않는다. 운영에서는 반드시 기본값(true)
+      # 유지 — 로컬 실증이 필요할 때만 .env 에 SODAM_SESSION_COOKIE_SECURE=false 를 설정할 것.
+      SODAM_SESSION_COOKIE_SECURE: ${SODAM_SESSION_COOKIE_SECURE:-true}
       # JWT — 컨테이너 운영용 32바이트+ 시크릿 (운영은 Secrets Manager)
       JWT_SECRET: ${SODAM_JWT_SECRET:-Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1pcy0zMi1ieXRlcy1taW4=}
       # PII 암호화 키(AES-256-GCM) — phone·사업자번호 등 개인정보 컬럼 암호화 저장(PIPA §29).
@@ -99,6 +110,38 @@ services:
       retries: 3
       start_period: 60s
 
+  # ---------- 사장님 웹 콘솔 (web-master/, Next.js) ----------
+  sodam-web-master:
+    build:
+      context: ./web-master
+      args:
+        # 브라우저가 직접 호출하는 주소 — 컨테이너 내부 네트워크(sodam-be:7070)가 아니라
+        # 호스트에 매핑된 포트를 가리켜야 한다(BFF 프록시 없이 브라우저→BE 직접 fetch, Phase 0).
+        NEXT_PUBLIC_API_BASE_URL: ${SODAM_WEB_MASTER_API_BASE_URL:-http://localhost:7070}
+    container_name: sodam-web-master
+    restart: unless-stopped
+    depends_on:
+      sodam-be:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      TZ: Asia/Seoul
+      # Route Handler(BFF, Node 서버 런타임)가 백엔드를 호출하는 주소 — 브라우저가 아니라 컨테이너
+      # 안에서 나가는 요청이므로 docker 내부 네트워크 서비스명을 쓴다(Phase 1, 홈 대시보드 BFF).
+      BACKEND_INTERNAL_URL: http://sodam-be:7070
+    ports:
+      - "${SODAM_WEB_MASTER_PORT:-3000}:3000"
+    networks:
+      - sodam-network
+    healthcheck:
+      # localhost 는 컨테이너 내부에서 ::1(IPv6)로 먼저 풀리는데 Next.js standalone 서버는 IPv4만
+      # 바인드해 연결이 거부된다 — 127.0.0.1 로 명시. /login 은 정적 200 페이지(루트 / 는 307 리다이렉트).
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/login"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
   # ---------- MySQL ----------
   sodam-mysql:
     image: mysql:8.0.36
@@ -154,6 +197,24 @@ services:
       timeout: 3s
       retries: 5
 
+  # ---------- Redis (사장님 웹 콘솔 세션 전용 — 캐시/JWT Redis 와 물리 분리) ----------
+  sodam-session-redis:
+    image: redis:7-alpine
+    container_name: sodam-session-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "${SODAM_SESSION_REDIS_PORT:-16380}:6379"
+    volumes:
+      - sodam_session_redis_data:/data
+    networks:
+      - sodam-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   # ---------- Adminer (DB GUI) ----------
   sodam-adminer:
     image: adminer:4.8.1
@@ -174,6 +235,8 @@ volumes:
   sodam_mysql_data:
     driver: local
   sodam_redis_data:
+    driver: local
+  sodam_session_redis_data:
     driver: local
   sodam_uploads:
     driver: local

@@ -111,6 +111,12 @@ spring:
           min-idle: 0
           max-wait: -1ms
         shutdown-timeout: 100ms
+  # 사장님 웹 콘솔(Phase 0) 세션 저장소. store-type=redis 가 기본이며(prod), dev/test 는
+  # application-dev.yml/application-test.yml 에서 none 으로 override 해 MapSessionRepository
+  # (WebSessionSecurityConfig) 로 폴백한다. timeout = 유휴 만료(04_보안정책.md §1의 30분).
+  session:
+    store-type: redis
+    timeout: 30m
   cache:
     type: redis
     redis:
@@ -178,6 +184,23 @@ sodam:
   security:
     # true는 백엔드 직접 접근을 막고 신뢰 프록시가 X-Forwarded-For를 정규화하는 환경에서만 사용한다.
     trust-forwarded-headers: ${SODAM_SECURITY_TRUST_FORWARDED_HEADERS:false}
+  # 사장님 웹 콘솔(Phase 0) 세션 인증 — docs/260726/01_시스템아키텍처.md §4, 04_보안정책.md.
+  session:
+    redis:
+      # 캐시/JWT Redis(spring.data.redis.*)와 물리적으로 분리된 별도 인스턴스(장애 격리 목적).
+      host: ${SESSION_REDIS_HOST:localhost}
+      port: ${SESSION_REDIS_PORT:6380}
+    # 세션 쿠키 Secure 플래그 — 운영 기본값은 반드시 true(HTTPS 전용). 로컬 docker-compose 를
+    # 비TLS(plain HTTP)로 브라우저 실증 검증할 때만 SODAM_SESSION_COOKIE_SECURE=false 로 낮춘다.
+    cookie:
+      secure: ${SODAM_SESSION_COOKIE_SECURE:true}
+    # 유휴 만료(분) — spring.session.timeout 과 동일 값 유지. 절대 만료(12h)는 WebSessionSecurityConfig
+    # 의 SessionAbsoluteExpiryFilter 가 고정 상수로 처리(과설계 방지 — 별도 프로퍼티화하지 않음).
+    timeout-minutes: 30
+    csrf:
+      # Double Submit Cookie 검증 시 Origin/Referer 허용 목록(콤마 구분). Next.js 개발서버 기본 포트
+      # 3000 이 기본값 — 운영 도메인은 env 로 override(예: https://owner.sodam.app).
+      allowed-origins: ${SODAM_SESSION_CSRF_ALLOWED_ORIGINS:http://localhost:3000}
   features:
     manager-delegation-enabled: ${SODAM_FEATURE_MANAGER_DELEGATION_ENABLED:false}
     manager-contract-signing-enabled: ${SODAM_FEATURE_MANAGER_CONTRACT_SIGNING_ENABLED:false}

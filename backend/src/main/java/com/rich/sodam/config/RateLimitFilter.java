@@ -23,6 +23,11 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * 적용 범위:
  *  - POST /api/login                     : IP+이메일별 5회/분 (brute-force 강화)
+ *  - POST /api/web/auth/login            : IP별 5회/분 (04_보안정책.md §4 — 웹 콘솔 로그인).
+ *                                           계정(이메일) 기준 10회/분은 JSON 바디를 읽어야 해서
+ *                                           이 필터가 아닌 컨트롤러 계층의
+ *                                           {@link com.rich.sodam.service.webauth.WebLoginAccountRateLimiter}
+ *                                           가 처리한다 — 필터는 요청 바디를 소비하지 않는다.
  *  - POST /api/auth/password-reset/**    : IP별 3회/분 (이메일 폭주 차단)
  *  - POST /api/join, /api/auth/refresh   : IP별 20회/분 (가입/refresh)
  *  - 그 외 /api/**                       : IP별 120회/분
@@ -35,6 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private final Map<String, Bucket> loginBuckets = new ConcurrentHashMap<>();   // 강화: 5/분
+    private final Map<String, Bucket> webLoginIpBuckets = new ConcurrentHashMap<>(); // 웹 콘솔 로그인 IP: 5/분
     private final Map<String, Bucket> resetBuckets = new ConcurrentHashMap<>();   // 강화: 3/분
     private final Map<String, Bucket> authBuckets = new ConcurrentHashMap<>();    // 20/분
     private final Map<String, Bucket> generalBuckets = new ConcurrentHashMap<>(); // 120/분
@@ -44,6 +50,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private Bucket resolveLoginBucket(String key) {
         return loginBuckets.computeIfAbsent(key, k -> Bucket.builder()
+                .addLimit(Bandwidth.classic(5, Refill.intervally(5, Duration.ofMinutes(1))))
+                .build());
+    }
+
+    private Bucket resolveWebLoginIpBucket(String key) {
+        return webLoginIpBuckets.computeIfAbsent(key, k -> Bucket.builder()
                 .addLimit(Bandwidth.classic(5, Refill.intervally(5, Duration.ofMinutes(1))))
                 .build());
     }
@@ -90,6 +102,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
             String email = request.getParameter("email");
             String key = clientIp + "|" + (email != null ? email.toLowerCase() : "_");
             bucket = resolveLoginBucket(key);
+        } else if (path.equals("/api/web/auth/login")) {
+            // 04_보안정책.md §4 — 웹 콘솔 로그인 IP별 5/분. 계정(이메일) 기준 10/분은
+            // WebLoginAccountRateLimiter(컨트롤러 계층)가 별도 처리(JSON 바디는 필터가 못 읽음).
+            bucket = resolveWebLoginIpBucket(clientIp);
         } else if (path.startsWith("/api/auth/password-reset")) {
             // 보안: 이메일 폭주 방지 — IP 단위 3/분
             bucket = resolveResetBucket(clientIp);
