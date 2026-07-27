@@ -12,7 +12,7 @@ import {useFcmRegistration} from '../common/hooks/useFcmRegistration';
  * 인증 컨텍스트 타입 정의
  * TanStack Query와 통합된 인증 상태 관리
  */
-interface AuthContextType {
+export interface AuthContextType {
     isAuthenticated: boolean;
     user: User | null;
     loading: boolean;
@@ -45,8 +45,12 @@ const defaultAuthContext: AuthContextType = {
 
 /**
  * 인증 컨텍스트 생성
+ *
+ * export 하는 이유: Storybook 등에서 실제 AuthProvider(로그인 mutation·FCM·페이월 등
+ * 실 네트워크 의존)를 거치지 않고, 화면을 이 Context.Provider로 직접 감싸 mock 유저를
+ * 주입할 수 있도록 하기 위함(예: SettingsScreen.stories.tsx).
  */
-const AuthContext = createContext<AuthContextType>(defaultAuthContext);
+export const AuthContext = createContext<AuthContextType>(defaultAuthContext);
 
 /**
  * 인증 컨텍스트 훅
