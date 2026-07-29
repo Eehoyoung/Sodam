@@ -12,6 +12,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Optional;
@@ -28,6 +29,7 @@ public class KakaoAuthService {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(KakaoAuthService.class);
 
     private final UserRepository userRepository;
+    private final RestTemplate restTemplate;
 
     @Value("${spring.security.oauth2.client.registration.kakao.client-secret}")
     private String clientSecret;
@@ -78,13 +80,17 @@ public class KakaoAuthService {
         String tokenUrl = "https://kauth.kakao.com/oauth/token";
         String grantType = "authorization_code";
 
-        RestTemplate restTemplate = new RestTemplate();
-
         MultiValueMap<String, String> paramMap = new LinkedMultiValueMap<>();
         paramMap.add("grant_type", grantType);
         paramMap.add("client_id", clientId);
         paramMap.add("redirect_uri", redirectUri);
         paramMap.add("code", code);
+        // Kakao Developers 콘솔에서 클라이언트 시크릿을 "사용함"으로 설정한 앱은 토큰 요청에
+        // client_secret 이 없으면 KOE010(Bad client credentials)로 거절한다 — 값이 설정된
+        // 경우에만 포함(비활성 앱은 KAKAO_CLIENT_SECRET 미설정 → null 이라 파라미터 생략).
+        if (StringUtils.hasText(clientSecret)) {
+            paramMap.add("client_secret", clientSecret);
+        }
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -118,7 +124,6 @@ public class KakaoAuthService {
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "Bearer " + accessToken);
 
-        RestTemplate restTemplate = new RestTemplate();
         HttpEntity<HttpHeaders> requestEntity = new HttpEntity<>(headers);
         ResponseEntity<KakaoProfile> responseEntity = restTemplate.exchange(
                 profileUrl, HttpMethod.GET, requestEntity, KakaoProfile.class);
