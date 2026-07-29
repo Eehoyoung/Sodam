@@ -15,7 +15,9 @@ param(
     [switch]$ColdStart,
 
     [Parameter(Mandatory = $true)]
-    [string]$RequireText
+    [string]$RequireText,
+
+    [string]$OutputRoot
 )
 
 $ErrorActionPreference = 'Stop'
@@ -50,7 +52,17 @@ if (-not $ready) {
     throw "Visual route did not render marker '$routeMarker' and expected text '$RequireText': $uri"
 }
 
-& $captureScript -Serial $Serial -ScreenId $ScreenId -RequireText $RequireText -Theme $Theme -CaptureKind $captureKind
+$captureArgs = @{
+    Serial = $Serial
+    ScreenId = $ScreenId
+    RequireText = $RequireText
+    Theme = $Theme
+    CaptureKind = $captureKind
+}
+if (-not [string]::IsNullOrWhiteSpace($OutputRoot)) {
+    $captureArgs.OutputRoot = $OutputRoot
+}
+& $captureScript @captureArgs
 if ($LASTEXITCODE -ne 0) {
     throw "Capture failed for $uri"
 }

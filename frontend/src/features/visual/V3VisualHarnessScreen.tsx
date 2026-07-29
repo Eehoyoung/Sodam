@@ -56,6 +56,26 @@ import PushPrimerSheet from '../system/screens/PushPrimerSheet';
 import HomeScreen from '../home/screens/HomeScreen';
 import AttendanceOverviewScreen, {AttendanceOverviewFixture} from '../attendance/screens/AttendanceOverviewScreen';
 import AttendanceScreen, {AttendanceVisualFixture} from '../attendance/screens/AttendanceScreen';
+import EmployeeAttendanceHome, {EmployeeAttendanceHomeVisualFixture} from '../attendance/screens/EmployeeAttendanceHome';
+import AttendanceCalendarScreen, {AttendanceCalendarVisualFixture} from '../attendance/screens/AttendanceCalendarScreen';
+import MissingAttendanceCenterScreen, {MissingAttendanceVisualFixture} from '../attendance/screens/MissingAttendanceCenterScreen';
+import PersonalUserScreen, {PersonalUserVisualFixture} from '../myPage/screens/PersonalUserScreen';
+import {
+    OwnerDashboardContent,
+    ManagerDashboardContent,
+    OwnerDashboardVisualFixture,
+    ManagerDashboardVisualFixture,
+} from '../home/screens/OwnerDashboardScreen';
+import OwnerDashboardDetailScreen, {OwnerDashboardDetailVisualFixture} from '../home/screens/OwnerDashboardDetailScreen';
+import StoreListScreen, {StoreListVisualFixture} from '../store/screens/StoreListScreen';
+import StoreRegistrationScreen, {StoreRegistrationVisualFixture} from '../store/StoreRegistraionScreen';
+import StoreDetailScreen, {StoreDetailVisualFixture} from '../store/screens/StoreDetailScreen';
+import StoreEditScreen, {StoreEditVisualFixture} from '../store/screens/StoreEditScreen';
+import WorkplaceListScreen, {WorkplaceListVisualFixture} from '../workplace/screens/WorkplaceListScreen';
+import WorkplaceDetailScreen, {WorkplaceDetailVisualFixture} from '../workplace/screens/WorkplaceDetailScreen';
+import EmployeeDetailScreen, {EmployeeDetailVisualFixture} from '../store/screens/EmployeeDetailScreen';
+import WageSettingsScreen, {WageSettingsVisualFixture} from '../store/screens/WageSettingsScreen';
+import MasterMyPageScreen, {MasterMyPageVisualFixture} from '../myPage/screens/MasterMyPageScreen';
 import {AttendanceStatus} from '../attendance/types';
 import SalaryListScreen, {SalaryListFixture} from '../salary/screens/SalaryListScreen';
 import PdfPreviewScreen from '../salary/screens/PdfPreviewScreen';
@@ -63,6 +83,7 @@ import SalaryDetailScreen, {SalaryDetailVisualFixture} from '../salary/screens/S
 import PayrollRunScreen, {PayrollRunVisualFixture} from '../salary/screens/PayrollRunScreen';
 import PayrollCalculationDetailModal from '../salary/components/PayrollCalculationDetailModal';
 import {
+    AttendanceFilterSheet,
     BreakTimerSheet,
     CheckoutConfirmSheet,
     ManualRecordSheet,
@@ -74,6 +95,9 @@ import {
 import AttendanceCorrectionRequestScreen from '../attendance/screens/AttendanceCorrectionRequestScreen';
 import TimeOffRequestScreen from '../timeoff/screens/TimeOffRequestScreen';
 import JoinStoreByCodeScreen from '../store/screens/JoinStoreByCodeScreen';
+import PasswordResetScreen from '../auth/screens/PasswordResetScreen';
+import {StoreSwitcherSheet} from '../../common/components/store/StoreSwitcherSheet';
+import {RadiusSelectorSheet, InviteShareSheet, EmployeeActionSheet, WageEditSheet} from '../store/components/StoreSheets';
 import StoreOperatingHoursScreen, {StoreOperatingHoursVisualFixture} from '../store/screens/StoreOperatingHoursScreen';
 import NfcTagManagementScreen, {NfcTagManagementVisualFixture} from '../store/screens/NfcTagManagementScreen';
 import EmployeeManagementScreen, {EmployeeManagementVisualFixture} from '../store/screens/EmployeeManagementScreen';
@@ -172,8 +196,12 @@ export const V3_VISUAL_SCREEN_IDS = {
     authOnboarding: 'sodam-v3-01-auth--003',
     authLogin: 'sodam-v3-01-auth--004',
     authSignup: 'sodam-v3-01-auth--005',
+    passwordReset: 'sodam-v3-01-auth--006',
     authKakaoLogin: 'sodam-v3-01-auth--007',
+    termsSheet: 'sodam-v3-01-auth--051',
     employeeHome: 'sodam-v3-03-employee--009',
+    employeeAttendanceHomeMulti: 'sodam-v3-03-employee--021',
+    employeeWorking: 'sodam-v3-03-employee--022',
     attendanceOverview: 'sodam-v3-03-employee--019',
     attendanceAuthentication: 'sodam-v3-03-employee--020',
     nfcUnsupported: 'sodam-v3-03-employee--060',
@@ -186,6 +214,14 @@ export const V3_VISUAL_SCREEN_IDS = {
     correctionSuccess: 'sodam-v3-03-employee--064',
     timeOffSuccess: 'sodam-v3-03-employee--065',
     joinStoreSuccess: 'sodam-v3-03-employee--066',
+    attendanceCorrectionRequest: 'sodam-v3-03-employee--024',
+    timeOffRequestForm: 'sodam-v3-03-employee--026',
+    joinStoreByCode: 'sodam-v3-03-employee--027',
+    attendanceCalendar: 'sodam-v3-03-employee--023',
+    missingAttendanceCenter: 'sodam-v3-03-employee--025',
+    personalHome: 'sodam-v3-03-employee--045',
+    attendanceFilterSheet: 'sodam-v3-03-employee--058',
+    nfcScanModal: 'sodam-v3-03-employee--059',
     salaryList: 'sodam-v3-04-payroll--028',
     salaryDetail: 'sodam-v3-04-payroll--029',
     payrollRun: 'sodam-v3-04-payroll--030',
@@ -285,6 +321,24 @@ export const V3_VISUAL_SCREEN_IDS = {
     scheduleAttendanceIrregularities: 'sodam-v3-09-schedule--S9',
     scheduleAttendanceNotice: 'sodam-v3-09-schedule--S10',
     scheduleEmployeeWorkLog: 'sodam-v3-09-schedule--S11',
+    ownerHome: 'sodam-v3-02-owner--008',
+    ownerDashboardDetail: 'sodam-v3-02-owner--010',
+    storeList: 'sodam-v3-02-owner--011',
+    storeRegistration: 'sodam-v3-02-owner--012',
+    storeDetail: 'sodam-v3-02-owner--013',
+    storeEdit: 'sodam-v3-02-owner--014',
+    workplaceList: 'sodam-v3-02-owner--015',
+    workplaceDetail: 'sodam-v3-02-owner--016',
+    employeeDetail: 'sodam-v3-02-owner--017',
+    wageSettings: 'sodam-v3-02-owner--018',
+    managerHome: 'sodam-v3-02-owner--046',
+    masterMyPage: 'sodam-v3-02-owner--153',
+    storeSwitcherSheet: 'sodam-v3-02-owner--052',
+    addressSearchSheet: 'sodam-v3-02-owner--053',
+    radiusSelectorSheet: 'sodam-v3-02-owner--054',
+    inviteShareSheet: 'sodam-v3-02-owner--055',
+    employeeActionSheet: 'sodam-v3-02-owner--056',
+    wageEditSheet: 'sodam-v3-02-owner--057',
     opsAppUpdate: 'sodam-v3-13-ops--O5',
     opsMaintenance: 'sodam-v3-13-ops--O6',
     opsPaymentSuccess: 'sodam-v3-13-ops--O7',
@@ -1451,6 +1505,172 @@ const ATTENDANCE_OVERVIEW_FIXTURE: AttendanceOverviewFixture = {
     checkoutRiskEntries: [{name: '지아', subtitle: '퇴근 누락 가능성'}],
 };
 
+const EMPLOYEE_ATTENDANCE_HOME_IDLE_FIXTURE: EmployeeAttendanceHomeVisualFixture = {
+    state: 'IDLE',
+    stores: [
+        {id: 101, storeName: '카페 소담', appliedHourlyWage: 10500},
+        {id: 102, storeName: '소담 베이커리', appliedHourlyWage: 10800},
+    ],
+    selectedStoreId: 101,
+    todayRecord: null,
+    weekShifts: [{
+        id: 1, employeeId: 1, storeId: 101, shiftDate: new Date().toISOString().slice(0, 10),
+        startTime: '09:00', endTime: '18:00',
+    }],
+    monthlyAttendances: [
+        {id: 1, storeId: 101, checkInTime: '2026-07-01T09:00:00+09:00', checkOutTime: '2026-07-01T18:00:00+09:00', workingMinutes: 480, appliedHourlyWage: 10500},
+    ],
+    policies: [{id: 1, title: '청년내일채움공제', deadline: '2026-08-31', isNew: true}],
+    pendingContractCount: 1,
+    unreadNoticeCount: 2,
+};
+
+const EMPLOYEE_ATTENDANCE_HOME_WORKING_FIXTURE: EmployeeAttendanceHomeVisualFixture = {
+    ...EMPLOYEE_ATTENDANCE_HOME_IDLE_FIXTURE,
+    state: 'WORKING',
+    todayRecord: {id: 2, storeId: 101, checkInTime: '2026-07-20T09:58:00+09:00'},
+    nowMs: new Date('2026-07-20T11:28:00+09:00').getTime(),
+};
+
+const OWNER_HOME_FIXTURE: OwnerDashboardVisualFixture = {
+    stores: [{id: 101, storeName: '카페 소담'}],
+    selectedStoreId: 101,
+    today: {
+        storeId: 101, storeName: '카페 소담', checkedInCount: 4, totalActiveEmployees: 5,
+        pendingEmployees: ['민지'], pendingCorrectionCount: 2,
+    },
+    monthly: {totalGross: 4_200_000, totalNet: 3_800_000, totalWorkingHours: 320, daysRemainingInMonth: 9},
+};
+
+const MANAGER_HOME_FIXTURE: ManagerDashboardVisualFixture = {
+    delegation: {
+        storeId: 101, storeName: '카페 소담', active: true,
+        permissions: ['ATTENDANCE_APPROVE', 'SCHEDULE_MANAGE'],
+        delegationVersion: 1, acceptedAt: '2026-07-01T00:00:00+09:00',
+        signatureStatus: null, signatureEnvelopeId: null,
+    },
+    today: {
+        storeId: 101, storeName: '카페 소담', checkedInCount: 4, totalActiveEmployees: 5,
+        pendingEmployees: ['민지'], pendingCorrectionCount: 2,
+    },
+};
+
+const OWNER_DASHBOARD_DETAIL_FIXTURE: OwnerDashboardDetailVisualFixture = {
+    monthly: {totalGross: 4_200_000, totalNet: 3_800_000, totalWorkingHours: 320, daysRemainingInMonth: 9},
+};
+
+const STORE_LIST_FIXTURE: StoreListVisualFixture = {
+    stores: [
+        {id: 101, storeName: '카페 소담', fullAddress: '서울 마포구 소담로 12', employeeCount: 5, todayAttendance: 4},
+        {id: 102, storeName: '소담 베이커리', fullAddress: '서울 마포구 연남로 8', employeeCount: 3, todayAttendance: 2},
+    ],
+};
+
+const STORE_REGISTRATION_FIXTURE: StoreRegistrationVisualFixture = {
+    step: 2,
+    storeData: {
+        storeName: '카페 소담', roadAddress: '서울 마포구 소담로 12', jibunAddress: '서울 마포구 동교동 123-4',
+        latitude: 37.5665, longitude: 126.978, radius: 80, storeStandardHourWage: 10030,
+    },
+};
+
+const STORE_DETAIL_FIXTURE: StoreDetailVisualFixture = {
+    store: {
+        id: 101, storeName: '카페 소담', businessNumber: '123-45-67890', storePhoneNumber: '02-1234-5678',
+        businessType: '카페', storeCode: 'CAFE-4821', fullAddress: '서울 마포구 소담로 12',
+        storeStandardHourWage: 10030, employeeCount: 5,
+    },
+};
+
+const STORE_EDIT_FIXTURE: StoreEditVisualFixture = {
+    storeName: '카페 소담', phone: '02-1234-5678', businessType: '카페',
+    standardWage: '10030', radius: '80', fullAddress: '서울 마포구 소담로 12',
+};
+
+const WORKPLACE_LIST_FIXTURE: WorkplaceListVisualFixture = {
+    stores: [
+        {id: 101, storeName: '카페 소담', fullAddress: '서울 마포구 소담로 12'},
+        {id: 102, storeName: '소담 베이커리', fullAddress: '서울 마포구 연남로 8'},
+    ],
+};
+
+const WORKPLACE_DETAIL_FIXTURE: WorkplaceDetailVisualFixture = {
+    data: {
+        employeeId: 1, storeId: 101, storeName: '카페 소담', year: 2026, month: 7,
+        summary: {attendanceDays: 18, totalWorkedMinutes: 8640, totalDailyWage: 1_512_000, totalBonusAmount: 0, totalGrossWage: 1_512_000},
+        rows: [{date: '2026-07-20', checkInTime: '09:58', checkOutTime: '18:03', workedMinutes: 485, appliedHourlyWage: 10500, dailyWage: 84875, status: 'CONFIRMED'}],
+    },
+};
+
+const EMPLOYEE_DETAIL_FIXTURE: EmployeeDetailVisualFixture = {
+    employee: {
+        id: 1, name: '민지', email: 'minji@example.com', role: 'STAFF', appliedHourlyWage: 10500,
+        employmentType: 'HOURLY', socialInsuranceEnrolled: null, hireDate: '2026-01-05', isActive: true,
+    },
+    tab: 'INFO',
+    draftContractCount: 1,
+    memo: '주말 근무 선호, 오전 오픈조 가능',
+};
+
+const WAGE_SETTINGS_FIXTURE: WageSettingsVisualFixture = {
+    currentWage: 10030,
+    history: [{effectiveDate: '2026-06-01', wage: 10030, reason: '최저임금 인상'}],
+    employeeWages: [{employeeId: 1, employeeName: '민지', wage: 10500, isCustom: true} as any],
+};
+
+const MASTER_MY_PAGE_FIXTURE: MasterMyPageVisualFixture = {
+    stores: [
+        {
+            id: 101, storeName: '카페 소담', businessNumber: '123-45-67890', storePhoneNumber: '02-1234-5678',
+            businessType: '카페', storeCode: 'CAFE-4821', fullAddress: '서울 마포구 소담로 12',
+            storeStandardHourWage: 10030, monthlyLaborCost: 4_200_000, employeeCount: 5,
+            todayAttendance: 4, monthlyRevenue: 18_500_000,
+        },
+    ],
+    policies: [{id: 1, title: '청년내일채움공제', category: '고용지원', deadline: '2026-08-31', description: '', isNew: true}],
+    laborInfo: {minimumWage: 10030, year: 2026, weeklyMaxHours: 52, overtimeRate: 1.5},
+    pendingCount: 2,
+    timeOffPendingCount: 1,
+    masterInfo: {name: '사장님', totalStores: 1, totalEmployees: 5, monthlyTotalLaborCost: 4_200_000},
+    nowMs: new Date('2026-07-20T09:00:00+09:00').getTime(),
+};
+
+const ATTENDANCE_CALENDAR_FIXTURE: AttendanceCalendarVisualFixture = {
+    year: 2026,
+    month: 7,
+    items: [
+        {id: 1, storeId: 101, storeName: '카페 소담', checkInTime: '2026-07-15T09:00:00', checkOutTime: '2026-07-15T18:00:00', workingMinutes: 540, appliedHourlyWage: 10500},
+        {id: 2, storeId: 101, storeName: '카페 소담', checkInTime: '2026-07-20T09:58:00', checkOutTime: '2026-07-20T18:03:00', workingMinutes: 485, appliedHourlyWage: 10500},
+    ],
+    selectedDay: 20,
+};
+
+const MISSING_ATTENDANCE_CENTER_FIXTURE: MissingAttendanceVisualFixture = {
+    items: [
+        {employeeId: 1, employeeName: '김민준', type: 'NO_CHECK_IN', storeName: '카페 소담'},
+        {employeeId: 2, employeeName: '이서연', type: 'NO_CHECK_OUT', storeName: '카페 소담', referenceTime: '전날 22:00'},
+    ],
+};
+
+const PERSONAL_HOME_NOW_MS = new Date('2026-07-20T14:30:00+09:00').getTime();
+const PERSONAL_HOME_FIXTURE: PersonalUserVisualFixture = {
+    stores: [{id: '101', name: '카페 소담', color: '#FF4D6D', hourlyWage: 10500}],
+    selectedStoreId: '101',
+    workSessions: {
+        '101': {
+            storeId: '101', storeName: '카페 소담',
+            startTime: new Date(PERSONAL_HOME_NOW_MS - 3 * 3600_000),
+            breakStartTime: null, isWorking: true, isOnBreak: false,
+            totalWorkTime: 0, totalBreakTime: 0,
+        },
+    },
+    allRecords: [{
+        id: 'r1', storeId: '101', storeName: '카페 소담', type: '출근',
+        time: '11:30', date: '2026-07-20', timestamp: PERSONAL_HOME_NOW_MS - 3 * 3600_000,
+    }],
+    nowMs: PERSONAL_HOME_NOW_MS,
+};
+
 const ATTENDANCE_AUTHENTICATION_FIXTURE: AttendanceVisualFixture = {
     workplaces: [{id: '101', name: '카페 소담'}],
     selectedWorkplaceId: '101',
@@ -1881,6 +2101,21 @@ const VisualLogoutConfirm: React.FC<{captureMarker: string}> = ({captureMarker})
         primary={{label: '로그아웃', onPress: () => undefined}}
         secondary={{label: '취소', variant: 'ghost', onPress: () => undefined}}
     />
+);
+
+/* 53 주소 검색 시트 — 실 AddressSearchModal은 카카오 우편번호 WebView(외부 CDN 스크립트)를
+ * 그대로 로드해 네트워크 상태에 따라 매 캡처마다 다르게 그려진다(결정적 캡처 불가능).
+ * 노무사 게이트와 같은 이유는 아니지만 동일한 처방을 적용: 실 파일은 건드리지 않고
+ * 시안 문구를 그대로 옮긴 독립 전사 컴포넌트만 reference/actual 양쪽에 재사용한다. */
+const VisualAddressSearchSheet: React.FC<{captureMarker: string}> = ({captureMarker}) => (
+    <BottomSheet visible onClose={() => undefined} captureMarker={captureMarker} title="주소를 선택하세요">
+        <AppInput label="매장 주소 검색" value="서울 마포구 소담로 12" onChangeText={() => undefined} />
+        <View style={styles.addressSearchList}>
+            <AppListItem title="서울 마포구 소담로 12" subtitle="카페 소담 근처" onPress={() => undefined} />
+            <AppListItem title="서울 마포구 소담로 18" subtitle="도로명 주소" onPress={() => undefined} />
+        </View>
+        <AppButton label="이 주소로 설정" onPress={() => undefined} style={styles.addressSearchCta} />
+    </BottomSheet>
 );
 
 /* 81 ToastExamples / 82 ComponentRules — 실제 화면이 아닌 순수 디자인 참조 카드라
@@ -3171,6 +3406,104 @@ const V3VisualHarnessScreen: React.FC<Props> = ({navigation, route}) => {
         return visual(source === 'reference' ? <NativeReferenceEmployeeHome /> : <HomeScreen />);
     }
 
+    if (screenId === V3_VISUAL_SCREEN_IDS.employeeAttendanceHomeMulti) {
+        return visual(<EmployeeAttendanceHome visualFixture={EMPLOYEE_ATTENDANCE_HOME_IDLE_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.employeeWorking) {
+        return visual(<EmployeeAttendanceHome visualFixture={EMPLOYEE_ATTENDANCE_HOME_WORKING_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.ownerHome) {
+        return visual(<OwnerDashboardContent visualFixture={OWNER_HOME_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.managerHome) {
+        return visual(<ManagerDashboardContent storeId={101} visualFixture={MANAGER_HOME_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.ownerDashboardDetail) {
+        return visual(<OwnerDashboardDetailScreen visualFixture={OWNER_DASHBOARD_DETAIL_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.storeList) {
+        return visual(<StoreListScreen visualFixture={STORE_LIST_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.storeRegistration) {
+        return visual(<StoreRegistrationScreen visualFixture={STORE_REGISTRATION_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.storeDetail) {
+        return visual(
+            <StoreDetailScreen
+                navigation={navigation as any}
+                route={{key: 'v3-visual-store-detail', name: 'StoreDetail', params: {storeId: 101}} as any}
+                visualFixture={STORE_DETAIL_FIXTURE}
+            />
+        );
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.storeEdit) {
+        return visual(<StoreEditScreen visualFixture={STORE_EDIT_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.workplaceList) {
+        return visual(<WorkplaceListScreen visualFixture={WORKPLACE_LIST_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.workplaceDetail) {
+        return visual(<WorkplaceDetailScreen visualFixture={WORKPLACE_DETAIL_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.employeeDetail) {
+        return visual(<EmployeeDetailScreen visualFixture={EMPLOYEE_DETAIL_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.wageSettings) {
+        return visual(<WageSettingsScreen visualFixture={WAGE_SETTINGS_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.masterMyPage) {
+        return visual(<MasterMyPageScreen navigation={navigation as any} visualFixture={MASTER_MY_PAGE_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.attendanceCalendar) {
+        return visual(<AttendanceCalendarScreen visualFixture={ATTENDANCE_CALENDAR_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.missingAttendanceCenter) {
+        return visual(<MissingAttendanceCenterScreen visualFixture={MISSING_ATTENDANCE_CENTER_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.personalHome) {
+        return visual(<PersonalUserScreen visualFixture={PERSONAL_HOME_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.attendanceFilterSheet) {
+        return visual(
+            <AttendanceFilterSheet
+                visible
+                onClose={() => undefined}
+                onApply={() => undefined}
+                captureMarker={`v3-visual-${source}-${screenId}`}
+            />
+        );
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.nfcScanModal) {
+        return visual(
+            <AttendanceScreen
+                visualFixture={{
+                    ...ATTENDANCE_AUTHENTICATION_FIXTURE,
+                    checkInMethod: 'nfc',
+                    forceShowNfcReader: true,
+                    captureMarker: `v3-visual-${source}-${screenId}`,
+                }}
+            />
+        );
+    }
+
     if (screenId === V3_VISUAL_SCREEN_IDS.attendanceOverview) {
         return visual(source === 'reference'
             ? <NativeReferenceAttendanceOverview />
@@ -3246,6 +3579,102 @@ const V3VisualHarnessScreen: React.FC<Props> = ({navigation, route}) => {
         );
     }
 
+    if (screenId === V3_VISUAL_SCREEN_IDS.passwordReset) {
+        return visual(<PasswordResetScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.termsSheet) {
+        // 51 TermsSheet 카드는 N11(약관 동의)과 동일한 실 화면을 가리키는 중복 카탈로그 항목이다.
+        return visual(<ConsentScreen navigation={navigation as any} route={{params: {}} as any} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.attendanceCorrectionRequest) {
+        return visual(<AttendanceCorrectionRequestScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.timeOffRequestForm) {
+        return visual(<TimeOffRequestScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.joinStoreByCode) {
+        return visual(<JoinStoreByCodeScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.storeSwitcherSheet) {
+        return visual(
+            <StoreSwitcherSheet
+                stores={[
+                    {id: 101, storeName: '카페 소담', subtitle: '홍대점'},
+                    {id: 102, storeName: '소담 베이커리', subtitle: '연남점'},
+                ]}
+                selectedId={101}
+                onSelect={() => undefined}
+                onRegisterNew={() => undefined}
+                visualForceOpen
+                captureMarker={`v3-visual-${source}-${screenId}`}
+            />
+        );
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.addressSearchSheet) {
+        return visual(<VisualAddressSearchSheet captureMarker={`v3-visual-${source}-${screenId}`} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.radiusSelectorSheet) {
+        return visual(
+            <RadiusSelectorSheet
+                visible
+                onClose={() => undefined}
+                value={1}
+                onApply={() => undefined}
+                captureMarker={`v3-visual-${source}-${screenId}`}
+            />
+        );
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.inviteShareSheet) {
+        return visual(
+            <InviteShareSheet
+                visible
+                onClose={() => undefined}
+                code="CAFE-4821"
+                onShareKakao={() => undefined}
+                onShareSms={() => undefined}
+                onCopy={() => undefined}
+                captureMarker={`v3-visual-${source}-${screenId}`}
+            />
+        );
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.employeeActionSheet) {
+        return visual(
+            <EmployeeActionSheet
+                visible
+                onClose={() => undefined}
+                employeeName="김민지"
+                onWage={() => undefined}
+                onMemo={() => undefined}
+                onDeactivate={() => undefined}
+                captureMarker={`v3-visual-${source}-${screenId}`}
+            />
+        );
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.wageEditSheet) {
+        return visual(
+            <WageEditSheet
+                visible
+                onClose={() => undefined}
+                employeeName="김민지"
+                initialEmploymentType="HOURLY"
+                initialMonthlySalary={0}
+                initialSocialInsuranceEnrolled={null}
+                onSave={() => undefined}
+                captureMarker={`v3-visual-${source}-${screenId}`}
+            />
+        );
+    }
+
     return visual(
         <View style={styles.unsupported} accessibilityLabel="미배선 v3 시각 정본">
             <Text style={styles.unsupportedTitle}>미배선 정본 화면</Text>
@@ -3256,6 +3685,8 @@ const V3VisualHarnessScreen: React.FC<Props> = ({navigation, route}) => {
 
 const styles = StyleSheet.create({
     flex: {flex: 1},
+    addressSearchList: {gap: spacing.xs, marginTop: spacing.sm},
+    addressSearchCta: {marginTop: spacing.md},
     toastExampleNote: {marginTop: spacing.xs},
     toastExampleToast: {
         flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
