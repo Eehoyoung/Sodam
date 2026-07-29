@@ -197,6 +197,83 @@ SegmentedControl/AppHeader)로 구현되어 있었다: 헤더 "출퇴근 관리"
 
 ---
 
+## ⚠️ 중대 정정 — "154/154 완료"는 거짓양성이었다 (2026-07-29~30)
+
+위 020 후속조치를 마친 뒤 사용자 지시로 다크모드 QA 파일럿(대표 17화면)을 진행하던 중,
+파일럿으로 고른 `008 OwnerHome`·`021 EmployeeAttendanceHome`의 실제 캡처 이미지를 열어보다가
+**화면 전체가 "미배선 정본 화면" placeholder 텍스트만 떠 있는 것을 발견**했다.
+
+### 원인
+하네스의 디스패치 체인 맨 끝 fallback(미배선 화면 처리)이 `source`(reference/actual)를 구분하지
+않고 **완전히 동일한** placeholder `<View accessibilityLabel="미배선 v3 시각 정본">...`를
+렌더링한다. screenId가 `V3_VISUAL_SCREEN_IDS`에 없으면 reference와 actual 양쪽 다 이 fallback에
+떨어지고, 두 캡처가 **픽셀 단위로 완전히 동일**해지므로 native-strict 비교가 거짓으로
+"passed" 판정을 내린다 — 실제로는 아무것도 검증하지 못한 것이다.
+
+`V3_VISUAL_SCREEN_IDS` 객체를 154개 카탈로그와 직접 대조한 결과 **실제로는 124/154만
+배선**되어 있었다(30개 누락): 01-auth 2개(06 PasswordReset·51 TermsSheet), **02-owner
+그룹 전체 20개**(08 OwnerHome·10 OwnerDashboardDetail·11 StoreList·12 StoreRegistration·
+13 StoreDetail·14 StoreEdit·15 WorkplaceList·16 WorkplaceDetail·17 EmployeeDetail·
+18 WageSettings·46 ManagerHome·153 MasterMyPage·52~57 시트 6종), 03-employee 8개
+(21 EmployeeAttendanceHome·22 EmployeeWorking·23 AttendanceCalendar·24 CorrectionRequest·
+25 MissingAttendanceCenter·26 TimeOffRequest·27 JoinStoreByCode·45 PersonalHome·58 근태
+필터시트·59 NFCScanModal — 24/26/27은 이미 `visualFixture` prop이 있었는데도 디스패치
+자체가 안 걸려 있었다). 이전 세션의 "83개 배선 완료" 작업은 실제로는 **02-owner 그룹을
+통째로 건드리지 않은 채** 나머지 그룹만 처리하고 154/154로 잘못 보고한 것으로 보인다.
+
+### 조사
+30개 화면을 조사 에이전트 2개(병렬)로 실태 파악 — **30개 전부 실 컴포넌트가 이미 존재하고
+`HomeNavigator.tsx`에 라이브로 배선되어 있었으며, 대부분 v3 DS(AppCard/AppText/AppHeader 등)도
+이미 적용된 상태**였다. "새 화면 제작"이 아니라 순수하게 "하네스 디스패치 누락"이었다.
+
+### 조치 (Phase A/B/C 3단계)
+- **Phase A(10개)**: `visualFixture`가 이미 있던 024/026/027과 라우트 없는 순수 폼(006
+  PasswordReset), N11과 동일 컴포넌트인 051 TermsSheet, 순수 props 시트 5종(052/054/055/
+  056/057 — `StoreSwitcherSheet`·`RadiusSelectorSheet`·`InviteShareSheet`·
+  `EmployeeActionSheet`·`WageEditSheet`)에 `captureMarker` prop만 추가해 즉시 배선.
+- **Phase B(17개)**: 실 화면에 `visualFixture` optional prop이 없던 화면들. `rn-frontend`
+  에이전트 2개(03-employee 5개 / 02-owner 12개)에 병렬 위임 — `ManagerMyPageScreen.tsx`·
+  `EmployeeAttendanceHome.tsx`(이번 세션에서 직접 작업한 예시)를 표준 패턴으로 제시하고
+  하네스 파일 자체는 건드리지 말라고 지시(파일 충돌 방지, 배선은 직접 담당). 두 에이전트
+  결과물(16개 파일, +518/-149줄) 검증: tsc clean·eslint 0 errors·jest 459/459 pass. 디스패치
+  배선은 직접 작성(임포트 15개 + ID키 17개 + fixture 15개 + dispatch 17곳).
+  - 부수 발견·수정: `EmployeeAttendanceHome`의 WORKING 상태(022)에서 `useStoreLiveSync`가 실
+    소켓 연결을 시도해 간헐적으로 RN LogBox 에러 배너가 캡처에 섞여드는 버그 발견 →
+    `visualFixture` 존재 시 빈 배열(no-op)을 넘기도록 수정(같은 fix를 병렬 에이전트도
+    `OwnerDashboardScreen.tsx`에서 독립적으로 동일하게 적용해옴 — 패턴 일관성 확인).
+  - 059 NFCScanModal: raw `Modal`이라 `captureMarker` 전달 경로가 없어 최초 캡처 실패 →
+    `AttendanceVisualFixture`에 `captureMarker` 필드 추가 + 모달 내부에 비가시 마커 Text 삽입.
+- **Phase C(053 주소검색시트)**: 실 `AddressSearchModal`이 카카오 우편번호 WebView(외부 CDN)를
+  그대로 로드해 네트워크 상태에 따라 매번 다르게 그려짐(결정적 캡처 불가) — 노무사 게이트와
+  같은 처방으로 실 파일은 미변경, 시안 문구를 그대로 옮긴 독립 전사 컴포넌트만 하네스에 추가.
+
+### 캡처 인프라 재발 — 에뮬레이터 크래시
+02-owner 그룹 캡처 막바지(153 MasterMyPage)에서 에뮬레이터가 완전히 죽었다(`adb devices`가
+빈 목록 반환, `qemu-system`/`emulator` 프로세스 자체가 사라짐 — N7 때와 유사 계열의 장시간
+콜드스타트 반복 누적 증상으로 추정). 이번엔 컴퓨터 재부팅 없이 **에뮬레이터 프로세스만
+재기동**(`emulator -avd Medium_Phone`)으로 30초 내 정상화, 앱 재설치 불필요(설치 상태 보존),
+`adb reverse`·캐노니컬 density 재적용 후 남은 1개 화면만 재캡처해 완료 — N7 때보다 훨씬 가벼운
+장애였다.
+
+### 검증
+`V3_VISUAL_SCREEN_IDS`와 154개 카탈로그 재대조 — **154/154 배선 확인(누락 0)**.
+`actual/uiautomator/*.xml` 전수 스캔 — "미배선" 텍스트 **0건**(placeholder 거짓양성 완전
+소거 확인). `npm run visual:v3:compare:native` — **154/154 pixel-perfect 통과**
+(`{"passed":154,"failed":0,"missingReference":0,"missingActual":0,"dimensionMismatch":0,
+"pixelMismatch":0}`). 008/021 캡처 이미지 육안 재확인 — 실제 화면 콘텐츠로 정상 렌더 확인.
+
+### 교훈 (다음에 이 하네스를 확장할 때 반드시 참고)
+**native-strict "전체 통과"라는 숫자만으로는 배선 여부를 검증할 수 없다** — reference/actual이
+둘 다 같은 fallback에 떨어지면 항상 통과로 나온다. 화면을 새로 배선한 뒤에는 반드시 (1)
+`V3_VISUAL_SCREEN_IDS` 객체와 `mapping.json`의 154개 id를 직접 diff하거나, (2) 캡처된
+`uiautomator/*.xml`에서 "미배선" 문자열을 grep해 0건인지 확인하는 절차를 병행할 것. 가능하면
+compare 스크립트 자체에 이 가드를 내장하는 게 근본적으로 안전하다(후속 과제로 남김 — 이번엔
+시간 관계상 수동 검증으로 대체).
+
+미커밋 상태(사용자 명시 요청 시에만 커밋).
+
+---
+
 ## 전체 현황 요약 (인수인계용, 2026-07-28 새벽 작성)
 
 **82/83 화면 코드 배선 완료 + native-strict(0/0 픽셀) 캡처 검증 완료.**
