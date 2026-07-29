@@ -37,20 +37,28 @@ type LaborInfoDetailScreenNavigationProp = NativeStackNavigationProp<RootStackPa
  * 33 LaborInfoDetail — v3 아티팩트(sodam-v3-05-info.html) 반영.
  * 노무 정보 상세. fetch/bookmark/share/Toast 로직 보존 + InfoChecklist(번호매김 체크리스트) 추가.
  */
-const LaborInfoDetailScreen = () => {
+interface Props {
+    /** 개발용 시각 검증 전용 — API 호출을 건너뛰고 고정 데이터를 표시한다. */
+    visualFixture?: LaborInfoDetail;
+}
+
+const LaborInfoDetailScreen: React.FC<Props> = ({visualFixture}) => {
     const navigation = useNavigation<LaborInfoDetailScreenNavigationProp>();
     const route = useRoute();
-    const {infoId} = route.params as {infoId: string};
+    const {infoId} = (route.params as {infoId: string} | undefined) ?? {infoId: ''};
     const c = useThemeColors();
 
-    const [loading, setLoading] = useState(true);
-    const [laborInfo, setLaborInfo] = useState<LaborInfoDetail | null>(null);
+    const [loading, setLoading] = useState(!visualFixture);
+    const [laborInfo, setLaborInfo] = useState<LaborInfoDetail | null>(visualFixture ?? null);
     const [isBookmarked, setIsBookmarked] = useState(false);
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const [toastType, setToastType] = useState<'success' | 'error' | 'info' | 'warning'>('info');
 
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         const fetchLaborInfo = async () => {
             try {
                 setLoading(true);
@@ -79,6 +87,7 @@ const LaborInfoDetailScreen = () => {
             setShowToast(true);
             setLoading(false);
         });
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- visualFixture is a dev-only static prop, not expected to change
     }, [infoId]);
 
     const toggleBookmark = () => {

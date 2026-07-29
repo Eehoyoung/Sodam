@@ -33,15 +33,21 @@ import {
     JOB_DAY_LABELS_KO,
     JOB_DAY_ORDER,
     JobAvailabilityDay,
+    JobSeekerListItem,
     SEEKING_TYPE_LABELS,
 } from '../types';
 import {formatDistanceKm, formatTimeRange} from '../utils/formatAvailability';
 
-const JobSeekerDetailScreen: React.FC = () => {
+interface Props {
+    /** 개발용 시각 검증 전용 — route.params 없이도 storeId/seeker를 지정한다. */
+    visualFixture?: {storeId: number; seeker: JobSeekerListItem};
+}
+
+const JobSeekerDetailScreen: React.FC<Props> = ({visualFixture}) => {
     const c = useThemeColors();
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const route = useRoute<RouteProp<HomeStackParamList, 'JobSeekerDetail'>>();
-    const {storeId, seeker} = route.params;
+    const {storeId, seeker} = visualFixture ?? route.params;
     const [offerSheetVisible, setOfferSheetVisible] = useState(false);
 
     const orderedAvailability = JOB_DAY_ORDER

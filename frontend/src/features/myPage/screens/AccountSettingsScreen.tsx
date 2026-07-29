@@ -16,7 +16,13 @@ const WITHDRAW_CONFIRM_PHRASE = '회원탈퇴';
  * 42 AccountSettings + 76 AccountDeleteFlow — 확정 시안.
  * 이름 변경 + 회원 탈퇴(확인 문구 직접 입력). saveName/withdraw 로직 보존.
  */
-const AccountSettingsScreen: React.FC = () => {
+interface Props {
+    /** 개발용 시각 검증 전용 — 76 AccountDeleteFlow 카드 재현을 위해 탈퇴 시트를 기본으로 연다. */
+    visualWithdrawOpen?: boolean;
+    captureMarker?: string;
+}
+
+const AccountSettingsScreen: React.FC<Props> = ({visualWithdrawOpen, captureMarker}) => {
     const {user, logout} = useAuth();
     const navigation = useNavigation<RootNavigationProp>();
     const theme = useTheme();
@@ -24,7 +30,7 @@ const AccountSettingsScreen: React.FC = () => {
     const [name, setName] = useState(user?.name ?? '');
     const [saving, setSaving] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
-    const [withdrawSheetVisible, setWithdrawSheetVisible] = useState(false);
+    const [withdrawSheetVisible, setWithdrawSheetVisible] = useState(!!visualWithdrawOpen);
     const [withdrawConfirmText, setWithdrawConfirmText] = useState('');
     const [withdrawing, setWithdrawing] = useState(false);
 
@@ -176,6 +182,7 @@ const AccountSettingsScreen: React.FC = () => {
             <BottomSheet
                 visible={withdrawSheetVisible}
                 onClose={closeWithdrawSheet}
+                captureMarker={captureMarker}
                 title="정말 탈퇴하시겠어요?"
                 description="활성 구독이 있으면 차단돼요. 90일 후 개인정보가 자동 익명화되며, 이 작업은 되돌릴 수 없어요."
                 primary={{

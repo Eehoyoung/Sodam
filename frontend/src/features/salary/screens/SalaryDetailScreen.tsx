@@ -14,8 +14,15 @@ interface RouteParams {
     payrollId?: number | null;
 }
 
+export interface SalaryDetailVisualFixture {
+    summary: PayrollSummary;
+    items: PayrollDetailItem[];
+}
+
 interface Props {
     route?: {params?: RouteParams};
+    /** 개발용 시각 검증 전용 — API 호출을 건너뛰고 고정 데이터를 표시한다. */
+    visualFixture?: SalaryDetailVisualFixture;
 }
 
 /**
@@ -25,18 +32,21 @@ interface Props {
  * [FE_BE_SCHEMA_GAP §1-1] GET /api/payroll/{payrollId}/details 는 근무일별 배열(PayrollDetailDto[])만
  * 반환하고 실수령액/기간 같은 요약 필드가 없다. 요약은 GET /api/payroll/{payrollId} 로 별도 조회한다.
  */
-const SalaryDetailScreen: React.FC<Props> = ({route}) => {
+const SalaryDetailScreen: React.FC<Props> = ({route, visualFixture}) => {
     const payrollId = route?.params?.payrollId ?? null;
     const c = useThemeColors();
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
 
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
-    const [summary, setSummary] = useState<PayrollSummary | null>(null);
-    const [items, setItems] = useState<PayrollDetailItem[]>([]);
+    const [summary, setSummary] = useState<PayrollSummary | null>(visualFixture?.summary ?? null);
+    const [items, setItems] = useState<PayrollDetailItem[]>(visualFixture?.items ?? []);
     const [calcDetailVisible, setCalcDetailVisible] = useState(false);
 
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         if (!payrollId || typeof payrollId !== 'number' || payrollId <= 0) {
             AppToast.error('잘못된 접근입니다. 급여 ID가 필요합니다.');
             setError('INVALID_PARAM');
@@ -70,6 +80,7 @@ const SalaryDetailScreen: React.FC<Props> = ({route}) => {
         return () => {
             mounted = false;
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- visualFixture is a dev-only static prop, not expected to change
     }, [payrollId]);
 
     const header = <AppHeader title="급여 상세" onBack={() => navigation.goBack()} />;

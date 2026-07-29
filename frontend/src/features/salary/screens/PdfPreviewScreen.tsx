@@ -11,13 +11,23 @@ import {useThemeColors} from '../../../common/hooks/useThemeColors';
  * 70 PDF Preview — 급여명세서 미리보기 (확정 시안).
  * 실제 다운로드/공유는 호출 측 onDownload/onShare (route param) 또는 기본 안내.
  */
-const PdfPreviewScreen: React.FC = () => {
+export interface PdfPreviewVisualFixture {
+    title: string;
+    sub: string;
+}
+
+interface PdfPreviewScreenProps {
+    /** 개발용 시각 검증 전용 — route.params 대신 고정값을 표시한다. */
+    visualFixture?: PdfPreviewVisualFixture;
+}
+
+const PdfPreviewScreen: React.FC<PdfPreviewScreenProps> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const route = useRoute<RouteProp<HomeStackParamList, 'PdfPreview'>>();
     const c = useThemeColors();
-    const title = route.params?.title ?? '급여명세서.pdf';
-    const sub = route.params?.sub ?? '';
-    const onDownload = route.params?.onDownload;
+    const title = visualFixture?.title ?? route.params?.title ?? '급여명세서.pdf';
+    const sub = visualFixture?.sub ?? route.params?.sub ?? '';
+    const onDownload = route.params?.onDownload ?? (visualFixture ? () => undefined : undefined);
     const onShare = route.params?.onShare;
 
     return (

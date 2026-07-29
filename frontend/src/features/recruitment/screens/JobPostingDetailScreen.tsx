@@ -25,6 +25,7 @@ import {
     JOB_APPLICATION_ERROR_MESSAGES,
     JOB_CATEGORY_LABELS,
     JobApplicationErrorCode,
+    JobPostingNearbyItem,
     SEEKING_TYPE_LABELS,
 } from '../types';
 import {formatDistanceKm, formatTimeRange} from '../utils/formatAvailability';
@@ -39,11 +40,16 @@ function extractErrorMessage(err: unknown): string | undefined {
     return (err as {response?: {data?: {message?: string}}})?.response?.data?.message;
 }
 
-const JobPostingDetailScreen: React.FC = () => {
+interface Props {
+    /** 개발용 시각 검증 전용 — route.params 없이도 posting을 지정한다. */
+    visualFixture?: {posting: JobPostingNearbyItem};
+}
+
+const JobPostingDetailScreen: React.FC<Props> = ({visualFixture}) => {
     const c = useThemeColors();
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const route = useRoute<RouteProp<HomeStackParamList, 'JobPostingDetail'>>();
-    const {posting} = route.params;
+    const posting = visualFixture?.posting ?? route.params.posting;
     const [message, setMessage] = useState('');
     const [applied, setApplied] = useState(false);
     const applyMutation = useApplyToJobPosting();

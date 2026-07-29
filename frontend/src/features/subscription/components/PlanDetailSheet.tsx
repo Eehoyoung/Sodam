@@ -15,9 +15,10 @@ interface Props {
     view: PlanCardView | null;
     /** 이 플랜 사용하기 — 기존 플랜 선택 로직(setSelectedPlan) 위임, 신규 로직 없음 */
     onSelect: () => void;
+    captureMarker?: string;
 }
 
-export const PlanDetailSheet: React.FC<Props> = ({visible, onClose, view, onSelect}) => {
+export const PlanDetailSheet: React.FC<Props> = ({visible, onClose, view, onSelect, captureMarker}) => {
     if (!view) {
         return null;
     }
@@ -25,6 +26,7 @@ export const PlanDetailSheet: React.FC<Props> = ({visible, onClose, view, onSele
         <BottomSheet
             visible={visible}
             onClose={onClose}
+            captureMarker={captureMarker}
             title={`${view.displayName} 플랜`}
             scrollable
             primary={{label: '이 플랜 사용하기', onPress: onSelect}}

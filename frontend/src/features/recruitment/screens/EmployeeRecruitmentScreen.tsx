@@ -17,16 +17,24 @@ import {spacing} from '../../../theme/tokens';
 import JobSeekingSettingsScreen from './JobSeekingSettingsScreen';
 import NearbyJobPostingsScreen from './NearbyJobPostingsScreen';
 import JobOfferInboxScreen from './JobOfferInboxScreen';
+import type {JobPostingNearbyItem} from '../types';
 
 type RecruitmentTabKey = 'profile' | 'nearby' | 'inbox';
 
 const TAB_KEYS: RecruitmentTabKey[] = ['profile', 'nearby', 'inbox'];
 const TAB_LABELS: string[] = ['구직 설정', '주변 구인', '채용함'];
 
-const EmployeeRecruitmentScreen: React.FC = () => {
+interface Props {
+    /** 개발용 시각 검증 전용 — route.params 없이도 초기 탭을 지정한다. */
+    visualInitialTab?: RecruitmentTabKey;
+    /** 개발용 시각 검증 전용 — 'nearby' 탭의 실 API를 고정 목록으로 대체한다. */
+    visualNearbyFixture?: JobPostingNearbyItem[];
+}
+
+const EmployeeRecruitmentScreen: React.FC<Props> = ({visualInitialTab, visualNearbyFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const route = useRoute<RouteProp<HomeStackParamList, 'EmployeeRecruitment'>>();
-    const initialIndex = Math.max(0, TAB_KEYS.indexOf(route.params?.tab ?? 'profile'));
+    const initialIndex = Math.max(0, TAB_KEYS.indexOf(visualInitialTab ?? route.params?.tab ?? 'profile'));
     const [tabIndex, setTabIndex] = useState(initialIndex);
 
     return (
@@ -43,7 +51,9 @@ const EmployeeRecruitmentScreen: React.FC = () => {
              * 각 탭 화면(JobSeekingSettingsScreen 등)의 훅 staleTime 설정만으로 충분하다.
              */}
             {tabIndex === 0 ? <JobSeekingSettingsScreen /> : null}
-            {tabIndex === 1 ? <NearbyJobPostingsScreen onGoToProfileTab={() => setTabIndex(0)} /> : null}
+            {tabIndex === 1 ? (
+                <NearbyJobPostingsScreen onGoToProfileTab={() => setTabIndex(0)} visualFixture={visualNearbyFixture} />
+            ) : null}
             {tabIndex === 2 ? <JobOfferInboxScreen /> : null}
         </ScreenContainer>
     );

@@ -46,6 +46,14 @@ interface PayrollPreview {
 
 const won = (n: number) => `₩${n.toLocaleString('ko-KR')}`;
 
+export interface PayrollRunVisualFixture {
+    step: Step;
+    previews: PayrollPreview[];
+    startDate: string;
+    endDate: string;
+    stepUpPassword?: string;
+}
+
 /**
  * 사장 정산 플로우 (PRD_OWNER S-301) — v3 토스식 진행형 스텝(StepScaffold).
  *
@@ -59,22 +67,27 @@ const won = (n: number) => `₩${n.toLocaleString('ko-KR')}`;
  *   - POST /api/payroll/calculate   (storeId, startDate, endDate) → 직원별 미리보기
  *   - PUT  /api/payroll/{id}/issue  (발급 확정)
  */
-const PayrollRunScreen: React.FC = () => {
+interface Props {
+    /** 개발용 시각 검증 전용 — API 호출을 건너뛰고 지정한 단계·데이터로 고정 표시한다. */
+    visualFixture?: PayrollRunVisualFixture;
+}
+
+const PayrollRunScreen: React.FC<Props> = ({visualFixture}) => {
     const route = useRoute<RouteProp<HomeStackParamList, 'PayrollRun'>>();
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const storeIdParam = route.params?.storeId;
     const {user} = useAuth();
 
-    const [step, setStep] = useState<Step>('PERIOD');
-    const [storeId, setStoreId] = useState<number | null>(storeIdParam ?? null);
+    const [step, setStep] = useState<Step>(visualFixture?.step ?? 'PERIOD');
+    const [storeId, setStoreId] = useState<number | null>(storeIdParam ?? (visualFixture ? 101 : null));
     const [stores, setStores] = useState<StoreSummaryDto[]>([]);
-    const [startDate, setStartDateValue] = useState(getDefaultStart());
-    const [endDate, setEndDateValue] = useState(getDefaultEnd());
+    const [startDate, setStartDateValue] = useState(visualFixture?.startDate ?? getDefaultStart());
+    const [endDate, setEndDateValue] = useState(visualFixture?.endDate ?? getDefaultEnd());
     const setStartDate = (value: string) => setStartDateValue(sanitizeDateDigits(value));
     const setEndDate = (value: string) => setEndDateValue(sanitizeDateDigits(value));
-    const [previews, setPreviews] = useState<PayrollPreview[]>([]);
+    const [previews, setPreviews] = useState<PayrollPreview[]>(visualFixture?.previews ?? []);
     const [loading, setLoading] = useState(false);
-    const [stepUpPassword, setStepUpPassword] = useState('');
+    const [stepUpPassword, setStepUpPassword] = useState(visualFixture?.stepUpPassword ?? '');
     // 연장근로 한도(주 52h, §53) 위반 경보 — 정산 미리보기 시점에 조회(B5/L-NEW-02).
     const [overtime, setOvertime] = useState<OvertimeCheck | null>(null);
     // 매장 정산주기의 지급 예정일 — 주기 기본값 적용 시 안내용
@@ -83,7 +96,7 @@ const PayrollRunScreen: React.FC = () => {
     // 매장 선택 시 정산주기가 설정돼 있으면 기간 기본값을 주기(시작~마감)로 채운다.
     // 미설정/조회 실패면 기존 달력(이번 달 1일~말일) 기본값 유지.
     useEffect(() => {
-        if (!storeId) {
+        if (!storeId || visualFixture) {
             return;
         }
         let cancelled = false;
@@ -103,11 +116,12 @@ const PayrollRunScreen: React.FC = () => {
         return () => {
             cancelled = true;
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- visualFixture is a dev-only static prop, not expected to change
     }, [storeId]);
 
     // 사장 매장 목록 로드 → 손으로 매장 ID 입력하지 않도록 셀렉터 제공.
     useEffect(() => {
-        if (user?.id === undefined) {
+        if (user?.id === undefined || visualFixture) {
             return;
         }
         (async () => {
@@ -118,6 +132,7 @@ const PayrollRunScreen: React.FC = () => {
                 setStoreId(prev => prev ?? list[0]?.id ?? null);
             } catch (_) {/* 셀렉터 없이도 진행 가능 */}
         })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- visualFixture is a dev-only static prop, not expected to change
     }, [user?.id]);
 
     const totalNet = previews.reduce((s, p) => s + (p.netWage ?? 0) + (p.adjustment ?? 0), 0);

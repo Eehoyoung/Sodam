@@ -19,12 +19,13 @@ interface Props {
     onClose: () => void;
     summary: PayrollSummary | null;
     items: PayrollDetailItem[];
+    captureMarker?: string;
 }
 
 const sum = (items: PayrollDetailItem[], key: keyof PayrollDetailItem): number =>
     items.reduce((s, it) => s + (Number(it[key]) || 0), 0);
 
-export const PayrollCalculationDetailModal: React.FC<Props> = ({visible, onClose, summary, items}) => {
+export const PayrollCalculationDetailModal: React.FC<Props> = ({visible, onClose, summary, items, captureMarker}) => {
     const c = useThemeColors();
 
     const breakdown = useMemo(() => {
@@ -49,6 +50,7 @@ export const PayrollCalculationDetailModal: React.FC<Props> = ({visible, onClose
         <BottomSheet
             visible={visible}
             onClose={onClose}
+            captureMarker={captureMarker}
             title="계산 근거"
             scrollable
             primary={{label: '확인', onPress: onClose}}>

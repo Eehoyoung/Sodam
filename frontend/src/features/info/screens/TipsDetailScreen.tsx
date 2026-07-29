@@ -37,19 +37,27 @@ type TipsDetailScreenNavigationProp = NativeStackNavigationProp<RootStackParamLi
  * BE(TipInfoResponseDto)에 관련 링크 필드가 없어 해당 UI는 제거.
  * InfoChecklist(번호매김 체크리스트) 추가.
  */
-const TipsDetailScreen = () => {
+interface Props {
+    /** 개발용 시각 검증 전용 — API 호출을 건너뛰고 고정 데이터를 표시한다. */
+    visualFixture?: TipDetail;
+}
+
+const TipsDetailScreen: React.FC<Props> = ({visualFixture}) => {
     const navigation = useNavigation<TipsDetailScreenNavigationProp>();
     const route = useRoute();
-    const {tipId} = route.params as {tipId: number};
+    const {tipId} = (route.params as {tipId: number} | undefined) ?? {tipId: 0};
 
-    const [loading, setLoading] = useState(true);
-    const [tip, setTip] = useState<TipDetail | null>(null);
+    const [loading, setLoading] = useState(!visualFixture);
+    const [tip, setTip] = useState<TipDetail | null>(visualFixture ?? null);
     const [isBookmarked, setIsBookmarked] = useState(false);
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const [toastType, setToastType] = useState<'success' | 'error' | 'info' | 'warning'>('info');
 
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         let mounted = true;
         const fetchTip = async () => {
             try {
@@ -85,6 +93,7 @@ const TipsDetailScreen = () => {
         return () => {
             mounted = false;
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- visualFixture is a dev-only static prop, not expected to change
     }, [tipId]);
 
     const toggleBookmark = () => {

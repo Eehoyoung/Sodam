@@ -74,13 +74,15 @@ function extractErrorMessage(err: unknown): string | undefined {
 
 interface OurPostingScreenProps {
     storeId: number;
+    /** 개발용 시각 검증 전용 — 실 API 대신 고정 지원자 목록을 표시한다. */
+    visualApplicantsFixture?: JobApplicantListItem[];
 }
 
-const OurPostingScreen: React.FC<OurPostingScreenProps> = ({storeId}) => {
+const OurPostingScreen: React.FC<OurPostingScreenProps> = ({storeId, visualApplicantsFixture}) => {
     const c = useThemeColors();
-    const postingQuery = useMyJobPosting(storeId);
+    const postingQuery = useMyJobPosting(storeId, !visualApplicantsFixture);
     const upsertMutation = useUpsertJobPosting(storeId);
-    const applicationsQuery = useStoreJobApplications(storeId);
+    const applicationsQuery = useStoreJobApplications(storeId, !visualApplicantsFixture);
     const respondMutation = useRespondToJobApplication(storeId);
 
     const [workType, setWorkType] = useState<JobSeekingType>('SUBSTITUTE');
@@ -169,7 +171,7 @@ const OurPostingScreen: React.FC<OurPostingScreenProps> = ({storeId}) => {
         }
     };
 
-    if (postingQuery.isLoading) {
+    if (!visualApplicantsFixture && postingQuery.isLoading) {
         return <LoadingState title="공고 불러오는 중" description="잠시만 기다려 주세요" />;
     }
 
@@ -350,21 +352,21 @@ const OurPostingScreen: React.FC<OurPostingScreenProps> = ({storeId}) => {
 
             <AppText variant="titleMd" weight="700" style={styles.applicantsTitle}>지원자</AppText>
 
-            {applicationsQuery.isLoading ? (
+            {!visualApplicantsFixture && applicationsQuery.isLoading ? (
                 <LoadingState title="지원자 불러오는 중" description="잠시만 기다려 주세요" />
-            ) : applicationsQuery.isError ? (
+            ) : !visualApplicantsFixture && applicationsQuery.isError ? (
                 <ErrorState
                     title="불러오지 못했어요"
                     description="지원자 리스트를 가져오지 못했어요."
                     primary={{label: '다시 시도', onPress: () => applicationsQuery.refetch()}}
                 />
-            ) : (applicationsQuery.data ?? []).length === 0 ? (
+            ) : (visualApplicantsFixture ?? applicationsQuery.data ?? []).length === 0 ? (
                 <View testID="our-posting-applicants-empty">
                     <EmptyState title="아직 지원자가 없어요" description="공고를 올리면 지원자가 여기에 표시돼요." />
                 </View>
             ) : (
                 <View style={styles.applicantList} testID="our-posting-applicants-list">
-                    {(applicationsQuery.data ?? []).map(app => (
+                    {(visualApplicantsFixture ?? applicationsQuery.data ?? []).map(app => (
                         <ApplicantCard
                             key={app.applicationId}
                             application={app}

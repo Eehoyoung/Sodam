@@ -39,13 +39,18 @@ const INTRO_COPY: Record<InfoType, {title: string; desc: string}> = {
  * 32 InfoList — v3 아티팩트(sodam-v3-05-info.html) 반영.
  * 노무/세무/정책/팁 정보 센터. 서비스 조회·라우팅 로직 보존 + "이번 달 꼭 확인" 인트로 카드 추가.
  */
-const InfoListScreen = () => {
+interface Props {
+    /** 개발용 시각 검증 전용 — API 호출을 건너뛰고 고정 데이터를 표시한다. */
+    visualFixture?: {categories: InfoCategory[]; articles: InfoArticle[]};
+}
+
+const InfoListScreen: React.FC<Props> = ({visualFixture}) => {
     const navigation = useNavigation<InfoListScreenNavigationProp>();
     const [typeIndex, setTypeIndex] = useState(0);
-    const [categories, setCategories] = useState<InfoCategory[]>([]);
-    const [articles, setArticles] = useState<InfoArticle[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [categories, setCategories] = useState<InfoCategory[]>(visualFixture?.categories ?? []);
+    const [articles, setArticles] = useState<InfoArticle[]>(visualFixture?.articles ?? []);
+    const [loading, setLoading] = useState(!visualFixture);
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(visualFixture?.categories[0]?.id ?? null);
     const [searchOpen, setSearchOpen] = useState(false);
     const [query, setQuery] = useState('');
 
@@ -109,6 +114,9 @@ const InfoListScreen = () => {
     // 카테고리 응답을 기다린 뒤 결과 값을 직접 fetchArticlesFor에 넘겨,
     // selectedCategory state 변경 여부와 무관하게 항상 새 탭의 목록을 갱신한다.
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         let cancelled = false;
         const load = async () => {
             try {

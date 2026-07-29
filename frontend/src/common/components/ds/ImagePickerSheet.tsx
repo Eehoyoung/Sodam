@@ -15,10 +15,11 @@ interface Props {
     onCamera: () => void;
     onAlbum: () => void;
     onReset?: () => void;
+    captureMarker?: string;
 }
 
-export const ImagePickerSheet: React.FC<Props> = ({visible, onClose, onCamera, onAlbum, onReset}) => (
-    <BottomSheet visible={visible} onClose={onClose} title="사진 변경">
+export const ImagePickerSheet: React.FC<Props> = ({visible, onClose, onCamera, onAlbum, onReset, captureMarker}) => (
+    <BottomSheet visible={visible} onClose={onClose} captureMarker={captureMarker} title="사진 변경">
         <View style={styles.list}>
             <AppListItem title="카메라로 촬영" subtitle="새 사진 찍기" right="›" onPress={onCamera} />
             <AppListItem title="앨범에서 선택" subtitle="기존 사진 선택" right="›" onPress={onAlbum} />

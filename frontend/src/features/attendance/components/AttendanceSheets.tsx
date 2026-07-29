@@ -51,10 +51,12 @@ export const CheckoutConfirmSheet: React.FC<{
     expectedPay: number;
     onConfirm: () => void;
     onAddBreak?: () => void;
-}> = ({visible, onClose, workedSeconds, expectedPay, onConfirm, onAddBreak}) => (
+    captureMarker?: string;
+}> = ({visible, onClose, workedSeconds, expectedPay, onConfirm, onAddBreak, captureMarker}) => (
     <BottomSheet
         visible={visible}
         onClose={onClose}
+        captureMarker={captureMarker}
         title="퇴근 처리할까요?"
         description={`오늘 근무시간 ${formatTimer(workedSeconds)} · 예상 일급 ${formatMoney(expectedPay)}`}
         primary={{label: '퇴근 처리', onPress: onConfirm}}
@@ -70,10 +72,12 @@ export const BreakTimerSheet: React.FC<{
     onClose: () => void;
     onStart: () => void;
     onManual?: () => void;
-}> = ({visible, onClose, onStart, onManual}) => (
+    captureMarker?: string;
+}> = ({visible, onClose, onStart, onManual, captureMarker}) => (
     <BottomSheet
         visible={visible}
         onClose={onClose}
+        captureMarker={captureMarker}
         title="휴게시간을 기록할까요?"
         description="휴게시간은 급여 계산에서 제외됩니다."
         primary={{label: '휴게 시작', onPress: onStart}}
@@ -86,7 +90,8 @@ export const ManualRecordSheet: React.FC<{
     visible: boolean;
     onClose: () => void;
     onSave: (v: {date: string; checkIn: string; checkOut: string; breakMin: string}) => void;
-}> = ({visible, onClose, onSave}) => {
+    captureMarker?: string;
+}> = ({visible, onClose, onSave, captureMarker}) => {
     const [date, setDateValue] = useState('');
     const [checkIn, setCheckInValue] = useState('');
     const [checkOut, setCheckOutValue] = useState('');
@@ -98,6 +103,7 @@ export const ManualRecordSheet: React.FC<{
         <BottomSheet
             visible={visible}
             onClose={onClose}
+            captureMarker={captureMarker}
             scrollable
             title="수동 기록 추가"
             description="사장 승인 없이 내 기록장에만 저장됩니다."
@@ -124,7 +130,8 @@ export const PersonalRecordEditSheet: React.FC<{
     initial?: {date: string; checkIn: string; checkOut: string; wage: string};
     expectedPay?: number;
     onSave: (v: {date: string; checkIn: string; checkOut: string; wage: string}) => void;
-}> = ({visible, onClose, initial, expectedPay, onSave}) => {
+    captureMarker?: string;
+}> = ({visible, onClose, initial, expectedPay, onSave, captureMarker}) => {
     const [date, setDateValue] = useState(sanitizeDateDigits(initial?.date ?? ''));
     const [checkIn, setCheckInValue] = useState(sanitizeTimeDigits(initial?.checkIn ?? ''));
     const [checkOut, setCheckOutValue] = useState(sanitizeTimeDigits(initial?.checkOut ?? ''));
@@ -136,6 +143,7 @@ export const PersonalRecordEditSheet: React.FC<{
         <BottomSheet
             visible={visible}
             onClose={onClose}
+            captureMarker={captureMarker}
             scrollable
             title="기록 수정"
             // eslint-disable-next-line eqeqeq -- intentional != null: matches both null and undefined

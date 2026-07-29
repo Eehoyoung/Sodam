@@ -36,6 +36,12 @@ import {
     JobOffer,
     SEEKING_TYPE_LABELS,
 } from '../types';
+
+interface Props {
+    /** 개발용 시각 검증 전용 — 실 API 대신 고정 데이터를 표시한다.
+     * nowMs를 함께 고정해 formatRemaining의 "남은 시간" 텍스트가 캡처 시각에 따라 흔들리지 않게 한다. */
+    visualFixture?: {offers: JobOffer[]; applications: JobApplication[]; nowMs?: number};
+}
 import {formatTimeRange} from '../utils/formatAvailability';
 import {formatRemaining} from '../utils/remainingTime';
 
@@ -43,10 +49,10 @@ function extractErrorMessage(err: unknown): string | undefined {
     return (err as {response?: {data?: {message?: string}}})?.response?.data?.message;
 }
 
-const JobOfferInboxScreen: React.FC = () => {
+const JobOfferInboxScreen: React.FC<Props> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
-    const offersQuery = useMyJobOffers();
-    const applicationsQuery = useMyJobApplications();
+    const offersQuery = useMyJobOffers(!visualFixture);
+    const applicationsQuery = useMyJobApplications(!visualFixture);
     const respondMutation = useRespondToJobOffer();
     const [, setTick] = useState(0);
 
@@ -67,15 +73,15 @@ const JobOfferInboxScreen: React.FC = () => {
 
     const goToJoinStore = () => navigation.navigate('JoinStoreByCode');
 
-    const offers = offersQuery.data ?? [];
-    const applications = applicationsQuery.data ?? [];
-    const loading = offersQuery.isLoading || applicationsQuery.isLoading;
+    const offers = visualFixture?.offers ?? offersQuery.data ?? [];
+    const applications = visualFixture?.applications ?? applicationsQuery.data ?? [];
+    const loading = !visualFixture && (offersQuery.isLoading || applicationsQuery.isLoading);
 
     if (loading) {
         return <LoadingState title="채용함 불러오는 중" description="잠시만 기다려 주세요" />;
     }
 
-    if (offersQuery.isError && applicationsQuery.isError) {
+    if (!visualFixture && offersQuery.isError && applicationsQuery.isError) {
         return (
             <ErrorState
                 title="불러오지 못했어요"
@@ -117,6 +123,7 @@ const JobOfferInboxScreen: React.FC = () => {
                                     onAccept={() => handleRespond(offer.id, true)}
                                     onDecline={() => handleRespond(offer.id, false)}
                                     onJoin={goToJoinStore}
+                                    nowMs={visualFixture?.nowMs}
                                 />
                             ))}
                         </View>
@@ -144,9 +151,11 @@ interface OfferCardProps {
     onAccept: () => void;
     onDecline: () => void;
     onJoin: () => void;
+    /** 개발용 시각 검증 전용 — formatRemaining 계산 기준 시각을 고정한다. */
+    nowMs?: number;
 }
 
-const OfferCard: React.FC<OfferCardProps> = ({offer, responding, onAccept, onDecline, onJoin}) => {
+const OfferCard: React.FC<OfferCardProps> = ({offer, responding, onAccept, onDecline, onJoin, nowMs}) => {
     const c = useThemeColors();
     return (
         <AppCard variant="flat" style={styles.card} testID={`job-offer-card-${offer.id}`}>
@@ -176,7 +185,7 @@ const OfferCard: React.FC<OfferCardProps> = ({offer, responding, onAccept, onDec
                 <>
                     {/* 남은 시간 강조 = 코랄(v3 시안 sodam-v3-07-recruitment.html R2 --coral) */}
                     <AppText variant="caption" style={{color: c.brandPrimary}} testID={`job-offer-remaining-${offer.id}`}>
-                        {formatRemaining(offer.expiresAt)}
+                        {nowMs !== undefined ? formatRemaining(offer.expiresAt, nowMs) : formatRemaining(offer.expiresAt)}
                     </AppText>
                     <View style={styles.actionRow}>
                         <Pressable

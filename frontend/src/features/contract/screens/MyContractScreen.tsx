@@ -34,7 +34,12 @@ import type {LaborContract} from '../types';
 
 type Phase = 'loading' | 'error' | 'ready';
 
-const MyContractScreen: React.FC = () => {
+interface Props {
+    /** 개발용 시각 검증 전용 — 목록 로드 후 첫 항목을 자동 선택해 상세 뷰(C3)를 재현한다. */
+    visualAutoSelectFirst?: boolean;
+}
+
+const MyContractScreen: React.FC<Props> = ({visualAutoSelectFirst}) => {
     const navigation = useNavigation<NavigationProp<HomeStackParamList>>();
     const c = useThemeColors();
     const [phase, setPhase] = useState<Phase>('loading');
@@ -48,9 +53,13 @@ const MyContractScreen: React.FC = () => {
             const list = await contractService.getMyContracts();
             setContracts(list);
             setPhase('ready');
+            if (visualAutoSelectFirst && list.length > 0) {
+                setSelected(list[0]);
+            }
         } catch {
             setPhase('error');
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- visualAutoSelectFirst is a dev-only static prop, not expected to change
     }, []);
 
     useFocusEffect(

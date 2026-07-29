@@ -24,15 +24,20 @@ const won = (n: number) => `${n.toLocaleString()}원`;
  * info-card 안내 + 시급·주 근로시간 필드 + CTA "예상 급여 보기" + MoneyCard(이번 달 예상 급여) +
  * 평이한 2행(월 기본급/월 주휴수당, 카드·합계행 없이 시안과 동일). 영속화 없음(사장을 직원으로 등록하지 않음) — 추정치 면책 동반.
  */
-const PayrollPreviewScreen: React.FC = () => {
+interface Props {
+    /** 개발용 시각 검증 전용 — 버튼 클릭 없이도 계산 결과를 표시한다. */
+    visualFixture?: PayrollPreview;
+}
+
+const PayrollPreviewScreen: React.FC<Props> = ({visualFixture}) => {
     const navigation = useNavigation();
     const route = useRoute<PreviewRoute>();
     const c = useThemeColors();
-    const {storeId, hourlyWage} = route.params;
+    const {storeId, hourlyWage} = route.params ?? {};
 
-    const [wage, setWage] = useState(hourlyWage ? String(hourlyWage) : '');
-    const [hours, setHours] = useState('15');
-    const [result, setResult] = useState<PayrollPreview | null>(null);
+    const [wage, setWage] = useState(visualFixture ? String(visualFixture.hourlyWage) : hourlyWage ? String(hourlyWage) : '');
+    const [hours, setHours] = useState(visualFixture ? String(visualFixture.weeklyHours) : '15');
+    const [result, setResult] = useState<PayrollPreview | null>(visualFixture ?? null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 

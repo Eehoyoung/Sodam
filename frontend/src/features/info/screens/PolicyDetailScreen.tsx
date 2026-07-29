@@ -37,20 +37,28 @@ type PolicyDetailScreenNavigationProp = NativeStackNavigationProp<RootStackParam
  * BE(PolicyInfoResponseDto)에 신청기간/지원대상/지원내용/신청링크 필드가 없어 해당 UI는 제거.
  * InfoChecklist(번호매김 체크리스트) 추가.
  */
-const PolicyDetailScreen = () => {
+interface Props {
+    /** 개발용 시각 검증 전용 — API 호출을 건너뛰고 고정 데이터를 표시한다. */
+    visualFixture?: PolicyDetail;
+}
+
+const PolicyDetailScreen: React.FC<Props> = ({visualFixture}) => {
     const navigation = useNavigation<PolicyDetailScreenNavigationProp>();
     const route = useRoute();
-    const {policyId} = route.params as {policyId: number};
+    const {policyId} = (route.params as {policyId: number} | undefined) ?? {policyId: 0};
     const c = useThemeColors();
 
-    const [loading, setLoading] = useState(true);
-    const [policy, setPolicy] = useState<PolicyDetail | null>(null);
+    const [loading, setLoading] = useState(!visualFixture);
+    const [policy, setPolicy] = useState<PolicyDetail | null>(visualFixture ?? null);
     const [isBookmarked, setIsBookmarked] = useState(false);
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const [toastType, setToastType] = useState<'success' | 'error' | 'info' | 'warning'>('info');
 
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         let mounted = true;
         const fetchPolicy = async () => {
             try {
@@ -84,6 +92,7 @@ const PolicyDetailScreen = () => {
         return () => {
             mounted = false;
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- visualFixture is a dev-only static prop, not expected to change
     }, [policyId]);
 
     const toggleBookmark = () => {

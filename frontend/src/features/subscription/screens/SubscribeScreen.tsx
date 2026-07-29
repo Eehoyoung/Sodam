@@ -81,7 +81,18 @@ const buildPlanVisuals = (c: ThemeColors): Record<PlanType, {emoji: string; acce
  * 시트의 "결제 수단 변경"은 현재 plan/billingCycle 로 TossBillingAuth 재인증 흐름을 태운다
  * (docs/260720 v3 감사 후속 — 이전에는 BillingMethodSheet 가 어디서도 열리지 않았음).
  */
-const SubscribeScreen: React.FC = () => {
+export interface SubscribeVisualFixture {
+    plans: PlanCatalogItem[];
+    current: SubscriptionResponse | null;
+    selectedPlan: PlanType | null;
+}
+
+interface Props {
+    /** 개발용 시각 검증 전용 — API 호출을 건너뛰고 고정 데이터를 표시한다. */
+    visualFixture?: SubscribeVisualFixture;
+}
+
+const SubscribeScreen: React.FC<Props> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const r = useResponsive();
     const c = useThemeColors();
@@ -89,11 +100,11 @@ const SubscribeScreen: React.FC = () => {
     // compact(<360): 플랜 카드 4장이 세로로 길게 흐르므로 list gap·subtitle 여백·이모지 크기를 한 단계 축소해 1.5장 fold-above 보장.
     const listGap = r.pick({compact: spacing.sm, default: spacing.md});
     const subtitleMargin = r.pick({compact: spacing.md, default: spacing.lg});
-    const [plans, setPlans] = useState<PlanCatalogItem[]>([]);
-    const [current, setCurrent] = useState<SubscriptionResponse | null>(null);
-    const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
+    const [plans, setPlans] = useState<PlanCatalogItem[]>(visualFixture?.plans ?? []);
+    const [current, setCurrent] = useState<SubscriptionResponse | null>(visualFixture?.current ?? null);
+    const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(visualFixture?.selectedPlan ?? null);
     const [cycleIndex, setCycleIndex] = useState(0);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!visualFixture);
     const [processing, setProcessing] = useState(false);
     const [detailView, setDetailView] = useState<PlanCardView | null>(null);
     const [billingSheetVisible, setBillingSheetVisible] = useState(false);
@@ -104,6 +115,9 @@ const SubscribeScreen: React.FC = () => {
     const isPaused = current?.status === 'PAUSED';
 
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         let mounted = true;
         (async () => {
             try {
@@ -128,6 +142,7 @@ const SubscribeScreen: React.FC = () => {
         return () => {
             mounted = false;
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- visualFixture is a dev-only static prop, not expected to change
     }, []);
 
     const handleSubscribe = async () => {

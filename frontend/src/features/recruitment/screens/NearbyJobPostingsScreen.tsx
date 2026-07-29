@@ -58,9 +58,11 @@ function extractErrorCode(err: unknown): JobSeekingErrorCode | undefined {
 interface NearbyJobPostingsScreenProps {
     /** 희망지역 미설정 안내에서 "구직 설정" 탭으로 이동시키는 콜백(허브가 tabIndex 를 소유). */
     onGoToProfileTab: () => void;
+    /** 개발용 시각 검증 전용 — 실 API 대신 고정 목록을 표시한다. */
+    visualFixture?: JobPostingNearbyItem[];
 }
 
-const NearbyJobPostingsScreen: React.FC<NearbyJobPostingsScreenProps> = ({onGoToProfileTab}) => {
+const NearbyJobPostingsScreen: React.FC<NearbyJobPostingsScreenProps> = ({onGoToProfileTab, visualFixture}) => {
     const c = useThemeColors();
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const [typeFilter, setTypeFilter] = useState<TypeFilterKey>('ALL');
@@ -75,8 +77,8 @@ const NearbyJobPostingsScreen: React.FC<NearbyJobPostingsScreenProps> = ({onGoTo
     );
     const {data, isLoading, isError, error, refetch} = useNearbyJobPostings(filters);
 
-    const list = data ?? [];
-    const errorCode = isError ? extractErrorCode(error) : undefined;
+    const list = visualFixture ?? data ?? [];
+    const errorCode = !visualFixture && isError ? extractErrorCode(error) : undefined;
     const locationsRequired = errorCode === 'JOB_SEEKING_LOCATIONS_REQUIRED';
 
     return (
@@ -106,9 +108,9 @@ const NearbyJobPostingsScreen: React.FC<NearbyJobPostingsScreenProps> = ({onGoTo
                 ))}
             </ScrollView>
 
-            {isLoading ? (
+            {!visualFixture && isLoading ? (
                 <LoadingState title="주변 구인 불러오는 중" description="잠시만 기다려 주세요" />
-            ) : isError ? (
+            ) : !visualFixture && isError ? (
                 locationsRequired ? (
                     <View testID="nearby-posting-locations-required">
                         <ErrorState

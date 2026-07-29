@@ -125,7 +125,7 @@ export const useSendJobOffer = (storeId: number) => {
 };
 
 // [직원] 받은 채용 제안 목록 — GET /api/job-offers/me (§15)
-export const useMyJobOffers = () =>
+export const useMyJobOffers = (enabled: boolean = true) =>
     useQuery({
         queryKey: recruitmentQueryKeys.myOffers(),
         queryFn: async (): Promise<JobOffer[]> => {
@@ -136,6 +136,7 @@ export const useMyJobOffers = () =>
                 throw error;
             }
         },
+        enabled,
         staleTime: 0,
         gcTime: 5 * 60 * 1000,
         meta: {errorMessage: '받은 제안을 가져오는데 실패했어요.'},
@@ -181,7 +182,7 @@ export const useUpsertJobPosting = (storeId: number) => {
 };
 
 // [사장] 내 매장 구인 공고 조회 — GET /api/stores/{storeId}/job-posting (§19, 없으면 null)
-export const useMyJobPosting = (storeId: number) =>
+export const useMyJobPosting = (storeId: number, enabled: boolean = true) =>
     useQuery({
         queryKey: recruitmentQueryKeys.myPosting(storeId),
         queryFn: async (): Promise<JobPosting | null> => {
@@ -192,7 +193,7 @@ export const useMyJobPosting = (storeId: number) =>
                 throw error;
             }
         },
-        enabled: !!storeId,
+        enabled: !!storeId && enabled,
         staleTime: 0,
         gcTime: 5 * 60 * 1000,
         meta: {errorMessage: '구인 공고를 가져오는데 실패했어요.'},
@@ -235,7 +236,7 @@ export const useApplyToJobPosting = () => {
 };
 
 // [직원] 내 지원 현황 — GET /api/job-applications/me (§19)
-export const useMyJobApplications = () =>
+export const useMyJobApplications = (enabled: boolean = true) =>
     useQuery({
         queryKey: recruitmentQueryKeys.myApplications(),
         queryFn: async (): Promise<JobApplication[]> => {
@@ -246,13 +247,14 @@ export const useMyJobApplications = () =>
                 throw error;
             }
         },
+        enabled,
         staleTime: 0,
         gcTime: 5 * 60 * 1000,
         meta: {errorMessage: '내 지원 현황을 가져오는데 실패했어요.'},
     });
 
 // [사장] 매장 지원자 리스트 — GET /api/stores/{storeId}/job-applications (§19)
-export const useStoreJobApplications = (storeId: number) =>
+export const useStoreJobApplications = (storeId: number, enabled: boolean = true) =>
     useQuery({
         queryKey: recruitmentQueryKeys.storeApplications(storeId),
         queryFn: async (): Promise<JobApplicantListItem[]> => {
@@ -263,7 +265,7 @@ export const useStoreJobApplications = (storeId: number) =>
                 throw error;
             }
         },
-        enabled: !!storeId,
+        enabled: !!storeId && enabled,
         staleTime: 0,
         gcTime: 5 * 60 * 1000,
         meta: {errorMessage: '지원자 리스트를 가져오는데 실패했어요.'},

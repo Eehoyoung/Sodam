@@ -25,10 +25,16 @@ const faqData = [
  * 시안의 제목/카테고리 선택 필드는 BE `/api/inquiries` 스키마(name/email/content 뿐)에
  * 대응하는 필드가 없어 실제 존재하는 이름/이메일/문의내용 3필드로 대체했다.
  */
-const QnAScreen: React.FC = () => {
+interface Props {
+    /** 개발용 시각 검증 전용 — 73 QnACompose 카드 재현을 위해 문의 작성 시트를 기본으로 연다. */
+    visualComposeOpen?: boolean;
+    captureMarker?: string;
+}
+
+const QnAScreen: React.FC<Props> = ({visualComposeOpen, captureMarker}) => {
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [query, setQuery] = useState('');
-    const [composeVisible, setComposeVisible] = useState(false);
+    const [composeVisible, setComposeVisible] = useState(!!visualComposeOpen);
     const [inquiryName, setInquiryName] = useState('');
     const [inquiryEmail, setInquiryEmail] = useState('');
     const [inquiryContent, setInquiryContent] = useState('');
@@ -125,6 +131,7 @@ const QnAScreen: React.FC = () => {
             <BottomSheet
                 visible={composeVisible}
                 onClose={() => setComposeVisible(false)}
+                captureMarker={captureMarker}
                 title="질문 남기기"
                 scrollable
                 primary={{

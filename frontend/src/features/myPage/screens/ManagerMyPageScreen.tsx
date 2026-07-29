@@ -16,26 +16,34 @@ import {
 } from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {useManagedStores} from '../../manager/hooks/useManagedStores';
-import {MANAGER_PERMISSION_LABEL} from '../../manager/types';
+import {MANAGER_PERMISSION_LABEL, ManagedStore} from '../../manager/types';
 import {spacing} from '../../../theme/tokens';
 
-const ManagerMyPageScreen: React.FC = () => {
+interface Props {
+    /** 개발용 시각 검증 전용 — 실 API 대신 고정 목록을 표시한다(로딩 스피너 애니메이션 비결정성 제거). */
+    visualFixture?: ManagedStore[];
+}
+
+const ManagerMyPageScreen: React.FC<Props> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const stores = useManagedStores();
 
     useFocusEffect(useCallback(() => {
+        if (visualFixture) {
+            return;
+        }
         stores.refetch();
         // The query observer object changes as data arrives; refetch itself is the stable dependency.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [stores.refetch]));
 
-    if (stores.isLoading) {
+    if (!visualFixture && stores.isLoading) {
         return <ScreenContainer header={<AppHeader title="내 위임 현황" onBack={() => navigation.goBack()} />}>
             <LoadingState title="위임 현황 불러오는 중" description="매장별 서명 상태와 권한을 확인하고 있어요." />
         </ScreenContainer>;
     }
 
-    if (stores.isError) {
+    if (!visualFixture && stores.isError) {
         return <ScreenContainer header={<AppHeader title="내 위임 현황" onBack={() => navigation.goBack()} />}>
             <ErrorState title="위임 현황을 불러오지 못했어요" description="잠시 후 다시 시도해 주세요."
                 primary={{label: '다시 시도', onPress: () => stores.refetch()}} />
@@ -47,10 +55,10 @@ const ManagerMyPageScreen: React.FC = () => {
             <ScrollView
                 contentContainerStyle={styles.content}
                 refreshControl={<RefreshControl refreshing={stores.isRefetching} onRefresh={() => stores.refetch()} />}>
-                {(stores.data?.length ?? 0) === 0 ? (
+                {((visualFixture ?? stores.data)?.length ?? 0) === 0 ? (
                     <EmptyState title="위임받은 매장이 없어요"
                         description="사업주가 위임장을 만들면 서명 대기 상태부터 이곳에 표시됩니다." />
-                ) : stores.data?.map(store => (
+                ) : (visualFixture ?? stores.data)?.map(store => (
                     // v3 링&패스: 아티팩트 N7의 list-item은 활성 여부와 무관하게 동일한 중립 카드 톤을 쓴다 — flat으로 통일.
                     <AppCard key={store.storeId} variant="flat">
                         <View style={styles.headingRow}>

@@ -17,12 +17,14 @@ interface Props {
     nextBillingDate?: string;
     /** 토스 빌링키 등록/변경 플로우로 이동 (PG 위임) */
     onManageViaToss: () => void;
+    captureMarker?: string;
 }
 
-export const BillingMethodSheet: React.FC<Props> = ({visible, onClose, currentMethod, nextBillingDate, onManageViaToss}) => (
+export const BillingMethodSheet: React.FC<Props> = ({visible, onClose, currentMethod, nextBillingDate, onManageViaToss, captureMarker}) => (
     <BottomSheet
         visible={visible}
         onClose={onClose}
+        captureMarker={captureMarker}
         title="결제 수단"
         description="카드 정보는 소담에 저장되지 않아요. 토스페이먼츠에서 안전하게 관리돼요."
         primary={{label: '결제 수단 변경', onPress: onManageViaToss}}

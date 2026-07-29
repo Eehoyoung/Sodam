@@ -33,13 +33,18 @@ const FILTERS: Array<{key: Category; label: string}> = [
  * 38 NotificationCenter — 확정 시안.
  * 알림 인박스 + 카테고리 필터. load/open/읽음처리 로직 보존.
  */
-const NotificationCenterScreen: React.FC = () => {
+interface Props {
+    /** 개발용 시각 검증 전용 — API 호출을 건너뛰고 고정 데이터를 표시한다. */
+    visualFixture?: InboxItem[];
+}
+
+const NotificationCenterScreen: React.FC<Props> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const c = useThemeColors();
-    const [items, setItems] = useState<InboxItem[]>([]);
+    const [items, setItems] = useState<InboxItem[]>(visualFixture ?? []);
     const [filter, setFilter] = useState<Category>('ALL');
     const [refreshing, setRefreshing] = useState(false);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!visualFixture);
 
     const load = useCallback(async () => {
         try {
@@ -54,7 +59,11 @@ const NotificationCenterScreen: React.FC = () => {
     }, []);
 
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         load();
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- visualFixture is a dev-only static prop, not expected to change
     }, [load]);
 
     const onRefresh = () => {

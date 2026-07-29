@@ -61,11 +61,18 @@ function sortForTab(list: JobSeekerListItem[], typeFilter: TypeFilterKey): JobSe
     return [...list].sort((a, b) => Number(b.availableToday) - Number(a.availableToday));
 }
 
-const JobSeekerListScreen: React.FC = () => {
+interface Props {
+    /** 개발용 시각 검증 전용 — route.params 없이도 storeId를 지정한다. */
+    visualStoreId?: number;
+    /** 개발용 시각 검증 전용 — 실 API 대신 고정 목록을 표시한다. */
+    visualFixture?: JobSeekerListItem[];
+}
+
+const JobSeekerListScreen: React.FC<Props> = ({visualStoreId, visualFixture}) => {
     const c = useThemeColors();
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const route = useRoute<RouteProp<HomeStackParamList, 'JobSeekerList'>>();
-    const {storeId} = route.params;
+    const storeId = visualStoreId ?? route.params.storeId;
 
     const [topTab, setTopTab] = useState<TopTabKey>('nearby');
     const [typeFilter, setTypeFilter] = useState<TypeFilterKey>('ALL');
@@ -84,8 +91,8 @@ const JobSeekerListScreen: React.FC = () => {
     // 수동 `useFocusEffect(refetch)` + 상단 탭(`topTab`) 변경 `useEffect(refetch)` 가 함께 있어
     // 최초 진입 시 마운트 자동조회까지 겹쳐 최대 3중으로 API가 호출됐다. 'ourPostings' 세그먼트는
     // 조건부 렌더로 매번 새로 마운트되는 `OurPostingScreen` 자체의 마운트 기반 재조회로 충분하다.
-    const list = useMemo(() => sortForTab(data ?? [], typeFilter), [data, typeFilter]);
-    const errorCode = isError ? extractErrorCode(error) : undefined;
+    const list = useMemo(() => sortForTab(visualFixture ?? data ?? [], typeFilter), [visualFixture, data, typeFilter]);
+    const errorCode = !visualFixture && isError ? extractErrorCode(error) : undefined;
     const locationNotSet = errorCode === 'STORE_LOCATION_NOT_SET';
 
     const header = <AppHeader title="주변 구직자·채용" onBack={() => navigation.goBack()} />;
@@ -111,9 +118,9 @@ const JobSeekerListScreen: React.FC = () => {
                             style={styles.typeSegment}
                         />
 
-                        {isLoading ? (
+                        {!visualFixture && isLoading ? (
                             <LoadingState title="구직자 불러오는 중" description="잠시만 기다려 주세요" />
-                        ) : isError ? (
+                        ) : !visualFixture && isError ? (
                             locationNotSet ? (
                                 <View testID="job-seeker-location-not-set">
                                     <ErrorState

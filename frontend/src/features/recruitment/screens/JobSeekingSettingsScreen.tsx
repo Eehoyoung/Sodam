@@ -52,6 +52,7 @@ import {
     JobCategoryCode,
     JobDayOfWeek,
     JobSeekingErrorCode,
+    JobSeekingProfile,
     JobSeekingType,
     JobSeekingUpdatePayload,
     MAX_JOB_CATEGORIES,
@@ -81,10 +82,19 @@ function extractErrorMessage(err: unknown): string | undefined {
     return (err as {response?: {data?: {message?: string}}})?.response?.data?.message;
 }
 
-const JobSeekingSettingsScreen: React.FC = () => {
+interface Props {
+    /** 개발용 시각 검증 전용 — 실 API 대신 고정 프로필을 표시한다. */
+    visualFixture?: JobSeekingProfile;
+}
+
+const JobSeekingSettingsScreen: React.FC<Props> = ({visualFixture}) => {
     const c = useThemeColors();
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
-    const {data, isLoading, isError, refetch} = useMyJobSeeking();
+    const query = useMyJobSeeking();
+    const data = visualFixture ?? query.data;
+    const isLoading = !visualFixture && query.isLoading;
+    const isError = !visualFixture && query.isError;
+    const refetch = query.refetch;
     const updateMutation = useUpdateMyJobSeeking();
 
     const [dirty, setDirty] = useState(false);

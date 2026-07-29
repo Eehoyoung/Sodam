@@ -38,19 +38,27 @@ type TaxInfoDetailScreenNavigationProp = NativeStackNavigationProp<RootStackPara
  * BE(TaxInfoResponseDto)에 관련 링크 필드가 없어 해당 UI는 제거.
  * InfoChecklist(번호매김 체크리스트) 추가.
  */
-const TaxInfoDetailScreen = () => {
+interface Props {
+    /** 개발용 시각 검증 전용 — API 호출을 건너뛰고 고정 데이터를 표시한다. */
+    visualFixture?: TaxInfoDetail;
+}
+
+const TaxInfoDetailScreen: React.FC<Props> = ({visualFixture}) => {
     const navigation = useNavigation<TaxInfoDetailScreenNavigationProp>();
     const route = useRoute();
-    const {taxInfoId} = route.params as {taxInfoId: number};
+    const {taxInfoId} = (route.params as {taxInfoId: number} | undefined) ?? {taxInfoId: 0};
     const c = useThemeColors();
-    const [loading, setLoading] = useState(true);
-    const [taxInfo, setTaxInfo] = useState<TaxInfoDetail | null>(null);
+    const [loading, setLoading] = useState(!visualFixture);
+    const [taxInfo, setTaxInfo] = useState<TaxInfoDetail | null>(visualFixture ?? null);
     const [isBookmarked, setIsBookmarked] = useState(false);
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const [toastType, setToastType] = useState<'success' | 'error' | 'info' | 'warning'>('info');
 
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         let mounted = true;
         const fetchTaxInfo = async () => {
             try {
@@ -85,6 +93,7 @@ const TaxInfoDetailScreen = () => {
         return () => {
             mounted = false;
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- visualFixture is a dev-only static prop, not expected to change
     }, [taxInfoId]);
 
     const toggleBookmark = () => {
