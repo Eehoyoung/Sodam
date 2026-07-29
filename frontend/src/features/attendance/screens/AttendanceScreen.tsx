@@ -44,6 +44,10 @@ export interface AttendanceVisualFixture {
     currentLocation?: {latitude: number; longitude: number} | null;
     selectedWage?: number;
     elapsedSeconds?: number;
+    /** 개발용 시각 검증 전용 — NFC 판독 모달(59 NFCScanModal)을 강제로 열린 상태로 렌더링한다. */
+    forceShowNfcReader?: boolean;
+    /** 개발용 시각 검증 전용 — Modal은 별도 Android 창이라 배경 마커가 uiautomator에 안 잡힌다. */
+    captureMarker?: string;
 }
 
 interface AttendanceScreenProps {
@@ -68,7 +72,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
     const [workplaces, setWorkplaces] = useState<{ id: string; name: string }[]>(visualFixture?.workplaces ?? []);
     const [locationPermissionGranted, setLocationPermissionGranted] = useState(visualFixture?.locationPermissionGranted ?? false);
     const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(visualFixture?.currentLocation ?? null);
-    const [showNFCReader, setShowNFCReader] = useState(false);
+    const [showNFCReader, setShowNFCReader] = useState(visualFixture?.forceShowNfcReader ?? false);
     const [, setNfcTagId] = useState<string>('');
     const [checkInMethod, setCheckInMethod] = useState<CheckInMethod>(visualFixture?.checkInMethod ?? 'standard');
     // 근무 중 경과 시간 표시를 매초 갱신하기 위한 더미 tick (실제 값은 항상 Date.now() 재계산 — drift 누적 방지)
@@ -770,6 +774,9 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
             onRequestClose={cancelNFCScan}
         >
             <View style={styles.nfcDarkContainer}>
+                {visualFixture?.captureMarker ? (
+                    <Text style={styles.captureMarker}>{visualFixture.captureMarker}</Text>
+                ) : null}
                 <View style={styles.nfcIconCircle}>
                     <Ionicons name="wifi" size={36} color="#2DD4BF" />
                 </View>
@@ -1127,6 +1134,7 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
     },
     // 59 NFCScanModal — 항상 다크(라이트/다크 모드 설정과 무관, 시안 device__screen--dark 고정)라
     // 테마 토큰(c.*) 대신 고정 hex 를 쓴다(§ v3 03-employee.html "59 NFCScanModal").
+    captureMarker: {position: 'absolute', width: 1, height: 1, fontSize: 1, lineHeight: 1, color: 'transparent'},
     nfcDarkContainer: {
         flex: 1,
         backgroundColor: '#12141B',

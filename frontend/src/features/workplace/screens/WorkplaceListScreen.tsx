@@ -28,14 +28,26 @@ import storeService, {StoreSummaryDto} from '../../store/services/storeService';
  * "내가 직원으로 소속된 매장"(GET /api/stores/employee/{userId})만 보여준다.
  * 개인 근무지 트래킹은 새 BE 엔티티가 필요한 별도 스코프로 남겨둔다.
  */
-const WorkplaceListScreen: React.FC = () => {
+/** 개발용 시각 검증 전용 — GET /api/stores/employee/{userId} 조회를 고정 목록으로 대체한다. */
+export interface WorkplaceListVisualFixture {
+    stores: StoreSummaryDto[];
+}
+
+interface Props {
+    visualFixture?: WorkplaceListVisualFixture;
+}
+
+const WorkplaceListScreen: React.FC<Props> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const {user} = useAuth();
-    const [stores, setStores] = useState<StoreSummaryDto[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [stores, setStores] = useState<StoreSummaryDto[]>(visualFixture?.stores ?? []);
+    const [loading, setLoading] = useState(!visualFixture);
     const [error, setError] = useState(false);
 
     const load = useCallback(async () => {
+        if (visualFixture) {
+            return;
+        }
         if (!user?.id) {
             setLoading(false);
             return;
@@ -51,11 +63,14 @@ const WorkplaceListScreen: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [user?.id]);
+    }, [user?.id, visualFixture]);
 
     useFocusEffect(useCallback(() => {
+        if (visualFixture) {
+            return;
+        }
         load();
-    }, [load]));
+    }, [load, visualFixture]));
 
     const header = <AppHeader title="근무지" onBack={() => navigation.goBack()}
         actions={[{label: '추가', onPress: () => navigation.navigate('JoinStoreByCode')}]} />;

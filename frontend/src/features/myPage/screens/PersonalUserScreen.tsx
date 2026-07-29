@@ -28,14 +28,14 @@ import AuthContext from '../../../contexts/AuthContext';
 import storeService from '../../store/services/storeService';
 
 // 타입 정의
-interface Store {
+export interface Store {
     id: string;
     name: string;
     color: string;
     hourlyWage: number;
 }
 
-interface WorkRecord {
+export interface WorkRecord {
     id: string;
     storeId: string;
     storeName: string;
@@ -45,7 +45,7 @@ interface WorkRecord {
     timestamp: number;
 }
 
-interface WorkSession {
+export interface WorkSession {
     storeId: string;
     storeName: string;
     startTime: Date | null;
@@ -54,6 +54,21 @@ interface WorkSession {
     isOnBreak: boolean;
     totalWorkTime: number; // 초 단위
     totalBreakTime: number; // 초 단위
+}
+
+/** 개발용 시각 검증 전용 — 실 API(매장 목록) 호출과 초 단위 타이머 리렌더를 우회하고 고정 상태를 표시한다. */
+export interface PersonalUserVisualFixture {
+    stores: Store[];
+    selectedStoreId?: string;
+    workSessions?: { [storeId: string]: WorkSession };
+    allRecords?: WorkRecord[];
+    selectedMonth?: string;
+    /** 근무 경과시간·"오늘" 날짜 계산을 고정하는 캡처 시각(ms) — 없으면 Date.now() 사용. */
+    nowMs?: number;
+}
+
+interface PersonalUserScreenProps {
+    visualFixture?: PersonalUserVisualFixture;
 }
 
 interface DailyWorkSummary {
@@ -85,7 +100,7 @@ interface MonthlyStats {
     };
 }
 
-const MultiStoreWorkScreen: React.FC = () => {
+const MultiStoreWorkScreen: React.FC<PersonalUserScreenProps> = ({visualFixture}) => {
     const c = useThemeColors();
     const insets = useSafeAreaInsets();
     const styles = useMemo(() => createStyles(c), [c]);
@@ -93,19 +108,29 @@ const MultiStoreWorkScreen: React.FC = () => {
     // AuthContext에서 사용자 정보 가져오기
     const { user } = useContext(AuthContext);
 
+    // 개발용 시각 검증 전용 — 캡처 시각을 고정할 수 있게 하는 헬퍼. 실사용(visualFixture 없음)에는 항상 실시간을 그대로 쓴다.
+    const getNow = useCallback(
+        () => (visualFixture?.nowMs !== undefined ? new Date(visualFixture.nowMs) : new Date()),
+        [visualFixture?.nowMs],
+    );
+
     // 매장 데이터 - API 연동
-    const [stores, setStores] = useState<Store[]>([]);
-    const [, setLoadingStores] = useState<boolean>(true);
+    const [stores, setStores] = useState<Store[]>(visualFixture?.stores ?? []);
+    const [, setLoadingStores] = useState<boolean>(!visualFixture);
 
     // 상태 관리
     const [currentTime, setCurrentTime] = useState<string>('');
-    const [selectedStoreId, setSelectedStoreId] = useState<string>('');
-    const [workSessions, setWorkSessions] = useState<{ [storeId: string]: WorkSession }>({});
-    const [allRecords, setAllRecords] = useState<WorkRecord[]>([]);
+    const [selectedStoreId, setSelectedStoreId] = useState<string>(
+        visualFixture?.selectedStoreId ?? visualFixture?.stores?.[0]?.id ?? '',
+    );
+    const [workSessions, setWorkSessions] = useState<{ [storeId: string]: WorkSession }>(visualFixture?.workSessions ?? {});
+    const [allRecords, setAllRecords] = useState<WorkRecord[]>(visualFixture?.allRecords ?? []);
     const [showStoreSelector, setShowStoreSelector] = useState<boolean>(false);
     const [showManualModal, setShowManualModal] = useState<boolean>(false);
     const [showMonthlyView, setShowMonthlyView] = useState<boolean>(false);
-    const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7));
+    const [selectedMonth, setSelectedMonth] = useState<string>(
+        visualFixture?.selectedMonth ?? getNow().toISOString().slice(0, 7),
+    );
 
     // 현재 선택된 매장 정보
     const currentStore = useMemo(() => {
@@ -131,7 +156,7 @@ const MultiStoreWorkScreen: React.FC = () => {
     );
 
     // 오늘 날짜
-    const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+    const today = useMemo(() => getNow().toISOString().slice(0, 10), [getNow]);
 
     // 오늘의 기록들 (매장별로 그룹화)
     const todayRecords = useMemo(() => {
@@ -197,7 +222,7 @@ const MultiStoreWorkScreen: React.FC = () => {
             // 현재 진행 중인 근무시간 추가
             const session = workSessions[storeId];
             if (session?.isWorking && session.startTime && !session.isOnBreak) {
-                workTime += (new Date().getTime() - session.startTime.getTime()) / 1000;
+                workTime += (getNow().getTime() - session.startTime.getTime()) / 1000;
             }
             workTime += session?.totalWorkTime || 0;
 
@@ -215,7 +240,7 @@ const MultiStoreWorkScreen: React.FC = () => {
         });
 
         return summary;
-    }, [todayRecords, workSessions, stores, today]);
+    }, [todayRecords, workSessions, stores, today, getNow]);
 
     // 월별 통계 계산기 — monthKey 를 인자로 받아, 모달의 selectedMonth 뿐 아니라
     // 홈 화면 money-card(이번 달 요약)에도 동일 로직을 재사용한다.
@@ -332,6 +357,9 @@ const MultiStoreWorkScreen: React.FC = () => {
 
     // 매장 데이터 로딩 (API 연동)
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         const loadStores = async () => {
             if (!user?.id) {
                 setLoadingStores(false);
@@ -366,12 +394,12 @@ const MultiStoreWorkScreen: React.FC = () => {
         };
 
         loadStores();
-    }, [user?.id]);
+    }, [user?.id, visualFixture]);
 
     // 현재 시간 업데이트
     useEffect(() => {
         const updateTime = () => {
-            const now = new Date();
+            const now = getNow();
             const timeString = now.toLocaleDateString('ko-KR', {
                 year: 'numeric',
                 month: 'long',
@@ -384,17 +412,24 @@ const MultiStoreWorkScreen: React.FC = () => {
         };
 
         updateTime();
+        // 개발용 시각 검증 전용 — fixture 모드에서는 초 단위 인터벌을 걸지 않아 캡처 간 값이 흔들리지 않게 한다.
+        if (visualFixture) {
+            return;
+        }
         const interval = setInterval(updateTime, 1000);
         return () => clearInterval(interval);
-    }, []);
+    }, [getNow, visualFixture]);
 
     // 실시간 근무시간 업데이트
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         const interval = setInterval(() => {
             setWorkSessions(prev => ({ ...prev })); // 강제 리렌더링
         }, 1000);
         return () => clearInterval(interval);
-    }, []);
+    }, [visualFixture]);
 
     // 현재 근무시간 계산
     const getCurrentWorkTime = (session: WorkSession): string => {
@@ -406,7 +441,7 @@ const MultiStoreWorkScreen: React.FC = () => {
             return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         }
 
-        const now = new Date();
+        const now = getNow();
         const workDuration = Math.floor((now.getTime() - session.startTime.getTime()) / 1000) + session.totalWorkTime;
         const hours = Math.floor(workDuration / 3600);
         const minutes = Math.floor((workDuration % 3600) / 60);
@@ -421,7 +456,7 @@ const MultiStoreWorkScreen: React.FC = () => {
             return Math.floor((session.totalWorkTime / 3600) * currentStore.hourlyWage);
         }
 
-        const now = new Date();
+        const now = getNow();
         const workDuration = Math.floor((now.getTime() - session.startTime.getTime()) / 1000) + session.totalWorkTime;
         return Math.floor((workDuration / 3600) * currentStore.hourlyWage);
     };

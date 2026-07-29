@@ -70,22 +70,41 @@ interface QuickMenuItem {
     isNew?: boolean;
 }
 
-const EmployeeAttendanceHome: React.FC = () => {
+/** 개발용 시각 검증 전용 — 실 API 호출을 전부 우회하고 고정 상태를 렌더링한다. */
+export interface EmployeeAttendanceHomeVisualFixture {
+    state: Exclude<AttendanceState, 'LOADING'>;
+    stores: MyStore[];
+    selectedStoreId: number;
+    todayRecord: TodayAttendance | null;
+    weekShifts: WorkShift[];
+    monthlyAttendances: TodayAttendance[];
+    policies?: PolicyInfo[];
+    pendingContractCount?: number;
+    unreadNoticeCount?: number;
+    /** WORKING 상태의 경과시간 계산을 고정하는 캡처 시각(ms) — 없으면 Date.now() 사용. */
+    nowMs?: number;
+}
+
+interface EmployeeAttendanceHomeProps {
+    visualFixture?: EmployeeAttendanceHomeVisualFixture;
+}
+
+const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const {user} = useAuth();
     const c = useThemeColors();
     const managedStores = useManagedStores();
 
-    const [state, setState] = useState<AttendanceState>('LOADING');
-    const [stores, setStores] = useState<MyStore[]>([]);
-    const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
-    const [todayRecord, setTodayRecord] = useState<TodayAttendance | null>(null);
-    const [weekShifts, setWeekShifts] = useState<WorkShift[]>([]);
-    const [monthlyAttendances, setMonthlyAttendances] = useState<TodayAttendance[]>([]);
+    const [state, setState] = useState<AttendanceState>(visualFixture?.state ?? 'LOADING');
+    const [stores, setStores] = useState<MyStore[]>(visualFixture?.stores ?? []);
+    const [selectedStoreId, setSelectedStoreId] = useState<number | null>(visualFixture?.selectedStoreId ?? null);
+    const [todayRecord, setTodayRecord] = useState<TodayAttendance | null>(visualFixture?.todayRecord ?? null);
+    const [weekShifts, setWeekShifts] = useState<WorkShift[]>(visualFixture?.weekShifts ?? []);
+    const [monthlyAttendances, setMonthlyAttendances] = useState<TodayAttendance[]>(visualFixture?.monthlyAttendances ?? []);
     const [tick, setTick] = useState(0);
-    const [policies, setPolicies] = useState<PolicyInfo[]>([]);
-    const [pendingContractCount, setPendingContractCount] = useState(0);
-    const [unreadNoticeCount, setUnreadNoticeCount] = useState(0);
+    const [policies, setPolicies] = useState<PolicyInfo[]>(visualFixture?.policies ?? []);
+    const [pendingContractCount, setPendingContractCount] = useState(visualFixture?.pendingContractCount ?? 0);
+    const [unreadNoticeCount, setUnreadNoticeCount] = useState(visualFixture?.unreadNoticeCount ?? 0);
 
     const selectedStore = useMemo(
         () => stores.find(store => store.id === selectedStoreId) ?? stores[0] ?? null,
@@ -165,6 +184,9 @@ const EmployeeAttendanceHome: React.FC = () => {
 
     useFocusEffect(
         useCallback(() => {
+            if (visualFixture) {
+                return;
+            }
             loadStores();
             managedStores.refetch();
             // 포커스 복귀 시 현재 매장 출퇴근 상태를 항상 최신화한다.
@@ -180,14 +202,16 @@ const EmployeeAttendanceHome: React.FC = () => {
     );
 
     // 실시간 동기화 — 내 매장의 출퇴근/직원 변경 시(보고 있는 동안) 선택 매장 데이터 즉시 갱신.
-    useStoreLiveSync(stores.map(s => s.id), () => {
+    // 시각 검증 중에는 실 소켓 연결을 시도하지 않도록 빈 배열(no-op)을 넘긴다.
+    useStoreLiveSync(visualFixture ? [] : stores.map(s => s.id), () => {
         if (selectedStore) {
             loadStoreScopedData(selectedStore);
         }
     });
 
     useEffect(() => {
-        if (!selectedStore || !user?.id) {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- boolean condition (logical OR), not value coalescing
+        if (visualFixture || !selectedStore || !user?.id) {
             return;
         }
         loadStoreScopedData(selectedStore);
@@ -208,6 +232,9 @@ const EmployeeAttendanceHome: React.FC = () => {
     // 정부 지원 정책 — MasterMyPageScreen 과 동일 패턴(상위 3건만 요약 표시).
     useFocusEffect(
         useCallback(() => {
+            if (visualFixture) {
+                return;
+            }
             (async () => {
                 try {
                     const policyDtos: any[] = await policyService.getPoliciesByCategory('ALL');
@@ -229,6 +256,9 @@ const EmployeeAttendanceHome: React.FC = () => {
     // 알림 스트립 — 이미 존재하는 서비스 함수(내 계약서/내 공지)로만 계산. 새 BE 엔드포인트 추가 없음.
     useFocusEffect(
         useCallback(() => {
+            if (visualFixture) {
+                return;
+            }
             let active = true;
             (async () => {
                 try {
@@ -261,8 +291,9 @@ const EmployeeAttendanceHome: React.FC = () => {
             return 0;
         }
         const start = parseServerDateTime(todayRecord.checkInTime).getTime();
-        return Math.max(0, Date.now() - start) / 1000;
-    }, [state, todayRecord?.checkInTime, tick]);
+        const now = visualFixture?.nowMs ?? Date.now();
+        return Math.max(0, now - start) / 1000;
+    }, [state, todayRecord?.checkInTime, tick, visualFixture?.nowMs]);
 
     const todaySchedule = useMemo(() => {
         const today = toIsoDate(new Date());
@@ -293,7 +324,8 @@ const EmployeeAttendanceHome: React.FC = () => {
             estimatedWage += Math.round(hours * (item.appliedHourlyWage ?? selectedStore?.appliedHourlyWage ?? 0));
         }
         if (state === 'WORKING' && todayRecord?.checkInTime && selectedStore) {
-            const elapsedHours = Math.max(0, Date.now() - parseServerDateTime(todayRecord.checkInTime).getTime()) / 3600000;
+            const now = visualFixture?.nowMs ?? Date.now();
+            const elapsedHours = Math.max(0, now - parseServerDateTime(todayRecord.checkInTime).getTime()) / 3600000;
             estimatedWage += Math.round(elapsedHours * selectedStore.appliedHourlyWage);
             attendanceDays.add(todayRecord.checkInTime.slice(0, 10));
         }
@@ -301,7 +333,7 @@ const EmployeeAttendanceHome: React.FC = () => {
             attendanceDays: attendanceDays.size,
             estimatedWage,
         };
-    }, [monthlyAttendances, selectedStore, state, todayRecord]);
+    }, [monthlyAttendances, selectedStore, state, todayRecord, visualFixture?.nowMs]);
 
     // 이번 달 근무시간(신규) — monthlySummary(estimatedWage/attendanceDays)는 그대로 두고 옆에 시간 합산만 추가.
     const monthlyWorkedMinutes = useMemo(() => {
@@ -314,10 +346,11 @@ const EmployeeAttendanceHome: React.FC = () => {
             }
         }
         if (state === 'WORKING' && todayRecord?.checkInTime) {
-            minutes += Math.max(0, Date.now() - parseServerDateTime(todayRecord.checkInTime).getTime()) / 60000;
+            const now = visualFixture?.nowMs ?? Date.now();
+            minutes += Math.max(0, now - parseServerDateTime(todayRecord.checkInTime).getTime()) / 60000;
         }
         return minutes;
-    }, [monthlyAttendances, state, todayRecord?.checkInTime, tick]);
+    }, [monthlyAttendances, state, todayRecord?.checkInTime, tick, visualFixture?.nowMs]);
     const monthlyWorkedHoursLabel = `${Math.round(monthlyWorkedMinutes / 60)}시간`;
 
     // 매장 헤더의 '시급'은 현재 적용 시급(wages 엔드포인트로 갱신된 selectedStore)을 우선 표시한다.

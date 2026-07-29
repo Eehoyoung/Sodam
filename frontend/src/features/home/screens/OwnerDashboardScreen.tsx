@@ -28,13 +28,25 @@ import {fetchDashboardStats, fetchTodayStats, MonthPayrollStats, TodayStats} fro
 import {useSubscription} from '../../subscription/hooks/useSubscription';
 import {PastDueBanner} from '../../subscription/components/PastDueBanner';
 import {useManagedStores} from '../../manager/hooks/useManagedStores';
-import type {ManagerPermission} from '../../manager/types';
+import type {ManagedStore, ManagerPermission} from '../../manager/types';
 
 type MonthPayroll = MonthPayrollStats;
 
-interface SimpleStore {
+export interface SimpleStore {
     id: number;
     storeName: string;
+}
+
+/** 개발용 시각 검증 전용 — 08 OwnerHome(OwnerDashboardContent)의 실 API 조회를 고정 데이터로 대체한다. */
+export interface OwnerDashboardVisualFixture {
+    stores: SimpleStore[];
+    selectedStoreId: number | null;
+    today: TodayStats | null;
+    monthly: MonthPayrollStats | null;
+}
+
+interface OwnerDashboardContentProps {
+    visualFixture?: OwnerDashboardVisualFixture;
 }
 
 /**
@@ -43,7 +55,7 @@ interface SimpleStore {
  * "빠르게 하기"·"인사이트"는 10 OwnerDashboardDetail(별도 라우트)로 분리했다
  * (docs/260720/owner-dashboard-code-vs-artifact.html 실사 결과 반영).
  */
-const OwnerDashboardContent: React.FC = () => {
+export const OwnerDashboardContent: React.FC<OwnerDashboardContentProps> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const c = useThemeColors();
     // 결제 실패(PAST_DUE) 침묵 이탈 방지 — 카드 재등록 유도 배너 노출용 (T1-6)
@@ -51,11 +63,11 @@ const OwnerDashboardContent: React.FC = () => {
     const isPastDue = subscription?.status === 'PAST_DUE';
     const goReRegisterCard = useCallback(() => navigation.navigate('Subscribe'), [navigation]);
     const [refreshing, setRefreshing] = useState(false);
-    const [stores, setStores] = useState<SimpleStore[]>([]);
-    const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
-    const [today, setToday] = useState<TodayStats | null>(null);
-    const [monthly, setMonthly] = useState<MonthPayroll | null>(null);
-    const [loaded, setLoaded] = useState(false);
+    const [stores, setStores] = useState<SimpleStore[]>(visualFixture?.stores ?? []);
+    const [selectedStoreId, setSelectedStoreId] = useState<number | null>(visualFixture?.selectedStoreId ?? null);
+    const [today, setToday] = useState<TodayStats | null>(visualFixture?.today ?? null);
+    const [monthly, setMonthly] = useState<MonthPayroll | null>(visualFixture?.monthly ?? null);
+    const [loaded, setLoaded] = useState(!!visualFixture);
     const [error, setError] = useState(false);
     const [setupRefreshKey, setSetupRefreshKey] = useState(0);
 
@@ -111,14 +123,24 @@ const OwnerDashboardContent: React.FC = () => {
     // 포커스마다 재조회 — 출퇴근/직원 입사/매장 변경이 대시보드(출근 인원·직원 수·매장)에 즉시 반영.
     useFocusEffect(
         useCallback(() => {
+            if (visualFixture) {
+                return;
+            }
             load();
-        }, [load]),
+        }, [load, visualFixture]),
     );
 
     // 실시간 동기화 — 선택 매장의 출퇴근/직원 변경 시(보고 있는 동안) 대시보드 즉시 갱신.
-    useStoreLiveSync(selectedStoreId ? [selectedStoreId] : [], () => load());
+    useStoreLiveSync(visualFixture ? [] : selectedStoreId ? [selectedStoreId] : [], () => {
+        if (!visualFixture) {
+            load();
+        }
+    });
 
     const onRefresh = async () => {
+        if (visualFixture) {
+            return;
+        }
         setRefreshing(true);
         await load();
         setSetupRefreshKey(k => k + 1);
@@ -293,16 +315,32 @@ const StatTile: React.FC<{label: string; value: string; tone: string}> = ({label
     );
 };
 
-const ManagerDashboardContent: React.FC<{storeId: number}> = ({storeId}) => {
+/** 개발용 시각 검증 전용 — 46 ManagerHome(ManagerDashboardContent)의 실 위임 조회/오늘 통계 조회를 고정 데이터로 대체한다. */
+export interface ManagerDashboardVisualFixture {
+    delegation: ManagedStore;
+    today: TodayStats;
+}
+
+interface ManagerDashboardContentProps {
+    storeId: number;
+    visualFixture?: ManagerDashboardVisualFixture;
+}
+
+export const ManagerDashboardContent: React.FC<ManagerDashboardContentProps> = ({storeId, visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const c = useThemeColors();
     const managedStores = useManagedStores();
-    const delegation = managedStores.data?.find(store => store.storeId === storeId && store.active);
-    const [today, setToday] = useState<TodayStats | null>(null);
+    const delegation = visualFixture
+        ? visualFixture.delegation
+        : managedStores.data?.find(store => store.storeId === storeId && store.active);
+    const [today, setToday] = useState<TodayStats | null>(visualFixture?.today ?? null);
     const [error, setError] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
 
     const load = useCallback(async () => {
+        if (visualFixture) {
+            return;
+        }
         try {
             setError(false);
             const data = await fetchTodayStats(storeId);
@@ -311,15 +349,22 @@ const ManagerDashboardContent: React.FC<{storeId: number}> = ({storeId}) => {
             console.warn('[ManagerDashboard] load failed', e);
             setError(true);
         }
-    }, [storeId]);
+    }, [storeId, visualFixture]);
 
     useFocusEffect(useCallback(() => {
+        if (visualFixture) {
+            return;
+        }
         managedStores.refetch();
         load();
         // The query observer object changes as data arrives; refetch itself is the stable dependency.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [load, managedStores.refetch]));
-    useStoreLiveSync([storeId], load);
+    }, [load, managedStores.refetch, visualFixture]));
+    useStoreLiveSync(visualFixture ? [] : [storeId], () => {
+        if (!visualFixture) {
+            load();
+        }
+    });
 
     const has = (permission: ManagerPermission) => delegation?.permissions.includes(permission) === true;
     if (error) {
@@ -328,7 +373,7 @@ const ManagerDashboardContent: React.FC<{storeId: number}> = ({storeId}) => {
                 primary={{label: '다시 시도', onPress: load}} />
         </ScreenContainer>;
     }
-    if (managedStores.isLoading || !today) {
+    if ((!visualFixture && managedStores.isLoading) || !today) {
         return <ScreenContainer header={<AppHeader title="매장 운영" onBack={() => navigation.goBack()} />}>
             <LoadingState title="매장 운영 현황 확인 중" description="위임 권한과 오늘 출근 현황을 불러오고 있어요." />
         </ScreenContainer>;
@@ -346,6 +391,9 @@ const ManagerDashboardContent: React.FC<{storeId: number}> = ({storeId}) => {
             onBack={() => navigation.goBack()} />}>
             <ScrollView contentContainerStyle={styles.content}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => {
+                    if (visualFixture) {
+                        return;
+                    }
                     setRefreshing(true);
                     await Promise.all([load(), managedStores.refetch()]);
                     setRefreshing(false);

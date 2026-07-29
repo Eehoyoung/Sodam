@@ -11,7 +11,7 @@ import storeService from '../../store/services/storeService';
 import {fetchTodayStats} from '../../store/services/insightsService';
 import notificationService from '../../notification/services/notificationService';
 
-interface PendingItem {
+export interface PendingItem {
     employeeId: number;
     employeeName: string;
     type: 'NO_CHECK_IN' | 'NO_CHECK_OUT';
@@ -19,18 +19,30 @@ interface PendingItem {
     referenceTime?: string;
 }
 
+/** 개발용 시각 검증 전용 — 실 API 대신 고정 이상 알림 목록을 표시한다. */
+export interface MissingAttendanceVisualFixture {
+    items: PendingItem[];
+}
+
+interface Props {
+    visualFixture?: MissingAttendanceVisualFixture;
+}
+
 /**
  * 25 MissingAttendanceCenter — 확정 시안.
  * 사장 출퇴근 이상 알림 센터. load/sendNudge 로직 + 당겨서 새로고침 보존.
  */
-const MissingAttendanceCenterScreen: React.FC = () => {
+const MissingAttendanceCenterScreen: React.FC<Props> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const c = useThemeColors();
-    const [items, setItems] = useState<PendingItem[]>([]);
+    const [items, setItems] = useState<PendingItem[]>(visualFixture?.items ?? []);
     const [refreshing, setRefreshing] = useState(false);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!visualFixture);
 
     const load = useCallback(async () => {
+        if (visualFixture) {
+            return;
+        }
         try {
             const stores = await storeService.getMasterStores('current');
             const collected: PendingItem[] = [];
@@ -52,7 +64,7 @@ const MissingAttendanceCenterScreen: React.FC = () => {
             setLoading(false);
             setRefreshing(false);
         }
-    }, []);
+    }, [visualFixture]);
 
     useEffect(() => {
         load();

@@ -19,22 +19,34 @@ import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {formatMoney} from '../../../common/format/money';
 import {fetchDashboardStats, MonthPayrollStats} from '../../store/services/insightsService';
 
+/** 개발용 시각 검증 전용 — fetchDashboardStats 호출을 고정 데이터로 대체한다. */
+export interface OwnerDashboardDetailVisualFixture {
+    monthly: MonthPayrollStats;
+}
+
+interface Props {
+    visualFixture?: OwnerDashboardDetailVisualFixture;
+}
+
 /**
  * 10 OwnerDashboardDetail — v3 시안.
  * 08 OwnerHome 에 병합돼 있던 "빠르게 하기" 4행 + "인사이트" 카드를 별도 라우트로 분리(§4.1).
  * 정보 밀도는 D-1 원칙(v2 수준 유지)에 따라 기존 4개 항목을 QuickMenuGrid 로 그대로 보존.
  */
-const OwnerDashboardDetailScreen: React.FC = () => {
+const OwnerDashboardDetailScreen: React.FC<Props> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const route = useRoute<RouteProp<HomeStackParamList, 'OwnerDashboardDetail'>>();
     const c = useThemeColors();
     const storeId = route.params?.storeId;
 
-    const [monthly, setMonthly] = useState<MonthPayrollStats | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [monthly, setMonthly] = useState<MonthPayrollStats | null>(visualFixture?.monthly ?? null);
+    const [loading, setLoading] = useState(!visualFixture);
     const [error, setError] = useState(false);
 
     const load = useCallback(async () => {
+        if (visualFixture) {
+            return;
+        }
         if (!storeId) {
             setLoading(false);
             return;
@@ -49,11 +61,14 @@ const OwnerDashboardDetailScreen: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [storeId]);
+    }, [storeId, visualFixture]);
 
     useFocusEffect(useCallback(() => {
+        if (visualFixture) {
+            return;
+        }
         load();
-    }, [load]));
+    }, [load, visualFixture]));
 
     const quickMenus: QuickMenuTileItem[] = [
         {

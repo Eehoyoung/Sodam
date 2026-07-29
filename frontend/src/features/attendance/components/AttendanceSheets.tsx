@@ -34,10 +34,16 @@ export const AttendanceFilterSheet: React.FC<{
     visible: boolean;
     onClose: () => void;
     onApply: (rangeIdx: number) => void;
-}> = ({visible, onClose, onApply}) => {
+    captureMarker?: string;
+}> = ({visible, onClose, onApply, captureMarker}) => {
     const [range, setRange] = useState(0);
     return (
-        <BottomSheet visible={visible} onClose={onClose} title="근태 필터" primary={{label: '필터 적용', onPress: () => onApply(range)}}>
+        <BottomSheet
+            visible={visible}
+            onClose={onClose}
+            captureMarker={captureMarker}
+            title="근태 필터"
+            primary={{label: '필터 적용', onPress: () => onApply(range)}}>
             <SegmentedControl options={RANGES} value={range} onChange={setRange} />
         </BottomSheet>
     );

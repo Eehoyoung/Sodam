@@ -29,9 +29,10 @@ import timeOffService from '../services/timeOffService';
 
 interface MasterMyPageScreenProps {
     navigation: NavigationProp<any>;
+    visualFixture?: MasterMyPageVisualFixture;
 }
 
-interface StoreInfo {
+export interface StoreInfo {
     id: number;
     storeName: string;
     businessNumber: string;
@@ -46,7 +47,7 @@ interface StoreInfo {
     monthlyRevenue: number;
 }
 
-interface PolicyInfo {
+export interface PolicyInfo {
     id: number;
     title: string;
     category: string;
@@ -55,11 +56,28 @@ interface PolicyInfo {
     isNew: boolean;
 }
 
-interface LaborInfo {
+export interface LaborInfo {
     minimumWage: number;
     year: number;
     weeklyMaxHours: number;
     overtimeRate: number;
+}
+
+/** 개발용 시각 검증 전용 — 매장 목록/정책/노무정보/승인 대기 건수 조회를 모두 고정 데이터로 대체한다. */
+export interface MasterMyPageVisualFixture {
+    stores: StoreInfo[];
+    policies?: PolicyInfo[];
+    laborInfo?: LaborInfo | null;
+    pendingCount?: number;
+    timeOffPendingCount?: number;
+    masterInfo?: {
+        name: string;
+        totalStores: number;
+        totalEmployees: number;
+        monthlyTotalLaborCost: number;
+    };
+    /** 인사말 아래 날짜 라벨 계산을 고정하는 캡처 시각(ms) — 없으면 Date.now() 사용. */
+    nowMs?: number;
 }
 
 // 매장마다 다른 그라디언트 색으로 구분 — v3 링&패스 토큰(코랄/틸/앰버/코랄→틸 링)
@@ -77,36 +95,50 @@ const STORE_GRADIENTS: Array<[string, string]> = [
  * (근무중/지각/미출근 + 출근률 바) → 내 매장 그라디언트 캐러셀 → 매장관리 QuickMenuGrid
  * → 정책/노무 정보 카드 순서로 시안과 1:1 대응.
  */
-export default function MasterMyPageScreen({navigation}: MasterMyPageScreenProps) {
+export default function MasterMyPageScreen({navigation, visualFixture}: MasterMyPageScreenProps) {
     const c = useThemeColors();
     const {user} = useAuth();
     const {width} = useWindowDimensions();
 
     const CARD_WIDTH = width * 0.75;
 
-    const [stores, setStores] = useState<StoreInfo[]>([]);
-    const [policies, setPolicies] = useState<PolicyInfo[]>([]);
-    const [laborInfo, setLaborInfo] = useState<LaborInfo | null>(null);
+    const [stores, setStores] = useState<StoreInfo[]>(visualFixture?.stores ?? []);
+    const [policies, setPolicies] = useState<PolicyInfo[]>(visualFixture?.policies ?? []);
+    const [laborInfo, setLaborInfo] = useState<LaborInfo | null>(visualFixture?.laborInfo ?? null);
     const [refreshing, setRefreshing] = useState(false);
-    const [pendingCount, setPendingCount] = useState(0);
-    const [timeOffPendingCount, setTimeOffPendingCount] = useState(0);
+    const [pendingCount, setPendingCount] = useState(visualFixture?.pendingCount ?? 0);
+    const [timeOffPendingCount, setTimeOffPendingCount] = useState(visualFixture?.timeOffPendingCount ?? 0);
     const [masterInfo, setMasterInfo] = useState({
         name: '',
         totalStores: 0,
         totalEmployees: 0,
         monthlyTotalLaborCost: 0,
+        ...visualFixture?.masterInfo,
     });
 
     const storeScrollRef = useRef<FlatList>(null);
 
     useFocusEffect(
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        useCallback(() => { loadData(); }, [user?.id]),
+        useCallback(() => {
+            if (visualFixture) {
+                return;
+            }
+            loadData();
+            // The loadData function is declared later in the component; referencing it here is intentional.
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [user?.id, visualFixture]),
     );
 
-    useStoreLiveSync(stores.map(s => s.id), () => loadData());
+    useStoreLiveSync(visualFixture ? [] : stores.map(s => s.id), () => {
+        if (!visualFixture) {
+            loadData();
+        }
+    });
 
     const loadData = async () => {
+        if (visualFixture) {
+            return;
+        }
         try {
             const userId = user?.id;
             if (!userId) {return;}
@@ -183,6 +215,9 @@ export default function MasterMyPageScreen({navigation}: MasterMyPageScreenProps
     };
 
     const onRefresh = async () => {
+        if (visualFixture) {
+            return;
+        }
         setRefreshing(true);
         await loadData();
         setRefreshing(false);
@@ -190,7 +225,7 @@ export default function MasterMyPageScreen({navigation}: MasterMyPageScreenProps
 
     const fmt = (n: number) => new Intl.NumberFormat('ko-KR').format(n);
 
-    const today = new Date();
+    const today = new Date(visualFixture?.nowMs ?? Date.now());
     const dateLabel = today.toLocaleDateString('ko-KR', {
         year: 'numeric', month: 'long', day: 'numeric', weekday: 'short',
     });

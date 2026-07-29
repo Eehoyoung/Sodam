@@ -13,35 +13,56 @@ import BusinessTypePicker from '../components/BusinessTypePicker';
 import AddressSearchModal, {AddressSearchResult} from '../components/AddressSearchModal';
 import {RadiusSelectorSheet} from '../components/StoreSheets';
 
+/** 개발용 시각 검증 전용 — GET /api/stores/{storeId} 조회를 고정 폼 초기값으로 대체한다. */
+export interface StoreEditVisualFixture {
+    storeName: string;
+    phone: string;
+    businessType: string;
+    standardWage: string;
+    radius: string;
+    fullAddress: string;
+    cycle?: Partial<PayrollCycleForm>;
+}
+
+interface Props {
+    visualFixture?: StoreEditVisualFixture;
+}
+
 /**
  * 14 StoreEdit — 확정 시안.
  * 매장명·전화·업종·기본시급·반경 편집. 조회/저장 로직 보존.
  */
-const StoreEditScreen: React.FC = () => {
+const StoreEditScreen: React.FC<Props> = ({visualFixture}) => {
     const route = useRoute<RouteProp<HomeStackParamList, 'StoreEdit'>>();
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const c = useThemeColors();
     const storeId = route.params?.storeId;
 
-    const [storeName, setStoreName] = useState('');
-    const [phone, setPhone] = useState('');
-    const [businessType, setBusinessType] = useState('');
-    const [standardWage, setStandardWage] = useState('');
-    const [radius, setRadius] = useState('100');
+    const [storeName, setStoreName] = useState(visualFixture?.storeName ?? '');
+    const [phone, setPhone] = useState(visualFixture?.phone ?? '');
+    const [businessType, setBusinessType] = useState(visualFixture?.businessType ?? '');
+    const [standardWage, setStandardWage] = useState(visualFixture?.standardWage ?? '');
+    const [radius, setRadius] = useState(visualFixture?.radius ?? '100');
     const [loading, setLoading] = useState(false);
 
     // 주소/위치 — 카카오 주소 API 키 미발급 상태라 수동 입력 + 좌표 목 보정으로 처리.
-    const [fullAddress, setFullAddress] = useState('');
-    const [initialAddress, setInitialAddress] = useState('');
+    const [fullAddress, setFullAddress] = useState(visualFixture?.fullAddress ?? '');
+    const [initialAddress, setInitialAddress] = useState(visualFixture?.fullAddress ?? '');
     const [coords, setCoords] = useState<{latitude: number; longitude: number} | null>(null);
     const [showAddressModal, setShowAddressModal] = useState(false);
     const [showRadiusSheet, setShowRadiusSheet] = useState(false);
 
     // 급여 정산 주기(시작/마감/지급일)
-    const [cycle, setCycle] = useState<PayrollCycleForm>(defaultPayrollCycle());
+    const [cycle, setCycle] = useState<PayrollCycleForm>({
+        ...defaultPayrollCycle(),
+        ...visualFixture?.cycle,
+    });
     const [showBusinessTypeModal, setShowBusinessTypeModal] = useState(false);
 
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         (async () => {
             if (!storeId) {
                 return;
@@ -64,7 +85,7 @@ const StoreEditScreen: React.FC = () => {
                 }
             } catch (_) {/* ignore */}
         })();
-    }, [storeId]);
+    }, [storeId, visualFixture]);
 
     const selectAddress = (address: AddressSearchResult) => {
         setFullAddress(address.roadAddress || address.query);

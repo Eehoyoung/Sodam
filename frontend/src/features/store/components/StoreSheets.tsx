@@ -17,7 +17,9 @@ export const RadiusSelectorSheet: React.FC<{
     onClose: () => void;
     value?: number; // index
     onApply: (meters: number) => void;
-}> = ({visible, onClose, value = 1, onApply}) => {
+    /** 개발용 시각 검증 전용 — Modal 은 별도 창이라 배경 마커가 uiautomator에 안 잡힌다. */
+    captureMarker?: string;
+}> = ({visible, onClose, value = 1, onApply, captureMarker}) => {
     const [idx, setIdx] = useState(value);
     const meters = [50, 80, 120][idx];
     const c = useThemeColors();
@@ -27,7 +29,8 @@ export const RadiusSelectorSheet: React.FC<{
             onClose={onClose}
             title="출퇴근 반경"
             description="추천 반경은 80m예요. 너무 좁으면 정상 출근도 실패할 수 있어요."
-            primary={{label: '반경 적용', onPress: () => onApply(meters)}}>
+            primary={{label: '반경 적용', onPress: () => onApply(meters)}}
+            captureMarker={captureMarker}>
             <SegmentedControl options={RADII} value={idx} onChange={setIdx} />
             <View style={styles.radiusPreview}>
                 <View style={[styles.radiusCircle, {borderColor: c.brandPrimary, backgroundColor: c.brandPrimarySoft}]}>
@@ -46,10 +49,12 @@ export const InviteShareSheet: React.FC<{
     onShareKakao: () => void;
     onShareSms: () => void;
     onCopy: () => void;
-}> = ({visible, onClose, code, onShareKakao, onShareSms, onCopy}) => {
+    /** 개발용 시각 검증 전용 — Modal 은 별도 창이라 배경 마커가 uiautomator에 안 잡힌다. */
+    captureMarker?: string;
+}> = ({visible, onClose, code, onShareKakao, onShareSms, onCopy, captureMarker}) => {
     const c = useThemeColors();
     return (
-        <BottomSheet visible={visible} onClose={onClose} title="초대 코드 공유">
+        <BottomSheet visible={visible} onClose={onClose} title="초대 코드 공유" captureMarker={captureMarker}>
             <View style={[styles.codeBox, {backgroundColor: c.surfaceWarm}]}>
                 <AppText variant="numericLg" tone="brand" style={styles.code}>{code}</AppText>
             </View>
@@ -70,8 +75,10 @@ export const EmployeeActionSheet: React.FC<{
     onWage: () => void;
     onMemo: () => void;
     onDeactivate: () => void;
-}> = ({visible, onClose, employeeName, onWage, onMemo, onDeactivate}) => (
-    <BottomSheet visible={visible} onClose={onClose} title={`${employeeName} · 직원 작업`}>
+    /** 개발용 시각 검증 전용 — Modal 은 별도 창이라 배경 마커가 uiautomator에 안 잡힌다. */
+    captureMarker?: string;
+}> = ({visible, onClose, employeeName, onWage, onMemo, onDeactivate, captureMarker}) => (
+    <BottomSheet visible={visible} onClose={onClose} title={`${employeeName} · 직원 작업`} captureMarker={captureMarker}>
         <View style={styles.list}>
             <AppListItem title="시급 변경" subtitle="적용일과 사유 입력" right="›" onPress={onWage} />
             <AppListItem title="사장 메모" subtitle="비공개 메모 저장" right="›" onPress={onMemo} />
@@ -105,6 +112,8 @@ export const WageEditSheet: React.FC<{
     initialMonthlySalary?: number;
     initialSocialInsuranceEnrolled?: boolean | null;
     onSave: (values: WageEditValues) => void;
+    /** 개발용 시각 검증 전용 — Modal 은 별도 창이라 배경 마커가 uiautomator에 안 잡힌다. */
+    captureMarker?: string;
 }> = ({
     visible,
     onClose,
@@ -113,6 +122,7 @@ export const WageEditSheet: React.FC<{
     initialMonthlySalary,
     initialSocialInsuranceEnrolled,
     onSave,
+    captureMarker,
 }) => {
     const [typeIdx, setTypeIdx] = useState(initialEmploymentType === 'MONTHLY_SALARY' ? 1 : 0);
     const [wage, setWage] = useState('');
@@ -156,7 +166,8 @@ export const WageEditSheet: React.FC<{
             scrollable
             title={`${employeeName}님의 급여를 설정해요`}
             description="적용 시작일 이후 급여 계산에 반영됩니다."
-            primary={{label: '급여 설정 저장', onPress: save}}>
+            primary={{label: '급여 설정 저장', onPress: save}}
+            captureMarker={captureMarker}>
             <View style={styles.form}>
                 <View>
                     <AppText variant="caption" tone="secondary" style={styles.fieldLabel}>고용형태</AppText>

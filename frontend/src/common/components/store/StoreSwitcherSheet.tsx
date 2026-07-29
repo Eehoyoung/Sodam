@@ -31,6 +31,10 @@ interface StoreSwitcherSheetProps {
     onRegisterNew?: () => void;
     style?: StyleProp<ViewStyle>;
     testID?: string;
+    /** 개발용 시각 검증 전용 — 시트를 처음부터 열린 상태로 렌더링한다. */
+    visualForceOpen?: boolean;
+    /** 개발용 시각 검증 전용 — Modal 은 별도 창이라 배경 마커가 uiautomator에 안 잡힌다. */
+    captureMarker?: string;
 }
 
 /** 소속 매장이 1곳뿐이면 전환할 대상이 없으므로 트리거 자체를 렌더링하지 않는다. */
@@ -41,9 +45,11 @@ export const StoreSwitcherSheet: React.FC<StoreSwitcherSheetProps> = ({
     onRegisterNew,
     style,
     testID,
+    visualForceOpen,
+    captureMarker,
 }) => {
     const c = useThemeColors();
-    const [visible, setVisible] = useState(false);
+    const [visible, setVisible] = useState(visualForceOpen ?? false);
     if (stores.length < 2) {
         return null;
     }
@@ -67,7 +73,7 @@ export const StoreSwitcherSheet: React.FC<StoreSwitcherSheetProps> = ({
                 <Ionicons name="swap-horizontal-outline" size={16} color={c.textSecondary} />
             </Pressable>
 
-            <BottomSheet visible={visible} onClose={() => setVisible(false)} title="매장 선택">
+            <BottomSheet visible={visible} onClose={() => setVisible(false)} title="매장 선택" captureMarker={captureMarker}>
                 <View style={styles.list}>
                     {stores.map(s => {
                         const active = s.id === current.id;

@@ -17,19 +17,31 @@ import {
 import {spacing} from '../../../theme/tokens';
 import storeService, {StoreSummaryDto} from '../services/storeService';
 
+/** 개발용 시각 검증 전용 — 실 매장 목록 조회를 고정 목록으로 대체한다. */
+export interface StoreListVisualFixture {
+    stores: StoreSummaryDto[];
+}
+
+interface Props {
+    visualFixture?: StoreListVisualFixture;
+}
+
 /**
  * 11 StoreList — 다매장 사장 목록 화면(신규, v3 §4.1).
  * 기존 "매장" 탭이 첫 매장으로 바로 이동하던 단일 매장 경로는 그대로 두고,
  * 다매장 사장만 여기로 진입한다(RoleTabBar 분기).
  */
-const StoreListScreen: React.FC = () => {
+const StoreListScreen: React.FC<Props> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
-    const [stores, setStores] = useState<StoreSummaryDto[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [stores, setStores] = useState<StoreSummaryDto[]>(visualFixture?.stores ?? []);
+    const [loading, setLoading] = useState(!visualFixture);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(false);
 
     const load = useCallback(async () => {
+        if (visualFixture) {
+            return;
+        }
         try {
             setError(false);
             const list = await storeService.getMasterStores('current');
@@ -42,12 +54,15 @@ const StoreListScreen: React.FC = () => {
             setLoading(false);
             setRefreshing(false);
         }
-    }, []);
+    }, [visualFixture]);
 
     // 쓰기(매장 등록/정보수정) 후 목록 미갱신 방지 — useFocusEffect refetch 패턴.
     useFocusEffect(useCallback(() => {
+        if (visualFixture) {
+            return;
+        }
         load();
-    }, [load]));
+    }, [load, visualFixture]));
 
     const header = (
         <AppHeader

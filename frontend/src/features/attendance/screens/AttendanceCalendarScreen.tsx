@@ -17,23 +17,38 @@ type AttendanceRecord = MonthlyAttendanceItem;
 
 type DayStatus = 'CHECKED_IN' | 'WORKING';
 
+/** 개발용 시각 검증 전용 — 실 API 대신 고정 월별 기록을 표시한다. */
+export interface AttendanceCalendarVisualFixture {
+    year?: number;
+    month?: number;
+    items: AttendanceRecord[];
+    selectedDay?: number | null;
+    storeFilter?: number | null;
+}
+
+interface Props {
+    visualFixture?: AttendanceCalendarVisualFixture;
+}
+
 /**
  * 23 AttendanceCalendar — 확정 시안(v3 §4.1, "23 AttendanceCalendar · 멀티매장").
  * 월간 그리드(선택일 브랜드 채움) + 점 표시 + 선택일 상세 카드 + 매장별 세그먼트 필터. 조회/이동 로직 보존.
  * 매장 필터는 서버 재요청 없이 클라이언트 사이드에서 응답의 storeId로만 걸러낸다
  * (MonthlyAttendanceItem.storeId — 계획서 §7 확인 완료, BE 응답에 이미 포함돼 있어 추가 조회 불필요).
  */
-const AttendanceCalendarScreen: React.FC = () => {
+const AttendanceCalendarScreen: React.FC<Props> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const {user} = useAuth();
     const c = useThemeColors();
-    const [year, setYear] = useState(() => new Date().getFullYear());
-    const [month, setMonth] = useState(() => new Date().getMonth() + 1);
-    const [items, setItems] = useState<AttendanceRecord[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [selectedDay, setSelectedDay] = useState<number | null>(new Date().getDate());
+    const [year, setYear] = useState(() => visualFixture?.year ?? new Date().getFullYear());
+    const [month, setMonth] = useState(() => visualFixture?.month ?? new Date().getMonth() + 1);
+    const [items, setItems] = useState<AttendanceRecord[]>(visualFixture?.items ?? []);
+    const [loading, setLoading] = useState(!visualFixture);
+    const [selectedDay, setSelectedDay] = useState<number | null>(
+        visualFixture ? (visualFixture.selectedDay ?? null) : new Date().getDate(),
+    );
     // storeFilter === null → 전체(필터 없음). 매장이 1개뿐이면 세그먼트 자체를 숨긴다.
-    const [storeFilter, setStoreFilter] = useState<number | null>(null);
+    const [storeFilter, setStoreFilter] = useState<number | null>(visualFixture?.storeFilter ?? null);
     // 80 PersonalRecordEditSheet — 실제 서버 기록(급여 기산에 쓰이는 checkIn/Out)을 이 시트가
     // 직접 저장하면 승인 절차 없이 근태가 바뀌어 위험하므로, 저장 시 값을 들고 있던 실제 정정 요청
     // 화면(AttendanceCorrectionRequest, 사유 입력 필수)으로 넘겨 기존 승인 플로우를 그대로 타게 한다.
@@ -43,7 +58,8 @@ const AttendanceCalendarScreen: React.FC = () => {
     useEffect(() => {
         let mounted = true;
         (async () => {
-            if (!user?.id) {
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- boolean condition (logical OR), not value coalescing
+            if (visualFixture || !user?.id) {
                 return;
             }
             setLoading(true);
@@ -65,7 +81,7 @@ const AttendanceCalendarScreen: React.FC = () => {
         return () => {
             mounted = false;
         };
-    }, [user?.id, year, month]);
+    }, [user?.id, year, month, visualFixture]);
 
     // 매장 세그먼트 옵션 — 응답에 등장한 storeId 를 첫 등장 순서로 수집(중복 제거).
     const storeOptions = useMemo(() => {
@@ -80,8 +96,11 @@ const AttendanceCalendarScreen: React.FC = () => {
 
     // 월 이동 시 이전 달에만 있던 매장 필터가 새 달에 남아있지 않도록 초기화.
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         setStoreFilter(null);
-    }, [year, month]);
+    }, [year, month, visualFixture]);
 
     const filteredItems = useMemo(
         () => (storeFilter === null ? items : items.filter(it => it.storeId === storeFilter)),

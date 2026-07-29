@@ -15,23 +15,37 @@ interface EmployeeWageRow {
     isCustom: boolean;
 }
 
+/** 개발용 시각 검증 전용 — 매장 시급/이력/직원별 적용 시급 조회를 고정 데이터로 대체한다. */
+export interface WageSettingsVisualFixture {
+    currentWage: number | null;
+    history?: Array<any>;
+    employeeWages?: EmployeeWageRow[];
+}
+
+interface Props {
+    visualFixture?: WageSettingsVisualFixture;
+}
+
 /**
  * 18 WageSettings — v3 토스식.
  * 히어로: 현재 매장 기본 시급(AmountText). 한 입력 + 하단 CTA. 아래 변경 이력.
  * 최저임금 경고 + PUT /api/wages/store/{id}/standard + history GET 로직 보존.
  */
-const WageSettingsScreen: React.FC = () => {
+const WageSettingsScreen: React.FC<Props> = ({visualFixture}) => {
     const route = useRoute<RouteProp<HomeStackParamList, 'WageSettings'>>();
     const navigation = useNavigation();
     const storeId = route.params.storeId;
 
-    const [currentWage, setCurrentWage] = useState<number | null>(null);
-    const [standardWage, setStandardWage] = useState('');
-    const [history, setHistory] = useState<Array<any>>([]);
-    const [employeeWages, setEmployeeWages] = useState<EmployeeWageRow[]>([]);
+    const [currentWage, setCurrentWage] = useState<number | null>(visualFixture?.currentWage ?? null);
+    const [standardWage, setStandardWage] = useState(visualFixture?.currentWage ? String(visualFixture.currentWage) : '');
+    const [history, setHistory] = useState<Array<any>>(visualFixture?.history ?? []);
+    const [employeeWages, setEmployeeWages] = useState<EmployeeWageRow[]>(visualFixture?.employeeWages ?? []);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         (async () => {
             if (!storeId) {
                 return;
@@ -68,7 +82,7 @@ const WageSettingsScreen: React.FC = () => {
                 setEmployeeWages(rows);
             } catch (_) {/* ignore */}
         })();
-    }, [storeId]);
+    }, [storeId, visualFixture]);
 
     const submit = async () => {
         const n = parseInt(standardWage.replace(/[^0-9]/g, ''), 10);

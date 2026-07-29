@@ -30,9 +30,9 @@ import attendanceService from '../../attendance/services/attendanceService';
 import payrollService from '../../salary/services/payrollService';
 import ManagerAppointSection from '../../manager/screens/ManagerAppointSection';
 
-type TabKey = 'INFO' | 'ATTENDANCE' | 'SALARY' | 'TIMEOFF';
+export type TabKey = 'INFO' | 'ATTENDANCE' | 'SALARY' | 'TIMEOFF';
 
-interface Employee {
+export interface Employee {
     id: number;
     name: string;
     email: string;
@@ -54,6 +54,23 @@ interface RouteParams {
     storeId: number;
 }
 
+/**
+ * 개발용 시각 검증 전용 — 직원 상세(정보/시급) 조회 + 하위 탭(근태·급여)·메모·임시저장 계약서
+ * 건수 조회를 모두 고정 데이터로 대체한다. ManagerAppointSection 은 대상 범위 밖(별도 fetch, 미변경).
+ */
+export interface EmployeeDetailVisualFixture {
+    employee: Employee;
+    tab?: TabKey;
+    draftContractCount?: number;
+    memo?: string;
+    attendanceItems?: any[];
+    salaryItems?: any[];
+}
+
+interface Props {
+    visualFixture?: EmployeeDetailVisualFixture;
+}
+
 const TABS: Array<{key: TabKey; label: string}> = [
     {key: 'INFO', label: '정보'},
     {key: 'ATTENDANCE', label: '출퇴근'},
@@ -71,7 +88,7 @@ const useStyles = () => {
  * 히어로: 직원명 + 적용 시급/월급(AmountText) + 활성 배지. 하단 CTA: 급여 설정(시급제·월급제·4대보험).
  * saveWage(POST /api/wages/employee)·toggleActive(PUT .../active)·memo 로직 보존.
  */
-const EmployeeDetailScreen: React.FC = () => {
+const EmployeeDetailScreen: React.FC<Props> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const route = useRoute<RouteProp<HomeStackParamList, 'EmployeeDetail'>>();
     const styles = useStyles();
@@ -83,16 +100,19 @@ const EmployeeDetailScreen: React.FC = () => {
     const [refreshKey, setRefreshKey] = useState(0);
     useFocusEffect(
         useCallback(() => {
+            if (visualFixture) {
+                return;
+            }
             setRefreshKey(k => k + 1);
-        }, []),
+        }, [visualFixture]),
     );
 
-    const [tab, setTab] = useState<TabKey>('INFO');
-    const [emp, setEmp] = useState<Employee | null>(null);
+    const [tab, setTab] = useState<TabKey>(visualFixture?.tab ?? 'INFO');
+    const [emp, setEmp] = useState<Employee | null>(visualFixture?.employee ?? null);
     const [togglingActive, setTogglingActive] = useState(false);
     const [wageSheet, setWageSheet] = useState(false);
     const [savingWage, setSavingWage] = useState(false);
-    const [draftContractCount, setDraftContractCount] = useState(0);
+    const [draftContractCount, setDraftContractCount] = useState(visualFixture?.draftContractCount ?? 0);
 
     // 중요 근로조건은 즉시 수정하지 않고 변경계약 전자서명 완료 후 효력일에 적용한다.
     const saveWage = async (values: WageEditValues) => {
@@ -178,6 +198,9 @@ const EmployeeDetailScreen: React.FC = () => {
         });
 
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         (async () => {
             try {
                 const detail = await employeeService.getEmployeeDetail(employeeId);
@@ -202,16 +225,19 @@ const EmployeeDetailScreen: React.FC = () => {
             } catch (_) {/* ignore */}
         })();
         // refreshKey: 포커스 복귀 시 재조회 트리거(아래 deps 에 포함)
-    }, [employeeId, storeId, refreshKey]);
+    }, [employeeId, storeId, refreshKey, visualFixture]);
 
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         (async () => {
             try {
                 const drafts = await contractService.getDrafts(storeId, employeeId);
                 setDraftContractCount(drafts.length);
             } catch (_) {/* ignore */}
         })();
-    }, [employeeId, storeId, refreshKey]);
+    }, [employeeId, storeId, refreshKey, visualFixture]);
 
     const initials = useMemo(() => (emp?.name ?? '?').slice(0, 1), [emp]);
     const tabIndex = TABS.findIndex(t => t.key === tab);
@@ -287,12 +313,30 @@ const EmployeeDetailScreen: React.FC = () => {
             <View style={styles.tabContent}>
                 {tab === 'INFO' && <InfoTab emp={emp} />}
                 {/* key={refreshKey}: 포커스 복귀 시 탭을 remount 해 시급/근태 데이터를 재조회한다. */}
-                {tab === 'ATTENDANCE' && <AttendanceTab key={refreshKey} employeeId={emp.id} storeId={storeId} />}
-                {tab === 'SALARY' && <SalaryTab key={refreshKey} employeeId={emp.id} navigation={navigation} />}
+                {tab === 'ATTENDANCE' && (
+                    <AttendanceTab
+                        key={refreshKey}
+                        employeeId={emp.id}
+                        storeId={storeId}
+                        visualFixture={visualFixture ? {items: visualFixture.attendanceItems ?? []} : undefined}
+                    />
+                )}
+                {tab === 'SALARY' && (
+                    <SalaryTab
+                        key={refreshKey}
+                        employeeId={emp.id}
+                        navigation={navigation}
+                        visualFixture={visualFixture ? {items: visualFixture.salaryItems ?? []} : undefined}
+                    />
+                )}
                 {tab === 'TIMEOFF' && <TimeOffTab />}
             </View>
 
-            <MemoEditor storeId={storeId} employeeId={emp.id} />
+            <MemoEditor
+                storeId={storeId}
+                employeeId={emp.id}
+                visualFixture={visualFixture ? {memo: visualFixture.memo ?? ''} : undefined}
+            />
 
             <ManagerAppointSection
                 storeId={storeId}
@@ -427,14 +471,24 @@ const EmployeeDetailScreen: React.FC = () => {
     );
 };
 
-const MemoEditor: React.FC<{storeId: number; employeeId: number}> = ({storeId, employeeId}) => {
+interface MemoEditorProps {
+    storeId: number;
+    employeeId: number;
+    /** 개발용 시각 검증 전용 — 존재하면 실 조회/저장을 모두 건너뛰고 고정 메모를 표시한다. */
+    visualFixture?: {memo: string};
+}
+
+const MemoEditor: React.FC<MemoEditorProps> = ({storeId, employeeId, visualFixture}) => {
     const styles = useStyles();
     const c = useThemeColors();
-    const [memo, setMemo] = useState('');
-    const [loading, setLoading] = useState(true);
+    const [memo, setMemo] = useState(visualFixture?.memo ?? '');
+    const [loading, setLoading] = useState(!visualFixture);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         (async () => {
             try {
                 setMemo(await employeeService.getMemo(storeId, employeeId));
@@ -442,9 +496,13 @@ const MemoEditor: React.FC<{storeId: number; employeeId: number}> = ({storeId, e
                 setLoading(false);
             }
         })();
-    }, [storeId, employeeId]);
+    }, [storeId, employeeId, visualFixture]);
 
     const save = async () => {
+        if (visualFixture) {
+            AppToast.show('시각 검증 fixture에서는 메모를 저장하지 않아요.');
+            return;
+        }
         setSaving(true);
         try {
             await employeeService.updateMemo(storeId, employeeId, memo);
@@ -505,11 +563,21 @@ const InfoTab: React.FC<{emp: Employee}> = ({emp}) => {
     );
 };
 
-const AttendanceTab: React.FC<{employeeId: number; storeId: number}> = ({employeeId, storeId}) => {
+interface AttendanceTabProps {
+    employeeId: number;
+    storeId: number;
+    /** 개발용 시각 검증 전용 — 존재하면 실 조회를 건너뛰고 고정 근태 목록을 표시한다. */
+    visualFixture?: {items: any[]};
+}
+
+const AttendanceTab: React.FC<AttendanceTabProps> = ({employeeId, storeId, visualFixture}) => {
     const styles = useStyles();
-    const [items, setItems] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [items, setItems] = useState<any[]>(visualFixture?.items ?? []);
+    const [loading, setLoading] = useState(!visualFixture);
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         (async () => {
             try {
                 const now = new Date();
@@ -521,7 +589,7 @@ const AttendanceTab: React.FC<{employeeId: number; storeId: number}> = ({employe
                 setLoading(false);
             }
         })();
-    }, [employeeId, storeId]);
+    }, [employeeId, storeId, visualFixture]);
 
     if (loading) {return <Empty text="불러오는 중…" />;}
     if (items.length === 0) {return <Empty text="이번 달 출근 기록이 아직 없어요." />;}
@@ -540,11 +608,21 @@ const AttendanceTab: React.FC<{employeeId: number; storeId: number}> = ({employe
     );
 };
 
-const SalaryTab: React.FC<{employeeId: number; navigation: NativeStackNavigationProp<HomeStackParamList>}> = ({employeeId, navigation}) => {
+interface SalaryTabProps {
+    employeeId: number;
+    navigation: NativeStackNavigationProp<HomeStackParamList>;
+    /** 개발용 시각 검증 전용 — 존재하면 실 조회를 건너뛰고 고정 급여 명세서 목록을 표시한다. */
+    visualFixture?: {items: any[]};
+}
+
+const SalaryTab: React.FC<SalaryTabProps> = ({employeeId, navigation, visualFixture}) => {
     const styles = useStyles();
-    const [items, setItems] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [items, setItems] = useState<any[]>(visualFixture?.items ?? []);
+    const [loading, setLoading] = useState(!visualFixture);
     useEffect(() => {
+        if (visualFixture) {
+            return;
+        }
         (async () => {
             try {
                 const list = await payrollService.listByEmployee(employeeId);
@@ -555,7 +633,7 @@ const SalaryTab: React.FC<{employeeId: number; navigation: NativeStackNavigation
                 setLoading(false);
             }
         })();
-    }, [employeeId]);
+    }, [employeeId, visualFixture]);
 
     if (loading) {return <Empty text="불러오는 중…" />;}
     if (items.length === 0) {return <Empty text="발급된 급여 명세서가 없어요." />;}

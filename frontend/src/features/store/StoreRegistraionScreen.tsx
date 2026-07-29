@@ -23,7 +23,7 @@ import PayrollCycleEditor, {PayrollCycleForm, defaultPayrollCycle, toPayrollCycl
 import BusinessTypePicker from './components/BusinessTypePicker';
 import AddressSearchModal, {AddressSearchResult} from './components/AddressSearchModal';
 
-interface StoreData {
+export interface StoreData {
     storeName: string;
     businessNumber: string;
     storePhoneNumber: string;
@@ -38,7 +38,7 @@ interface StoreData {
     storeStandardHourWage: number | null;
 }
 
-type Step = 1 | 2 | 3;
+export type Step = 1 | 2 | 3;
 type OperatingMode = 'same' | 'weekly';
 
 interface OperatingHourDraft {
@@ -126,7 +126,37 @@ const createDefaultWeeklyHours = (): OperatingHourDraft[] =>
         isClosed: false,
     }));
 
-const StoreRegistrationScreen: React.FC = () => {
+/**
+ * 개발용 시각 검증 전용 — 실 API 호출은 없는 순수 폼 화면이라 데이터 조회 우회는 필요 없다.
+ * 3단계 스텝바(기본정보/운영시간/확인)의 특정 단계를 결정적으로 캡처하기 위해
+ * 초기 step·storeData·cycle 만 미리 채워 넣는다.
+ */
+export interface StoreRegistrationVisualFixture {
+    step?: Step;
+    storeData?: Partial<StoreData>;
+    cycle?: Partial<PayrollCycleForm>;
+}
+
+interface Props {
+    visualFixture?: StoreRegistrationVisualFixture;
+}
+
+const DEFAULT_STORE_DATA: StoreData = {
+    storeName: '',
+    businessNumber: '',
+    storePhoneNumber: '',
+    businessType: '',
+    businessLicenseNumber: '',
+    query: '',
+    roadAddress: '',
+    jibunAddress: '',
+    latitude: null,
+    longitude: null,
+    radius: 100,
+    storeStandardHourWage: null,
+};
+
+const StoreRegistrationScreen: React.FC<Props> = ({visualFixture}) => {
     const c = useThemeColors();
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const {isLoading, submit} = useStoreRegistration({
@@ -135,23 +165,16 @@ const StoreRegistrationScreen: React.FC = () => {
         },
     });
 
-    const [step, setStep] = useState<Step>(1);
+    const [step, setStep] = useState<Step>(visualFixture?.step ?? 1);
     const [minimumWage] = useState(10030);
     const [storeData, setStoreData] = useState<StoreData>({
-        storeName: '',
-        businessNumber: '',
-        storePhoneNumber: '',
-        businessType: '',
-        businessLicenseNumber: '',
-        query: '',
-        roadAddress: '',
-        jibunAddress: '',
-        latitude: null,
-        longitude: null,
-        radius: 100,
-        storeStandardHourWage: null,
+        ...DEFAULT_STORE_DATA,
+        ...visualFixture?.storeData,
     });
-    const [cycle, setCycle] = useState<PayrollCycleForm>(defaultPayrollCycle());
+    const [cycle, setCycle] = useState<PayrollCycleForm>({
+        ...defaultPayrollCycle(),
+        ...visualFixture?.cycle,
+    });
     const [operatingMode, setOperatingMode] = useState<OperatingMode>('same');
     const [sameOpenTime, setSameOpenTime] = useState('1000');
     const [sameCloseTime, setSameCloseTime] = useState('2200');

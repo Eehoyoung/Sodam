@@ -17,22 +17,34 @@ import {spacing} from '../../../theme/tokens';
 import {useAuth} from '../../../contexts/AuthContext';
 import attendanceService, {AttendanceWorkLogResponse} from '../../attendance/services/attendanceService';
 
+/** 개발용 시각 검증 전용 — getMonthlyWorkLog 조회를 고정 데이터로 대체한다. */
+export interface WorkplaceDetailVisualFixture {
+    data: AttendanceWorkLogResponse;
+}
+
+interface Props {
+    visualFixture?: WorkplaceDetailVisualFixture;
+}
+
 /**
  * 16 WorkplaceDetail — 신규 화면(v3 §4.1).
  * 15 WorkplaceList 와 동일 근거로 "내가 직원으로 소속된 매장"만 다룬다(개인 근무지 갭은 15 참조).
  * GET /api/attendance/employee/{employeeId}/work-log (getMonthlyWorkLog) 로 이번 달 요약 + 최근 기록을 채운다.
  */
-const WorkplaceDetailScreen: React.FC = () => {
+const WorkplaceDetailScreen: React.FC<Props> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const route = useRoute<RouteProp<HomeStackParamList, 'WorkplaceDetail'>>();
     const {user} = useAuth();
     const {storeId, storeName} = route.params;
 
-    const [data, setData] = useState<AttendanceWorkLogResponse | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [data, setData] = useState<AttendanceWorkLogResponse | null>(visualFixture?.data ?? null);
+    const [loading, setLoading] = useState(!visualFixture);
     const [error, setError] = useState(false);
 
     const load = useCallback(async () => {
+        if (visualFixture) {
+            return;
+        }
         if (!user?.id) {
             setLoading(false);
             return;
@@ -49,11 +61,14 @@ const WorkplaceDetailScreen: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [user?.id, storeId]);
+    }, [user?.id, storeId, visualFixture]);
 
     useFocusEffect(useCallback(() => {
+        if (visualFixture) {
+            return;
+        }
         load();
-    }, [load]));
+    }, [load, visualFixture]));
 
     const header = <AppHeader title="근무지 상세" onBack={() => navigation.goBack()} />;
 

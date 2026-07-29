@@ -13,9 +13,15 @@ import storeService, {StoreDetailDto} from '../services/storeService';
 
 type StoreDetailScreenRouteProp = RouteProp<HomeStackParamList, 'StoreDetail'>;
 
+/** 개발용 시각 검증 전용 — GET /api/stores/{storeId} 조회를 고정 매장 상세로 대체한다. */
+export interface StoreDetailVisualFixture {
+    store: StoreDetailDto;
+}
+
 interface StoreDetailScreenProps {
     route: StoreDetailScreenRouteProp;
     navigation: NativeStackNavigationProp<HomeStackParamList>;
+    visualFixture?: StoreDetailVisualFixture;
 }
 
 /**
@@ -23,11 +29,11 @@ interface StoreDetailScreenProps {
  * 히어로: 매장명 + 기본시급(AmountText). 관리 진입은 큰 리스트. 하단 CTA 1개(직원 초대).
  * loadStoreDetail/storeService 로직 보존. (GET /api/stores/{storeId})
  */
-export default function StoreDetailScreen({route, navigation}: StoreDetailScreenProps) {
+export default function StoreDetailScreen({route, navigation, visualFixture}: StoreDetailScreenProps) {
     const {storeId} = route.params;
     const c = useThemeColors();
-    const [store, setStore] = useState<StoreDetailDto | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [store, setStore] = useState<StoreDetailDto | null>(visualFixture?.store ?? null);
+    const [loading, setLoading] = useState(!visualFixture);
     const [error, setError] = useState<string | null>(null);
     const [inviteVisible, setInviteVisible] = useState(false);
 
@@ -47,15 +53,25 @@ export default function StoreDetailScreen({route, navigation}: StoreDetailScreen
     // 포커스마다 재조회 — 직원 입사/해고·매장 정보·운영시간 변경 후 복귀 시 상세 최신화.
     useFocusEffect(
         useCallback(() => {
+            if (visualFixture) {
+                return;
+            }
             loadStoreDetail();
             // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [storeId]),
+        }, [storeId, visualFixture]),
     );
 
     // 실시간 동기화 — 이 매장의 직원 입사/해지·출퇴근 변경 시(보고 있는 동안) 상세 즉시 갱신.
-    useStoreLiveSync(storeId ? [storeId] : [], () => loadStoreDetail());
+    useStoreLiveSync(visualFixture ? [] : storeId ? [storeId] : [], () => {
+        if (!visualFixture) {
+            loadStoreDetail();
+        }
+    });
 
     const loadStoreDetail = async () => {
+        if (visualFixture) {
+            return;
+        }
         try {
             setLoading(true);
             setError(null);
