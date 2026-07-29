@@ -109,12 +109,23 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
 
         console.log('[OfflineSync] 중요 쿼리 동기화 시작');
 
-        const syncPromises = finalConfig.criticalQueries.map(async (queryType) => {
+        // 'auth' 는 나머지 쿼리보다 먼저, 단독으로 끝낸다 — 동시에 돌리면 auth 쿼리(useAuthStatus →
+        // authService.isAuthenticated())와 attendance/user-profile 쿼리(401 시 client.ts 인터셉터)가
+        // 같은 시점에 각자 refresh를 트리거할 수 있었다. sessionCoordinator.refresh()가 이제
+        // 단일 비행이라 동시 호출 자체는 안전하지만, 먼저 인증 상태를 확정지어 나머지 쿼리가
+        // 이미 갱신된 토큰으로 나가게 하는 편이 불필요한 401 왕복을 줄인다.
+        if (finalConfig.criticalQueries.includes('auth')) {
+            try {
+                await queryClient.invalidateQueries({queryKey: authQueryKeys.all});
+            } catch (error) {
+                console.error('[OfflineSync] auth 동기화 실패:', error);
+            }
+        }
+
+        const remainingQueries = finalConfig.criticalQueries.filter(q => q !== 'auth');
+        const syncPromises = remainingQueries.map(async (queryType) => {
             try {
                 switch (queryType) {
-                    case 'auth':
-                        await queryClient.invalidateQueries({queryKey: authQueryKeys.all});
-                        break;
                     case 'attendance-current':
                         await queryClient.invalidateQueries({
                             queryKey: ATTENDANCE_QUERY_KEY_ALL,

@@ -50,14 +50,33 @@ async function requestRefresh(refreshToken: string): Promise<{accessToken: strin
   }
 }
 
+// 진행 중인 refresh 요청 (단일 비행) — client.ts 인터셉터 경로와 authService.isAuthenticated()
+// 경로가 동시에 refresh()를 호출해도 실제 네트워크 호출은 하나만 나가도록 공유한다.
+// BE RefreshTokenService.createRefreshToken()이 발급 전 사용자의 기존 유효 토큰을 전부
+// 무효화하는 정책이라, 같은 refresh token으로 두 요청이 거의 동시에 들어가면 나중 응답이
+// 먼저 발급된 새 토큰까지 무효화시켜 강제 로그아웃으로 이어지는 경쟁 상태가 있었다.
+let refreshInFlight: Promise<string> | null = null;
+
 /** access token 갱신 — 성공 시 tokenStore에 원자적으로 반영하고 새 accessToken을 반환한다. */
 export async function refresh(): Promise<string> {
-  const refreshToken = await TokenManager.getRefresh();
-  if (!refreshToken) {throw new Error('NO_REFRESH_TOKEN');}
+  if (refreshInFlight) {
+    return refreshInFlight;
+  }
 
-  const {accessToken, refreshToken: rotatedRefresh} = await requestRefresh(refreshToken);
-  await TokenManager.setTokens({accessToken, refreshToken: rotatedRefresh});
-  return accessToken;
+  refreshInFlight = (async () => {
+    const refreshToken = await TokenManager.getRefresh();
+    if (!refreshToken) {throw new Error('NO_REFRESH_TOKEN');}
+
+    const {accessToken, refreshToken: rotatedRefresh} = await requestRefresh(refreshToken);
+    await TokenManager.setTokens({accessToken, refreshToken: rotatedRefresh});
+    return accessToken;
+  })();
+
+  try {
+    return await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
+  }
 }
 
 /** 이메일 로그인 — 실제 구현은 authService.login 위임(동작 변경 없음). */

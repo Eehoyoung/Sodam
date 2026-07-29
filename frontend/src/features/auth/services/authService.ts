@@ -2,6 +2,7 @@ import api from '../../../common/api/client';
 import TokenManager from '../../../common/auth/tokenStore';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
 import {logger} from '../../../utils/logger';
+import * as sessionCoordinator from '../../../common/auth/sessionCoordinator';
 
 /**
  * Base64URL → 일반 base64 → 디코딩.
@@ -176,10 +177,12 @@ const getWithFallback = async <T>(primary: string, fallback: string) => {
     }
 };
 
-const refreshStoredSession = async (refreshToken: string): Promise<boolean> => {
+// sessionCoordinator.refresh()를 거친다 — client.ts 인터셉터의 401 refresh 경로와
+// 실제 네트워크 호출을 단일 비행으로 공유해, 두 경로가 동시에 같은 refresh token을
+// 소모하며 서로의 새 토큰을 무효화시키는 경쟁 상태(강제 로그아웃 원인)를 막는다.
+const refreshStoredSession = async (): Promise<boolean> => {
     try {
-        const res = await api.post<RawAuthResponse>('/api/auth/refresh', {refreshToken});
-        await mapAuthResponse(res.data);
+        await sessionCoordinator.refresh();
         return true;
     } catch (error) {
         logger.error('refreshStoredSession failed', 'AUTH_SERVICE', error);
@@ -309,7 +312,7 @@ const authService = {
         const token = tokens?.accessToken ?? await TokenManager.getAccess();
         if (!token) {
             const refreshToken = tokens?.refreshToken ?? await TokenManager.getRefresh();
-            return refreshToken ? await refreshStoredSession(refreshToken) : false;
+            return refreshToken ? await refreshStoredSession() : false;
         }
         // JWT 만료 시점 검증 — payload.exp(unix sec) 가 현재보다 작으면 false.
         // 만료된 토큰을 살아있다고 잘못 판정하면 메인 진입 후 첫 API 호출에서 401 → refresh 흐름.
@@ -331,7 +334,7 @@ const authService = {
             }
 
             const refreshToken = tokens?.refreshToken ?? await TokenManager.getRefresh();
-            return refreshToken ? await refreshStoredSession(refreshToken) : false;
+            return refreshToken ? await refreshStoredSession() : false;
         } catch (_) {
             return true; // 파싱 실패 → 서버 판정에 위임
         }

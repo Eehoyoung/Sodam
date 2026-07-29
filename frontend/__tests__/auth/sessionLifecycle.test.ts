@@ -1,6 +1,7 @@
 import authService from '../../src/features/auth/services/authService';
 import TokenManager from '../../src/common/auth/tokenStore';
 import api from '../../src/common/api/client';
+import * as sessionCoordinator from '../../src/common/auth/sessionCoordinator';
 
 jest.mock('../../src/common/api/client', () => ({
     __esModule: true,
@@ -24,6 +25,13 @@ jest.mock('../../src/common/auth/tokenStore', () => ({
         setTokens: jest.fn(),
         clear: jest.fn(),
     },
+}));
+
+// isAuthenticated()의 만료 갱신 경로는 sessionCoordinator.refresh()로 단일화됐다(경쟁 상태 수정) —
+// 실제 네트워크 호출·토큰 저장 검증은 sessionCoordinator.test.ts가 담당하므로 여기서는 mock.
+jest.mock('../../src/common/auth/sessionCoordinator', () => ({
+    __esModule: true,
+    refresh: jest.fn(),
 }));
 
 // unifiedStorage 동적 import 우회 — logout 내부에서 await import 사용
@@ -136,55 +144,39 @@ describe('Auth 세션 라이프사이클 — 회원가입·로그인·자동로�
 
     // ============ getCurrentUser (메인 진입 시 user 로드) ============
     describe('isAuthenticated refresh fallback', () => {
-        test('expired access with refresh token refreshes session and returns true', async () => {
+        const sessionCoordinatorMock = sessionCoordinator as jest.Mocked<typeof sessionCoordinator>;
+
+        test('expired access with refresh token refreshes session (단일 경로: sessionCoordinator.refresh) and returns true', async () => {
             const past = Math.floor(Date.now() / 1000) - 60;
             const newJwt = makeJwt(Math.floor(Date.now() / 1000) + 3600);
             TokenManagerMock.getAccess.mockResolvedValue(makeJwt(past));
             TokenManagerMock.getRefresh.mockResolvedValue('refresh-1');
-            (api.post as jest.Mock).mockResolvedValue({
-                data: {
-                    success: true,
-                    message: 'refreshed',
-                    data: {
-                        accessToken: newJwt,
-                        refreshToken: 'refresh-2',
-                        userId: 1,
-                        userGrade: 'PERSONAL',
-                    },
-                },
-            });
+            sessionCoordinatorMock.refresh.mockResolvedValue(newJwt);
 
             expect(await authService.isAuthenticated()).toBe(true);
-            expect(api.post).toHaveBeenCalledWith('/api/auth/refresh', {refreshToken: 'refresh-1'});
-            expect(TokenManagerMock.setTokens).toHaveBeenCalledWith({
-                accessToken: newJwt,
-                refreshToken: 'refresh-2',
-            });
+            expect(sessionCoordinatorMock.refresh).toHaveBeenCalledTimes(1);
+            // api.post로 직접 리프레시하지 않는다 — client.ts 401 인터셉터 경로와 실제 네트워크
+            // 호출을 공유(단일 비행)하는 sessionCoordinator.refresh()를 통해서만 갱신한다.
+            expect(api.post).not.toHaveBeenCalled();
         });
 
         test('missing access with refresh token refreshes session and returns true', async () => {
-            const newJwt = makeJwt(Math.floor(Date.now() / 1000) + 3600);
             TokenManagerMock.getAccess.mockResolvedValue(null);
             TokenManagerMock.getRefresh.mockResolvedValue('refresh-only');
-            (api.post as jest.Mock).mockResolvedValue({
-                data: {
-                    success: true,
-                    message: 'refreshed',
-                    data: {
-                        accessToken: newJwt,
-                        refreshToken: 'refresh-rotated',
-                        userId: 1,
-                        userGrade: 'PERSONAL',
-                    },
-                },
-            });
+            sessionCoordinatorMock.refresh.mockResolvedValue('new-access');
 
             expect(await authService.isAuthenticated()).toBe(true);
-            expect(api.post).toHaveBeenCalledWith('/api/auth/refresh', {refreshToken: 'refresh-only'});
-            expect(TokenManagerMock.setTokens).toHaveBeenCalledWith({
-                accessToken: newJwt,
-                refreshToken: 'refresh-rotated',
-            });
+            expect(sessionCoordinatorMock.refresh).toHaveBeenCalledTimes(1);
+        });
+
+        test('sessionCoordinator.refresh 실패 시 로컬 토큰을 clear하고 false 반환', async () => {
+            const past = Math.floor(Date.now() / 1000) - 60;
+            TokenManagerMock.getAccess.mockResolvedValue(makeJwt(past));
+            TokenManagerMock.getRefresh.mockResolvedValue('refresh-1');
+            sessionCoordinatorMock.refresh.mockRejectedValue(new Error('REFRESH_TOKEN_INVALID'));
+
+            expect(await authService.isAuthenticated()).toBe(false);
+            expect(TokenManagerMock.clear).toHaveBeenCalled();
         });
     });
 
