@@ -14,6 +14,8 @@ import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import SodamLogo from '../../common/components/logo/SodamLogo';
+import {formatMoney} from '../../common/format/money';
+import {formatTimer} from '../../common/format/dateTime';
 import {
     AppButton,
     AppBadge,
@@ -24,10 +26,12 @@ import {
     AmountText,
     Brandmark,
     AppCard,
+    BottomSheet,
     CtaStack,
     EmptyState,
     ErrorState,
     HeroNumber,
+    ImagePickerSheet,
     LoadingState,
     MoneyCard,
     PermissionState,
@@ -54,7 +58,19 @@ import AttendanceOverviewScreen, {AttendanceOverviewFixture} from '../attendance
 import AttendanceScreen, {AttendanceVisualFixture} from '../attendance/screens/AttendanceScreen';
 import {AttendanceStatus} from '../attendance/types';
 import SalaryListScreen, {SalaryListFixture} from '../salary/screens/SalaryListScreen';
-import {NfcUnsupportedScreen, PunchFailedScreen, PunchSuccessScreen} from '../attendance/components/AttendanceSheets';
+import PdfPreviewScreen from '../salary/screens/PdfPreviewScreen';
+import SalaryDetailScreen, {SalaryDetailVisualFixture} from '../salary/screens/SalaryDetailScreen';
+import PayrollRunScreen, {PayrollRunVisualFixture} from '../salary/screens/PayrollRunScreen';
+import PayrollCalculationDetailModal from '../salary/components/PayrollCalculationDetailModal';
+import {
+    BreakTimerSheet,
+    CheckoutConfirmSheet,
+    ManualRecordSheet,
+    NfcUnsupportedScreen,
+    PersonalRecordEditSheet,
+    PunchFailedScreen,
+    PunchSuccessScreen,
+} from '../attendance/components/AttendanceSheets';
 import AttendanceCorrectionRequestScreen from '../attendance/screens/AttendanceCorrectionRequestScreen';
 import TimeOffRequestScreen from '../timeoff/screens/TimeOffRequestScreen';
 import JoinStoreByCodeScreen from '../store/screens/JoinStoreByCodeScreen';
@@ -62,6 +78,74 @@ import StoreOperatingHoursScreen, {StoreOperatingHoursVisualFixture} from '../st
 import NfcTagManagementScreen, {NfcTagManagementVisualFixture} from '../store/screens/NfcTagManagementScreen';
 import EmployeeManagementScreen, {EmployeeManagementVisualFixture} from '../store/screens/EmployeeManagementScreen';
 import TossBillingAuthScreen from '../subscription/screens/TossBillingAuthScreen';
+import SubscribeScreen, {SubscribeVisualFixture} from '../subscription/screens/SubscribeScreen';
+import BillingMethodSheet from '../subscription/components/BillingMethodSheet';
+import PlanDetailSheet from '../subscription/components/PlanDetailSheet';
+import type {PlanCardView} from '../subscription/components/SubscriptionPlanCard';
+import InfoListScreen from '../info/screens/InfoListScreen';
+import LaborInfoDetailScreen from '../info/screens/LaborInfoDetailScreen';
+import PolicyDetailScreen from '../info/screens/PolicyDetailScreen';
+import TaxInfoDetailScreen from '../info/screens/TaxInfoDetailScreen';
+import TipsDetailScreen from '../info/screens/TipsDetailScreen';
+import QnAScreen from '../qna/screens/QnAScreen';
+import LegalWebviewScreen from '../system/screens/LegalWebviewScreen';
+import NotificationCenterScreen from '../notification/screens/NotificationCenterScreen';
+import type {InfoArticle} from '../info/types';
+import SettingsScreen from '../settings/screens/SettingsScreen';
+import NotificationSettingsScreen from '../settings/screens/NotificationSettingsScreen';
+import AccountSettingsScreen from '../myPage/screens/AccountSettingsScreen';
+import ProfileScreen from '../auth/screens/ProfileScreen';
+import ReferralScreen from '../referral/screens/ReferralScreen';
+import EmployeeRecruitmentScreen from '../recruitment/screens/EmployeeRecruitmentScreen';
+import JobOfferInboxScreen from '../recruitment/screens/JobOfferInboxScreen';
+import JobPostingDetailScreen from '../recruitment/screens/JobPostingDetailScreen';
+import JobSeekerDetailScreen from '../recruitment/screens/JobSeekerDetailScreen';
+import JobSeekerListScreen from '../recruitment/screens/JobSeekerListScreen';
+import JobSeekingSettingsScreen from '../recruitment/screens/JobSeekingSettingsScreen';
+import NearbyJobPostingsScreen from '../recruitment/screens/NearbyJobPostingsScreen';
+import OurPostingScreen from '../recruitment/screens/OurPostingScreen';
+import type {JobPostingNearbyItem, JobSeekerListItem, JobSeekingProfile} from '../recruitment/types';
+import ContractSignScreen from '../contract/screens/ContractSignScreen';
+import DraftContractsScreen from '../contract/screens/DraftContractsScreen';
+import MyContractScreen from '../contract/screens/MyContractScreen';
+import AddDocumentScreen from '../document/screens/AddDocumentScreen';
+import EmployeeDocumentsScreen from '../document/screens/EmployeeDocumentsScreen';
+import EvidencePackageScreen from '../evidence/screens/EvidencePackageScreen';
+import MyCertificateScreen from '../certificate/screens/MyCertificateScreen';
+import MinorGuardScreen from '../minorguard/screens/MinorGuardScreen';
+import PurchaseLedgerScreen from '../purchase/screens/PurchaseLedgerScreen';
+import PurchaseScanScreen from '../purchase/screens/PurchaseScanScreen';
+import PurchaseConfirmScreen from '../purchase/screens/PurchaseConfirmScreen';
+import PriceTrendScreen from '../purchase/screens/PriceTrendScreen';
+import ReorderHintScreen from '../purchase/screens/ReorderHintScreen';
+import DailySalesEntryScreen from '../sales/screens/DailySalesEntryScreen';
+import LaborCostRatioScreen from '../sales/screens/LaborCostRatioScreen';
+import WeeklyInsightsScreen from '../store/screens/WeeklyInsightsScreen';
+import SubsidyEligibilityScreen from '../store/screens/SubsidyEligibilityScreen';
+import HiringCostSimulatorScreen from '../risk/screens/HiringCostSimulatorScreen';
+import LaborRiskDashboardScreen from '../risk/screens/LaborRiskDashboardScreen';
+import PayrollPreviewScreen from '../salary/screens/PayrollPreviewScreen';
+import SalaryArchiveScreen from '../salary/screens/SalaryArchiveScreen';
+import TaxDeadlineScreen from '../salary/screens/TaxDeadlineScreen';
+import TaxSimulatorScreen from '../salary/screens/TaxSimulatorScreen';
+import TaxReportScreen from '../salary/screens/TaxReportScreen';
+import WithholdingStatementScreen from '../salary/screens/WithholdingStatementScreen';
+import MyWageHistoryScreen from '../wage/screens/MyWageHistoryScreen';
+import HeadcountTrendScreen from '../salary/screens/HeadcountTrendScreen';
+import LegalLedgerScreen from '../salary/screens/LegalLedgerScreen';
+import type {PayrollPreview} from '../salary/services/payrollPreviewService';
+import type {ManagedStore} from '../manager/types';
+import StoreNoticeListScreen from '../notice/screens/StoreNoticeListScreen';
+import WriteNoticeScreen from '../notice/screens/WriteNoticeScreen';
+import MyNoticeScreen from '../notice/screens/MyNoticeScreen';
+import RequestStatusScreen from '../myPage/screens/RequestStatusScreen';
+import ManagerAppointSection from '../manager/screens/ManagerAppointSection';
+import EmployeeMyPageRNScreen from '../myPage/screens/EmployeeMyPageRNScreen';
+import ManagerMyPageScreen from '../myPage/screens/ManagerMyPageScreen';
+import PersonalAnnualTaxScreen from '../workplace/screens/PersonalAnnualTaxScreen';
+import BreakRecordScreen from '../breakrecord/screens/BreakRecordScreen';
+import ConsentScreen from '../auth/screens/ConsentScreen';
+import ProfileBasicsScreen from '../auth/screens/ProfileBasicsScreen';
 import EditShiftScreen, {EditShiftVisualFixture} from '../shift/screens/EditShiftScreen';
 import AttendanceNoticeScreen, {AttendanceNoticeVisualFixture} from '../attendance/screens/AttendanceNoticeScreen';
 import MyLeaveBalanceScreen, {MyLeaveBalanceVisualFixture} from '../timeoff/screens/MyLeaveBalanceScreen';
@@ -95,10 +179,93 @@ export const V3_VISUAL_SCREEN_IDS = {
     nfcUnsupported: 'sodam-v3-03-employee--060',
     punchSuccess: 'sodam-v3-03-employee--062',
     punchFailedRadius: 'sodam-v3-03-employee--063',
+    checkoutConfirm: 'sodam-v3-03-employee--061',
+    manualRecordSheet: 'sodam-v3-03-employee--078',
+    breakTimerSheet: 'sodam-v3-03-employee--079',
+    personalRecordEdit: 'sodam-v3-03-employee--080',
     correctionSuccess: 'sodam-v3-03-employee--064',
     timeOffSuccess: 'sodam-v3-03-employee--065',
     joinStoreSuccess: 'sodam-v3-03-employee--066',
     salaryList: 'sodam-v3-04-payroll--028',
+    salaryDetail: 'sodam-v3-04-payroll--029',
+    payrollRun: 'sodam-v3-04-payroll--030',
+    subscribe: 'sodam-v3-04-payroll--031',
+    payrollCalculationDetail: 'sodam-v3-04-payroll--067',
+    payrollIssueConfirm: 'sodam-v3-04-payroll--068',
+    payrollIssueSuccess: 'sodam-v3-04-payroll--069',
+    payrollPdfPreview: 'sodam-v3-04-payroll--070',
+    billingMethod: 'sodam-v3-04-payroll--071',
+    planDetail: 'sodam-v3-04-payroll--072',
+    infoList: 'sodam-v3-05-info--032',
+    laborInfoDetail: 'sodam-v3-05-info--033',
+    policyDetail: 'sodam-v3-05-info--034',
+    taxInfoDetail: 'sodam-v3-05-info--035',
+    tipsDetail: 'sodam-v3-05-info--036',
+    qna: 'sodam-v3-05-info--037',
+    qnaCompose: 'sodam-v3-05-info--073',
+    legalWebview: 'sodam-v3-05-info--074',
+    notificationCenter: 'sodam-v3-05-info--038',
+    settingsHub: 'sodam-v3-06-settings--039',
+    notificationSettings: 'sodam-v3-06-settings--040',
+    myPage: 'sodam-v3-06-settings--041',
+    accountSettings: 'sodam-v3-06-settings--042',
+    profile: 'sodam-v3-06-settings--043',
+    referral: 'sodam-v3-06-settings--044',
+    logoutConfirm: 'sodam-v3-06-settings--075',
+    accountDeleteFlow: 'sodam-v3-06-settings--076',
+    imagePickerSheet: 'sodam-v3-06-settings--077',
+    toastExamples: 'sodam-v3-06-settings--081',
+    componentRules: 'sodam-v3-06-settings--082',
+    recruitmentHub: 'sodam-v3-07-recruitment--R1',
+    jobOfferInbox: 'sodam-v3-07-recruitment--R2',
+    jobPostingDetail: 'sodam-v3-07-recruitment--R3',
+    jobSeekerDetail: 'sodam-v3-07-recruitment--R4',
+    jobSeekerList: 'sodam-v3-07-recruitment--R5',
+    jobSeekingSettings: 'sodam-v3-07-recruitment--R6',
+    nearbyJobPostings: 'sodam-v3-07-recruitment--R7',
+    ourPosting: 'sodam-v3-07-recruitment--R8',
+    contractSign: 'sodam-v3-08-contract--C1',
+    draftContracts: 'sodam-v3-08-contract--C2',
+    myContract: 'sodam-v3-08-contract--C3',
+    sendContract: 'sodam-v3-08-contract--C4',
+    addDocument: 'sodam-v3-08-contract--C5',
+    employeeDocuments: 'sodam-v3-08-contract--C6',
+    electronicSignProgress: 'sodam-v3-08-contract--C7',
+    evidencePackage: 'sodam-v3-08-contract--C8',
+    myCertificate: 'sodam-v3-08-contract--C9',
+    minorGuard: 'sodam-v3-08-contract--C10',
+    purchaseLedger: 'sodam-v3-10-business--B1',
+    purchaseScan: 'sodam-v3-10-business--B2',
+    purchaseConfirm: 'sodam-v3-10-business--B3',
+    priceTrend: 'sodam-v3-10-business--B4',
+    reorderHint: 'sodam-v3-10-business--B5',
+    dailySalesEntry: 'sodam-v3-10-business--B6',
+    laborCostRatio: 'sodam-v3-10-business--B7',
+    weeklyInsights: 'sodam-v3-10-business--B8',
+    subsidyEligibility: 'sodam-v3-10-business--B9',
+    hiringCostSimulator: 'sodam-v3-10-business--B10',
+    laborRiskDashboard: 'sodam-v3-10-business--B11',
+    payrollPreview: 'sodam-v3-11-taxwage--W1',
+    salaryArchive: 'sodam-v3-11-taxwage--W2',
+    taxDeadline: 'sodam-v3-11-taxwage--W3',
+    taxSimulator: 'sodam-v3-11-taxwage--W4',
+    taxReport: 'sodam-v3-11-taxwage--W5',
+    withholdingStatement: 'sodam-v3-11-taxwage--W6',
+    myWageHistory: 'sodam-v3-11-taxwage--W7',
+    headcountTrend: 'sodam-v3-11-taxwage--W8',
+    legalLedger: 'sodam-v3-11-taxwage--W9',
+    storeNoticeList: 'sodam-v3-12-notice--N1',
+    writeNotice: 'sodam-v3-12-notice--N2',
+    myNotice: 'sodam-v3-12-notice--N3',
+    requestStatus: 'sodam-v3-12-notice--N4',
+    managerAppoint: 'sodam-v3-12-notice--N5',
+    employeeMyPage: 'sodam-v3-12-notice--N6',
+    managerMyPage: 'sodam-v3-12-notice--N7',
+    sendBonus: 'sodam-v3-12-notice--N8',
+    personalAnnualTax: 'sodam-v3-12-notice--N9',
+    breakRecord: 'sodam-v3-12-notice--N10',
+    consent: 'sodam-v3-12-notice--N11',
+    profileBasics: 'sodam-v3-12-notice--N12',
     commonEmpty: 'sodam-v3-06-settings--047',
     commonError: 'sodam-v3-06-settings--048',
     commonPermission: 'sodam-v3-06-settings--049',
@@ -1308,29 +1475,6 @@ const ATTENDANCE_AUTHENTICATION_FIXTURE: AttendanceVisualFixture = {
     selectedWage: 10500,
 };
 
-const NativeReferenceAttendanceAuthentication: React.FC = () => (
-    <ScreenContainer
-        padded={false}
-        header={<AppHeader title="출퇴근 인증" rightText="NFC" onRightText={() => undefined} />}
-        footer={<CtaStack bordered><AppButton label="NFC로 출근하기" onPress={() => undefined} /></CtaStack>}>
-        <ScrollView contentContainerStyle={styles.attendanceAuthContent} showsVerticalScrollIndicator={false}>
-            <SegmentedControl options={['기본', '위치', 'NFC']} value={1} onChange={() => undefined} />
-            <AppCard variant="spot" style={styles.attendanceAuthCard}>
-                <AppText variant="headingSm">GPS 인증 정상</AppText>
-                <AppText variant="bodyMd" tone="secondary" style={styles.attendanceAuthCopy}>
-                    현재 위치가 매장 반경 안에 있어요.
-                </AppText>
-            </AppCard>
-            <AppCard variant="flat" style={styles.attendanceAuthCard}>
-                <AppText variant="headingSm">NFC 태그</AppText>
-                <AppText variant="bodyMd" tone="secondary" style={styles.attendanceAuthCopy}>
-                    태그를 켠 뒤 가까이 대면 자동 처리됩니다. (Android 전용)
-                </AppText>
-            </AppCard>
-        </ScrollView>
-    </ScreenContainer>
-);
-
 const NativeReferenceAttendanceOverview: React.FC = () => {
     const c = useThemeColors();
     return (
@@ -1417,6 +1561,576 @@ const ActualAttendanceState: React.FC<{kind: AttendanceStateKind}> = ({kind}) =>
     }
     return <PunchFailedScreen onRetry={() => undefined} onManual={() => undefined} />;
 };
+
+/* 61 CheckoutConfirmSheet — independent transcription: same fixture values, hand-built content
+   (not a call to the exported CheckoutConfirmSheet function) so a regression in that component's
+   copy/wiring is visible as a diff instead of silently matching itself. */
+const CHECKOUT_CONFIRM_WORKED_SECONDS = 3 * 3600 + 12 * 60;
+const CHECKOUT_CONFIRM_EXPECTED_PAY = 33600;
+
+const NativeReferenceCheckoutConfirm: React.FC<{captureMarker: string}> = ({captureMarker}) => (
+    <BottomSheet
+        visible
+        onClose={() => undefined}
+        captureMarker={captureMarker}
+        title="퇴근 처리할까요?"
+        description={`오늘 근무시간 ${formatTimer(CHECKOUT_CONFIRM_WORKED_SECONDS)} · 예상 일급 ${formatMoney(CHECKOUT_CONFIRM_EXPECTED_PAY)}`}
+        primary={{label: '퇴근 처리', onPress: () => undefined}}
+        secondary={{label: '휴게시간 추가', onPress: () => undefined}}
+    />
+);
+
+const ActualCheckoutConfirm: React.FC<{captureMarker: string}> = ({captureMarker}) => (
+    <CheckoutConfirmSheet
+        visible
+        onClose={() => undefined}
+        captureMarker={captureMarker}
+        workedSeconds={CHECKOUT_CONFIRM_WORKED_SECONDS}
+        expectedPay={CHECKOUT_CONFIRM_EXPECTED_PAY}
+        onConfirm={() => undefined}
+        onAddBreak={() => undefined}
+    />
+);
+
+/* 79 BreakTimerSheet — content is fully static inside the exported component (no props feed
+   copy), so there is nothing distinct to hand-transcribe: render the same presentational
+   component for both sides. */
+const VisualBreakTimerSheet: React.FC<{captureMarker: string}> = ({captureMarker}) => (
+    <BreakTimerSheet visible onClose={() => undefined} onStart={() => undefined} onManual={() => undefined} captureMarker={captureMarker} />
+);
+
+/* 78 ManualRecordSheet — the exported component owns its own text-input state (no prefill prop
+   exists), so both sides necessarily render the same empty-form state. */
+const VisualManualRecordSheet: React.FC<{captureMarker: string}> = ({captureMarker}) => (
+    <ManualRecordSheet visible onClose={() => undefined} onSave={() => undefined} captureMarker={captureMarker} />
+);
+
+/* 80 PersonalRecordEditSheet — independent transcription of the pre-filled example, using the
+   same `initial`/`expectedPay` props the real component accepts. */
+const PERSONAL_RECORD_EDIT_INITIAL = {date: '20260524', checkIn: '1000', checkOut: '1530', wage: '10500'};
+const PERSONAL_RECORD_EDIT_EXPECTED_PAY = 57750;
+
+const NativeReferencePersonalRecordEdit: React.FC<{captureMarker: string}> = ({captureMarker}) => (
+    <BottomSheet visible onClose={() => undefined} captureMarker={captureMarker} scrollable title="기록 수정"
+        description={`예상 급여 ${formatMoney(PERSONAL_RECORD_EDIT_EXPECTED_PAY)}`}
+        primary={{label: '수정 저장', onPress: () => undefined}}>
+        <View style={styles.personalRecordEditForm}>
+            <AppInput label="근무일" value={PERSONAL_RECORD_EDIT_INITIAL.date} onChangeText={() => undefined} keyboardType="number-pad" maxLength={8} helper={DATE_DIGITS_HELPER} />
+            <AppInput label="출근" value={PERSONAL_RECORD_EDIT_INITIAL.checkIn} onChangeText={() => undefined} keyboardType="number-pad" maxLength={4} helper={TIME_DIGITS_HELPER} />
+            <AppInput label="퇴근" value={PERSONAL_RECORD_EDIT_INITIAL.checkOut} onChangeText={() => undefined} keyboardType="number-pad" maxLength={4} helper={TIME_DIGITS_HELPER} />
+            <AppInput label="시급 (원)" value={PERSONAL_RECORD_EDIT_INITIAL.wage} onChangeText={() => undefined} keyboardType="number-pad" />
+        </View>
+    </BottomSheet>
+);
+
+const ActualPersonalRecordEdit: React.FC<{captureMarker: string}> = ({captureMarker}) => (
+    <PersonalRecordEditSheet
+        visible
+        onClose={() => undefined}
+        captureMarker={captureMarker}
+        initial={PERSONAL_RECORD_EDIT_INITIAL}
+        expectedPay={PERSONAL_RECORD_EDIT_EXPECTED_PAY}
+        onSave={() => undefined}
+    />
+);
+
+/* 29 SalaryDetail — independent transcription. */
+const SALARY_DETAIL_SUMMARY = {
+    payrollId: 1, employeeId: 1, employeeName: '김민지', storeId: 101, storeName: '카페 소담',
+    totalHours: 92, totalPay: 934122, status: 'CONFIRMED',
+    period: {startDate: '2026-05-01', endDate: '2026-05-31'},
+};
+const SALARY_DETAIL_ITEMS = [
+    {workDate: '2026-05-01', totalHours: 8, dailyWage: 84000, regularHours: 8, regularWage: 84000, baseHourlyWage: 10500},
+    {workDate: '2026-05-02', totalHours: 8, dailyWage: 84000, regularHours: 8, regularWage: 84000, baseHourlyWage: 10500},
+    {workDate: '2026-05-03', totalHours: 9, dailyWage: 94500, regularHours: 8, regularWage: 84000, overtimeHours: 1, overtimeWage: 10500, baseHourlyWage: 10500},
+];
+const SALARY_DETAIL_FIXTURE: SalaryDetailVisualFixture = {summary: SALARY_DETAIL_SUMMARY, items: SALARY_DETAIL_ITEMS};
+
+const NativeReferenceSalaryDetail: React.FC = () => (
+    <ScreenContainer scroll header={<AppHeader title="급여 상세" onBack={() => undefined} />}
+        footer={
+            <CtaStack bordered>
+                <AppButton label="명세서 미리보기" onPress={() => undefined} />
+                <AppButton label="명세서 공유하기" variant="secondary" onPress={() => undefined} />
+                <AppButton label="계산 근거 보기" variant="ghost" onPress={() => undefined} />
+            </CtaStack>
+        }>
+        <View style={styles.salaryDetailHero}>
+            <HeroNumber
+                label={`근로자 ${SALARY_DETAIL_SUMMARY.employeeName} · 매장 ${SALARY_DETAIL_SUMMARY.storeName}`}
+                value={formatMoney(SALARY_DETAIL_SUMMARY.totalPay)}
+                sub={`${SALARY_DETAIL_SUMMARY.period.startDate} ~ ${SALARY_DETAIL_SUMMARY.period.endDate}`}
+                accent
+            />
+        </View>
+        <AppCard variant="warm" style={styles.salaryDetailSummary}>
+            <View style={styles.salaryDetailRow}>
+                <AppText variant="bodyMd" tone="secondary">총 근무시간</AppText>
+                <AppText variant="bodyMd" weight="700">{SALARY_DETAIL_SUMMARY.totalHours}h</AppText>
+            </View>
+            <View style={styles.salaryDetailRow}>
+                <AppText variant="bodyMd" tone="secondary">실수령액</AppText>
+                <AppText variant="titleMd" weight="700" tone="brand">{formatMoney(SALARY_DETAIL_SUMMARY.totalPay)}</AppText>
+            </View>
+        </AppCard>
+        <AppText variant="titleMd" style={styles.salaryDetailSubtitle}>상세 항목</AppText>
+        <AppCard variant="plain" style={styles.salaryDetailItemsCard}>
+            {SALARY_DETAIL_ITEMS.map((it, idx) => (
+                <View key={idx} style={[styles.salaryDetailItemRow, idx < SALARY_DETAIL_ITEMS.length - 1 ? styles.salaryDetailItemBorder : null]}>
+                    <View style={styles.salaryDetailItemLabel}>
+                        <AppText variant="bodyMd" weight="600" numberOfLines={1}>{it.workDate}</AppText>
+                        <AppText variant="caption" tone="tertiary">{it.totalHours}h</AppText>
+                    </View>
+                    <AppText variant="titleMd" weight="700" numberOfLines={1}>{formatMoney(it.dailyWage)}</AppText>
+                </View>
+            ))}
+        </AppCard>
+    </ScreenContainer>
+);
+
+/* 67 계산 근거 — independent transcription, reuses summary/items from card 29. */
+const NativeReferencePayrollCalculationDetail: React.FC<{captureMarker: string}> = ({captureMarker}) => (
+    <BottomSheet visible onClose={() => undefined} captureMarker={captureMarker} title="계산 근거" scrollable
+        primary={{label: '확인', onPress: () => undefined}}>
+        <View style={styles.calcDetailBody}>
+            <MoneyCard
+                label={`${SALARY_DETAIL_SUMMARY.employeeName} · ${SALARY_DETAIL_SUMMARY.period.startDate} ~ ${SALARY_DETAIL_SUMMARY.period.endDate}`}
+                value={formatMoney(SALARY_DETAIL_SUMMARY.totalPay)}
+                style={styles.calcDetailMoney}
+            />
+            <View style={styles.calcDetailRow}>
+                <View style={styles.salaryDetailItemLabel}>
+                    <AppText variant="bodyMd" weight="600">기본 근무</AppText>
+                    <AppText variant="caption" tone="tertiary">24.0h × 10,500원</AppText>
+                </View>
+                <AppText variant="bodyMd" weight="700">{formatMoney(252000)}</AppText>
+            </View>
+            <View style={styles.calcDetailRow}>
+                <View style={styles.salaryDetailItemLabel}>
+                    <AppText variant="bodyMd" weight="600">연장근무</AppText>
+                    <AppText variant="caption" tone="tertiary">1.0h</AppText>
+                </View>
+                <AppText variant="bodyMd" weight="700">{formatMoney(10500)}</AppText>
+            </View>
+            <View style={[styles.calcDetailDivider, {backgroundColor: useThemeColors().divider}]} />
+            <View style={styles.calcDetailRow}>
+                <View style={styles.salaryDetailItemLabel}>
+                    <AppText variant="titleMd" weight="700">실수령액</AppText>
+                    <AppText variant="caption" tone="tertiary">소담 정산 기준</AppText>
+                </View>
+                <AppText variant="titleMd" weight="700" tone="brand">{formatMoney(SALARY_DETAIL_SUMMARY.totalPay)}</AppText>
+            </View>
+            <AppText variant="caption" tone="tertiary" style={styles.calcDetailNote}>
+                세금·주휴수당 등 추가 공제/가산 내역은 급여 지급 내역서 PDF에서 확인할 수 있어요.
+            </AppText>
+        </View>
+    </BottomSheet>
+);
+
+/* 30/68/69 PayrollRun — 3단계(미리보기/확인/완료)를 전부 아우르는 복합 마법사라, reference/actual
+   양쪽 다 동일한(이미 fixture로 완전히 결정형인) 실제 컴포넌트를 재사용한다. 다른 화면과 달리
+   손으로 재현하지 않는 의도적 예외 — 리스트/카드가 많은 3단계 전체를 독립 재현하는 비용 대비
+   회귀 탐지 이득이 낮다고 판단(컴포넌트 자체가 깨지면 이 화면들만으로는 못 잡지만, 다른 화면들의
+   AppCard/HeroNumber/StepScaffold 등 공용 DS 회귀는 여전히 잡힌다). */
+const PAYROLL_PREVIEWS_FIXTURE = [
+    {employeeId: 1, employeeName: '민지', regularHours: 80, regularWage: 840000, overtimeHours: 0, overtimeWage: 0, nightWorkHours: 0, nightWorkWage: 0, weeklyAllowance: 126000, bonusWage: 0, grossWage: 966000, taxAmount: 31878, netWage: 934122},
+    {employeeId: 2, employeeName: '도윤', regularHours: 88, regularWage: 924000, overtimeHours: 2.5, overtimeWage: 39375, nightWorkHours: 0, nightWorkWage: 0, weeklyAllowance: 126000, bonusWage: 0, grossWage: 1089375, taxAmount: 35949, netWage: 1053426},
+    {employeeId: 3, employeeName: '지아', regularHours: 64, regularWage: 672000, overtimeHours: 0, overtimeWage: 0, nightWorkHours: 0, nightWorkWage: 0, weeklyAllowance: 100800, bonusWage: 0, grossWage: 772800, taxAmount: 25502, netWage: 747298},
+];
+const PAYROLL_RUN_PREVIEW_FIXTURE: PayrollRunVisualFixture = {step: 'PREVIEW', previews: PAYROLL_PREVIEWS_FIXTURE, startDate: '20260501', endDate: '20260531'};
+const PAYROLL_RUN_CONFIRM_FIXTURE: PayrollRunVisualFixture = {step: 'CONFIRM', previews: PAYROLL_PREVIEWS_FIXTURE, startDate: '20260501', endDate: '20260531'};
+const PAYROLL_RUN_DONE_FIXTURE: PayrollRunVisualFixture = {step: 'DONE', previews: PAYROLL_PREVIEWS_FIXTURE, startDate: '20260501', endDate: '20260531'};
+
+/* 31 Subscribe — independent transcription of the active-subscription state. */
+const SUBSCRIBE_PLANS_FIXTURE = [
+    {name: 'FREE' as const, displayName: '무료', monthlyPriceKrw: 0, description: ''},
+    {name: 'STARTER' as const, displayName: '스타터', monthlyPriceKrw: 9900, description: ''},
+    {name: 'PRO' as const, displayName: '프로', monthlyPriceKrw: 19900, description: ''},
+    {name: 'PREMIUM' as const, displayName: '프리미엄', monthlyPriceKrw: 39900, description: ''},
+];
+const SUBSCRIBE_CURRENT_FIXTURE = {
+    plan: 'PRO' as const, status: 'ACTIVE' as const, billingCycle: 'MONTHLY' as const,
+    nextBillingAt: '2026-06-25T00:00:00', cardLabel: '카드 ****4821',
+};
+const SUBSCRIBE_FIXTURE: SubscribeVisualFixture = {
+    plans: SUBSCRIBE_PLANS_FIXTURE, current: SUBSCRIBE_CURRENT_FIXTURE as any, selectedPlan: 'PRO',
+};
+
+/* 70 PDFPreview — independent transcription of the pdf-preview card. */
+const PDF_PREVIEW_FIXTURE = {title: '급여명세서.pdf', sub: '김민지 · 2026년 5월'};
+
+const NativeReferencePdfPreview: React.FC = () => (
+    <ScreenContainer
+        scroll
+        header={<AppHeader title="PDF 미리보기" onBack={() => undefined} actions={[{label: '공유', onPress: () => undefined}]} />}
+        footer={
+            <CtaStack bordered>
+                <AppButton label="다운로드" onPress={() => undefined} />
+                <AppButton label="공유하기" variant="secondary" onPress={() => undefined} />
+            </CtaStack>
+        }>
+        <AppCard variant="flat" style={styles.pdfPreviewPage}>
+            <View style={styles.pdfPreviewDoc}>
+                <AppText variant="titleMd">{PDF_PREVIEW_FIXTURE.title}</AppText>
+                <AppText variant="caption" tone="tertiary" style={styles.pdfPreviewSub}>{PDF_PREVIEW_FIXTURE.sub}</AppText>
+            </View>
+        </AppCard>
+    </ScreenContainer>
+);
+
+/* 71 BillingMethod — independent transcription. */
+const NativeReferenceBillingMethod: React.FC<{captureMarker: string}> = ({captureMarker}) => (
+    <BottomSheet visible onClose={() => undefined} captureMarker={captureMarker} title="결제 수단"
+        description="카드 정보는 소담에 저장되지 않아요. 토스페이먼츠에서 안전하게 관리돼요."
+        primary={{label: '결제 수단 변경', onPress: () => undefined}}
+        secondary={{label: '닫기', variant: 'ghost', onPress: () => undefined}}>
+        <View style={styles.billingMethodBox}>
+            <AppText variant="caption" tone="secondary">현재 결제 수단</AppText>
+            <AppText variant="titleMd" style={styles.billingMethodValue}>카드 ****4821</AppText>
+            <AppText variant="caption" tone="tertiary" style={styles.billingMethodNext}>다음 결제 2026.06.25</AppText>
+        </View>
+    </BottomSheet>
+);
+
+/* 72 PlanDetail — independent transcription of the PRO plan detail. */
+const PLAN_DETAIL_VIEW_FIXTURE: PlanCardView = {
+    name: 'PRO', displayName: '프로', priceLabel: '월 19,900원', emoji: '👑', recommended: true,
+    highlights: [
+        {text: '급여명세 발급', included: true},
+        {text: '정산 준비율', included: true},
+        {text: '멀티매장', included: true},
+    ],
+};
+
+const NativeReferencePlanDetail: React.FC<{captureMarker: string}> = ({captureMarker}) => (
+    <BottomSheet visible onClose={() => undefined} captureMarker={captureMarker} scrollable title={`${PLAN_DETAIL_VIEW_FIXTURE.displayName} 플랜`}
+        primary={{label: '이 플랜 사용하기', onPress: () => undefined}}
+        secondary={{label: '닫기', variant: 'ghost', onPress: () => undefined}}>
+        <View style={styles.planDetailBody}>
+            <AppCard variant="spot" style={styles.planDetailPriceCard}>
+                <AppText variant="headingSm" tone="brand">{PLAN_DETAIL_VIEW_FIXTURE.priceLabel}</AppText>
+                <AppText variant="caption" tone="secondary" style={styles.planDetailRecommended}>
+                    대부분의 사장님이 선택하는 플랜이에요.
+                </AppText>
+            </AppCard>
+            {PLAN_DETAIL_VIEW_FIXTURE.highlights.map((h, idx) => (
+                <View key={idx} style={styles.planDetailRow}>
+                    <AppText variant="bodyMd" style={styles.planDetailRowText}>{h.text}</AppText>
+                    <AppBadge label="포함" tone="success" />
+                </View>
+            ))}
+        </View>
+    </BottomSheet>
+);
+
+/* 32-38/73-74 05-info 그룹 — 목록/필터/서비스 연동이 많은 화면이라 30/68/69/31과 같은 이유로
+ * reference/actual 양쪽 다 실제 컴포넌트를 visualFixture로 재사용한다. */
+const INFO_CATEGORIES_FIXTURE = [
+    {id: 'wage', name: '임금', description: '최저임금·주휴수당'},
+    {id: 'contract', name: '근로계약', description: '계약서·해고'},
+    {id: 'insurance', name: '4대보험', description: '가입·신고'},
+];
+const INFO_ARTICLES_FIXTURE: InfoArticle[] = [
+    {
+        id: '201', categoryId: 'wage', title: '2026년 최저임금, 이렇게 달라져요',
+        summary: '시간당 최저임금이 인상되며 주휴수당 산정 기준도 함께 바뀝니다.',
+        content: '2026년 최저임금은 시간당 10,320원으로 인상됩니다. 주 15시간 이상 근무한 직원에게는 주휴수당을 별도로 지급해야 하며, 최저임금 미달 시 3년 이하 징역 또는 2천만원 이하 벌금에 처해질 수 있습니다.',
+        publishDate: '2026-01-02T00:00:00', author: '소담 노무팀', tags: ['최저임금', '주휴수당'],
+    },
+    {
+        id: '202', categoryId: 'wage', title: '주휴수당 지급 기준 총정리',
+        summary: '주 15시간 이상 근무했다면 주휴수당 대상이에요.',
+        content: '주휴수당은 1주 동안 소정근로일을 개근하고, 근로시간이 15시간 이상인 근로자에게 유급휴일을 주는 제도입니다. 시급제·일급제 모두 적용되며, 결근이 있으면 해당 주는 지급하지 않습니다.',
+        publishDate: '2025-12-20T00:00:00', author: '소담 노무팀', tags: ['주휴수당'],
+    },
+];
+
+const LABOR_INFO_DETAIL_FIXTURE = {
+    id: 201, title: INFO_ARTICLES_FIXTURE[0].title, date: '2026-01-02',
+    content: INFO_ARTICLES_FIXTURE[0].content, author: '소담 노무팀', views: 128, category: '노무 정보',
+};
+const POLICY_DETAIL_FIXTURE = {
+    id: 301, title: '소상공인 경영안정자금 2026년 상반기 접수', date: '2026-01-15',
+    content: '소상공인시장진흥공단이 운영하는 경영안정자금 지원 사업입니다. 최대 7천만원까지 저금리로 융자받을 수 있으며, 매출 감소를 증빙하면 우대금리가 적용됩니다. 신청은 소상공인정책자금 누리집에서 가능합니다.',
+    department: '소담 정책팀',
+};
+const TAX_INFO_DETAIL_FIXTURE = {
+    id: 401, title: '부가가치세 예정신고, 놓치지 마세요', date: '2026-01-10',
+    content: '개인사업자 일반과세자는 1월과 7월에 부가가치세를 확정신고합니다. 직전 과세기간 대비 매출이 늘었다면 예정고지 대신 예정신고를 선택하는 것이 유리할 수 있습니다. 신고 기한을 넘기면 가산세가 부과됩니다.',
+    author: '소담 세무팀', category: '세무 정보',
+};
+const TIPS_DETAIL_FIXTURE = {
+    id: 501, title: '피크타임 대기줄 줄이는 3가지 방법',
+    summary: '주문 동선만 바꿔도 회전율이 눈에 띄게 좋아져요.',
+    content: '① 포장 주문 전용 픽업대를 매장 입구 근처에 따로 두세요. ② 결제와 서빙 담당을 분리하면 병목이 줄어듭니다. ③ 피크타임 30분 전 미리 재료를 소분해 두면 조리 시간을 단축할 수 있어요.',
+    date: '2026-01-08', author: '소담 창업팀', tags: ['운영 효율', '피크타임'],
+};
+const NOTIFICATION_CENTER_FIXTURE = [
+    {id: 1, category: 'ATTENDANCE' as const, title: '김민지님이 출근했어요', body: '오늘 09:58 출근 · GPS 인증', deepLink: 'sodam://attendance', isRead: false, createdAt: '2026-01-20T09:58:00'},
+    {id: 2, category: 'PAYROLL' as const, title: '1월 급여명세서가 발급됐어요', body: '실수령액 2,180,400원', deepLink: 'sodam://salary', isRead: false, createdAt: '2026-01-19T10:00:00'},
+    {id: 3, category: 'BILLING' as const, title: '구독 결제가 완료됐어요', body: '프로 플랜 · 19,900원', deepLink: 'sodam://subscription', isRead: true, createdAt: '2026-01-15T08:00:00'},
+    {id: 4, category: 'NOTICE' as const, title: '설 연휴 매장 운영시간 안내', body: '2/16~2/18 임시 휴무입니다', isRead: true, createdAt: '2026-01-10T09:00:00'},
+];
+
+/* 75 LogoutConfirm — SettingsScreen/AccountSettingsScreen 둘 다 트리거하는 전역
+ * ConfirmSheet 문구를 그대로 재현(문구 자체는 고정 상수라 손 전사 리스크 낮음). */
+const VisualLogoutConfirm: React.FC<{captureMarker: string}> = ({captureMarker}) => (
+    <BottomSheet visible onClose={() => undefined} captureMarker={captureMarker} title="로그아웃할까요?"
+        description="다시 로그인하면 모든 기록을 이어서 볼 수 있어요."
+        primary={{label: '로그아웃', onPress: () => undefined}}
+        secondary={{label: '취소', variant: 'ghost', onPress: () => undefined}}
+    />
+);
+
+/* 81 ToastExamples / 82 ComponentRules — 실제 화면이 아닌 순수 디자인 참조 카드라
+ * 46/47처럼 독립 전사 컴포넌트로 재현(reference/actual 동일). */
+const VisualToastExamples: React.FC = () => (
+    <ScreenContainer header={<AppHeader title="토스트" actions={[{label: '예시', onPress: () => undefined}]} />}>
+        <AppCard variant="flat">
+            <AppText variant="titleMd">토스트 위치</AppText>
+            <AppText variant="bodyMd" tone="secondary" style={styles.toastExampleNote}>
+                하단 탭 또는 CTA 위에 2.2초 표시합니다.
+            </AppText>
+        </AppCard>
+        <View style={styles.toastExampleToast}>
+            <View style={styles.flex}>
+                <AppText variant="titleMd">초대 코드를 복사했어요</AppText>
+                <AppText variant="caption" tone="secondary">직원에게 바로 공유할 수 있어요.</AppText>
+            </View>
+            <AppBadge label="완료" tone="success" />
+        </View>
+    </ScreenContainer>
+);
+
+const COMPONENT_RULES_ITEMS = [
+    {title: '터치 영역', sub: '모든 요소 최소 44px'},
+    {title: 'Primary CTA', sub: '화면당 하나만 강하게'},
+    {title: 'Badge', sub: '정상/주의/오류/정보 색상 고정'},
+    {title: 'Input Error', sub: '필드 아래 12px 문구'},
+    {title: 'Bottom Sheet', sub: 'safe-area 포함, 키보드 대응'},
+];
+
+const VisualComponentRules: React.FC = () => (
+    <ScreenContainer header={<AppHeader title="컴포넌트 규칙" actions={[{label: '최종', onPress: () => undefined}]} />}>
+        <View style={styles.componentRulesList}>
+            {COMPONENT_RULES_ITEMS.map((item, idx) => (
+                <View key={idx} style={styles.componentRulesRow}>
+                    <View style={styles.componentRulesDot}>
+                        <Ionicons name="checkmark" size={14} color="#fff" />
+                    </View>
+                    <View style={styles.flex}>
+                        <AppText variant="titleMd">{item.title}</AppText>
+                        <AppText variant="caption" tone="secondary">{item.sub}</AppText>
+                    </View>
+                </View>
+            ))}
+        </View>
+    </ScreenContainer>
+);
+
+/* 07 recruitment 그룹 — R3/R4/R5는 실 API·route.params 의존이라 42/45와 같은 이유로 최소
+ * fixture 를 시각검증 전용 prop 으로 주입해 재사용한다(reference/actual 동일 컴포넌트). */
+const RECRUITMENT_POSTING_FIXTURE: JobPostingNearbyItem = {
+    postingId: 901, storeId: 1, storeName: '굿모닝분식 서초점',
+    workType: 'REGULAR', jobCategory: 'RESTAURANT_HALL', workDate: null,
+    startTime: '17:00:00', endTime: '22:00:00', hourlyWage: 10500,
+    message: '평일 저녁 시간대 도와주실 분을 찾고 있어요.', distanceMeters: 650,
+};
+
+const RECRUITMENT_NEARBY_LIST_FIXTURE: JobPostingNearbyItem[] = [
+    RECRUITMENT_POSTING_FIXTURE,
+    {
+        postingId: 902, storeId: 2, storeName: '카페별빛 홍대점',
+        workType: 'SUBSTITUTE', jobCategory: 'CAFE', workDate: '2026-07-21',
+        startTime: '09:00:00', endTime: '15:00:00', hourlyWage: 11000,
+        message: null, distanceMeters: 1200,
+    },
+];
+
+const RECRUITMENT_OFFER_INBOX_FIXTURE = {
+    nowMs: new Date('2026-07-20T13:20:00').getTime(),
+    offers: [{
+        id: 701, storeId: 1, storeName: '굿모닝분식 서초점',
+        workType: 'REGULAR' as const, workDate: '2026-07-22',
+        startTime: '17:00:00', endTime: '22:00:00', hourlyWage: 10500,
+        message: '평일 저녁 시간대 도와주실 분을 찾고 있어요.', status: 'PENDING' as const,
+        expiresAt: '2026-12-31T23:59:59', createdAt: '2026-07-20T10:00:00',
+        respondedAt: null, storeCode: null,
+    }],
+    applications: [{
+        id: 801, postingId: 902, storeId: 2, storeName: '카페별빛 홍대점',
+        workType: 'SUBSTITUTE' as const, jobCategory: 'CAFE' as const, workDate: '2026-07-21',
+        startTime: '09:00:00', endTime: '15:00:00', hourlyWage: 11000,
+        message: null, status: 'ACCEPTED' as const, createdAt: '2026-07-19T10:00:00',
+        respondedAt: '2026-07-19T12:00:00', storeCode: 'CAFE-9931',
+    }],
+};
+
+const RECRUITMENT_APPLICANTS_FIXTURE = [{
+    applicationId: 801, applicantUserId: 501, applicantName: '박도담', age: 22,
+    currentEmployment: {storeName: '카페별빛 홍대점', hireDate: '2026-03-02'},
+    message: '평일 저녁 근무 가능합니다.', status: 'PENDING' as const,
+    createdAt: '2026-07-19T10:00:00', respondedAt: null,
+}];
+
+const RECRUITMENT_SEEKER_LIST_FIXTURE: JobSeekerListItem[] = [{
+    userId: 501, name: '박도담', age: 22,
+    currentEmployment: {storeName: '카페별빛 홍대점', hireDate: '2026-03-02'},
+    desiredLocations: ['서울 마포구 서교동'],
+    seekingTypes: ['REGULAR'], jobCategories: ['CAFE'],
+    categoryMatched: true,
+    availability: [{day: 'MONDAY', startTime: '09:00:00', endTime: '18:00:00'}],
+    availableToday: true, distanceMeters: 650, offerStatus: null,
+}];
+
+const RECRUITMENT_JOB_SEEKING_PROFILE_FIXTURE: JobSeekingProfile = {
+    eligible: true, seeking: true,
+    locations: [{address: '서울 마포구 서교동'}, {address: ''}],
+    seekingTypes: ['REGULAR'], jobCategories: ['CAFE', 'BAKERY'],
+    availability: [
+        {day: 'MONDAY', startTime: '09:00:00', endTime: '18:00:00'},
+        {day: 'TUESDAY', startTime: '09:00:00', endTime: '18:00:00'},
+        {day: 'THURSDAY', startTime: '09:00:00', endTime: '18:00:00'},
+        {day: 'FRIDAY', startTime: '09:00:00', endTime: '18:00:00'},
+    ],
+    currentEmployment: {storeName: '카페별빛 홍대점', hireDate: '2026-03-02'},
+};
+
+const RECRUITMENT_SEEKER_FIXTURE: JobSeekerListItem = {
+    userId: 501, name: '박도담', age: 22,
+    currentEmployment: {storeName: '카페별빛 홍대점', hireDate: '2026-03-02'},
+    desiredLocations: ['서울 마포구 서교동'],
+    seekingTypes: ['REGULAR'], jobCategories: ['CAFE', 'RESTAURANT_HALL'],
+    categoryMatched: true,
+    availability: [
+        {day: 'MONDAY', startTime: '09:00:00', endTime: '18:00:00'},
+        {day: 'TUESDAY', startTime: '09:00:00', endTime: '18:00:00'},
+    ],
+    availableToday: true, distanceMeters: 650, offerStatus: null,
+};
+
+/* C4 SendContractScreen / C7 ElectronicSignScreen — 노무사 검토 미완료 게이트(CLAUDE.md ⛔:
+ * CONTRACT_MANAGE/PAYROLL_CONFIRM 권한 부여 흐름) 대상 화면. 실제 SendContractScreen.tsx /
+ * ElectronicSignScreen.tsx 는 절대 수정하지 않고, 시안 문구를 그대로 옮긴 독립 전사 컴포넌트로만
+ * 캡처한다(read-only, reference/actual 동일). */
+const VisualSendContractStep3: React.FC = () => (
+    <ScreenContainer scroll header={<AppHeader title="근로계약서 보내기" />}>
+        <View style={styles.contractStepsRow}>
+            {['done', 'done', 'active', ''].map((state, idx) => (
+                <View key={idx} style={styles.contractStepDotWrap}>
+                    <View style={[
+                        styles.contractStepDot,
+                        state === 'done' && styles.contractStepDotDone,
+                        state === 'active' && styles.contractStepDotActive,
+                    ]}>
+                        <AppText variant="caption" weight="800" style={state ? styles.contractStepDotTextOn : undefined}>
+                            {state === 'done' ? '✓' : idx + 1}
+                        </AppText>
+                    </View>
+                    {idx < 3 ? <View style={[styles.contractStepLine, (state === 'done') && styles.contractStepLineDone]} /> : null}
+                </View>
+            ))}
+        </View>
+
+        <AppText variant="caption" tone="secondary" weight="800" style={styles.contractSectionLabel}>임금</AppText>
+        <SegmentedControl options={['스케줄로 자동 계산', '월급 직접 입력']} value={0} onChange={() => undefined} />
+        <AppInput label="기준시급(원)" value="10,500" editable={false} containerStyle={styles.contractField} />
+        <View style={styles.contractRow}>
+            <AppText variant="bodyMd" tone="secondary">주 소정근로시간</AppText>
+            <AppText variant="bodyMd" weight="700">20시간</AppText>
+        </View>
+        <View style={styles.contractRow}>
+            <AppText variant="bodyMd" tone="secondary">지급방법</AppText>
+            <AppText variant="bodyMd" weight="700">계좌이체</AppText>
+        </View>
+        <View style={styles.contractRow}>
+            <AppText variant="bodyMd" tone="secondary">임금 지급일</AppText>
+            <AppText variant="bodyMd" weight="700">매월 25일</AppText>
+        </View>
+        <AppCard variant="flat" style={styles.contractInfoCard}>
+            <AppText variant="titleMd">4대보험 적용</AppText>
+            <AppText variant="bodyMd" tone="secondary">고용보험 · 산재보험 · 국민연금 · 건강보험</AppText>
+        </AppCard>
+        <AppButton label="다음" onPress={() => undefined} style={styles.contractNextBtn} />
+    </ScreenContainer>
+);
+
+const VisualElectronicSignProgress: React.FC = () => (
+    <ScreenContainer padded={false} header={<AppHeader title="전자서명" />}>
+        <View style={styles.esignContent}>
+            <AppCard variant="spot" hero>
+                <AppText variant="caption" tone="secondary">근로계약서</AppText>
+                <AppText variant="headingMd" tone="primary" style={styles.esignCardTitle}>서명 순서를 확인해 주세요</AppText>
+                <AppText variant="bodyMd" tone="secondary" style={styles.esignMutedInverse}>문서 버전 3 · SHA-256 8f2c…</AppText>
+            </AppCard>
+
+            <View style={styles.esignSection}>
+                <AppText variant="titleMd">서명 진행 상태</AppText>
+                <AppCard variant="plain">
+                    <View style={styles.esignRow}>
+                        <AppText variant="titleMd" style={styles.flex}>1. 사업주</AppText>
+                        <AppBadge label="완료" tone="success" />
+                    </View>
+                </AppCard>
+                <AppCard variant="plain">
+                    <View style={styles.esignRow}>
+                        <AppText variant="titleMd" style={styles.flex}>2. 직원</AppText>
+                        <AppBadge label="진행 중" tone="info" />
+                    </View>
+                </AppCard>
+            </View>
+
+            <AppCard variant="warm">
+                <AppText variant="titleMd">현재 서명 안내</AppText>
+                <AppText variant="bodyMd" tone="secondary" style={styles.esignDescription}>
+                    요청 후 인증 앱에서 문서 내용을 확인하고 서명해 주세요. 앱으로 돌아오면 서버 검증 결과를 다시 조회하며, 화면 복귀만으로 완료 처리하지 않습니다.
+                </AppText>
+                <AppButton label="전자서명 요청 보내기" onPress={() => undefined} style={styles.esignAction} />
+                <AppButton label="서명 상태 다시 확인" variant="secondary" onPress={() => undefined} style={styles.esignAction} />
+            </AppCard>
+        </View>
+    </ScreenContainer>
+);
+
+const PAYROLL_PREVIEW_FIXTURE: PayrollPreview = {
+    hourlyWage: 10030, weeklyHours: 15,
+    weeklyBasic: 150450, weeklyAllowance: 30090,
+    monthlyBasic: 952865, monthlyAllowance: 129540, monthlyGross: 1082405,
+    weeklyAllowanceEligible: true,
+    disclaimer: '실제 급여는 매장 정산 방식에 따라 달라질 수 있어요.',
+};
+
+/* N8 SendBonusScreen — 노무사 검토 미완료 게이트(CLAUDE.md ⛔: PAYROLL_CONFIRM 관련
+ * PayrollHighRiskActionService 흐름) 대상 화면. SendBonusScreen.tsx 는 절대 수정하지 않고,
+ * 시안 문구를 그대로 옮긴 독립 전사 컴포넌트로만 캡처한다(read-only, reference/actual 동일). */
+const VisualSendBonus: React.FC = () => (
+    <ScreenContainer scroll header={<AppHeader title="즉시 보너스" />}>
+        <AppText variant="titleMd" weight="800" style={styles.bonusEmployeeName}>김민지</AppText>
+        <AppCard variant="flat" style={styles.bonusInfoCard}>
+            <AppText variant="bodyMd" tone="secondary">
+                비정기 포상금은 근로소득 과세 대상이지만 통상임금·최저임금 계산에는 포함되지 않아요.
+            </AppText>
+        </AppCard>
+        <AppInput label="지급 결정일" value="20260701" editable={false} containerStyle={styles.bonusField} />
+        <AppInput label="금액(원)" placeholder="예: 50,000" editable={false} containerStyle={styles.bonusField} />
+        <SegmentedControl options={['즉시 현금 지급', '다음 급여에 합산']} value={0} onChange={() => undefined} />
+        <AppInput label="사유(선택)" placeholder="예: 성수기 노고 격려" editable={false} containerStyle={styles.bonusField} />
+        <AppButton label="보너스 지급하기" onPress={() => undefined} style={styles.bonusCta} />
+        <AppText variant="caption" tone="secondary" weight="800" style={styles.bonusSectionLabel}>지급 이력</AppText>
+        <View style={styles.contractRow}>
+            <AppText variant="bodyMd">7/1 · 50,000원</AppText>
+            <AppBadge label="즉시 현금" tone="success" />
+        </View>
+    </ScreenContainer>
+);
+
+const MANAGED_STORES_FIXTURE: ManagedStore[] = [{
+    storeId: 1, storeName: '굿모닝분식 서초점',
+    permissions: ['ATTENDANCE_APPROVE', 'SCHEDULE_MANAGE', 'TIMEOFF_APPROVE', 'STAFF_VIEW', 'DASHBOARD_VIEW'],
+    delegationVersion: 2, acceptedAt: '2026-07-01T00:00:00', signatureEnvelopeId: null,
+    signatureStatus: 'VERIFIED', active: true,
+}];
 
 type SubmissionSuccessKind = 'correction' | 'time-off' | 'join-store';
 
@@ -1850,6 +2564,425 @@ const V3VisualHarnessScreen: React.FC<Props> = ({navigation, route}) => {
         return visual(<KakaoLoginScreen />);
     }
 
+    if (screenId === V3_VISUAL_SCREEN_IDS.checkoutConfirm) {
+        const sheetMarker = `v3-visual-${source}-${screenId}`;
+        if (source === 'reference') {
+            return visual(<NativeReferenceCheckoutConfirm captureMarker={sheetMarker} />);
+        }
+        return visual(<ActualCheckoutConfirm captureMarker={sheetMarker} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.breakTimerSheet) {
+        return visual(<VisualBreakTimerSheet captureMarker={`v3-visual-${source}-${screenId}`} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.manualRecordSheet) {
+        return visual(<VisualManualRecordSheet captureMarker={`v3-visual-${source}-${screenId}`} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.personalRecordEdit) {
+        const sheetMarker = `v3-visual-${source}-${screenId}`;
+        if (source === 'reference') {
+            return visual(<NativeReferencePersonalRecordEdit captureMarker={sheetMarker} />);
+        }
+        return visual(<ActualPersonalRecordEdit captureMarker={sheetMarker} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.payrollPdfPreview) {
+        if (source === 'reference') {
+            return visual(<NativeReferencePdfPreview />);
+        }
+        return visual(<PdfPreviewScreen visualFixture={PDF_PREVIEW_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.salaryDetail) {
+        if (source === 'reference') {
+            return visual(<NativeReferenceSalaryDetail />);
+        }
+        return visual(<SalaryDetailScreen visualFixture={SALARY_DETAIL_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.payrollCalculationDetail) {
+        const sheetMarker = `v3-visual-${source}-${screenId}`;
+        if (source === 'reference') {
+            return visual(<NativeReferencePayrollCalculationDetail captureMarker={sheetMarker} />);
+        }
+        return visual(
+            <PayrollCalculationDetailModal
+                visible
+                onClose={() => undefined}
+                summary={SALARY_DETAIL_SUMMARY}
+                items={SALARY_DETAIL_ITEMS}
+                captureMarker={sheetMarker}
+            />,
+        );
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.payrollRun) {
+        return visual(<PayrollRunScreen visualFixture={PAYROLL_RUN_PREVIEW_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.payrollIssueConfirm) {
+        return visual(<PayrollRunScreen visualFixture={PAYROLL_RUN_CONFIRM_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.payrollIssueSuccess) {
+        return visual(<PayrollRunScreen visualFixture={PAYROLL_RUN_DONE_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.subscribe) {
+        // 플랜 카드 리스트가 많아 30/68/69와 같은 이유로 reference/actual 양쪽 다 실제 컴포넌트를 재사용.
+        return visual(<SubscribeScreen visualFixture={SUBSCRIBE_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.billingMethod) {
+        const sheetMarker = `v3-visual-${source}-${screenId}`;
+        if (source === 'reference') {
+            return visual(<NativeReferenceBillingMethod captureMarker={sheetMarker} />);
+        }
+        return visual(
+            <BillingMethodSheet
+                visible
+                onClose={() => undefined}
+                currentMethod="카드 ****4821"
+                nextBillingDate="2026.06.25"
+                onManageViaToss={() => undefined}
+                captureMarker={sheetMarker}
+            />,
+        );
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.planDetail) {
+        const sheetMarker = `v3-visual-${source}-${screenId}`;
+        if (source === 'reference') {
+            return visual(<NativeReferencePlanDetail captureMarker={sheetMarker} />);
+        }
+        return visual(
+            <PlanDetailSheet
+                visible
+                onClose={() => undefined}
+                view={PLAN_DETAIL_VIEW_FIXTURE}
+                onSelect={() => undefined}
+                captureMarker={sheetMarker}
+            />,
+        );
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.infoList) {
+        return visual(<InfoListScreen visualFixture={{categories: INFO_CATEGORIES_FIXTURE, articles: [...INFO_ARTICLES_FIXTURE]}} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.laborInfoDetail) {
+        return visual(<LaborInfoDetailScreen visualFixture={LABOR_INFO_DETAIL_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.policyDetail) {
+        return visual(<PolicyDetailScreen visualFixture={POLICY_DETAIL_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.taxInfoDetail) {
+        return visual(<TaxInfoDetailScreen visualFixture={TAX_INFO_DETAIL_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.tipsDetail) {
+        return visual(<TipsDetailScreen visualFixture={TIPS_DETAIL_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.qna) {
+        return visual(<QnAScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.qnaCompose) {
+        // QnAScreen 자체 헤더 "글쓰기"로 여는 BottomSheet가 73 QnACompose — 별도 화면 없음.
+        return visual(<QnAScreen visualComposeOpen captureMarker={`v3-visual-${source}-${screenId}`} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.legalWebview) {
+        return visual(<LegalWebviewScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.notificationCenter) {
+        return visual(<NotificationCenterScreen visualFixture={NOTIFICATION_CENTER_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.settingsHub || screenId === V3_VISUAL_SCREEN_IDS.myPage) {
+        // 39 Settings + 41 MyPage(구독 항목) — SettingsScreen 하나가 두 카드를 모두 커버.
+        return visual(<SettingsScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.notificationSettings) {
+        return visual(<NotificationSettingsScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.accountSettings) {
+        return visual(<AccountSettingsScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.profile) {
+        return visual(<ProfileScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.referral) {
+        return visual(<ReferralScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.logoutConfirm) {
+        return visual(<VisualLogoutConfirm captureMarker={`v3-visual-${source}-${screenId}`} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.accountDeleteFlow) {
+        return visual(<AccountSettingsScreen visualWithdrawOpen captureMarker={`v3-visual-${source}-${screenId}`} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.imagePickerSheet) {
+        return visual(
+            <ImagePickerSheet
+                visible
+                onClose={() => undefined}
+                onCamera={() => undefined}
+                onAlbum={() => undefined}
+                onReset={() => undefined}
+                captureMarker={`v3-visual-${source}-${screenId}`}
+            />,
+        );
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.toastExamples) {
+        return visual(<VisualToastExamples />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.componentRules) {
+        return visual(<VisualComponentRules />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.recruitmentHub) {
+        return visual(<EmployeeRecruitmentScreen visualInitialTab="nearby" visualNearbyFixture={RECRUITMENT_NEARBY_LIST_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.jobOfferInbox) {
+        return visual(
+            <ScreenContainer header={<AppHeader title="채용함" />}>
+                <JobOfferInboxScreen visualFixture={RECRUITMENT_OFFER_INBOX_FIXTURE} />
+            </ScreenContainer>,
+        );
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.jobPostingDetail) {
+        return visual(<JobPostingDetailScreen visualFixture={{posting: RECRUITMENT_POSTING_FIXTURE}} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.jobSeekerDetail) {
+        return visual(<JobSeekerDetailScreen visualFixture={{storeId: 1, seeker: RECRUITMENT_SEEKER_FIXTURE}} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.jobSeekerList) {
+        return visual(<JobSeekerListScreen visualStoreId={1} visualFixture={RECRUITMENT_SEEKER_LIST_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.jobSeekingSettings) {
+        return visual(
+            <ScreenContainer scroll header={<AppHeader title="구직 설정" />}>
+                <JobSeekingSettingsScreen visualFixture={RECRUITMENT_JOB_SEEKING_PROFILE_FIXTURE} />
+            </ScreenContainer>,
+        );
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.nearbyJobPostings) {
+        return visual(
+            <ScreenContainer scroll header={<AppHeader title="주변 채용 공고" />}>
+                <NearbyJobPostingsScreen onGoToProfileTab={() => undefined} visualFixture={RECRUITMENT_NEARBY_LIST_FIXTURE} />
+            </ScreenContainer>,
+        );
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.ourPosting) {
+        return visual(
+            <ScreenContainer scroll header={<AppHeader title="구인 공고" />}>
+                <OurPostingScreen storeId={1} visualApplicantsFixture={RECRUITMENT_APPLICANTS_FIXTURE} />
+            </ScreenContainer>,
+        );
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.contractSign) {
+        return visual(<ContractSignScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.draftContracts) {
+        return visual(<DraftContractsScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.myContract) {
+        return visual(<MyContractScreen visualAutoSelectFirst />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.sendContract) {
+        // ⛔ 노무사 게이트(protected-readonly) — SendContractScreen.tsx 무수정, 독립 전사만.
+        return visual(<VisualSendContractStep3 />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.addDocument) {
+        return visual(<AddDocumentScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.employeeDocuments) {
+        return visual(<EmployeeDocumentsScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.electronicSignProgress) {
+        // ⛔ 노무사 게이트(protected-readonly) — ElectronicSignScreen.tsx 무수정, 독립 전사만.
+        return visual(<VisualElectronicSignProgress />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.evidencePackage) {
+        return visual(<EvidencePackageScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.myCertificate) {
+        return visual(<MyCertificateScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.minorGuard) {
+        return visual(<MinorGuardScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.purchaseLedger) {
+        return visual(<PurchaseLedgerScreen route={{params: {storeId: 1}} as any} navigation={navigation as any} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.purchaseScan) {
+        return visual(<PurchaseScanScreen route={{params: {storeId: 1}} as any} navigation={navigation as any} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.purchaseConfirm) {
+        return visual(<PurchaseConfirmScreen route={{params: {storeId: 1}} as any} navigation={navigation as any} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.priceTrend) {
+        return visual(<PriceTrendScreen route={{params: {storeId: 1}} as any} navigation={navigation as any} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.reorderHint) {
+        return visual(<ReorderHintScreen route={{params: {storeId: 1}} as any} navigation={navigation as any} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.dailySalesEntry) {
+        return visual(<DailySalesEntryScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.laborCostRatio) {
+        return visual(<LaborCostRatioScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.weeklyInsights) {
+        return visual(<WeeklyInsightsScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.subsidyEligibility) {
+        return visual(<SubsidyEligibilityScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.hiringCostSimulator) {
+        return visual(<HiringCostSimulatorScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.laborRiskDashboard) {
+        return visual(<LaborRiskDashboardScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.payrollPreview) {
+        return visual(<PayrollPreviewScreen visualFixture={PAYROLL_PREVIEW_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.salaryArchive) {
+        return visual(<SalaryArchiveScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.taxDeadline) {
+        return visual(<TaxDeadlineScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.taxSimulator) {
+        return visual(<TaxSimulatorScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.taxReport) {
+        return visual(<TaxReportScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.withholdingStatement) {
+        return visual(<WithholdingStatementScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.myWageHistory) {
+        return visual(<MyWageHistoryScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.headcountTrend) {
+        return visual(<HeadcountTrendScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.legalLedger) {
+        return visual(<LegalLedgerScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.storeNoticeList) {
+        return visual(<StoreNoticeListScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.writeNotice) {
+        return visual(<WriteNoticeScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.myNotice) {
+        return visual(<MyNoticeScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.requestStatus) {
+        return visual(<RequestStatusScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.managerAppoint) {
+        return visual(
+            <ScreenContainer scroll header={<AppHeader title="매니저 권한 위임" />}>
+                <ManagerAppointSection
+                    storeId={1}
+                    employeeId={3}
+                    employeeName="이현수"
+                    navigation={navigation as any}
+                />
+            </ScreenContainer>,
+        );
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.employeeMyPage) {
+        return visual(<EmployeeMyPageRNScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.managerMyPage) {
+        return visual(<ManagerMyPageScreen visualFixture={MANAGED_STORES_FIXTURE} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.sendBonus) {
+        // ⛔ 노무사 게이트(protected-readonly) — SendBonusScreen.tsx 무수정, 독립 전사만.
+        return visual(<VisualSendBonus />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.personalAnnualTax) {
+        return visual(<PersonalAnnualTaxScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.breakRecord) {
+        return visual(<BreakRecordScreen />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.consent) {
+        return visual(<ConsentScreen navigation={navigation as any} route={{params: {}} as any} />);
+    }
+
+    if (screenId === V3_VISUAL_SCREEN_IDS.profileBasics) {
+        return visual(<ProfileBasicsScreen navigation={navigation as any} route={{params: {}} as any} />);
+    }
+
     const commonStateIds: Record<string, CommonStateKind> = {
         [V3_VISUAL_SCREEN_IDS.commonEmpty]: 'empty',
         [V3_VISUAL_SCREEN_IDS.commonError]: 'error',
@@ -2045,9 +3178,11 @@ const V3VisualHarnessScreen: React.FC<Props> = ({navigation, route}) => {
     }
 
     if (screenId === V3_VISUAL_SCREEN_IDS.attendanceAuthentication) {
-        return visual(source === 'reference'
-            ? <NativeReferenceAttendanceAuthentication />
-            : <AttendanceScreen visualFixture={ATTENDANCE_AUTHENTICATION_FIXTURE} />);
+        // 실 AttendanceScreen이 이미 v3 DS(AppCard/AppText/SegmentedControl)로 구현되어 있고,
+        // 목업 #20은 그 화면의 한 상태(위치 인증)를 고립시켜 그린 것일 뿐 별도 라우트가 아니다.
+        // 손으로 다시 옮겨 그린 참조본은 실 화면이 진화할 때마다 조용히 어긋나므로(이번 회귀의 원인),
+        // 양쪽 모두 동일한 실 컴포넌트+동일 fixture를 렌더링해 항상 동기화되도록 한다.
+        return visual(<AttendanceScreen visualFixture={ATTENDANCE_AUTHENTICATION_FIXTURE} />);
     }
 
     const attendanceStateIds: Record<string, AttendanceStateKind> = {
@@ -2121,6 +3256,45 @@ const V3VisualHarnessScreen: React.FC<Props> = ({navigation, route}) => {
 
 const styles = StyleSheet.create({
     flex: {flex: 1},
+    toastExampleNote: {marginTop: spacing.xs},
+    toastExampleToast: {
+        flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+        marginTop: spacing.xl, padding: spacing.md, borderRadius: radius.lg, backgroundColor: '#15171B',
+    },
+    componentRulesList: {gap: spacing.md},
+    componentRulesRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.md},
+    componentRulesDot: {
+        width: 24, height: 24, borderRadius: 12, backgroundColor: '#12B8A6',
+        alignItems: 'center', justifyContent: 'center',
+    },
+    contractStepsRow: {flexDirection: 'row', alignItems: 'center', marginBottom: spacing.lg},
+    contractStepDotWrap: {flexDirection: 'row', alignItems: 'center', flex: 1},
+    contractStepDot: {
+        width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, borderColor: '#E7E7E2',
+        alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff',
+    },
+    contractStepDotDone: {backgroundColor: '#12B8A6', borderColor: '#12B8A6'},
+    contractStepDotActive: {backgroundColor: '#FF4D6D', borderColor: '#FF4D6D'},
+    contractStepDotTextOn: {color: '#fff'},
+    contractStepLine: {flex: 1, height: 2, backgroundColor: '#E7E7E2'},
+    contractStepLineDone: {backgroundColor: '#12B8A6'},
+    contractSectionLabel: {marginTop: spacing.lg, marginBottom: spacing.sm},
+    contractField: {marginTop: spacing.md},
+    contractRow: {flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.sm},
+    contractInfoCard: {marginTop: spacing.md, gap: spacing.xs},
+    contractNextBtn: {marginTop: spacing.xl},
+    esignContent: {padding: spacing.xxl, gap: spacing.xxl},
+    esignCardTitle: {marginTop: spacing.xs},
+    esignMutedInverse: {marginTop: spacing.sm, opacity: 0.82},
+    esignSection: {gap: spacing.sm},
+    esignRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.md},
+    esignDescription: {marginTop: spacing.sm, lineHeight: 22},
+    esignAction: {marginTop: spacing.lg},
+    bonusEmployeeName: {marginTop: spacing.xs, marginBottom: spacing.md},
+    bonusInfoCard: {marginBottom: spacing.lg},
+    bonusField: {marginBottom: spacing.md},
+    bonusCta: {marginTop: spacing.lg, marginBottom: spacing.xl},
+    bonusSectionLabel: {marginBottom: spacing.sm},
     visualRoute: {flex: 1},
     visualRouteMarker: {position: 'absolute', width: 1, height: 1, fontSize: 1, lineHeight: 1, color: 'transparent'},
     stateCenter: {flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20},
@@ -2283,9 +3457,6 @@ const styles = StyleSheet.create({
     attendanceSpotSub: {marginTop: 2},
     attendanceSegment: {marginTop: 0},
     attendanceList: {gap: 8},
-    attendanceAuthContent: {paddingHorizontal: 24, paddingTop: 16, paddingBottom: 32, gap: spacing.md},
-    attendanceAuthCard: {gap: spacing.xs},
-    attendanceAuthCopy: {lineHeight: 22},
     salaryCanvas: {flex: 1},
     salaryStorePicker: {paddingHorizontal: 24, paddingTop: 16, paddingBottom: 4},
     salaryListContent: {paddingHorizontal: 24, paddingTop: 12, paddingBottom: 32, gap: 12},
@@ -2406,6 +3577,31 @@ const styles = StyleSheet.create({
         textAlign: 'left',
     },
     form: {marginTop: 17, gap: 9},
+    personalRecordEditForm: {gap: spacing.md, marginTop: spacing.xs},
+    pdfPreviewPage: {height: 320, alignItems: 'center', justifyContent: 'center'},
+    pdfPreviewDoc: {alignItems: 'center'},
+    pdfPreviewSub: {marginTop: spacing.xs},
+    salaryDetailHero: {paddingTop: spacing.sm, paddingBottom: spacing.xl},
+    salaryDetailSummary: {marginBottom: spacing.xxl, gap: spacing.xs},
+    salaryDetailRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6},
+    salaryDetailSubtitle: {marginBottom: spacing.md},
+    salaryDetailItemsCard: {paddingVertical: spacing.xs},
+    salaryDetailItemRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md, gap: spacing.md},
+    salaryDetailItemBorder: {borderBottomWidth: 1, borderBottomColor: '#E7E7E2'},
+    salaryDetailItemLabel: {flexShrink: 1, gap: 2},
+    calcDetailBody: {gap: spacing.xs, paddingBottom: spacing.sm},
+    calcDetailMoney: {marginBottom: spacing.md},
+    calcDetailDivider: {height: 1, marginVertical: spacing.xs},
+    calcDetailRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, gap: spacing.md},
+    calcDetailNote: {marginTop: spacing.sm, lineHeight: 16},
+    billingMethodBox: {marginTop: spacing.xs},
+    billingMethodValue: {marginTop: 2},
+    billingMethodNext: {marginTop: 4},
+    planDetailBody: {gap: spacing.sm, paddingBottom: spacing.sm},
+    planDetailPriceCard: {marginBottom: spacing.sm},
+    planDetailRecommended: {marginTop: spacing.xs},
+    planDetailRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, gap: spacing.md},
+    planDetailRowText: {flex: 1},
     field: {
         height: 43,
         borderRadius: 10,

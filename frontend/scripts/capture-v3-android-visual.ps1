@@ -22,7 +22,7 @@ $ErrorActionPreference = 'Stop'
 $adb = (Get-Command adb -ErrorAction Stop).Source
 $captureScript = Join-Path $PSScriptRoot 'capture-v3-android-screen.ps1'
 $captureKind = if ($Source -eq 'reference') {'native-reference'} else {'actual'}
-$uri = "sodam://v3/$Source/$ScreenId"
+$uri = "sodam:///v3/$Source/$ScreenId"
 $routeMarker = "v3-visual-$Source-$ScreenId"
 
 if ($ColdStart) {

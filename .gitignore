@@ -57,5 +57,8 @@ graphify-out/
 /*.xml
 e2e_*/
 
+# 시각 회귀·E2E 캡처 산출물 (screenshot/uiautomator/report — 로컬 검증용, 커밋 대상 아님)
+/artifacts/
+
 # 서명 완료 근로계약서 등 실 PII 원본 (.graphifyignore와 동일 대상 — git 추적도 금지)
 backend/private-esign-objects/
