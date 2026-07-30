@@ -29,6 +29,7 @@ import {
 } from '../../shift/services/shiftService';
 import storeService from '../../store/services/storeService';
 import attendanceService, {MonthlyAttendanceItem} from '../services/attendanceService';
+import breakRecordService from '../services/breakRecordService';
 import EmployeeWorkingRing from '../components/EmployeeWorkingRing';
 import {BreakTimerSheet} from '../components/AttendanceSheets';
 import {wageService} from '../../wage/services/wageService';
@@ -360,10 +361,37 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
     const isWorking = state === 'WORKING';
 
     const [approvalBusy, setApprovalBusy] = useState(false);
-    // 79 BreakTimerSheet — "휴게 기록" 버튼이 사장 전용 BreakRecordScreen(@MasterOnly, 매장 소유자만
-    // assertMasterOwnsStore 통과)으로 이동해 직원이 열면 403 나던 대상 불일치를 수정.
-    // 직원용 휴게 기능이 서버에 아직 없어(휴게 부여 증빙 API는 사장 전용) 로컬 확인 시트로만 안내한다.
+    // 79 BreakTimerSheet — "휴게 기록" 버튼. 직원 본인의 실시간 휴게 시작/종료를 서버에 남긴다
+    // (EmployeeBreakRecordController, 순수 기록/증빙용 — 급여 계산과 무관, BreakTimeCalculator는
+    // 스케줄 기준으로 별도 자동 차감한다). 진행 중인 휴게가 있으면 버튼이 "휴게 종료"로 바뀐다.
     const [breakSheetVisible, setBreakSheetVisible] = useState(false);
+    const [activeBreakRecordId, setActiveBreakRecordId] = useState<number | null>(null);
+    const [breakBusy, setBreakBusy] = useState(false);
+
+    // 포커스 복귀 시 진행 중인 휴게 기록이 있는지 서버에서 확인(앱을 껐다 켜도 상태 유지).
+    useFocusEffect(
+        useCallback(() => {
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- boolean condition (logical OR), not value coalescing
+            if (visualFixture || !selectedStore) {
+                return;
+            }
+            let active = true;
+            (async () => {
+                try {
+                    const records = await breakRecordService.list(selectedStore.id);
+                    const inProgress = records.find(r => r.recordedBy === 'EMPLOYEE' && !r.breakEndTime);
+                    if (active) {
+                        setActiveBreakRecordId(inProgress?.id ?? null);
+                    }
+                } catch {
+                    // 조회 실패는 조용히 무시 — 버튼은 "휴게 기록"(시작) 상태로 유지된다.
+                }
+            })();
+            return () => {
+                active = false;
+            };
+        }, [visualFixture, selectedStore?.id]),
+    );
 
     // 위치/NFC 없이 사장 승인으로 출퇴근 — 요청 버튼. 누르면 사장에게 알림이 가고, 승인 시 요청 시각으로 처리된다.
     const requestApprovalPunch = async () => {
@@ -738,14 +766,29 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
                             ) : null}
                             <View style={styles.secondaryActions}>
                                 <AppButton
-                                    label="휴게 기록"
+                                    label={activeBreakRecordId ? '휴게 종료' : '휴게 기록'}
                                     variant="secondary"
                                     size="md"
                                     fullWidth={false}
+                                    loading={breakBusy}
+                                    disabled={breakBusy}
                                     style={styles.secondaryAction}
-                                    onPress={() => {
+                                    onPress={async () => {
                                         if (!selectedStore) {return;}
-                                        setBreakSheetVisible(true);
+                                        if (!activeBreakRecordId) {
+                                            setBreakSheetVisible(true);
+                                            return;
+                                        }
+                                        setBreakBusy(true);
+                                        try {
+                                            await breakRecordService.end(selectedStore.id, activeBreakRecordId);
+                                            setActiveBreakRecordId(null);
+                                            AppToast.success('휴게 종료를 기록했어요.');
+                                        } catch (e: any) {
+                                            AppToast.error(e?.response?.data?.message || '휴게 종료 기록에 실패했어요.');
+                                        } finally {
+                                            setBreakBusy(false);
+                                        }
                                     }}
                                 />
                                 <AppButton
@@ -821,12 +864,19 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
             <BreakTimerSheet
                 visible={breakSheetVisible}
                 onClose={() => setBreakSheetVisible(false)}
-                onStart={() => {
+                onStart={async () => {
                     setBreakSheetVisible(false);
-                    // 직원용 휴게 시작/종료를 서버에 기록하는 API 가 아직 없다(현재 BE 는 사장이 사후
-                    // 부여를 증빙하는 BreakRecordController(@MasterOnly)뿐) — 급여/근태 판정에는 영향이
-                    // 없는 로컬 알림으로만 안내한다. 실제 서버 기록이 필요하면 BE API 추가가 선행돼야 한다.
-                    AppToast.success('휴게 시작을 기록했어요.');
+                    if (!selectedStore) {return;}
+                    setBreakBusy(true);
+                    try {
+                        const record = await breakRecordService.start(selectedStore.id);
+                        setActiveBreakRecordId(record.id);
+                        AppToast.success('휴게 시작을 기록했어요.');
+                    } catch (e: any) {
+                        AppToast.error(e?.response?.data?.message || '휴게 시작 기록에 실패했어요.');
+                    } finally {
+                        setBreakBusy(false);
+                    }
                 }}
                 onManual={() => {
                     setBreakSheetVisible(false);
