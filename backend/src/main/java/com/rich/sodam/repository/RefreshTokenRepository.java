@@ -25,7 +25,7 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
      */
     // user 까지 fetch — 토큰 재발급 시 user.getEmail() lazy 접근(LazyInitializationException) 방지
     @EntityGraph(attributePaths = {"user"})
-    Optional<RefreshToken> findByToken(String token);
+    Optional<RefreshToken> findByTokenHash(String tokenHash);
 
     /**
      * 사용자별 유효한 리프레시 토큰을 조회합니다.

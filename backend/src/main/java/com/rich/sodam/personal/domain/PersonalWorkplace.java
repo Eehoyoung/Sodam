@@ -1,5 +1,7 @@
 package com.rich.sodam.personal.domain;
 
+import com.rich.sodam.config.crypto.IntegerCryptoConverter;
+import com.rich.sodam.config.crypto.StringCryptoConverter;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -28,13 +30,16 @@ public class PersonalWorkplace {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "name", nullable = false, length = 255)
+    @Convert(converter = StringCryptoConverter.class)
+    @Column(name = "name", nullable = false, length = 1024)
     private String name;
 
-    @Column(name = "address")
+    @Convert(converter = StringCryptoConverter.class)
+    @Column(name = "address", length = 1024)
     private String address;
 
-    @Column(name = "hourly_wage", nullable = false)
+    @Convert(converter = IntegerCryptoConverter.class)
+    @Column(name = "hourly_wage", nullable = false, length = 255)
     private Integer hourlyWage;
 
     @Column(name = "created_at", nullable = false)

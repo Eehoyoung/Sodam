@@ -22,8 +22,9 @@ public class MockPushNotifier implements PushNotifier {
     @Override
     public SendResult sendToToken(String token, PushMessage message) {
         sentCount.incrementAndGet();
-        log.info("[MOCK FCM] → token={} title=\"{}\" body=\"{}\" link={}",
-                shorten(token), message.getTitle(), message.getBody(), message.getDeepLink());
+        // Device token and notification content can both be sensitive; mock mode must not bypass logging rules.
+        log.info("[MOCK FCM] notification simulated hasDeepLink={} bodyLength={}",
+                message.getDeepLink() != null, message.getBody() == null ? 0 : message.getBody().length());
         return SendResult.ok();
     }
 
@@ -41,8 +42,4 @@ public class MockPushNotifier implements PushNotifier {
         return sentCount.get();
     }
 
-    private String shorten(String t) {
-        if (t == null) return "null";
-        return t.length() > 16 ? t.substring(0, 16) + "..." : t;
-    }
 }

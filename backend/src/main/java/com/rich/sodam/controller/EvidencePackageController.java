@@ -49,6 +49,7 @@ public class EvidencePackageController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        storeAccessGuard.assertEmployeeInStore(employeeId, storeId);
         return ResponseEntity.ok(evidencePackageService.forEmployee(storeId, employeeId, from, to));
     }
 }

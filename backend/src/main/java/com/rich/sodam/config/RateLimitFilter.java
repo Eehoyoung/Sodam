@@ -99,8 +99,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
         Bucket bucket;
         if (path.equals("/api/login")) {
             // 보안: brute-force 방지 — IP + 이메일 조합 키로 5/분
-            String email = request.getParameter("email");
-            String key = clientIp + "|" + (email != null ? email.toLowerCase() : "_");
+            // JSON body뿐 아니라 query/form 파라미터도 임의로 조작할 수 있으므로 이메일을 버킷 키에 넣지 않는다.
+            // 같은 IP에서 이메일 값을 바꿔 무한히 버킷을 만드는 우회와 메모리 증가를 차단한다.
+            String key = clientIp;
             bucket = resolveLoginBucket(key);
         } else if (path.equals("/api/web/auth/login")) {
             // 04_보안정책.md §4 — 웹 콘솔 로그인 IP별 5/분. 계정(이메일) 기준 10/분은

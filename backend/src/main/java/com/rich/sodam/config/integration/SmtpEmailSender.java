@@ -60,7 +60,7 @@ public class SmtpEmailSender implements EmailSender {
         SendResult result = sendText(to, "[소담] 비밀번호 재설정 인증번호",
                 "인증번호 " + code + " 를 입력해 비밀번호를 재설정해 주세요. 5분간 유효합니다.");
         if (!result.isSuccess()) {
-            log.error("비밀번호 재설정 메일 발송 실패 to={} detail={}", EmailSender.maskEmail(to), result.getDetail());
+            log.error("비밀번호 재설정 메일 발송 실패 to={}", EmailSender.maskEmail(to));
         }
     }
 
@@ -69,7 +69,7 @@ public class SmtpEmailSender implements EmailSender {
         SendResult result = sendText(to, "[소담] 소담에 오신 걸 환영해요",
                 name + "님, 소담 가입을 환영합니다. 매장 출퇴근·급여 관리를 시작해 보세요.");
         if (!result.isSuccess()) {
-            log.error("환영 메일 발송 실패 to={} detail={}", EmailSender.maskEmail(to), result.getDetail());
+            log.error("환영 메일 발송 실패 to={}", EmailSender.maskEmail(to));
         }
     }
 
@@ -91,7 +91,9 @@ public class SmtpEmailSender implements EmailSender {
             mailSender.send(message);
             return SendResult.ok();
         } catch (Exception e) {
-            log.error("첨부 메일 발송 실패 to={} subject={}", EmailSender.maskEmail(to), subject, e);
+            // Subject and exception messages can contain customer PII or email content.
+            log.error("첨부 메일 발송 실패 to={} errorType={}",
+                    EmailSender.maskEmail(to), e.getClass().getSimpleName());
             return SendResult.fail(e.getMessage());
         }
     }

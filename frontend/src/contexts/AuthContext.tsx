@@ -18,7 +18,7 @@ export interface AuthContextType {
     loading: boolean;
     login: (email: string, password: string) => Promise<User>;
     logout: () => Promise<void>;
-    kakaoLogin: (code: string) => Promise<User>;
+    kakaoLogin: (code: string, state: string, codeVerifier: string) => Promise<User>;
     appleLogin: (identityToken: string) => Promise<User>;
 }
 
@@ -202,10 +202,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
      * 카카오 로그인 함수
      * TanStack Query 뮤테이션을 사용하여 카카오 로그인 처리
      */
-    const kakaoLogin = async (code: string): Promise<User> => {
+    const kakaoLogin = async (code: string, state: string, codeVerifier: string): Promise<User> => {
         try {
             console.log('[AuthProvider] 카카오 로그인 시도');
-            const result = await kakaoLoginMutation.mutateAsync(code);
+            const result = await kakaoLoginMutation.mutateAsync({code, state, codeVerifier});
             console.log('[AuthProvider] 카카오 로그인 성공');
             return result.user;
         } catch (error) {

@@ -38,6 +38,7 @@ public class MinorLaborController {
             @PathVariable Long storeId,
             @PathVariable Long employeeId) {
         storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        storeAccessGuard.assertEmployeeInStore(employeeId, storeId);
         return ResponseEntity.ok(minorLaborGuardService.evaluate(employeeId, storeId));
     }
 }

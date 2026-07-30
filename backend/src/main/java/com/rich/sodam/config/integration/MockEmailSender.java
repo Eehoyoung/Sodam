@@ -22,14 +22,14 @@ public class MockEmailSender implements EmailSender {
     @Override
     public void sendPasswordResetCode(String to, String code) {
         sentCount.incrementAndGet();
-        log.info("[MOCK Email] → to={} subject=\"소담 비밀번호 재설정\" code={}", EmailSender.maskEmail(to), code);
-        log.info("[MOCK Email] body: \"인증번호 {} 를 입력해 비밀번호를 재설정해 주세요. 5분간 유효합니다.\"", code);
+        // OTP is a bearer secret. Test delivery without ever recording it or the message body.
+        log.info("[MOCK Email] password reset message simulated to={}", EmailSender.maskEmail(to));
     }
 
     @Override
     public void sendWelcome(String to, String name) {
         sentCount.incrementAndGet();
-        log.info("[MOCK Email] → to={} subject=\"소담에 오신 걸 환영해요\" name={}", EmailSender.maskEmail(to), name);
+        log.info("[MOCK Email] welcome message simulated to={}", EmailSender.maskEmail(to));
     }
 
     @Override
@@ -37,8 +37,8 @@ public class MockEmailSender implements EmailSender {
         sentCount.incrementAndGet();
         int totalBytes = attachments == null ? 0
                 : attachments.stream().mapToInt(a -> a.content() == null ? 0 : a.content().length).sum();
-        log.info("[MOCK Email] → to={} subject=\"{}\" attachments={}건({}bytes)",
-                EmailSender.maskEmail(to), subject,
+        log.info("[MOCK Email] attachment message simulated to={} attachments={} totalBytes={}",
+                EmailSender.maskEmail(to),
                 attachments == null ? 0 : attachments.size(), totalBytes);
         return SendResult.ok();
     }

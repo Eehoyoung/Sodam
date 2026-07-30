@@ -6,7 +6,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * 비밀번호 재설정 OTP 토큰.
@@ -39,8 +38,8 @@ public class PasswordResetToken {
     private String codeHash;
 
     /** 추가 발급용 일회용 토큰 (Confirm 단계에서 사용) */
-    @Column(nullable = false, unique = true, length = 100)
-    private String resetTicket;
+    @Column(name = "reset_ticket", nullable = false, unique = true, length = 128)
+    private String resetTicketHash;
 
     @Column(nullable = false)
     private LocalDateTime expiresAt;
@@ -51,11 +50,11 @@ public class PasswordResetToken {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    public static PasswordResetToken create(String email, String codeHash, int validMinutes) {
+    public static PasswordResetToken create(String email, String codeHash, String resetTicketHash, int validMinutes) {
         PasswordResetToken t = new PasswordResetToken();
         t.email = email;
         t.codeHash = codeHash;
-        t.resetTicket = UUID.randomUUID().toString().replace("-", "");
+        t.resetTicketHash = resetTicketHash;
         t.expiresAt = LocalDateTime.now().plusMinutes(validMinutes);
         t.used = false;
         t.createdAt = LocalDateTime.now();
@@ -68,5 +67,9 @@ public class PasswordResetToken {
 
     public void markUsed() {
         this.used = true;
+    }
+
+    public void replaceResetTicketHash(String resetTicketHash) {
+        this.resetTicketHash = resetTicketHash;
     }
 }

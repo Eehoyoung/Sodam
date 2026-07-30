@@ -20,7 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 핵심: EMPLOYEE / PERSONAL 이 MASTER 전용 endpoint 를 호출하면 403,
  *      비인증 호출은 401, 권한 거부는 403, ownership 위반도 403.
  */
-@SpringBootTest
+@SpringBootTest(properties = "sodam.security.system-content.admin-user-ids=1")
 @AutoConfigureMockMvc
 @ActiveProfiles("dev")
 class SecurityRbacTest {
@@ -165,6 +165,52 @@ class SecurityRbacTest {
         UserPrincipal unrelatedMaster = new UserPrincipal(999999L, "other-master@x", java.util.List.of(
                 new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_MASTER")));
         mockMvc.perform(get("/api/stores/1")
+                        .with(user(unrelatedMaster)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("AUD-001: 매장 소유자 권한만으로 전역 콘텐츠를 작성할 수 없다")
+    void storeMaster_globalContentCreate_forbidden() throws Exception {
+        UserPrincipal storeMaster = new UserPrincipal(999999L, "store-master@x", java.util.List.of(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_MASTER")));
+
+        mockMvc.perform(multipart("/api/tip-info")
+                        .param("title", "unauthorized-global-content")
+                        .param("content", "must-not-be-created")
+                        .with(user(storeMaster)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("AUD-001: 허용 목록의 시스템 콘텐츠 운영자는 기존 콘텐츠 작성 기능을 사용할 수 있다")
+    void allowlistedSystemContentAdministrator_canCreateGlobalContent() throws Exception {
+        UserPrincipal systemContentAdministrator = new UserPrincipal(1L, "system-content-admin@x", java.util.List.of(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_MASTER")));
+
+        mockMvc.perform(multipart("/api/tip-info")
+                        .param("title", "authorized-global-content")
+                        .param("content", "local-regression-test")
+                        .with(user(systemContentAdministrator)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("authorized-global-content"));
+    }
+
+    @Test
+    @DisplayName("AUD-004: 매장 비구성원은 위치·NFC 사전 검증으로 다른 매장 정보를 조회할 수 없다")
+    void unrelatedStoreMember_cannotVerifyAnotherStoreAttendanceSignals() throws Exception {
+        UserPrincipal unrelatedMaster = new UserPrincipal(999999L, "other-store-master@x", java.util.List.of(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_MASTER")));
+
+        mockMvc.perform(post("/api/attendance/verify/location")
+                        .contentType("application/json")
+                        .content("{\"storeId\":1,\"latitude\":37.5665,\"longitude\":126.9780}")
+                        .with(user(unrelatedMaster)))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/attendance/verify/nfc")
+                        .contentType("application/json")
+                        .content("{\"storeId\":1,\"tagId\":\"SODAM-123456\"}")
                         .with(user(unrelatedMaster)))
                 .andExpect(status().isForbidden());
     }

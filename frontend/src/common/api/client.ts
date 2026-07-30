@@ -87,7 +87,7 @@ export const setOnPlanRequired = (
 // docs/260718/WP-00_완료_보고.md §2-1). 정확한 경로로 교체.
 const AUTH_ENDPOINTS = [
     '/api/login', '/api/auth/refresh', '/api/refresh', '/api/join',
-    '/kakao/auth/proc', '/apple/auth/proc',
+    '/kakao/auth/proc', '/apple/auth/proc', '/api/auth/kakao/authorization',
 ];
 const isAuthEndpoint = (url?: string) =>
     !!url && AUTH_ENDPOINTS.some(p => url.includes(p));

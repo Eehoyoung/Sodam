@@ -69,6 +69,7 @@ public class LiveTossBillingClient implements TossBillingClient {
         body.put("customerKey", customerKey);
 
         HttpEntity<Map<String, Object>> req = new HttpEntity<>(body, authHeaders());
+        String logCustomerKey = PaymentLogRedactor.redact(customerKey);
         try {
             ResponseEntity<String> res = restTemplate.exchange(url, HttpMethod.POST, req, String.class);
             JsonNode json = objectMapper.readTree(res.getBody());
@@ -76,10 +77,10 @@ public class LiveTossBillingClient implements TossBillingClient {
             String cardCompany = json.path("card").path("company").asText("");
             String cardNumber = json.path("card").path("number").asText("");
             String cardLabel = (cardCompany + " " + cardNumber).trim();
-            log.info("[Toss] billingKey issued customerKey={}", customerKey);
+            log.info("[Toss] billingKey issued customerKey={}", logCustomerKey);
             return new BillingKeyResult(billingKey, cardLabel, customerKey);
         } catch (HttpStatusCodeException e) {
-            log.error("[Toss] issueBillingKey failed: {} {}", e.getStatusCode(), e.getResponseBodyAsString());
+            log.error("[Toss] issueBillingKey failed: status={}", e.getStatusCode());
             throw new IllegalStateException("토스 빌링키 발급 실패: " + e.getStatusCode());
         } catch (Exception e) {
             log.error("[Toss] issueBillingKey error", e);
@@ -109,8 +110,8 @@ public class LiveTossBillingClient implements TossBillingClient {
             }
             return ChargeResult.ok(paymentKey);
         } catch (HttpStatusCodeException e) {
-            log.warn("[Toss] charge failed orderId={} status={} body={}",
-                    request.getOrderId(), e.getStatusCode(), e.getResponseBodyAsString());
+            log.warn("[Toss] charge failed orderId={} status={}",
+                    PaymentLogRedactor.redact(request.getOrderId()), e.getStatusCode());
             return ChargeResult.fail("status=" + e.getStatusCode().value());
         } catch (Exception e) {
             log.error("[Toss] charge error", e);
@@ -124,6 +125,7 @@ public class LiveTossBillingClient implements TossBillingClient {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("cancelReason", reason);
         HttpEntity<Map<String, Object>> req = new HttpEntity<>(body, authHeaders());
+        paymentKey = PaymentLogRedactor.redact(paymentKey);
         try {
             restTemplate.exchange(url, HttpMethod.POST, req, String.class);
             log.info("[Toss] cancel paymentKey={}", paymentKey);

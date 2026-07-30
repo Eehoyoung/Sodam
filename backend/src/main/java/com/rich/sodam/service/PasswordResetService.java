@@ -5,6 +5,7 @@ import com.rich.sodam.domain.PasswordResetToken;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.repository.PasswordResetTokenRepository;
 import com.rich.sodam.repository.UserRepository;
+import com.rich.sodam.security.BearerTokenHasher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,6 +17,7 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 비밀번호 재설정 OTP 흐름.
@@ -42,6 +44,7 @@ public class PasswordResetService {
     private final PasswordResetTokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailSender emailSender;
+    private final BearerTokenHasher bearerTokenHasher;
     private final SecureRandom random = new SecureRandom();
 
     @Transactional
@@ -59,7 +62,9 @@ public class PasswordResetService {
         // 6자리 OTP 생성 (앞자리 0 허용)
         String code = String.format("%06d", random.nextInt(1_000_000));
         String codeHash = hash(code);
-        PasswordResetToken token = PasswordResetToken.create(email, codeHash, OTP_VALID_MINUTES);
+        // Store only a non-usable placeholder digest until OTP verification issues a reset ticket.
+        PasswordResetToken token = PasswordResetToken.create(email, codeHash,
+                bearerTokenHasher.hash(UUID.randomUUID().toString()), OTP_VALID_MINUTES);
         tokenRepository.save(token);
 
         emailSender.sendPasswordResetCode(email, code);
@@ -77,7 +82,9 @@ public class PasswordResetService {
         PasswordResetToken token = tokenOpt.get();
         if (!token.getEmail().equalsIgnoreCase(email)) return null;
         if (token.isExpired()) return null;
-        return token.getResetTicket();
+        String resetTicket = UUID.randomUUID().toString().replace("-", "");
+        token.replaceResetTicketHash(bearerTokenHasher.hash(resetTicket));
+        return resetTicket;
     }
 
     @Transactional
@@ -85,7 +92,8 @@ public class PasswordResetService {
         if (resetTicket == null || resetTicket.isBlank()) return false;
         if (!isValidPassword(newPassword)) return false;
 
-        Optional<PasswordResetToken> tokenOpt = tokenRepository.findByResetTicketAndUsedFalse(resetTicket);
+        Optional<PasswordResetToken> tokenOpt = tokenRepository
+                .findByResetTicketHashAndUsedFalse(bearerTokenHasher.hash(resetTicket));
         if (tokenOpt.isEmpty()) return false;
         PasswordResetToken token = tokenOpt.get();
         if (token.isExpired()) return false;

@@ -53,7 +53,8 @@ public class GeocodingService {
         double lonBase = 126.9780;
         double lat = latBase + ((hash % 1000) / 50000.0);
         double lon = lonBase + (((hash / 1000) % 1000) / 50000.0);
-        log.debug("[MOCK Geocoding] {} → ({}, {})", address, lat, lon);
+        // Address and coordinates are PII/location data; do not place them in logs, even in mock mode.
+        log.debug("[MOCK Geocoding] deterministic result generated");
         return new GeocodingResult(lat, lon, address, address, address);
     }
 
@@ -80,11 +81,12 @@ public class GeocodingService {
                     uri, HttpMethod.GET, new HttpEntity<>(headers), KakaoApiResponse.class);
 
             KakaoApiResponse body = response.getBody();
-            log.debug("카카오 API 응답: {}", body);
+            int documentCount = body == null || body.getDocuments() == null ? 0 : body.getDocuments().size();
+            log.debug("Kakao address search response received: documentCount={}", documentCount);
 
-            if (body == null || body.getDocuments().isEmpty()) {
-                log.warn("주소 검색 결과 없음: {}", normalized);
-                throw new IllegalArgumentException("주소를 찾을 수 없습니다: " + normalized);
+            if (documentCount == 0) {
+                log.info("Kakao address search returned no documents");
+                throw new IllegalArgumentException("주소를 찾을 수 없습니다.");
             }
 
             KakaoApiResponse.Documents document = body.getDocuments().get(0);
@@ -108,9 +110,13 @@ public class GeocodingService {
         } catch (IllegalArgumentException e) {
             // 유효성 예외는 그대로 전달
             throw e;
+        } catch (IllegalStateException e) {
+            // Missing integration configuration is a safe, actionable application error.
+            throw e;
         } catch (Exception e) {
-            log.error("주소 변환 중 오류 발생: {}", e.getMessage(), e);
-            throw new RuntimeException("주소 변환 중 오류가 발생했습니다: " + e.getMessage(), e);
+            // Exception messages can embed the request URI, which includes the submitted address.
+            log.error("Kakao address geocoding failed: {}", e.getClass().getSimpleName());
+            throw new RuntimeException("주소 변환 중 오류가 발생했습니다.");
         }
     }
 

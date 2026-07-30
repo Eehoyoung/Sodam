@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {Linking, StyleSheet, View} from 'react-native';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -10,6 +10,7 @@ import authApi from '../services/authApi';
 import {useAuth} from '../../../contexts/AuthContext';
 import {AuthStackParamList} from '../../../navigation/types';
 import {resetToRootRoute, resolvePostAuthRoute} from '../../../navigation/authFlow';
+import {unifiedStorage} from '../../../common/utils/unifiedStorage';
 
 type KakaoStatus = 'idle' | 'opening' | 'waiting' | 'cancelled' | 'failed' | 'success';
 
@@ -21,9 +22,31 @@ export const getKakaoCodeFromUrl = (url?: string | null): string | null => {
     return codeMatch ? decodeURIComponent(codeMatch[1]) : null;
 };
 
+export const getKakaoStateFromUrl = (url?: string | null): string | null => {
+    if (!url) {
+        return null;
+    }
+    const stateMatch = url.match(/[?&]state=([^&]+)/);
+    return stateMatch ? decodeURIComponent(stateMatch[1]) : null;
+};
+
 export const hasKakaoError = (url?: string | null): boolean => {
     return !!url && /[?&]error=/.test(url);
 };
+
+type PendingKakaoAuthorization = {
+    state: string;
+    codeVerifier: string;
+    startedAt: number;
+};
+
+const PENDING_KAKAO_AUTHORIZATION_KEY = 'pendingKakaoAuthorization';
+const KAKAO_AUTHORIZATION_TTL_MS = 5 * 60 * 1000;
+
+export const isMatchingKakaoAuthorization = (
+    callbackState: string | null,
+    pending: Pick<PendingKakaoAuthorization, 'state'> | null,
+): boolean => !!callbackState && !!pending && callbackState === pending.state;
 
 const KakaoLoginScreen: React.FC = () => {
     const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
@@ -32,27 +55,54 @@ const KakaoLoginScreen: React.FC = () => {
     const [status, setStatus] = useState<KakaoStatus>('idle');
     const [message, setMessage] = useState('처음 한 번만 동의하면 다음부터 바로 들어올 수 있어요.');
     const {kakaoLogin} = useAuth();
+    const pendingAuthorizationRef = useRef<PendingKakaoAuthorization | null>(null);
 
-    const completeWithCode = useCallback(async (code: string) => {
+    const clearPendingAuthorization = useCallback(async () => {
+        pendingAuthorizationRef.current = null;
+        await unifiedStorage.removeItem(PENDING_KAKAO_AUTHORIZATION_KEY);
+    }, []);
+
+    const loadPendingAuthorization = useCallback(async (): Promise<PendingKakaoAuthorization | null> => {
+        const current = pendingAuthorizationRef.current
+            ?? await unifiedStorage.getObject<PendingKakaoAuthorization>(PENDING_KAKAO_AUTHORIZATION_KEY);
+        if (!current || Date.now() - current.startedAt >= KAKAO_AUTHORIZATION_TTL_MS) {
+            if (current) {
+                await clearPendingAuthorization();
+            }
+            return null;
+        }
+        pendingAuthorizationRef.current = current;
+        return current;
+    }, [clearPendingAuthorization]);
+
+    const completeWithCode = useCallback(async (code: string, callbackState: string | null) => {
+        const pending = await loadPendingAuthorization();
+        if (!pending || !isMatchingKakaoAuthorization(callbackState, pending)) {
+            setStatus('failed');
+            setMessage('요청과 일치하지 않는 카카오 인증 결과입니다. 다시 로그인해 주세요.');
+            return;
+        }
         setStatus('opening');
         setMessage('카카오 인증 결과를 확인하고 있습니다.');
         try {
-            const user = await kakaoLogin(code);
+            const user = await kakaoLogin(code, pending.state, pending.codeVerifier);
+            await clearPendingAuthorization();
             setStatus('success');
             setMessage('인증이 완료되었습니다. 다음 단계로 이동합니다.');
             resetToRootRoute(navigation, resolvePostAuthRoute(user, route.params?.selectedPurpose));
         } catch (e: any) {
+            await clearPendingAuthorization();
             setStatus('failed');
             const beMsg = e?.response?.data?.message;
             setMessage(typeof beMsg === 'string' ? beMsg : '카카오 인증에 실패했습니다. 다시 시도하거나 이메일 로그인을 이용해 주세요.');
             AppToast.error('카카오 인증에 실패했습니다.');
         }
-    }, [kakaoLogin, navigation, route.params?.selectedPurpose]);
+    }, [clearPendingAuthorization, kakaoLogin, loadPendingAuthorization, navigation, route.params?.selectedPurpose]);
 
-    const handleUrl = useCallback((url?: string | null) => {
+    const handleUrl = useCallback(async (url?: string | null) => {
         const code = getKakaoCodeFromUrl(url);
         if (code) {
-            completeWithCode(code);
+            await completeWithCode(code, getKakaoStateFromUrl(url));
             return;
         }
         if (hasKakaoError(url)) {
@@ -74,10 +124,19 @@ const KakaoLoginScreen: React.FC = () => {
         setStatus('opening');
         setMessage('카카오 인증 화면을 여는 중입니다.');
         try {
-            await authApi.openKakaoLogin();
+            const transaction = await authApi.beginKakaoAuthorization();
+            const pending: PendingKakaoAuthorization = {
+                state: transaction.state,
+                codeVerifier: transaction.codeVerifier,
+                startedAt: Date.now(),
+            };
+            pendingAuthorizationRef.current = pending;
+            await unifiedStorage.setObject(PENDING_KAKAO_AUTHORIZATION_KEY, pending);
+            await authApi.openKakaoLogin(transaction);
             setStatus('waiting');
             setMessage('브라우저에서 인증을 마치면 앱으로 돌아옵니다. 돌아오지 않으면 이메일 로그인으로 진행해 주세요.');
         } catch (e: any) {
+            await clearPendingAuthorization();
             setStatus('failed');
             setMessage('카카오 인증 화면을 열지 못했습니다. 네트워크 상태를 확인하거나 이메일 로그인을 이용해 주세요.');
             AppToast.error('카카오 로그인 시작에 실패했습니다.');

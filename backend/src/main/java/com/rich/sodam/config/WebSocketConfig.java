@@ -1,6 +1,7 @@
 package com.rich.sodam.config;
 
 import com.rich.sodam.jwt.JwtTokenProvider;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.security.web.SessionHandshakeInterceptor;
 import com.rich.sodam.security.web.StompAuthChannelInterceptor;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final StoreAuthorizationPolicy storeAuthorizationPolicy;
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
@@ -56,6 +58,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-        registration.interceptors(new StompAuthChannelInterceptor(jwtTokenProvider));
+        registration.interceptors(new StompAuthChannelInterceptor(jwtTokenProvider, storeAuthorizationPolicy));
     }
 }

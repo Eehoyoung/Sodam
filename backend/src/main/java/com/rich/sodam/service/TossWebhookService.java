@@ -2,6 +2,7 @@ package com.rich.sodam.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rich.sodam.config.integration.PaymentLogRedactor;
 import com.rich.sodam.domain.PaymentHistory;
 import com.rich.sodam.domain.Subscription;
 import com.rich.sodam.domain.type.SubscriptionStatus;
@@ -34,12 +35,14 @@ public class TossWebhookService {
         String eventType = payload.path("eventType").asText();
         String paymentKey = payload.path("data").path("paymentKey").asText();
         String status = payload.path("data").path("status").asText();
+        String lookupPaymentKey = paymentKey;
+        paymentKey = PaymentLogRedactor.redact(paymentKey);
         log.info("토스 웹훅 수신 event={} status={} paymentKey={}", eventType, status, paymentKey);
 
-        paymentHistoryRepository.findByPaymentKey(paymentKey).ifPresent(ph -> {
+        paymentHistoryRepository.findByPaymentKey(lookupPaymentKey).ifPresent(ph -> {
             switch (status.toUpperCase()) {
                 case "DONE" -> {
-                    ph.markSuccess(paymentKey);
+                    ph.markSuccess(lookupPaymentKey);
                     activateSubscriptionIfNeeded(ph);
                 }
                 case "CANCELED", "PARTIAL_CANCELED" -> ph.markRefunded();

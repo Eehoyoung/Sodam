@@ -3,6 +3,7 @@ package com.rich.sodam.service;
 import com.rich.sodam.domain.RefreshToken;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.repository.RefreshTokenRepository;
+import com.rich.sodam.security.BearerTokenHasher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,6 +27,7 @@ import java.util.UUID;
 public class RefreshTokenService {
 
     private final RefreshTokenRepository refreshTokenRepository;
+    private final BearerTokenHasher bearerTokenHasher;
 
     @Value("${jwt.refresh-token-validity-in-days:7}")
     private int refreshTokenValidityInDays;
@@ -44,7 +46,8 @@ public class RefreshTokenService {
         String tokenValue = generateTokenValue();
         LocalDateTime expiryDate = LocalDateTime.now().plusDays(refreshTokenValidityInDays);
 
-        RefreshToken refreshToken = new RefreshToken(tokenValue, user, expiryDate);
+        RefreshToken refreshToken = new RefreshToken(bearerTokenHasher.hash(tokenValue), user, expiryDate);
+        refreshToken.setIssuedToken(tokenValue);
         RefreshToken savedToken = refreshTokenRepository.save(refreshToken);
 
         log.debug("새로운 리프레시 토큰 생성 - 사용자 ID: {}, 만료일: {}", user.getId(), expiryDate);
@@ -59,7 +62,10 @@ public class RefreshTokenService {
      */
     @Transactional(readOnly = true)
     public Optional<RefreshToken> findByToken(String token) {
-        return refreshTokenRepository.findByToken(token);
+        if (token == null || token.isBlank()) {
+            return Optional.empty();
+        }
+        return refreshTokenRepository.findByTokenHash(bearerTokenHasher.hash(token));
     }
 
     /**
