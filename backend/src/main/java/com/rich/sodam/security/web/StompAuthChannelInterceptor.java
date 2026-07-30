@@ -2,6 +2,7 @@ package com.rich.sodam.security.web;
 
 import com.rich.sodam.jwt.JwtTokenProvider;
 import com.rich.sodam.security.UserPrincipal;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
@@ -16,6 +17,8 @@ import org.springframework.security.core.context.SecurityContext;
 
 import java.security.Principal;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * STOMP CONNECT 인증 — 모바일 JWT 와 사장님 웹 콘솔 세션 인증을 모두 인식한다.
@@ -29,7 +32,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class StompAuthChannelInterceptor implements ChannelInterceptor {
 
+    private static final Pattern STORE_TOPIC = Pattern.compile("^/topic/store\\.(\\d+)$");
     private final JwtTokenProvider jwtTokenProvider;
+    private final StoreAuthorizationPolicy storeAuthorizationPolicy;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -56,7 +61,30 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
             }
             accessor.setUser((Principal) () -> String.valueOf(userId));
         }
+        if (accessor != null && StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
+            authorizeStoreTopicSubscription(accessor);
+        }
         return message;
+    }
+
+    private void authorizeStoreTopicSubscription(StompHeaderAccessor accessor) {
+        String destination = accessor.getDestination();
+        if (destination == null || !destination.startsWith("/topic/store.")) {
+            return;
+        }
+        Matcher matcher = STORE_TOPIC.matcher(destination);
+        Principal principal = accessor.getUser();
+        if (!matcher.matches() || principal == null) {
+            throw new MessageDeliveryException("WS store topic authorization failed");
+        }
+        try {
+            long userId = Long.parseLong(principal.getName());
+            long storeId = Long.parseLong(matcher.group(1));
+            // Store membership is enforced for every subscription, not just at CONNECT time.
+            storeAuthorizationPolicy.assertMemberOfStore(userId, storeId);
+        } catch (NumberFormatException e) {
+            throw new MessageDeliveryException("WS store topic authorization failed");
+        }
     }
 
     /**

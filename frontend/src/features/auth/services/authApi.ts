@@ -39,6 +39,12 @@ export interface JoinOptions {
   };
 }
 
+export interface KakaoOAuthAuthorization {
+  authorizationUrl: string;
+  state: string;
+  codeVerifier: string;
+}
+
 const toPurposeSlug = (purpose: 'personal' | 'employee' | 'boss'): 'user' | 'employee' | 'master' => {
   return purpose === 'boss' ? 'master' : purpose === 'employee' ? 'employee' : 'user';
 };
@@ -81,23 +87,18 @@ export const authApi = {
     return res.data as any;
   },
 
-  buildKakaoAuthorizeUrl(): string {
-    const clientId = process.env.KAKAO_CLIENT_ID ?? '';
-    const redirectUri = sodamEnv.kakaoRedirectUri;
-    const base = 'https://kauth.kakao.com/oauth/authorize';
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: 'code',
-    });
-    return `${base}?${params.toString()}`;
+  async beginKakaoAuthorization(): Promise<KakaoOAuthAuthorization> {
+    // The server binds state and PKCE verifier to a five-minute, single-use transaction.
+    const res = await api.post<{data?: KakaoOAuthAuthorization}>('/api/auth/kakao/authorization');
+    const transaction = res.data?.data;
+    if (!transaction?.authorizationUrl || !transaction.state || !transaction.codeVerifier) {
+      throw new Error('카카오 OAuth 거래 정보를 받지 못했습니다.');
+    }
+    return transaction;
   },
 
-  async openKakaoLogin(): Promise<void> {
-    const url = this.buildKakaoAuthorizeUrl();
-    // Opens the Kakao consent screen in external browser.
-    // Note: Full in-app redirect handling is a follow-up; backend will receive the code and can be polled if needed.
-    await Linking.openURL(url);
+  async openKakaoLogin(transaction: KakaoOAuthAuthorization): Promise<void> {
+    await Linking.openURL(transaction.authorizationUrl);
   },
 
   /** 이메일 사용 가능 여부 확인. available=true 면 가입 가능. */

@@ -16,7 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.rich.sodam.security.annotation.AnyAuthenticated;
-import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.security.annotation.SystemContentAdminOnly;
 
 import java.io.IOException;
 import java.util.List;
@@ -41,7 +41,7 @@ public class TaxInfoController {
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    @MasterOnly // 콘텐츠 작성은 관리자(사장)만 — 일반 직원 쓰기 차단
+    @SystemContentAdminOnly
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<TaxInfoResponseDto> createTaxInfo(
             @Parameter(description = "세무 정보 생성 요청 DTO", required = true)
@@ -97,7 +97,7 @@ public class TaxInfoController {
             @ApiResponse(responseCode = "404", description = "세무 정보를 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    @MasterOnly // 콘텐츠 수정은 관리자(사장)만
+    @SystemContentAdminOnly
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<TaxInfoResponseDto> updateTaxInfo(
             @Parameter(description = "세무 정보 ID", required = true)
@@ -114,7 +114,7 @@ public class TaxInfoController {
             @ApiResponse(responseCode = "404", description = "세무 정보를 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    @MasterOnly // 콘텐츠 삭제는 관리자(사장)만
+    @SystemContentAdminOnly
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTaxInfo(
             @Parameter(description = "세무 정보 ID", required = true)

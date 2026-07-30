@@ -183,6 +183,10 @@ tax:
 sodam:
   security:
     # true는 백엔드 직접 접근을 막고 신뢰 프록시가 X-Forwarded-For를 정규화하는 환경에서만 사용한다.
+    # 전역 안내 콘텐츠의 쓰기 권한은 매장 소유자 역할과 분리한다. 비어 있으면 모두 거부한다.
+    # 운영에서는 SODAM_SECURITY_SYSTEM_CONTENT_ADMIN_USER_IDS=1,2 처럼 서버가 관리하는 ID만 지정한다.
+    system-content:
+      admin-user-ids: ${SODAM_SECURITY_SYSTEM_CONTENT_ADMIN_USER_IDS:}
     trust-forwarded-headers: ${SODAM_SECURITY_TRUST_FORWARDED_HEADERS:false}
   # 사장님 웹 콘솔(Phase 0) 세션 인증 — docs/260726/01_시스템아키텍처.md §4, 04_보안정책.md.
   session:

@@ -12,7 +12,7 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
 
     Optional<PasswordResetToken> findByCodeHashAndUsedFalse(String codeHash);
 
-    Optional<PasswordResetToken> findByResetTicketAndUsedFalse(String resetTicket);
+    Optional<PasswordResetToken> findByResetTicketHashAndUsedFalse(String resetTicketHash);
 
     @Modifying
     @Query("UPDATE PasswordResetToken t SET t.used = true WHERE t.email = :email AND t.used = false")

@@ -45,6 +45,7 @@ public class LiveTossPaymentGateway implements TossPaymentGateway {
         body.put("amount", amount);
 
         HttpEntity<Map<String, Object>> req = new HttpEntity<>(body, authHeaders());
+        orderId = PaymentLogRedactor.redact(orderId);
         try {
             ResponseEntity<String> res = restTemplate.exchange(url, HttpMethod.POST, req, String.class);
             JsonNode json = objectMapper.readTree(res.getBody());
@@ -56,8 +57,8 @@ public class LiveTossPaymentGateway implements TossPaymentGateway {
             log.info("[Toss] 단건결제 승인 orderId={} status={}", orderId, status);
             return ConfirmResult.ok(confirmedKey, status);
         } catch (HttpStatusCodeException e) {
-            log.warn("[Toss] confirm failed orderId={} status={} body={}",
-                    orderId, e.getStatusCode(), e.getResponseBodyAsString());
+            log.warn("[Toss] confirm failed orderId={} status={}",
+                    orderId, e.getStatusCode());
             return ConfirmResult.fail("status=" + e.getStatusCode().value());
         } catch (Exception e) {
             log.error("[Toss] confirm error orderId={}", orderId, e);
@@ -71,6 +72,7 @@ public class LiveTossPaymentGateway implements TossPaymentGateway {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("cancelReason", reason);
         HttpEntity<Map<String, Object>> req = new HttpEntity<>(body, authHeaders());
+        paymentKey = PaymentLogRedactor.redact(paymentKey);
         try {
             restTemplate.exchange(url, HttpMethod.POST, req, String.class);
             log.info("[Toss] 단건결제 취소 paymentKey={}", paymentKey);

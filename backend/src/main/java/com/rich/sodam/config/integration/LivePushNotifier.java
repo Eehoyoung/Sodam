@@ -58,7 +58,7 @@ public class LivePushNotifier implements PushNotifier {
             log.debug("FCM sent id={}", id);
             return SendResult.ok();
         } catch (FirebaseMessagingException e) {
-            log.warn("FCM send 실패 token={} reason={}", shorten(token), e.getMessagingErrorCode());
+            log.warn("FCM send failed reason={}", e.getMessagingErrorCode());
             return SendResult.fail(e.getMessagingErrorCode() != null ? e.getMessagingErrorCode().name() : e.getMessage());
         } catch (Exception e) {
             log.error("FCM send 오류", e);

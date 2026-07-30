@@ -41,7 +41,7 @@ services:
       # 의 JdbcTemplate.batchUpdate)가 이 옵션 없이는 매우 느리다 — 운영에도 이롭도록 전역 적용.
       DB_URL: jdbc:mysql://sodam-mysql:3306/sodam?serverTimezone=Asia/Seoul&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
       DB_USERNAME: sodam
-      DB_PASSWORD: ${SODAM_DB_PASSWORD:-sodam_dev_pass}
+      DB_PASSWORD: ${SODAM_DB_PASSWORD:?SODAM_DB_PASSWORD is required}
       DB_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
       # Redis (캐시/JWT)
       REDIS_HOST: sodam-redis
@@ -54,17 +54,19 @@ services:
       # 유지 — 로컬 실증이 필요할 때만 .env 에 SODAM_SESSION_COOKIE_SECURE=false 를 설정할 것.
       SODAM_SESSION_COOKIE_SECURE: ${SODAM_SESSION_COOKIE_SECURE:-true}
       # JWT — 컨테이너 운영용 32바이트+ 시크릿 (운영은 Secrets Manager)
-      JWT_SECRET: ${SODAM_JWT_SECRET:-Y2hhbmdlLW1lLWluLXByb2R1Y3Rpb24tdGhpcy1pcy0zMi1ieXRlcy1taW4=}
+      JWT_SECRET: ${SODAM_JWT_SECRET:?SODAM_JWT_SECRET is required}
       # PII 암호화 키(AES-256-GCM) — phone·사업자번호 등 개인정보 컬럼 암호화 저장(PIPA §29).
       #   미설정 시 평문 모드(dev/test 허용, 운영 금지). 운영은 .env 에 SODAM_PII_KEY=<랜덤 32바이트 Base64> 주입.
-      SODAM_SECURITY_PII_ENCRYPTION_KEY: ${SODAM_PII_KEY:-sodam-dev-pii-key-change-in-production}
+      SODAM_SECURITY_PII_ENCRYPTION_KEY: ${SODAM_PII_KEY:?SODAM_PII_KEY is required}
       # PII 블라인드 인덱스(§2.6) HMAC 페퍼 — encryption-key와 반드시 별도 시크릿(키 분리).
       #   prod 프로필은 미설정 시 부팅을 거부한다(fail-fast) — 이 compose는 로컬용이라 기본값을 둔다.
       #   운영은 .env 에 SODAM_PII_SEARCH_PEPPER=<랜덤 32바이트 Base64> 주입(encryption-key와 다른 값).
-      SODAM_SECURITY_PII_SEARCH_PEPPER: ${SODAM_PII_SEARCH_PEPPER:-sodam-dev-pii-search-pepper-change-in-production}
+      SODAM_SECURITY_PII_SEARCH_PEPPER: ${SODAM_PII_SEARCH_PEPPER:?SODAM_PII_SEARCH_PEPPER is required}
       # 단위: 초/일 (yaml token-validity-in-seconds / refresh-token-validity-in-days 와 일치)
       JWT_TOKEN_VALIDITY_SECONDS: 3600
       JWT_REFRESH_VALIDITY_DAYS: 7
+      # 전역 안내 콘텐츠 운영자는 매장 소유자와 별개다. 비어 있으면 쓰기 API를 실패 폐쇄로 차단한다.
+      SODAM_SECURITY_SYSTEM_CONTENT_ADMIN_USER_IDS: ${SODAM_SECURITY_SYSTEM_CONTENT_ADMIN_USER_IDS:-}
       # 외부 통합 — 출시 직전까지 mock 모드 유지
       SODAM_INTEGRATION_TOSS_MODE: ${SODAM_TOSS_MODE:-mock}
       # ⭐ 토스 실키 활성화: .env 에 SODAM_TOSS_MODE=live + 아래 3개 키 입력 → compose up --build 만 하면 됨
@@ -75,6 +77,13 @@ services:
       SODAM_INTEGRATION_FCM_MODE: ${SODAM_FCM_MODE:-mock}
       SODAM_INTEGRATION_SENTRY_MODE: ${SODAM_SENTRY_MODE:-off}
       SODAM_INTEGRATION_KAKAO_MODE: ${SODAM_KAKAO_MODE:-mock}
+      # The compose stack uses the prod profile. Never fall back to the OTP-logging mock sender here.
+      SODAM_INTEGRATION_MAIL_MODE: live
+      SODAM_MAIL_HOST: ${SODAM_MAIL_HOST:?SODAM_MAIL_HOST is required}
+      SODAM_MAIL_PORT: ${SODAM_MAIL_PORT:-587}
+      SODAM_MAIL_USERNAME: ${SODAM_MAIL_USERNAME:-}
+      SODAM_MAIL_PASSWORD: ${SODAM_MAIL_PASSWORD:-}
+      SODAM_MAIL_FROM: ${SODAM_MAIL_FROM:?SODAM_MAIL_FROM is required}
       # 카카오 (실 키 받으면 env 로 주입)
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-dev-mock}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-dev-mock-secret}
@@ -148,10 +157,10 @@ services:
     container_name: sodam-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${SODAM_DB_ROOT_PASSWORD:-root_dev_pass}
+      MYSQL_ROOT_PASSWORD: ${SODAM_DB_ROOT_PASSWORD:?SODAM_DB_ROOT_PASSWORD is required}
       MYSQL_DATABASE: sodam
       MYSQL_USER: sodam
-      MYSQL_PASSWORD: ${SODAM_DB_PASSWORD:-sodam_dev_pass}
+      MYSQL_PASSWORD: ${SODAM_DB_PASSWORD:?SODAM_DB_PASSWORD is required}
       TZ: Asia/Seoul
     command:
       - --character-set-server=utf8mb4
@@ -167,7 +176,7 @@ services:
       # 재조정할 것(가정값이며 확정 사양 아님).
       - --innodb-buffer-pool-size=1073741824
     ports:
-      - "${SODAM_DB_PORT:-13306}:3306"
+      - "127.0.0.1:${SODAM_DB_PORT:-13306}:3306"
     volumes:
       - sodam_mysql_data:/var/lib/mysql
     networks:
@@ -186,7 +195,7 @@ services:
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
     ports:
-      - "${SODAM_REDIS_PORT:-16379}:6379"
+      - "127.0.0.1:${SODAM_REDIS_PORT:-16379}:6379"
     volumes:
       - sodam_redis_data:/data
     networks:
@@ -204,7 +213,7 @@ services:
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "noeviction"]
     ports:
-      - "${SODAM_SESSION_REDIS_PORT:-16380}:6379"
+      - "127.0.0.1:${SODAM_SESSION_REDIS_PORT:-16380}:6379"
     volumes:
       - sodam_session_redis_data:/data
     networks:
@@ -226,7 +235,7 @@ services:
       ADMINER_DEFAULT_SERVER: sodam-mysql
       ADMINER_DESIGN: pepa-linha
     ports:
-      - "${SODAM_ADMINER_PORT:-18080}:8080"
+      - "127.0.0.1:${SODAM_ADMINER_PORT:-18080}:8080"
     networks:
       - sodam-network
 

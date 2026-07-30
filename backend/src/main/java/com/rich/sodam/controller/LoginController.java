@@ -21,9 +21,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.LocaleResolver;
+import org.springframework.web.util.UriComponentsBuilder;
 import com.rich.sodam.security.annotation.PublicEndpoint;
 import jakarta.validation.Valid;
 
@@ -46,6 +48,7 @@ public class LoginController {
     private final UserService userService;
     private final TokenStore redisService;
     private final RefreshTokenService refreshTokenService;
+    private final KakaoOAuthStateService kakaoOAuthStateService;
     private final MessageSource messageSource;
     private final LocaleResolver localeResolver;
 
@@ -55,7 +58,7 @@ public class LoginController {
     @Value("${spring.security.oauth2.client.registration.kakao.client-id}")
     private String clientId;
 
-    public LoginController(KakaoAuthService kakaoAuthService, AppleAuthService appleAuthService, JwtTokenProvider jwtTokenProvider, TokenService tokenService, UserService userService, TokenStore redisService, RefreshTokenService refreshTokenService, MessageSource messageSource, LocaleResolver localeResolver) {
+    public LoginController(KakaoAuthService kakaoAuthService, AppleAuthService appleAuthService, JwtTokenProvider jwtTokenProvider, TokenService tokenService, UserService userService, TokenStore redisService, RefreshTokenService refreshTokenService, KakaoOAuthStateService kakaoOAuthStateService, MessageSource messageSource, LocaleResolver localeResolver) {
         this.kakaoAuthService = kakaoAuthService;
         this.appleAuthService = appleAuthService;
         this.jwtTokenProvider = jwtTokenProvider;
@@ -63,8 +66,29 @@ public class LoginController {
         this.userService = userService;
         this.redisService = redisService;
         this.refreshTokenService = refreshTokenService;
+        this.kakaoOAuthStateService = kakaoOAuthStateService;
         this.messageSource = messageSource;
         this.localeResolver = localeResolver;
+    }
+
+    @Operation(summary = "카카오 OAuth 인가 시작", description = "단일 사용 state와 PKCE 검증값을 발급합니다.")
+    @PostMapping("/api/auth/kakao/authorization")
+    public ResponseEntity<ApiResponse<Map<String, String>>> beginKakaoAuthorization() {
+        KakaoOAuthStateService.Authorization transaction = kakaoOAuthStateService.begin();
+        String authorizationUrl = UriComponentsBuilder.fromUriString("https://kauth.kakao.com/oauth/authorize")
+                .queryParam("client_id", clientId)
+                .queryParam("redirect_uri", redirectUrl)
+                .queryParam("response_type", "code")
+                .queryParam("state", transaction.state())
+                .queryParam("code_challenge", transaction.codeChallenge())
+                .queryParam("code_challenge_method", "S256")
+                .build()
+                .encode()
+                .toUriString();
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "authorizationUrl", authorizationUrl,
+                "state", transaction.state(),
+                "codeVerifier", transaction.codeVerifier())));
     }
 
     /**
@@ -79,21 +103,13 @@ public class LoginController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> kakaoLogin(
             @RequestParam String code,
             @RequestParam(value = "state", required = false) String state,
+            @RequestHeader(value = "X-Kakao-OAuth-Code-Verifier", required = false) String codeVerifier,
             HttpServletResponse response, HttpServletRequest request) {
         Locale locale = localeResolver.resolveLocale(request);
 
-        // W-3: CSRF 방어용 state 검증 (try 이전 — 입력 검증 실패는 400 으로 반환, 500 catch 우회).
-        // 카카오 인가 요청 시 발급한 state 를 콜백에서 대조해야 한다.
-        // TODO[보안]: 인가 시작 엔드포인트에서 state 를 세션/Redis 에 저장하고 여기서 1회성 대조·소비.
-        //   현재는 인가 시작 흐름이 FE(카카오 SDK) 측에 있어 BE 가 발급 state 를 보관하지 않으므로
-        //   존재성·형식 검증만 수행. 운영 강화 시 PKCE 또는 BE 주도 state 발급으로 전환 필요.
-        if (state == null || state.isBlank()) {
-            // state 부재는 (구 클라이언트 호환 위해) 경고 후 진행. 운영 강화 시 state 강제 권장.
-            log.warn("카카오 콜백 state 누락 — CSRF 검증 생략됨(현 흐름 한계). 운영에서 state 강제 권장.");
-        } else if (!isValidStateFormat(state)) {
-            // 정상 OAuth state 는 항상 잘 정의된 토큰이다. 형식이 비정상인 state 가 "존재"하면
-            // 위변조·주입 시도로 간주하고 차단한다(경고만 하던 것을 거부로 강화).
-            log.warn("카카오 콜백 state 형식 비정상 — 위변조 의심으로 차단. stateLen={}", state.length());
+        // State is stored server-side and consumed once. The verifier is required both here and by Kakao PKCE.
+        if (!kakaoOAuthStateService.consume(state, codeVerifier)) {
+            log.warn("카카오 OAuth 콜백 state 또는 PKCE 검증 실패");
             String invalidMessage = messageSource.getMessage("auth.kakao.failed",
                     new Object[]{"invalid state"}, locale);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -101,16 +117,13 @@ public class LoginController {
         }
 
         try {
-            // W-3: 인증 코드는 PII/시크릿에 준해 평문 로깅 금지 — 앞 4자리만 노출하고 나머지 마스킹.
-            log.info("카카오 인증 코드 수신: {}", maskCode(code));
-
             // 액세스 토큰 획득
-            String accessToken = kakaoAuthService.getAccessToken(code, redirectUrl, clientId);
+            String accessToken = kakaoAuthService.getAccessToken(code, redirectUrl, clientId, codeVerifier);
             log.debug("카카오 액세스 토큰 획득 성공");
 
             // 사용자 정보 획득
             User authenticationUser = kakaoAuthService.getAuthenticatedUser(accessToken);
-            log.debug("사용자 인증 성공: {}", authenticationUser.getEmail());
+            log.debug("카카오 사용자 인증 성공 userId={}", authenticationUser.getId());
 
             // JWT 토큰 생성
             String jwtToken = jwtTokenProvider.createToken(authenticationUser);
@@ -130,13 +143,13 @@ public class LoginController {
             result.put("refreshToken", refreshToken.getToken()); // 리프레시 토큰
             result.put("userId", authenticationUser.getId()); // 사용자 ID
 
-            log.info("카카오 로그인 성공: {}", authenticationUser.getEmail());
+            log.info("카카오 로그인 성공 userId={}", authenticationUser.getId());
             String successMessage = messageSource.getMessage("auth.kakao.success", null, locale);
             return ResponseEntity.ok(ApiResponse.success(successMessage, result));
         } catch (Exception e) {
-            log.error("카카오 인증 실패: {}", e.getMessage(), e);
+            log.error("카카오 인증 실패 errorType={}", e.getClass().getSimpleName());
 
-            String errorMessage = messageSource.getMessage("auth.kakao.failed", new Object[]{e.getMessage()}, locale);
+            String errorMessage = messageSource.getMessage("auth.kakao.failed", new Object[]{"authentication failed"}, locale);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error(ErrorCode.KAKAO_AUTH_ERROR.getCode(), errorMessage));
         }
@@ -160,7 +173,7 @@ public class LoginController {
 
         try {
             User authenticationUser = appleAuthService.authenticate(request.getIdentityToken());
-            log.debug("Apple 사용자 인증 성공: {}", authenticationUser.getEmail());
+            log.debug("Apple 사용자 인증 성공 userId={}", authenticationUser.getId());
 
             // JWT 토큰 생성
             String jwtToken = jwtTokenProvider.createToken(authenticationUser);
@@ -179,7 +192,7 @@ public class LoginController {
             result.put("refreshToken", refreshToken.getToken()); // 리프레시 토큰
             result.put("userId", authenticationUser.getId()); // 사용자 ID
 
-            log.info("Apple 로그인 성공: {}", authenticationUser.getEmail());
+            log.info("Apple 로그인 성공 userId={}", authenticationUser.getId());
             String successMessage = messageSource.getMessage("auth.apple.success", null, locale);
             return ResponseEntity.ok(ApiResponse.success(successMessage, result));
         } catch (Exception e) {
@@ -385,24 +398,4 @@ public class LoginController {
         }
     }
 
-    /**
-     * 카카오 인증 코드 로그 마스킹 — 앞 4자리만 노출하고 나머지는 '*'.
-     * 인증 코드는 짧은 시간 유효한 1회성 시크릿이므로 평문 로깅 금지.
-     */
-    private String maskCode(String code) {
-        if (code == null || code.isBlank()) {
-            return "(empty)";
-        }
-        int visible = Math.min(4, code.length());
-        return code.substring(0, visible) + "****";
-    }
-
-    /**
-     * state 형식 1차 검증 — 길이/문자셋 기본 가드.
-     * (완전한 CSRF 방어는 발급 state 와의 대조가 필요 — 위 TODO 참고.)
-     */
-    private boolean isValidStateFormat(String state) {
-        // 통상 state 는 영숫자/하이픈/언더스코어로 구성된 16~256자 토큰.
-        return state.matches("[A-Za-z0-9_\\-]{8,256}");
-    }
 }

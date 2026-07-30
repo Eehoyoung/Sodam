@@ -26,8 +26,12 @@ public class RefreshToken {
     /**
      * 리프레시 토큰 값
      */
-    @Column(nullable = false, unique = true, length = 500)
-    private String token;
+    @Column(name = "token", nullable = false, unique = true, length = 128)
+    private String tokenHash;
+
+    /** Raw token is only retained in memory long enough to return it to the login response. */
+    @Transient
+    private String issuedToken;
 
     /**
      * 토큰 소유자 (User와 연관관계)
@@ -61,12 +65,20 @@ public class RefreshToken {
      * @param user       토큰 소유자
      * @param expiryDate 만료 시간
      */
-    public RefreshToken(String token, User user, LocalDateTime expiryDate) {
-        this.token = token;
+    public RefreshToken(String tokenHash, User user, LocalDateTime expiryDate) {
+        this.tokenHash = tokenHash;
         this.user = user;
         this.expiryDate = expiryDate;
         this.createdAt = LocalDateTime.now();
         this.used = false;
+    }
+
+    public String getToken() {
+        return issuedToken;
+    }
+
+    public void setIssuedToken(String issuedToken) {
+        this.issuedToken = issuedToken;
     }
 
     /**

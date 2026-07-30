@@ -1,5 +1,6 @@
 package com.rich.sodam.domain;
 
+import com.rich.sodam.config.crypto.StringCryptoConverter;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -29,13 +30,16 @@ public class CustomerInquiry {
     @JoinColumn(name = "requester_user_id", nullable = false)
     private User requester;
 
-    @Column(nullable = false, length = 100)
+    @Convert(converter = StringCryptoConverter.class)
+    @Column(nullable = false, length = 512)
     private String name;
 
-    @Column(nullable = false, length = 190)
+    @Convert(converter = StringCryptoConverter.class)
+    @Column(nullable = false, length = 768)
     private String email;
 
-    @Column(nullable = false, length = 2000)
+    @Convert(converter = StringCryptoConverter.class)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
     @Column(nullable = false)

@@ -24,7 +24,7 @@
  * 범위를 넘는다)는 후속 증분.
  */
 import axios from 'axios';
-import authService, {type AuthResponse, type LoginRequest} from '../../features/auth/services/authService';
+import authService, {type AuthResponse, type KakaoLoginRequest, type LoginRequest} from '../../features/auth/services/authService';
 import TokenManager from './tokenStore';
 import {env} from '../config/env';
 
@@ -85,8 +85,8 @@ export async function login(request: LoginRequest): Promise<AuthResponse> {
 }
 
 /** 카카오 로그인 콜백 처리 — 실제 구현은 authService.kakaoLogin 위임(동작 변경 없음). */
-export async function kakaoLogin(code: string): Promise<AuthResponse> {
-    return authService.kakaoLogin(code);
+export async function kakaoLogin(request: KakaoLoginRequest): Promise<AuthResponse> {
+    return authService.kakaoLogin(request);
 }
 
 /** Sign in with Apple — 실제 구현은 authService.appleLogin 위임(동작 변경 없음). */

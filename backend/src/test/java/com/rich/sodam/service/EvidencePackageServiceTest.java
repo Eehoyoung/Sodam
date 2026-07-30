@@ -24,6 +24,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -82,7 +84,8 @@ class EvidencePackageServiceTest {
 
         Payroll p1 = payroll(1_000_000, 967_000, 33_000, 0);
         Payroll p2 = payroll(1_200_000, 1_160_400, 39_600, 0);
-        when(payrollRepo.findByEmployeeIdAndPeriod(eq(10L), any(), any())).thenReturn(List.of(p1, p2));
+        when(payrollRepo.findByEmployeeIdAndStoreIdAndPeriod(eq(10L), eq(1L), any(), any()))
+                .thenReturn(List.of(p1, p2));
 
         LaborContract contract = mock(LaborContract.class);
         when(contract.getHourlyWage()).thenReturn(10_030);
@@ -123,6 +126,8 @@ class EvidencePackageServiceTest {
         assertThat(res.payroll().totalGrossWage()).isEqualTo(2_200_000);
         assertThat(res.payroll().totalNetWage()).isEqualTo(2_127_400);
         assertThat(res.payroll().totalDeduction()).isEqualTo(72_600);
+        verify(payrollRepo).findByEmployeeIdAndStoreIdAndPeriod(10L, 1L, FROM, TO);
+        verify(payrollRepo, never()).findByEmployeeIdAndPeriod(10L, FROM, TO);
 
         assertThat(res.contract().hasContract()).isTrue();
         assertThat(res.contract().hourlyWage()).isEqualTo(10_030);
@@ -143,7 +148,8 @@ class EvidencePackageServiceTest {
         stubName(20L, "이파트");
         when(attendanceRepo.findByEmployeeIdAndStoreIdAndPeriodWithDetails(eq(20L), eq(1L), any(), any()))
                 .thenReturn(List.of());
-        when(payrollRepo.findByEmployeeIdAndPeriod(eq(20L), any(), any())).thenReturn(List.of());
+        when(payrollRepo.findByEmployeeIdAndStoreIdAndPeriod(eq(20L), eq(1L), any(), any()))
+                .thenReturn(List.of());
         when(laborContractService.findFor(20L, 1L)).thenReturn(List.of());
         when(wageHistoryRepo.findByEmployee_IdAndStore_IdOrderByEffectiveFromDesc(anyLong(), anyLong()))
                 .thenReturn(List.of());
@@ -167,7 +173,8 @@ class EvidencePackageServiceTest {
         when(employeeRepo.findById(30L)).thenReturn(Optional.empty());
         when(attendanceRepo.findByEmployeeIdAndStoreIdAndPeriodWithDetails(anyLong(), anyLong(), any(), any()))
                 .thenReturn(List.of());
-        when(payrollRepo.findByEmployeeIdAndPeriod(anyLong(), any(), any())).thenReturn(List.of());
+        when(payrollRepo.findByEmployeeIdAndStoreIdAndPeriod(anyLong(), anyLong(), any(), any()))
+                .thenReturn(List.of());
         when(laborContractService.findFor(anyLong(), anyLong())).thenReturn(List.of());
         when(wageHistoryRepo.findByEmployee_IdAndStore_IdOrderByEffectiveFromDesc(anyLong(), anyLong()))
                 .thenReturn(List.of());

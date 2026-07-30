@@ -3,6 +3,8 @@ package com.rich.sodam.controller;
 import com.rich.sodam.domain.Attendance;
 import com.rich.sodam.dto.request.AttendanceRequestDto;
 import com.rich.sodam.dto.response.AttendanceResponseDto;
+import com.rich.sodam.security.UserPrincipal;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.AttendanceService;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -32,6 +35,7 @@ import com.rich.sodam.security.annotation.EmployeeOrMaster;
 public class LegacyAttendanceProxyController {
 
     private final AttendanceService attendanceService;
+    private final StoreAuthorizationPolicy guard;
 
     private HttpHeaders deprecationHeaders(String successor) {
         HttpHeaders headers = new HttpHeaders();
@@ -44,8 +48,11 @@ public class LegacyAttendanceProxyController {
     @PostMapping("/check-in")
     @Operation(summary = "[Deprecated] 출근 처리", description = "표준 경로 /api/attendance/check-in 으로 위임됩니다.")
     @Hidden
-    public ResponseEntity<AttendanceResponseDto> legacyCheckIn(@RequestBody @Validated AttendanceRequestDto request) {
+    public ResponseEntity<AttendanceResponseDto> legacyCheckIn(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody @Validated AttendanceRequestDto request) {
         log.warn("[DEPRECATED] /attendance/check-in 호출. /api/attendance/check-in 사용 권장");
+        guard.assertSelf(principal.getId(), request.getEmployeeId());
         Attendance attendance = attendanceService.checkInWithVerification(
                 request.getEmployeeId(), request.getStoreId(), request.getLatitude(), request.getLongitude()
         );
@@ -57,8 +64,11 @@ public class LegacyAttendanceProxyController {
     @PostMapping("/check-out")
     @Operation(summary = "[Deprecated] 퇴근 처리", description = "표준 경로 /api/attendance/check-out 으로 위임됩니다.")
     @Hidden
-    public ResponseEntity<AttendanceResponseDto> legacyCheckOut(@RequestBody @Validated AttendanceRequestDto request) {
+    public ResponseEntity<AttendanceResponseDto> legacyCheckOut(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody @Validated AttendanceRequestDto request) {
         log.warn("[DEPRECATED] /attendance/check-out 호출. /api/attendance/check-out 사용 권장");
+        guard.assertSelf(principal.getId(), request.getEmployeeId());
         Attendance attendance = attendanceService.checkOutWithVerification(
                 request.getEmployeeId(), request.getStoreId(), request.getLatitude(), request.getLongitude()
         );

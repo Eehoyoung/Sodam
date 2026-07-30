@@ -2,6 +2,7 @@ package com.rich.sodam.security.web;
 
 import com.rich.sodam.jwt.JwtTokenProvider;
 import com.rich.sodam.security.UserPrincipal;
+import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,13 +38,15 @@ import static org.mockito.Mockito.when;
 class StompAuthChannelInterceptorTest {
 
     private JwtTokenProvider jwtTokenProvider;
+    private StoreAuthorizationPolicy storeAuthorizationPolicy;
     private StompAuthChannelInterceptor interceptor;
     private MessageChannel channel;
 
     @BeforeEach
     void setUp() {
         jwtTokenProvider = Mockito.mock(JwtTokenProvider.class);
-        interceptor = new StompAuthChannelInterceptor(jwtTokenProvider);
+        storeAuthorizationPolicy = Mockito.mock(StoreAuthorizationPolicy.class);
+        interceptor = new StompAuthChannelInterceptor(jwtTokenProvider, storeAuthorizationPolicy);
         channel = Mockito.mock(MessageChannel.class);
     }
 
@@ -142,5 +145,22 @@ class StompAuthChannelInterceptorTest {
 
         assertThat(result).isSameAs(message);
         Mockito.verifyNoInteractions(jwtTokenProvider);
+    }
+
+    @Test
+    @DisplayName("매장 멤버가 아닌 사용자는 해당 매장 STOMP 토픽을 구독할 수 없다")
+    void subscribeToOtherStore_isDenied() {
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
+        accessor.setDestination("/topic/store.99");
+        accessor.setUser(() -> "7");
+        accessor.setLeaveMutable(true);
+        Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+        org.springframework.security.access.AccessDeniedException denied =
+                new org.springframework.security.access.AccessDeniedException("not a member");
+        org.mockito.Mockito.doThrow(denied)
+                .when(storeAuthorizationPolicy).assertMemberOfStore(7L, 99L);
+
+        assertThatThrownBy(() -> interceptor.preSend(message, channel))
+                .isSameAs(denied);
     }
 }

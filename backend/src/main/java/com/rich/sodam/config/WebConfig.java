@@ -3,6 +3,7 @@ package com.rich.sodam.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
@@ -39,13 +40,31 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${sodam.cors.allowed-origins:}")
     private String allowedOriginsCsv;
 
+    private final Environment environment;
+
+    public WebConfig(Environment environment) {
+        this.environment = environment;
+    }
+
+    // Package-visible for focused CORS regression tests.
+    void setAllowedOriginsCsv(String allowedOriginsCsv) {
+        this.allowedOriginsCsv = allowedOriginsCsv;
+    }
+
     @Bean
     public CorsFilter corsFilter() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", corsConfiguration());
+        return new CorsFilter(source);
+    }
+
+    CorsConfiguration corsConfiguration() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // 명시적 origin 만 허용 (wildcard pattern 제거)
-        DEV_ORIGINS.forEach(config::addAllowedOrigin);
+        // Only local dev/test instances may trust local origins. Production uses explicit deployment origins.
+        if (environment.matchesProfiles("dev", "test")) {
+            DEV_ORIGINS.forEach(config::addAllowedOrigin);
+        }
 
         // 운영 도메인은 환경변수로 추가 (e.g., SODAM_CORS_ALLOWED_ORIGINS=https://sodam.app,https://www.sodam.app)
         if (allowedOriginsCsv != null && !allowedOriginsCsv.isBlank()) {
@@ -60,7 +79,6 @@ public class WebConfig implements WebMvcConfigurer {
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 
-        source.registerCorsConfiguration("/api/**", config);
-        return new CorsFilter(source);
+        return config;
     }
 }

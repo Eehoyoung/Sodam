@@ -3,6 +3,10 @@ package com.rich.sodam.service;
 import com.rich.sodam.config.integration.IntegrationProperties;
 import com.rich.sodam.dto.response.GeocodingResult;
 import org.junit.jupiter.api.Test;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
@@ -88,5 +92,38 @@ class GeocodingServiceTest {
         assertThatThrownBy(() -> service.getCoordinates("경기 고양시 일산동구 고봉로 422"))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Kakao REST API key is required");
+    }
+
+    @Test
+    void liveGeocode_doesNotWriteAddressOrCoordinatesToLogs() {
+        String privateAddress = "Private Road 42";
+        RestTemplate restTemplate = new RestTemplate();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        IntegrationProperties properties = new IntegrationProperties();
+        properties.getKakao().setMode("live");
+        properties.getKakao().setRestApiKey("test-rest-api-key");
+        GeocodingService service = new GeocodingService(restTemplate, properties);
+
+        Logger logger = (Logger) LoggerFactory.getLogger(GeocodingService.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            server.expect(request -> { })
+                    .andRespond(withSuccess("{\"documents\":[]}", MediaType.APPLICATION_JSON));
+
+            assertThatThrownBy(() -> service.getCoordinates(privateAddress))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageNotContaining(privateAddress);
+
+            String logged = appender.list.stream()
+                    .map(ILoggingEvent::getFormattedMessage)
+                    .reduce("", (all, message) -> all + "\n" + message);
+            assertThat(logged).doesNotContain(privateAddress).doesNotContain("37.");
+            server.verify();
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
     }
 }

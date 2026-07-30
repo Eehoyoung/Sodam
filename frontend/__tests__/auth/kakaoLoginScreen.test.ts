@@ -1,7 +1,7 @@
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 import {Linking} from 'react-native';
-import KakaoLoginScreen, {getKakaoCodeFromUrl, hasKakaoError} from '../../src/features/auth/screens/KakaoLoginScreen';
+import KakaoLoginScreen, {getKakaoCodeFromUrl, getKakaoStateFromUrl, hasKakaoError, isMatchingKakaoAuthorization} from '../../src/features/auth/screens/KakaoLoginScreen';
 
 // WP-00 계약 기준선: 정식 redirect URI는 `sodam://oauth/kakao` (c2977e6, common/config/env.ts
 // kakaoRedirectUri, iOS Info.plist / Android AndroidManifest.xml intent-filter와 3자 일치).
@@ -32,13 +32,33 @@ jest.mock('../../src/navigation/authFlow', () => ({
 jest.mock('../../src/features/auth/services/authApi', () => ({
     __esModule: true,
     default: {
+        beginKakaoAuthorization: jest.fn(() => Promise.resolve({
+            authorizationUrl: 'https://kauth.kakao.com/oauth/authorize',
+            state: 'expected-state',
+            codeVerifier: 'expected-verifier',
+        })),
         openKakaoLogin: jest.fn(() => Promise.resolve()),
     },
 }));
 
+jest.mock('../../src/common/utils/unifiedStorage', () => ({
+    unifiedStorage: {
+        getObject: jest.fn(() => Promise.resolve(null)),
+        setObject: jest.fn(() => Promise.resolve()),
+        removeItem: jest.fn(() => Promise.resolve()),
+    },
+}));
+
+const mockStorage = jest.requireMock('../../src/common/utils/unifiedStorage').unifiedStorage as {
+    getObject: jest.Mock;
+    setObject: jest.Mock;
+    removeItem: jest.Mock;
+};
+
 describe('KakaoLoginScreen redirect parsing', () => {
     test('success redirect extracts authorization code', () => {
         expect(getKakaoCodeFromUrl(`${VALID_REDIRECT}?code=abc%20123`)).toBe('abc 123');
+        expect(getKakaoStateFromUrl(`${VALID_REDIRECT}?code=abc&state=safe-state`)).toBe('safe-state');
     });
 
     test('cancel or failure redirect is detected', () => {
@@ -51,12 +71,19 @@ describe('KakaoLoginScreen redirect parsing', () => {
         // 다만 실제 OS가 앱으로 되돌려주는 경로는 iOS/Android 설정에 등록된 VALID_REDIRECT 뿐이다.
         expect(getKakaoCodeFromUrl('sodam://auth/kakao?code=legacy')).toBe('legacy');
     });
+
+    test('콜백 state는 앱이 시작한 OAuth 거래와 정확히 일치해야 한다', () => {
+        expect(isMatchingKakaoAuthorization('expected-state', {state: 'expected-state'})).toBe(true);
+        expect(isMatchingKakaoAuthorization('attacker-state', {state: 'expected-state'})).toBe(false);
+        expect(isMatchingKakaoAuthorization(null, {state: 'expected-state'})).toBe(false);
+    });
 });
 
 describe('KakaoLoginScreen — foreground/cold-start 복귀 (sodam://oauth/kakao)', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockKakaoLogin.mockResolvedValue({id: 1, name: 'Kim'} as any);
+        mockStorage.getObject.mockResolvedValue(null);
         (Linking.getInitialURL as jest.Mock).mockResolvedValue(null);
         (Linking.addEventListener as jest.Mock).mockReturnValue({remove: jest.fn()});
     });
@@ -64,8 +91,13 @@ describe('KakaoLoginScreen — foreground/cold-start 복귀 (sodam://oauth/kakao
     const navigation = {navigate: jest.fn()} as any;
     const route = {params: {}} as any;
 
-    test('cold-start: 앱이 종료된 상태에서 정식 리다이렉트 URI로 열리면 getInitialURL 결과로 로그인을 완료한다', async () => {
-        (Linking.getInitialURL as jest.Mock).mockResolvedValue(`${VALID_REDIRECT}?code=coldstart123`);
+    test('cold-start: 저장된 OAuth 거래와 일치하는 정식 리다이렉트 URI만 로그인을 완료한다', async () => {
+        mockStorage.getObject.mockResolvedValue({
+            state: 'expected-state',
+            codeVerifier: 'expected-verifier',
+            startedAt: Date.now(),
+        });
+        (Linking.getInitialURL as jest.Mock).mockResolvedValue(`${VALID_REDIRECT}?code=coldstart123&state=expected-state`);
 
         await act(async () => {
             TestRenderer.create(React.createElement(KakaoLoginScreen, {navigation, route}));
@@ -74,7 +106,7 @@ describe('KakaoLoginScreen — foreground/cold-start 복귀 (sodam://oauth/kakao
             await Promise.resolve();
         });
 
-        expect(mockKakaoLogin).toHaveBeenCalledWith('coldstart123');
+        expect(mockKakaoLogin).toHaveBeenCalledWith('coldstart123', 'expected-state', 'expected-verifier');
     });
 
     test('foreground: 브라우저에서 앱으로 돌아오는 url 이벤트로 로그인을 완료한다', async () => {
@@ -92,11 +124,16 @@ describe('KakaoLoginScreen — foreground/cold-start 복귀 (sodam://oauth/kakao
         expect(urlListener).toBeDefined();
 
         await act(async () => {
-            urlListener!({url: `${VALID_REDIRECT}?code=foreground456`});
+            mockStorage.getObject.mockResolvedValue({
+                state: 'expected-state',
+                codeVerifier: 'expected-verifier',
+                startedAt: Date.now(),
+            });
+            urlListener!({url: `${VALID_REDIRECT}?code=foreground456&state=expected-state`});
             await Promise.resolve();
         });
 
-        expect(mockKakaoLogin).toHaveBeenCalledWith('foreground456');
+        expect(mockKakaoLogin).toHaveBeenCalledWith('foreground456', 'expected-state', 'expected-verifier');
     });
 
     test('foreground: error 쿼리가 오면 kakaoLogin을 호출하지 않는다(취소/실패 경로)', async () => {
@@ -113,6 +150,23 @@ describe('KakaoLoginScreen — foreground/cold-start 복귀 (sodam://oauth/kakao
 
         await act(async () => {
             urlListener!({url: `${VALID_REDIRECT}?error=access_denied`});
+            await Promise.resolve();
+        });
+
+        expect(mockKakaoLogin).not.toHaveBeenCalled();
+    });
+
+    test('attacker state 콜백은 kakaoLogin을 호출하지 않는다', async () => {
+        mockStorage.getObject.mockResolvedValue({
+            state: 'expected-state',
+            codeVerifier: 'expected-verifier',
+            startedAt: Date.now(),
+        });
+        (Linking.getInitialURL as jest.Mock).mockResolvedValue(`${VALID_REDIRECT}?code=attacker-code&state=attacker-state`);
+
+        await act(async () => {
+            TestRenderer.create(React.createElement(KakaoLoginScreen, {navigation, route}));
+            await Promise.resolve();
             await Promise.resolve();
         });
 

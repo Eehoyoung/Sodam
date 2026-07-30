@@ -3,6 +3,7 @@ package com.rich.sodam.integration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rich.sodam.domain.LaborInfo;
 import com.rich.sodam.repository.LaborInfoRepository;
+import com.rich.sodam.security.UserPrincipal;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,11 +23,12 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = "sodam.security.system-content.admin-user-ids=1")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @WithMockUser(roles = "MASTER") // 콘텐츠 생성·수정·삭제는 @MasterOnly — 관리자 권한으로 통합검증
@@ -58,7 +60,8 @@ class LaborInfoIntegrationTest {
                         .file(image)
                         .param("title", "통합 테스트 노무 정보")
                         .param("content", "통합 테스트 내용입니다.")
-                        .contentType(MediaType.MULTIPART_FORM_DATA_VALUE))
+                        .contentType(MediaType.MULTIPART_FORM_DATA_VALUE)
+                        .with(user(systemContentAdministrator())))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title", is("통합 테스트 노무 정보")))
@@ -149,7 +152,8 @@ class LaborInfoIntegrationTest {
                         .with(request -> {
                             request.setMethod("PUT");
                             return request;
-                        }))
+                        })
+                        .with(user(systemContentAdministrator())))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(savedLaborInfo.getId().intValue())))
@@ -175,7 +179,8 @@ class LaborInfoIntegrationTest {
         LaborInfo savedLaborInfo = laborInfoRepository.save(laborInfo);
 
         // when & then
-        mockMvc.perform(delete("/api/labor-info/{id}", savedLaborInfo.getId()))
+        mockMvc.perform(delete("/api/labor-info/{id}", savedLaborInfo.getId())
+                        .with(user(systemContentAdministrator())))
                 .andDo(print())
                 .andExpect(status().isNoContent());
 
@@ -200,7 +205,8 @@ class LaborInfoIntegrationTest {
                         .file(image)
                         .param("title", "생성 후 조회 테스트")
                         .param("content", "생성 후 조회 테스트 내용입니다.")
-                        .contentType(MediaType.MULTIPART_FORM_DATA_VALUE))
+                        .contentType(MediaType.MULTIPART_FORM_DATA_VALUE)
+                        .with(user(systemContentAdministrator())))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -219,5 +225,10 @@ class LaborInfoIntegrationTest {
                 .andExpect(jsonPath("$.id", is(createdId.intValue())))
                 .andExpect(jsonPath("$.title", is("생성 후 조회 테스트")))
                 .andExpect(jsonPath("$.content", is("생성 후 조회 테스트 내용입니다.")));
+    }
+
+    private UserPrincipal systemContentAdministrator() {
+        return new UserPrincipal(1L, "system-content-admin@example.test", java.util.List.of(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_MASTER")));
     }
 }

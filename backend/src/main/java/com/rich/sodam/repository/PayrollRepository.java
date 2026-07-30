@@ -43,6 +43,21 @@ public interface PayrollRepository extends JpaRepository<Payroll, Long> {
             @Param("to") LocalDate to);
 
     /**
+     * 직원과 매장, 기간으로 급여 이력을 조회한다.
+     * 매장 범위 증거·명세서 응답에서는 직원의 다른 매장 급여가 섞이지 않아야 한다.
+     */
+    @Query("SELECT p FROM Payroll p WHERE p.employee.id = :employeeId " +
+            "AND p.store.id = :storeId " +
+            "AND (:from IS NULL OR p.endDate >= :from) " +
+            "AND (:to IS NULL OR p.startDate <= :to) " +
+            "ORDER BY p.endDate DESC")
+    List<Payroll> findByEmployeeIdAndStoreIdAndPeriod(
+            @Param("employeeId") Long employeeId,
+            @Param("storeId") Long storeId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
+
+    /**
      * 매장 ID로 급여 내역 조회
      */
     List<Payroll> findByStore_IdOrderByEndDateDesc(Long storeId);

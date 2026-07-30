@@ -13,9 +13,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import com.rich.sodam.security.annotation.AnyAuthenticated;
 
@@ -62,14 +59,7 @@ public class PersonalUserController {
         if (Objects.equals(authUserId, pathUserId)) {
             return null; // OK
         }
-        // 관리자/운영 권한 허용(ROLE_MASTER 전용 — 매니저는 전역 역할이 아니라 매장 관계 기반이므로 여기서 허용하지 않는다)
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null) {
-            boolean allowed = authentication.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .anyMatch("ROLE_MASTER"::equals);
-            if (allowed) return null;
-        }
+        // 개인 사용자 리소스는 역할과 무관하게 토큰 주체 본인에게만 허용한다.
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(ApiResponse.error("FORBIDDEN", "다른 사용자의 리소스에 접근할 수 없습니다."));
     }

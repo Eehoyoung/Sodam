@@ -44,7 +44,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             // 토큰 유효성 검사 및 인증 처리
             if (token != null && jwtTokenProvider.validateToken(token)) {
-                log.debug("유효한 JWT 토큰 발견: {}", maskToken(token));
+                log.debug("유효한 JWT 토큰 발견");
 
                 // 현재 SecurityContext에 인증 정보가 없는 경우에만 처리
                 if (SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -65,7 +65,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 request.setAttribute(JwtProperties.HEADER_STRING, "토큰이 만료되었거나 유효하지 않습니다.");
             }
         } catch (Exception e) {
-            log.error("JWT 인증 처리 중 오류 발생: {}", e.getMessage());
+            log.error("JWT 인증 처리 중 오류 발생: {}", e.getClass().getSimpleName());
             // 인증 실패 시 SecurityContext 초기화
             SecurityContextHolder.clearContext();
             request.setAttribute(JwtProperties.HEADER_STRING, "토큰이 만료되었거나 유효하지 않습니다.");

@@ -33,15 +33,15 @@ public class CustomUserDetailsService implements UserDetailsService {
      */
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        log.debug("이메일로 사용자 조회 시도: {}", email);
+        log.debug("Credential lookup requested");
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
-                    log.warn("사용자를 찾을 수 없음: {}", email);
-                    return new UsernameNotFoundException("유저 검색 실패: " + email);
+                    log.warn("Credential lookup did not match an account");
+                    return new UsernameNotFoundException("Invalid credentials");
                 });
 
-        log.debug("사용자 조회 성공: ID={}, 이메일={}", user.getId(), user.getEmail());
+        log.debug("Credential lookup succeeded for userId={}", user.getId());
         return UserPrincipal.create(user);
     }
 }

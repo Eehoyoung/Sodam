@@ -64,7 +64,12 @@ public class KakaoAuthService {
      * @return 카카오 액세스 토큰
      */
     public String getAccessToken(String code, String redirectUri, String clientId) {
-        OAuthToken oauthToken = getOauthToken(code, redirectUri, clientId);
+        return getAccessToken(code, redirectUri, clientId, null);
+    }
+
+    /** Exchanges an authorization code using the PKCE verifier bound to the OAuth transaction. */
+    public String getAccessToken(String code, String redirectUri, String clientId, String codeVerifier) {
+        OAuthToken oauthToken = getOauthToken(code, redirectUri, clientId, codeVerifier);
         return oauthToken.getAccessToken();
     }
 
@@ -76,7 +81,7 @@ public class KakaoAuthService {
      * @param clientId    클라이언트 ID
      * @return OAuth 토큰 객체
      */
-    private OAuthToken getOauthToken(String code, String redirectUri, String clientId) {
+    private OAuthToken getOauthToken(String code, String redirectUri, String clientId, String codeVerifier) {
         String tokenUrl = "https://kauth.kakao.com/oauth/token";
         String grantType = "authorization_code";
 
@@ -85,6 +90,9 @@ public class KakaoAuthService {
         paramMap.add("client_id", clientId);
         paramMap.add("redirect_uri", redirectUri);
         paramMap.add("code", code);
+        if (StringUtils.hasText(codeVerifier)) {
+            paramMap.add("code_verifier", codeVerifier);
+        }
         // Kakao Developers 콘솔에서 클라이언트 시크릿을 "사용함"으로 설정한 앱은 토큰 요청에
         // client_secret 이 없으면 KOE010(Bad client credentials)로 거절한다 — 값이 설정된
         // 경우에만 포함(비활성 앱은 KAKAO_CLIENT_SECRET 미설정 → null 이라 파라미터 생략).
@@ -145,7 +153,7 @@ public class KakaoAuthService {
         try {
             String email = getEmail(kakaoProfile);
 
-            log.debug("카카오 사용자 이메일: {}", email);
+            log.debug("카카오 사용자 프로필 확인 완료");
 
             // 이미 가입된 사용자인지 확인
             Optional<User> optionalUser = userRepository.findByEmail(email);

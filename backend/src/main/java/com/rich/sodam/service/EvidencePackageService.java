@@ -55,7 +55,7 @@ public class EvidencePackageService {
         String employeeName = resolveName(employeeId);
 
         AttendanceSummary attendance = attendanceSummary(employeeId, storeId, from, to);
-        PayrollSummary payroll = payrollSummary(employeeId, from, to);
+        PayrollSummary payroll = payrollSummary(employeeId, storeId, from, to);
         ContractSummary contract = contractSummary(employeeId, storeId);
         List<WageHistoryLine> wageHistory = wageHistory(employeeId, storeId);
 
@@ -91,8 +91,8 @@ public class EvidencePackageService {
         return new AttendanceSummary(days.size(), records.size(), totalMinutes, hours);
     }
 
-    private PayrollSummary payrollSummary(Long employeeId, LocalDate from, LocalDate to) {
-        List<Payroll> rows = payrollRepository.findByEmployeeIdAndPeriod(employeeId, from, to);
+    private PayrollSummary payrollSummary(Long employeeId, Long storeId, LocalDate from, LocalDate to) {
+        List<Payroll> rows = payrollRepository.findByEmployeeIdAndStoreIdAndPeriod(employeeId, storeId, from, to);
         long gross = 0;
         long net = 0;
         long deduction = 0;
