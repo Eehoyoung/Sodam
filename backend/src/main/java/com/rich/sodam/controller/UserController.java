@@ -11,15 +11,18 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.AnyAuthenticated;
 import com.rich.sodam.security.annotation.MasterOnly;
 
-import java.util.Set;
+import java.io.IOException;
+
 
 /**
  * 사용자 관리 컨트롤러
@@ -97,10 +100,15 @@ public class UserController {
 
         // IDOR 차단: 본인 또는 사업주(직원 관리 권한) 만 타 사용자 조회 허용.
         // 일반 직원이 임의 userId 로 타인 PII 를 조회하던 취약점 제거.
-        if (principal == null
-                || (!principal.getId().equals(userId) && !hasManagerRole(principal))) {
+        if (principal == null || principal.getId() == null) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error("FORBIDDEN", "조회 권한이 없어요."));
+        }
+
+        // A MASTER may view another user's PII only when the target is in a store it owns.
+        // Keep the guard outside the try block so AccessDeniedException becomes a 403 response.
+        if (!principal.getId().equals(userId)) {
+            storeAccessGuard.assertCanViewEmployee(principal.getId(), userId, hasManagerRole(principal));
         }
 
         try {
@@ -122,10 +130,9 @@ public class UserController {
 
     /** 사업주/관리자 권한(직원 관리 가능) 보유 여부. */
     private boolean hasManagerRole(UserPrincipal principal) {
-        Set<String> managerRoles = Set.of("ROLE_MASTER");
         return principal.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
-                .anyMatch(managerRoles::contains);
+                .anyMatch("ROLE_MASTER"::equals);
     }
 
     /**
@@ -226,6 +233,42 @@ public class UserController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error("INVALID", e.getMessage()));
         }
+    }
+
+    /**
+     * 아바타(프로필 사진) 업로드 — 본인만. 1인 1장 교체 방식(기존 파일은 서비스가 정리).
+     * 예외는 GlobalExceptionHandler 로 전파(IllegalArgumentException → 400).
+     */
+    @PostMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "아바타 업로드",
+            description = "본인 프로필 사진을 업로드/교체합니다. JPG/PNG, 최대 5MB.")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> uploadAvatar(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam("file") MultipartFile file) throws IOException {
+        if (principal == null || principal.getId() == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("UNAUTHORIZED", "로그인이 필요해요."));
+        }
+        User updated = userService.uploadAvatar(principal.getId(), file);
+        return ResponseEntity.ok(ApiResponse.success(
+                "아바타가 업로드됐어요.", java.util.Map.of("avatarUrl", updated.getAvatarUrl())));
+    }
+
+    /**
+     * 아바타 삭제(기본 이미지로 초기화) — 본인만.
+     */
+    @DeleteMapping("/me/avatar")
+    @Operation(summary = "아바타 삭제", description = "프로필 사진을 삭제하고 기본 이미지로 되돌립니다.")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> deleteAvatar(
+            @AuthenticationPrincipal UserPrincipal principal) {
+        if (principal == null || principal.getId() == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("UNAUTHORIZED", "로그인이 필요해요."));
+        }
+        User updated = userService.deleteAvatar(principal.getId());
+        java.util.Map<String, Object> body = new java.util.HashMap<>();
+        body.put("avatarUrl", updated.getAvatarUrl());
+        return ResponseEntity.ok(ApiResponse.success("아바타가 삭제됐어요.", body));
     }
 
     /**

@@ -152,6 +152,19 @@ public class User {
     private LocalDateTime piiAnonymizedAt;
 
     /**
+     * 아바타(프로필 사진) 공개 URL — ObjectStorage 가 반환한 publicUrl. null 이면 기본 이미지 사용(FE 처리).
+     * URL/스토리지 키는 개인식별정보가 아니므로 PII 암호화 컨버터 대상이 아니다.
+     */
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
+
+    /**
+     * 아바타 ObjectStorage 키 (예: "users/{userId}/avatar/{uuid}.jpg") — 교체/삭제 시 기존 파일 정리에 사용.
+     */
+    @Column(name = "avatar_key", length = 300)
+    private String avatarKey;
+
+    /**
      * 기본 생성자 (이메일과 이름으로 사용자 생성)
      *
      * @param email 사용자 이메일
@@ -260,6 +273,22 @@ public class User {
      */
     public boolean isPiiAnonymized() {
         return this.piiAnonymizedAt != null;
+    }
+
+    /**
+     * 아바타 교체 — 새 파일 저장 완료 후 URL/키를 함께 갱신한다(교체 방식, 1인 1장).
+     */
+    public void updateAvatar(String avatarUrl, String avatarKey) {
+        this.avatarUrl = avatarUrl;
+        this.avatarKey = avatarKey;
+    }
+
+    /**
+     * 아바타 초기화(기본 이미지로 되돌림) — 컬럼을 null 로 비운다. 실제 파일 삭제는 서비스가 ObjectStorage 로 별도 수행.
+     */
+    public void clearAvatar() {
+        this.avatarUrl = null;
+        this.avatarKey = null;
     }
 
     /**

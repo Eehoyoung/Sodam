@@ -28,6 +28,8 @@ public class UserResponseDto {
     /** 위치정보 동의 여부 — GPS 출퇴근 진입 가능 판정. */
     private final boolean locationConsented;
     private final LocalDateTime createdAt;
+    /** 아바타(프로필 사진) 공개 URL — null 이면 기본 이미지를 FE 가 표시. */
+    private final String avatarUrl;
 
     private UserResponseDto(User user) {
         this.id = user.getId();
@@ -40,6 +42,7 @@ public class UserResponseDto {
         this.consentCompleted = user.hasCompletedRequiredConsents();
         this.locationConsented = user.hasAgreedLocationInfo();
         this.createdAt = user.getCreatedAt();
+        this.avatarUrl = user.getAvatarUrl();
     }
 
     public static UserResponseDto from(User user) {

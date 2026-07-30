@@ -1,5 +1,6 @@
 package com.rich.sodam.service;
 
+import com.rich.sodam.config.integration.ObjectStorage;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.domain.type.SubscriptionStatus;
 import com.rich.sodam.domain.type.UserGrade;
@@ -16,7 +17,9 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +29,9 @@ public class UserService {
 
     /** 탈퇴 후 PII 보관 기간(일) — 처리방침상 90일. */
     static final int PII_RETENTION_DAYS = 90;
+
+    /** 아바타 업로드 최대 크기 (StorePhotoService 와 동일 정책). */
+    private static final long MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 
     /** 탈퇴를 차단하는 "활성" 구독 상태 — 결제 진행/유효 기간 중. */
     private static final List<SubscriptionStatus> BLOCKING_SUBSCRIPTION_STATUSES = List.of(
@@ -37,16 +43,19 @@ public class UserService {
     private final SubscriptionRepository subscriptionRepository;
     private final TermsAgreementRepository termsAgreementRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ObjectStorage objectStorage;
     private final org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder bCryptPasswordEncoder = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
 
     public UserService(UserRepository userRepository,
                        SubscriptionRepository subscriptionRepository,
                        TermsAgreementRepository termsAgreementRepository,
-                       PasswordEncoder passwordEncoder) {
+                       PasswordEncoder passwordEncoder,
+                       ObjectStorage objectStorage) {
         this.userRepository = userRepository;
         this.subscriptionRepository = subscriptionRepository;
         this.termsAgreementRepository = termsAgreementRepository;
         this.passwordEncoder = passwordEncoder;
+        this.objectStorage = objectStorage;
     }
 
     /**
@@ -412,5 +421,60 @@ public class UserService {
             userRepository.saveAll(targets);
         }
         return targets.size();
+    }
+
+    /**
+     * 아바타(프로필 사진) 업로드 — 1인 1장 교체 방식(매장 사진처럼 여러 장 쌓지 않음).
+     * 검증 규칙은 {@link com.rich.sodam.service.StorePhotoService#upload} 와 동일(빈 파일/5MB 초과/image 아님).
+     * 기존 avatarKey 가 있으면 새 파일 저장 전 ObjectStorage 에서 먼저 정리한다.
+     *
+     * @param userId 대상 사용자 ID (본인 리소스 — 컨트롤러에서 principal.getId() 를 그대로 전달)
+     * @param file   업로드할 이미지 파일
+     * @return 갱신된 사용자
+     */
+    @Transactional
+    @CacheEvict(value = "users", key = "#userId")
+    public User uploadAvatar(Long userId, MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("파일이 비어 있어요.");
+        }
+        if (file.getSize() > MAX_AVATAR_SIZE_BYTES) {
+            throw new IllegalArgumentException("5MB 이하 사진만 업로드할 수 있어요.");
+        }
+        String contentType = file.getContentType() == null ? "" : file.getContentType();
+        if (!contentType.startsWith("image/")) {
+            throw new IllegalArgumentException("이미지 파일만 업로드할 수 있어요.");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없어요."));
+
+        String oldKey = user.getAvatarKey();
+        if (oldKey != null && !oldKey.isBlank()) {
+            objectStorage.delete(oldKey);
+        }
+
+        ObjectStorage.PutResult res = objectStorage.put(
+                "users/" + userId + "/avatar", file.getBytes(), contentType);
+
+        user.updateAvatar(res.getPublicUrl(), res.getStorageKey());
+        return userRepository.save(user);
+    }
+
+    /**
+     * 아바타 삭제(기본 이미지로 초기화) — 저장된 파일 정리 + 컬럼 null화.
+     */
+    @Transactional
+    @CacheEvict(value = "users", key = "#userId")
+    public User deleteAvatar(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없어요."));
+
+        String oldKey = user.getAvatarKey();
+        if (oldKey != null && !oldKey.isBlank()) {
+            objectStorage.delete(oldKey);
+        }
+        user.clearAvatar();
+        return userRepository.save(user);
     }
 }
