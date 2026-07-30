@@ -274,6 +274,47 @@ compare 스크립트 자체에 이 가드를 내장하는 게 근본적으로 �
 
 ---
 
+## 반응형 QA + WP-10 확인 (2026-07-30)
+
+30개 배선누락 수정 후, 잔여 작업 우선순위(다크모드 → 반응형 → WP-10) 중 다크모드는 다른
+세션으로 이관하고 반응형 QA와 WP-10을 이어서 처리했다.
+
+### 반응형 QA
+`useResponsive`(v3 반응형 단일 진입점, `frontend/src/common/hooks/useResponsive.ts`)를 직접
+쓰는 실 화면·컴포넌트는 6개 파일뿐이었다: `HeroNumber`·`PunchButton`(DS 컴포넌트),
+`ProfileBasicsScreen`·`SubscriptionPlanCard`·`SubscribeScreen`·`OnboardingCarouselScreen`.
+(레이아웃 폴더의 `Header`/`Footer`/`MainLayout`은 구버전 `useResponsiveStyles`를 쓰는 죽은
+코드로 확인 — 아무 데서도 import 안 됨, 반응형 QA 범위 밖.)
+
+`HeroNumber`를 렌더링하는 실 화면까지 포함해 대표 7개 화면(OnboardingCarousel·
+ProfileBasics·Subscribe·SalaryDetail·PayrollRun·MyLeaveBalance·Referral)을
+compact(340dp)·normal(400dp)·wide(500dp) 3개 폭에서 캡처(`v3-responsive-capture.ps1`/
+`v3-responsive-batch.ps1` 신규 — native-strict 파이프라인과 무관하게 `adb shell screencap`
+raw 스크린샷만 찍어 육안 검토용, 21장). **21장 전수 육안 검토 결과 오버플로우·겹침·잘림 등
+레이아웃 문제 0건** — `pick()`의 이산값 방식(비례 스케일 아님)이 브레이크포인트 전환에서
+텍스트 줄바꿈·카드 여백 모두 자연스럽게 대응함을 확인.
+
+### WP-10
+메모리 기록(`design-system-v3-ring-pass`)에 "미착수"로 남아있던 두 항목을 직접 코드로
+재확인한 결과 **둘 다 이미 완료된 상태**였다(기록이 낡은 정보였음):
+- `theme/tokens.ts`의 `colors` 객체 본체 — 이미 v3 값으로 전량 교체 완료(커밋 `c9917fd`,
+  잔재 정리 `fb5eb90`). "스왑 여부 결정"이 아니라 이미 스왑된 상태.
+- `.claude/rules/frontend.md` — 이미 v3 완료 기준으로 갱신되어 있음("확정, 구현 전" 문구 없음).
+
+**부수 발견**: WP-10의 "삭제 게이트"(0건 참조 확인된 호환 shim 삭제, 기존 4종 삭제 커밋
+`3866077`)와 같은 패턴으로, 구버전 `SODAM_ORANGE`/`SODAM_BLUE` 색상을 쓰는 파일 중
+`PurposeSelectModal.tsx`가 프로덕션·테스트 어디서도 참조되지 않는 완전한 죽은 코드임을
+확인·삭제(tsc 재검증 통과). `PrimaryButton.tsx`도 같은 v2 색상(`SODAM_BLUE` 배경)을 쓰지만
+유닛테스트가 참조하고 있어 이번엔 보류(삭제 시 테스트 처리까지 별도 결정 필요 — 실 화면에서는
+안 쓰이므로 사용자 노출 버그는 아님).
+
+WP-10 관련 남은 작업 없음. 결론적으로 잔여 작업 5개 중 다크모드(이관)·반응형(완료)·WP-10(완료
+확인)까지 마무리, 남은 건 BE 갭 2건(직원 휴게기록 API, 아바타 업로드)뿐.
+
+미커밋 상태(사용자 명시 요청 시에만 커밋).
+
+---
+
 ## 전체 현황 요약 (인수인계용, 2026-07-28 새벽 작성)
 
 **82/83 화면 코드 배선 완료 + native-strict(0/0 픽셀) 캡처 검증 완료.**
