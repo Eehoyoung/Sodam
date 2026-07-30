@@ -42,4 +42,22 @@ describe('userService', () => {
     expect(api.put).toHaveBeenCalledWith('/api/user/9', { name: 'Lee' });
     expect(u.name).toBe('Lee');
   });
+
+  test('uploadAvatar posts multipart form to /api/user/me/avatar', async () => {
+    (api.post as jest.Mock).mockResolvedValue({ data: { data: { avatarUrl: '/uploads/users/1/avatar/abc.jpg' } } });
+    const res = await userService.uploadAvatar({ uri: 'file:///tmp/photo.jpg', fileName: 'photo.jpg', type: 'image/jpeg' });
+    expect(api.post).toHaveBeenCalledWith(
+      '/api/user/me/avatar',
+      expect.any(FormData),
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    expect(res.avatarUrl).toBe('/uploads/users/1/avatar/abc.jpg');
+  });
+
+  test('deleteAvatar calls DELETE /api/user/me/avatar', async () => {
+    (api.delete as jest.Mock).mockResolvedValue({ data: { data: { avatarUrl: null } } });
+    const res = await userService.deleteAvatar();
+    expect(api.delete).toHaveBeenCalledWith('/api/user/me/avatar');
+    expect(res.avatarUrl).toBeNull();
+  });
 });

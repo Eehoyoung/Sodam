@@ -34,11 +34,19 @@ export interface User {
     consentCompleted?: boolean;
     /** 위치정보 동의 여부 — GPS 출퇴근 진입 가능 판정 (위치정보법 §18, G-1). */
     locationConsented?: boolean;
+    /** 아바타(프로필 사진) 공개 URL — null/undefined 면 기본 이미지 표시. */
+    avatarUrl?: string | null;
 }
 
 export interface LoginRequest {
     email: string;
     password: string;
+}
+
+export interface KakaoLoginRequest {
+    code: string;
+    state: string;
+    codeVerifier: string;
 }
 
 export interface SignupRequest {
@@ -78,6 +86,7 @@ interface RawUser {
     profileCompleted?: boolean;
     consentCompleted?: boolean;
     locationConsented?: boolean;
+    avatarUrl?: string | null;
 }
 
 interface RawAuthRoot extends RawUser {
@@ -136,6 +145,7 @@ const mapAuthResponse = async (data: RawAuthResponse): Promise<AuthResponse> => 
         profileCompleted: rawUser?.profileCompleted ?? root?.profileCompleted,
         consentCompleted: rawUser?.consentCompleted ?? root?.consentCompleted,
         locationConsented: rawUser?.locationConsented ?? root?.locationConsented,
+        avatarUrl: rawUser?.avatarUrl ?? root?.avatarUrl,
     };
 
     if (!accessToken) {
@@ -202,9 +212,12 @@ const authService = {
         }
     },
 
-    kakaoLogin: async (code: string): Promise<AuthResponse> => {
+    kakaoLogin: async ({code, state, codeVerifier}: KakaoLoginRequest): Promise<AuthResponse> => {
         try {
-            const res = await api.get<RawAuthResponse>(`/kakao/auth/proc?code=${encodeURIComponent(code)}`);
+            const res = await api.get<RawAuthResponse>('/kakao/auth/proc', {
+                params: {code, state},
+                headers: {'X-Kakao-OAuth-Code-Verifier': codeVerifier},
+            });
             return await mapAuthResponse(res.data);
         } catch (error) {
             logger.error('kakaoLogin failed', 'AUTH_SERVICE', error);

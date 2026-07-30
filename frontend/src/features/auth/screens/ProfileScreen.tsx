@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
-import {Pressable, StyleSheet, View} from 'react-native';
+import {Image, Pressable, StyleSheet, View} from 'react-native';
 import {useAuth} from '../../../contexts/AuthContext';
-import {useCurrentUser} from '../hooks/useAuthQueries';
+import {useCurrentUser, useDeleteAvatar, useUploadAvatar} from '../hooks/useAuthQueries';
 import {
     AppButton,
     AppCard,
@@ -20,13 +20,14 @@ import {pickReceiptImage as pickPhoto} from '../../purchase/utils/imagePicker';
 /**
  * 43 Profile — 확정 시안.
  * 아바타 마크 + 계정 정보 리스트. (읽기 + 새로고침)
- * 아바타를 탭하면 77 ImagePickerSheet 가 열린다(docs/260720 v3 감사 후속) — 단, 프로필
- * 이미지를 저장하는 BE 필드/엔드포인트가 아직 없어 선택 결과는 서버에 반영되지 않고
- * 안내 토스트만 보여준다(User 타입에 avatarUrl 없음, authService.ts 참고).
+ * 아바타를 탭하면 77 ImagePickerSheet 가 열린다 — 카메라/앨범에서 고른 사진을 실제로
+ * 업로드하고(POST /api/user/me/avatar), 기본 이미지로 되돌리는 삭제(DELETE)도 지원한다.
  */
 const ProfileScreen: React.FC = () => {
     const {user} = useAuth();
     const currentUserQuery = useCurrentUser();
+    const uploadAvatar = useUploadAvatar();
+    const deleteAvatar = useDeleteAvatar();
     const [pickerVisible, setPickerVisible] = useState(false);
 
     const displayedUser = user ?? currentUserQuery.data ?? null;
@@ -63,10 +64,25 @@ const ProfileScreen: React.FC = () => {
     const handlePickPhoto = async (source: 'camera' | 'album') => {
         setPickerVisible(false);
         const picked = await pickPhoto(source);
-        if (picked) {
-            AppToast.show('사진을 선택했어요. 프로필 사진 업로드는 아직 준비 중이에요.');
-        } else {
+        if (!picked) {
             AppToast.show('사진 선택 기능은 아직 준비 중이에요.');
+            return;
+        }
+        try {
+            await uploadAvatar.mutateAsync(picked);
+            AppToast.success('프로필 사진을 변경했어요.');
+        } catch (e: any) {
+            AppToast.error(e?.response?.data?.message || '프로필 사진 업로드에 실패했어요.');
+        }
+    };
+
+    const handleResetPhoto = async () => {
+        setPickerVisible(false);
+        try {
+            await deleteAvatar.mutateAsync();
+            AppToast.success('기본 이미지로 되돌렸어요.');
+        } catch (e: any) {
+            AppToast.error(e?.response?.data?.message || '사진 삭제에 실패했어요.');
         }
     };
 
@@ -77,7 +93,11 @@ const ProfileScreen: React.FC = () => {
                 accessibilityRole="button"
                 accessibilityLabel="프로필 사진 변경">
                 <AppCard variant="flat" style={styles.avatarCard}>
-                    <Brandmark size={56} label={initial} />
+                    {displayedUser.avatarUrl ? (
+                        <Image source={{uri: displayedUser.avatarUrl}} style={styles.avatarImage} />
+                    ) : (
+                        <Brandmark size={56} label={initial} />
+                    )}
                     <AppText variant="caption" tone="tertiary" style={styles.avatarHint}>프로필 사진 · 탭해서 변경</AppText>
                 </AppCard>
             </Pressable>
@@ -103,6 +123,7 @@ const ProfileScreen: React.FC = () => {
                 onClose={() => setPickerVisible(false)}
                 onCamera={() => handlePickPhoto('camera')}
                 onAlbum={() => handlePickPhoto('album')}
+                onReset={displayedUser.avatarUrl ? handleResetPhoto : undefined}
             />
         </ScreenContainer>
     );
@@ -111,6 +132,7 @@ const ProfileScreen: React.FC = () => {
 const styles = StyleSheet.create({
     center: {flex: 1, alignItems: 'center', justifyContent: 'center'},
     avatarCard: {alignItems: 'center', paddingVertical: spacing.xl},
+    avatarImage: {width: 56, height: 56, borderRadius: 28},
     avatarHint: {marginTop: spacing.sm},
     list: {marginTop: spacing.md, gap: spacing.sm},
     refresh: {marginTop: spacing.lg},

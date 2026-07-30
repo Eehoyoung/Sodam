@@ -36,6 +36,31 @@ async function updateEmployee(employeeId: number, data: Partial<UserProfile>): P
 }
 
 /**
+ * 아바타(프로필 사진) 업로드 — 1인 1장 교체 방식. file 은 {uri, fileName, type} 형태를
+ * FormData 'file' 필드로 담아 전달해야 한다(BE `@RequestParam("file")`).
+ */
+async function uploadAvatar(file: {uri: string; fileName?: string; type?: string}): Promise<{avatarUrl: string | null}> {
+  const form = new FormData();
+  (form as unknown as {append: (k: string, v: unknown) => void}).append('file', {
+    uri: file.uri,
+    name: file.fileName ?? 'avatar.jpg',
+    type: file.type ?? 'image/jpeg',
+  });
+  const res = await api.post('/api/user/me/avatar', form, {
+    headers: {'Content-Type': 'multipart/form-data'},
+  });
+  const body: any = res.data;
+  return body?.data ?? body ?? {avatarUrl: null};
+}
+
+/** 아바타 삭제(기본 이미지로 초기화). */
+async function deleteAvatar(): Promise<{avatarUrl: string | null}> {
+  const res = await api.delete('/api/user/me/avatar');
+  const body: any = res.data;
+  return body?.data ?? body ?? {avatarUrl: null};
+}
+
+/**
  * 회원가입 후 프로필 기본정보 보강.
  * BE EmployeeWageUpdateDto 처럼 silent fail 회피 위해 phone 누락 시 throw fail-fast.
  */
@@ -65,6 +90,8 @@ const userService = {
   getUser,
   updateEmployee,
   updateProfileBasics,
+  uploadAvatar,
+  deleteAvatar,
 };
 
 export default userService;

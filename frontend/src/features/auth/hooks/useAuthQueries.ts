@@ -1,6 +1,7 @@
 import React from 'react';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
-import authService, {AuthResponse, LoginRequest, SignupRequest, SignupResponse, User} from '../services/authService';
+import authService, {AuthResponse, KakaoLoginRequest, LoginRequest, SignupRequest, SignupResponse, User} from '../services/authService';
+import userService from '../services/userService';
 import * as sessionCoordinator from '../../../common/auth/sessionCoordinator';
 import {handleQueryError} from '../../../common/query/errorHandler';
 import {authQueryKeys} from '../../../common/auth/queryKeys';
@@ -108,9 +109,9 @@ export const useKakaoLogin = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (code: string): Promise<AuthResponse> => {
+        mutationFn: async (request: KakaoLoginRequest): Promise<AuthResponse> => {
             try {
-                return await sessionCoordinator.kakaoLogin(code);
+                return await sessionCoordinator.kakaoLogin(request);
             } catch (error) {
                 handleQueryError(error, 'kakaoLogin');
                 throw error;
@@ -243,6 +244,46 @@ export const usePasswordReset = () => {
         },
         meta: {
             errorMessage: '비밀번호 재설정에 실패했습니다.',
+        },
+    });
+};
+
+const applyAvatarUrl = (queryClient: ReturnType<typeof useQueryClient>, avatarUrl: string | null) => {
+    queryClient.setQueryData<User | undefined>(authQueryKeys.currentUser(), prev =>
+        prev ? {...prev, avatarUrl} : prev,
+    );
+};
+
+export const useUploadAvatar = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (file: {uri: string; fileName?: string; type?: string}) => userService.uploadAvatar(file),
+        onSuccess: ({avatarUrl}) => {
+            applyAvatarUrl(queryClient, avatarUrl);
+        },
+        onError: (error: unknown) => {
+            handleQueryError(error, 'uploadAvatar');
+        },
+        meta: {
+            errorMessage: '아바타 업로드에 실패했습니다.',
+        },
+    });
+};
+
+export const useDeleteAvatar = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: () => userService.deleteAvatar(),
+        onSuccess: ({avatarUrl}) => {
+            applyAvatarUrl(queryClient, avatarUrl);
+        },
+        onError: (error: unknown) => {
+            handleQueryError(error, 'deleteAvatar');
+        },
+        meta: {
+            errorMessage: '아바타 삭제에 실패했습니다.',
         },
     });
 };
