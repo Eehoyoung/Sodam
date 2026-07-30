@@ -1,6 +1,7 @@
 package com.rich.sodam.service;
 
 import com.rich.sodam.domain.BreakRecord;
+import com.rich.sodam.domain.type.RecordedBy;
 import com.rich.sodam.dto.request.BreakRecordCreateRequest;
 import com.rich.sodam.dto.response.BreakRecordResponse;
 import com.rich.sodam.repository.BreakRecordRepository;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -49,6 +51,51 @@ public class BreakRecordService {
             throw new AccessDeniedException("해당 매장의 휴게 기록이 아니에요.");
         }
         repository.delete(record);
+    }
+
+    /**
+     * 직원 본인이 앱에서 휴게 시작을 실시간으로 기록. 이미 진행 중인(종료 안 된) 실시간 기록이 있으면
+     * 중복 시작을 거부한다(IllegalStateException → 400). 사장의 사후입력 기록 존재 여부는 무관하다.
+     */
+    @Transactional
+    public BreakRecordResponse startByEmployee(Long employeeId, Long storeId) {
+        if (repository.existsByEmployeeIdAndStoreIdAndRecordedByAndBreakEndTimeIsNull(
+                employeeId, storeId, RecordedBy.EMPLOYEE)) {
+            throw new IllegalStateException("이미 진행 중인 휴게 기록이 있어요. 먼저 종료해 주세요.");
+        }
+        BreakRecord saved = repository.save(BreakRecord.startByEmployee(employeeId, storeId, LocalDateTime.now()));
+        return BreakRecordResponse.from(saved);
+    }
+
+    /**
+     * 직원 본인이 앱에서 휴게 종료를 기록. 본인 소유가 아니거나 다른 매장 기록이면 AccessDeniedException
+     * (→ 403, BOLA 차단). 이미 종료된 기록에 재종료 시도하면 IllegalStateException(→ 400).
+     */
+    @Transactional
+    public BreakRecordResponse completeByEmployee(Long employeeId, Long storeId, Long breakRecordId) {
+        BreakRecord record = repository.findById(breakRecordId)
+                .orElseThrow(() -> new IllegalArgumentException("휴게 기록을 찾을 수 없어요: " + breakRecordId));
+        if (!record.getStoreId().equals(storeId)) {
+            throw new AccessDeniedException("해당 매장의 휴게 기록이 아니에요.");
+        }
+        if (!record.getEmployeeId().equals(employeeId)) {
+            throw new AccessDeniedException("본인의 휴게 기록만 종료할 수 있어요.");
+        }
+        record.completeByEmployee(LocalDateTime.now());
+        return BreakRecordResponse.from(record);
+    }
+
+    /**
+     * 직원 본인의 휴게 기록 목록 조회(사장 사후입력 + 본인 실시간 기록 모두 포함). from/to 가 모두
+     * 주어지면 근무일 기준 기간 필터, 아니면 전체 이력.
+     */
+    @Transactional(readOnly = true)
+    public List<BreakRecordResponse> listForEmployeeSelf(Long employeeId, Long storeId, LocalDate from, LocalDate to) {
+        List<BreakRecord> records = (from != null && to != null)
+                ? repository.findByEmployeeIdAndStoreIdAndWorkDateBetweenOrderByWorkDateDescCreatedAtDesc(
+                        employeeId, storeId, from, to)
+                : repository.findByEmployeeIdAndStoreIdOrderByWorkDateDescCreatedAtDesc(employeeId, storeId);
+        return records.stream().map(BreakRecordResponse::from).toList();
     }
 
     /**
