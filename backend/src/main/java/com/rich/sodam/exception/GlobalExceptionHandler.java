@@ -125,6 +125,13 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("WEB_LOGIN_RATE_LIMITED", e.getMessage()));
     }
 
+    @ExceptionHandler(LoginAccountRateLimitExceededException.class)
+    public ResponseEntity<ApiResponse<Object>> handleLoginAccountRateLimit(LoginAccountRateLimitExceededException e) {
+        log.warn("로그인 계정 rate limit 초과");
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(ApiResponse.error("LOGIN_RATE_LIMITED", e.getMessage()));
+    }
+
     /**
      * 인증 실패 — JWT 없음/만료/잘못된 토큰.
      */
@@ -172,10 +179,12 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationException(MethodArgumentNotValidException e) {
-        log.error("ValidationException: {}", e.getMessage(), e);
-
         Locale locale = getCurrentLocale();
         BindingResult bindingResult = e.getBindingResult();
+        // MethodArgumentNotValidException diagnostics include rejected field values (password/OTP/PII included).
+        // Keep validation observability without writing client input or its stack trace to logs.
+        log.warn("ValidationException fieldCount={} fields={}", bindingResult.getErrorCount(),
+                bindingResult.getFieldErrors().stream().map(FieldError::getField).distinct().toList());
         Map<String, String> fieldErrors = new HashMap<>();
 
         for (FieldError fieldError : bindingResult.getFieldErrors()) {
@@ -312,7 +321,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Object>> handleDataIntegrityViolation(
             org.springframework.dao.DataIntegrityViolationException e) {
         String detail = e.getMostSpecificCause() != null ? e.getMostSpecificCause().getMessage() : e.getMessage();
-        log.warn("DataIntegrityViolation: {}", detail);
+        // SQL diagnostics can embed duplicate emails, phone numbers, or other submitted values.
+        // Use the diagnostic only for the response classification below, never for logging.
+        log.warn("DataIntegrityViolation causeType={}",
+                e.getMostSpecificCause() == null ? e.getClass().getSimpleName()
+                        : e.getMostSpecificCause().getClass().getSimpleName());
         String message;
         if (detail != null && detail.toLowerCase().contains("business_number")) {
             message = "이미 등록된 사업자등록번호예요. 번호를 다시 확인해 주세요.";

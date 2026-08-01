@@ -7,8 +7,11 @@ import com.rich.sodam.dto.request.JoinDto;
 import com.rich.sodam.dto.request.Login;
 import com.rich.sodam.dto.response.ApiResponse;
 import com.rich.sodam.exception.ErrorCode;
+import com.rich.sodam.exception.LoginAccountRateLimitExceededException;
 import com.rich.sodam.jwt.JwtTokenProvider;
 import com.rich.sodam.service.*;
+import com.rich.sodam.service.webauth.LoginLockoutService;
+import com.rich.sodam.service.webauth.WebLoginAccountRateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
@@ -51,6 +54,8 @@ public class LoginController {
     private final KakaoOAuthStateService kakaoOAuthStateService;
     private final MessageSource messageSource;
     private final LocaleResolver localeResolver;
+    private final LoginLockoutService loginLockoutService;
+    private final WebLoginAccountRateLimiter accountRateLimiter;
 
     @Value("${spring.security.oauth2.client.registration.kakao.redirect-uri}")
     private String redirectUrl;
@@ -58,7 +63,7 @@ public class LoginController {
     @Value("${spring.security.oauth2.client.registration.kakao.client-id}")
     private String clientId;
 
-    public LoginController(KakaoAuthService kakaoAuthService, AppleAuthService appleAuthService, JwtTokenProvider jwtTokenProvider, TokenService tokenService, UserService userService, TokenStore redisService, RefreshTokenService refreshTokenService, KakaoOAuthStateService kakaoOAuthStateService, MessageSource messageSource, LocaleResolver localeResolver) {
+    public LoginController(KakaoAuthService kakaoAuthService, AppleAuthService appleAuthService, JwtTokenProvider jwtTokenProvider, TokenService tokenService, UserService userService, TokenStore redisService, RefreshTokenService refreshTokenService, KakaoOAuthStateService kakaoOAuthStateService, MessageSource messageSource, LocaleResolver localeResolver, LoginLockoutService loginLockoutService, WebLoginAccountRateLimiter accountRateLimiter) {
         this.kakaoAuthService = kakaoAuthService;
         this.appleAuthService = appleAuthService;
         this.jwtTokenProvider = jwtTokenProvider;
@@ -69,6 +74,8 @@ public class LoginController {
         this.kakaoOAuthStateService = kakaoOAuthStateService;
         this.messageSource = messageSource;
         this.localeResolver = localeResolver;
+        this.loginLockoutService = loginLockoutService;
+        this.accountRateLimiter = accountRateLimiter;
     }
 
     @Operation(summary = "카카오 OAuth 인가 시작", description = "단일 사용 state와 PKCE 검증값을 발급합니다.")
@@ -197,9 +204,10 @@ public class LoginController {
             return ResponseEntity.ok(ApiResponse.success(successMessage, result));
         } catch (Exception e) {
             // 만료/무효 토큰 인증 실패는 401 — Kakao(500)와 달리 신규 코드는 api-design.md 규칙(401=인증실패)을 따른다.
-            log.warn("Apple 인증 실패: {}", e.getMessage());
+            log.warn("Apple 인증 실패 errorType={}", e.getClass().getSimpleName());
 
-            String errorMessage = messageSource.getMessage("auth.apple.failed", new Object[]{e.getMessage()}, locale);
+            String errorMessage = messageSource.getMessage("auth.apple.failed",
+                    new Object[]{"authentication failed"}, locale);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error(ErrorCode.APPLE_AUTH_ERROR.getCode(), errorMessage));
         }
@@ -209,10 +217,20 @@ public class LoginController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> login(@Valid @RequestBody Login login, HttpServletResponse response, HttpServletRequest request) {
         Locale locale = localeResolver.resolveLocale(request);
 
+        String accountKey = normalizeAccountKey(login.getEmail());
+        // 가드성 검증은 항상 try 밖 — 계정 잠금·rate limit 은 인가 실패에 준하는 조기 차단
+        // (WebAuthController와 동일 패턴, IP 기준 필터만으로는 동일 IP 뒤 여러 계정이 서로를 잠그는
+        // 문제를 못 막는다 — 계정 기준 차단은 계정별로 독립적이라 이 문제가 없다).
+        loginLockoutService.assertNotLocked(accountKey);
+        if (!accountRateLimiter.tryConsume(accountKey)) {
+            throw new LoginAccountRateLimitExceededException();
+        }
+
         try {
             Optional<User> authenticationUser = userService.loadUserByLoginId(login.getEmail(), login.getPassword());
 
             if (authenticationUser.isPresent()) {
+                loginLockoutService.recordSuccess(accountKey);
                 final String jwtToken = jwtTokenProvider.createToken(authenticationUser.get());
                 // 리프레시 토큰 생성
                 var refreshToken = refreshTokenService.createRefreshToken(authenticationUser.get());
@@ -238,9 +256,11 @@ public class LoginController {
                 String successMessage = messageSource.getMessage("auth.login.success", null, locale);
                 return ResponseEntity.ok(ApiResponse.success(successMessage, result));
             }
+            loginLockoutService.recordFailure(accountKey);
             String failedMessage = messageSource.getMessage("auth.login.failed", null, locale);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error(ErrorCode.UNAUTHORIZED.getCode(), failedMessage));
         } catch (IllegalArgumentException e) {
+            loginLockoutService.recordFailure(accountKey);
             String failedMessage = messageSource.getMessage("auth.login.failed", null, locale);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error(ErrorCode.UNAUTHORIZED.getCode(), failedMessage));
@@ -396,6 +416,10 @@ public class LoginController {
             log.error("현재 사용자 정보 조회 실패: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    private String normalizeAccountKey(String email) {
+        return email == null ? "" : email.trim().toLowerCase();
     }
 
 }

@@ -53,6 +53,15 @@ spring:
     driver-class-name: ${DB_DRIVER_CLASS_NAME:com.mysql.cj.jdbc.Driver}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:#{null}}
+    # 베이스 설정에 기본값을 둬서 application-prod.yml(gitignore, 사람이 example 복사)이 누락돼도
+    # Hikari 가 Spring Boot 기본(풀사이즈 10)로 조용히 축소되지 않게 한다. DB_OPTIMIZATION_PLAN.md
+    # 부하테스트(2,000명 동시 체크인 p95 7.9~21초 지연) 근거로 산정된 값 — env 로 환경별 override 가능.
+    hikari:
+      maximum-pool-size: ${DB_HIKARI_MAX_POOL_SIZE:20}
+      minimum-idle: ${DB_HIKARI_MIN_IDLE:5}
+      connection-timeout: ${DB_HIKARI_CONNECTION_TIMEOUT:30000}
+      idle-timeout: ${DB_HIKARI_IDLE_TIMEOUT:600000}
+      max-lifetime: ${DB_HIKARI_MAX_LIFETIME:1800000}
 
   jpa:
     hibernate:
@@ -188,6 +197,9 @@ sodam:
     system-content:
       admin-user-ids: ${SODAM_SECURITY_SYSTEM_CONTENT_ADMIN_USER_IDS:}
     trust-forwarded-headers: ${SODAM_SECURITY_TRUST_FORWARDED_HEADERS:false}
+    # X-Forwarded-For는 이 목록에 있는 리버스 프록시의 직접 연결에서만 신뢰한다.
+    # 예: SODAM_SECURITY_TRUSTED_PROXY_IPS=10.0.0.10,10.0.0.11
+    trusted-proxy-ips: ${SODAM_SECURITY_TRUSTED_PROXY_IPS:}
   # 사장님 웹 콘솔(Phase 0) 세션 인증 — docs/260726/01_시스템아키텍처.md §4, 04_보안정책.md.
   session:
     redis:

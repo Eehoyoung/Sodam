@@ -15,7 +15,11 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 웹 콘솔 로그인 — 계정(이메일) 기준 rate limit: 분당 10회 (04_보안정책.md §4).
+ * 로그인 — 계정(이메일) 기준 rate limit: 분당 10회 (04_보안정책.md §4).
+ * 웹 콘솔 로그인({@link com.rich.sodam.controller.WebAuthController})뿐 아니라 모바일 로그인
+ * ({@link com.rich.sodam.controller.LoginController})도 동일 계정 보호 목적으로 이 빈을 공유한다 —
+ * IP 기준({@link com.rich.sodam.config.RateLimitFilter})은 채널별로 갈라져 있지만, 계정 자체를
+ * 노리는 brute-force 방어는 채널과 무관하게 같은 계정이면 합산돼야 우회를 막을 수 있다.
  *
  * <p>IP 기준 rate limit({@link com.rich.sodam.config.RateLimitFilter})은 요청 바디(JSON)를
  * 읽지 못하는 서블릿 필터 계층에서 처리하지만, 계정 기준은 이메일이 JSON 바디 안에 있어

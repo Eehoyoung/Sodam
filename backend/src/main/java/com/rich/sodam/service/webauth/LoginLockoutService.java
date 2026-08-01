@@ -1,7 +1,9 @@
 package com.rich.sodam.service.webauth;
 
 /**
- * 웹 콘솔 로그인 계정 임시 잠금 저장소 추상화 — 04_보안정책.md §4/§10.
+ * 로그인 계정 임시 잠금 저장소 추상화 — 04_보안정책.md §4/§10.
+ * 웹 콘솔({@link com.rich.sodam.controller.WebAuthController})과 모바일
+ * ({@link com.rich.sodam.controller.LoginController}) 로그인이 동일 계정 보호를 위해 공유한다.
  *
  * <p>동일 계정(이메일) 연속 로그인 실패 5회(성공 시 카운터 리셋) 시 15분간 해당 계정의 로그인을
  * 차단한다. IP 기준 rate limit({@link com.rich.sodam.config.RateLimitFilter})과는 별개 방어선 —
