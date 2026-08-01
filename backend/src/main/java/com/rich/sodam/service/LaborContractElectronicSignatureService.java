@@ -2,6 +2,7 @@ package com.rich.sodam.service;
 
 import com.rich.sodam.domain.ElectronicSignatureEnvelope;
 import com.rich.sodam.domain.LaborContract;
+import com.rich.sodam.domain.type.SignatureEnvelopeStatus;
 import com.rich.sodam.exception.EntityNotFoundException;
 import com.rich.sodam.repository.ElectronicSignatureEnvelopeRepository;
 import com.rich.sodam.repository.LaborContractRepository;
@@ -16,7 +17,7 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 public class LaborContractElectronicSignatureService {
-    private static final int DOCUMENT_VERSION = 1;
+    private static final int INITIAL_DOCUMENT_VERSION = 1;
 
     private final LaborContractRepository laborContractRepository;
     private final ElectronicSignatureEnvelopeRepository envelopeRepository;
@@ -35,16 +36,21 @@ public class LaborContractElectronicSignatureService {
         if (!storeId.equals(contract.getStoreId())) {
             throw new org.springframework.security.access.AccessDeniedException("해당 매장의 근로계약서가 아닙니다.");
         }
+        int documentVersion = INITIAL_DOCUMENT_VERSION;
         if (contract.getElectronicSignatureEnvelopeId() != null) {
-            return envelopeRepository.findById(contract.getElectronicSignatureEnvelopeId())
+            ElectronicSignatureEnvelope previous = envelopeRepository.findById(contract.getElectronicSignatureEnvelopeId())
                     .orElseThrow(() -> new EntityNotFoundException("연결된 전자서명 봉투를 찾을 수 없습니다."));
+            if (previous.getStatus() == SignatureEnvelopeStatus.VERIFIED || !previous.getStatus().terminal()) {
+                return previous;
+            }
+            documentVersion = contract.prepareElectronicSignatureReissue(previous.getId());
         }
 
         contract.bindSigningAuthority(authority.actorUserId(), authority.ownerUserId(),
                 authority.delegationEnvelopeId(), authority.delegationVersion());
         byte[] pdf = laborContractService.generateContractPdf(contractId);
         ElectronicSignatureEnvelope envelope = electronicSignatureService.createLaborContract(
-                authority, contractId, storeId, contract.getEmployeeId(), DOCUMENT_VERSION, pdf);
+                authority, contractId, storeId, contract.getEmployeeId(), documentVersion, pdf);
         if (!authority.owner()) {
             delegationAuditRepository.save(com.rich.sodam.domain.StoreDelegationAudit.of(
                     storeId, contract.getEmployeeId(), authority.ownerUserId(), authority.actorUserId(),
@@ -53,7 +59,7 @@ public class LaborContractElectronicSignatureService {
                     authority.permissions(), authority.delegationVersion(), envelope.getId(),
                     envelope.getDocumentSha256(), "authorityEnvelope=" + authority.delegationEnvelopeId()));
         }
-        contract.linkElectronicSignature(envelope.getId(), DOCUMENT_VERSION, LocalDateTime.now());
+        contract.linkElectronicSignature(envelope.getId(), documentVersion, LocalDateTime.now());
         employeeDocumentService.linkLaborContract(
                 storeId, contract.getEmployeeId(), contractId,
                 contract.getStartDate() == null ? LocalDate.now() : contract.getStartDate());

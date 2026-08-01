@@ -33,25 +33,25 @@ class Logger {
     return level >= this.currentLevel;
   }
 
-  private logToConsole(level: LogLevel, message: string, data?: unknown): void {
-    const formattedMessage = this.formatMessage(level, message);
+  private logToConsole(level: LogLevel, message: string, context?: string): void {
+    const formattedMessage = this.formatMessage(level, message, context);
 
     switch (level) {
       case LogLevel.DEBUG:
         // eslint-disable-next-line no-console
-        console.debug(formattedMessage, data);
+        console.debug(formattedMessage);
         break;
       case LogLevel.INFO:
         // eslint-disable-next-line no-console
-        console.log(formattedMessage, data);
+        console.log(formattedMessage);
         break;
       case LogLevel.WARN:
         // eslint-disable-next-line no-console
-        console.warn(formattedMessage, data);
+        console.warn(formattedMessage);
         break;
       case LogLevel.ERROR:
         // eslint-disable-next-line no-console
-        console.error(formattedMessage, data);
+        console.error(formattedMessage);
         break;
     }
   }
@@ -60,27 +60,27 @@ class Logger {
     this.currentLevel = level;
   }
 
-  debug(message: string, context?: string, data?: unknown): void {
+  debug(message: string, context?: string, _data?: unknown): void {
     if (this.shouldLog(LogLevel.DEBUG)) {
-      this.logToConsole(LogLevel.DEBUG, message, data);
+      this.logToConsole(LogLevel.DEBUG, message, context);
     }
   }
 
-  info(message: string, context?: string, data?: unknown): void {
+  info(message: string, context?: string, _data?: unknown): void {
     if (this.shouldLog(LogLevel.INFO)) {
-      this.logToConsole(LogLevel.INFO, message, data);
+      this.logToConsole(LogLevel.INFO, message, context);
     }
   }
 
-  warn(message: string, context?: string, data?: unknown): void {
+  warn(message: string, context?: string, _data?: unknown): void {
     if (this.shouldLog(LogLevel.WARN)) {
-      this.logToConsole(LogLevel.WARN, message, data);
+      this.logToConsole(LogLevel.WARN, message, context);
     }
   }
 
-  error(message: string, context?: string, data?: unknown): void {
+  error(message: string, context?: string, _data?: unknown): void {
     if (this.shouldLog(LogLevel.ERROR)) {
-      this.logToConsole(LogLevel.ERROR, message, data);
+      this.logToConsole(LogLevel.ERROR, message, context);
     }
   }
 

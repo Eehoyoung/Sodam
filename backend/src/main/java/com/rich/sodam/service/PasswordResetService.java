@@ -12,10 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -38,8 +35,6 @@ import java.util.UUID;
 public class PasswordResetService {
 
     private static final int OTP_VALID_MINUTES = 5;
-    private static final String HASH_SALT = "sodam-pwd-reset-salt-v1";
-
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
@@ -61,7 +56,7 @@ public class PasswordResetService {
 
         // 6자리 OTP 생성 (앞자리 0 허용)
         String code = String.format("%06d", random.nextInt(1_000_000));
-        String codeHash = hash(code);
+        String codeHash = bearerTokenHasher.hash(code);
         // Store only a non-usable placeholder digest until OTP verification issues a reset ticket.
         PasswordResetToken token = PasswordResetToken.create(email, codeHash,
                 bearerTokenHasher.hash(UUID.randomUUID().toString()), OTP_VALID_MINUTES);
@@ -76,7 +71,7 @@ public class PasswordResetService {
     @Transactional
     public String verifyCode(String email, String code) {
         if (code == null || code.length() != 6) return null;
-        String codeHash = hash(code);
+        String codeHash = bearerTokenHasher.hash(code);
         Optional<PasswordResetToken> tokenOpt = tokenRepository.findByCodeHashAndUsedFalse(codeHash);
         if (tokenOpt.isEmpty()) return null;
         PasswordResetToken token = tokenOpt.get();
@@ -123,16 +118,6 @@ public class PasswordResetService {
         }
         int count = (hasUpper ? 1 : 0) + (hasLower ? 1 : 0) + (hasDigit ? 1 : 0) + (hasSpecial ? 1 : 0);
         return count >= 3;
-    }
-
-    private static String hash(String code) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] data = (HASH_SALT + ":" + code).getBytes(StandardCharsets.UTF_8);
-            return Base64.getEncoder().encodeToString(md.digest(data));
-        } catch (Exception e) {
-            throw new RuntimeException("해시 실패", e);
-        }
     }
 
     private static String maskEmail(String email) {

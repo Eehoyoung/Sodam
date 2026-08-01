@@ -358,7 +358,7 @@ public class AttendanceController {
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestBody @Validated LocationVerifyRequest request) {
         // 사전 검증도 실제 출퇴근과 동일하게 매장 구성원에게만 허용한다.
-        guard.assertMemberOfStore(principal.getId(), request.getStoreId());
+        guard.assertActiveMemberOfStore(principal.getId(), request.getStoreId());
         var result = locationVerificationService.verifyWithDistance(
                 request.getStoreId(), request.getLatitude(), request.getLongitude());
 
@@ -382,7 +382,7 @@ public class AttendanceController {
             @RequestBody @Validated NfcVerifyRequest request) {
         // 활성 NFC 태그 여부는 매장 구성원에게만 노출한다. storeId 누락은 기존의 일반 검증 실패로 처리한다.
         if (request.getStoreId() != null) {
-            guard.assertMemberOfStore(principal.getId(), request.getStoreId());
+            guard.assertActiveMemberOfStore(principal.getId(), request.getStoreId());
         }
         var result = nfcVerificationService.verifyTag(request.getStoreId(), request.getTagId());
 

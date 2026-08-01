@@ -1,6 +1,7 @@
 package com.rich.sodam.domain;
 
 import com.rich.sodam.config.crypto.PiiSearchHashSupport;
+import com.rich.sodam.config.crypto.LocalDateCryptoConverter;
 import com.rich.sodam.config.crypto.StringCryptoConverter;
 import com.rich.sodam.domain.type.UserGrade;
 import jakarta.persistence.*;
@@ -127,7 +128,8 @@ public class User {
     /**
      * 생년월일 (선택) — 만 14세 검증·맞춤 콘텐츠에 사용.
      */
-    @Column(name = "birth_date")
+    @Convert(converter = LocalDateCryptoConverter.class)
+    @Column(name = "birth_date", length = 255)
     private java.time.LocalDate birthDate;
 
     /**

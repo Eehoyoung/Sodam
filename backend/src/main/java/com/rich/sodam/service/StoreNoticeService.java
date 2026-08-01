@@ -110,7 +110,7 @@ public class StoreNoticeService {
     public void ack(Long noticeId, Long employeeId) {
         StoreNotice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new IllegalArgumentException("공지를 찾을 수 없어요: " + noticeId));
-        if (!relationRepository.existsByEmployeeProfile_IdAndStore_Id(employeeId, notice.getStoreId())) {
+        if (!relationRepository.existsByEmployeeProfile_IdAndStore_IdAndIsActiveTrue(employeeId, notice.getStoreId())) {
             throw new AccessDeniedException("해당 매장 소속이 아니에요.");
         }
         if (readRepository.existsByNoticeIdAndEmployeeId(noticeId, employeeId)) {

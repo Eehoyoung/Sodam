@@ -43,11 +43,21 @@ public class StoreAccessGuard {
         policy.assertEmployeeInStore(employeeId, storeId);
     }
 
+    /** 현재 재직 중인 직원만 수행할 수 있는 상태 변경/실시간 기능용 검증. */
+    public void assertActiveEmployeeInStore(Long employeeId, Long storeId) {
+        policy.assertActiveEmployeeInStore(employeeId, storeId);
+    }
+
     /**
      * 매장 구성원(사장 소유 또는 직원 소속)인지 검증 — 사장·직원 공용 조회 API 용(대타 모집 목록 등).
      */
     public void assertMemberOfStore(Long userId, Long storeId) {
         policy.assertMemberOfStore(userId, storeId);
+    }
+
+    /** 사장 소유자 또는 현재 재직 중인 직원만 수행할 수 있는 실시간 매장 리소스 검증. */
+    public void assertActiveMemberOfStore(Long userId, Long storeId) {
+        policy.assertActiveMemberOfStore(userId, storeId);
     }
 
     /**

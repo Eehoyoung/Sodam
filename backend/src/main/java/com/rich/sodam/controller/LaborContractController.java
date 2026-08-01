@@ -10,6 +10,7 @@ import com.rich.sodam.dto.response.LaborContractSendResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.security.annotation.RequirePlan;
+import com.rich.sodam.security.web.SensitiveDownloadHeaders;
 import com.rich.sodam.service.LaborContractElectronicSignatureService;
 import com.rich.sodam.service.LaborContractService;
 import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
@@ -190,6 +191,7 @@ public class LaborContractController {
     private ResponseEntity<byte[]> pdfResponse(byte[] pdfBytes, Long id) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
+        SensitiveDownloadHeaders.apply(headers);
         headers.setContentDispositionFormData("attachment", "labor_contract_" + id + ".pdf");
         headers.setContentLength(pdfBytes.length);
         return ResponseEntity.ok().headers(headers).body(pdfBytes);

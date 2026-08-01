@@ -42,7 +42,7 @@ public class TossWebhookController {
             @Valid @RequestBody String rawBody) {
 
         if (!verifySignature(rawBody, signature)) {
-            log.warn("토스 웹훅 서명 검증 실패 sig={}", signature);
+            log.warn("토스 웹훅 서명 검증 실패");
             return ResponseEntity.status(401).build();
         }
 

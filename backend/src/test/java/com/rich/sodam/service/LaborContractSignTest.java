@@ -107,4 +107,19 @@ class LaborContractSignTest {
         assertThat(second.isSigned()).isTrue();
         assertThat(second.getEmployeeSignedAt()).isEqualTo(firstSignedAt);
     }
+
+    @Test
+    @DisplayName("취소된 전자서명 봉투는 같은 계약서의 다음 문서 버전으로 재발송할 수 있다")
+    void cancelledEnvelopeCanBeReissuedWithNextDocumentVersion() {
+        LaborContract saved = newContract(1L);
+        saved.linkElectronicSignature(104L, 1, LocalDateTime.now());
+
+        int nextVersion = saved.prepareElectronicSignatureReissue(104L);
+        saved.linkElectronicSignature(105L, nextVersion, LocalDateTime.now());
+
+        assertThat(nextVersion).isEqualTo(2);
+        assertThat(saved.getElectronicSignatureEnvelopeId()).isEqualTo(105L);
+        assertThat(saved.getElectronicSignatureDocumentVersion()).isEqualTo(2);
+        assertThat(saved.isSent()).isTrue();
+    }
 }

@@ -29,6 +29,7 @@ public class ElectronicSignatureApplicationService {
     private final TransactionTemplate transactions;
     private final ElectronicSignatureCertificateService certificateService;
     private final ElectronicSignatureAccessAuditService accessAuditService;
+    private final DelegatedActionAuthorityService authorityService;
 
     public ElectronicSignatureEnvelope createManagerDelegation(Long masterId, Long relationId, Long storeId,
                                                                  Long managerUserId, int documentVersion,
@@ -230,7 +231,14 @@ public class ElectronicSignatureApplicationService {
 
     private void assertEnvelopeAccess(Long userId, ElectronicSignatureEnvelope envelope) {
         if (partyRepository.findByEnvelope_IdOrderBySigningOrderAsc(envelope.getId()).stream()
-                .anyMatch(p -> userId.equals(p.getUserId()))) return;
+                .anyMatch(p -> userId.equals(p.getUserId()))) {
+            if (envelope.getSubjectType() == SignatureSubjectType.LABOR_CONTRACT
+                    && envelope.getAuthorityEnvelopeId() != null
+                    && userId.equals(envelope.getSigningActorUserId())) {
+                authorityService.assertActiveDelegatedContractSigner(userId, envelope);
+            }
+            return;
+        }
         guard.assertMasterOwnsStore(userId, envelope.getStoreId());
     }
 

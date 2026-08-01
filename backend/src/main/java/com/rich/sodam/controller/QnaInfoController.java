@@ -41,6 +41,7 @@ public class QnaInfoController {
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
+    @SystemContentAdminOnly
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<QnaInfoResponseDto> createQnaInfo(
             @Parameter(description = "사이트 질문 생성 요청 DTO", required = true)

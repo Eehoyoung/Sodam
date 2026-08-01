@@ -178,8 +178,37 @@ class SecurityRbacTest {
         mockMvc.perform(multipart("/api/tip-info")
                         .param("title", "unauthorized-global-content")
                         .param("content", "must-not-be-created")
-                        .with(user(storeMaster)))
+                .with(user(storeMaster)))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("AUD-031: store master cannot create global Q&A content")
+    void storeMaster_globalQnaCreate_forbidden() throws Exception {
+        UserPrincipal storeMaster = new UserPrincipal(999999L, "store-master@x", java.util.List.of(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_MASTER")));
+
+        mockMvc.perform(multipart("/api/qna-info")
+                        .param("title", "unauthorized-qna")
+                        .param("question", "question")
+                        .param("answer", "answer")
+                .with(user(storeMaster)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("AUD-031: allowlisted system content administrator can create global Q&A content")
+    void allowlistedSystemContentAdministrator_canCreateGlobalQnaContent() throws Exception {
+        UserPrincipal systemContentAdministrator = new UserPrincipal(1L, "system-content-admin@x", java.util.List.of(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_MASTER")));
+
+        mockMvc.perform(multipart("/api/qna-info")
+                        .param("title", "authorized-qna")
+                        .param("question", "question")
+                        .param("answer", "answer")
+                        .with(user(systemContentAdministrator)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("authorized-qna"));
     }
 
     @Test

@@ -92,6 +92,24 @@ class StoreAuthorizationPolicyTest {
                 .isInstanceOf(AccessDeniedException.class);
     }
 
+    @Test
+    void inactiveEmployeeCannotPassTheCurrentEmploymentGuard() {
+        when(employeeRepository.existsByEmployeeProfile_IdAndStore_IdAndIsActiveTrue(EMPLOYEE_ID, STORE_ID))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> policy.assertActiveEmployeeInStore(EMPLOYEE_ID, STORE_ID))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void activeEmployeePassesTheCurrentEmploymentGuard() {
+        when(employeeRepository.existsByEmployeeProfile_IdAndStore_IdAndIsActiveTrue(EMPLOYEE_ID, STORE_ID))
+                .thenReturn(true);
+
+        assertThatCode(() -> policy.assertActiveEmployeeInStore(EMPLOYEE_ID, STORE_ID))
+                .doesNotThrowAnyException();
+    }
+
     // ── assertMemberOfStore ───────────────────────────────────────
 
     @Test
@@ -112,6 +130,16 @@ class StoreAuthorizationPolicyTest {
         when(masterRepository.existsByMasterProfile_IdAndStore_Id(OTHER_EMPLOYEE_ID, STORE_ID)).thenReturn(false);
         when(employeeRepository.existsByEmployeeProfile_IdAndStore_Id(OTHER_EMPLOYEE_ID, STORE_ID)).thenReturn(false);
         assertThatThrownBy(() -> policy.assertMemberOfStore(OTHER_EMPLOYEE_ID, STORE_ID))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void inactiveEmployeeCannotPassTheCurrentMemberGuard() {
+        when(masterRepository.existsByMasterProfile_IdAndStore_Id(EMPLOYEE_ID, STORE_ID)).thenReturn(false);
+        when(employeeRepository.existsByEmployeeProfile_IdAndStore_IdAndIsActiveTrue(EMPLOYEE_ID, STORE_ID))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> policy.assertActiveMemberOfStore(EMPLOYEE_ID, STORE_ID))
                 .isInstanceOf(AccessDeniedException.class);
     }
 

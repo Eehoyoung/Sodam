@@ -43,7 +43,7 @@ public class EmployeeBreakRecordController {
     public ResponseEntity<BreakRecordResponse> start(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId) {
-        storeAccessGuard.assertEmployeeInStore(principal.getId(), storeId);
+        storeAccessGuard.assertActiveEmployeeInStore(principal.getId(), storeId);
         return ResponseEntity.ok(breakRecordService.startByEmployee(principal.getId(), storeId));
     }
 
@@ -53,7 +53,7 @@ public class EmployeeBreakRecordController {
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId,
             @PathVariable Long breakRecordId) {
-        storeAccessGuard.assertEmployeeInStore(principal.getId(), storeId);
+        storeAccessGuard.assertActiveEmployeeInStore(principal.getId(), storeId);
         return ResponseEntity.ok(
                 breakRecordService.completeByEmployee(principal.getId(), storeId, breakRecordId));
     }

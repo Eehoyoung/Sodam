@@ -31,7 +31,7 @@ function subscribeRemote(storeId: number): void {
 
 function ensureClient(): void {
     if (client) { return; }
-    client = new Client({
+    const createdClient = new Client({
         // Spring의 native STOMP endpoint와 1.2 sub-protocol을 명시적으로 협상한다.
         webSocketFactory: () => new WebSocket(wsUrl(), 'v12.stomp'),
         reconnectDelay: 5000,
@@ -46,11 +46,34 @@ function ensureClient(): void {
         onConnect: () => {
             listeners.forEach((_value, storeId) => subscribeRemote(storeId));
         },
-        onWebSocketClose: () => subscriptions.clear(),
-        onStompError: frame => console.warn('[LiveSync] STOMP error', frame.headers.message),
-        onWebSocketError: () => console.warn('[LiveSync] WebSocket connection failed', wsUrl()),
+        onWebSocketClose: () => {
+            if (client === createdClient) {
+                subscriptions.clear();
+            }
+        },
+        onStompError: frame => {
+            if (client === createdClient) {
+                console.warn('[LiveSync] STOMP error', frame.headers.message);
+            }
+        },
+        onWebSocketError: () => {
+            if (client === createdClient) {
+                console.warn('[LiveSync] WebSocket connection failed', wsUrl());
+            }
+        },
     });
+    client = createdClient;
     client.activate();
+}
+
+function deactivateClientWhenUnused(): void {
+    if (listeners.size > 0) { return; }
+    const activeClient = client;
+    client = null;
+    subscriptions.clear();
+    if (activeClient) {
+        activeClient.deactivate();
+    }
 }
 
 export function subscribeStore(storeId: number, listener: Listener): () => void {
@@ -68,12 +91,12 @@ export function subscribeStore(storeId: number, listener: Listener): () => void 
             subscriptions.get(storeId)?.unsubscribe();
             subscriptions.delete(storeId);
         }
+        deactivateClientWhenUnused();
     };
 }
 
 export function disconnectLiveSync(): void {
     listeners.clear();
     subscriptions.clear();
-    client?.deactivate();
-    client = null;
+    deactivateClientWhenUnused();
 }

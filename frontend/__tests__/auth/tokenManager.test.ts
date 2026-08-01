@@ -1,4 +1,6 @@
 import TokenManager from '../../src/common/auth/tokenStore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {unifiedStorage} from '../../src/common/utils/unifiedStorage';
 
 describe('TokenManager', () => {
   beforeEach(async () => {
@@ -38,5 +40,15 @@ describe('TokenManager', () => {
     expect(a).toBeNull();
     expect(r).toBeNull();
     expect(both).toBeNull();
+  });
+
+  test('never persists bearer credentials in AsyncStorage', async () => {
+    (AsyncStorage.setItem as jest.Mock).mockClear();
+    const legacyStorageSpy = jest.spyOn(unifiedStorage, 'setItem');
+
+    await TokenManager.setTokens({accessToken: 'sensitive-access', refreshToken: 'sensitive-refresh'});
+
+    expect(AsyncStorage.setItem).not.toHaveBeenCalled();
+    expect(legacyStorageSpy).not.toHaveBeenCalled();
   });
 });

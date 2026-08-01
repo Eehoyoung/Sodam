@@ -158,7 +158,7 @@ class StompAuthChannelInterceptorTest {
         org.springframework.security.access.AccessDeniedException denied =
                 new org.springframework.security.access.AccessDeniedException("not a member");
         org.mockito.Mockito.doThrow(denied)
-                .when(storeAuthorizationPolicy).assertMemberOfStore(7L, 99L);
+                .when(storeAuthorizationPolicy).assertActiveMemberOfStore(7L, 99L);
 
         assertThatThrownBy(() -> interceptor.preSend(message, channel))
                 .isSameAs(denied);

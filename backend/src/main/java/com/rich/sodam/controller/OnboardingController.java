@@ -31,6 +31,7 @@ public class OnboardingController {
             @PathVariable Long storeId,
             @PathVariable Long employeeId) {
         storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        storeAccessGuard.assertEmployeeInStore(employeeId, storeId);
         return ResponseEntity.ok(onboardingService.forEmployee(storeId, employeeId));
     }
 

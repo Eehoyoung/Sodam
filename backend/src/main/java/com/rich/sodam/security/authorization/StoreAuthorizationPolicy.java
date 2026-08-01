@@ -74,6 +74,21 @@ public class StoreAuthorizationPolicy {
     }
 
     /**
+     * 현재 재직 중인 직원만 수행할 수 있는 상태 변경/실시간 기능용 소속 검증.
+     * {@link #assertEmployeeInStore(Long, Long)} 는 계약·증명서 같은 과거 이력 경로와의 호환을 위해
+     * 활성 여부를 요구하지 않는다.
+     */
+    public void assertActiveEmployeeInStore(Long employeeId, Long storeId) {
+        requireNonNull(employeeId, "employeeId");
+        requireNonNull(storeId, "storeId");
+        if (!employeeStoreRelationRepository
+                .existsByEmployeeProfile_IdAndStore_IdAndIsActiveTrue(employeeId, storeId)) {
+            log.warn("권한 거부: employee {} 가 store {} 에 현재 재직 중이 아님", employeeId, storeId);
+            throw new AccessDeniedException("현재 재직 중인 매장 직원만 이 기능을 사용할 수 있어요.");
+        }
+    }
+
+    /**
      * 매장 구성원(사장 소유 또는 직원 소속)인지 검증 — 사장·직원 공용 조회 API 용(대타 모집 목록 등).
      */
     public void assertMemberOfStore(Long userId, Long storeId) {
@@ -83,6 +98,17 @@ public class StoreAuthorizationPolicy {
         if (employeeStoreRelationRepository.existsByEmployeeProfile_IdAndStore_Id(userId, storeId)) return;
         log.warn("권한 거부: user {} 가 store {} 비구성원", userId, storeId);
         throw new AccessDeniedException("해당 매장 구성원이 아니에요.");
+    }
+
+    /** 사장 소유자 또는 현재 재직 중인 직원만 실시간 매장 리소스에 접근할 수 있다. */
+    public void assertActiveMemberOfStore(Long userId, Long storeId) {
+        requireNonNull(userId, "userId");
+        requireNonNull(storeId, "storeId");
+        if (masterStoreRelationRepository.existsByMasterProfile_IdAndStore_Id(userId, storeId)) return;
+        if (employeeStoreRelationRepository
+                .existsByEmployeeProfile_IdAndStore_IdAndIsActiveTrue(userId, storeId)) return;
+        log.warn("권한 거부: user {} 가 store {} 의 현재 구성원이 아님", userId, storeId);
+        throw new AccessDeniedException("현재 매장 구성원만 이 기능을 사용할 수 있어요.");
     }
 
     /**

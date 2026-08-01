@@ -134,7 +134,7 @@ public class AttendanceService {
     public Attendance checkIn(Long employeeId, Long storeId, Double latitude, Double longitude,
                               LocalDateTime effectiveTime) {
         // 직원과 매장 조회
-        EmployeeStoreRelationContext context = getEmployeeStoreContext(employeeId, storeId);
+        EmployeeStoreRelationContext context = getActiveEmployeeStoreContext(employeeId, storeId);
         EmployeeProfile employeeProfile = context.employeeProfile();
         Store store = context.store();
 
@@ -305,7 +305,7 @@ public class AttendanceService {
     public Attendance checkOut(Long employeeId, Long storeId, Double latitude, Double longitude,
                                LocalDateTime effectiveTime) {
         // 직원과 매장 조회
-        EmployeeStoreRelationContext context = getEmployeeStoreContext(employeeId, storeId);
+        EmployeeStoreRelationContext context = getActiveEmployeeStoreContext(employeeId, storeId);
         EmployeeProfile employeeProfile = context.employeeProfile();
         Store store = context.store();
 
@@ -555,6 +555,19 @@ public class AttendanceService {
                 relation.getEmployeeProfile(),
                 relation.getStore(),
                 relation);
+    }
+
+    /**
+     * 직원이 직접 수행하는 GPS/NFC 출퇴근은 현재 활성인 매장 관계에만 허용한다.
+     * 사장 수동 등록은 퇴사 전 과거 근무를 보정할 수 있으므로 별도의 이력 조회 경로를 유지한다.
+     */
+    private EmployeeStoreRelationContext getActiveEmployeeStoreContext(Long employeeId, Long storeId) {
+        EmployeeStoreRelationContext context = getEmployeeStoreContext(employeeId, storeId);
+        if (!Boolean.TRUE.equals(context.employeeStoreRelation().getIsActive())) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "비활성 직원은 자동 출퇴근을 기록할 수 없습니다.");
+        }
+        return context;
     }
 
     /**

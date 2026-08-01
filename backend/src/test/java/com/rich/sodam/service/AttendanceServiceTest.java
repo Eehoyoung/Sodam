@@ -13,6 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -578,5 +579,16 @@ class AttendanceServiceTest {
         assertThatThrownBy(() -> attendanceService.checkOutWithNfcVerification(
                 testEmployee.getId(), testStore.getId(), "SODAM-UNKNOWN-99", null))
                 .isInstanceOf(NfcVerificationException.class);
+    }
+
+    @Test
+    @DisplayName("비활성(퇴사) 직원은 GPS/NFC 자동 출퇴근 기록을 새로 만들 수 없다")
+    void automaticAttendanceRejectsInactiveEmployeeStoreRelation() {
+        testRelation.changeActive(false);
+        employeeStoreRelationRepository.saveAndFlush(testRelation);
+
+        assertThatThrownBy(() -> attendanceService.checkIn(
+                testEmployee.getId(), testStore.getId(), 37.5665, 126.9780))
+                .isInstanceOf(AccessDeniedException.class);
     }
 }

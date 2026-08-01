@@ -40,4 +40,24 @@ class DelegatedActionAuthorityServiceTest {
         verify(guard).assertManagerPermission(2L, 10L, ManagerPermission.CONTRACT_MANAGE);
         verifyNoInteractions(masters);
     }
+
+    @Test
+    void revokedDelegatedSignerCannotAccessPendingLaborContractEvidence() {
+        ReflectionTestUtils.setField(service, "managerContractSigningEnabled", true);
+        ElectronicSignatureEnvelope envelope = ElectronicSignatureEnvelope.create(
+                SignatureSubjectType.LABOR_CONTRACT, 100L, 10L, 1,
+                "a".repeat(64), "v1.k1.unsigned", 2L);
+        envelope.bindDelegatedAuthority(2L, 1L, 88L, 3);
+        EmployeeStoreRelation revoked = mock(EmployeeStoreRelation.class);
+        when(guard.isManagerDelegationEnabled()).thenReturn(true);
+        when(relations.findByEmployeeProfile_IdAndStore_IdAndIsActiveTrue(2L, 10L))
+                .thenReturn(Optional.of(revoked));
+        when(revoked.hasActiveManagerPermission(ManagerPermission.CONTRACT_MANAGE)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.assertActiveDelegatedContractSigner(2L, envelope))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(guard).assertManagerPermission(2L, 10L, ManagerPermission.CONTRACT_MANAGE);
+        verifyNoInteractions(masters);
+    }
 }

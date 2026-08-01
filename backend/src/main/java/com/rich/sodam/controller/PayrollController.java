@@ -17,6 +17,7 @@ import com.rich.sodam.service.PayrollCalculationLockService;
 import com.rich.sodam.service.PayrollHighRiskActionService;
 import com.rich.sodam.service.idempotency.RequestIdempotencyService;
 import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
+import com.rich.sodam.security.web.SensitiveDownloadHeaders;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -203,8 +204,9 @@ public class PayrollController {
             @Parameter(description = "멱등성 키(선택) — 지정 시 동일 키 재요청은 재확정 없이 최초 결과를 그대로 반환합니다.")
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody PayrollIssueRequest request) {
-        // 멱등 캐시 스코프 키(storeId)를 얻기 위한 조회 — 권한 검증은 아래 issue() 내부에서 수행된다.
-        Long storeId = payrollService.getPayrollById(payrollId).getStore().getId();
+        // 재생 경로도 급여 권한을 먼저 확인한다. 키만 재사용해 다른 매장의 급여 DTO를
+        // 조회할 수 없도록, store scope 산출과 인가를 같은 고위험 서비스에서 수행한다.
+        Long storeId = payrollHighRiskActionService.authorizeIssueRequest(principal.getId(), payrollId);
         PayrollDto result = requestIdempotencyService.executeOptional(
                 idempotencyKey, "payroll-issue:" + storeId,
                 () -> {
@@ -320,6 +322,7 @@ public class PayrollController {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
+        SensitiveDownloadHeaders.apply(headers);
         headers.setContentDispositionFormData("attachment", "payroll_" + payrollId + ".pdf");
 
         return ResponseEntity.ok()

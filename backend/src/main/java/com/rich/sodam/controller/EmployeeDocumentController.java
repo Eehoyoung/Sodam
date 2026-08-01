@@ -40,6 +40,7 @@ public class EmployeeDocumentController {
             @PathVariable Long employeeId,
             @Valid @RequestBody EmployeeDocumentCreateRequest req) {
         storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        storeAccessGuard.assertEmployeeInStore(employeeId, storeId);
         return ResponseEntity.ok(documentService.add(employeeId, storeId, req));
     }
 
@@ -50,6 +51,7 @@ public class EmployeeDocumentController {
             @PathVariable Long storeId,
             @PathVariable Long employeeId) {
         storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        storeAccessGuard.assertEmployeeInStore(employeeId, storeId);
         return ResponseEntity.ok(documentService.listForEmployee(employeeId, storeId));
     }
 
@@ -61,7 +63,8 @@ public class EmployeeDocumentController {
             @PathVariable Long employeeId,
             @PathVariable Long docId) {
         storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
-        documentService.delete(storeId, docId);
+        storeAccessGuard.assertEmployeeInStore(employeeId, storeId);
+        documentService.delete(storeId, employeeId, docId);
         return ResponseEntity.noContent().build();
     }
 

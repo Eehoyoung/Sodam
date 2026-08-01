@@ -55,10 +55,10 @@ public class EmployeeDocumentService {
     }
 
     @Transactional
-    public void delete(Long storeId, Long docId) {
+    public void delete(Long storeId, Long employeeId, Long docId) {
         EmployeeDocument doc = repository.findById(docId)
                 .orElseThrow(() -> new IllegalArgumentException("서류를 찾을 수 없어요: " + docId));
-        if (!doc.getStoreId().equals(storeId)) {
+        if (!doc.getStoreId().equals(storeId) || !doc.getEmployeeId().equals(employeeId)) {
             throw new AccessDeniedException("해당 매장의 서류가 아니에요.");
         }
         repository.delete(doc);

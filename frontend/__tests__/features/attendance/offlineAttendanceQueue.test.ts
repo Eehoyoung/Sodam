@@ -65,6 +65,7 @@ describe('offlineAttendanceQueue', () => {
     beforeEach(async () => {
         jest.clearAllMocks();
         (unifiedStorage as any).__reset?.();
+        await offlineAttendanceQueue.clear();
     });
 
     describe('enqueue / size', () => {
@@ -74,6 +75,14 @@ describe('offlineAttendanceQueue', () => {
             expect(await offlineAttendanceQueue.size()).toBe(1);
             await offlineAttendanceQueue.enqueue(sample({type: 'CHECK_OUT'}));
             expect(await offlineAttendanceQueue.size()).toBe(2);
+        });
+
+        it('never writes GPS queue data to legacy AsyncStorage', async () => {
+            const legacyStorageSpy = jest.spyOn(unifiedStorage, 'setItem');
+
+            await offlineAttendanceQueue.enqueue(sample());
+
+            expect(legacyStorageSpy).not.toHaveBeenCalled();
         });
     });
 

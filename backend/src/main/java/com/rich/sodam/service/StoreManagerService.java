@@ -29,6 +29,7 @@ public class StoreManagerService {
     private final StoreRepository storeRepository;
     private final EmployeeStoreRelationRepository relationRepository;
     private final StoreDelegationAuditRepository auditRepository;
+    private final DelegatedContractEnvelopeCancellationService delegatedContractCancellationService;
 
     @Transactional
     public EmployeeStoreRelation draftAppointment(Long masterId, Long storeId, Long employeeId,
@@ -98,6 +99,12 @@ public class StoreManagerService {
         }
 
         if (relation.getGrantedPermissions().containsAll(requested)) {
+            boolean contractManageRemoved = relation.hasActiveManagerPermission(ManagerPermission.CONTRACT_MANAGE)
+                    && !requested.contains(ManagerPermission.CONTRACT_MANAGE);
+            if (contractManageRemoved) {
+                delegatedContractCancellationService.cancelUnfinishedContracts(
+                        employeeId, relation.getManagerSignatureEnvelopeId());
+            }
             relation.reduceManagerPermissions(requested);
             relationRepository.save(relation);
             auditRepository.save(StoreDelegationAudit.of(storeId, employeeId, masterId, masterId,
@@ -136,6 +143,7 @@ public class StoreManagerService {
         Set<ManagerPermission> snapshot = relation.getGrantedPermissions();
         int version = relation.getManagerDelegationVersion();
         Long envelopeId = relation.getManagerSignatureEnvelopeId();
+        delegatedContractCancellationService.cancelUnfinishedContracts(employeeId, envelopeId);
         relation.revokeManager();
         relationRepository.save(relation);
         auditRepository.save(StoreDelegationAudit.of(storeId, employeeId, masterId, masterId,

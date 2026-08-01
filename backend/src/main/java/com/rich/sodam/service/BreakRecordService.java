@@ -44,11 +44,14 @@ public class BreakRecordService {
     }
 
     @Transactional
-    public void delete(Long storeId, Long recordId) {
+    public void delete(Long storeId, Long employeeId, Long recordId) {
         BreakRecord record = repository.findById(recordId)
                 .orElseThrow(() -> new IllegalArgumentException("휴게 기록을 찾을 수 없어요: " + recordId));
         if (!record.getStoreId().equals(storeId)) {
             throw new AccessDeniedException("해당 매장의 휴게 기록이 아니에요.");
+        }
+        if (!record.getEmployeeId().equals(employeeId)) {
+            throw new AccessDeniedException("The break record does not belong to the employee in the request path.");
         }
         repository.delete(record);
     }

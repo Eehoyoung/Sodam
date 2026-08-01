@@ -15,8 +15,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
 /**
  * 단순 IP 기반 Rate Limit — Bucket4j 메모리 백엔드.
@@ -39,43 +43,101 @@ import java.util.concurrent.ConcurrentHashMap;
 @Order(1) // 가장 앞 단에서 차단
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    private final Map<String, Bucket> loginBuckets = new ConcurrentHashMap<>();   // 강화: 5/분
-    private final Map<String, Bucket> webLoginIpBuckets = new ConcurrentHashMap<>(); // 웹 콘솔 로그인 IP: 5/분
-    private final Map<String, Bucket> resetBuckets = new ConcurrentHashMap<>();   // 강화: 3/분
-    private final Map<String, Bucket> authBuckets = new ConcurrentHashMap<>();    // 20/분
-    private final Map<String, Bucket> generalBuckets = new ConcurrentHashMap<>(); // 120/분
+    private static final int DEFAULT_MAX_BUCKETS_PER_POLICY = 10_000;
+    private static final Duration BUCKET_IDLE_TTL = Duration.ofMinutes(10);
+    private static final long CLEANUP_INTERVAL_NANOS = Duration.ofMinutes(1).toNanos();
+
+    private final Map<String, BucketEntry> loginBuckets = new ConcurrentHashMap<>();
+    private final Map<String, BucketEntry> webLoginIpBuckets = new ConcurrentHashMap<>();
+    private final Map<String, BucketEntry> resetBuckets = new ConcurrentHashMap<>();
+    private final Map<String, BucketEntry> authBuckets = new ConcurrentHashMap<>();
+    private final Map<String, BucketEntry> generalBuckets = new ConcurrentHashMap<>();
+    private final int maxBucketsPerPolicy;
+    private final AtomicLong nextCleanupNanos = new AtomicLong();
+
+    public RateLimitFilter() {
+        this(DEFAULT_MAX_BUCKETS_PER_POLICY);
+    }
+
+    RateLimitFilter(int maxBucketsPerPolicy) {
+        this.maxBucketsPerPolicy = maxBucketsPerPolicy;
+    }
 
     @Value("${sodam.security.trust-forwarded-headers:false}")
     private boolean trustForwardedHeaders;
 
+    @Value("${sodam.security.trusted-proxy-ips:}")
+    private String trustedProxyIps;
+
     private Bucket resolveLoginBucket(String key) {
-        return loginBuckets.computeIfAbsent(key, k -> Bucket.builder()
+        return resolveBucket(loginBuckets, key, () -> Bucket.builder()
                 .addLimit(Bandwidth.classic(5, Refill.intervally(5, Duration.ofMinutes(1))))
                 .build());
     }
 
     private Bucket resolveWebLoginIpBucket(String key) {
-        return webLoginIpBuckets.computeIfAbsent(key, k -> Bucket.builder()
+        return resolveBucket(webLoginIpBuckets, key, () -> Bucket.builder()
                 .addLimit(Bandwidth.classic(5, Refill.intervally(5, Duration.ofMinutes(1))))
                 .build());
     }
 
     private Bucket resolveResetBucket(String key) {
-        return resetBuckets.computeIfAbsent(key, k -> Bucket.builder()
+        return resolveBucket(resetBuckets, key, () -> Bucket.builder()
                 .addLimit(Bandwidth.classic(3, Refill.intervally(3, Duration.ofMinutes(1))))
                 .build());
     }
 
     private Bucket resolveAuthBucket(String key) {
-        return authBuckets.computeIfAbsent(key, k -> Bucket.builder()
+        return resolveBucket(authBuckets, key, () -> Bucket.builder()
                 .addLimit(Bandwidth.classic(20, Refill.intervally(20, Duration.ofMinutes(1))))
                 .build());
     }
 
     private Bucket resolveGeneralBucket(String key) {
-        return generalBuckets.computeIfAbsent(key, k -> Bucket.builder()
+        return resolveBucket(generalBuckets, key, () -> Bucket.builder()
                 .addLimit(Bandwidth.classic(120, Refill.intervally(120, Duration.ofMinutes(1))))
                 .build());
+    }
+
+    private Bucket resolveBucket(Map<String, BucketEntry> buckets, String key, Supplier<Bucket> factory) {
+        long now = System.nanoTime();
+        cleanupExpiredBuckets(now);
+        BucketEntry entry = buckets.compute(key, (ignored, current) -> current == null
+                ? new BucketEntry(factory.get(), now)
+                : current.touch(now));
+        enforceMaximumSize(buckets);
+        return entry.bucket();
+    }
+
+    private void cleanupExpiredBuckets(long now) {
+        long scheduled = nextCleanupNanos.get();
+        if (now < scheduled || !nextCleanupNanos.compareAndSet(scheduled, now + CLEANUP_INTERVAL_NANOS)) {
+            return;
+        }
+        long cutoff = now - BUCKET_IDLE_TTL.toNanos();
+        for (Map<String, BucketEntry> buckets : java.util.List.of(
+                loginBuckets, webLoginIpBuckets, resetBuckets, authBuckets, generalBuckets)) {
+            buckets.entrySet().removeIf(entry -> entry.getValue().lastSeenNanos() < cutoff);
+        }
+    }
+
+    private void enforceMaximumSize(Map<String, BucketEntry> buckets) {
+        while (buckets.size() > maxBucketsPerPolicy) {
+            buckets.entrySet().stream()
+                    .min(Comparator.comparingLong(entry -> entry.getValue().lastSeenNanos()))
+                    .ifPresent(entry -> buckets.remove(entry.getKey(), entry.getValue()));
+        }
+    }
+
+    int bucketCountForTest() {
+        return loginBuckets.size() + webLoginIpBuckets.size() + resetBuckets.size()
+                + authBuckets.size() + generalBuckets.size();
+    }
+
+    private record BucketEntry(Bucket bucket, long lastSeenNanos) {
+        BucketEntry touch(long now) {
+            return new BucketEntry(bucket, now);
+        }
     }
 
     @Override
@@ -127,12 +189,21 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private String resolveClientIp(HttpServletRequest request) {
-        if (trustForwardedHeaders) {
+        if (trustForwardedHeaders && isTrustedProxy(request.getRemoteAddr())) {
             String xff = request.getHeader("X-Forwarded-For");
             if (xff != null && !xff.isBlank()) {
                 return xff.split(",")[0].trim();
             }
         }
         return request.getRemoteAddr();
+    }
+
+    private boolean isTrustedProxy(String remoteAddr) {
+        if (trustedProxyIps == null || trustedProxyIps.isBlank()) {
+            return false;
+        }
+        return Arrays.stream(trustedProxyIps.split(","))
+                .map(String::trim)
+                .anyMatch(remoteAddr::equals);
     }
 }

@@ -90,8 +90,31 @@ public class ExportService {
     /** CSV 안전 문자열: 쉼표/따옴표/개행 포함 시 따옴표 감싸기 + 내부 따옴표 이중. */
     private static String csvSafe(String s) {
         if (s == null) return "";
-        boolean needQuote = s.contains(",") || s.contains("\"") || s.contains("\n");
-        String escaped = s.replace("\"", "\"\"");
+        String value = startsWithFormulaMarker(s) ? "'" + s : s;
+        boolean needQuote = value.contains(",") || value.contains("\"") || value.contains("\n");
+        String escaped = value.replace("\"", "\"\"");
         return needQuote ? "\"" + escaped + "\"" : escaped;
+    }
+
+    /**
+     * Spreadsheet applications may evaluate cells that begin with a formula marker, including
+     * when spaces or tabs precede it. Prefixing an apostrophe keeps the exported cell as text.
+     */
+    private static boolean startsWithFormulaMarker(String value) {
+        int index = 0;
+        while (index < value.length()) {
+            char ch = value.charAt(index);
+            if (ch != ' ' && ch != '\t') {
+                break;
+            }
+            index++;
+        }
+        if (index >= value.length()) {
+            return false;
+        }
+        return switch (value.charAt(index)) {
+            case '=', '+', '-', '@' -> true;
+            default -> false;
+        };
     }
 }

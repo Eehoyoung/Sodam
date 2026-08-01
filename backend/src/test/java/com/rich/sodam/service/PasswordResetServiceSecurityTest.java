@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,5 +45,40 @@ class PasswordResetServiceSecurityTest {
         assertThat(token.getResetTicketHash()).isEqualTo(hasher.hash(rawTicket))
                 .isNotEqualTo(rawTicket);
         verify(tokenRepository).findByResetTicketHashAndUsedFalse(hasher.hash(rawTicket));
+    }
+
+    @Test
+    void storesTheShortLivedOtpWithTheServerKeyedDigest() {
+        BearerTokenHasher hasher = new BearerTokenHasher("test-only-token-hash-key");
+        PasswordResetService service = new PasswordResetService(
+                userRepository, tokenRepository, passwordEncoder, emailSender, hasher);
+        User user = new User();
+        user.setEmail("user@sodam.dev");
+        when(userRepository.findByEmail("user@sodam.dev")).thenReturn(Optional.of(user));
+
+        service.requestReset("user@sodam.dev");
+
+        var tokenCaptor = org.mockito.ArgumentCaptor.forClass(PasswordResetToken.class);
+        var codeCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(tokenRepository).save(tokenCaptor.capture());
+        verify(emailSender).sendPasswordResetCode(eq("user@sodam.dev"), codeCaptor.capture());
+        assertThat(tokenCaptor.getValue().getCodeHash()).isEqualTo(hasher.hash(codeCaptor.getValue()));
+    }
+
+    @Test
+    void verifiesAnOtpStoredWithTheServerKeyedDigest() {
+        BearerTokenHasher hasher = new BearerTokenHasher("test-only-token-hash-key");
+        PasswordResetService service = new PasswordResetService(
+                userRepository, tokenRepository, passwordEncoder, emailSender, hasher);
+        String otp = "123456";
+        PasswordResetToken token = PasswordResetToken.create("user@sodam.dev", hasher.hash(otp),
+                hasher.hash("placeholder-ticket"), 5);
+        when(tokenRepository.findByCodeHashAndUsedFalse(hasher.hash(otp))).thenReturn(Optional.of(token));
+
+        String resetTicket = service.verifyCode("user@sodam.dev", otp);
+
+        assertThat(resetTicket).isNotBlank();
+        assertThat(token.getResetTicketHash()).isEqualTo(hasher.hash(resetTicket));
+        verify(tokenRepository).findByCodeHashAndUsedFalse(hasher.hash(otp));
     }
 }

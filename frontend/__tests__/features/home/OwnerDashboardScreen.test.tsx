@@ -83,6 +83,7 @@ jest.mock('../../../src/theme/tokens', () => jest.requireActual('../../../src/th
 import OwnerDashboardScreen from '../../../src/features/home/screens/OwnerDashboardScreen';
 import OwnerDashboardDetailScreen from '../../../src/features/home/screens/OwnerDashboardDetailScreen';
 import api from '../../../src/common/api/client';
+import {disconnectLiveSync} from '../../../src/common/realtime/storeSyncClient';
 
 const apiMock = api as jest.Mocked<typeof api>;
 
@@ -96,6 +97,10 @@ describe('OwnerDashboardScreen', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockRouteParams = undefined;
+    });
+
+    afterEach(() => {
+        disconnectLiveSync();
     });
 
     test('매니저 모드는 owner·payroll API를 호출하지 않고 오늘 현황만 조회', async () => {

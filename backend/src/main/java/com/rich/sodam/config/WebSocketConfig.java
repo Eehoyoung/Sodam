@@ -4,14 +4,20 @@ import com.rich.sodam.jwt.JwtTokenProvider;
 import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.security.web.SessionHandshakeInterceptor;
 import com.rich.sodam.security.web.StompAuthChannelInterceptor;
+import com.rich.sodam.security.web.WebSocketOriginHandshakeInterceptor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 실시간 인앱 동기화용 STOMP over WebSocket 설정.
@@ -41,13 +47,23 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final JwtTokenProvider jwtTokenProvider;
     private final StoreAuthorizationPolicy storeAuthorizationPolicy;
 
+    @Value("${sodam.session.csrf.allowed-origins:http://localhost:3000}")
+    private String webSessionAllowedOriginsCsv;
+
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // RN 클라이언트는 네이티브 WebSocket(@stomp/stompjs) 사용 — SockJS 불필요.
-        // CORS: 모바일 앱은 Origin 이 없거나 임의이므로 허용(인증은 STOMP CONNECT 시점에 별도 강제).
+        // Browser session authentication may carry cookies during a same-site WebSocket handshake.
+        // Keep its Origin boundary in sync with the web CSRF allowlist; native mobile clients without
+        // an Origin continue to authenticate at STOMP CONNECT with their JWT.
+        Set<String> allowedOrigins = Arrays.stream(webSessionAllowedOriginsCsv.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .collect(Collectors.toUnmodifiableSet());
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*")
-                .addInterceptors(new SessionHandshakeInterceptor());
+                .setAllowedOrigins(allowedOrigins.toArray(String[]::new))
+                .addInterceptors(new WebSocketOriginHandshakeInterceptor(allowedOrigins),
+                        new SessionHandshakeInterceptor());
     }
 
     @Override

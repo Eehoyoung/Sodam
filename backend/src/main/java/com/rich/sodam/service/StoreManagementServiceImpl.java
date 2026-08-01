@@ -26,6 +26,7 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -256,6 +257,12 @@ public class StoreManagementServiceImpl implements StoreManagementService {
         evictStoresCacheAfterCommit(Cache::clear);
         Store store = storeRepository.findActiveByStoreCode(storeCode)
                 .orElseThrow(() -> new EntityNotFoundException("매장 코드와 일치하는 매장을 찾을 수 없습니다."));
+        employeeProfileRepository.findById(userId)
+                .flatMap(profile -> employeeStoreRelationRepository.findByEmployeeProfileAndStore(profile, store))
+                .filter(relation -> Boolean.FALSE.equals(relation.getIsActive()))
+                .ifPresent(relation -> {
+                    throw new AccessDeniedException("Inactive employee must be reactivated by the store owner.");
+                });
         assignUserToStoreAsEmployee(userId, store.getId(), null);
         // 비활성 → 활성 복구
         EmployeeProfile profile = employeeProfileRepository.findById(userId)

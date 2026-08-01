@@ -1,6 +1,7 @@
 package com.rich.sodam.controller;
 
 import com.rich.sodam.security.UserPrincipal;
+import com.rich.sodam.dto.request.TimeOffSelfRequest;
 import com.rich.sodam.service.MyLeaveBalanceService;
 import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.TimeOffService;
@@ -15,6 +16,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.util.List;
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
@@ -43,6 +45,21 @@ class TimeOffControllerTest {
                 .when(guard).assertSelf(1L, 2L);
 
         assertThatThrownBy(() -> controller.getTimeOffsByEmployee(master, 2L))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verifyNoInteractions(timeOffService);
+    }
+
+    @Test
+    @DisplayName("비활성 직원은 과거 매장에 새 휴가를 신청할 수 없다")
+    void createSelfTimeOff_deniesInactiveEmployeeStoreRelation() {
+        UserPrincipal employee = new UserPrincipal(2L, "employee@sodam.dev", List.of());
+        TimeOffSelfRequest request = new TimeOffSelfRequest(10L, LocalDate.now().plusDays(1),
+                LocalDate.now().plusDays(1), "개인 사유", null, null, null, null);
+        doThrow(new AccessDeniedException("inactive relation"))
+                .when(guard).assertActiveEmployeeInStore(2L, 10L);
+
+        assertThatThrownBy(() -> controller.createSelfTimeOffRequest(employee, request))
                 .isInstanceOf(AccessDeniedException.class);
 
         verifyNoInteractions(timeOffService);

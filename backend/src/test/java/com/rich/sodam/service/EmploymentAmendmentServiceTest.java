@@ -5,9 +5,11 @@ import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.EmploymentAmendment;
 import com.rich.sodam.domain.type.EmploymentAmendmentStatus;
 import com.rich.sodam.domain.type.EmploymentType;
+import com.rich.sodam.dto.request.EmploymentAmendmentCreateRequest;
 import com.rich.sodam.repository.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.security.access.AccessDeniedException;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -17,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -77,5 +80,35 @@ class EmploymentAmendmentServiceTest {
 
         assertThat(amendment.getStatus()).isEqualTo(EmploymentAmendmentStatus.CANCELLED);
         verifyNoInteractions(relationRepository);
+    }
+
+    @Test
+    void verifiedAmendmentForInactiveRelationIsCancelledWithoutChangingEmploymentTerms() {
+        EmploymentAmendment amendment = EmploymentAmendment.draft(
+                10L, 20L, 30L, LocalDate.now(), EmploymentType.HOURLY,
+                12_000, null, 20.0, 5);
+        amendment.startSigning(902L, 1);
+        EmployeeStoreRelation relation = new EmployeeStoreRelation();
+        relation.changeActive(false);
+        when(amendmentRepository.findByIdForUpdate(103L)).thenReturn(Optional.of(amendment));
+        when(relationRepository.findRelationForUpdate(20L, 10L)).thenReturn(Optional.of(relation));
+
+        service.markVerified(103L, 902L, 1, LocalDateTime.now());
+
+        assertThat(amendment.getStatus()).isEqualTo(EmploymentAmendmentStatus.CANCELLED);
+        verify(relationRepository, never()).save(any());
+    }
+
+    @Test
+    void inactiveFormerEmployeeCannotReceiveANewEmploymentAmendmentDraft() {
+        EmploymentAmendmentCreateRequest request = new EmploymentAmendmentCreateRequest(
+                20L, LocalDate.now(), EmploymentType.HOURLY, 12_000, null, 20.0, 5);
+        doThrow(new AccessDeniedException("inactive employee"))
+                .when(guard).assertActiveEmployeeInStore(20L, 10L);
+
+        assertThatThrownBy(() -> service.createDraft(30L, 10L, request))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verifyNoInteractions(amendmentRepository);
     }
 }

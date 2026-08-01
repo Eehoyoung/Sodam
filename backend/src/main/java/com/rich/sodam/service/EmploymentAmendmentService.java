@@ -37,7 +37,7 @@ public class EmploymentAmendmentService {
     public EmploymentAmendment createDraft(Long requesterId, Long storeId,
                                             EmploymentAmendmentCreateRequest request) {
         guard.assertMasterOrManagerPermission(requesterId, storeId, ManagerPermission.WAGE_EDIT);
-        guard.assertEmployeeInStore(request.employeeId(), storeId);
+        guard.assertActiveEmployeeInStore(request.employeeId(), storeId);
         validateCompensation(request);
         return amendmentRepository.save(EmploymentAmendment.draft(
                 storeId, request.employeeId(), requesterId, request.effectiveDate(), request.employmentType(),
@@ -51,6 +51,7 @@ public class EmploymentAmendmentService {
         EmploymentAmendment amendment = amendmentRepository.findByIdForUpdate(amendmentId)
                 .orElseThrow(() -> new EntityNotFoundException("근로조건 변경계약을 찾을 수 없습니다."));
         assertStore(amendment, storeId);
+        guard.assertActiveEmployeeInStore(amendment.getEmployeeId(), storeId);
         if (amendment.getElectronicSignatureEnvelopeId() != null) {
             throw new IllegalStateException("이미 전자서명이 시작된 변경계약입니다.");
         }
@@ -100,6 +101,10 @@ public class EmploymentAmendmentService {
         EmployeeStoreRelation relation = relationRepository.findRelationForUpdate(
                         amendment.getEmployeeId(), amendment.getStoreId())
                 .orElseThrow(() -> new EntityNotFoundException("직원-매장 관계를 찾을 수 없습니다."));
+        if (!Boolean.TRUE.equals(relation.getIsActive())) {
+            amendment.cancelAfterEmployeeDeactivation();
+            return;
+        }
         EmploymentType before = relation.getEmploymentType();
         Integer salary = amendment.getEmploymentType() == EmploymentType.MONTHLY_SALARY
                 ? amendment.getMonthlySalary() : null;

@@ -319,6 +319,25 @@ public class LaborContract {
         markSent(sentAt == null ? LocalDateTime.now() : sentAt);
     }
 
+    /**
+     * 취소·만료 등 완료되지 않은 봉투를 새 버전으로 재발송할 수 있게 기존 연결만 해제한다.
+     * 서명 완료 계약은 역사와 증적을 바꾸면 안 되므로 재발송 대상으로 만들 수 없다.
+     */
+    public int prepareElectronicSignatureReissue(Long previousEnvelopeId) {
+        if (!java.util.Objects.equals(this.electronicSignatureEnvelopeId, previousEnvelopeId)) {
+            throw new IllegalStateException("재발송할 전자서명 봉투가 근로계약서와 일치하지 않습니다.");
+        }
+        if (isSigned()) {
+            throw new IllegalStateException("서명 완료된 근로계약서는 전자서명을 재발송할 수 없습니다.");
+        }
+        this.electronicSignatureEnvelopeId = null;
+        this.signingActorUserId = null;
+        this.delegatedByMasterId = null;
+        this.delegationEnvelopeId = null;
+        this.delegationVersion = null;
+        return this.electronicSignatureDocumentVersion + 1;
+    }
+
     public void bindSigningAuthority(Long actorUserId, Long ownerUserId,
                                      Long delegationEnvelopeId, Integer delegationVersion) {
         if (actorUserId == null || ownerUserId == null) {

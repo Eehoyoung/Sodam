@@ -6,11 +6,13 @@ import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.domain.type.PayrollStatus;
 import com.rich.sodam.dto.request.PayrollStatusUpdateDto;
+import com.rich.sodam.dto.request.PayrollIssueRequest;
 import com.rich.sodam.dto.response.PayrollDto;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.service.PayrollService;
 import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.PayrollHighRiskActionService;
+import com.rich.sodam.service.idempotency.RequestIdempotencyService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -53,6 +55,8 @@ class PayrollControllerTest {
     StoreAuthorizationPolicy guard;
     @Mock
     PayrollHighRiskActionService payrollHighRiskActionService;
+    @Mock
+    RequestIdempotencyService requestIdempotencyService;
     @InjectMocks
     PayrollController controller;
 
@@ -175,5 +179,19 @@ class PayrollControllerTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(payrollService, never()).updatePayrollStatus(100L, PayrollStatus.PAID);
+    }
+
+    @Test
+    @DisplayName("급여 발급 멱등 재생도 캐시 확인 전에 호출자 권한을 확인한다")
+    void issuePayroll_deniedBeforeIdempotentReplay() {
+        doThrow(new AccessDeniedException("급여 발급 권한이 없습니다."))
+                .when(payrollHighRiskActionService).authorizeIssueRequest(1L, 100L);
+
+        assertThatThrownBy(() -> controller.issuePayroll(
+                principal, 100L, "known-idempotency-key", new PayrollIssueRequest("step-up")))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(payrollHighRiskActionService).authorizeIssueRequest(1L, 100L);
+        verifyNoInteractions(requestIdempotencyService);
     }
 }

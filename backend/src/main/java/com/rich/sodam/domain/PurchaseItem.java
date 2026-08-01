@@ -53,12 +53,22 @@ public class PurchaseItem {
     private int amount;
 
     private PurchaseItem(String itemName, double quantity, String unit, int unitPrice) {
+        if (!Double.isFinite(quantity) || quantity <= 0) {
+            throw new IllegalArgumentException("Purchase quantity must be a finite positive value.");
+        }
+        if (unitPrice < 0) {
+            throw new IllegalArgumentException("Purchase unit price must not be negative.");
+        }
+        long calculatedAmount = Math.round(quantity * unitPrice);
+        if (calculatedAmount > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("Purchase line amount exceeds the supported range.");
+        }
         this.itemName = itemName;
         this.normalizedName = normalize(itemName);
         this.quantity = quantity;
         this.unit = unit;
         this.unitPrice = unitPrice;
-        this.amount = (int) Math.round(quantity * unitPrice);
+        this.amount = (int) calculatedAmount;
     }
 
     public static PurchaseItem of(String itemName, double quantity, String unit, int unitPrice) {

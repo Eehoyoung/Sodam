@@ -24,9 +24,7 @@ module.exports = {
     production: {
       plugins: [
         // 프로덕션 빌드에서 콘솔 로그 완전 제거
-        ['transform-remove-console', {
-          exclude: ['error', 'warn'] // error와 warn은 유지
-        }],
+        'transform-remove-console',
       ],
     },
     test: {

@@ -7,6 +7,7 @@ import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.security.annotation.RequirePlan;
 import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
+import com.rich.sodam.security.web.SensitiveDownloadHeaders;
 import com.rich.sodam.service.TaxReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -53,6 +54,7 @@ public class TaxReportController {
         byte[] pdf = taxReportService.generateLaborCostSummaryPdf(storeId, from, to);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
+        SensitiveDownloadHeaders.apply(headers);
         headers.setContentDispositionFormData("attachment",
                 String.format("labor_cost_%d_%s_%s.pdf", storeId, from, to));
         return ResponseEntity.ok().headers(headers).body(pdf);

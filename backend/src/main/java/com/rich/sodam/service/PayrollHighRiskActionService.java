@@ -65,6 +65,20 @@ public class PayrollHighRiskActionService {
         return saved;
     }
 
+    /**
+     * 멱등 재요청의 결과를 반환하기 전에 호출자의 매장 급여 권한을 다시 확인한다.
+     * 재생은 step-up 비밀번호를 재검증하지 않지만, 다른 사용자가 키만 재사용해서
+     * 급여 DTO를 읽을 수 있어서는 안 된다.
+     */
+    @Transactional(readOnly = true)
+    public Long authorizeIssueRequest(Long actorUserId, Long payrollId) {
+        Payroll payroll = payrollRepository.findById(payrollId)
+                .orElseThrow(() -> new EntityNotFoundException("급여 내역을 찾을 수 없습니다."));
+        Long storeId = payroll.getStore().getId();
+        authorityService.require(actorUserId, storeId, ManagerPermission.PAYROLL_CONFIRM);
+        return storeId;
+    }
+
     private Payroll lock(Long payrollId) {
         return payrollRepository.findByIdForUpdate(payrollId)
                 .orElseThrow(() -> new EntityNotFoundException("급여 내역을 찾을 수 없습니다."));

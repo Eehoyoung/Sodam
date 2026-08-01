@@ -33,7 +33,7 @@ public class PasswordResetToken {
     @Column(nullable = false, length = 100)
     private String email;
 
-    /** SHA-256(salt + code) — 평문 OTP 미저장 */
+    /** Server-keyed HMAC OTP digest — the plaintext OTP is never persisted. */
     @Column(nullable = false, unique = true, length = 200)
     private String codeHash;
 

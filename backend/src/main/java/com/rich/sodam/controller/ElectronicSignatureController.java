@@ -2,6 +2,7 @@ package com.rich.sodam.controller;
 
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.EmployeeOrMaster;
+import com.rich.sodam.security.web.SensitiveDownloadHeaders;
 import com.rich.sodam.service.ElectronicSignatureApplicationService;
 import com.rich.sodam.service.ElectronicSignatureRefreshLimiter;
 import com.rich.sodam.service.ElectronicSignatureEvidenceIntegrityService;
@@ -46,7 +47,10 @@ public class ElectronicSignatureController {
                                                         @PathVariable Long envelopeId) {
         ElectronicSignatureApplicationService.DocumentStream document =
                 service.openDocument(principal.getId(), envelopeId);
+        HttpHeaders headers = new HttpHeaders();
+        SensitiveDownloadHeaders.apply(headers);
         return ResponseEntity.ok()
+                .headers(headers)
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=electronic-signature-document.pdf")
                 .header("Digest", "sha-256=" + document.sha256())
@@ -58,7 +62,10 @@ public class ElectronicSignatureController {
             @AuthenticationPrincipal UserPrincipal principal, @PathVariable Long envelopeId) {
         ElectronicSignatureApplicationService.DocumentStream certificate =
                 service.completionCertificate(principal.getId(), envelopeId);
+        HttpHeaders headers = new HttpHeaders();
+        SensitiveDownloadHeaders.apply(headers);
         return ResponseEntity.ok()
+                .headers(headers)
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=electronic-signature-certificate.pdf")
                 .header("Digest", "sha-256=" + certificate.sha256())

@@ -77,7 +77,7 @@ class BreakRecordServiceTest {
     void deleteRejectsOtherStore() {
         BreakRecordResponse saved = service.add(10L, 1L, req(LocalDate.of(2026, 6, 16), 60));
 
-        assertThatThrownBy(() -> service.delete(2L, saved.id()))
+        assertThatThrownBy(() -> service.delete(2L, 10L, saved.id()))
                 .isInstanceOf(AccessDeniedException.class);
         assertThat(repository.findById(saved.id())).isPresent();
     }
@@ -86,9 +86,19 @@ class BreakRecordServiceTest {
     @DisplayName("삭제 후 목록에서 사라짐")
     void deleteRemoves() {
         BreakRecordResponse saved = service.add(10L, 1L, req(LocalDate.of(2026, 6, 16), 60));
-        service.delete(1L, saved.id());
+        service.delete(1L, 10L, saved.id());
 
         assertThat(service.listForEmployee(10L, 1L)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Path employee mismatch cannot delete another employee's record")
+    void deleteRejectsDifferentEmployeeInTheSameStore() {
+        BreakRecordResponse saved = service.add(10L, 1L, req(LocalDate.of(2026, 6, 16), 60));
+
+        assertThatThrownBy(() -> service.delete(1L, 99L, saved.id()))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThat(repository.findById(saved.id())).isPresent();
     }
 
     @Test

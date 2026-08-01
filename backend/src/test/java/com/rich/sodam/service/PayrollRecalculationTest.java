@@ -152,6 +152,22 @@ class PayrollRecalculationTest {
     }
 
     @Test
+    @DisplayName("종료일보다 늦은 시작일의 급여 계산은 저장하지 않고 거부한다")
+    void calculationWithAnInvertedPeriodIsRejected() {
+        Store store = newStore();
+        EmployeeProfile emp = newEmployee("recalc_invalid_period_");
+        relate(emp, store, 15_000);
+
+        LocalDate start = LocalDate.of(2026, 7, 31);
+        LocalDate end = LocalDate.of(2026, 7, 1);
+
+        assertThatThrownBy(() -> payrollService.calculatePayroll(emp.getId(), store.getId(), start, end, false))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(payrollRepository.findByEmployeeIdAndPeriod(emp.getId(), start, end)).isEmpty();
+    }
+
+    @Test
     @DisplayName("이미 지급완료(PAID)된 급여는 recalculate=true 라도 조용히 덮어쓰지 않고 거부된다")
     void recalculate_onPaidPayroll_isRejected() {
         Store store = newStore();

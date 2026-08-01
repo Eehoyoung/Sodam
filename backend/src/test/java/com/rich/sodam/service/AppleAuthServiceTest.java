@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
@@ -26,7 +28,7 @@ import static org.mockito.Mockito.*;
  * Sign in with Apple identityToken 검증·사용자 매칭 로직 단위 테스트.
  * 실제 Apple JWKS 네트워크 호출 없이 {@link JwtDecoder} 를 mock 한다(testing.md — 외부 API 의존 금지).
  */
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, OutputCaptureExtension.class})
 class AppleAuthServiceTest {
 
     private static final String APPLE_ISSUER = "https://appleid.apple.com";
@@ -126,6 +128,17 @@ class AppleAuthServiceTest {
         assertThatThrownBy(() -> appleAuthService.authenticate("token"))
                 .isInstanceOf(RuntimeException.class);
         verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    void decoderFailureMessageContainingAnIdentityTokenIsNotLogged(CapturedOutput output) {
+        String tokenFragment = "eyJhbGciOiJSUzI1NiJ9.sensitive-identity-token-fragment";
+        when(appleJwtDecoder.decode("token")).thenThrow(new JwtException(tokenFragment));
+
+        assertThatThrownBy(() -> appleAuthService.authenticate("token"))
+                .isInstanceOf(RuntimeException.class);
+
+        assertThat(output).doesNotContain(tokenFragment);
     }
 
     @Test

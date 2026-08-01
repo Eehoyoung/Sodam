@@ -51,6 +51,37 @@ public class DelegatedActionAuthorityService {
                 relation.getManagerDelegationVersion(), relation.getGrantedPermissions());
     }
 
+    /**
+     * 대리 계약 봉투의 기존 서명자가 문서·상태를 열람하거나 서명 작업을 재개하려 할 때 현재 권한을 확인한다.
+     * 최종 확정만 막는 것으로는 회수된 매니저가 계약서 PII를 계속 열람하는 것을 막을 수 없다.
+     */
+    public void assertActiveDelegatedContractSigner(Long actorUserId, ElectronicSignatureEnvelope envelope) {
+        if (envelope == null || envelope.getSubjectType() != SignatureSubjectType.LABOR_CONTRACT
+                || envelope.getAuthorityEnvelopeId() == null
+                || !Objects.equals(actorUserId, envelope.getSigningActorUserId())) {
+            throw new AccessDeniedException("대리 근로계약 서명 권한이 유효하지 않습니다.");
+        }
+        if (!managerContractSigningEnabled || !guard.isManagerDelegationEnabled()) {
+            throw new AccessDeniedException("대리 근로계약 체결 권한이 비활성화되었습니다.");
+        }
+
+        guard.assertManagerPermission(actorUserId, envelope.getStoreId(), ManagerPermission.CONTRACT_MANAGE);
+        EmployeeStoreRelation relation = relationRepository
+                .findByEmployeeProfile_IdAndStore_IdAndIsActiveTrue(actorUserId, envelope.getStoreId())
+                .orElseThrow(com.rich.sodam.exception.ManagerAccessDeniedException::permissionDenied);
+        if (!relation.hasActiveManagerPermission(ManagerPermission.CONTRACT_MANAGE)
+                || !Objects.equals(relation.getManagerSignatureEnvelopeId(), envelope.getAuthorityEnvelopeId())
+                || relation.getManagerDelegationVersion() != envelope.getAuthorityVersion()) {
+            throw new AccessDeniedException("발급 당시 위임 권한이 더 이상 유효하지 않습니다.");
+        }
+        Long currentOwnerId = masterStoreRelationRepository.findFirstByStore_IdOrderByIdAsc(envelope.getStoreId())
+                .map(r -> r.getMasterProfile().getId())
+                .orElseThrow(() -> new IllegalStateException("매장 사업주 관계가 없습니다."));
+        if (!Objects.equals(currentOwnerId, envelope.getDelegatedByMasterId())) {
+            throw new AccessDeniedException("발급 당시 사업주 권한 근거가 더 이상 유효하지 않습니다.");
+        }
+    }
+
     /** 계약 최종 확정 직전에 현재 위임 관계를 잠그고 발급 당시 권한 근거와 다시 대조한다. */
     @Transactional(propagation = Propagation.MANDATORY)
     public void revalidateContractEnvelope(ElectronicSignatureEnvelope envelope) {

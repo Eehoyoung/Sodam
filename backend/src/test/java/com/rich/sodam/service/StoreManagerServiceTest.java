@@ -29,11 +29,13 @@ class StoreManagerServiceTest {
     @Mock StoreRepository storeRepository;
     @Mock EmployeeStoreRelationRepository relationRepository;
     @Mock StoreDelegationAuditRepository auditRepository;
+    @Mock DelegatedContractEnvelopeCancellationService delegatedContractCancellationService;
     StoreManagerService service;
 
     @BeforeEach
     void setUp() {
-        service = new StoreManagerService(guard, planAccessService, storeRepository, relationRepository, auditRepository);
+        service = new StoreManagerService(guard, planAccessService, storeRepository, relationRepository,
+                auditRepository, delegatedContractCancellationService);
     }
 
     @Test
@@ -103,6 +105,21 @@ class StoreManagerServiceTest {
         assertThat(result.signatureRequired()).isFalse();
         assertThat(relation.hasActiveManagerPermission(ManagerPermission.TIMEOFF_APPROVE)).isFalse();
         assertThat(relation.getPendingManagerPermissions()).isNull();
+    }
+
+    @Test
+    void removingContractManageCancelsUnfinishedDelegatedContractsBeforePermissionReduction() {
+        EmployeeStoreRelation relation = activeManagerWith(
+                ManagerPermission.CONTRACT_MANAGE, ManagerPermission.STAFF_VIEW);
+        when(planAccessService.storeOwnerHasFeature(10L, PlanFeature.MANAGER_DELEGATION)).thenReturn(true);
+        when(storeRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(mock(Store.class)));
+        when(relationRepository.findRelationForUpdate(20L, 10L)).thenReturn(Optional.of(relation));
+
+        service.changePermissions(1L, 10L, 20L, EnumSet.of(ManagerPermission.STAFF_VIEW));
+
+        InOrder order = inOrder(delegatedContractCancellationService, relationRepository);
+        order.verify(delegatedContractCancellationService).cancelUnfinishedContracts(20L, 91L);
+        order.verify(relationRepository).save(relation);
     }
 
     private EmployeeStoreRelation activeManagerWith(ManagerPermission first, ManagerPermission... rest) {

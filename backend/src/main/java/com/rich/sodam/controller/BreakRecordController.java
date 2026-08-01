@@ -40,6 +40,7 @@ public class BreakRecordController {
             @PathVariable Long employeeId,
             @Valid @RequestBody BreakRecordCreateRequest req) {
         storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        storeAccessGuard.assertEmployeeInStore(employeeId, storeId);
         return ResponseEntity.ok(breakRecordService.add(employeeId, storeId, req));
     }
 
@@ -50,6 +51,7 @@ public class BreakRecordController {
             @PathVariable Long storeId,
             @PathVariable Long employeeId) {
         storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        storeAccessGuard.assertEmployeeInStore(employeeId, storeId);
         return ResponseEntity.ok(breakRecordService.listForEmployee(employeeId, storeId));
     }
 
@@ -61,7 +63,8 @@ public class BreakRecordController {
             @PathVariable Long employeeId,
             @PathVariable Long id) {
         storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
-        breakRecordService.delete(storeId, id);
+        storeAccessGuard.assertEmployeeInStore(employeeId, storeId);
+        breakRecordService.delete(storeId, employeeId, id);
         return ResponseEntity.noContent().build();
     }
 }

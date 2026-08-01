@@ -90,6 +90,16 @@ public class EmploymentAmendment {
         this.status = EmploymentAmendmentStatus.APPLIED;
     }
 
+    /**
+     * Keep a verified signature record but do not apply terms after the employee has left the store.
+     */
+    public void cancelAfterEmployeeDeactivation() {
+        if (status != EmploymentAmendmentStatus.VERIFIED) {
+            throw new IllegalStateException("Only verified amendments can be cancelled after deactivation.");
+        }
+        this.status = EmploymentAmendmentStatus.CANCELLED;
+    }
+
     public void cancel() {
         if (status != EmploymentAmendmentStatus.DRAFT) {
             throw new IllegalStateException("서명이 시작된 변경계약은 취소 대신 재작성해야 합니다.");

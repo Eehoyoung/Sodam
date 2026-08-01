@@ -3,6 +3,7 @@ package com.rich.sodam.dto.request;
 import com.rich.sodam.domain.type.DocumentType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -19,8 +20,10 @@ public class EmployeeDocumentCreateRequest {
     private DocumentType type;
 
     @NotBlank(message = "서류 제목을 입력해 주세요.")
+    @Size(max = 100, message = "서류 제목은 100자 이하여야 합니다.")
     private String title;
 
+    @Size(max = 300, message = "서류 참조값은 300자 이하여야 합니다.")
     private String fileRef;
 
     private LocalDate issuedAt;

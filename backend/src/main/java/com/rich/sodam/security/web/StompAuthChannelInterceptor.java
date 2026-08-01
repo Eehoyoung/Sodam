@@ -81,7 +81,8 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
             long userId = Long.parseLong(principal.getName());
             long storeId = Long.parseLong(matcher.group(1));
             // Store membership is enforced for every subscription, not just at CONNECT time.
-            storeAuthorizationPolicy.assertMemberOfStore(userId, storeId);
+            // Historical employee relations are not enough: former staff must not receive live store signals.
+            storeAuthorizationPolicy.assertActiveMemberOfStore(userId, storeId);
         } catch (NumberFormatException e) {
             throw new MessageDeliveryException("WS store topic authorization failed");
         }

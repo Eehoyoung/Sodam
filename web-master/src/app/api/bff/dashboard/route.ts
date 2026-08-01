@@ -14,8 +14,8 @@ const BACKEND_INTERNAL_URL = process.env.BACKEND_INTERNAL_URL ?? "http://localho
 export async function GET(request: NextRequest) {
   const start = performance.now();
 
-  const storeId = request.nextUrl.searchParams.get("storeId");
-  if (!storeId) {
+  const storeId = parseStoreId(request.nextUrl.searchParams.get("storeId"));
+  if (storeId === null) {
     return NextResponse.json({ error: "storeId 쿼리 파라미터가 필요합니다." }, { status: 400 });
   }
 
@@ -59,8 +59,16 @@ export async function GET(request: NextRequest) {
       },
       { headers: { "X-BFF-Duration-Ms": String(durationMs) } },
     );
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "알 수 없는 오류";
-    return NextResponse.json({ error: message }, { status: 502 });
+  } catch {
+    // 백엔드 경로·상태를 그대로 돌려주면 내부 API 구조를 노출할 수 있으므로 일반 오류만 반환한다.
+    return NextResponse.json({ error: "대시보드 정보를 불러오지 못했습니다." }, { status: 502 });
   }
+}
+
+function parseStoreId(value: string | null): number | null {
+  if (value === null || !/^[1-9]\d*$/.test(value)) {
+    return null;
+  }
+  const id = Number(value);
+  return Number.isSafeInteger(id) ? id : null;
 }

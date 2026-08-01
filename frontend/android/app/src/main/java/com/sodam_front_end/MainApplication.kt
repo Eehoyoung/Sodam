@@ -24,6 +24,7 @@ class MainApplication : Application(), ReactApplication {
     private fun reactPackages(host: ReactNativeHost): List<ReactPackage> =
         PackageList(host).packages.toMutableList().apply {
             add(RNCWebViewPackage())
+            add(SecureTokenStoragePackage())
         }
 
     private val mReactNativeHost: ReactNativeHost? by lazy {

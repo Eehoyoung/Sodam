@@ -1,10 +1,19 @@
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
+import {registerMemorySensitiveDataClearer, secureTokenStorage} from '../../../common/auth/secureTokenStorage';
 import api from '../../../common/api/client';
 import {AppToast} from '../../../common/components/ds';
 import {logger} from '../../../utils/logger';
 
 const QUEUE_KEY = 'attendance.offlineQueue.v1';
+const SECURE_QUEUE_KEY = 'offlineAttendanceQueue';
 const LOG_CONTEXT = 'OFFLINE_ATTENDANCE_QUEUE';
+let memoryQueue: string | null = null;
+let legacyMigration: Promise<void> | null = null;
+
+registerMemorySensitiveDataClearer(() => {
+    memoryQueue = null;
+    legacyMigration = null;
+});
 
 /** flush 재시도 한도 — 초과 시 큐에서 제거(dead-letter)하고 사용자에게 알린다. 무한 누적 방지. */
 export const MAX_RETRY = 5;
@@ -38,7 +47,8 @@ export type EnqueueInput = Omit<QueuedCheckIn, 'queuedAt' | 'retryCount'> &
  *  - flush 시 payload 에 queuedAt(ISO 문자열) 포함 전송. BE 가 옵셔널 수락.
  *
  * 보안 메모:
- *  - 큐는 단말 로컬에만 저장 (AsyncStorage)
+ *  - Android에서는 Keystore로 암호화된 로컬 저장소를 사용하고, 네이티브 보안 저장소가 없는
+ *    플랫폼에서는 앱 프로세스 메모리에만 둔다.
  *  - 토큰 만료 시 refresh interceptor 가 자동 처리 (api.ts)
  */
 export const offlineAttendanceQueue = {
@@ -108,7 +118,7 @@ export const offlineAttendanceQueue = {
     },
 
     async clear(): Promise<void> {
-        await writeQueue([]);
+        await removeSecureQueue();
     },
 };
 
@@ -121,7 +131,7 @@ function toMessage(error: unknown): string {
 
 async function readQueue(): Promise<QueuedCheckIn[]> {
     try {
-        const raw = await unifiedStorage.getItem(QUEUE_KEY);
+        const raw = await readSecureQueue();
         if (!raw) {
             return [];
         }
@@ -147,7 +157,7 @@ async function readQueue(): Promise<QueuedCheckIn[]> {
 
 async function writeQueue(list: QueuedCheckIn[]): Promise<void> {
     try {
-        await unifiedStorage.setItem(QUEUE_KEY, JSON.stringify(list));
+        await writeSecureQueue(JSON.stringify(list));
     } catch (error) {
         // quota 초과 등 로컬 저장 실패 — 조용히 삼키지 말고 경고 로그
         logger.warn('오프라인 큐 저장 실패(저장공간 부족 가능)', LOG_CONTEXT, {
@@ -155,6 +165,60 @@ async function writeQueue(list: QueuedCheckIn[]): Promise<void> {
             error: toMessage(error),
         });
     }
+}
+
+async function migrateLegacyQueue(): Promise<void> {
+    if (legacyMigration) {
+        return legacyMigration;
+    }
+    legacyMigration = (async () => {
+        try {
+            const raw = await unifiedStorage.getItem(QUEUE_KEY);
+            if (raw) {
+                if (secureTokenStorage.isAvailable()) {
+                    const written = await secureTokenStorage.setItem(SECURE_QUEUE_KEY, raw);
+                    if (!written) {
+                        memoryQueue = raw;
+                    }
+                } else {
+                    memoryQueue = raw;
+                }
+            }
+        } finally {
+            // Remove legacy plaintext GPS data even if secure persistence is unavailable.
+            await unifiedStorage.removeItem(QUEUE_KEY).catch(() => undefined);
+        }
+    })();
+    return legacyMigration;
+}
+
+async function readSecureQueue(): Promise<string | null> {
+    await migrateLegacyQueue();
+    if (!secureTokenStorage.isAvailable()) {
+        return memoryQueue;
+    }
+    return secureTokenStorage.getItem(SECURE_QUEUE_KEY);
+}
+
+async function writeSecureQueue(value: string): Promise<void> {
+    await migrateLegacyQueue();
+    if (secureTokenStorage.isAvailable()) {
+        const written = await secureTokenStorage.setItem(SECURE_QUEUE_KEY, value);
+        if (written) {
+            return;
+        }
+    }
+    // A platform without a native secure store keeps the queue in memory only.
+    memoryQueue = value;
+}
+
+async function removeSecureQueue(): Promise<void> {
+    await migrateLegacyQueue();
+    memoryQueue = null;
+    await Promise.all([
+        secureTokenStorage.removeItem(SECURE_QUEUE_KEY),
+        unifiedStorage.removeItem(QUEUE_KEY).catch(() => undefined),
+    ]);
 }
 
 export default offlineAttendanceQueue;

@@ -64,8 +64,8 @@ public class TimeOffController {
         if (principal == null || principal.getId() == null) {
             throw new IllegalStateException("로그인이 필요해요.");
         }
-        // 본인 매장 소속 검증
-        guard.assertEmployeeInStore(principal.getId(), body.getStoreId());
+        // 퇴사/전근 후 과거 관계를 악용한 새 휴가 신청을 막고, 과거 휴가 이력 열람은 별도 유지한다.
+        guard.assertActiveEmployeeInStore(principal.getId(), body.getStoreId());
         if (body.getStartDate().isAfter(body.getEndDate())) {
             throw new IllegalArgumentException("시작일은 종료일보다 빠르거나 같아야 해요.");
         }

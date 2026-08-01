@@ -50,7 +50,7 @@ public class ShiftSwapController {
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId,
             @RequestParam(required = false) SwapRequestStatus status) {
-        storeAccessGuard.assertMemberOfStore(principal.getId(), storeId);
+        storeAccessGuard.assertActiveMemberOfStore(principal.getId(), storeId);
         return ResponseEntity.ok(shiftSwapService.list(storeId, status));
     }
 

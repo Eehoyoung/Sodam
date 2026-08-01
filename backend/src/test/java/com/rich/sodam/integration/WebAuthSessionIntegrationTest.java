@@ -58,7 +58,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@TestPropertySource(properties = "sodam.security.trust-forwarded-headers=true")
+@TestPropertySource(properties = {
+        "sodam.security.trust-forwarded-headers=true",
+        "sodam.security.trusted-proxy-ips=127.0.0.1"
+})
 @Transactional
 class WebAuthSessionIntegrationTest {
 

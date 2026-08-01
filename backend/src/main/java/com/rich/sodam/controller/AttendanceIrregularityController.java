@@ -111,7 +111,7 @@ public class AttendanceIrregularityController {
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId,
             @Valid @RequestBody AttendanceNoticeCreateRequest body) {
-        guard.assertEmployeeInStore(principal.getId(), storeId);
+        guard.assertActiveEmployeeInStore(principal.getId(), storeId);
         AttendanceNotice notice = noticeService.create(
                 principal.getId(), storeId, body.getForDate(), body.getType(), body.getMessage());
         return ResponseEntity.ok(AttendanceNoticeResponse.of(notice));

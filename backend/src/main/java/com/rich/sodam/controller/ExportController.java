@@ -13,6 +13,7 @@ import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.security.annotation.RequirePlan;
 import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
+import com.rich.sodam.security.web.SensitiveDownloadHeaders;
 import com.rich.sodam.service.ExportService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
@@ -50,6 +51,7 @@ public class ExportController {
         byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType("text/csv; charset=utf-8"));
+        SensitiveDownloadHeaders.apply(headers);
         headers.setContentDispositionFormData("attachment",
                 String.format("attendance_store_%d_%s_%s.csv", storeId, from, to));
         return ResponseEntity.ok().headers(headers).body(bytes);
@@ -71,6 +73,7 @@ public class ExportController {
         byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType("text/csv; charset=utf-8"));
+        SensitiveDownloadHeaders.apply(headers);
         headers.setContentDispositionFormData("attachment",
                 String.format("payroll_store_%d_%s_%s.csv", storeId, from, to));
         return ResponseEntity.ok().headers(headers).body(bytes);

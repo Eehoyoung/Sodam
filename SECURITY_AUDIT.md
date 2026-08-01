@@ -1,5 +1,431 @@
 # SECURITY_AUDIT
 
+## 2026-07-30 web console, labor contract, and sensitive-document follow-up
+
+### Scope and exclusions
+
+- Reviewed locally: `web-master`, web-session authentication/CSRF/BFF code, password-reset credential storage, Apple authentication and global error logging, labor-contract and electronic-signature issuance/access paths, employee-document metadata, CSV exports, payment webhook logging, and break-record CRUD paths.
+- Excluded: production sessions/data/backups, real signature-provider calls or cancellation, object-storage contents, deployment, push, and destructive actions.
+
+### Security structure reviewed
+
+- Web console: HttpOnly `sodam_web_sid` session cookie, SameSite=Strict CSRF cookie/header validation, login lockout and rate limit, and existing backend authorization for every business API.
+- Password reset: a locally generated six-digit OTP and one-time reset ticket are persisted only as server-keyed HMAC digests; raw values are delivered only to the requesting client/email flow.
+- Labor contract/signature: current store authority plus `CONTRACT_MANAGE` for delegated issuance; immutable PDF digest, private object references, party/owner access checks, and worker-side finalization validation.
+- Sensitive documents: master-only store APIs with employee/store ownership checks; document metadata only, not a file-upload/download implementation.
+
+### Finding summary
+
+| ID | Severity | Status | Summary |
+|---|---:|---|---|
+| SEC-AUD-026 | High | Fixed locally | A revoked delegated manager remained a signature party and could read an in-progress labor contract; pending local signature work was not cancelled. |
+| SEC-AUD-027 | Medium | Fixed | A store owner could attach/list/delete document metadata with a client-supplied employee path lacking an explicit employee-to-store check. |
+| SEC-AUD-028 | Low | Hardened | Dashboard BFF interpolated an unvalidated `storeId` into internal paths and returned backend path/status details on failure. No backend authorization bypass was demonstrated. |
+| SEC-AUD-029 | Medium | Fixed | CSV exports wrote employee names that spreadsheet applications could execute as formulas. |
+
+| SEC-AUD-030 | Low | Fixed | The payment webhook logged a supplied HMAC signature when validation failed. |
+| SEC-AUD-031 | Medium | Fixed | Break-record CRUD accepted an employee path without verifying store membership; deletion did not bind the record to that path employee. |
+
+| SEC-AUD-032 | Medium | Fixed | Any authenticated user could create global Q&A entries, including administrator-style answers and uploads. |
+| SEC-AUD-033 | High | Fixed | A database reader could brute-force the legacy fixed-salt hash of a six-digit password-reset OTP and take over the associated account. |
+| SEC-AUD-034 | Medium | Fixed | An owner could read an unaffiliated employee's onboarding contract, wage-setup, and attendance-progress state by changing the employee path ID. |
+| SEC-AUD-035 | Low | Fixed | The public Apple identity-token verification path logged decoder exception text, which can contain a caller-supplied token fragment. |
+| SEC-AUD-036 | Medium | Fixed | Global validation and database-constraint handlers logged rejected request values and raw DB diagnostics, including passwords, OTPs, emails, and sensitive form fields. |
+| SEC-AUD-037 | Low | Fixed | Sensitive contract, certificate, payroll, export, and tax-report download responses lacked browser-cache prevention headers. |
+| SEC-AUD-038 | Low | Fixed | Session-authenticated WebSocket handshakes accepted every browser Origin, including untrusted same-site origins. |
+| SEC-AUD-039 | Medium | Fixed | A deactivated employee-store relation still allowed GPS/NFC automatic attendance creation and checkout. |
+| SEC-AUD-040 | Medium | Fixed | Historical employee-store membership checks allowed deactivated employees to use several current-state employee and real-time functions. |
+
+### Detailed findings
+
+#### SEC-AUD-026 — revoked delegated contract signer retained sensitive-document access (High)
+
+- Related files/functions: `ElectronicSignatureApplicationService.assertEnvelopeAccess`, `DelegatedActionAuthorityService`, `StoreManagerService`, `LaborContractElectronicSignatureService`.
+- Code path: a manager listed in `electronic_signature_party` passed envelope access even after `CONTRACT_MANAGE` was removed/revoked. Existing authority revalidation occurred only during worker finalization.
+- Attack conditions: the manager had been delegated contract authority, an unsigned labor-contract envelope existed, and the authority was later reduced or revoked.
+- Impact: continued local access to wage/employment contract PDF and status; pending local work could continue until eventual finalization failed.
+- Verification: unit regression reproduced a historical manager party whose current authority check rejects access; cancellation regression verifies envelope, parties, and outbox work become `CANCELLED`.
+- Fix: delegated signer access now requires current active authority with the matching delegation envelope/version and current owner. Permission reduction/removal and revocation cancel unfinished delegated labor-contract envelopes, parties, and queued work. A cancelled/failed envelope can be reissued only as the next document version; completed contracts cannot be replaced.
+- Added tests: `ElectronicSignatureApplicationServiceAccessTest`, `DelegatedActionAuthorityServiceTest`, `DelegatedContractEnvelopeCancellationServiceTest`, `StoreManagerServiceTest`, `LaborContractElectronicSignatureServiceTest`, `LaborContractSignTest`.
+- Post-fix verification: targeted backend suite passed.
+- Residual risk: a signature provider request already delivered externally cannot be withdrawn by the current gateway interface. Local processing and contract activation are cancelled, but provider-side cancellation must be integrated and verified before a live delegated-signature launch.
+
+#### SEC-AUD-027 — sensitive document employee scope was only implicit (Medium)
+
+- Related files/functions: `EmployeeDocumentController`, `EmployeeDocumentService.delete`, `EmployeeDocumentCreateRequest`.
+- Code path: add/list/delete accepted `employeeId` from the request path after only master-store authorization; deletion ignored the employee path when selecting a document.
+- Attack conditions: a master for one store deliberately supplies an employee ID outside that store or a mismatched employee path.
+- Impact: cross-store document metadata integrity pollution and misleading/mismatched destructive requests. No original document file was reachable through this path.
+- Verification: controller regression makes `assertEmployeeInStore` deny before the document service is called.
+- Fix: add/list/delete now verify the employee belongs to the path store; delete verifies both document store and employee. Title and reference length limits now match database columns.
+- Added tests: `EmployeeDocumentControllerSecurityTest`.
+- Post-fix verification: targeted backend suite passed.
+- Residual risk: this domain stores a reference only; a future file upload/download feature requires separate MIME, size, path, and object-authorization review.
+
+#### SEC-AUD-028 — dashboard BFF input/error hardening (Low)
+
+- Related file/function: `web-master/src/app/api/bff/dashboard/route.ts`.
+- Code path: an arbitrary query value was interpolated into fixed internal backend paths and failed backend paths/statuses were returned to the browser.
+- Attack conditions: an authenticated or unauthenticated caller sends a malformed `storeId` query.
+- Impact: no demonstrated access-control bypass because the backend still receives the session and performs store authorization; malformed input could probe internal route behavior.
+- Verification: code path review plus web TypeScript and lint checks.
+- Fix: accept only positive safe-integer store IDs and return a generic backend failure response.
+- Added tests: no dedicated Next route test harness exists in this repository.
+- Post-fix verification: `web-master` TypeScript and lint both pass.
+- Residual risk: backend authorization remains the security boundary; BFF routes added later must keep fixed upstream hosts and validate every path parameter.
+
+#### SEC-AUD-029 — CSV formula injection in sensitive exports (Medium)
+
+- Related files/functions: `ExportService.buildAttendanceCsv`, `ExportService.buildPayrollCsv`, `ExportService.csvSafe`; employee profile name update paths in `UserController`.
+- Code path: an authenticated employee can set a name whose enforced constraint is length. A store owner can export attendance or payroll CSV, and `csvSafe` escaped commas/quotes but emitted leading `=`, `+`, `-`, or `@` unchanged.
+- Attack conditions: a store owner opens the exported CSV in a spreadsheet program that evaluates formulas, after a malicious employee has supplied a formula-like name.
+- Impact: spreadsheet formula execution in the owner's desktop context, including misleading displayed data or spreadsheet-supported external-link/action abuse.
+- Verification: the new regression failed before the fix with an exported `=HYPERLINK(...)` cell, proving the formula marker reached the CSV output.
+- Fix: formula-like values, including markers after leading spaces or tabs, receive a leading apostrophe before CSV quoting. This keeps the cell as literal text in spreadsheet applications.
+- Added tests: `ExportServiceSecurityTest` covers `=`, `+`, `-`, `@`, and leading-space/tab variants through the public attendance export path; payroll uses the same sanitizer.
+- Post-fix verification: targeted backend test passes.
+- Residual risk: values exported by future CSV columns must also use `csvSafe`; CSV output remains sensitive and master/store authorization is still required.
+
+#### SEC-AUD-030 — payment webhook signature logged verbatim (Low)
+
+- Related files/functions: `TossWebhookController.tossWebhook` and its failed-signature logging branch.
+- Code path: the public `POST /api/billing/webhook/toss` endpoint receives `X-TossPayments-Signature`; a failed HMAC validation logged that supplied header value verbatim.
+- Attack conditions: any caller can send an invalid webhook request. A genuine signature may also enter the branch if the locally configured secret is wrong.
+- Impact: attacker-controlled log pollution and unnecessary retention of a replay-adjacent authentication value in application logs.
+- Verification: before the fix, a local output-capture regression observed the supplied signature in the warning log.
+- Fix: the failed-signature log retains only the event category and never the supplied signature.
+- Added tests: `TossWebhookControllerSecurityTest` proves the invalid signature is absent from logs and a correctly signed payload still delegates to `TossWebhookService` with HTTP 200.
+- Post-fix verification: both targeted tests pass locally.
+- Residual risk: this check does not exercise a real Toss delivery or secret rotation. Production must inject a non-empty secret and protect log access.
+
+#### SEC-AUD-031 — break-record employee/store scope and path ownership (Medium)
+
+- Related files/functions: `BreakRecordController.add`, `list`, `delete`; `BreakRecordService.delete`.
+- Code path: master-only break-record routes checked only that the caller owned `storeId`. A caller could supply a foreign `employeeId`; delete then selected by only `storeId` and record ID, ignoring the employee path.
+- Attack conditions: an authenticated store owner deliberately sends a non-member employee ID or uses an employee path that differs from the record owner.
+- Impact: cross-store break-record integrity pollution; a mismatched URL could delete a different employee's record in the same store, obscuring auditability and violating resource-path ownership.
+- Verification: the new controller regression failed before the fix because it reached the service after `assertEmployeeInStore` was configured to deny. A service regression verifies a mismatched path employee cannot delete the record.
+- Fix: all master break-record CRUD routes now assert employee/store membership before calling the service. Deletion receives the path employee ID and rejects a record owned by a different employee.
+- Added tests: `BreakRecordControllerSecurityTest` and `BreakRecordServiceTest.deleteRejectsDifferentEmployeeInTheSameStore`.
+- Post-fix verification: the controller test plus all 13 break-record service tests pass locally.
+- Residual risk: master authority remains intentionally broad within an owned store. Future bulk endpoints must retain both store and per-record employee checks.
+
+#### SEC-AUD-032 — global Q&A content creation lacked system-content authorization (Medium)
+
+- Related files/functions: `QnaInfoController.createQnaInfo`, `QnaInfoService.createQnaInfo`, `SystemContentAdminOnly`.
+- Code path: `POST /api/qna-info` inherited only `@AnyAuthenticated`, although it creates the same global Q&A entity that is read by all authenticated clients and accepts an administrator-style answer plus an optional image. The service records no requester or moderation state.
+- Attack conditions: any valid authenticated account, including an unrelated store employee or owner, sends a multipart Q&A creation request.
+- Impact: unauthorized global content injection/phishing and consumption of local upload storage. The route could present unreviewed answers as product information to other users.
+- Verification: the new MockMvc regression expected 403 for a non-allowlisted store owner and failed before the fix with HTTP 200, proving service reachability.
+- Fix: Q&A creation now requires the same fail-closed `SystemContentAdminOnly` allowlist used by other global content mutations.
+- Added tests: `SecurityRbacTest.storeMaster_globalQnaCreate_forbidden` and `allowlistedSystemContentAdministrator_canCreateGlobalQnaContent`.
+- Post-fix verification: both new paths pass in the 19-test RBAC integration class.
+- Residual risk: global content still has no author/moderation workflow. Future public/community Q&A must use a separate requester-owned, moderated domain rather than this administrator content API.
+
+#### SEC-AUD-033 — password-reset OTP used a predictable fixed-salt hash (High)
+
+- Related files/functions: `PasswordResetService.requestReset`, `PasswordResetService.verifyCode`, `BearerTokenHasher`, and `PasswordResetToken.codeHash`.
+- Code path: a reset request generated a six-digit OTP and persisted an unkeyed `SHA-256(fixed public salt + OTP)` digest. `POST /api/auth/password-reset/verify` accepts the email and OTP, then issues a usable reset ticket when that digest matches.
+- Attack conditions: an attacker obtains a read-only database copy containing an unexpired reset-token row and the target email. Because the OTP space has only one million values and the fixed salt was in the application source, the matching OTP could be computed offline without access to the recipient mailbox.
+- Impact: the attacker can submit the recovered OTP once, receive a reset ticket, set a new password, and take over the target account during the OTP validity window.
+- Verification: a regression that requires the stored OTP digest to equal a server-keyed HMAC failed before the fix because the legacy SHA-256 value did not match. The public controller path confirms that a successful OTP verification returns a reset ticket.
+- Fix: creation and verification now use the existing `BearerTokenHasher` HMAC-SHA-256 digest keyed by the required server-side `jwt.secret`; no raw OTP is persisted. The reset-ticket digest remains keyed as before.
+- Added tests: `PasswordResetServiceSecurityTest.storesTheShortLivedOtpWithTheServerKeyedDigest` and `verifiesAnOtpStoredWithTheServerKeyedDigest`, alongside the existing reset-ticket digest regression.
+- Post-fix verification: all three `PasswordResetServiceSecurityTest` tests pass locally; the known OTP verifies successfully, while the stored value is the keyed digest rather than a recoverable fixed-salt hash.
+- Residual risk: a reset token issued by the legacy build cannot verify after this change; it expires within five minutes, so deployment must allow that short window to elapse or intentionally invalidate outstanding reset requests. Protection also depends on keeping `jwt.secret` non-empty and confidential; compromise of that key is a broader authentication incident.
+
+#### SEC-AUD-034 — onboarding owner lookup lacked employee/store scope (Medium)
+
+- Related files/functions: `OnboardingController.forOwner`, `OnboardingService.forEmployee`, and `StoreAuthorizationPolicy.assertEmployeeInStore`.
+- Code path: `GET /api/stores/{storeId}/employees/{employeeId}/onboarding` required the caller to own `storeId`, but passed the client-supplied `employeeId` directly to the aggregation service. That service reads signed-contract, wage-relation, and attendance-existence state for the supplied employee/store pair.
+- Attack conditions: an authenticated owner of any store knows or guesses another employee ID and uses it with a store ID the owner controls.
+- Impact: cross-store disclosure of an employee's onboarding progress and associated employment/attendance state, plus a false resource association in the response.
+- Verification: a controller regression configured the employee/store guard to deny a foreign employee. Before the fix, the request did not throw and reached the service, proving the missing authorization boundary.
+- Fix: the owner endpoint now asserts that the path employee belongs to the path store after confirming the caller owns that store and before calling the aggregation service.
+- Added tests: `OnboardingControllerSecurityTest.ownerOnboardingLookupRejectsAnEmployeeOutsideThePathStore`.
+- Post-fix verification: the security regression and all existing `OnboardingServiceTest` tests pass locally.
+- Residual risk: this is an aggregate status endpoint. Any new per-step details must retain the same store/employee relation check and avoid adding unnecessary employee data to the response.
+
+#### SEC-AUD-035 — Apple identity-token decoder diagnostics were logged verbatim (Low)
+
+- Related files/functions: `AppleAuthService.verifyIdentityToken` and `LoginController.appleLogin`.
+- Code path: the public `POST /apple/auth/proc` endpoint passes the supplied identity token to `JwtDecoder`. A thrown `JwtException` had its message interpolated directly into the application warning log; downstream controller failure handling also exposed exception diagnostics to its localized error template.
+- Attack conditions: any caller submits a malformed, expired, or otherwise rejected Apple identity token whose decoder diagnostic contains a token fragment or attacker-controlled text.
+- Impact: authentication-bearing token fragments or untrusted diagnostics can be retained in logs and used for log pollution. No successful Apple account takeover was demonstrated from this path.
+- Verification: a local JWT-decoder mock threw a `JwtException` whose message contained a synthetic identity-token fragment. The output-capture regression failed before the fix because the exact fragment appeared in the warning log.
+- Fix: service and controller logs now record only the exception class. The client receives the existing generic Apple-authentication failure message rather than an exception diagnostic.
+- Added tests: `AppleAuthServiceTest.decoderFailureMessageContainingAnIdentityTokenIsNotLogged`.
+- Post-fix verification: the Apple service regression and existing `LoginControllerKakaoSecurityTest` pass locally.
+- Residual risk: this test uses a local decoder mock and does not contact Apple JWKS. Production log access, retention, and third-party identity-provider diagnostics still require operational controls.
+
+#### SEC-AUD-036 — global validation and constraint-error logging retained sensitive diagnostics (Medium)
+
+- Related files/functions: `GlobalExceptionHandler.handleValidationException` and `handleDataIntegrityViolation`.
+- Code path: every controller using `@Valid` can throw `MethodArgumentNotValidException`. The handler logged both `e.getMessage()` and the exception stack; Spring's diagnostic string contains each `FieldError` rejected value. The database-constraint handler also logged the raw most-specific SQL diagnostic, which can include duplicate column values.
+- Attack conditions: a caller sends a validation-failing request containing a sensitive value, such as a password-reset password, OTP, resident number, or other PII field; or triggers a duplicate constraint involving a sensitive identifier such as an email.
+- Impact: rejected secrets, PII, and duplicate database values are written to application logs even though API responses do not need those raw values. Anyone with log access can recover the submitted values.
+- Verification: a local `MethodArgumentNotValidException` with a synthetic rejected password and a `DataIntegrityViolationException` with a synthetic duplicate email were passed through the real handlers. Both output-capture regressions failed before the fix because the exact values appeared in the logs.
+- Fix: the validation handler now logs only the number and names of invalid fields, while the constraint handler logs only the exception-cause type. Neither logs exception diagnostics, rejected values, SQL details, or validation stack traces.
+- Added tests: `GlobalExceptionHandlerSecurityTest.validationFailureDoesNotLogTheRejectedSecretValue` and `databaseConstraintDiagnosticsDoNotLogTheDuplicateSensitiveValue`.
+- Post-fix verification: both regressions retain the existing HTTP 400/409 responses and confirm the sensitive test values are absent from captured logs.
+- Residual risk: other exception handlers and third-party integrations still require per-path review before logging arbitrary exception messages or database diagnostics.
+
+#### SEC-AUD-037 — sensitive downloads could remain in a browser cache (Low)
+
+- Related files/functions: `SensitiveDownloadHeaders.apply`, `CertificateController.my`, `LaborContractController.pdfResponse`, `ElectronicSignatureController.document` and `completionCertificate`, `PayrollController.generatePayrollPdf`, `ExportController.exportAttendance` and `exportPayroll`, and `TaxReportController.previewLaborCostSummary`.
+- Code path: each listed authenticated endpoint builds a PDF or CSV attachment containing employment, wage, attendance, signature, or tax-report data. Prior successful responses had neither `Cache-Control: no-store` nor legacy cache-prevention headers.
+- Attack conditions: a legitimate user downloads one of these documents on a shared browser/device and a later local user can access the browser's cached download or response history. The attacker must already have local access to that browser/device; no remote authorization bypass was demonstrated.
+- Impact: an employment/career certificate, labor contract, e-signature evidence, payroll statement/export, or labor-cost report may persist beyond the authenticated session on a shared endpoint.
+- Verification: a controller-level regression invoked the real certificate download response path. Before the fix it failed because the response did not contain a cache-prevention header. Source-path review confirmed the same missing response policy on every listed sensitive attachment route.
+- Fix: a shared `SensitiveDownloadHeaders` policy now adds `Cache-Control: no-store, private, must-revalidate`, `Pragma: no-cache`, and `X-Content-Type-Options: nosniff` to every listed sensitive download response. Existing authorization, document bytes, media types, and attachment filenames are unchanged.
+- Added tests: `CertificateControllerSecurityTest.certificateDownloadPreventsSensitivePdfFromBeingStoredByBrowserCaches` and `SensitiveDownloadHeadersTest.appliesTheNonStorableDownloadPolicyForEverySensitiveAttachmentType`.
+- Post-fix verification: the certificate response regression, the common-policy regression, all four `CertificateServiceTest` cases, and existing `PayrollControllerTest` pass locally, retaining authorized PDF generation, existing non-member denial behavior, and payroll-controller behavior.
+- Residual risk: HTTP response headers cannot erase copies already downloaded, printed, screen-captured, or stored by a user. Sensitive-document routes added later need the same response policy and a separate access-control review.
+
+#### SEC-AUD-038 — web-session WebSocket handshakes trusted every browser Origin (Low)
+
+- Related files/functions: `WebSocketConfig.registerStompEndpoints`, `SessionHandshakeInterceptor.beforeHandshake`, `WebSocketOriginHandshakeInterceptor.beforeHandshake`, and `StompAuthChannelInterceptor.preSend`.
+- Code path: the prior `/ws` endpoint used `setAllowedOriginPatterns("*")`. Its handshake interceptor copied an authenticated `sodam_web_sid` session into STOMP attributes, and the CONNECT interceptor accepted that session principal. Browser WebSocket requests do not carry the HTTP double-submit CSRF header.
+- Attack conditions: a signed-in web-console user visits a page at an untrusted Origin that can cause the browser to send the matching session cookie—especially an attacker-controlled same-site Origin, because `SameSite=Strict` is site- rather than port-based. The request then opens `/ws` and sends STOMP CONNECT without a JWT. Native mobile clients are not affected because they use a JWT on CONNECT and normally have no Origin header.
+- Impact: an untrusted browser Origin could establish the victim's authenticated STOMP session and attempt authorized store-topic subscriptions. Store membership is still checked at every subscription and payloads contain only change signals, so no REST authorization bypass or direct document-content disclosure was demonstrated.
+- Verification: local code-path inspection confirmed the wildcard Origin policy and session-principal handoff. The new handshake regression proves an untrusted browser Origin is rejected, the configured console Origin is accepted, and the originless native-client path remains available for JWT authentication.
+- Fix: `/ws` now uses the existing `sodam.session.csrf.allowed-origins` list in both Spring's endpoint Origin configuration and an explicit handshake interceptor. The Origin gate executes before the session security context is copied. No-Origin mobile handshakes still proceed to existing JWT validation at STOMP CONNECT.
+- Added tests: `WebSocketOriginHandshakeInterceptorTest` (untrusted Origin denial, allowlisted Origin acceptance, originless mobile preservation).
+- Post-fix verification: the new handshake tests and existing `StompAuthChannelInterceptorTest` pass locally.
+- Residual risk: the full socket integration test was not completed in this follow-up because the local command wrapper stopped it at 64 seconds before it produced a test report. Production must set `SODAM_SESSION_CSRF_ALLOWED_ORIGINS` to only the actual web-console origins; a wildcard or an overly broad allowlist reintroduces this risk.
+
+#### SEC-AUD-039 — deactivated employees could still create automatic attendance records (Medium)
+
+- Related files/functions: `AttendanceService.checkIn`, `checkOut`, `checkInWithVerification`, `checkOutWithVerification`, `checkInWithNfcVerification`, `checkOutWithNfcVerification`, and `getEmployeeStoreContext`.
+- Code path: self-only attendance controllers passed the authenticated employee and path store to the service. The service fetched an employee/store relation without requiring `isActive=true`; its GPS and NFC flows then called the common `checkIn`/`checkOut` methods, which created or changed records, notified owners, and produced payroll-relevant attendance.
+- Attack conditions: a user has been deactivated or transferred out of a store but retains a valid token and is physically within the GPS radius or possesses/uses an active store NFC tag. The old inactive relation still exists for historical retention.
+- Impact: a former employee could create new attendance, alter an open attendance with checkout, trigger owner notifications, and contaminate payroll/attendance evidence for the former store.
+- Verification: `AttendanceServiceSecurityTest` supplied a real inactive relation through the service's repository boundary. Before the fix, `checkIn` reached the attendance repository rather than throwing, so the regression failed exactly at the expected access-denial assertion.
+- Fix: the automatic GPS/NFC common check-in and checkout paths now require an active employee-store relation before any attendance repository operation. The master-only manual-registration path continues to use the historical relation lookup so an owner can correct pre-deactivation records.
+- Added tests: `AttendanceServiceSecurityTest.inactiveEmployeeStoreRelationCannotCreateAutomaticAttendance`; the existing `AttendanceServiceTest.automaticAttendanceRejectsInactiveEmployeeStoreRelation` integration regression was also added but did not complete within the local wrapper limit.
+- Post-fix verification: the focused service-security regression and existing `AttendanceControllerTest` pass locally. The common service guard covers both GPS and NFC because each automatic flow delegates to `checkIn` or `checkOut`.
+- Residual risk: the full Spring attendance integration class did not produce a result before the 64-second local wrapper limit, so database-profile behavior and the explicit deactivated-checkout variation still need a completed integration run. This change intentionally does not block master historical manual corrections; those remain subject to master/store authorization.
+
+#### SEC-AUD-040 — deactivated employees retained selected current-function access (Medium)
+
+- Related files/functions: `StoreAuthorizationPolicy.assertActiveEmployeeInStore` and `assertActiveMemberOfStore`; `StoreAccessGuard`; `TimeOffController.createSelfTimeOffRequest`; `AttendanceIrregularityController.createNotice`; `EmployeeBreakRecordController.start` and `end`; `ShiftSwapController.list`; and `StompAuthChannelInterceptor.preSend`.
+- Code path: those operations previously used a historical employee-store relation check. A relation is retained after deactivation for payroll, contracts, certificates, and corrections; it therefore satisfied the old check even though the person must no longer act as a current store employee or receive live store events.
+- Attack conditions: a former employee retains a valid authenticated session or JWT after their relation has been made inactive. They submit a self-service time-off or attendance notice, start/end a break, request current swap listings, or subscribe to the store's STOMP topic.
+- Impact: the former employee could create misleading current operational records and observe real-time store-change metadata. Historical document and record access was not broadened by this finding.
+- Verification: focused controller and STOMP regressions were first changed to expect the active-membership guard. Before the patch, `TimeOffControllerTest.createSelfTimeOff_deniesInactiveEmployeeStoreRelation` and `StompAuthChannelInterceptorTest.subscribeToOtherStore_isDenied` failed because the old historical guards were called. Static call tracing confirmed the same historical guard on the other listed current-state paths.
+- Fix: introduced narrow active-relation policy methods. Only current employee actions and live subscription/listing paths use them; historical self-data, owner manual attendance correction, contract/certificate/document retrieval, and their existing ownership checks remain unchanged.
+- Added tests: `AttendanceIrregularityControllerSecurityTest`, `EmployeeBreakRecordControllerSecurityTest`, `ShiftSwapControllerSecurityTest`, the updated `TimeOffControllerTest`, `StompAuthChannelInterceptorTest`, and `StoreAuthorizationPolicyTest`.
+- Post-fix verification: the combined local regression run completed with 0 failures across 47 tests, including the active-policy, attendance, controller, and STOMP paths. It also preserves master access through `assertActiveMemberOfStore`.
+- Residual risk: this is deliberately not a global replacement of `assertEmployeeInStore`, because historical retention functions need it. The remaining historical-relation call sites require a per-operation decision before any future bulk change; the full authenticated WebSocket integration test remains incomplete under the local wrapper limit.
+
+### Commands and results for this follow-up
+
+| Command | Result |
+|---|---|
+| selected web-session, contract authority/cancellation/reissue, and document-security backend tests | PASS |
+| `backend\gradlew.bat test --tests ExportServiceSecurityTest --offline --no-daemon` | PASS after the pre-fix regression failed as expected |
+| `backend\gradlew.bat test --tests TossWebhookControllerSecurityTest --offline --no-daemon` | PASS: invalid signature is absent from logs; valid HMAC processing remains intact |
+| `backend\gradlew.bat test --tests ExportServiceSecurityTest --tests TossWebhookControllerSecurityTest --offline --no-daemon` | PASS: combined regression run after all changes |
+| `backend\gradlew.bat test --tests BreakRecordControllerSecurityTest --tests BreakRecordServiceTest --offline --no-daemon` | PASS by generated local reports: 14 tests, 0 failures; the command wrapper timed out after 64 seconds while Gradle completed normally |
+| `backend\gradlew.bat test --tests SecurityRbacTest --offline --no-daemon` | PASS by generated local report: 19 tests, 0 failures; the command wrapper timed out after 64 seconds while Gradle completed normally |
+| `backend/`: `.\gradlew.bat test --tests com.rich.sodam.service.PasswordResetServiceSecurityTest --offline --no-daemon` | PASS: 3 OTP/reset-ticket digest regressions passed locally |
+| `backend/`: `.\gradlew.bat test --tests com.rich.sodam.controller.OnboardingControllerSecurityTest --tests com.rich.sodam.service.OnboardingServiceTest --offline --no-daemon` | PASS: cross-store onboarding lookup is denied and existing onboarding aggregation tests remain green |
+| `backend/`: `.\gradlew.bat test --tests com.rich.sodam.service.AppleAuthServiceTest --tests com.rich.sodam.controller.LoginControllerKakaoSecurityTest --offline --no-daemon` | PASS: Apple decoder diagnostics are redacted and existing login-security coverage remains green |
+| `backend/`: `.\gradlew.bat test --tests com.rich.sodam.exception.GlobalExceptionHandlerSecurityTest --offline --no-daemon` | PASS: validation and database-constraint responses retain 400/409 behavior without logging rejected secrets or duplicate values |
+| `backend/`: `.\gradlew.bat test --tests com.rich.sodam.controller.CertificateControllerSecurityTest --tests com.rich.sodam.security.web.SensitiveDownloadHeadersTest --tests com.rich.sodam.service.CertificateServiceTest --tests com.rich.sodam.controller.PayrollControllerTest --offline --no-daemon` | PASS after the certificate cache-header regression failed before the fix: the common download policy is non-storable, certificate issuance remains green, and payroll-controller behavior is retained |
+| `backend/`: `.\gradlew.bat test --tests com.rich.sodam.security.web.WebSocketOriginHandshakeInterceptorTest --tests com.rich.sodam.security.web.StompAuthChannelInterceptorTest --offline --no-daemon` | PASS: untrusted browser Origin is denied, configured Origin and originless JWT-client paths retain their expected behavior |
+| `backend/`: `WebSocketDualAuthIntegrationTest` | NOT COMPLETED: the local command wrapper stopped the selected integration run at 64 seconds before it emitted a report; no pass/fail conclusion was taken from it |
+| `backend/`: `.\gradlew.bat test --tests com.rich.sodam.service.AttendanceServiceSecurityTest --tests com.rich.sodam.controller.AttendanceControllerTest --offline --no-daemon` | PASS after the inactive-relation service regression failed before the fix: automatic attendance is denied and existing self-only controller behavior remains green |
+| `backend/`: `AttendanceServiceTest.automaticAttendanceRejectsInactiveEmployeeStoreRelation` | NOT COMPLETED: the Spring integration context did not emit a result before the 64-second local wrapper limit; it is not treated as a pass |
+| `backend/`: `./gradlew.bat test --tests AttendanceIrregularityControllerSecurityTest --tests EmployeeBreakRecordControllerSecurityTest --tests ShiftSwapControllerSecurityTest --tests TimeOffControllerTest --tests StompAuthChannelInterceptorTest --tests StoreAuthorizationPolicyTest --tests AttendanceServiceSecurityTest --offline --no-daemon` | PASS: 47 focused current-function/active-relation regressions completed with 0 failures |
+| `backend/`: `./gradlew.bat build -x test --offline --no-daemon` | PASS: current source and test compilation completed after the active-relation and download/WebSocket changes |
+| `backend/`: `./gradlew.bat test --tests WebSocketOriginHandshakeInterceptorTest --offline --no-daemon` | PASS: the final strict Origin normalization condition rejects untrusted origins while retaining configured and originless-client behavior |
+| selected password-reset, onboarding, Apple-authentication, and global-exception security regressions | PASS: every selected local test class completed with 0 failures in the combined run |
+| `backend/`: `.\gradlew.bat build -x test --offline --no-daemon` | PASS after the current account, onboarding, and log-redaction changes |
+| `backend\gradlew.bat build -x test --offline --no-daemon` | PASS after the break-record and webhook changes |
+| `backend\gradlew.bat test --tests PayrollControllerTest --tests PayrollHighRiskActionServiceTest --offline --no-daemon` | PASS |
+| `frontend\node_modules\.bin\jest.cmd __tests__\utils\loggerSecurity.test.ts __tests__\utils\productionBabelSecurity.test.ts --runInBand` | PASS: raw Axios credentials are not passed to the logger and production Babel output removes the synthetic password/token |
+| `web-master\npm run lint` | PASS |
+| `web-master\node_modules\.bin\tsc.cmd --noEmit` | PASS |
+| `git diff --check` | PASS: no whitespace errors (line-ending notices only) |
+
+### Follow-up conclusion
+
+- Verified fixed: local revoked-manager contract access, local pending delegated-contract processing, explicit sensitive-document, break-record, onboarding employee/store scope, active employee attendance scope, and deactivated-employee current-function scope; password-reset OTP keyed storage; CSV formula neutralization; payment/identity-token/validation log redaction; non-storable sensitive downloads; browser-Origin-gated web-session WebSockets; and BFF path/error hardening.
+- Adjacent web/payroll revalidation: the current working tree's release logger removes raw error objects and all production console calls; idempotent payroll issue requests authorize the caller before replay lookup. The added regressions pass, so neither is an outstanding finding in this audit.
+- Not treated as proven vulnerabilities: web UI-only route hiding, file-reference strings with no reader/uploader, and BFF cross-route injection (backend authorization prevents it).
+- Remaining release action: add the signature provider's supported cancellation/expiry flow and verify it against a sanitized staging provider account; do not make a claim that provider-hosted pending requests disappear until that evidence exists.
+
+### Function-level coverage and remaining work plan
+
+The following is a coverage inventory, not a claim that unlisted paths are safe. “Reviewed” means the local authorization/input/data-flow path was traced in this session; it does not substitute for production or third-party verification.
+
+| Priority | Function group | Current coverage | Remaining security work |
+|---|---|---|---|
+| P0 | Account, login, web session, password reset, consent, user profile | Web session/CSRF, login throttling, local token handling, Apple identity-token log redaction (SEC-AUD-035), password-reset OTP/ticket digesting (SEC-AUD-033), and sensitive profile update/export path reviewed. | Exercise every reset/consent/profile mutation with cross-account IDs and expired/revoked credentials in integration tests. |
+| P0 | Store, employee, manager delegation, labor contract, e-signature, employee documents | Ownership and delegation revocation paths reviewed; SEC-AUD-026/027 fixed. | Re-run document/object authorization when a real uploader, reader, or signature-provider cancellation API is introduced. |
+| P0 | Payroll, wage, bonus, tax order, subscription, payment webhook, CSV export | Payroll idempotency and calculation authority, bonus/tax/subscription ownership, webhook HMAC, and CSV injection reviewed; SEC-AUD-021/029/030 fixed. | Add provider-contract tests with sanitized stubs for refund, charge retry, webhook replay, and plan-change edge cases. |
+| P0 | Attendance, correction, approval, irregularity, schedules, swaps, break records | Store/employee ownership, update locking, active automatic-attendance scope (SEC-AUD-039), and active current-function scope for time-off notice, break, swap, and STOMP paths (SEC-AUD-040) traced; SEC-AUD-031 fixed. | Complete inactive-employee checkout integration coverage; add API-level tests for all owner/manager/employee role combinations and concurrent duplicate requests. |
+| P1 | Store operations: NFC, photos, setup, notices, daily sales, insights, statistics, query APIs | Daily sales, notice/template/shift/purchase paths were traced; photo/object serving was inspected statically. | Verify every store query/statistics/setup endpoint for cross-store resource IDs; test NFC replacement and photo upload/download against a local object-store emulator. |
+| P1 | HR and compliance: time off, onboarding, amendments, minor labor, certificate, evidence, insurance filing, ledgers | Time-off, certificate/evidence/insurance membership checks, sensitive certificate cache controls (SEC-AUD-037), contract/document paths, and onboarding employee/store scope (SEC-AUD-034) reviewed. | Exercise amendment/ledger/overtime CRUD and verify access after employee deactivation or store transfer. |
+| P1 | Recruitment and communications: job posting/application/offer/seeker, notifications, customer inquiries, referrals | Recruitment ownership, self-response paths, notification-token ownership, and referral/subscription reward paths were traced. | Add abuse-limit and enumeration tests for job search, inquiry submission, referral application, and device-token churn. |
+| P2 | Admin/system content: campaign, legal/tax/labor/policy/qna/tip content, test utilities | Global-content mutation annotations and test-only profile isolation traced; SEC-AUD-032 fixed. | Verify content editor input/output encoding and attachments with malicious local files, then add profile-matrix tests for test-only routes. |
+| P2 | Realtime, deployment, dependency and runtime hardening | STOMP store-topic authorization, session-WebSocket Origin gating (SEC-AUD-038), local configuration, and rejected-request log redaction (SEC-AUD-036) were reviewed; no external CVE lookup was performed. | Complete authenticated WebSocket subscribe/send integration tests, inspect CI secret handling, perform an offline SBOM/dependency review, and obtain approved network-based CVE results separately. |
+
+### Unverified endpoint and CRUD inventory (current follow-up)
+
+The local mapping index contains **75 controllers and 315 HTTP mapping methods**. The focused regressions above exercise selected high-risk paths; they do not constitute an API-level ownership, state-transition, and input-validation test for every mapping. Except for the explicitly named regressions in this report, the following controller groups still need an individual local cross-role CRUD matrix:
+
+| Priority | Controller/function group not individually API-tested in this follow-up | Required local checks |
+|---|---|---|
+| P0 | `StoreController`, `MasterController`, `ManagerController`, `StoreQueryController`, `StoreSetupController`, `StorePhotoController`, `NfcTagController`, `StoreNoticeController` | For every create/update/delete and ID lookup: unrelated master, manager-without-permission, active employee, inactive employee, and another store must receive 403/404 as appropriate; test photo/NFC replacement races and object-key ownership. |
+| P0 | Remaining `AttendanceController`, `AttendanceApprovalController`, `AttendanceCorrectionController`, `WorkShiftController`, `ShiftTemplateController`, `BreakRecordController`, `LegacyAttendanceProxyController` mappings | Cover each mutation with active/inactive relation, owner/manager permission, date/record ID from another store, duplicate/replayed request, and competing check-in/correction calls. |
+| P0 | Remaining `PayrollController`, `WageController`, `MyWageController`, `PayrollBonusController`, `PayrollPolicyController`, `PayrollPreviewController`, `PayrollWizardController`, `PayrollAdvisoryController`, `TaxReportController`, `TaxStatementController`, `TaxServiceOrderController`, `SubscriptionController`, `PurchaseController`, `DailySalesController`, `ExportController` mappings | Assert server-side amount, tax, state, coupon/plan, order, and export-scope calculations; add replay/concurrency tests for all money- or payroll-state mutations and sanitized provider-stub tests. |
+| P0 | Remaining `LaborContractController`, `ElectronicSignatureController`, `EmployeeDocumentController`, `EmploymentAmendmentController`, `OnboardingController`, `CertificateController`, `EvidencePackageController`, `InsuranceFilingController`, `LegalLedgerController` mappings | Execute cross-employee and post-deactivation/transfer reads and mutations; test document replacement/download content type, size, path, disposition, and object ownership against a local-only store. |
+| P1 | `JobPostingController`, `JobApplicationController`, `JobOfferController`, `JobSeekerController`, `ReferralController`, `CustomerInquiryController`, `NotificationController` | Test requester ownership, enumeration resistance, status transitions, duplicate/replay limits, notification token replacement, and rate limits. |
+| P1 | `LaborAggregationController`, `LaborRatioController`, `LaborRiskController`, `OvertimeLimitController`, `MinorLaborController`, `StoreStatsController`, `StoreInsightsController`, `HiringCostController`, `SubsidyController`, `TaxSimulatorController` | Verify every store/employee query parameter is authorized server-side, boundary dates are validated, and aggregate outputs never include another store's employee or wage data. |
+| P2 | `CampaignController`, `LaborInfoController`, `PolicyInfoController`, `TaxInfoController`, `TipInfoController`, `QnaInfoController`, `TestController`, `TossWebhookController` | Test system-content mutation against the configured system-admin policy, stored-content output encoding/attachment safety, `test` profile isolation, and webhook timestamp/replay behavior using local fixtures. |
+| P2 | Web console/BFF routes and frontend feature services | Add browser-session CSRF/origin, authorization-error redaction, route parameter, download-cache, and UI-to-server permission regression tests. Button visibility must never be treated as an authorization control. |
+
+Planned execution order:
+
+1. P0 store, attendance, labor-contract/document, and payroll mutation matrices, using two stores, an unrelated owner, an active employee, an inactive former employee, and a manager with one missing permission.
+2. Local-only file/object-store emulator checks, then P1 HR/recruitment/analytics CRUD and bounded concurrency/rate-limit checks.
+3. P2 system-content, test-profile, WebSocket integration, CI/secret configuration, and offline dependency/SBOM review.
+4. Run the full backend test suite and all relevant frontend/web checks. Any timeout, skipped profile, or unavailable integration remains unverified rather than safe.
+
+Execution order for the next audit cycle:
+
+1. Add integration matrices for cross-account, cross-store, inactive employee, revoked manager, and replayed request variations across all remaining P0/P1 mutations.
+2. Test file/object authorization with local-only storage and malicious MIME/content/path variants before enabling any public object mapping.
+3. Audit admin/system CRUD and test-profile exposure, then test STOMP authorization and rate-limit behavior under bounded local concurrency.
+4. Perform approved dependency/CVE and sanitized staging-provider checks, followed by a conclusive full backend/frontend CI run.
+
+## 2026-07-30 residual remediation and quantified assessment
+
+Scope: current repository and local test/build environment only. Excluded: production servers and data, real users, third-party requests, deployment, push, commit, and destructive operations.
+
+### Project security structure
+
+- Spring Boot API: JWT, server-side store/employee authorization policy, Redis-backed token/session paths, Flyway/MySQL in production.
+- React Native: Axios API client, Android native Keystore bridge for sensitive local storage; no third-party secure-storage package was added.
+- External integrations (Kakao, Toss, SMTP, FCM, S3) were inspected only; none were called.
+
+### Finding summary
+
+| ID | Severity | Status | Summary |
+|---|---:|---|---|
+| SEC-AUD-019 | Medium | Fixed for Android; iOS fail-closed | AsyncStorage bearer tokens migrated to Android Keystore AES-GCM; legacy plaintext is removed. |
+| SEC-AUD-020 | High | Fixed | Production logging could retain raw Axios credentials/PII. Release bundles now strip all console calls; central logger drops raw objects. |
+| SEC-AUD-021 | Medium | Fixed | Payroll idempotency replay now authorizes actor before returning a payroll DTO. |
+| SEC-AUD-022 | High | Fixed | Production PII encryption now requires a Base64 32-byte AES-256 key and fails startup otherwise. |
+| SEC-AUD-023 | High | Fixed for new writes; backfill outstanding | Birth date now has AES-GCM conversion and V71 column migration. Historic rows remain a controlled data task. |
+| SEC-AUD-024 | Medium | Fixed | Rate-limit bucket maps are bounded/expiring; XFF is accepted only from configured direct proxy IPs. |
+| SEC-AUD-025 | Medium | Fixed for Android; iOS fail-closed | Offline attendance GPS queue moved out of AsyncStorage and is removed at logout. |
+
+### Detailed findings
+
+#### SEC-AUD-020 — release log credential exposure (High)
+
+- Related files/functions: `frontend/babel.config.js`, `frontend/src/utils/logger.ts`, `frontend/src/features/auth/services/authService.ts`.
+- Code path: failed login/signup/password-reset passed a raw Axios error to `logger.error`, while release Babel retained console error/warn calls.
+- Attack conditions: access to device diagnostics/error collector after an authentication failure.
+- Impact: password, reset ticket, Bearer header, email, or response PII could be logged.
+- Verification: source path and production Babel regression test.
+- Fix: remove every console call in release; central logger emits only formatted message/context.
+- Added tests: `productionBabelSecurity.test.ts`, `loggerSecurity.test.ts`.
+- Post-fix: transformed output contains neither synthetic password/token nor `console.error`.
+- Residual risk: direct console calls are still visible in development builds; signed-release pipeline must retain this Babel policy.
+
+#### SEC-AUD-021 — payroll idempotency authorization (Medium)
+
+- Related files/functions: `PayrollController.issuePayroll`, `PayrollHighRiskActionService.authorizeIssueRequest`, `RequestIdempotencyService.executeOptional`.
+- Code path: processed idempotency key replay evaluated `onReplay` before high-risk authorization.
+- Attack conditions: authenticated actor knows/reuses a matching key inside its ten-minute TTL. First-party mobile currently does not send the optional header.
+- Impact: payroll DTO disclosure (employee identity, wage, deduction, gross/net pay).
+- Verification: controller regression checks a denial before idempotency service interaction.
+- Fix: verify `PAYROLL_CONFIRM` authority and derive store scope before replay lookup.
+- Added tests: `PayrollControllerTest.issuePayroll_deniedBeforeIdempotentReplay`.
+- Post-fix: denied actor has no idempotency-service interaction.
+- Residual risk: future generic idempotency callers must also authorize before replay.
+
+#### SEC-AUD-022/023 — PII key and birth-date encryption (High)
+
+- Related files/functions: `PiiCryptoKeyHolder`, `LocalDateCryptoConverter`, `User.birthDate`, `V71__encrypt_user_birth_date.sql`.
+- Code path: production derived encryption from arbitrary text; birth date used a plaintext DATE column.
+- Attack conditions: weak prod key configuration or database/backup read access.
+- Impact: predictable encryption or plaintext birth-date disclosure.
+- Verification: local crypto tests cover prod-key rejection/acceptance, ciphertext round-trip, legacy plaintext read.
+- Fix: prod fail-fast AES-256 key validation and AES-GCM date converter into VARCHAR.
+- Added tests: `PiiCryptoKeyHolderTest`, `LocalDateCryptoConverterTest`.
+- Post-fix: local tests pass.
+- Residual risk: historic rows, V68 PII rows, backups were not accessed/changed; controlled backfill is mandatory.
+
+#### SEC-AUD-019/025 — mobile at-rest secrets and GPS (Medium)
+
+- Related files/functions: `tokenStore`, `secureTokenStorage`, Android `SecureTokenStorageModule`, `offlineAttendanceQueue`, `authService.logout`.
+- Code path: bearer credentials/GPS queue were written through `unifiedStorage` to AsyncStorage.
+- Attack conditions: rooted/jailbroken device, filesystem extraction, or backup/diagnostic access.
+- Impact: session theft or precise employee/store GPS disclosure.
+- Verification: Jest tests assert no legacy AsyncStorage writes; Android Kotlin compiler passed.
+- Fix: Android Keystore AES-GCM bridge, legacy deletion, logout purge, memory-only fallback without a native secure store.
+- Added tests: `tokenManager.test.ts`, `offlineAttendanceQueue.test.ts`.
+- Post-fix: full frontend Jest suite and Android Kotlin compile pass.
+- Residual risk: iOS has no Keychain bridge yet. It persists nothing (secure fail-closed), but automatic re-login/offline queue persistence needs native iOS work and macOS/iOS validation.
+
+#### SEC-AUD-024 — rate-limit resource and proxy trust (Medium)
+
+- Related files/functions: `RateLimitFilter`, `application.yml`, `.env.example`.
+- Code path: buckets never expired and forwarded headers could be trusted without verifying proxy peer.
+- Attack conditions: many distinct source identities or untrusted XFF header access when forwarded-header trust enabled.
+- Impact: heap growth or rate-limit identity spoofing.
+- Verification: bound, untrusted-XFF, and trusted-proxy regression tests.
+- Fix: idle TTL, per-policy maximum, exact direct-proxy allowlist.
+- Added tests: `RateLimitFilterTest` cases.
+- Post-fix: targeted backend tests pass.
+- Residual risk: limiter remains per-instance; a multi-node deployment needs distributed limiting and an accurate proxy list.
+
+### Modified files
+
+- Backend: `RateLimitFilter`, `PiiCryptoKeyHolder`, `LocalDateCryptoConverter`, `PayrollController`, `PayrollHighRiskActionService`, `User`, V71 migration, backend tests, `application.yml`.
+- Frontend: secure storage bridge and Android package, token/GPS queue migration, auth logout purge, logger/Babel policy, STOMP idle cleanup, frontend tests.
+- Configuration: `.env.example` trusted-proxy settings.
+
+### Commands and results
+
+| Command | Result |
+|---|---|
+| `backend\gradlew.bat test --tests PiiCryptoKeyHolderTest --tests LocalDateCryptoConverterTest --tests PayrollControllerTest --tests RateLimitFilterTest --offline --no-daemon` | PASS |
+| `frontend\node_modules\.bin\jest.cmd --runInBand` | PASS: 84 passed / 4 skipped suites; 473 passed / 10 skipped tests |
+| `frontend\node_modules\.bin\tsc.cmd --noEmit` | PASS |
+| `frontend\npm run lint` | PASS: 0 errors, 1,037 pre-existing warnings |
+| `frontend\android\gradlew.bat :app:compileDebugKotlin --offline --no-daemon` | PASS |
+| `backend\gradlew.bat build -x test --offline --no-daemon` | PASS |
+| `git diff --check` | PASS: no whitespace errors (only repository line-ending notices) |
+
+### Unexecuted checks and reasons
+
+- Production PII migration/backfill, backup cleanup, real mobile E2E, iOS build: production/real data or macOS/iOS access is outside scope.
+- Full backend suite: prior local run did not finish conclusively; do not interpret it as a pass.
+- Dependency/CVE network lookup and third-party integrations: excluded from scope.
+
+### Quantified assessment
+
+- Code security posture: **82/100**.
+- Release assurance: **64/100**.
+- No software can truthfully be guaranteed unbreakable. These scores apply only to the verified local evidence and are intentionally lower for unverified production data/platform work.
+
+### Remaining findings and required release actions
+
+- Critical: **0**
+- High: **0** in tested code; historic data stays release-blocking until V68/V71 backfill is verified.
+- Medium: **2** — historic plaintext PII/backups; per-instance rate limit for a multi-node deployment.
+- Low: **1** — historical raw refresh/reset values in retained data copies are non-authenticating but require retention cleanup.
+
+Before release: test V68/V71 and resumable backfill on sanitized staging, verify zero plaintext rows and backup/restore/key rotation; purge legacy sensitive backups/logs; add/test iOS Keychain; configure proxy/CORS/CSRF/PII key; use distributed rate limit if scaled; obtain conclusive full CI suites.
+
+**Final assessment: CONDITIONAL PASS.**
+
 - 감사일: 2026-07-30
 - 최종 판정: **CONDITIONAL PASS**
 - 범위: 현재 로컬 저장소와 로컬 테스트 환경만. 운영 서버, 실제 사용자 데이터, 제3자 API, 배포, push, commit은 사용하지 않았다.
@@ -364,3 +790,101 @@
 - **Low: 1** — 기존 raw bearer credential이 보존된 DB/백업에 남을 수 있는 잔여 위험.
 
 **최종 판정: CONDITIONAL PASS.** 코드 수준에서 확인된 High와 이번 보충의 Medium/Low는 최소 범위로 수정하고 회귀 테스트를 통과시켰다. 다만 모바일 토큰 저장, PII backfill, 전체 백엔드 테스트 및 모바일 전체 단위 테스트의 완료 결과가 남아 있으므로 이를 해결하기 전에는 “80% 이상 신뢰” 같은 수치 판정을 하지 않는다.
+
+## 2026-07-30 continuation: active membership, payroll, and purchase integrity
+
+### Scope and exclusions
+
+- Local code and local Gradle test environment only. This continuation traced current-store functions, purchase amount construction, employment-amendment application, payroll period input, system-content uploads, static-resource configuration, and external-call sinks.
+- Excluded: production, real user data, real OCR/payment/tax/signature calls, deployed object-storage/proxy behavior, CVE-network lookup, deployment, push, commit, and destructive changes.
+
+### Project security structure confirmed
+
+- Current employee actions use `StoreAccessGuard` / `StoreAuthorizationPolicy`; historical membership is retained only for past-record functions.
+- Payroll, purchase, contract amendment, and store-notice writes are server-side service operations. Client IDs are authorized before service invocation.
+- System-content mutation requires `SystemContentAdminOnly`. `FileUploadService` uses server-generated UUIDs, and no Spring `ResourceHandler` or Docker proxy publicly serves the local upload directory in this repository.
+- All outbound HTTP call targets found are configuration-bound. The tax-office validator has no live caller because its three registration calls are commented out, so it is not a reachable SSRF or log-exposure finding.
+
+### Finding summary
+
+| ID | Severity | Status | Summary |
+|---|---:|---|---|
+| SEC-AUD-041 | Medium | Fixed and locally tested | A deactivated employee could acknowledge a notice, probe GPS/NFC configuration, or reactivate a historical store relation with a retained store code. |
+| SEC-AUD-042 | Medium | Fixed and locally tested | Valid integer purchase inputs could overflow line or total amounts into negative persisted values. |
+| SEC-AUD-043 | Medium | Fixed and locally tested | A former employee could receive a new amendment, and a verified amendment could later apply after deactivation. |
+| SEC-AUD-044 | Medium | Fixed and locally tested | A store owner could persist payroll whose start date follows its end date. |
+
+### Detailed findings
+
+#### SEC-AUD-041 — deactivated employees retained current-store actions (Medium)
+
+- Related files/functions: `StoreNoticeService.ack`, `AttendanceController.verifyLocation`, `AttendanceController.verifyNfc`, `StoreManagementServiceImpl.joinStoreByCode`.
+- Code path and attack conditions: a former employee retaining a valid account/token and stale notice/store IDs or a store code passed historical-membership checks; join-by-code reactivated an inactive relation.
+- Expected impact: forged notice-read state, GPS/NFC configuration probing, or unauthorized restoration of current store membership.
+- Verification result: pre-fix local regressions reached these paths; the join-code regression observed inactive relation reactivation.
+- Fix: notice acknowledgement and probes require active membership. Joining by code rejects inactive relations; only owner-controlled reactivation can restore them.
+- Added tests: `StoreNoticeServiceSecurityTest`, `AttendanceVerificationControllerSecurityTest`, `StoreJoinReactivationSecurityTest`.
+- Post-fix verification: 2 + 1 + 1 tests passed with zero failures/errors in local XML results.
+- Residual risk: historical checks were not globally replaced because past payroll/contract records require them. New current-state routes must select active guards deliberately.
+
+#### SEC-AUD-042 — purchase amount integer overflow (Medium)
+
+- Related files/functions: `PurchaseItem.of`, `Purchase.recalcTotal`.
+- Code path and attack conditions: an owner submitting high but otherwise valid price/quantity values caused rounded line amounts and the aggregate to overflow `int`.
+- Expected impact: negative or incorrect purchase totals and corrupted cost/trend reporting; no payment-transfer path was involved.
+- Verification result: pre-fix local tests accepted out-of-range line and aggregate amounts.
+- Fix: reject non-finite/non-positive quantity, negative price, out-of-range line amount, and aggregate outside the persisted `int` range; aggregation uses `long`.
+- Added tests: `PurchaseAmountIntegrityTest`.
+- Post-fix verification: both overflow variations plus all five `PurchaseServiceTest` normal-flow cases passed.
+- Residual risk: money remains integer won units; larger or fractional future requirements need a domain-wide decimal/range design.
+
+#### SEC-AUD-043 — inactive employee amendment lifecycle (Medium)
+
+- Related files/functions: `EmploymentAmendmentService.createDraft`, `send`, `apply`, `EmploymentAmendment.cancelAfterEmployeeDeactivation`.
+- Code path and attack conditions: historical membership allowed a wage editor to draft for a former employee, while a verified amendment could apply after deactivation.
+- Expected impact: unauthorized current employment-term changes or stale signed work becoming active after rehire.
+- Verification result: two local regressions failed pre-fix: inactive draft creation was allowed and verified amendment changed an inactive relation.
+- Fix: draft/send require active membership. Applying an amendment cancels it before changing an inactive relation, preserving evidence but preventing automatic future application.
+- Added tests: two cases in `EmploymentAmendmentServiceTest`.
+- Post-fix verification: all five amendment service tests passed.
+- Residual risk: this controls local state. Provider-side cancellation/expiry of an already delivered signature request remains a release action.
+
+#### SEC-AUD-044 — reversed payroll period persisted (Medium)
+
+- Related files/functions: `PayrollCalculationRequestDto.isPeriodChronological`, `PayrollService.calculatePayroll`.
+- Code path and attack conditions: an authenticated owner submits `startDate > endDate`; authorization and locking succeeded, then service code persisted an inverted payroll range.
+- Expected impact: invalid payroll rows and misleading payroll state/reporting; no cross-store authorization bypass was demonstrated.
+- Verification result: the local regression failed pre-fix because the inverted period was accepted and persisted.
+- Fix: Bean Validation rejects the HTTP request shape, and the shared service boundary independently rejects null or reversed dates for internal/batch callers.
+- Added tests: `PayrollRecalculationTest.calculationWithAnInvertedPeriodIsRejected`.
+- Post-fix verification: all five payroll recalculation cases passed, including normal recalculation and finalized-payroll protections.
+- Residual risk: payroll duration/calendar policy is a separate product rule; this patch intentionally enforces chronology only.
+
+### Files changed in this continuation
+
+- Production: `AttendanceController`, `StoreNoticeService`, `StoreManagementServiceImpl`, `PurchaseItem`, `Purchase`, `EmploymentAmendment`, `EmploymentAmendmentService`, `PayrollCalculationRequestDto`, `PayrollService`.
+- Tests: `AttendanceVerificationControllerSecurityTest`, `StoreNoticeServiceSecurityTest`, `StoreJoinReactivationSecurityTest`, `PurchaseAmountIntegrityTest`, `PayrollRecalculationTest`, `EmploymentAmendmentServiceTest`.
+
+### Commands and results
+
+| Local command/check | Result |
+|---|---|
+| Targeted Gradle selection for notices, attendance verification, join-by-code, purchase, amendments, and payroll | XML results: 21 tests, 0 failures, 0 errors. The desktop command wrapper timed out at 64 seconds after the worker had written passing XML; this is not a full-suite pass. |
+| `backend\\gradlew.bat build -x test --offline --no-daemon` | PASS — build successful in 27 seconds. |
+| Static searches for resource handlers, external URLs, command execution, dynamic SQL, and frontend image consumers | No user-controlled command/dynamic-SQL path; no local public upload mapping; external endpoints configuration-bound. |
+| `git diff --check` | PASS — no whitespace errors; line-ending notices only. |
+
+### Unrun checks and remaining risk
+
+- Full backend suite did not finish under the local wrapper; it is not claimed as passing. Full WebSocket and inactive-attendance integration behavior remains incomplete for the same reason.
+- Current frontend/web lint/type/unit suites were not rerun for this backend-only continuation. Future web/public file mapping needs a separate MIME/content/disposition test with malicious local files.
+- No external CVE database, production configuration, object-store proxy, or third-party provider was contacted. Historic PII backfill verification, mobile secure-storage migration, provider cancellation, and multi-node rate-limit design remain release actions.
+
+### Quantified assessment and final decision
+
+- Verified local code posture: **83/100**. This is evidence-limited and never a claim of invulnerability.
+- Release assurance: **64/100**, limited by incomplete full suites and untested deployment/object-storage/provider behavior.
+- Remaining verified risk register: **Critical 0 / High 0 / Medium 2 / Low 1** (pre-existing historic-data and deployment-scale items). SEC-AUD-041 through 044 are fixed locally and are not open code findings.
+- Required before deployment: complete backend/frontend/web CI; validate PII backfill and key rotation on sanitized staging; configure narrow production CORS/CSRF/proxy and distributed rate limiting when scaled; implement/test provider cancellation; validate any public file/object mapping locally.
+
+**Final decision: CONDITIONAL PASS.** No software can be guaranteed impossible to breach; this decision covers only the local evidence documented here.

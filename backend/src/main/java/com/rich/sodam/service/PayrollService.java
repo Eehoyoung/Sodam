@@ -452,6 +452,10 @@ public class PayrollService {
      */
     @Transactional
     public Payroll calculatePayroll(Long employeeId, Long storeId, LocalDate startDate, LocalDate endDate, boolean recalculate) {
+        if (startDate == null || endDate == null || startDate.isAfter(endDate)) {
+            throw new IllegalArgumentException("The payroll calculation end date must not precede its start date.");
+        }
+
         // 직원, 매장, 정책 정보 조회
         EmployeeProfile employee = findEmployeeById(employeeId);
         Store store = findStoreById(storeId);

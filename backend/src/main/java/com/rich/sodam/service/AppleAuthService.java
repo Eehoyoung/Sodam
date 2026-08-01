@@ -66,7 +66,8 @@ public class AppleAuthService {
             jwt = appleJwtDecoder.decode(identityToken);
         } catch (JwtException e) {
             // 보안: identityToken 원문은 PII/시크릿에 준하므로 로그에 남기지 않는다.
-            log.warn("Apple identityToken 서명/타임스탬프 검증 실패: {}", e.getMessage());
+            log.warn("Apple identityToken 서명/타임스탬프 검증 실패 type={}",
+                    e.getClass().getSimpleName());
             throw new RuntimeException("Apple 로그인 토큰 검증에 실패했습니다.", e);
         }
 

@@ -3,6 +3,7 @@ package com.rich.sodam.controller;
 import com.rich.sodam.domain.type.CertificateType;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.EmployeeOrMaster;
+import com.rich.sodam.security.web.SensitiveDownloadHeaders;
 import com.rich.sodam.service.CertificateService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -42,6 +43,7 @@ public class CertificateController {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
+        SensitiveDownloadHeaders.apply(headers);
         String filename = (type == CertificateType.EMPLOYMENT ? "employment" : "career")
                 + "_certificate_" + storeId + ".pdf";
         headers.setContentDispositionFormData("attachment", filename);

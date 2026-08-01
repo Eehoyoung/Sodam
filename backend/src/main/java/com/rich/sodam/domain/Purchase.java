@@ -117,11 +117,14 @@ public class Purchase {
     }
 
     public void recalcTotal() {
-        int sum = 0;
+        long sum = 0;
         for (PurchaseItem it : items) {
             sum += it.getAmount();
         }
-        this.totalAmount = sum;
+        if (sum > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("Purchase total exceeds the supported range.");
+        }
+        this.totalAmount = (int) sum;
     }
 
     public void updateMeta(String vendorName, LocalDate purchaseDate, PurchaseCategory category,

@@ -1,5 +1,6 @@
 package com.rich.sodam.dto.request;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,6 +29,11 @@ public class PayrollCalculationRequestDto {
 
     @NotNull(message = "종료일은 필수 항목입니다")
     private LocalDate endDate;
+
+    @AssertTrue(message = "The payroll calculation end date must not precede its start date.")
+    public boolean isPeriodChronological() {
+        return startDate == null || endDate == null || !startDate.isAfter(endDate);
+    }
 
     // 선택적 필드 - 기본값을 false로 설정
     private Boolean recalculate = false;
