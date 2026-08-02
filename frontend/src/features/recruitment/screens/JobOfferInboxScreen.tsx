@@ -25,7 +25,7 @@ import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {AppBadge, AppCard, AppText, AppToast, EmptyState, ErrorState, LoadingState} from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
-import {spacing} from '../../../theme/tokens';
+import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {useMyJobApplications, useMyJobOffers, useRespondToJobOffer} from '../hooks/useRecruitmentQueries';
 import {
@@ -43,7 +43,14 @@ interface Props {
     visualFixture?: {offers: JobOffer[]; applications: JobApplication[]; nowMs?: number};
 }
 import {formatTimeRange} from '../utils/formatAvailability';
-import {formatRemaining} from '../utils/remainingTime';
+import {formatRemaining, remainingMs} from '../utils/remainingTime';
+
+/** 응답 만료 3시간 이내면 긴급(경고 톤)으로 카운트다운 배지를 강조한다. */
+const URGENT_REMAINING_MS = 3 * 60 * 60 * 1000;
+
+function isUrgent(expiresAt: string, nowMs?: number): boolean {
+    return remainingMs(expiresAt, nowMs) <= URGENT_REMAINING_MS;
+}
 
 function extractErrorMessage(err: unknown): string | undefined {
     return (err as {response?: {data?: {message?: string}}})?.response?.data?.message;
@@ -72,6 +79,7 @@ const JobOfferInboxScreen: React.FC<Props> = ({visualFixture}) => {
     };
 
     const goToJoinStore = () => navigation.navigate('JoinStoreByCode');
+    const goToChat = () => navigation.navigate('ChatRoomList');
 
     const offers = visualFixture?.offers ?? offersQuery.data ?? [];
     const applications = visualFixture?.applications ?? applicationsQuery.data ?? [];
@@ -99,6 +107,14 @@ const JobOfferInboxScreen: React.FC<Props> = ({visualFixture}) => {
 
     const bothEmpty = offers.length === 0 && applications.length === 0;
 
+    // 상태별 카운트 배지(§6.2 "탭별 카운트 배지") — 이 화면은 탭이 아니라 "받은 제안"/"내 지원 현황"
+    // 두 섹션을 한 화면에 통합 노출하는 구조라(§15.5 R-12/R-13), 제안+지원을 합쳐 상태별 요약으로
+    // 대체한다.
+    const allEntries = [...offers, ...applications];
+    const pendingCount = allEntries.filter(e => e.status === 'PENDING').length;
+    const acceptedCount = allEntries.filter(e => e.status === 'ACCEPTED').length;
+    const declinedCount = allEntries.filter(e => e.status === 'DECLINED').length;
+
     return (
         <View style={styles.container} testID="job-offer-inbox-screen">
             {bothEmpty ? (
@@ -110,6 +126,12 @@ const JobOfferInboxScreen: React.FC<Props> = ({visualFixture}) => {
                 </View>
             ) : (
                 <>
+                    <View style={styles.summaryRow} testID="job-offer-inbox-summary">
+                        {pendingCount > 0 ? <AppBadge label={`대기 ${pendingCount}`} tone="warning" /> : null}
+                        {acceptedCount > 0 ? <AppBadge label={`수락 ${acceptedCount}`} tone="success" /> : null}
+                        {declinedCount > 0 ? <AppBadge label={`거절 ${declinedCount}`} tone="neutral" /> : null}
+                    </View>
+
                     <AppText variant="titleMd" weight="700" style={styles.sectionTitle}>받은 제안</AppText>
                     {offers.length === 0 ? (
                         <AppText variant="bodyMd" tone="secondary" style={styles.emptySection}>받은 제안이 없어요.</AppText>
@@ -123,6 +145,7 @@ const JobOfferInboxScreen: React.FC<Props> = ({visualFixture}) => {
                                     onAccept={() => handleRespond(offer.id, true)}
                                     onDecline={() => handleRespond(offer.id, false)}
                                     onJoin={goToJoinStore}
+                                    onChat={goToChat}
                                     nowMs={visualFixture?.nowMs}
                                 />
                             ))}
@@ -135,7 +158,7 @@ const JobOfferInboxScreen: React.FC<Props> = ({visualFixture}) => {
                     ) : (
                         <View style={styles.list} testID="job-application-list">
                             {applications.map(app => (
-                                <ApplicationCard key={app.id} application={app} onJoin={goToJoinStore} />
+                                <ApplicationCard key={app.id} application={app} onJoin={goToJoinStore} onChat={goToChat} />
                             ))}
                         </View>
                     )}
@@ -151,11 +174,12 @@ interface OfferCardProps {
     onAccept: () => void;
     onDecline: () => void;
     onJoin: () => void;
+    onChat: () => void;
     /** 개발용 시각 검증 전용 — formatRemaining 계산 기준 시각을 고정한다. */
     nowMs?: number;
 }
 
-const OfferCard: React.FC<OfferCardProps> = ({offer, responding, onAccept, onDecline, onJoin, nowMs}) => {
+const OfferCard: React.FC<OfferCardProps> = ({offer, responding, onAccept, onDecline, onJoin, onChat, nowMs}) => {
     const c = useThemeColors();
     return (
         <AppCard variant="flat" style={styles.card} testID={`job-offer-card-${offer.id}`}>
@@ -183,10 +207,20 @@ const OfferCard: React.FC<OfferCardProps> = ({offer, responding, onAccept, onDec
 
             {offer.status === 'PENDING' ? (
                 <>
-                    {/* 남은 시간 강조 = 코랄(v3 시안 sodam-v3-07-recruitment.html R2 --coral) */}
-                    <AppText variant="caption" style={{color: c.brandPrimary}} testID={`job-offer-remaining-${offer.id}`}>
-                        {nowMs !== undefined ? formatRemaining(offer.expiresAt, nowMs) : formatRemaining(offer.expiresAt)}
-                    </AppText>
+                    {/* 응답 만료 카운트다운 배지(§6.2) — 3시간 이내면 경고 톤으로 긴급함을 강조한다. */}
+                    <View
+                        style={[
+                            styles.countdownChip,
+                            {backgroundColor: isUrgent(offer.expiresAt, nowMs) ? c.warningBg : c.brandPrimarySoft},
+                        ]}
+                        testID={`job-offer-remaining-${offer.id}`}>
+                        <AppText
+                            variant="caption"
+                            weight="700"
+                            style={{color: isUrgent(offer.expiresAt, nowMs) ? c.warning : c.brandPrimary}}>
+                            {nowMs !== undefined ? formatRemaining(offer.expiresAt, nowMs) : formatRemaining(offer.expiresAt)}
+                        </AppText>
+                    </View>
                     <View style={styles.actionRow}>
                         <Pressable
                             testID={`job-offer-decline-${offer.id}`}
@@ -208,8 +242,13 @@ const OfferCard: React.FC<OfferCardProps> = ({offer, responding, onAccept, onDec
                 </>
             ) : null}
 
-            {offer.status === 'ACCEPTED' && offer.storeCode ? (
-                <InviteCodeBanner storeCode={offer.storeCode} onJoin={onJoin} testIDPrefix={`job-offer-${offer.id}`} />
+            {offer.status === 'ACCEPTED' ? (
+                <>
+                    {offer.storeCode ? (
+                        <InviteCodeBanner storeCode={offer.storeCode} onJoin={onJoin} testIDPrefix={`job-offer-${offer.id}`} />
+                    ) : null}
+                    <ChatEntryButton onPress={onChat} testID={`job-offer-${offer.id}-chat-button`} />
+                </>
             ) : null}
         </AppCard>
     );
@@ -218,9 +257,10 @@ const OfferCard: React.FC<OfferCardProps> = ({offer, responding, onAccept, onDec
 interface ApplicationCardProps {
     application: JobApplication;
     onJoin: () => void;
+    onChat: () => void;
 }
 
-const ApplicationCard: React.FC<ApplicationCardProps> = ({application, onJoin}) => (
+const ApplicationCard: React.FC<ApplicationCardProps> = ({application, onJoin, onChat}) => (
     <AppCard variant="flat" style={styles.card} testID={`job-application-card-${application.id}`}>
         <View style={styles.cardTopRow}>
             <AppText variant="titleMd" weight="700" numberOfLines={1} style={styles.flex1}>
@@ -243,15 +283,36 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({application, onJoin}) 
             {application.hourlyWage.toLocaleString('ko-KR')}원
         </AppText>
 
-        {application.status === 'ACCEPTED' && application.storeCode ? (
-            <InviteCodeBanner
-                storeCode={application.storeCode}
-                onJoin={onJoin}
-                testIDPrefix={`job-application-${application.id}`}
-            />
+        {application.status === 'ACCEPTED' ? (
+            <>
+                {application.storeCode ? (
+                    <InviteCodeBanner
+                        storeCode={application.storeCode}
+                        onJoin={onJoin}
+                        testIDPrefix={`job-application-${application.id}`}
+                    />
+                ) : null}
+                <ChatEntryButton onPress={onChat} testID={`job-application-${application.id}-chat-button`} />
+            </>
         ) : null}
     </AppCard>
 );
+
+/** 매칭 성립(ACCEPTED) 건에서 채팅방 목록으로 이동하는 CTA(§4, Phase D) — 단건 채팅방 id 를
+ * 내려주는 API가 없어(§7.4-2 와 달리 채팅방은 별도 단건 조회 엔드포인트가 없다) 목록 화면으로
+ * 이동시키고 사용자가 상대를 골라 들어가게 한다. */
+const ChatEntryButton: React.FC<{onPress: () => void; testID: string}> = ({onPress, testID}) => {
+    const c = useThemeColors();
+    return (
+        <Pressable
+            testID={testID}
+            onPress={onPress}
+            accessibilityRole="button"
+            style={[styles.chatBtn, {borderColor: c.brandPrimary}]}>
+            <AppText variant="bodyMd" weight="700" style={{color: c.brandPrimary}}>채팅하기</AppText>
+        </Pressable>
+    );
+};
 
 const InviteCodeBanner: React.FC<{storeCode: string; onJoin: () => void; testIDPrefix: string}> = ({
     storeCode,
@@ -278,6 +339,13 @@ const InviteCodeBanner: React.FC<{storeCode: string; onJoin: () => void; testIDP
 
 const styles = StyleSheet.create({
     container: {gap: spacing.sm, paddingTop: spacing.md, paddingBottom: spacing.xxl},
+    summaryRow: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.xs},
+    countdownChip: {
+        alignSelf: 'flex-start',
+        borderRadius: radius.pill,
+        paddingHorizontal: spacing.md,
+        paddingVertical: 5,
+    },
     sectionTitle: {marginBottom: spacing.xs},
     sectionTitleGap: {marginTop: spacing.lg, marginBottom: spacing.xs},
     emptySection: {marginBottom: spacing.sm},
@@ -292,6 +360,14 @@ const styles = StyleSheet.create({
     declineBtn: {borderWidth: 1},
     inviteBanner: {borderRadius: 14, padding: spacing.md, gap: spacing.sm, marginTop: spacing.sm},
     joinBtn: {minHeight: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center'},
+    chatBtn: {
+        minHeight: 44,
+        borderRadius: 14,
+        borderWidth: 1.5,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: spacing.sm,
+    },
 });
 
 export default JobOfferInboxScreen;

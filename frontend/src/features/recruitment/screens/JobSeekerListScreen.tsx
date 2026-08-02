@@ -20,6 +20,7 @@ import {
     AppText,
     EmptyState,
     ErrorState,
+    GradientHeroCard,
     LoadingState,
     ScreenContainer,
     SegmentedControl,
@@ -94,8 +95,24 @@ const JobSeekerListScreen: React.FC<Props> = ({visualStoreId, visualFixture}) =>
     const list = useMemo(() => sortForTab(visualFixture ?? data ?? [], typeFilter), [visualFixture, data, typeFilter]);
     const errorCode = !visualFixture && isError ? extractErrorCode(error) : undefined;
     const locationNotSet = errorCode === 'STORE_LOCATION_NOT_SET';
+    // "바로출근" 그룹 강조(§6.2) — 대타(SUBSTITUTE) 필터에서만 의미가 있다(정기 근무는 "오늘 당장"
+    // 개념이 없다). `sortForTab`이 이미 이 필터에서 availableToday 를 최상단으로 정렬해두므로,
+    // 그 개수만 세어 히어로 배너로 보여준다.
+    const availableTodayCount = typeFilter === 'SUBSTITUTE' ? list.filter(s => s.availableToday).length : 0;
 
-    const header = <AppHeader title="주변 구직자·채용" onBack={() => navigation.goBack()} />;
+    const header = (
+        <AppHeader
+            title="주변 구직자·채용"
+            onBack={() => navigation.goBack()}
+            actions={[
+                {
+                    icon: <Ionicons name="chatbubble-ellipses-outline" size={18} color={c.textPrimary} />,
+                    accessibilityLabel: '채팅',
+                    onPress: () => navigation.navigate('ChatRoomList'),
+                },
+            ]}
+        />
+    );
 
     return (
         <ScreenContainer header={header} scroll testID="job-seeker-list-screen">
@@ -117,6 +134,17 @@ const JobSeekerListScreen: React.FC<Props> = ({visualStoreId, visualFixture}) =>
                             onChange={i => setTypeFilter(TYPE_FILTER_KEYS[i])}
                             style={styles.typeSegment}
                         />
+
+                        {availableTodayCount > 0 ? (
+                            <GradientHeroCard style={styles.availableTodayHero} testID="job-seeker-available-today-hero">
+                                <AppText variant="bodyMd" tone="inverse" weight="800">
+                                    {`⚡ 바로출근 가능 ${availableTodayCount}명`}
+                                </AppText>
+                                <AppText variant="caption" tone="inverse" style={styles.availableTodaySub}>
+                                    오늘 당장 대타가 필요하면 아래 목록 상단부터 확인해 보세요.
+                                </AppText>
+                            </GradientHeroCard>
+                        ) : null}
 
                         {!visualFixture && isLoading ? (
                             <LoadingState title="구직자 불러오는 중" description="잠시만 기다려 주세요" />
@@ -239,6 +267,8 @@ const styles = StyleSheet.create({
     body: {gap: spacing.md, paddingBottom: spacing.xxl},
     topSegment: {marginBottom: spacing.sm},
     typeSegment: {marginBottom: spacing.md},
+    availableTodayHero: {marginBottom: spacing.md, gap: 4},
+    availableTodaySub: {opacity: 0.9},
     list: {gap: spacing.sm},
     card: {gap: spacing.xs},
     cardTopRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm},

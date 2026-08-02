@@ -25,6 +25,7 @@ import {ActivityIndicator, Pressable, StyleSheet, Switch, View} from 'react-nati
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import LinearGradient from 'react-native-linear-gradient';
 import {
     AppBadge,
     AppButton,
@@ -35,10 +36,11 @@ import {
     BottomSheet,
     ConfirmSheet,
     ErrorState,
+    LinearProgress,
     LoadingState,
 } from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
-import {radius, spacing} from '../../../theme/tokens';
+import {gradient, radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import AddressSearchModal, {AddressSearchResult} from '../../store/components/AddressSearchModal';
 import {useMyJobSeeking, useUpdateMyJobSeeking} from '../hooks/useRecruitmentQueries';
@@ -294,6 +296,18 @@ const JobSeekingSettingsScreen: React.FC<Props> = ({visualFixture}) => {
 
     const saving = updateMutation.isPending;
 
+    // ON 전환 자격조건 5개 진행률(§6.2 "자격조건 4/5 완료" 진행률 바) — handleSave 의 필수값
+    // 검증 규칙(seeking=true 일 때 요구되는 4개)에 "출퇴근 이력 자격(eligible)"을 더해 5개로 잡는다.
+    const eligibilityConditions = [
+        data.eligible,
+        seekingTypes.length > 0,
+        jobCategories.length > 0,
+        locations.filter(l => l.trim().length > 0).length >= 2,
+        availability.length > 0,
+    ];
+    const completedConditionCount = eligibilityConditions.filter(Boolean).length;
+    const allConditionsMet = completedConditionCount === eligibilityConditions.length;
+
     return (
         <View style={styles.container}>
             {!data.eligible ? (
@@ -306,6 +320,29 @@ const JobSeekingSettingsScreen: React.FC<Props> = ({visualFixture}) => {
                     </AppText>
                 </AppCard>
             ) : null}
+
+            <AppCard variant="flat" style={styles.card} testID="job-seeking-eligibility-progress-card">
+                <View style={styles.eligibilityHeaderRow}>
+                    <AppText variant="titleMd" weight="700">자격조건</AppText>
+                    {allConditionsMet ? (
+                        <LinearGradient colors={gradient.ring} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={styles.eligibilityBadge}>
+                            <AppText variant="caption" tone="inverse" weight="800">구직중 준비완료</AppText>
+                        </LinearGradient>
+                    ) : (
+                        <AppText testID="job-seeking-eligibility-counter" variant="caption" tone="secondary">
+                            {`${completedConditionCount}/${eligibilityConditions.length} 완료`}
+                        </AppText>
+                    )}
+                </View>
+                <LinearProgress
+                    testID="job-seeking-eligibility-progress-bar"
+                    progress={completedConditionCount / eligibilityConditions.length}
+                    style={styles.eligibilityProgress}
+                />
+                <AppText variant="caption" tone="secondary">
+                    구직 상태를 켜려면 구직 유형·업종·희망지역 2곳·근무가능 요일을 모두 채워야 해요.
+                </AppText>
+            </AppCard>
 
             <AppCard variant="flat" style={styles.card}>
                 <AppText variant="titleMd" weight="700">현재 소속</AppText>
@@ -543,6 +580,9 @@ const JobSeekingSettingsScreen: React.FC<Props> = ({visualFixture}) => {
 const styles = StyleSheet.create({
     container: {gap: spacing.md, paddingTop: spacing.md},
     card: {gap: spacing.xs},
+    eligibilityHeaderRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm},
+    eligibilityBadge: {borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 5},
+    eligibilityProgress: {marginVertical: 2},
     cardSub: {marginTop: spacing.xs},
     bannerSub: {marginTop: 2},
     toggleRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.md},

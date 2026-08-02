@@ -45,6 +45,7 @@ jest.mock('../../../src/theme/tokens', () => jest.requireActual('../../../src/th
 
 jest.mock('../../../src/features/recruitment/hooks/useRecruitmentQueries', () => ({
     useNearbyJobPostings: (...args: any[]) => mockUseNearbyJobPostings(...args),
+    useMyJobSeeking: () => ({data: undefined}),
 }));
 
 import NearbyJobPostingsScreen from '../../../src/features/recruitment/screens/NearbyJobPostingsScreen';

@@ -16,9 +16,10 @@ interface AppBadgeProps {
     label: string;
     tone?: BadgeTone;
     style?: StyleProp<ViewStyle>;
+    testID?: string;
 }
 
-export const AppBadge: React.FC<AppBadgeProps> = ({label, tone = 'success', style}) => {
+export const AppBadge: React.FC<AppBadgeProps> = ({label, tone = 'success', style, testID}) => {
     const c = useThemeColors();
     // warning fg 는 라이트에서 어두운 amber(#B56D00)로 고대비 보장 — 다크에서는 토큰 warning 자체 사용
     const tones: Record<BadgeTone, {bg: string; fg: string}> = {
@@ -31,6 +32,7 @@ export const AppBadge: React.FC<AppBadgeProps> = ({label, tone = 'success', styl
     const t = tones[tone];
     return (
         <View
+            testID={testID}
             accessible
             accessibilityLabel={label}
             style={[styles.badge, {backgroundColor: t.bg}, style]}>

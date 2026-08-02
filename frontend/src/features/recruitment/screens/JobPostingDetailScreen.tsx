@@ -1,3 +1,4 @@
+/* eslint-disable react-native/no-color-literals -- 히어로 그라디언트 위 반투명 흰색 칩(AttendanceCreditSummaryCard와 동일 패턴) */
 /**
  * JobPostingDetailScreen — [직원] 구인 공고 상세·지원 (260711_작업통합.md Part 2 §19.4 R-17, Phase 6).
  *
@@ -5,18 +6,19 @@
  * (`JobPostingNearbyItem`)을 그대로 전달받는다 — `JobSeekerDetailScreen`(§7.4-2)과 동일하게
  * 추가 조회 API 없음(v1). 선택 메시지 입력 후 "지원하기" 버튼으로 지원한다(§19.1).
  *
- * 히어로는 v3 시안(sodam-v3-07-recruitment.html R3)에 맞춰 흰 배경 + 회색 테두리(--border)
- * spot 카드로 구성한다(§7.0 다크배경 금지 원칙은 유지 — 그라디언트 대신 화이트 카드로 충족).
- * ⚠️ 2026-07-11 초안 주석은 이 테두리를 "recruit 그린"이라 잘못 인용했었다 — 실제 아티팩트의
- * `.spot-card`는 중립 회색 테두리이고, 색이 들어가는 요소는 시급 강조용 `.money-card`(22px
- * 모노스페이스, 코랄과 무관한 중립 카드)와 지원하기 CTA(코랄)뿐이다. 2026-07-20 확정에 따라
- * 코랄(#FF4D6D, `c.brandPrimary`)만 액션 강조로 사용하고 recruit 그린 토큰은 참조하지 않는다.
+ * 히어로는 그라디언트 히어로 카드(`GradientHeroCard`, 기본 `gradient.brandStrong` 코랄)로
+ * 시급을 강조한다 — 2026-08-01 기존 화면 리디자인(recruitment-monetization-gamification-plan.md
+ * §6.2 "공고 상세")에서 `AttendanceCreditSummaryCard`(출근권 잔액 카드)의 그라디언트 히어로 패턴을
+ * 이식했다. ⚠️ 2026-07-11 초안 주석은 이 자리를 "흰 배경 spot 카드"라 적었고 2026-07-20 확정은
+ * "recruit 그린 미참조, 코랄만 액션 강조"였다 — 이번 변경은 그 원칙(그린 미참조)은 그대로 지키되,
+ * 화면 톤의 주인공인 코랄(`gradient.brandStrong`)을 히어로 배경으로 승격한 것이라 상충하지 않는다.
+ * 지원하기 CTA(코랄, footer)는 기존 그대로 유지.
  */
 import React, {useState} from 'react';
 import {Platform, Pressable, StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {AppBadge, AppHeader, AppInput, AppText, AppToast, ScreenContainer} from '../../../common/components/ds';
+import {AppHeader, AppInput, AppText, AppToast, GradientHeroCard, ScreenContainer} from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
@@ -29,6 +31,7 @@ import {
     SEEKING_TYPE_LABELS,
 } from '../types';
 import {formatDistanceKm, formatTimeRange} from '../utils/formatAvailability';
+import {postingUrgencyLabel} from '../utils/postingUrgency';
 
 function extractErrorCode(err: unknown): JobApplicationErrorCode | undefined {
     return (err as {response?: {data?: {errorCode?: string}}})?.response?.data?.errorCode as
@@ -50,6 +53,7 @@ const JobPostingDetailScreen: React.FC<Props> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const route = useRoute<RouteProp<HomeStackParamList, 'JobPostingDetail'>>();
     const posting = visualFixture?.posting ?? route.params.posting;
+    const urgencyLabel = postingUrgencyLabel(posting.workType, posting.workDate);
     const [message, setMessage] = useState('');
     const [applied, setApplied] = useState(false);
     const applyMutation = useApplyToJobPosting();
@@ -95,32 +99,42 @@ const JobPostingDetailScreen: React.FC<Props> = ({visualFixture}) => {
                     </Pressable>
                 </View>
             }>
-            <View
-                style={[styles.hero, {backgroundColor: c.background, borderColor: c.border}]}
-                testID="job-posting-hero-card">
+            <GradientHeroCard style={styles.hero} testID="job-posting-hero-card">
                 <View style={styles.heroTopRow}>
-                    <AppText variant="headingSm" weight="800" numberOfLines={1} style={styles.heroNameFlex}>
+                    <AppText variant="headingSm" weight="800" tone="inverse" numberOfLines={1} style={styles.heroNameFlex}>
                         {posting.storeName}
                     </AppText>
-                    <AppBadge label={SEEKING_TYPE_LABELS[posting.workType]} tone="info" />
+                    <View style={styles.heroChip}>
+                        <AppText variant="caption" tone="inverse" weight="700">
+                            {SEEKING_TYPE_LABELS[posting.workType]}
+                        </AppText>
+                    </View>
                 </View>
-                <AppText variant="bodyMd" tone="secondary">
+                <AppText variant="bodyMd" tone="inverse" style={styles.heroSub}>
                     {formatDistanceKm(posting.distanceMeters)} · {JOB_CATEGORY_LABELS[posting.jobCategory]}
                 </AppText>
-            </View>
+
+                {urgencyLabel ? (
+                    <View style={styles.heroUrgencyChip} testID="job-posting-urgency-badge">
+                        <AppText variant="caption" tone="inverse" weight="800">
+                            {`⏳ ${urgencyLabel}`}
+                        </AppText>
+                    </View>
+                ) : null}
+
+                {/* 시급 강조 — 22px→28px tabular-nums, 히어로 안으로 승격(§6.2 "시급 강조") */}
+                <View style={styles.heroWageRow} testID="job-posting-money-card">
+                    <AppText variant="caption" tone="inverse" style={styles.heroWageLabel}>시급</AppText>
+                    <AppText tone="inverse" weight="800" style={styles.heroWageValue}>
+                        {posting.hourlyWage.toLocaleString('ko-KR')}원
+                    </AppText>
+                </View>
+            </GradientHeroCard>
 
             <Section title="근무 정보">
                 <InfoRow label="근무일" value={posting.workDate ?? '수시'} />
                 <InfoRow label="시간" value={formatTimeRange(posting.startTime, posting.endTime)} last />
             </Section>
-
-            {/* 시급 강조 박스 — v3 시안 R3 `.money-card`(22px 모노스페이스) 1:1 재현 */}
-            <View style={[styles.moneyCard, {backgroundColor: c.background, borderColor: c.border}]} testID="job-posting-money-card">
-                <AppText variant="caption" tone="secondary" style={styles.moneyLabel}>시급</AppText>
-                <AppText weight="800" style={[styles.moneyValue, {color: c.textPrimary}]}>
-                    {posting.hourlyWage.toLocaleString('ko-KR')}원
-                </AppText>
-            </View>
 
             {posting.message ? (
                 <Section title="한줄 소개">
@@ -167,15 +181,36 @@ const InfoRow: React.FC<{label: string; value: string; last?: boolean}> = ({labe
 };
 
 const styles = StyleSheet.create({
-    hero: {
-        borderRadius: radius.xxl,
-        borderWidth: 1.5,
-        padding: spacing.xl,
-        marginBottom: spacing.lg,
-        gap: spacing.xs,
-    },
+    hero: {marginBottom: spacing.lg, gap: spacing.xs},
     heroTopRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm},
     heroNameFlex: {flex: 1, minWidth: 0},
+    heroChip: {
+        backgroundColor: 'rgba(255,255,255,0.22)',
+        borderRadius: radius.pill,
+        paddingHorizontal: spacing.md,
+        paddingVertical: 5,
+    },
+    heroSub: {opacity: 0.9},
+    heroUrgencyChip: {
+        alignSelf: 'flex-start',
+        backgroundColor: 'rgba(255,255,255,0.22)',
+        borderRadius: radius.pill,
+        paddingHorizontal: spacing.md,
+        paddingVertical: 5,
+        marginTop: spacing.xs,
+    },
+    heroWageRow: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        gap: spacing.xs,
+        marginTop: spacing.md,
+    },
+    heroWageLabel: {opacity: 0.85},
+    heroWageValue: {
+        fontSize: 28,
+        lineHeight: 33,
+        fontFamily: Platform.select({ios: 'Menlo', android: 'monospace', default: 'monospace'}),
+    },
     section: {marginBottom: spacing.lg, gap: spacing.xs},
     sectionTitle: {marginBottom: spacing.xs},
     infoRow: {
@@ -186,18 +221,6 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
     },
     infoRowLast: {borderBottomWidth: 0},
-    moneyCard: {
-        borderWidth: 1,
-        borderRadius: radius.xl,
-        padding: spacing.lg,
-        marginBottom: spacing.lg,
-    },
-    moneyLabel: {marginBottom: spacing.xs},
-    moneyValue: {
-        fontSize: 22,
-        lineHeight: 27,
-        fontFamily: Platform.select({ios: 'Menlo', android: 'monospace', default: 'monospace'}),
-    },
     privacyBox: {borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.xxl},
     privacyText: {lineHeight: 18},
     footer: {

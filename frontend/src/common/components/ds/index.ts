@@ -26,6 +26,8 @@ export {Brandmark} from './Brandmark';
 export {MoneyCard} from './MoneyCard';
 export {PunchButton} from './PunchButton';
 export {ProgressRing} from './ProgressRing';
+export {GradientHeroCard} from './GradientHeroCard';
+export {LinearProgress} from './LinearProgress';
 export {StorePassRow} from './StorePassRow';
 export type {StorePassItem} from './StorePassRow';
 export {QuickMenuGrid} from './QuickMenuGrid';

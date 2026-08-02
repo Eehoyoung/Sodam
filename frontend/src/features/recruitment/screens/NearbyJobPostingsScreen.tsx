@@ -24,13 +24,14 @@ import {
     AppText,
     EmptyState,
     ErrorState,
+    GradientHeroCard,
     LoadingState,
     SegmentedControl,
 } from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import {useNearbyJobPostings} from '../hooks/useRecruitmentQueries';
+import {useMyJobSeeking, useNearbyJobPostings} from '../hooks/useRecruitmentQueries';
 import {
     JOB_CATEGORY_CODES,
     JOB_CATEGORY_LABELS,
@@ -42,6 +43,7 @@ import {
     SEEKING_TYPE_LABELS,
 } from '../types';
 import {formatDistanceKm, formatTimeRange} from '../utils/formatAvailability';
+import {postingUrgencyLabel} from '../utils/postingUrgency';
 
 type TypeFilterKey = 'ALL' | JobSeekingType;
 const TYPE_FILTER_KEYS: TypeFilterKey[] = ['ALL', 'SUBSTITUTE', 'REGULAR'];
@@ -76,13 +78,26 @@ const NearbyJobPostingsScreen: React.FC<NearbyJobPostingsScreenProps> = ({onGoTo
         [typeFilter, categoryFilter],
     );
     const {data, isLoading, isError, error, refetch} = useNearbyJobPostings(filters);
+    // "업종 일치" 강조(§6.2) — 내 구직 프로필의 업종과 공고 업종을 비교한다. `JobSeekingSettingsScreen`
+    // 과 동일 쿼리키(recruitmentQueryKeys.me())를 쓰므로 추가 네트워크 호출을 유발하지 않는다.
+    const myJobCategories = useMyJobSeeking().data?.jobCategories ?? [];
 
     const list = visualFixture ?? data ?? [];
     const errorCode = !visualFixture && isError ? extractErrorCode(error) : undefined;
     const locationsRequired = errorCode === 'JOB_SEEKING_LOCATIONS_REQUIRED';
+    const showSummary = (visualFixture ? true : !isLoading && !isError) && list.length > 0;
 
     return (
         <View style={styles.container} testID="nearby-job-postings-screen">
+            {showSummary ? (
+                <GradientHeroCard style={styles.summaryHero} testID="nearby-posting-summary-hero">
+                    <AppText variant="caption" tone="inverse" style={styles.summaryLabel}>내 주변 구인</AppText>
+                    <AppText variant="headingSm" tone="inverse" weight="800">
+                        {`${list.length}건 · 4km 이내`}
+                    </AppText>
+                </GradientHeroCard>
+            ) : null}
+
             <SegmentedControl
                 options={TYPE_FILTER_LABELS}
                 value={TYPE_FILTER_KEYS.indexOf(typeFilter)}
@@ -140,6 +155,7 @@ const NearbyJobPostingsScreen: React.FC<NearbyJobPostingsScreenProps> = ({onGoTo
                         <NearbyPostingCard
                             key={posting.postingId}
                             posting={posting}
+                            myJobCategories={myJobCategories}
                             onPress={() => navigation.navigate('JobPostingDetail', {posting})}
                         />
                     ))}
@@ -179,11 +195,15 @@ const CategoryChip: React.FC<{label: string; selected: boolean; onPress: () => v
 interface NearbyPostingCardProps {
     posting: JobPostingNearbyItem;
     onPress: () => void;
+    /** 내 구직 프로필의 업종 목록 — 공고 업종과 일치하면 강조 배지를 붙인다. */
+    myJobCategories: JobCategoryCode[];
 }
 
-const NearbyPostingCard: React.FC<NearbyPostingCardProps> = ({posting, onPress}) => {
+const NearbyPostingCard: React.FC<NearbyPostingCardProps> = ({posting, onPress, myJobCategories}) => {
     const c = useThemeColors();
     const timeRange = formatTimeRange(posting.startTime, posting.endTime);
+    const categoryMatched = myJobCategories.includes(posting.jobCategory);
+    const urgencyLabel = postingUrgencyLabel(posting.workType, posting.workDate);
     return (
         <AppCard
             variant="flat"
@@ -199,8 +219,14 @@ const NearbyPostingCard: React.FC<NearbyPostingCardProps> = ({posting, onPress})
             </View>
 
             <View style={styles.badgeRow}>
+                {categoryMatched ? (
+                    <AppBadge label="업종 일치" tone="success" testID={`nearby-posting-category-matched-${posting.postingId}`} />
+                ) : null}
                 <AppBadge label={SEEKING_TYPE_LABELS[posting.workType]} tone="info" />
                 <AppBadge label={JOB_CATEGORY_LABELS[posting.jobCategory]} tone="neutral" />
+                {urgencyLabel ? (
+                    <AppBadge label={urgencyLabel} tone="warning" testID={`nearby-posting-urgency-${posting.postingId}`} />
+                ) : null}
             </View>
 
             <AppText variant="bodyMd" tone="secondary">
@@ -221,6 +247,8 @@ const NearbyPostingCard: React.FC<NearbyPostingCardProps> = ({posting, onPress})
 
 const styles = StyleSheet.create({
     container: {gap: spacing.md, paddingBottom: spacing.xxl},
+    summaryHero: {gap: 2},
+    summaryLabel: {opacity: 0.85},
     typeSegment: {marginBottom: spacing.sm},
     categoryScroll: {marginBottom: spacing.md},
     categoryChip: {

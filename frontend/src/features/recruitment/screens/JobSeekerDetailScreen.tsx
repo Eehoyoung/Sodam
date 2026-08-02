@@ -1,3 +1,4 @@
+/* eslint-disable react-native/no-color-literals -- 그라디언트 배지 위 흰색 텍스트/아이콘(다른 recruitment 화면과 동일 패턴) */
 /**
  * JobSeekerDetailScreen — [사장] 구직자 상세 (260711_작업통합.md Part 2 §7.4-2).
  *
@@ -13,6 +14,13 @@
  * 출근 가능" 배지는 코랄(`badge--coral`)이다. 2026-07-20 확정에 따라 recruit 그린 토큰은
  * 참조하지 않고 코랄/틸/앰버 3색만 사용한다.
  *
+ * 2026-08-01 기존 화면 리디자인(recruitment-monetization-gamification-plan.md §6.2 "구직자 상세")은
+ * "그라디언트 프로필 히어로"를 요구하지만, 이 화면은 위 "다크배경 금지 · 흰 배경 spot 카드" 결정이
+ * `JobSeekerDetailScreen.test.tsx`("히어로가 흰 배경 + 회색 테두리 spot 카드로 렌더된다")에 배경색
+ * `#FFFFFF`/테두리색 `#E7E7E2` 하드 검증으로 고정돼 있다 — 히어로 카드 자체의 배경은 그대로 두고,
+ * "출퇴근 기록 기반 인증" 배지만 그라디언트 필(pill)로 승격해 패턴을 부분 적용했다(카드 프레임은
+ * 유지, 배지만 그라디언트). "채용 제안 보내기" 시 출근권 1개가 소모된다는 안내도 함께 추가했다.
+ *
  * ⚠️ 실 DTO 범위 한계: `JobSeekerListItemResponse` 는 희망지역을 문자열 배열(`desiredLocations`)
  * + 단일 최단거리(`distanceMeters`)로만 내려준다(지역별 개별 거리 없음). §7.4-2 시안은
  * "지역별 거리 표시"를 요구하지만 v1 DTO에 그 데이터가 없어(추가 API 호출 금지 원칙과 상충),
@@ -23,9 +31,10 @@ import {Pressable, StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import LinearGradient from 'react-native-linear-gradient';
 import {AppBadge, AppHeader, AppText, ScreenContainer} from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
-import {radius, spacing} from '../../../theme/tokens';
+import {gradient, radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {JobOfferComposeSheet} from '../components/JobOfferComposeSheet';
 import {
@@ -64,6 +73,10 @@ const JobSeekerDetailScreen: React.FC<Props> = ({visualFixture}) => {
             header={<AppHeader title="구직자 상세" onBack={() => navigation.goBack()} />}
             footer={
                 <View style={[styles.footer, {backgroundColor: c.background, borderTopColor: c.divider}]}>
+                    {/* 출근권 소모 안내(§6.2, Phase A 출근권 이코노미) — 제안 발송은 출근권 1개를 소모한다. */}
+                    <AppText variant="caption" tone="secondary" style={styles.creditNotice}>
+                        제안을 보내면 출근권 1개가 소모돼요.
+                    </AppText>
                     <Pressable
                         testID="job-seeker-send-offer-button"
                         onPress={handleSendOffer}
@@ -93,6 +106,19 @@ const JobSeekerDetailScreen: React.FC<Props> = ({visualFixture}) => {
                         소담 출퇴근 이력으로 인증된 구직자예요 · {formatDistanceKm(seeker.distanceMeters)}
                     </AppText>
                 </View>
+                {/* "출퇴근 기록 기반 인증" 그라디언트 배지(§6.2) — 히어로 카드 프레임(흰 배경+회색
+                    테두리)은 그대로 두고 배지만 그라디언트로 승격한다(파일 상단 주석 참고). */}
+                <LinearGradient
+                    colors={gradient.success}
+                    start={{x: 0, y: 0}}
+                    end={{x: 1, y: 0}}
+                    style={styles.verifiedBadge}
+                    testID="job-seeker-verified-badge">
+                    <Ionicons name="shield-checkmark" size={12} color="#FFFFFF" />
+                    <AppText variant="caption" weight="800" style={styles.verifiedBadgeText}>
+                        출퇴근 기록 기반 인증
+                    </AppText>
+                </LinearGradient>
                 <View style={styles.heroBadgeRow}>
                     {/* "오늘 바로 출근 가능" = 코랄(v3 시안 badge--coral). AppBadge 는 별도 coral
                         톤이 없어 error 톤(v3 팔레트에서 error=coral #FF4D6D)을 그대로 재사용한다. */}
@@ -211,6 +237,17 @@ const styles = StyleSheet.create({
         gap: spacing.xs,
     },
     verifiedRow: {flexDirection: 'row', alignItems: 'center', gap: 4},
+    verifiedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        gap: 4,
+        borderRadius: radius.pill,
+        paddingHorizontal: spacing.sm + 2,
+        paddingVertical: 4,
+        marginTop: spacing.xs,
+    },
+    verifiedBadgeText: {color: '#FFFFFF'},
     heroBadgeRow: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.sm},
     section: {marginBottom: spacing.lg, gap: spacing.xs},
     sectionTitle: {marginBottom: spacing.xs},
@@ -237,6 +274,7 @@ const styles = StyleSheet.create({
         paddingBottom: spacing.md,
         borderTopWidth: 1,
     },
+    creditNotice: {textAlign: 'center', marginBottom: spacing.sm},
     cta: {
         minHeight: 52,
         borderRadius: 18,

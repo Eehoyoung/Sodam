@@ -17,6 +17,7 @@
  */
 import React, {useEffect, useState} from 'react';
 import {Pressable, StyleSheet, Switch, View} from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import {
     AppBadge,
     AppCard,
@@ -27,7 +28,7 @@ import {
     ErrorState,
     LoadingState,
 } from '../../../common/components/ds';
-import {radius, spacing} from '../../../theme/tokens';
+import {gradient, radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {
     useMyJobPosting,
@@ -175,12 +176,18 @@ const OurPostingScreen: React.FC<OurPostingScreenProps> = ({storeId, visualAppli
         return <LoadingState title="공고 불러오는 중" description="잠시만 기다려 주세요" />;
     }
 
+    const applicants = visualApplicantsFixture ?? applicationsQuery.data ?? [];
+
     return (
         <View style={styles.container} testID="our-posting-screen">
             <AppCard variant="flat" style={styles.card}>
-                <AppText variant="titleMd" weight="700" style={styles.sectionTitle}>
-                    구인 공고
-                </AppText>
+                <View style={styles.sectionHeaderRow}>
+                    <AppText variant="titleMd" weight="700" style={styles.sectionTitle}>
+                        구인 공고
+                    </AppText>
+                    {/* 공고 상태 pill 표준화(§6.2) — 무제한 패스의 구독중/미구독 pill과 동일한 시각 언어. */}
+                    <AppBadge label={open ? '공개중' : '마감'} tone={open ? 'success' : 'neutral'} testID="our-posting-status-pill" />
+                </View>
 
                 <View style={styles.toggleRow}>
                     <View style={styles.flex1}>
@@ -350,7 +357,21 @@ const OurPostingScreen: React.FC<OurPostingScreenProps> = ({storeId, visualAppli
                 </Pressable>
             </AppCard>
 
-            <AppText variant="titleMd" weight="700" style={styles.applicantsTitle}>지원자</AppText>
+            <View style={styles.applicantsHeaderRow}>
+                <AppText variant="titleMd" weight="700" style={styles.applicantsTitle}>지원자</AppText>
+                {applicants.length > 0 ? (
+                    <LinearGradient
+                        colors={gradient.brandStrong}
+                        start={{x: 0, y: 0}}
+                        end={{x: 1, y: 0}}
+                        style={styles.applicantCountBadge}
+                        testID="our-posting-applicant-count-badge">
+                        <AppText variant="caption" tone="inverse" weight="800">
+                            {`지원 ${applicants.length}건`}
+                        </AppText>
+                    </LinearGradient>
+                ) : null}
+            </View>
 
             {!visualApplicantsFixture && applicationsQuery.isLoading ? (
                 <LoadingState title="지원자 불러오는 중" description="잠시만 기다려 주세요" />
@@ -360,13 +381,13 @@ const OurPostingScreen: React.FC<OurPostingScreenProps> = ({storeId, visualAppli
                     description="지원자 리스트를 가져오지 못했어요."
                     primary={{label: '다시 시도', onPress: () => applicationsQuery.refetch()}}
                 />
-            ) : (visualApplicantsFixture ?? applicationsQuery.data ?? []).length === 0 ? (
+            ) : applicants.length === 0 ? (
                 <View testID="our-posting-applicants-empty">
                     <EmptyState title="아직 지원자가 없어요" description="공고를 올리면 지원자가 여기에 표시돼요." />
                 </View>
             ) : (
                 <View style={styles.applicantList} testID="our-posting-applicants-list">
-                    {(visualApplicantsFixture ?? applicationsQuery.data ?? []).map(app => (
+                    {applicants.map(app => (
                         <ApplicantCard
                             key={app.applicationId}
                             application={app}
@@ -395,7 +416,12 @@ const ApplicantCard: React.FC<ApplicantCardProps> = ({application, onAccept, onD
                     {application.applicantName}
                     {application.age !== null ? ` · ${application.age}세` : ''}
                 </AppText>
-                <AppBadge label={JOB_RESPONSE_STATUS_LABELS[application.status]} tone={JOB_RESPONSE_STATUS_TONE[application.status]} />
+                {/* 신규 지원(§6.2 "새 지원" 배지) — PENDING 은 놓치지 않도록 더 눈에 띄는 문구로 대체. */}
+                {application.status === 'PENDING' ? (
+                    <AppBadge label="새 지원" tone="warning" testID={`applicant-new-badge-${application.applicationId}`} />
+                ) : (
+                    <AppBadge label={JOB_RESPONSE_STATUS_LABELS[application.status]} tone={JOB_RESPONSE_STATUS_TONE[application.status]} />
+                )}
             </View>
 
             {application.currentEmployment ? (
@@ -437,6 +463,7 @@ const ApplicantCard: React.FC<ApplicantCardProps> = ({application, onAccept, onD
 const styles = StyleSheet.create({
     container: {gap: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.xxl},
     card: {gap: spacing.xs},
+    sectionHeaderRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm},
     sectionTitle: {marginBottom: spacing.xs},
     toggleRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md},
     flex1: {flex: 1, minWidth: 0},
@@ -460,7 +487,19 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     savePressed: {opacity: 0.94, transform: [{scale: 0.98}]},
-    applicantsTitle: {marginTop: spacing.sm},
+    applicantsHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: spacing.sm,
+        marginTop: spacing.sm,
+    },
+    applicantsTitle: {},
+    applicantCountBadge: {
+        borderRadius: radius.pill,
+        paddingHorizontal: spacing.md,
+        paddingVertical: 5,
+    },
     applicantList: {gap: spacing.sm},
     applicantCard: {gap: spacing.xs},
     cardTopRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm},
