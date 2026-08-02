@@ -64,4 +64,25 @@ public class LiveSyncPublisher {
             log.debug("[LiveSync] publish 실패 storeId={} type={}: {}", storeId, type, e.getMessage());
         }
     }
+
+    /**
+     * 채팅 메시지 발행 — 매장 단위가 아니라 채팅방 단위 토픽({@code /topic/chat.{chatRoomId}})을 쓴다
+     * (recruitment-monetization-gamification-plan.md §4, Phase D). 매장 토픽과 달리 "다시 조회하라"는
+     * 트리거가 아니라 메시지 페이로드 자체를 실어 보낸다 — 채팅방 구독자가 사장/직원 각 1인뿐이라
+     * 매번 REST 재조회를 강제할 필요가 없기 때문이다(이미 PII 마스킹이 끝난 저장값만 담긴다).
+     */
+    public void publishChatMessage(Long chatRoomId, Object messagePayload) {
+        if (chatRoomId == null) {
+            return;
+        }
+        afterCommitExecutor.execute(() -> doPublishChat(chatRoomId, messagePayload));
+    }
+
+    private void doPublishChat(Long chatRoomId, Object messagePayload) {
+        try {
+            messagingTemplate.convertAndSend("/topic/chat." + chatRoomId, messagePayload);
+        } catch (Exception e) {
+            log.debug("[LiveSync] 채팅 publish 실패 chatRoomId={}: {}", chatRoomId, e.getMessage());
+        }
+    }
 }

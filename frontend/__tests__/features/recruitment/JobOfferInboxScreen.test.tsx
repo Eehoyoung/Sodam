@@ -253,4 +253,59 @@ describe('JobOfferInboxScreen', () => {
 
         expect(() => findHostByTestId(renderer!, 'job-application-9-invite-banner')).not.toThrow();
     });
+
+    // 채용 채팅(§4, Phase D) — 매칭 성립(ACCEPTED) 건에 "채팅하기" 진입점이 붙는다. 단건 채팅방 id 를
+    // 내려주는 API가 없어 목록 화면(ChatRoomList)으로 이동시킨다.
+    test('수락된 제안 → "채팅하기" 버튼 탭 시 ChatRoomList 로 이동한다', async () => {
+        mockOffersState.data = [makeOffer({id: 7, status: 'ACCEPTED', storeCode: 'ST1234ABCD'})];
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<JobOfferInboxScreen />);
+            await flush();
+        });
+        activeRenderer = renderer;
+
+        const chatButton = findHostByTestId(renderer!, 'job-offer-7-chat-button');
+
+        await act(async () => {
+            chatButton.props.onPress();
+            await flush();
+        });
+
+        expect(mockNavigate).toHaveBeenCalledWith('ChatRoomList');
+    });
+
+    test('수락된 지원 → "채팅하기" 버튼 탭 시 ChatRoomList 로 이동한다', async () => {
+        mockApplicationsState.data = [makeApplication({id: 9, status: 'ACCEPTED', storeCode: 'ST9999ZZZZ'})];
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<JobOfferInboxScreen />);
+            await flush();
+        });
+        activeRenderer = renderer;
+
+        const chatButton = findHostByTestId(renderer!, 'job-application-9-chat-button');
+
+        await act(async () => {
+            chatButton.props.onPress();
+            await flush();
+        });
+
+        expect(mockNavigate).toHaveBeenCalledWith('ChatRoomList');
+    });
+
+    test('대기중 제안(ACCEPTED 아님)에는 "채팅하기" 버튼이 없다', async () => {
+        mockOffersState.data = [makeOffer({id: 42, status: 'PENDING'})];
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<JobOfferInboxScreen />);
+            await flush();
+        });
+        activeRenderer = renderer;
+
+        expect(renderer!.root.findAllByProps({testID: 'job-offer-42-chat-button'})).toHaveLength(0);
+    });
 });

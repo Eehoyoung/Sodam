@@ -397,4 +397,33 @@ describe('JobSeekerListScreen', () => {
 
         expect(renderer!.root.findAllByType('ScrollView').length).toBeGreaterThan(0);
     });
+
+    // 채용 채팅(§4, Phase D) — 사장 측 진입점. 헤더 액션 아이콘 탭 → ChatRoomList 이동.
+    test('헤더 채팅 액션 탭 → ChatRoomList 로 이동한다', async () => {
+        mockUseJobSeekers.mockReturnValue({
+            data: [],
+            isLoading: false,
+            isError: false,
+            error: undefined,
+            refetch: mockRefetch,
+        });
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<JobSeekerListScreen />);
+            await flush();
+        });
+
+        const chatAction = renderer!.root
+            .findAllByProps({accessibilityLabel: '채팅'})
+            .find(n => typeof n.props.onPress === 'function');
+        expect(chatAction).toBeTruthy();
+
+        await act(async () => {
+            chatAction!.props.onPress();
+            await flush();
+        });
+
+        expect(mockNavigate).toHaveBeenCalledWith('ChatRoomList');
+    });
 });

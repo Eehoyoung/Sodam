@@ -191,6 +191,21 @@ public class NotificationService {
                 .build());
     }
 
+    /**
+     * 채팅 메시지 수신(recruitment-monetization-gamification-plan.md §4, Phase D) — 상대방에게.
+     * senderName은 메시지 내용이 아니라 발신자 이름만 담아 PII/내용 노출을 최소화한다(알림 미리보기에
+     * 마스킹 전 원문이 실릴 위험을 원천 차단).
+     */
+    @Async
+    public void notifyChatMessageReceived(Long recipientUserId, String senderName, String storeName) {
+        push(recipientUserId, PushMessage.builder()
+                .title(String.format("%s 님의 새 메시지", senderName))
+                .body(String.format("%s 매장 채팅방에 새 메시지가 도착했어요.", storeName))
+                .deepLink("sodam://chat")
+                .data(Map.of("type", "CHAT_MESSAGE_RECEIVED"))
+                .build());
+    }
+
     // ── NotificationController 애플리케이션 진입점 (WP-09 2단계) ──────────────
     // 아래 메서드들은 FCM 디바이스 토큰 등록/해제, 사장→직원 커스텀 메시지, 알림함(inbox)
     // 조회를 담당한다. 위의 notify*/push 메서드(도메인 이벤트 → 푸시)와 이름이 겹치지

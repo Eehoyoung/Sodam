@@ -34,6 +34,8 @@ import java.util.function.Supplier;
  *                                           가 처리한다 — 필터는 요청 바디를 소비하지 않는다.
  *  - POST /api/auth/password-reset/**    : IP별 3회/분 (이메일 폭주 차단)
  *  - POST /api/join, /api/auth/refresh   : IP별 20회/분 (가입/refresh)
+ *  - POST /api/chat-rooms/{id}/messages  : IP별 30회/분 (채팅 도배 스팸 방지,
+ *                                           recruitment-monetization-gamification-plan.md §4.5)
  *  - 그 외 /api/**                       : IP별 120회/분
  *
  * 운영 다중 인스턴스 환경에서는 Redis 백엔드(Bucket4j Lettuce) 권장.
@@ -47,10 +49,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final Duration BUCKET_IDLE_TTL = Duration.ofMinutes(10);
     private static final long CLEANUP_INTERVAL_NANOS = Duration.ofMinutes(1).toNanos();
 
+    private static final java.util.regex.Pattern CHAT_MESSAGE_SEND_PATH =
+            java.util.regex.Pattern.compile("^/api/chat-rooms/\\d+/messages$");
+
     private final Map<String, BucketEntry> loginBuckets = new ConcurrentHashMap<>();
     private final Map<String, BucketEntry> webLoginIpBuckets = new ConcurrentHashMap<>();
     private final Map<String, BucketEntry> resetBuckets = new ConcurrentHashMap<>();
     private final Map<String, BucketEntry> authBuckets = new ConcurrentHashMap<>();
+    private final Map<String, BucketEntry> chatMessageBuckets = new ConcurrentHashMap<>();
     private final Map<String, BucketEntry> generalBuckets = new ConcurrentHashMap<>();
     private final int maxBucketsPerPolicy;
     private final AtomicLong nextCleanupNanos = new AtomicLong();
@@ -93,6 +99,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 .build());
     }
 
+    private Bucket resolveChatMessageBucket(String key) {
+        return resolveBucket(chatMessageBuckets, key, () -> Bucket.builder()
+                .addLimit(Bandwidth.classic(30, Refill.intervally(30, Duration.ofMinutes(1))))
+                .build());
+    }
+
     private Bucket resolveGeneralBucket(String key) {
         return resolveBucket(generalBuckets, key, () -> Bucket.builder()
                 .addLimit(Bandwidth.classic(120, Refill.intervally(120, Duration.ofMinutes(1))))
@@ -116,7 +128,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
         long cutoff = now - BUCKET_IDLE_TTL.toNanos();
         for (Map<String, BucketEntry> buckets : java.util.List.of(
-                loginBuckets, webLoginIpBuckets, resetBuckets, authBuckets, generalBuckets)) {
+                loginBuckets, webLoginIpBuckets, resetBuckets, authBuckets, chatMessageBuckets, generalBuckets)) {
             buckets.entrySet().removeIf(entry -> entry.getValue().lastSeenNanos() < cutoff);
         }
     }
@@ -131,7 +143,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     int bucketCountForTest() {
         return loginBuckets.size() + webLoginIpBuckets.size() + resetBuckets.size()
-                + authBuckets.size() + generalBuckets.size();
+                + authBuckets.size() + chatMessageBuckets.size() + generalBuckets.size();
     }
 
     private record BucketEntry(Bucket bucket, long lastSeenNanos) {
@@ -174,6 +186,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
             bucket = resolveResetBucket(clientIp);
         } else if (path.equals("/api/join") || path.equals("/api/auth/refresh")) {
             bucket = resolveAuthBucket(clientIp);
+        } else if ("POST".equalsIgnoreCase(request.getMethod()) && CHAT_MESSAGE_SEND_PATH.matcher(path).matches()) {
+            // 채팅 도배 스팸 방지 — 일반 120/분보다 낮은 전용 한도(recruitment-monetization-gamification-plan.md §4.5)
+            bucket = resolveChatMessageBucket(clientIp);
         } else {
             bucket = resolveGeneralBucket(clientIp);
         }
