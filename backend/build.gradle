@@ -106,6 +106,9 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
     finalizedBy jacocoTestReport
+    // 인증채용 고도화(출근권·채팅·충전소) 도메인 추가로 컨텍스트 로딩 대상이 늘면서
+    // 기본 힙(미지정 시 Gradle 워커 기본값)으로는 풀스위트 실행 중 OOM이 발생했다.
+    maxHeapSize = '2g'
 }
 
 jacocoTestReport {

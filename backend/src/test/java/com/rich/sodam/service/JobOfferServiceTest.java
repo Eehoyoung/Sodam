@@ -1,23 +1,32 @@
 package com.rich.sodam.service;
 
 import com.rich.sodam.domain.Attendance;
+import com.rich.sodam.domain.AttendanceCredit;
+import com.rich.sodam.domain.AttendanceCreditTransaction;
 import com.rich.sodam.domain.EmployeeProfile;
 import com.rich.sodam.domain.JobOffer;
 import com.rich.sodam.domain.JobSeekingProfile;
 import com.rich.sodam.domain.MasterProfile;
 import com.rich.sodam.domain.MasterStoreRelation;
+import com.rich.sodam.domain.RecruitmentBoostPass;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.User;
+import com.rich.sodam.domain.type.AttendanceCreditTransactionReason;
+import com.rich.sodam.domain.type.AttendanceCreditTransactionType;
 import com.rich.sodam.domain.type.UserGrade;
 import com.rich.sodam.dto.request.JobOfferCreateRequest;
 import com.rich.sodam.dto.response.JobOfferResponse;
 import com.rich.sodam.exception.BusinessException;
+import com.rich.sodam.exception.InsufficientCreditException;
+import com.rich.sodam.repository.AttendanceCreditRepository;
+import com.rich.sodam.repository.AttendanceCreditTransactionRepository;
 import com.rich.sodam.repository.AttendanceRepository;
 import com.rich.sodam.repository.EmployeeProfileRepository;
 import com.rich.sodam.repository.JobOfferRepository;
 import com.rich.sodam.repository.JobSeekingProfileRepository;
 import com.rich.sodam.repository.MasterProfileRepository;
 import com.rich.sodam.repository.MasterStoreRelationRepository;
+import com.rich.sodam.repository.RecruitmentBoostPassRepository;
 import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -58,6 +67,9 @@ class JobOfferServiceTest {
     @Autowired private StoreRepository storeRepo;
     @Autowired private AttendanceRepository attendanceRepo;
     @Autowired private JobSeekingProfileRepository jobSeekingProfileRepo;
+    @Autowired private AttendanceCreditRepository attendanceCreditRepo;
+    @Autowired private AttendanceCreditTransactionRepository attendanceCreditTransactionRepo;
+    @Autowired private RecruitmentBoostPassRepository recruitmentBoostPassRepo;
 
     private int bizSeq = 0;
     private int emailSeq = 0;
@@ -85,7 +97,54 @@ class JobOfferServiceTest {
         s = storeRepo.save(s);
         MasterProfile mp = masterProfileRepo.save(new MasterProfile(owner));
         masterStoreRelationRepo.save(new MasterStoreRelation(mp, s));
+        grantAttendanceCredits(owner, 1_000);
         return s;
+    }
+
+    /**
+     * 출근권 잔액을 임의 값으로 맞춘다(멱등 — 지갑이 없으면 생성, 있으면 덮어씀). 기본
+     * {@link #store}는 넉넉한 잔액(1000)을 미리 채워두므로, 부족 시나리오 테스트는 이 메서드로
+     * 같은 지갑의 잔액을 덮어써야 한다(새 지갑을 또 만들면 owner당 유니크 제약 위반).
+     *
+     * <p>실제 소모(consume)는 잔액 컬럼이 아니라 원장 lot(remainingQuantity)에서 FIFO로 끌어온다
+     * ({@code AttendanceCreditService} 설계 노트 참고) — 테스트에서 잔액 컬럼만 바꾸면 lot이 없어
+     * "정합성 오류"(IllegalStateException)가 난다. 테스트 전용 무기한 TOPUP lot 1건을 항상 이 값과
+     * 맞춰 함께 갱신한다(기존 lot은 먼저 비운다).
+     */
+    private void grantAttendanceCredits(User owner, int amount) {
+        AttendanceCredit wallet = attendanceCreditRepo.findByOwnerUserId(owner.getId())
+                .orElseGet(() -> attendanceCreditRepo.save(AttendanceCredit.openFor(owner.getId())));
+        ReflectionTestUtils.setField(wallet, "balance", amount);
+        attendanceCreditRepo.save(wallet);
+
+        attendanceCreditTransactionRepo.findAll().stream()
+                .filter(t -> t.getOwnerUserId().equals(owner.getId())
+                        && t.getType() == AttendanceCreditTransactionType.TOPUP
+                        && t.getRemainingQuantity() != null && t.getRemainingQuantity() > 0)
+                .forEach(lot -> {
+                    lot.drawDown(lot.getRemainingQuantity());
+                    attendanceCreditTransactionRepo.save(lot);
+                });
+        if (amount > 0) {
+            attendanceCreditTransactionRepo.save(AttendanceCreditTransaction.supply(owner.getId(),
+                    AttendanceCreditTransactionType.TOPUP, AttendanceCreditTransactionReason.IAP_TOPUP,
+                    amount, null, LocalDateTime.now(SEOUL)));
+        }
+    }
+
+    /** 사장에게 활성 무제한 패스를 부여한다(과금 우회 시나리오 재현용, §2.5). */
+    private void activateBoostPass(User owner, int daysFromNow) {
+        RecruitmentBoostPass pass = recruitmentBoostPassRepo.findByOwnerUserId(owner.getId())
+                .orElseGet(() -> recruitmentBoostPassRepo.save(RecruitmentBoostPass.openFor(owner.getId())));
+        pass.extend(LocalDateTime.now(SEOUL), daysFromNow);
+        recruitmentBoostPassRepo.saveAndFlush(pass);
+    }
+
+    /** 무제한 패스를 만료 상태로 되돌린다(패스 만료 후 재소모 검증용). */
+    private void expireBoostPass(User owner) {
+        RecruitmentBoostPass pass = recruitmentBoostPassRepo.findByOwnerUserId(owner.getId()).orElseThrow();
+        ReflectionTestUtils.setField(pass, "activeUntil", LocalDateTime.now(SEOUL).minusDays(1));
+        recruitmentBoostPassRepo.saveAndFlush(pass);
     }
 
     private void grantEligibility(User u, Store store) {
@@ -406,4 +465,81 @@ class JobOfferServiceTest {
                 .satisfies(e -> assertThat(errorCode(e)).isEqualTo("OFFER_NOT_PENDING"));
     }
 
+    // ─────────────────────────────────────────────────────────────────
+    // 과금 연동 — 출근권 잔액 부족 시 402 (recruitment-monetization-gamification-plan.md §2.3)
+    // ─────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("사장 출근권 잔액 부족 → 발송 시 InsufficientCreditException(402), 제안·잔액 모두 변경 없음")
+    void sendOffer_insufficientCredit_throws() {
+        User owner = masterUser("owner_offer17");
+        Store store = store(owner);
+        User target = employeeUser("target_offer17");
+        grantEligibility(target, store);
+        seekingProfile(target, List.of("REGULAR"));
+        grantAttendanceCredits(owner, 0); // 잔액을 0으로 덮어씀(기본 store() 는 1000을 채워둠)
+
+        assertThatThrownBy(() -> service.sendOffer(store.getId(), regularRequest(target.getId())))
+                .isInstanceOf(InsufficientCreditException.class)
+                .satisfies(e -> {
+                    InsufficientCreditException ex = (InsufficientCreditException) e;
+                    assertThat(ex.getRequired()).isEqualTo(1);
+                    assertThat(ex.getBalance()).isEqualTo(0);
+                });
+
+        assertThat(jobOfferRepo.findAll()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("정확히 1개 남은 상태에서 발송 → 성공, 잔액 0으로 소모")
+    void sendOffer_exactBalance_succeedsAndConsumes() {
+        User owner = masterUser("owner_offer18");
+        Store store = store(owner);
+        User target = employeeUser("target_offer18");
+        grantEligibility(target, store);
+        seekingProfile(target, List.of("REGULAR"));
+        grantAttendanceCredits(owner, 1);
+
+        JobOfferResponse resp = service.sendOffer(store.getId(), regularRequest(target.getId()));
+
+        assertThat(resp.status()).isEqualTo("PENDING");
+        assertThat(attendanceCreditRepo.findByOwnerUserId(owner.getId()).orElseThrow().getBalance()).isZero();
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // 무제한 패스 과금 우회(recruitment-monetization-gamification-plan.md §2.5)
+    // ─────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("활성 무제한 패스 보유 중이면 잔액이 0이어도 제안 발송에 출근권을 소모하지 않는다")
+    void sendOffer_withActiveBoostPass_skipsCreditConsumption() {
+        User owner = masterUser("owner_offer_pass1");
+        Store store = store(owner);
+        User target = employeeUser("target_offer_pass1");
+        grantEligibility(target, store);
+        seekingProfile(target, List.of("REGULAR"));
+        grantAttendanceCredits(owner, 0); // 잔액 0
+        activateBoostPass(owner, 7);
+
+        JobOfferResponse resp = service.sendOffer(store.getId(), regularRequest(target.getId()));
+
+        assertThat(resp.status()).isEqualTo("PENDING");
+        assertThat(attendanceCreditRepo.findByOwnerUserId(owner.getId()).orElseThrow().getBalance()).isZero(); // 소모 없이 0 그대로
+    }
+
+    @Test
+    @DisplayName("무제한 패스가 만료된 뒤에는 다시 정상적으로 출근권을 소모한다(잔액 부족 시 402도 재현됨)")
+    void sendOffer_afterBoostPassExpired_resumesCreditConsumption() {
+        User owner = masterUser("owner_offer_pass2");
+        Store store = store(owner);
+        User target = employeeUser("target_offer_pass2");
+        grantEligibility(target, store);
+        seekingProfile(target, List.of("REGULAR"));
+        activateBoostPass(owner, 7);
+        expireBoostPass(owner);
+        grantAttendanceCredits(owner, 0); // 잔액 0 — 패스가 만료됐으니 다시 출근권이 필요해야 함
+
+        assertThatThrownBy(() -> service.sendOffer(store.getId(), regularRequest(target.getId())))
+                .isInstanceOf(InsufficientCreditException.class);
+    }
 }

@@ -58,6 +58,9 @@ public class JobOfferService {
     private final JobSeekingProfileRepository jobSeekingProfileRepository;
     private final MasterStoreRelationRepository masterStoreRelationRepository;
     private final NotificationService notificationService;
+    private final AttendanceCreditService attendanceCreditService;
+    private final RecruitmentBoostPassService recruitmentBoostPassService;
+    private final ChatRoomService chatRoomService;
 
     // ─────────────────────────────────────────────────────────────────
     // POST /api/stores/{storeId}/job-offers
@@ -65,8 +68,6 @@ public class JobOfferService {
 
     @Transactional
     public JobOfferResponse sendOffer(Long storeId, JobOfferCreateRequest request) {
-        checkBillingEligibility(storeId);
-
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new EntityNotFoundException("Store", storeId));
         User target = userRepository.findById(request.targetUserId())
@@ -86,6 +87,7 @@ public class JobOfferService {
         }
 
         rejectIfActivePending(storeId, target.getId());
+        checkBillingEligibility(storeId);
 
         LocalDateTime expiresAt = calculateExpiresAt(workType, request.workDate(), request.startTime());
         JobOffer offer = JobOffer.propose(store, target, workType, request.workDate(),
@@ -148,19 +150,39 @@ public class JobOfferService {
             notificationService.notifyJobOfferResponded(ownerUserId, offer.getTargetUser().getName(), accept);
         }
 
+        // 채팅방 개설(§4.5 "매칭 전 임의 접촉은 애초에 채널 자체가 없다") — 사장이 먼저 제안하는 방향이라
+        // 구직자가 수락(동의)한 시점에만 연다(ChatRoom 클래스 javadoc §개설 트리거 참고).
+        if (accept) {
+            chatRoomService.openForOfferAccepted(offer);
+        }
+
         return toResponse(offer);
     }
 
     // ─────────────────────────────────────────────────────────────────
-    // 과금 훅(§2 #12, Phase 8 대상)
+    // 과금 훅(recruitment-monetization-gamification-plan.md §2.3, §7 Phase A)
     // ─────────────────────────────────────────────────────────────────
 
     /**
-     * 매장의 채용 제안 발송 가능 여부(플랜/과금) 판정 훅. v1은 항상 통과한다 — 실제 과금 판정은
-     * Phase 8에서 구현한다. 자리 확보 목적으로 지금부터 호출 지점에 배치해둔다.
+     * 채용 제안 발송 시 출근권 1개를 소모한다(§2.3). 잔액 부족 시 {@link com.rich.sodam.exception.InsufficientCreditException}
+     * (402)을 던져 FE가 충전 유도로 분기하게 한다. 검증(대상 구직 여부·유형 일치·중복 PENDING)을 모두
+     * 통과한 뒤에만 호출해 실패하는 요청에 불필요하게 출근권을 소모하지 않는다 — 다만 이 메서드 이후
+     * 단계(저장)가 실패해도 {@code @Transactional} 롤백으로 소모분까지 함께 되돌아가므로 호출 순서 자체가
+     * 원자성에 영향을 주지는 않는다.
+     *
+     * <p><b>무제한 패스 우회</b>(§2.5): 출근권 소모 전에 이 사장이 활성 무제한 패스를 보유했는지 먼저
+     * 확인한다 — 보유 중이면 {@link AttendanceCreditService} 호출 자체를 건너뛰어 잔액을 전혀
+     * 건드리지 않는다(0개 소모).</p>
      */
     private void checkBillingEligibility(Long storeId) {
-        // v1: no-op. Phase 8 에서 매장 구독 플랜에 따른 발송 가능 여부를 여기서 판정한다.
+        Long ownerUserId = resolveStoreOwnerUserId(storeId);
+        if (ownerUserId == null) {
+            throw new EntityNotFoundException("Store", storeId);
+        }
+        if (recruitmentBoostPassService.hasActivePass(ownerUserId)) {
+            return;
+        }
+        attendanceCreditService.consumeForOfferSend(ownerUserId);
     }
 
     // ─────────────────────────────────────────────────────────────────

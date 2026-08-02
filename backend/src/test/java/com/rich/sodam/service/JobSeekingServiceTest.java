@@ -1,13 +1,19 @@
 package com.rich.sodam.service;
 
 import com.rich.sodam.domain.Attendance;
+import com.rich.sodam.domain.AttendanceCredit;
+import com.rich.sodam.domain.AttendanceCreditTransaction;
 import com.rich.sodam.domain.EmployeeProfile;
 import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.JobAvailabilityDay;
 import com.rich.sodam.domain.JobOffer;
 import com.rich.sodam.domain.JobSeekingProfile;
+import com.rich.sodam.domain.MasterProfile;
+import com.rich.sodam.domain.MasterStoreRelation;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.User;
+import com.rich.sodam.domain.type.AttendanceCreditTransactionReason;
+import com.rich.sodam.domain.type.AttendanceCreditTransactionType;
 import com.rich.sodam.domain.type.UserGrade;
 import com.rich.sodam.dto.request.JobOfferCreateRequest;
 import com.rich.sodam.dto.request.JobSeekingUpdateRequest;
@@ -15,11 +21,15 @@ import com.rich.sodam.dto.response.JobOfferResponse;
 import com.rich.sodam.dto.response.JobSeekerListItemResponse;
 import com.rich.sodam.dto.response.JobSeekingProfileResponse;
 import com.rich.sodam.exception.BusinessException;
+import com.rich.sodam.repository.AttendanceCreditRepository;
+import com.rich.sodam.repository.AttendanceCreditTransactionRepository;
 import com.rich.sodam.repository.AttendanceRepository;
 import com.rich.sodam.repository.EmployeeProfileRepository;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
 import com.rich.sodam.repository.JobOfferRepository;
 import com.rich.sodam.repository.JobSeekingProfileRepository;
+import com.rich.sodam.repository.MasterProfileRepository;
+import com.rich.sodam.repository.MasterStoreRelationRepository;
 import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.repository.UserRepository;
 import com.rich.sodam.util.GeoUtils;
@@ -59,6 +69,10 @@ class JobSeekingServiceTest {
     @Autowired private JobSeekingProfileRepository jobSeekingProfileRepo;
     @Autowired private JobOfferService jobOfferService;
     @Autowired private JobOfferRepository jobOfferRepo;
+    @Autowired private MasterProfileRepository masterProfileRepo;
+    @Autowired private MasterStoreRelationRepository masterStoreRelationRepo;
+    @Autowired private AttendanceCreditRepository attendanceCreditRepo;
+    @Autowired private AttendanceCreditTransactionRepository attendanceCreditTransactionRepo;
 
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
@@ -83,7 +97,25 @@ class JobSeekingServiceTest {
         String biz = String.format("%010d", 7770000000L + (bizSeq++));
         Store s = storeRepo.save(new Store("테스트매장", biz, "02-000-0000", businessType, 10_000, 100));
         s.updateLocation(37.5665, 126.9780, "서울 중구", 100);
-        return storeRepo.save(s);
+        s = storeRepo.save(s);
+
+        // jobOfferService.sendOffer 는 매장 소유자(MasterStoreRelation)를 조회해 출근권을 소모한다 —
+        // 이 fixture 는 소유자를 별도로 참조하지 않는 테스트가 대부분이라 익명 소유자를 만들어 붙인다.
+        User owner = new User("offer_owner" + (emailSeq++) + "@x.com", "사장");
+        owner.setUserGrade(UserGrade.MASTER);
+        owner = userRepo.save(owner);
+        MasterProfile mp = masterProfileRepo.save(new MasterProfile(owner));
+        masterStoreRelationRepo.save(new MasterStoreRelation(mp, s));
+        // 소모는 잔액 컬럼이 아니라 원장 lot(remainingQuantity)에서 FIFO로 끌어오므로, 잔액 컬럼과
+        // 짝을 이루는 무기한 TOPUP lot도 함께 만든다(없으면 소모 시 정합성 오류).
+        AttendanceCredit wallet = AttendanceCredit.openFor(owner.getId());
+        ReflectionTestUtils.setField(wallet, "balance", 1_000);
+        attendanceCreditRepo.save(wallet);
+        attendanceCreditTransactionRepo.save(AttendanceCreditTransaction.supply(owner.getId(),
+                AttendanceCreditTransactionType.TOPUP, AttendanceCreditTransactionReason.IAP_TOPUP,
+                1_000, null, java.time.LocalDateTime.now(SEOUL)));
+
+        return s;
     }
 
     private void grantEligibility(EmployeeProfile emp, Store store) {

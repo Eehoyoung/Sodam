@@ -59,6 +59,9 @@ public class JobApplicationService {
     private final MasterStoreRelationRepository masterStoreRelationRepository;
     private final EmployeeStoreRelationRepository employeeStoreRelationRepository;
     private final NotificationService notificationService;
+    private final AttendanceCreditService attendanceCreditService;
+    private final RecruitmentBoostPassService recruitmentBoostPassService;
+    private final ChatRoomService chatRoomService;
 
     // ─────────────────────────────────────────────────────────────────
     // POST /api/job-postings/{postingId}/applications
@@ -66,8 +69,6 @@ public class JobApplicationService {
 
     @Transactional
     public JobApplicationResponse apply(Long postingId, Long applicantUserId, JobApplicationCreateRequest request) {
-        checkBillingEligibility(postingId);
-
         JobPosting posting = jobPostingRepository.findById(postingId)
                 .orElseThrow(() -> new EntityNotFoundException("JobPosting", postingId));
         User applicant = userRepository.findById(applicantUserId)
@@ -147,6 +148,8 @@ public class JobApplicationService {
             throw new ConflictException("이미 응답했거나 마감된 지원이에요.", "APPLICATION_NOT_PENDING");
         }
 
+        checkBillingEligibility(masterId);
+
         if (accept) {
             application.accept();
         } else {
@@ -157,16 +160,44 @@ public class JobApplicationService {
         notificationService.notifyJobApplicationResponded(
                 application.getApplicantUser().getId(), application.getPosting().getStore().getStoreName(), accept);
 
+        // 채팅방 개설(§4.5) — 구직자가 먼저 지원해 접촉에 동의한 방향이라, 사장이 "열람"하는 이 응답
+        // 시점(수락/거절 무관)에 연다 — §2.3 과금이 수락 여부와 무관하게 "열람" 행위 자체에 걸리는 것과
+        // 동일한 근거다(ChatRoom 클래스 javadoc §개설 트리거 참고).
+        chatRoomService.openForApplicationResponded(application, masterId);
+
         return toListItem(application);
     }
 
     // ─────────────────────────────────────────────────────────────────
-    // 과금 훅(§2 #12, Phase 8 대상)
+    // 과금 훅(recruitment-monetization-gamification-plan.md §2.3, §7 Phase A)
     // ─────────────────────────────────────────────────────────────────
 
-    /** v1은 항상 통과 — 실제 과금 판정은 Phase 8에서 구현한다. */
-    private void checkBillingEligibility(Long postingId) {
-        // v1: no-op.
+    /**
+     * 지원서 열람+채팅방 개설 시 출근권 2개를 소모한다(§2.3). 잔액 부족 시
+     * {@link com.rich.sodam.exception.InsufficientCreditException}(402)을 던진다.
+     *
+     * <p><b>호출 지점을 {@code apply()}가 아닌 {@code respondToApplication()}으로 둔 이유</b>:
+     * 이 과금 자리는 원래(260711_작업통합.md Part 2 §2 #12) {@code apply()}(직원의 지원 제출)에
+     * no-op 스텁으로 배치돼 있었다. 하지만 §2.3의 실제 과금 대상은 "사장이 지원서를 열람하고
+     * 채팅방을 여는 행위"이며, 구직자는 완전 무과금 원칙(§2.3 "구직자는 여전히 완전
+     * 무과금")이 지켜져야 한다 — {@code apply()}에 그대로 연결하면 사장의 잔액 부족이 직원의
+     * 지원 자체를 막아버려 이 원칙을 정면으로 위반한다. Phase D(채팅) 이전인 현재 코드베이스에는
+     * "지원서 상세 열람" 전용 엔드포인트가 따로 없고, 사장이 개별 지원 건에 대해 취하는 유일한
+     * 능동적 행위가 {@link #respondToApplication}(수락/거절)이므로 이 시점(응답 1회당, PENDING
+     * 재응답 방지 가드 덕에 지원 건당 정확히 1회)에 소모하도록 배선했다. 수락뿐 아니라 거절에도
+     * 부과하는 이유는 §2.3이 "열람"에 과금하는 것이지 "수락 여부"에 과금하는 게 아니기 때문이다
+     * (거절하려면 어차피 지원 내용을 열람해야 한다). Phase D에서 별도의 "지원서 상세 열람" 액션이
+     * 생기면 이 호출 지점을 그쪽으로 옮기는 재검토가 필요하다.</p>
+     *
+     * <p><b>무제한 패스 우회</b>(§2.5): 출근권 소모 전에 이 사장이 활성 무제한 패스를 보유했는지 먼저
+     * 확인한다 — 보유 중이면 {@link AttendanceCreditService} 호출 자체를 건너뛰어 잔액을 전혀
+     * 건드리지 않는다(0개 소모).</p>
+     */
+    private void checkBillingEligibility(Long masterId) {
+        if (recruitmentBoostPassService.hasActivePass(masterId)) {
+            return;
+        }
+        attendanceCreditService.consumeForApplicationViewChatOpen(masterId);
     }
 
     // ─────────────────────────────────────────────────────────────────

@@ -227,6 +227,39 @@ sodam:
   #  ※ 월 경계 주의 귀속월 규칙(주 종료일이 속한 월에 전액 귀속, 분할 금지)은 시스템 고정값 — 설정으로 열지 않음.
   payroll:
     week-start-policy: ${SODAM_PAYROLL_WEEK_START_POLICY:MONDAY}
+  # 출근권(사장 전용 채용 재화) 이코노미 수치 — recruitment-monetization-gamification-plan.md §2.2·§2.3.
+  # 파일럿 운영 데이터로 조정될 예정이라 하드코딩하지 않고 env override 가능하게 둔다.
+  attendance-credit:
+    weekday-grant: ${SODAM_ATTENDANCE_CREDIT_WEEKDAY_GRANT:3}
+    weekend-grant: ${SODAM_ATTENDANCE_CREDIT_WEEKEND_GRANT:5}
+    streak-bonus-quantity: ${SODAM_ATTENDANCE_CREDIT_STREAK_BONUS_QUANTITY:10}
+    streak-bonus-interval-days: ${SODAM_ATTENDANCE_CREDIT_STREAK_BONUS_INTERVAL_DAYS:7}
+    free-grant-expiry-days: ${SODAM_ATTENDANCE_CREDIT_FREE_GRANT_EXPIRY_DAYS:30}
+    offer-send-cost: ${SODAM_ATTENDANCE_CREDIT_OFFER_SEND_COST:1}
+    application-view-cost: ${SODAM_ATTENDANCE_CREDIT_APPLICATION_VIEW_COST:2}
+    charge:
+      # 출근권 충전소(IAP) — 가격/수량 미확정(계획서 §10). 운영 중 이 env만 바꿔 조정한다.
+      first-purchase-bonus-enabled: ${SODAM_ATTENDANCE_CREDIT_CHARGE_FIRST_PURCHASE_BONUS_ENABLED:true}
+      first-purchase-bonus-multiplier: ${SODAM_ATTENDANCE_CREDIT_CHARGE_FIRST_PURCHASE_BONUS_MULTIPLIER:2}
+      # 프로모션 문구 노출 스위치 — §8 법무 검토(표시광고 등) 완료 전까지 기본 off.
+      promo-copy-enabled: ${SODAM_ATTENDANCE_CREDIT_CHARGE_PROMO_COPY_ENABLED:false}
+      small-quantity: ${SODAM_ATTENDANCE_CREDIT_CHARGE_SMALL_QUANTITY:10}
+      small-price-krw: ${SODAM_ATTENDANCE_CREDIT_CHARGE_SMALL_PRICE_KRW:1900}
+      medium-quantity: ${SODAM_ATTENDANCE_CREDIT_CHARGE_MEDIUM_QUANTITY:50}
+      medium-price-krw: ${SODAM_ATTENDANCE_CREDIT_CHARGE_MEDIUM_PRICE_KRW:7900}
+      large-quantity: ${SODAM_ATTENDANCE_CREDIT_CHARGE_LARGE_QUANTITY:120}
+      large-price-krw: ${SODAM_ATTENDANCE_CREDIT_CHARGE_LARGE_PRICE_KRW:15900}
+      streak-recovery-price-krw: ${SODAM_ATTENDANCE_CREDIT_CHARGE_STREAK_RECOVERY_PRICE_KRW:900}
+  # 채용 부스트 무제한 패스(사장 단위 3/7/30일 애드온) — recruitment-monetization-gamification-plan.md §2.5.
+  # 기존 매장 정기구독(Subscription)과는 완전히 별개 트랙. 가격은 계획서 §10에서 "추정치"로 명시된
+  # 미확정 항목이라 하드코딩하지 않고 env override 가능하게 둔다.
+  recruitment-boost-pass:
+    three-day-duration-days: ${SODAM_RECRUITMENT_BOOST_PASS_THREE_DAY_DURATION_DAYS:3}
+    three-day-price-krw: ${SODAM_RECRUITMENT_BOOST_PASS_THREE_DAY_PRICE_KRW:9900}
+    seven-day-duration-days: ${SODAM_RECRUITMENT_BOOST_PASS_SEVEN_DAY_DURATION_DAYS:7}
+    seven-day-price-krw: ${SODAM_RECRUITMENT_BOOST_PASS_SEVEN_DAY_PRICE_KRW:17900}
+    thirty-day-duration-days: ${SODAM_RECRUITMENT_BOOST_PASS_THIRTY_DAY_DURATION_DAYS:30}
+    thirty-day-price-krw: ${SODAM_RECRUITMENT_BOOST_PASS_THIRTY_DAY_PRICE_KRW:49900}
   # 영수증 OCR (env 설정 시 자동 활성, 미설정 시 수기입력 Noop)
   #   provider 가 비어있으면 ClovaReceiptOcrClient 빈이 생성되지 않아 NoopReceiptOcrClient(빈 초안) 가 동작 → 외부호출 0.
   #   provider 에 값(예: clova)을 넣으면 receiptOcrProvider 빈이 Noop 을 대체. api-url/secret-key 도 함께 설정해야 실제 호출.

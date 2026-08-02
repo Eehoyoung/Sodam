@@ -92,10 +92,36 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.PAYMENT_REQUIRED);
     }
 
+    /**
+     * 출근권 잔액 부족(402) — 채용 제안 발송/지원서 열람+채팅 개설에 필요한 출근권이 부족할 때.
+     * FE 가 충전(페이월) 유도로 분기한다(api-design.md: 결제 필요 402 + errorCode).
+     */
+    @ExceptionHandler(InsufficientCreditException.class)
+    public ResponseEntity<ApiResponse<Object>> handleInsufficientCredit(InsufficientCreditException e) {
+        log.info("출근권 부족: required={} balance={} - {}", e.getRequired(), e.getBalance(), e.getMessage());
+        Map<String, Integer> detail = new HashMap<>();
+        detail.put("required", e.getRequired());
+        detail.put("balance", e.getBalance());
+        ApiResponse<Object> response = ApiResponse.error("ATTENDANCE_CREDIT_INSUFFICIENT", e.getMessage(), detail);
+        return new ResponseEntity<>(response, HttpStatus.PAYMENT_REQUIRED);
+    }
+
     @ExceptionHandler(ManagerAccessDeniedException.class)
     public ResponseEntity<ApiResponse<Object>> handleManagerAccessDenied(ManagerAccessDeniedException e) {
         return ResponseEntity.status(e.getStatus())
                 .body(ApiResponse.error(e.getCode(), e.getMessage()));
+    }
+
+    /**
+     * 채팅 발신 자동 제한(403) — 신고 누적 임계치 도달로 운영 검토 대기 중인 계정의 발신 시도.
+     * RBAC 우회 알람이 함께 도는 {@link org.springframework.security.access.AccessDeniedException} 과
+     * 의미가 다르므로 별도 핸들러를 둔다(ChatSenderRestrictedException 클래스 주석 참고).
+     */
+    @ExceptionHandler(ChatSenderRestrictedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleChatSenderRestricted(ChatSenderRestrictedException e) {
+        log.info("채팅 발신 제한: {}", e.getMessage());
+        ApiResponse<Object> response = ApiResponse.error(e.getErrorCode(), e.getMessage());
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
     }
 
     /**

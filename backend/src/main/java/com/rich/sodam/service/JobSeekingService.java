@@ -4,6 +4,7 @@ import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.JobAvailabilityDay;
 import com.rich.sodam.domain.JobOffer;
 import com.rich.sodam.domain.JobSeekingProfile;
+import com.rich.sodam.domain.MasterStoreRelation;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.domain.type.JobCategory;
@@ -17,6 +18,7 @@ import com.rich.sodam.repository.AttendanceRepository;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
 import com.rich.sodam.repository.JobOfferRepository;
 import com.rich.sodam.repository.JobSeekingProfileRepository;
+import com.rich.sodam.repository.MasterStoreRelationRepository;
 import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -60,6 +62,8 @@ public class JobSeekingService {
     private final GeocodingService geocodingService;
     private final JobOfferRepository jobOfferRepository;
     private final JobOfferService jobOfferService;
+    private final MasterStoreRelationRepository masterStoreRelationRepository;
+    private final ChatModerationService chatModerationService;
 
     // ─────────────────────────────────────────────────────────────────
     // GET /api/job-seekers/me
@@ -222,6 +226,7 @@ public class JobSeekingService {
 
         DayOfWeek today = LocalDate.now(SEOUL).getDayOfWeek();
         String normalizedWorkType = (workType == null || workType.isBlank()) ? null : workType.trim();
+        Long ownerUserId = resolveStoreOwnerUserId(storeId);
 
         List<JobSeekerListItemResponse> result = new ArrayList<>();
         for (JobSeekingProfile profile : jobSeekingProfileRepository.findAllSeekingWithUser()) {
@@ -230,6 +235,10 @@ public class JobSeekingService {
                 continue;
             }
             if (employeeStoreRelationRepository.existsByEmployeeProfile_IdAndStore_IdAndIsActiveTrue(seeker.getId(), storeId)) {
+                continue;
+            }
+            // 상호 차단(§4.4) — 리스트·제안·채팅 전 구간 비노출의 첫 관문(ChatModerationService 가 단일 판정 지점).
+            if (chatModerationService.isBlockedEitherWay(ownerUserId, seeker.getId())) {
                 continue;
             }
 
@@ -356,6 +365,11 @@ public class JobSeekingService {
     // ─────────────────────────────────────────────────────────────────
     // 공통 헬퍼
     // ─────────────────────────────────────────────────────────────────
+
+    private Long resolveStoreOwnerUserId(Long storeId) {
+        List<MasterStoreRelation> relations = masterStoreRelationRepository.findByStore_Id(storeId);
+        return relations.isEmpty() ? null : relations.get(0).getMasterProfile().getId();
+    }
 
     private User getUser(Long userId) {
         return userRepository.findById(userId)

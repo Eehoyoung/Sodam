@@ -2,14 +2,20 @@ package com.rich.sodam.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rich.sodam.domain.Attendance;
+import com.rich.sodam.domain.AttendanceCredit;
+import com.rich.sodam.domain.AttendanceCreditTransaction;
 import com.rich.sodam.domain.EmployeeProfile;
 import com.rich.sodam.domain.MasterProfile;
 import com.rich.sodam.domain.MasterStoreRelation;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.User;
+import com.rich.sodam.domain.type.AttendanceCreditTransactionReason;
+import com.rich.sodam.domain.type.AttendanceCreditTransactionType;
 import com.rich.sodam.domain.type.UserGrade;
 import com.rich.sodam.dto.request.JobApplicationRespondRequest;
 import com.rich.sodam.dto.request.JobPostingUpsertRequest;
+import com.rich.sodam.repository.AttendanceCreditRepository;
+import com.rich.sodam.repository.AttendanceCreditTransactionRepository;
 import com.rich.sodam.repository.AttendanceRepository;
 import com.rich.sodam.repository.EmployeeProfileRepository;
 import com.rich.sodam.repository.MasterProfileRepository;
@@ -24,10 +30,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -55,6 +63,8 @@ class JobApplicationControllerTest {
     @Autowired private MasterStoreRelationRepository masterStoreRelationRepo;
     @Autowired private AttendanceRepository attendanceRepo;
     @Autowired private JobPostingService jobPostingService;
+    @Autowired private AttendanceCreditRepository attendanceCreditRepo;
+    @Autowired private AttendanceCreditTransactionRepository attendanceCreditTransactionRepo;
 
     private int bizSeq = 0;
 
@@ -82,7 +92,34 @@ class JobApplicationControllerTest {
 
         MasterProfile masterProfile = masterProfileRepo.save(new MasterProfile(owner));
         masterStoreRelationRepo.save(new MasterStoreRelation(masterProfile, store));
+        grantAttendanceCredits(owner, 1_000);
         return store;
+    }
+
+    /**
+     * 지원 응답(열람+채팅 개설) API가 실제 출근권을 소모하므로, 컨트롤러 테스트 픽스처에도 넉넉한 잔액을
+     * 미리 채워둔다. 소모는 잔액 컬럼이 아니라 원장 lot(remainingQuantity)에서 FIFO로 끌어오므로,
+     * 테스트 전용 무기한 TOPUP lot도 함께 만들어야 한다(없으면 소모 시 정합성 오류).
+     */
+    private void grantAttendanceCredits(User owner, int amount) {
+        AttendanceCredit wallet = attendanceCreditRepo.findByOwnerUserId(owner.getId())
+                .orElseGet(() -> attendanceCreditRepo.save(AttendanceCredit.openFor(owner.getId())));
+        ReflectionTestUtils.setField(wallet, "balance", amount);
+        attendanceCreditRepo.save(wallet);
+
+        attendanceCreditTransactionRepo.findAll().stream()
+                .filter(t -> t.getOwnerUserId().equals(owner.getId())
+                        && t.getType() == AttendanceCreditTransactionType.TOPUP
+                        && t.getRemainingQuantity() != null && t.getRemainingQuantity() > 0)
+                .forEach(lot -> {
+                    lot.drawDown(lot.getRemainingQuantity());
+                    attendanceCreditTransactionRepo.save(lot);
+                });
+        if (amount > 0) {
+            attendanceCreditTransactionRepo.save(AttendanceCreditTransaction.supply(owner.getId(),
+                    AttendanceCreditTransactionType.TOPUP, AttendanceCreditTransactionReason.IAP_TOPUP,
+                    amount, null, LocalDateTime.now()));
+        }
     }
 
     private void openPosting(Store store) {
