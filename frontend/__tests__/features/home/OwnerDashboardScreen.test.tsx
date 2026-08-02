@@ -12,6 +12,9 @@ jest.mock('react-native', () => ({
     // DS v2: ScreenContainer 가 KeyboardAvoidingView/StatusBar 를 사용 → 누락 시 undefined 컴포넌트 크래시
     KeyboardAvoidingView: 'KeyboardAvoidingView',
     StatusBar: 'StatusBar',
+    // 사장 출석체크 팝업(AttendanceCreditPopupHost → AttendanceCheckInSheet → BottomSheet)이
+    // 항상 마운트되어 Modal 을 사용한다 — 누락 시 undefined 컴포넌트 크래시.
+    Modal: 'Modal',
     Alert: {alert: jest.fn()},
     Platform: {OS: 'ios', select: (o: any) => o.ios},
     useWindowDimensions: () => ({width: 375, height: 812}),
@@ -74,6 +77,15 @@ jest.mock('../../../src/features/manager/hooks/useManagedStores', () => ({
         isLoading: false,
         refetch: jest.fn(() => Promise.resolve()),
     }),
+}));
+
+// AttendanceCreditPopupHost(사장 출석체크 팝업)가 OwnerDashboardContent에 항상 마운트된다 —
+// 이 파일은 QueryClientProvider 로 감싸지 않으므로 실제 useQuery 훅을 그대로 두면
+// "No QueryClient set" 으로 전체 스위트가 크래시한다. data=undefined 면 훅 자체가 null 을
+// 반환해(팝업 자동 오픈 로직 스킵) 이 파일의 기존 어서션에 영향을 주지 않는다.
+jest.mock('../../../src/features/recruitment/hooks/useAttendanceCreditQueries', () => ({
+    useAttendanceCreditSummary: () => ({data: undefined, isLoading: false, isError: false}),
+    useAttendanceCreditCheckIn: () => ({mutateAsync: jest.fn(), isPending: false}),
 }));
 
 // 실제 토큰 사용 — DS 컴포넌트가 named export(colors/spacing/radius/...)를 쓰므로

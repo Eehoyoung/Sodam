@@ -26,6 +26,7 @@ import SectionCard from '../../../common/components/sections/SectionCard';
 import SectionHeader from '../../../common/components/sections/SectionHeader';
 import {fetchStoreApprovals} from '../../attendance/services/attendanceApprovalService';
 import timeOffService from '../services/timeOffService';
+import {AttendanceCreditSummaryCard} from '../../recruitment/components/AttendanceCreditSummaryCard';
 
 interface MasterMyPageScreenProps {
     navigation: NavigationProp<any>;
@@ -317,6 +318,11 @@ export default function MasterMyPageScreen({navigation, visualFixture}: MasterMy
             onPress: () => navigation.navigate('HiringCost'),
             color: {bg: c.infoBg, icon: c.info},
         },
+        {
+            key: 'attendanceCreditCharge', label: '출근권 충전소', icon: 'card-outline',
+            onPress: () => navigation.navigate('AttendanceCreditCharge'),
+            color: {bg: c.surfaceMint, icon: c.success},
+        },
     ];
 
     const renderStoreCard = ({item: store, index}: {item: StoreInfo; index: number}) => {
@@ -560,6 +566,12 @@ export default function MasterMyPageScreen({navigation, visualFixture}: MasterMy
                 <View style={styles.section}>
                     <AppText variant="headingSm" style={styles.secTitle}>매장 관리</AppText>
                     <QuickMenuGrid items={quickMenus} />
+                </View>
+
+                {/* ── 출근권(사장 출석체크) — recruitment-monetization-gamification-plan.md §5 상시 접근 ── */}
+                <View style={styles.section}>
+                    <AppText variant="headingSm" style={styles.secTitle}>출근권</AppText>
+                    <AttendanceCreditSummaryCard />
                 </View>
 
                 {/* ── 정부 지원 정책 ── */}

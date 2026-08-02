@@ -387,3 +387,34 @@ export const JOB_APPLICATION_ERROR_MESSAGES: Record<JobApplicationErrorCode, str
     APPLICATION_NOT_PENDING: '이미 응답했거나 마감된 지원이에요.',
     JOB_APPLICATION_NOT_ELIGIBLE: '소담으로 출퇴근한 이력이 있어야 지원할 수 있어요.',
 };
+
+// ── 출근권(AttendanceCredit) — 사장 전용 채용 재화(recruitment-monetization-gamification-plan.md §2, §5) ──
+
+/** BE `AttendanceCreditWeekDayStatus` 의 요일 문자열 — "MON".."SUN". */
+export type AttendanceCreditDayOfWeek = 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN';
+
+/** `GET /api/attendance-credits/me` 응답의 이번 주(월~일) 그리드 한 칸 — `AttendanceCreditWeekDayStatus` 1:1. */
+export interface AttendanceCreditWeekDayStatus {
+    date: string;
+    dayOfWeek: AttendanceCreditDayOfWeek;
+    checkedIn: boolean;
+    isToday: boolean;
+}
+
+/** `GET /api/attendance-credits/me` 응답 — `AttendanceCreditSummaryResponse` 1:1. */
+export interface AttendanceCreditSummary {
+    balance: number;
+    expiringThisWeek: number;
+    currentStreak: number;
+    checkedInToday: boolean;
+    weeklyGrid: AttendanceCreditWeekDayStatus[];
+}
+
+/** `POST /api/attendance-credits/check-in` 응답 — `AttendanceCreditCheckInResponse` 1:1. */
+export interface AttendanceCreditCheckInResult {
+    grantedQuantity: number;
+    streakBonusGranted: boolean;
+    streakBonusQuantity: number;
+    balance: number;
+    currentStreak: number;
+}

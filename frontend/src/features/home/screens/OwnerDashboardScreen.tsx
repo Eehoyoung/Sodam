@@ -29,6 +29,7 @@ import {useSubscription} from '../../subscription/hooks/useSubscription';
 import {PastDueBanner} from '../../subscription/components/PastDueBanner';
 import {useManagedStores} from '../../manager/hooks/useManagedStores';
 import type {ManagedStore, ManagerPermission} from '../../manager/types';
+import {AttendanceCreditPopupHost} from '../../recruitment/components/AttendanceCreditPopupHost';
 
 type MonthPayroll = MonthPayrollStats;
 
@@ -210,6 +211,9 @@ export const OwnerDashboardContent: React.FC<OwnerDashboardContentProps> = ({vis
                     <AppButton label="급여 정산하기" onPress={() => navigation.navigate('SalaryList')} />
                 </CtaStack>
             }>
+            {/* 사장 출석체크 팝업 — 오늘 미출석이면 1일 1회 자동 노출(§5). 매니저 모드에서는
+                마운트하지 않는다(AttendanceCreditController는 @MasterOnly 전용 API). */}
+            {visualFixture ? null : <AttendanceCreditPopupHost />}
             <ScrollView
                 contentContainerStyle={styles.content}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
