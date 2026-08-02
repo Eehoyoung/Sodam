@@ -48,6 +48,10 @@ import TimeOffRequestScreen from '../features/timeoff/screens/TimeOffRequestScre
 import TimeOffApprovalScreen from '../features/timeoff/screens/TimeOffApprovalScreen';
 import ReferralScreen from '../features/referral/screens/ReferralScreen';
 import TossBillingAuthScreen from '../features/subscription/screens/TossBillingAuthScreen';
+import AttendanceCreditChargeScreen from '../features/attendanceCredit/screens/AttendanceCreditChargeScreen';
+import AttendanceCreditChargePaymentScreen from '../features/attendanceCredit/screens/AttendanceCreditChargePaymentScreen';
+import RecruitmentBoostPassScreen from '../features/attendanceCredit/screens/RecruitmentBoostPassScreen';
+import RecruitmentBoostPassPaymentScreen from '../features/attendanceCredit/screens/RecruitmentBoostPassPaymentScreen';
 import PurchaseLedgerScreen from '../features/purchase/screens/PurchaseLedgerScreen';
 import PurchaseScanScreen from '../features/purchase/screens/PurchaseScanScreen';
 import PurchaseConfirmScreen from '../features/purchase/screens/PurchaseConfirmScreen';
@@ -99,7 +103,10 @@ import JobSeekerDetailScreen from '../features/recruitment/screens/JobSeekerDeta
 import JobPostingDetailScreen from '../features/recruitment/screens/JobPostingDetailScreen';
 import ElectronicSignScreen from '../features/electronicSignature/screens/ElectronicSignScreen';
 import LegalWebviewScreen from '../features/system/screens/LegalWebviewScreen';
+import ChatRoomListScreen from '../features/chat/screens/ChatRoomListScreen';
+import ChatRoomScreen from '../features/chat/screens/ChatRoomScreen';
 import type {JobPostingNearbyItem, JobSeekerListItem} from '../features/recruitment/types';
+import type {ChatRoomListItem} from '../features/chat/types';
 import type {ReceiptDraft} from '../features/purchase/types';
 import appHeaderOptions from './appHeaderOptions';
 
@@ -159,6 +166,12 @@ export type HomeStackParamList = {
     TimeOffRequest: {storeId: number};
     Referral: undefined;
     TossBillingAuth: {plan: string; billingCycle: string};
+    AttendanceCreditCharge: undefined;
+    AttendanceCreditChargePayment: {orderId: string; amountKrw: number; orderName: string};
+    // 채용 부스트 무제한 패스(사장 단위 3/7/30일 애드온) — recruitment-monetization-gamification-plan.md §2.5.
+    // 기존 매장 정기구독(Subscription)과는 완전히 별개 트랙. AttendanceCreditCharge 화면 옆 탭 전환으로 진입.
+    RecruitmentBoostPass: undefined;
+    RecruitmentBoostPassPayment: {orderId: string; amountKrw: number; orderName: string};
     PurchaseLedger: {storeId: number};
     PurchaseScan: {storeId: number};
     PurchaseConfirm: {storeId: number; draft?: ReceiptDraft; purchaseId?: number};
@@ -215,6 +228,10 @@ export type HomeStackParamList = {
     // [직원] 구인 공고 상세·지원 — 260711_작업통합.md Part 2 §19.4 R-17(Phase 6).
     // 리스트 항목을 라우트 파라미터로 그대로 전달(추가 API 호출 없음, JobSeekerDetail 과 동일 원칙).
     JobPostingDetail: {posting: JobPostingNearbyItem};
+    // 채용 채팅(chat) — recruitment-monetization-gamification-plan.md §4, Phase D.
+    ChatRoomList: undefined;
+    // 목록 항목을 라우트 파라미터로 그대로 전달(JobSeekerDetail 과 동일 원칙 — 단건 조회 API가 없다).
+    ChatRoom: {roomId: number; room: ChatRoomListItem};
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -403,6 +420,10 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen name="TimeOffRequest" component={TimeOffRequestScreen} options={{headerShown: false}} />
             <Stack.Screen name="Referral" component={ReferralScreen} options={{headerShown: false}} />
             <Stack.Screen name="TossBillingAuth" component={TossBillingAuthScreen} options={{headerShown: false}} />
+            <Stack.Screen name="AttendanceCreditCharge" component={AttendanceCreditChargeScreen} options={{headerShown: false}} />
+            <Stack.Screen name="AttendanceCreditChargePayment" component={AttendanceCreditChargePaymentScreen} options={{headerShown: false}} />
+            <Stack.Screen name="RecruitmentBoostPass" component={RecruitmentBoostPassScreen} options={{headerShown: false}} />
+            <Stack.Screen name="RecruitmentBoostPassPayment" component={RecruitmentBoostPassPaymentScreen} options={{headerShown: false}} />
             <Stack.Screen name="PurchaseLedger" component={PurchaseLedgerScreen} options={{headerShown: false}} />
             <Stack.Screen name="PurchaseScan" component={PurchaseScanScreen} options={{headerShown: false}} />
             <Stack.Screen name="PurchaseConfirm" component={PurchaseConfirmScreen} options={{headerShown: false}} />
@@ -453,6 +474,8 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen name="JobSeekerList" component={JobSeekerListScreen} options={{headerShown: false}} />
             <Stack.Screen name="JobSeekerDetail" component={JobSeekerDetailScreen} options={{headerShown: false}} />
             <Stack.Screen name="JobPostingDetail" component={JobPostingDetailScreen} options={{headerShown: false}} />
+            <Stack.Screen name="ChatRoomList" component={ChatRoomListScreen} options={{headerShown: false}} />
+            <Stack.Screen name="ChatRoom" component={ChatRoomScreen} options={{headerShown: false}} />
         </Stack.Navigator>
     );
 };
