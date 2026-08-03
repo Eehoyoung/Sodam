@@ -25,10 +25,14 @@ import java.util.UUID;
 /**
  * 네이버 CLOVA OCR Receipt 실(實) 클라이언트.
  *
- * <p><b>활성 조건</b>: {@code sodam.ocr.provider} 프로퍼티가 설정된 경우에만 빈으로 등록된다
- * ({@link ConditionalOnProperty}). 빈 이름은 {@code receiptOcrProvider} 로,
- * {@link NoopReceiptOcrClient} 의 {@code @ConditionalOnMissingBean(name="receiptOcrProvider")}
- * 를 무력화해 자동으로 Noop 을 대체한다. 즉 <b>env 키 미설정 시 외부 호출 0, 수기입력 Noop 유지</b>.
+ * <p><b>활성 조건</b>: {@code sodam.ocr.provider}가 정확히 {@code clova}일 때만 빈으로 등록된다
+ * ({@link ConditionalOnProperty}{@code (havingValue = "clova")}). 값 존재 여부만 보던 이전 조건은
+ * {@code sodam.ocr.provider=false}처럼 끄려는 의도로 아무 값이나 넣어도 켜져 버리는 안전하지 않은
+ * on/off였다 — 반드시 문자열 {@code "clova"}와 일치해야 활성화되도록 값 기반으로 좁혔다
+ * (2026-08-04, 다른 provider가 추가되기 전까지는 유일한 유효값).
+ * 빈 이름은 {@code receiptOcrProvider}로, {@link NoopReceiptOcrClient}의
+ * {@code @ConditionalOnMissingBean(name="receiptOcrProvider")}를 무력화해 자동으로 Noop을 대체한다.
+ * 즉 <b>미설정·다른 값 시 외부 호출 0, 수기입력 Noop 유지</b>.
  *
  * <p><b>비용/실패 안전</b>: 네트워크·파싱 예외는 모두 삼키고 {@link ReceiptDraft#empty()} 를 반환해
  * 매입장부 비즈니스 흐름을 절대 막지 않는다(인식 실패 시 사장 수기입력으로 진행).
@@ -39,7 +43,7 @@ import java.util.UUID;
  */
 @Slf4j
 @Component("receiptOcrProvider")
-@ConditionalOnProperty(name = "sodam.ocr.provider")
+@ConditionalOnProperty(name = "sodam.ocr.provider", havingValue = "clova")
 public class ClovaReceiptOcrClient implements ReceiptOcrClient {
 
     private final String apiUrl;

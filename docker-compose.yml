@@ -87,6 +87,12 @@ services:
       # 카카오 (실 키 받으면 env 로 주입)
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-dev-mock}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-dev-mock-secret}
+      # 매입장부 영수증 OCR(CLOVA) — 기본 비어있음(Noop, 외부호출 0, 수기입력으로 완전 동작).
+      # ⭐ 실키 활성화: .env 에 SODAM_OCR_PROVIDER=clova + 아래 2개 키 입력 → compose up --build 만 하면 됨.
+      #    provider 가 정확히 "clova"가 아니면(미설정 포함) 항상 꺼진 것으로 취급된다.
+      SODAM_OCR_PROVIDER: ${SODAM_OCR_PROVIDER:-}
+      SODAM_OCR_API_URL: ${SODAM_OCR_API_URL:-}
+      SODAM_OCR_SECRET_KEY: ${SODAM_OCR_SECRET_KEY:-}
       # 타임존
       TZ: Asia/Seoul
       JAVA_OPTS: "-XX:+UseG1GC -XX:MaxRAMPercentage=75"
