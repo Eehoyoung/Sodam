@@ -7,6 +7,7 @@ import {colors, spacing} from '../../../common/styles/theme';
 import {useAuth} from '../../../contexts/AuthContext';
 import {useWorkplaces} from '../../workplace/hooks/useWorkplaces';
 import {isWithinRadius, verifyCheckInByLocation, verifyCheckOutByLocation} from '../services/locationAttendanceService';
+import {useLocationConsentGate} from '../hooks/useLocationConsentGate';
 
 interface LocationAttendanceProps {
     storeId: string;
@@ -20,6 +21,7 @@ const LocationAttendance: React.FC<LocationAttendanceProps> = ({
                                                                    onError
                                                                }) => {
     const {user} = useAuth();
+    const {ensureLocationConsent} = useLocationConsentGate();
     const {workplaces} = useWorkplaces();
     const [loading, setLoading] = useState(false);
     const [location, setLocation] = useState<{
@@ -101,7 +103,9 @@ const LocationAttendance: React.FC<LocationAttendanceProps> = ({
     };
 
 
-    // 현재 위치 가져오기
+    // 현재 위치 가져오기 — GPS 좌표를 실제로 수집하기 직전(Geolocation.getCurrentPosition 호출
+    // 직전)에 위치정보 이용 동의를 확인한다(GPS 출퇴근 첫 사용 시점, 위치정보법 §19②). 이미
+    // 동의한 사용자는 useLocationConsentGate 가 즉시 통과시켜 매번 뜨지 않는다.
     const getCurrentLocation = () => {
         if (!isMountedRef.current) {
             return;
@@ -109,50 +113,67 @@ const LocationAttendance: React.FC<LocationAttendanceProps> = ({
 
         setLoading(true);
 
-        Geolocation.getCurrentPosition(
-            position => {
-                // Check if component is still mounted before updating state
-                if (!isMountedRef.current) {
-                    return;
-                }
-
-                setLocation({
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude
-                });
-
-                // 매장 위치 정보가 있으면 거리 계산
-                if (workplace?.latitude && workplace?.longitude) {
-                    const result = isWithinRadius(
-                        position.coords.latitude,
-                        position.coords.longitude,
-                        workplace.latitude,
-                        workplace.longitude,
-                        100 // 기본 반경 100m (매장별로 다르게 설정 가능)
-                    );
-
-                    setDistanceInfo(result);
-                }
-
+        ensureLocationConsent().then(consented => {
+            if (!isMountedRef.current) {
+                return;
+            }
+            if (!consented) {
                 setLoading(false);
-            },
-            error => {
-                // Check if component is still mounted before updating state
-                if (!isMountedRef.current) {
-                    return;
-                }
-
-                console.error('LocationAttendance: Location error:', error);
-                setLoading(false);
-                if (onError) {onError('위치 정보를 가져오는데 실패했어요.');}
+                // 강제로 막지 않고 대체 수단(NFC/사장님 승인)으로 자연스럽게 안내만 한다.
+                if (onError) {onError('위치정보 동의 없이도 NFC나 사장님 승인으로 출퇴근할 수 있어요.');}
                 Toast.show({
-                    type: 'error',
-                    text1: '위치 오류',
-                    text2: '위치 정보를 가져오는데 실패했어요.'
+                    type: 'info',
+                    text1: '위치정보 미동의',
+                    text2: 'NFC나 사장님 승인으로도 출퇴근할 수 있어요.'
                 });
-            },
-            {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000}
-        );
+                return;
+            }
+
+            Geolocation.getCurrentPosition(
+                position => {
+                    // Check if component is still mounted before updating state
+                    if (!isMountedRef.current) {
+                        return;
+                    }
+
+                    setLocation({
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude
+                    });
+
+                    // 매장 위치 정보가 있으면 거리 계산
+                    if (workplace?.latitude && workplace?.longitude) {
+                        const result = isWithinRadius(
+                            position.coords.latitude,
+                            position.coords.longitude,
+                            workplace.latitude,
+                            workplace.longitude,
+                            100 // 기본 반경 100m (매장별로 다르게 설정 가능)
+                        );
+
+                        setDistanceInfo(result);
+                    }
+
+                    setLoading(false);
+                },
+                error => {
+                    // Check if component is still mounted before updating state
+                    if (!isMountedRef.current) {
+                        return;
+                    }
+
+                    console.error('LocationAttendance: Location error:', error);
+                    setLoading(false);
+                    if (onError) {onError('위치 정보를 가져오는데 실패했어요.');}
+                    Toast.show({
+                        type: 'error',
+                        text1: '위치 오류',
+                        text2: '위치 정보를 가져오는데 실패했어요.'
+                    });
+                },
+                {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000}
+            );
+        });
     };
 
     // 위치 기반 출근 인증

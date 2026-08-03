@@ -96,10 +96,17 @@ const SettingsScreen: React.FC = () => {
                 <SettingItem icon="help-circle-outline" title="고객지원" subtitle="문의와 공지" route="QnA" />
                 <SettingItem
                     icon="document-text-outline"
-                    title="약관 및 개인정보처리방침"
-                    subtitle="이용약관 · 개인정보 처리방침 보기"
+                    title="이용약관"
+                    subtitle="서비스 이용약관 보기"
                     route="LegalWebview"
                     params={{kind: 'terms'}}
+                />
+                <SettingItem
+                    icon="shield-checkmark-outline"
+                    title="개인정보 처리방침"
+                    subtitle="개인정보 수집·이용 내역 보기"
+                    route="LegalWebview"
+                    params={{kind: 'privacy'}}
                 />
             </View>
         </ScreenContainer>

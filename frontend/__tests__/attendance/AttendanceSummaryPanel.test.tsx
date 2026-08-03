@@ -1,7 +1,15 @@
 import React from 'react';
 import TestRenderer, { act } from 'react-test-renderer';
 import { Platform } from 'react-native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AttendanceSummaryPanel } from '../../src/features/attendance/components/AttendanceSummaryPanel';
+
+// useAttendance -> useLocationConsentGate 가 useQueryClient() 를 호출하므로(GPS 첫 사용 시
+// 위치정보 동의 게이트, 실제 쿼리 네트워크는 타지 않음) QueryClientProvider 로 감싸야 한다.
+const renderWithQueryClient = (ui: React.ReactElement) => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return TestRenderer.create(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+};
 
 jest.mock('../../src/features/attendance/services/attendanceService', () => ({
   __esModule: true,
@@ -20,7 +28,7 @@ describe('AttendanceSummaryPanel', () => {
     let renderer: TestRenderer.ReactTestRenderer;
 
     await act(async () => {
-      renderer = TestRenderer.create(<AttendanceSummaryPanel onPressViewDetails={jest.fn()} />);
+      renderer = renderWithQueryClient(<AttendanceSummaryPanel onPressViewDetails={jest.fn()} />);
     });
 
     const tree = renderer!.toJSON();
@@ -48,7 +56,7 @@ describe('AttendanceSummaryPanel', () => {
 
     let renderer: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      renderer = TestRenderer.create(<AttendanceSummaryPanel onPressViewDetails={jest.fn()} />);
+      renderer = renderWithQueryClient(<AttendanceSummaryPanel onPressViewDetails={jest.fn()} />);
     });
 
     const nfcChips = renderer!.root.findAllByProps({ children: 'NFC' });
@@ -63,7 +71,7 @@ describe('AttendanceSummaryPanel', () => {
 
     let renderer: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      renderer = TestRenderer.create(<AttendanceSummaryPanel onPressViewDetails={jest.fn()} />);
+      renderer = renderWithQueryClient(<AttendanceSummaryPanel onPressViewDetails={jest.fn()} />);
     });
 
     const nfcChips = renderer!.root.findAllByProps({ children: 'NFC' });

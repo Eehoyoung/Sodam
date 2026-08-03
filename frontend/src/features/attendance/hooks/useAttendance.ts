@@ -8,6 +8,7 @@ import attendanceService from '../services/attendanceService';
 import storeService from '../../store/services/storeService';
 import { AttendanceRecord } from '../types';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useLocationConsentGate } from './useLocationConsentGate';
 
 export type CheckMethod = 'standard' | 'location' | 'nfc';
 
@@ -17,6 +18,7 @@ interface UseAttendanceOptions {
 
 export const useAttendance = (options: UseAttendanceOptions = {}) => {
   const { user } = useAuth();
+  const { ensureLocationConsent } = useLocationConsentGate();
   const employeeIdNum = Number(user?.id);
   // 근무지: prop 우선, 없으면 직원 본인 실제 첫 매장으로 해석.
   // (과거 '1' 하드코딩 폴백은 엉뚱한 매장 조회/404 를 유발했다.)
@@ -118,26 +120,36 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
     }
   }, []);
 
+  // GPS 좌표를 실제로 수집하기 직전(Geolocation.getCurrentPosition 호출 직전)에 위치정보
+  // 이용 동의를 확인한다(GPS 출퇴근 첫 사용 시점, 위치정보법 §19②). 이미 동의한 사용자는
+  // useLocationConsentGate 가 즉시 통과시켜 매번 뜨지 않는다.
   const getCurrentLocation = useCallback(() => {
     return new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
       if (!locationPermissionGranted) {
         resolve(null);
         return;
       }
-      Geolocation.getCurrentPosition(
-        pos => {
-          const { latitude, longitude } = pos.coords;
-          if (isMountedRef.current) {setCurrentLocation({ latitude, longitude });}
-          resolve({ latitude, longitude });
-        },
-        _err => {
-          AppToast.error('위치 정보를 가져오지 못했어요. 다시 시도해 주세요.');
+      ensureLocationConsent().then(consented => {
+        if (!consented) {
+          AppToast.show('위치정보 동의 없이도 NFC나 사장님 승인으로 출퇴근할 수 있어요.');
           resolve(null);
-        },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-      );
+          return;
+        }
+        Geolocation.getCurrentPosition(
+          pos => {
+            const { latitude, longitude } = pos.coords;
+            if (isMountedRef.current) {setCurrentLocation({ latitude, longitude });}
+            resolve({ latitude, longitude });
+          },
+          _err => {
+            AppToast.error('위치 정보를 가져오지 못했어요. 다시 시도해 주세요.');
+            resolve(null);
+          },
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+        );
+      });
     });
-  }, [locationPermissionGranted]);
+  }, [locationPermissionGranted, ensureLocationConsent]);
 
   const ensureNFCAvailable = useCallback(async () => {
     try {

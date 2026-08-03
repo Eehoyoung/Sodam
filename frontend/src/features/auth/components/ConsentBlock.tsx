@@ -5,6 +5,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import {tokens} from '../../../theme/tokens';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import {AppBadge} from '../../../common/components/ds/AppBadge';
+import {LOCATION_SERVICE_TEXT, PRIVACY_POLICY_TEXT, TERMS_OF_SERVICE_TEXT} from '../../system/legalContent';
 
 export interface ConsentValue {
     age: boolean;
@@ -22,7 +23,10 @@ export interface ConsentBlockProps {
 }
 
 type ItemKey = 'age' | 'terms' | 'privacy' | 'locationService' | 'marketing';
-const REQUIRED: ItemKey[] = ['age', 'terms', 'privacy', 'locationService'];
+// 위치정보 동의는 필수에서 제외 — 위치정보법 §19② (미동의를 이유로 서비스 제공 거부 금지).
+// NFC·사장승인 등 GPS 없이도 쓸 수 있는 대체 출퇴근 수단이 있어 서비스 필수불가결 요소가
+// 아니다. GPS 출퇴근을 실제로 처음 쓰는 시점에 별도로 동의를 구한다(useLocationConsentGate).
+const REQUIRED: ItemKey[] = ['age', 'terms', 'privacy'];
 
 /**
  * 회원가입 약관 동의 묶음 (PRD_GUEST G-A1~G-A4).
@@ -31,7 +35,7 @@ const REQUIRED: ItemKey[] = ['age', 'terms', 'privacy', 'locationService'];
  *  - 약관·방침은 "보기" 탭으로 풀텍스트 모달
  */
 const ConsentBlock: React.FC<ConsentBlockProps> = ({value, onChange, legalTexts}) => {
-    const [openedDoc, setOpenedDoc] = useState<null | 'terms' | 'privacy' | 'marketing'>(null);
+    const [openedDoc, setOpenedDoc] = useState<null | 'terms' | 'privacy' | 'location' | 'marketing'>(null);
     const c = useThemeColors();
     const styles = useMemo(() => makeStyles(c), [c]);
 
@@ -53,6 +57,9 @@ const ConsentBlock: React.FC<ConsentBlockProps> = ({value, onChange, legalTexts}
         }
         if (openedDoc === 'privacy') {
             return legalTexts?.privacy ?? FALLBACK_PRIVACY;
+        }
+        if (openedDoc === 'location') {
+            return FALLBACK_LOCATION;
         }
         return legalTexts?.marketing ?? FALLBACK_MARKETING;
     }, [openedDoc, legalTexts]);
@@ -104,9 +111,9 @@ const ConsentBlock: React.FC<ConsentBlockProps> = ({value, onChange, legalTexts}
                 checkColor={c.textInverse}
                 checked={value.locationService}
                 label="위치기반 서비스"
-                required
+                optional
                 onPress={() => toggle('locationService')}
-                onPressView={() => setOpenedDoc('privacy')}
+                onPressView={() => setOpenedDoc('location')}
             />
             <ConsentRow
                 styles={styles}
@@ -131,6 +138,7 @@ const ConsentBlock: React.FC<ConsentBlockProps> = ({value, onChange, legalTexts}
                         <Text style={styles.modalTitle}>
                             {openedDoc === 'terms' && '이용약관'}
                             {openedDoc === 'privacy' && '개인정보 처리방침'}
+                            {openedDoc === 'location' && '위치기반 서비스 약관'}
                             {openedDoc === 'marketing' && '마케팅 정보 수신 동의'}
                         </Text>
                         <ScrollView style={styles.modalScroll}>
@@ -197,10 +205,9 @@ const ConsentRow: React.FC<ConsentRowProps> = ({
     </View>
 );
 
-const FALLBACK_TERMS =
-    '본 이용약관은 소담(SODAM) 서비스 이용에 관한 일반 조건을 규정합니다.\n\n자세한 내용은 출시 직전 변호사 검토 후 docs/legal/terms-of-service.md 에서 확인하실 수 있어요.';
-const FALLBACK_PRIVACY =
-    '소담은 「개인정보 보호법」을 준수하며, 회원가입·출퇴근 위치·결제 처리에 필요한 최소한의 개인정보만 수집합니다.\n\n자세한 처리 항목은 docs/legal/privacy-policy.md 를 참고해 주세요.';
+const FALLBACK_TERMS = TERMS_OF_SERVICE_TEXT;
+const FALLBACK_PRIVACY = PRIVACY_POLICY_TEXT;
+const FALLBACK_LOCATION = LOCATION_SERVICE_TEXT;
 const FALLBACK_MARKETING =
     '신규 기능·이벤트·노무/세무 콘텐츠를 푸시 또는 이메일로 보내드려요.\n\n월 최대 4회, 언제든지 알림 설정에서 수신 거부 가능합니다.';
 

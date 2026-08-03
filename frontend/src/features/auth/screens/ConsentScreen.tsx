@@ -38,7 +38,9 @@ export default function ConsentScreen({navigation, route}: Props) {
     });
     const [submitting, setSubmitting] = useState(false);
 
-    const requiredOk = consent.age && consent.terms && consent.privacy && consent.locationService;
+    // 위치정보 동의는 필수에서 제외 — 위치정보법 §19②(미동의 이유 서비스 거부 금지).
+    // GPS 출퇴근을 처음 쓸 때 별도로 동의를 구한다(useLocationConsentGate).
+    const requiredOk = consent.age && consent.terms && consent.privacy;
 
     const handleSubmit = async () => {
         if (!requiredOk) {

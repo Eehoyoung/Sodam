@@ -133,14 +133,11 @@ const Footer = () => {
             <View style={styles.footerBottom}>
                 <Text style={[styles.copyright, dynamicStyles.copyright]}>© 2024 SOODAM Inc. 모든 권리 보유.</Text>
                 <View style={styles.footerLinks}>
-                    <TouchableOpacity onPress={() => openExternalLink('https://sodam.com/terms')}>
+                    <TouchableOpacity onPress={() => navigation.navigate('LegalWebview', {kind: 'terms'})}>
                         <Text style={[styles.footerBottomLink, dynamicStyles.footerBottomLink]}>이용약관</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => openExternalLink('https://sodam.com/privacy')}>
+                    <TouchableOpacity onPress={() => navigation.navigate('LegalWebview', {kind: 'privacy'})}>
                         <Text style={[styles.footerBottomLink, dynamicStyles.footerBottomLink]}>개인정보처리방침</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => openExternalLink('https://sodam.com/cookies')}>
-                        <Text style={[styles.footerBottomLink, dynamicStyles.footerBottomLink]}>쿠키정책</Text>
                     </TouchableOpacity>
                 </View>
             </View>

@@ -54,7 +54,9 @@ const indexForPurpose = (purpose?: AuthPurpose) => {
     return index >= 0 ? index : 0;
 };
 
-const REQUIRED_CONSENT_KEYS: (keyof ConsentValue)[] = ['age', 'terms', 'privacy', 'locationService'];
+// 위치정보 동의는 필수에서 제외 — 위치정보법 §19②(미동의 이유 서비스 거부 금지).
+// GPS 출퇴근을 처음 쓸 때 별도로 동의를 구한다(useLocationConsentGate).
+const REQUIRED_CONSENT_KEYS: (keyof ConsentValue)[] = ['age', 'terms', 'privacy'];
 
 /**
  * 회원가입 — v3 아티팩트(sodam-v3-01-auth.html "05 Signup": "회원가입" 헤더 + 틸 "n/3" 배지 +
@@ -212,7 +214,7 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
             setPwError(`비밀번호: ${PW_POLICY}`);
             return;
         }
-        if (!consent.age || !consent.terms || !consent.privacy || !consent.locationService) {
+        if (!consent.age || !consent.terms || !consent.privacy) {
             AppToast.warn('서비스 이용을 위해 필수 약관에 동의해 주세요.');
             return;
         }
@@ -260,7 +262,7 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
                 </View>
                 <AppListItem
                     title="필수 약관 동의"
-                    subtitle="이용약관 · 개인정보 처리방침 · 위치기반 서비스 · 만 14세 이상"
+                    subtitle="이용약관 · 개인정보 처리방침 · 만 14세 이상"
                     right={
                         <AppBadge
                             tone={allRequiredConsentChecked ? 'success' : 'warning'}
@@ -270,7 +272,7 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
                     onPress={() => setConsentSheetOpen(true)}
                 />
                 <AppText variant="caption" tone="tertiary" style={styles.consentHint}>
-                    마케팅 정보 수신(선택)도 위 항목을 눌러 함께 설정할 수 있어요.
+                    위치기반 서비스·마케팅 정보 수신(선택)도 위 항목을 눌러 함께 설정할 수 있어요.
                 </AppText>
 
                 <BottomSheet

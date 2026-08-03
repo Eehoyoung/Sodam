@@ -32,6 +32,7 @@ import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import { useThemeColors, ThemeColors } from '../../../common/hooks/useThemeColors';
 import {parseServerDateTime} from '../../../common/format/dateTime';
 import EmployeeWorkingRing from '../components/EmployeeWorkingRing';
+import {useLocationConsentGate} from '../hooks/useLocationConsentGate';
 
 type CheckInMethod = 'standard' | 'location' | 'nfc';
 export interface AttendanceVisualFixture {
@@ -63,6 +64,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
     const c = useThemeColors();
     const styles = useMemo(() => makeStyles(c), [c]);
     const { user } = useAuth();
+    const { ensureLocationConsent } = useLocationConsentGate();
     const employeeIdNum = visualFixture ? 1 : Number(user?.id);
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(visualFixture?.attendanceRecords ?? []);
     const [loading, setLoading] = useState(!visualFixture);
@@ -252,34 +254,50 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
         }
     };
 
-    // 현재 위치 가져오기
+    // 현재 위치 가져오기 — GPS 좌표를 실제로 수집하기 직전(Geolocation.getCurrentPosition 호출
+    // 직전)에 위치정보 이용 동의를 확인한다(GPS 출퇴근 첫 사용 시점, 위치정보법 §19②). 이미
+    // 동의한 사용자는 useLocationConsentGate 가 즉시 통과시켜 매번 뜨지 않는다.
     const getCurrentLocation = () => {
         if (!isMountedRef.current) {
             return;
         }
 
         if (locationPermissionGranted) {
-            Geolocation.getCurrentPosition(
-                position => {
-                    // Check if component is still mounted before updating state
-                    if (!isMountedRef.current) {
-                        return;
-                    }
+            ensureLocationConsent().then(consented => {
+                if (!isMountedRef.current) {
+                    return;
+                }
+                if (!consented) {
+                    // 강제로 막지 않고 대체 수단(NFC/사장님 승인)으로 자연스럽게 안내만 한다.
+                    AppToast.show(
+                        Platform.OS === 'ios'
+                            ? '위치정보 동의 없이도 사장님 승인으로 출퇴근할 수 있어요.'
+                            : '위치정보 동의 없이도 NFC나 사장님 승인으로 출퇴근할 수 있어요.'
+                    );
+                    return;
+                }
+                Geolocation.getCurrentPosition(
+                    position => {
+                        // Check if component is still mounted before updating state
+                        if (!isMountedRef.current) {
+                            return;
+                        }
 
-                    const {latitude, longitude} = position.coords;
-                    setCurrentLocation({latitude, longitude});
-                },
-                error => {
-                    // Check if component is still mounted before updating state
-                    if (!isMountedRef.current) {
-                        return;
-                    }
+                        const {latitude, longitude} = position.coords;
+                        setCurrentLocation({latitude, longitude});
+                    },
+                    error => {
+                        // Check if component is still mounted before updating state
+                        if (!isMountedRef.current) {
+                            return;
+                        }
 
-                    console.error('AttendanceScreen: Location error:', error);
-                    AppToast.error('위치 정보를 가져오는 데 실패했어요. 다시 시도해 주세요.');
-                },
-                {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000}
-            );
+                        console.error('AttendanceScreen: Location error:', error);
+                        AppToast.error('위치 정보를 가져오는 데 실패했어요. 다시 시도해 주세요.');
+                    },
+                    {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000}
+                );
+            });
         }
     };
 
