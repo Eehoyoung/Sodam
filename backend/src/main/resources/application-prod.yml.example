@@ -136,6 +136,17 @@ sodam:
       from: ${SODAM_MAIL_FROM}
       starttls: true
 
+  # 매입장부 영수증 OCR(네이버 CLOVA Receipt) — 다른 통합과 달리 mode: mock/live 스위치가 아니라
+  # provider 값 자체의 유무로 켜진다(ConditionalOnProperty). 값을 채우기 전까지는 NoopReceiptOcrClient가
+  # 항상 빈 초안을 반환해 수기 입력으로 완전히 동작한다 — 외부 API 계약·월 비용 발생은 인간 승인 사항이므로
+  # 아래 3줄은 승인 전까지 주석 처리 상태를 유지할 것 (CLAUDE.md "매입장부(F-BUY-01)" 절 참조).
+  # ocr:
+  #   provider: clova
+  #   api-url: ${SODAM_OCR_API_URL}
+  #   secret-key: ${SODAM_OCR_SECRET_KEY}
+  #   connect-timeout-ms: 3000
+  #   read-timeout-ms: 15000
+
 logging:
   level:
     root: WARN

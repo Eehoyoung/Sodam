@@ -2,10 +2,12 @@ package com.rich.sodam.controller;
 
 import com.rich.sodam.domain.type.PurchaseCategory;
 import com.rich.sodam.dto.request.PurchaseSaveRequest;
+import com.rich.sodam.dto.response.MonthlySummaryResponse;
 import com.rich.sodam.dto.response.PriceTrendResponse;
 import com.rich.sodam.dto.response.PurchaseResponse;
 import com.rich.sodam.dto.response.ReceiptDraftResponse;
 import com.rich.sodam.dto.response.ReorderHintResponse;
+import com.rich.sodam.dto.response.VendorSummaryResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
@@ -16,6 +18,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -57,7 +61,29 @@ public class PurchaseController {
         } catch (IOException e) {
             throw new IllegalArgumentException("영수증 이미지를 읽을 수 없어요.");
         }
-        return ResponseEntity.ok(purchaseService.scan(bytes, image.getContentType()));
+        return ResponseEntity.ok(purchaseService.scan(storeId, bytes, image.getContentType()));
+    }
+
+    @Operation(summary = "영수증 원본 조회", description = "스캔 시 저장된 영수증 원본 이미지를 반환. 이 매장 소유 파일이 아니면 404.")
+    @GetMapping("/receipt-image")
+    public ResponseEntity<byte[]> receiptImage(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long storeId,
+            @RequestParam String ref) {
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        return purchaseService.loadReceiptImage(storeId, ref)
+                .map(bytes -> ResponseEntity.ok()
+                        .contentType(inferImageType(ref))
+                        .header(HttpHeaders.CACHE_CONTROL, "private, max-age=86400")
+                        .body(bytes))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    private static MediaType inferImageType(String ref) {
+        String lower = ref.toLowerCase();
+        if (lower.endsWith(".png")) return MediaType.IMAGE_PNG;
+        if (lower.endsWith(".pdf")) return MediaType.APPLICATION_PDF;
+        return MediaType.IMAGE_JPEG;
     }
 
     @Operation(summary = "매입 저장", description = "보정한 매입(거래처·일자·품목·수량·단가)을 저장.")
@@ -132,5 +158,36 @@ public class PurchaseController {
             @RequestParam(defaultValue = "30") int days) {
         storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
         return ResponseEntity.ok(purchaseService.reorderHints(storeId, days));
+    }
+
+    @Operation(summary = "거래처별 매입 집계", description = "기간(from~to) 내 거래처별 합계·건수·비중. 미지정 시 전체 기간.")
+    @GetMapping("/vendor-summary")
+    public ResponseEntity<List<VendorSummaryResponse>> vendorSummary(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long storeId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        return ResponseEntity.ok(purchaseService.vendorSummary(storeId, from, to));
+    }
+
+    @Operation(summary = "월별 매입 추이", description = "최근 N개월(당월 포함) 매입 합계. 매입 없는 달도 0원으로 채운다.")
+    @GetMapping("/monthly-summary")
+    public ResponseEntity<List<MonthlySummaryResponse>> monthlySummary(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long storeId,
+            @RequestParam(defaultValue = "6") int months) {
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        return ResponseEntity.ok(purchaseService.monthlySummary(storeId, months));
+    }
+
+    @Operation(summary = "품목명 자동완성", description = "이 매장에서 과거에 쓴 품목명 중 검색어를 포함하는 것을 최근 순으로 최대 8개.")
+    @GetMapping("/item-suggestions")
+    public ResponseEntity<List<String>> itemSuggestions(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long storeId,
+            @RequestParam(defaultValue = "") String q) {
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        return ResponseEntity.ok(purchaseService.itemSuggestions(storeId, q));
     }
 }

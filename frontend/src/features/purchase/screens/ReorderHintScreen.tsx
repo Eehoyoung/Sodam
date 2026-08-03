@@ -4,6 +4,9 @@
  * info-card 면책("참고용이에요 — 재고 자동 차감은 하지 않아요") + section-label "자주 사는 품목" +
  * 보조 info-card(30일 안내) + 리스트(상단 행: 품목명+평균주기 배지, 메타 한 줄: 마지막일자·수량·매입횟수).
  * (재고관리 아님 — POS Non-Goal 경계를 사용자에게 명시)
+ *
+ * 카드 탭 → 그 품목의 가격 추이(PriceTrend)로 즉시 이동(WP-05) — 이전엔 PriceTrend의
+ * route.params.item을 아무도 넘기지 않는 죽은 배선이었다.
  */
 import React, {useCallback, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
@@ -114,7 +117,11 @@ export default function ReorderHintScreen({route, navigation}: Props) {
             ) : (
                 <View style={styles.list}>
                     {hints.map((h, i) => (
-                        <AppCard key={`${h.itemName}-${i}`} variant="flat">
+                        <AppCard
+                            key={`${h.itemName}-${i}`}
+                            variant="flat"
+                            onPress={() => navigation.navigate('PriceTrend', {storeId, item: h.itemName})}
+                            accessibilityLabel={`${h.itemName} 가격 추이 보기`}>
                             <View style={styles.itemTop}>
                                 <AppText variant="titleMd" numberOfLines={1} style={styles.itemName}>
                                     {h.itemName}

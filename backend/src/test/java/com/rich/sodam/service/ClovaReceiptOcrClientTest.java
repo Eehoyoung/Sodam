@@ -143,6 +143,33 @@ class ClovaReceiptOcrClientTest {
     }
 
     @Test
+    @DisplayName("totalPrice.price가 있으면 recognizedTotal로 대조용 값을 넘긴다(2026-08-03 WP-03)")
+    void parsesRecognizedTotalWhenPresent() {
+        String json = """
+                {
+                  "images": [{ "receipt": { "result": {
+                    "storeInfo": { "name": { "text": "OO청과" } },
+                    "totalPrice": { "price": { "text": "19000", "formatted": { "value": "19000" } } },
+                    "subResults": [{ "items": [
+                      { "name": { "text": "양파" }, "count": { "text": "10" }, "price": { "unitPrice": { "text": "2000" } } }
+                    ]}]
+                  }}}]
+                }
+                """;
+        ReceiptDraft draft = ClovaReceiptOcrClient.parseClovaResponse(json);
+
+        assertThat(draft.recognizedTotal()).isEqualTo(19000);
+    }
+
+    @Test
+    @DisplayName("totalPrice 필드가 없으면 recognizedTotal은 0이 아니라 null이다")
+    void recognizedTotalIsNullWhenAbsent() {
+        ReceiptDraft draft = ClovaReceiptOcrClient.parseClovaResponse(SAMPLE);
+
+        assertThat(draft.recognizedTotal()).isNull();
+    }
+
+    @Test
     @DisplayName("비표준 날짜(월 13)는 null 로 두고 흐름을 유지한다")
     void invalidDateBecomesNull() {
         String json = """

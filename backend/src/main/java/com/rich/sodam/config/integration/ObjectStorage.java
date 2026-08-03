@@ -50,6 +50,20 @@ public class ObjectStorage {
         }
     }
 
+    /** 저장된 바이트 조회. 키가 없거나 읽기 실패 시 빈 값 — 호출부가 404/무시로 처리한다. */
+    public java.util.Optional<byte[]> get(String key) {
+        try {
+            Path target = LOCAL_ROOT.resolve(key);
+            if (!Files.exists(target)) {
+                return java.util.Optional.empty();
+            }
+            return java.util.Optional.of(Files.readAllBytes(target));
+        } catch (IOException e) {
+            log.warn("Storage get 실패 key={} reason={}", key, e.getMessage());
+            return java.util.Optional.empty();
+        }
+    }
+
     private String inferExt(String contentType) {
         if (contentType == null) return ".bin";
         if (contentType.contains("png")) return ".png";

@@ -1,12 +1,15 @@
 package com.rich.sodam.service;
 
+import com.rich.sodam.config.integration.ObjectStorage;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.type.PurchaseCategory;
 import com.rich.sodam.dto.request.PurchaseSaveRequest;
+import com.rich.sodam.dto.response.MonthlySummaryResponse;
 import com.rich.sodam.dto.response.PriceTrendResponse;
 import com.rich.sodam.dto.response.PurchaseResponse;
 import com.rich.sodam.dto.response.ReceiptDraftResponse;
 import com.rich.sodam.dto.response.ReorderHintResponse;
+import com.rich.sodam.dto.response.VendorSummaryResponse;
 import com.rich.sodam.repository.StoreRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,6 +36,7 @@ class PurchaseServiceTest {
 
     @Autowired private PurchaseService service;
     @Autowired private StoreRepository storeRepository;
+    @Autowired private ObjectStorage objectStorage;
 
     private Long store(String name, String biz) {
         Store s = new Store(name, biz, "02-1", "음식점", 12_000, 100);
@@ -118,6 +122,59 @@ class PurchaseServiceTest {
     }
 
     @Test
+    @DisplayName("거래처별 집계: 합계·건수·비중을 금액 내림차순으로")
+    void vendorSummary() {
+        Long storeId = store("매입매장J", "1110010101");
+        service.create(storeId, req("OO청과", LocalDate.now(), PurchaseCategory.VEGETABLE,
+                item("양파", 10, "kg", 1000))); // 10,000
+        service.create(storeId, req("한빛주류", LocalDate.now(), PurchaseCategory.LIQUOR,
+                item("소주", 20, "병", 1500))); // 30,000
+        service.create(storeId, req("OO청과", LocalDate.now(), PurchaseCategory.VEGETABLE,
+                item("대파", 5, "단", 2000))); // 10,000
+
+        List<VendorSummaryResponse> summary = service.vendorSummary(storeId, null, null);
+
+        assertThat(summary).hasSize(2);
+        assertThat(summary.get(0).vendorName()).isEqualTo("한빛주류");
+        assertThat(summary.get(0).totalAmount()).isEqualTo(30_000);
+        assertThat(summary.get(0).purchaseCount()).isEqualTo(1);
+        assertThat(summary.get(0).sharePercent()).isEqualTo(60.0); // 30000/50000*100
+        assertThat(summary.get(1).vendorName()).isEqualTo("OO청과");
+        assertThat(summary.get(1).totalAmount()).isEqualTo(20_000);
+        assertThat(summary.get(1).purchaseCount()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("월별 매입 추이: 매입 없는 달도 0원으로 채운다")
+    void monthlySummary() {
+        Long storeId = store("매입매장K", "1110020202");
+        service.create(storeId, req("OO청과", LocalDate.now(), PurchaseCategory.VEGETABLE,
+                item("양파", 10, "kg", 1000)));
+
+        List<MonthlySummaryResponse> months = service.monthlySummary(storeId, 3);
+
+        assertThat(months).hasSize(3);
+        assertThat(months.get(2).totalAmount()).isEqualTo(10_000); // 당월(마지막 항목)
+        assertThat(months.get(0).totalAmount()).isEqualTo(0); // 2개월 전 — 매입 없음
+    }
+
+    @Test
+    @DisplayName("품목 자동완성: 검색어 포함 + 최근순 + 중복 제거")
+    void itemSuggestions() {
+        Long storeId = store("매입매장L", "1110030303");
+        service.create(storeId, req("OO청과", LocalDate.now().minusDays(2), PurchaseCategory.VEGETABLE,
+                item("양파", 10, "kg", 1000)));
+        service.create(storeId, req("한빛청과", LocalDate.now().minusDays(1), PurchaseCategory.VEGETABLE,
+                item("양파", 5, "kg", 1200))); // 중복 품목명 — 한 번만 나와야 함
+        service.create(storeId, req("OO청과", LocalDate.now(), PurchaseCategory.VEGETABLE,
+                item("대파", 3, "단", 2000)));
+
+        List<String> suggestions = service.itemSuggestions(storeId, "양파");
+
+        assertThat(suggestions).containsExactly("양파");
+    }
+
+    @Test
     @DisplayName("다른 매장 매입 단건 조회 차단")
     void crossStoreBlocked() {
         Long storeA = store("매입매장D", "1110004444");
@@ -130,11 +187,50 @@ class PurchaseServiceTest {
     }
 
     @Test
-    @DisplayName("OCR 미설정(Noop): 빈 초안 반환 — 수기 입력 경로")
+    @DisplayName("OCR 미설정(Noop): 빈 초안 반환 — 수기 입력 경로. 이미지는 OCR과 무관하게 저장돼 imageRef로 돌아온다")
     void scanNoop() {
-        ReceiptDraftResponse draft = service.scan(new byte[]{1, 2, 3}, "image/jpeg");
+        Long storeId = store("매입매장F", "1110006666");
+
+        ReceiptDraftResponse draft = service.scan(storeId, new byte[]{1, 2, 3}, "image/jpeg");
+
         assertThat(draft.ocrAvailable()).isFalse();
         assertThat(draft.items()).isEmpty();
         assertThat(draft.vendorName()).isNull();
+        assertThat(draft.imageRef()).isNotBlank();
+        assertThat(draft.imageRef()).startsWith("stores/" + storeId + "/receipts/");
+    }
+
+    @Test
+    @DisplayName("스캔한 영수증 이미지를 저장에 그대로 실으면 매입에 연결되고, 삭제 시 파일도 정리된다")
+    void imageRefRoundTripsAndCleansUpOnDelete() {
+        Long storeId = store("매입매장G", "1110007777");
+        ReceiptDraftResponse scanned = service.scan(storeId, new byte[]{9, 9, 9}, "image/jpeg");
+
+        PurchaseSaveRequest req = req("OO청과", LocalDate.now(), PurchaseCategory.VEGETABLE,
+                item("양파", 10, "kg", 2000));
+        req.setImageRef(scanned.imageRef());
+
+        PurchaseResponse saved = service.create(storeId, req);
+        assertThat(saved.imageRef()).isEqualTo(scanned.imageRef());
+        assertThat(objectStorage.get(scanned.imageRef())).isPresent();
+
+        service.delete(storeId, saved.id());
+        assertThat(objectStorage.get(scanned.imageRef())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("다른 매장의 imageRef를 저장 요청에 실어도 무시된다(BOLA)")
+    void foreignStoreImageRefIsIgnored() {
+        Long storeA = store("매입매장H", "1110008888");
+        Long storeB = store("매입매장I", "1110009999");
+        ReceiptDraftResponse scannedInB = service.scan(storeB, new byte[]{1, 2, 3}, "image/jpeg");
+
+        PurchaseSaveRequest req = req("OO청과", LocalDate.now(), PurchaseCategory.VEGETABLE,
+                item("양파", 10, "kg", 2000));
+        req.setImageRef(scannedInB.imageRef());
+
+        PurchaseResponse saved = service.create(storeA, req);
+
+        assertThat(saved.imageRef()).isNull();
     }
 }

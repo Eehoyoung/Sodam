@@ -243,4 +243,33 @@ class SecurityRbacTest {
                         .with(user(unrelatedMaster)))
                 .andExpect(status().isForbidden());
     }
+
+    // ─── 2026-08-03 갭수정 WP-04: 매입장부(F-BUY-01) HTTP 계층 역할·BOLA 검증 ──
+
+    @Test
+    @DisplayName("EMPLOYEE: 매입장부 목록 조회 → 403 (MasterOnly)")
+    void employee_purchaseList_forbidden() throws Exception {
+        mockMvc.perform(get("/api/stores/1/purchases")
+                        .with(user("emp@x").authorities(
+                                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_EMPLOYEE"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("BOLA: DevSeedRunner 시드 매장(id=1)은 owner userId=1 소유 — 무관한 MASTER가 매입장부에 접근하면 403")
+    void otherMaster_purchaseList_forbidden() throws Exception {
+        UserPrincipal unrelatedMaster = new UserPrincipal(999999L, "other-master-purchase@x", java.util.List.of(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_MASTER")));
+        mockMvc.perform(get("/api/stores/1/purchases")
+                        .with(user(unrelatedMaster)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("무효 토큰(서명 손상) — 매입장부 endpoint /api/stores/1/purchases → 401")
+    void invalidToken_purchaseEndpoint_unauthorized() throws Exception {
+        mockMvc.perform(get("/api/stores/1/purchases")
+                        .header("Authorization", "Bearer invalid.jwt.token"))
+                .andExpect(status().isUnauthorized());
+    }
 }

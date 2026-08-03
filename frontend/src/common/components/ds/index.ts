@@ -20,6 +20,7 @@ export {AppText, AmountText} from './AppText';
 export {HeroNumber} from './HeroNumber';
 export {StepScaffold} from './StepScaffold';
 export {SegmentedControl} from './SegmentedControl';
+export {FilterChipRow} from './FilterChipRow';
 export {BottomTabBar, TAB_LABELS} from './BottomTabBar';
 export type {TabRole} from './BottomTabBar';
 export {Brandmark} from './Brandmark';

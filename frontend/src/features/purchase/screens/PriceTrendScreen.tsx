@@ -3,8 +3,11 @@
  *
  * 품목 입력 → MoneyCard(현재단가, sub에 지난번 대비 ±%·전후값 통합) + 단가 추이(간단 막대,
  * 외부 차트 라이브러리 금지, 시안엔 없으나 기존 기능 유지) + 거래처별 최저가(☆) 표시.
+ *
+ * route.params.item이 있으면(발주 참고 카드 탭 등으로 진입) 입력창만 채우고 끝나지 않고
+ * 곧바로 검색까지 실행한다 — 이전에는 파라미터가 있어도 아무도 넘기지 않아 죽은 배선이었다(WP-05).
  */
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {RouteProp, NavigationProp} from '@react-navigation/native';
@@ -56,6 +59,13 @@ export default function PriceTrendScreen({route, navigation}: Props) {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (item) {
+            search();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- 진입 시 1회만: item으로 넘어온 경우 자동 검색
+    }, []);
 
     const header = <AppHeader title="가격 추이" onBack={() => navigation.goBack()} />;
 

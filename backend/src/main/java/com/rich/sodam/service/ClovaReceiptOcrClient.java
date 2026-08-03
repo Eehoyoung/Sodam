@@ -164,10 +164,20 @@ public class ClovaReceiptOcrClient implements ReceiptOcrClient {
                 }
             }
 
-            return new ReceiptDraft(vendorName, purchaseDate, null, items);
+            Integer recognizedTotal = readIntOrNull(result.path("totalPrice").path("price"));
+
+            return new ReceiptDraft(vendorName, purchaseDate, null, items, recognizedTotal);
         } catch (Exception e) {
             return ReceiptDraft.empty();
         }
+    }
+
+    /** totalPrice.price 처럼 "값이 없으면 null(0이 아니라)"이 맞는 필드용. readInt와 달리 폴백이 0이 아니다. */
+    private static Integer readIntOrNull(JsonNode node) {
+        String v = readField(node);
+        if (v == null) return null;
+        String digits = v.replaceAll("[^0-9\\-]", "");
+        return digits.isBlank() ? null : parseIntSafe(digits);
     }
 
     /** formatted.value 우선, 없으면 text. 둘 다 없으면 null. */

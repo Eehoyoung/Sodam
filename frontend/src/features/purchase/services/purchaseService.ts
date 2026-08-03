@@ -4,13 +4,17 @@
  * 전부 사장(@MasterOnly) API. 일부 BE 가 {data: T} 래핑일 수 있어 방어적 파싱.
  */
 import api from '../../../common/api/client';
+import TokenManager from '../../../common/auth/tokenStore';
+import {env} from '../../../common/config/env';
 import {
+    MonthlySummary,
     Purchase,
     PriceTrend,
     PurchaseListQuery,
     PurchaseSaveRequest,
     ReceiptDraft,
     ReorderHint,
+    VendorSummary,
 } from '../types';
 
 async function unwrap<T>(promise: Promise<{data: unknown}>): Promise<T> {
@@ -70,6 +74,37 @@ async function reorder(storeId: number, days = 30): Promise<ReorderHint[]> {
     return unwrapList<ReorderHint>(api.get(`${base(storeId)}/reorder`, {days}));
 }
 
+/** 거래처별 매입 집계(기간 내). */
+async function vendorSummary(storeId: number, query?: PurchaseListQuery): Promise<VendorSummary[]> {
+    return unwrapList<VendorSummary>(api.get(`${base(storeId)}/vendor-summary`, query));
+}
+
+/** 최근 N개월(당월 포함) 매입 합계 추이. */
+async function monthlySummary(storeId: number, months = 6): Promise<MonthlySummary[]> {
+    return unwrapList<MonthlySummary>(api.get(`${base(storeId)}/monthly-summary`, {months}));
+}
+
+/** 품목명 자동완성(이 매장에서 과거에 쓴 품목명, 최근순 최대 8개). */
+async function itemSuggestions(storeId: number, q: string): Promise<string[]> {
+    return unwrapList<string>(api.get(`${base(storeId)}/item-suggestions`, {q}));
+}
+
+/**
+ * 영수증 원본 이미지 표시용 소스. 인증이 걸린 조회라 `<Image source={...}>`에 바로 쓸 수 있도록
+ * Authorization 헤더를 실어 반환한다(공개 정적 서빙 대신 매장 소유 검증을 거치는 이유는
+ * 영수증에 거래처·금액이 담겨 공개 URL로 두기엔 부적절하기 때문).
+ */
+async function receiptImageSource(
+    storeId: number,
+    imageRef: string,
+): Promise<{uri: string; headers: Record<string, string>}> {
+    const token = await TokenManager.getAccess();
+    return {
+        uri: `${env.apiBaseUrl}${base(storeId)}/receipt-image?ref=${encodeURIComponent(imageRef)}`,
+        headers: token ? {Authorization: `Bearer ${token}`} : {},
+    };
+}
+
 const purchaseService = {
     scan,
     create,
@@ -79,6 +114,10 @@ const purchaseService = {
     remove,
     priceTrend,
     reorder,
+    vendorSummary,
+    monthlySummary,
+    itemSuggestions,
+    receiptImageSource,
 };
 
 export default purchaseService;

@@ -5,8 +5,8 @@
  * 행 추가/삭제, 단가×수량 자동합계) + 합계 행(코랄 강조) + 하단 풀폭 CTA(매입 저장).
  * OCR 초안/수기 입력 보정 → 매입 저장(create) 또는 기존 수정(update). params: draft(신규) 또는 purchaseId(수정).
  */
-import React, {useEffect, useMemo, useState} from 'react';
-import {Pressable, StyleSheet, View} from 'react-native';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
+import {Image, Pressable, StyleSheet, View} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {RouteProp, NavigationProp} from '@react-navigation/native';
 import {
@@ -19,6 +19,7 @@ import {
     AppToast,
     CtaStack,
     ErrorState,
+    FilterChipRow,
     LoadingState,
     ScreenContainer,
     SuccessState,
@@ -85,6 +86,8 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
     const [saved, setSaved] = useState(false);
 
     const [vendorName, setVendorName] = useState(draft?.vendorName ?? '');
+    const [imageRef, setImageRef] = useState<string | undefined>(draft?.imageRef);
+    const [imageSource, setImageSource] = useState<{uri: string; headers: Record<string, string>} | null>(null);
     const [purchaseDate, setPurchaseDateValue] = useState(compactDateFromApi(draft?.purchaseDate) || todayString());
     const setPurchaseDate = (value: string) => setPurchaseDateValue(sanitizeDateDigits(value));
     const [memo, setMemo] = useState('');
@@ -92,6 +95,39 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
         const i = draft ? PURCHASE_CATEGORY_ORDER.indexOf(draft.category) : 0;
         return i >= 0 ? i : 0;
     });
+    const [suggestRowKey, setSuggestRowKeyState] = useState<string | null>(null);
+    const [suggestions, setSuggestions] = useState<string[]>([]);
+    const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const activeRowKeyRef = useRef<string | null>(null);
+
+    const setSuggestRowKey = (key: string | null) => {
+        activeRowKeyRef.current = key;
+        setSuggestRowKeyState(key);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (suggestTimer.current) {clearTimeout(suggestTimer.current);}
+            if (blurTimer.current) {clearTimeout(blurTimer.current);}
+        };
+    }, []);
+
+    /** 응답 도착 시점에 다른 행으로 포커스가 옮겨가 있으면(activeRowKeyRef 불일치) 화면을 덮어쓰지 않는다. */
+    const fetchSuggestions = (rowKey: string, query: string) => {
+        if (suggestTimer.current) {clearTimeout(suggestTimer.current);}
+        suggestTimer.current = setTimeout(() => {
+            purchaseService
+                .itemSuggestions(storeId, query)
+                .then(list => {
+                    if (activeRowKeyRef.current === rowKey) {setSuggestions(list);}
+                })
+                .catch(() => {
+                    if (activeRowKeyRef.current === rowKey) {setSuggestions([]);}
+                });
+        }, 200);
+    };
+
     const [rows, setRows] = useState<ItemRow[]>(() => {
         const seed = draft?.items ?? [];
         if (seed.length === 0) {
@@ -112,6 +148,7 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
             setLoadError(null);
             const data = await purchaseService.get(storeId, id);
             setVendorName(data.vendorName);
+            setImageRef(data.imageRef);
             setPurchaseDate(data.purchaseDate);
             setMemo(data.memo ?? '');
             const ci = PURCHASE_CATEGORY_ORDER.indexOf(data.category);
@@ -141,10 +178,30 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [purchaseId]);
 
+    useEffect(() => {
+        let cancelled = false;
+        if (!imageRef) {
+            setImageSource(null);
+            return undefined;
+        }
+        purchaseService.receiptImageSource(storeId, imageRef).then(src => {
+            if (!cancelled) {
+                setImageSource(src);
+            }
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [storeId, imageRef]);
+
     const total = useMemo(
         () => rows.reduce((sum, r) => sum + toNumber(r.quantity) * toNumber(r.unitPrice), 0),
         [rows],
     );
+
+    // 영수증에 인쇄된 합계(OCR 인식)와 품목 합계가 다르면 안내만 한다 — 저장값을 덮어쓰지 않음(WP-03).
+    const recognizedMismatch =
+        draft?.recognizedTotal !== undefined && draft.recognizedTotal !== total;
 
     const updateRow = (key: string, patch: Partial<ItemRow>) =>
         setRows(prev => prev.map(r => (r.key === key ? {...r, ...patch} : r)));
@@ -183,7 +240,7 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
             purchaseDate: dateDigitsToIso(purchaseDate),
             category: PURCHASE_CATEGORY_ORDER[categoryIndex],
             memo: memo.trim() || undefined,
-            imageRef: undefined,
+            imageRef,
             items: validItems,
         };
 
@@ -271,32 +328,41 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
                 helper={DATE_DIGITS_HELPER}
             />
 
+            {imageRef ? (
+                <View style={styles.receiptPreview}>
+                    <AppText variant="titleMd" tone="secondary" style={styles.sectionLabel}>
+                        영수증 원본
+                    </AppText>
+                    <View style={[styles.receiptThumbWrap, {borderColor: c.border}]}>
+                        {imageSource ? (
+                            <Image
+                                source={imageSource}
+                                style={styles.receiptThumb}
+                                resizeMode="cover"
+                                accessibilityLabel="첨부된 영수증 원본"
+                            />
+                        ) : null}
+                        <Pressable
+                            onPress={() => setImageRef(undefined)}
+                            hitSlop={8}
+                            style={[styles.receiptRemove, {backgroundColor: c.background, borderColor: c.border}]}
+                            accessibilityRole="button"
+                            accessibilityLabel="영수증 원본 제거">
+                            <Ionicons name="close" size={16} color={c.textSecondary} />
+                        </Pressable>
+                    </View>
+                </View>
+            ) : null}
+
             <AppText variant="titleMd" tone="secondary" style={styles.sectionLabel}>
                 분류
             </AppText>
-            <View style={styles.chipRow}>
-                {PURCHASE_CATEGORY_ORDER.map((k, idx) => {
-                    const on = categoryIndex === idx;
-                    return (
-                        <Pressable
-                            key={k}
-                            onPress={() => setCategoryIndex(idx)}
-                            accessibilityRole="button"
-                            accessibilityState={{selected: on}}
-                            style={[
-                                styles.chip,
-                                {borderColor: on ? c.brandPrimary : c.border, backgroundColor: on ? c.brandPrimarySoft : c.background},
-                            ]}>
-                            <AppText
-                                variant="caption"
-                                weight="700"
-                                tone={on ? 'brand' : 'secondary'}>
-                                {PURCHASE_CATEGORY_LABELS[k]}
-                            </AppText>
-                        </Pressable>
-                    );
-                })}
-            </View>
+            <FilterChipRow
+                options={PURCHASE_CATEGORY_ORDER.map(k => PURCHASE_CATEGORY_LABELS[k])}
+                value={categoryIndex}
+                onChange={setCategoryIndex}
+                style={styles.chipRow}
+            />
 
             <AppText variant="titleMd" tone="secondary" style={styles.sectionLabel}>
                 품목
@@ -326,8 +392,37 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
                             <AppInput
                                 placeholder="품목명 (예: 양파)"
                                 value={row.itemName}
-                                onChangeText={t => updateRow(row.key, {itemName: t})}
+                                onChangeText={t => {
+                                    updateRow(row.key, {itemName: t});
+                                    fetchSuggestions(row.key, t);
+                                }}
+                                onFocus={() => {
+                                    if (blurTimer.current) {clearTimeout(blurTimer.current);}
+                                    setSuggestRowKey(row.key);
+                                    fetchSuggestions(row.key, row.itemName);
+                                }}
+                                onBlur={() => {
+                                    // 제안 칩 탭이 blur보다 늦게 처리되므로 살짝 지연 후 닫는다.
+                                    blurTimer.current = setTimeout(() => setSuggestRowKey(null), 150);
+                                }}
                             />
+                            {suggestRowKey === row.key && suggestions.length > 0 ? (
+                                <View style={styles.suggestRow}>
+                                    {suggestions.map(s => (
+                                        <Pressable
+                                            key={s}
+                                            onPress={() => {
+                                                updateRow(row.key, {itemName: s});
+                                                setSuggestRowKey(null);
+                                            }}
+                                            style={[styles.suggestChip, {borderColor: c.border, backgroundColor: c.surfaceMuted}]}>
+                                            <AppText variant="caption" tone="secondary">
+                                                {s}
+                                            </AppText>
+                                        </Pressable>
+                                    ))}
+                                </View>
+                            ) : null}
                             <View style={styles.rowInputs}>
                                 <AppInput
                                     containerStyle={styles.qtyInput}
@@ -387,6 +482,11 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
                     {`${total.toLocaleString()}원`}
                 </AmountText>
             </View>
+            {recognizedMismatch ? (
+                <AppText variant="caption" tone="warning" style={styles.disclaimer}>
+                    영수증 인식 합계({draft?.recognizedTotal?.toLocaleString()}원)와 달라요. 품목을 확인해 주세요.
+                </AppText>
+            ) : null}
             <AppText variant="caption" tone="tertiary" style={styles.disclaimer}>
                 인식값을 확인한 뒤 저장해 주세요.
             </AppText>
@@ -397,14 +497,35 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
 const styles = StyleSheet.create({
     gap: {height: spacing.md},
     sectionLabel: {marginTop: spacing.xxl, marginBottom: spacing.md},
-    chipRow: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm},
-    chip: {
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.sm,
+    chipRow: {marginTop: spacing.sm},
+    receiptPreview: {marginTop: 0},
+    receiptThumbWrap: {
+        width: 96,
+        height: 96,
+        borderRadius: radius.lg,
+        borderWidth: 1,
+        overflow: 'hidden',
+    },
+    receiptThumb: {width: '100%', height: '100%'},
+    receiptRemove: {
+        position: 'absolute',
+        top: 4,
+        right: 4,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        borderWidth: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    itemList: {gap: spacing.sm, marginBottom: spacing.md},
+    suggestRow: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs},
+    suggestChip: {
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 4,
         borderRadius: radius.pill,
         borderWidth: 1,
     },
-    itemList: {gap: spacing.sm, marginBottom: spacing.md},
     itemHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',

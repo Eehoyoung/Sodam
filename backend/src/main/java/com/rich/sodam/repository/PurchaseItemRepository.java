@@ -15,4 +15,7 @@ public interface PurchaseItemRepository extends JpaRepository<PurchaseItem, Long
     /** 발주참고: 한 매장의 기간 내 모든 매입 줄(품목 그룹핑은 서비스에서). */
     List<PurchaseItem> findByPurchase_Store_IdAndPurchase_PurchaseDateGreaterThanEqual(
             Long storeId, LocalDate since);
+
+    /** 품목명 자동완성: 최근 입력분부터(id 역순) 매칭 대상을 훑는다. */
+    List<PurchaseItem> findByPurchase_Store_IdOrderByIdDesc(Long storeId);
 }

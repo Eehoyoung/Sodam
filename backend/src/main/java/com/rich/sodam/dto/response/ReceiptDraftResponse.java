@@ -15,7 +15,11 @@ public record ReceiptDraftResponse(
         LocalDate purchaseDate,
         String category,
         List<DraftItemResponse> items,
-        boolean ocrAvailable
+        boolean ocrAvailable,
+        /** 스캔 시 업로드된 영수증 원본의 저장 키. 저장(create/update) 요청의 imageRef로 그대로 실어 보낸다. */
+        String imageRef,
+        /** 영수증에 인쇄된 합계(인식됐다면). 품목 합계와 다르면 화면에서 대조 안내용으로만 쓴다. */
+        Integer recognizedTotal
 ) {
     public record DraftItemResponse(String itemName, double quantity, String unit, int unitPrice) {
         static DraftItemResponse from(DraftItem d) {
@@ -23,7 +27,7 @@ public record ReceiptDraftResponse(
         }
     }
 
-    public static ReceiptDraftResponse from(ReceiptDraft draft) {
+    public static ReceiptDraftResponse from(ReceiptDraft draft, String imageRef) {
         boolean available = draft.vendorName() != null || !draft.items().isEmpty();
         List<DraftItemResponse> items = draft.items().stream()
                 .map(DraftItemResponse::from).toList();
@@ -32,6 +36,8 @@ public record ReceiptDraftResponse(
                 draft.purchaseDate(),
                 draft.category() != null ? draft.category().name() : null,
                 items,
-                available);
+                available,
+                imageRef,
+                draft.recognizedTotal());
     }
 }

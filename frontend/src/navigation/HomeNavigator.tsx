@@ -57,6 +57,7 @@ import PurchaseScanScreen from '../features/purchase/screens/PurchaseScanScreen'
 import PurchaseConfirmScreen from '../features/purchase/screens/PurchaseConfirmScreen';
 import PriceTrendScreen from '../features/purchase/screens/PriceTrendScreen';
 import ReorderHintScreen from '../features/purchase/screens/ReorderHintScreen';
+import PurchaseInsightScreen from '../features/purchase/screens/PurchaseInsightScreen';
 import PayrollPreviewScreen from '../features/salary/screens/PayrollPreviewScreen';
 import WeeklyInsightsScreen from '../features/store/screens/WeeklyInsightsScreen';
 import MyContractScreen from '../features/contract/screens/MyContractScreen';
@@ -177,6 +178,7 @@ export type HomeStackParamList = {
     PurchaseConfirm: {storeId: number; draft?: ReceiptDraft; purchaseId?: number};
     PriceTrend: {storeId: number; item?: string};
     ReorderHint: {storeId: number};
+    PurchaseInsight: {storeId: number};
     PayrollPreview: {storeId: number; hourlyWage?: number};
     WeeklyInsights: {storeId: number};
     MyContract: undefined;
@@ -429,6 +431,7 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen name="PurchaseConfirm" component={PurchaseConfirmScreen} options={{headerShown: false}} />
             <Stack.Screen name="PriceTrend" component={PriceTrendScreen} options={{headerShown: false}} />
             <Stack.Screen name="ReorderHint" component={ReorderHintScreen} options={{headerShown: false}} />
+            <Stack.Screen name="PurchaseInsight" component={PurchaseInsightScreen} options={{headerShown: false}} />
             <Stack.Screen name="PayrollPreview" component={PayrollPreviewScreen} options={{headerShown: false}} />
             <Stack.Screen name="WeeklyInsights" component={WeeklyInsightsScreen} options={{headerShown: false}} />
             <Stack.Screen name="MyContract" component={MyContractScreen} options={{headerShown: false}} />

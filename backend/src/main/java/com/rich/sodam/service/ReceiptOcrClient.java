@@ -17,15 +17,21 @@ public interface ReceiptOcrClient {
 
     ReceiptDraft parse(byte[] image, String contentType);
 
-    /** OCR 자동인식 초안(미저장). 인식 실패 필드는 null/빈값으로 둔다. */
+    /**
+     * OCR 자동인식 초안(미저장). 인식 실패 필드는 null/빈값으로 둔다.
+     *
+     * @param recognizedTotal 영수증에 인쇄된 합계(있으면). 저장값이 아니라 사장이 보정 화면에서
+     *                        품목 합계와 비교해 인식 누락을 알아챌 수 있게 하는 대조용 참고값이다.
+     */
     record ReceiptDraft(
             String vendorName,
             LocalDate purchaseDate,
             PurchaseCategory category,
-            List<DraftItem> items
+            List<DraftItem> items,
+            Integer recognizedTotal
     ) {
         public static ReceiptDraft empty() {
-            return new ReceiptDraft(null, null, null, List.of());
+            return new ReceiptDraft(null, null, null, List.of(), null);
         }
     }
 

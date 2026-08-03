@@ -26,7 +26,7 @@ export const PURCHASE_CATEGORY_LABELS: Record<PurchaseCategory, string> = {
     ETC: '기타',
 };
 
-/** SegmentedControl/선택 UI 순서가 보장되도록 명시적 배열. */
+/** FilterChipRow/선택 UI 순서가 보장되도록 명시적 배열. */
 export const PURCHASE_CATEGORY_ORDER: PurchaseCategory[] = [
     'VEGETABLE',
     'MEAT',
@@ -106,6 +106,10 @@ export interface ReceiptDraft {
     items: ReceiptDraftItem[];
     /** OCR 공급자 미설정 시 false → 수기 입력 안내 */
     ocrAvailable: boolean;
+    /** 스캔 시 서버에 저장된 영수증 원본 키. 저장 요청에 그대로 실어 보내면 매입에 연결된다. */
+    imageRef?: string;
+    /** 영수증에 인쇄된 합계(인식됐다면). 품목 합계와 다르면 대조 안내에만 쓴다 — 저장값 아님. */
+    recognizedTotal?: number;
 }
 
 /** 가격 추이 시점 단위. */
@@ -149,4 +153,20 @@ export interface PurchaseListQuery {
     /** 'YYYY-MM-DD' */
     to?: string;
     category?: PurchaseCategory;
+}
+
+/** 거래처별 매입 집계(기간 내) — "이번 달 어디에 제일 많이 썼나". */
+export interface VendorSummary {
+    vendorName: string;
+    totalAmount: number;
+    purchaseCount: number;
+    /** 기간 전체 매입 대비 비중(%) */
+    sharePercent: number;
+}
+
+/** 최근 N개월 매입 합계 추이의 한 점. 매입 없는 달도 0원으로 채워져 있다. */
+export interface MonthlySummary {
+    /** 'YYYY-MM' */
+    yearMonth: string;
+    totalAmount: number;
 }
