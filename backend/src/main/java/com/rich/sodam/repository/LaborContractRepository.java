@@ -51,4 +51,10 @@ public interface LaborContractRepository extends JpaRepository<LaborContract, Lo
             "  AND r2.isActive = true) " +
             "GROUP BY c.id ORDER BY c.id")
     List<Object[]> findExpiredAfterEmploymentEnded(@Param("cutoff") LocalDateTime cutoff, Pageable pageable);
+
+    /**
+     * 본인 근로계약 이력 — 매장을 가리지 않고 이 사용자의 계약 전부를 최신순으로(WP-H 데이터 연속성).
+     * 퇴사한 매장의 계약도 포함된다.
+     */
+    List<LaborContract> findByEmployeeIdOrderByCreatedAtDesc(Long employeeId);
 }

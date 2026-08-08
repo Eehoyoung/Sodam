@@ -3,6 +3,7 @@ package com.rich.sodam.repository;
 import com.rich.sodam.domain.Attendance;
 import com.rich.sodam.domain.EmployeeProfile;
 import com.rich.sodam.domain.Store;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -140,5 +141,19 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
             "  AND r2.isActive = true) " +
             "GROUP BY a.id ORDER BY a.id")
     List<Object[]> findExpiredAfterEmploymentEnded(@Param("cutoff") LocalDateTime cutoff, Pageable pageable);
+
+    /**
+     * 본인 근무 이력 조회 — 소속 매장을 가리지 않고 <b>이 사용자의 기록 전부</b>를 최신순으로 반환한다.
+     * 퇴사한 매장의 기록도 포함된다(WP-H 데이터 연속성).
+     *
+     * <p>⚠️ 매장 스코프가 아니라 <b>본인 스코프</b> 조회다 — 호출부는 반드시 JWT의 userId를 넘겨야 하고,
+     * 요청 파라미터로 받은 employeeId를 그대로 넘기면 BOLA가 된다.</p>
+     */
+    @EntityGraph(attributePaths = {"store"})
+    Page<Attendance> findByEmployeeProfile_IdOrderByCheckInTimeDesc(Long employeeId, Pageable pageable);
+
+    /** 본인 근무 이력 전체(다운로드용) — 페이징 없이 최신순. */
+    @EntityGraph(attributePaths = {"store"})
+    List<Attendance> findByEmployeeProfile_IdOrderByCheckInTimeDesc(Long employeeId);
 
 }

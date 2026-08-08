@@ -141,8 +141,8 @@ public class RetentionNoticeService {
                 .append("에 파기될 예정입니다(약 ").append(milestoneDays).append("일 후).\n\n");
         counts.forEach((type, count) -> sb.append("· ").append(type).append(" ").append(count).append("건\n"));
         sb.append("\n소담은 근로기준법 제42조에 따라 근로관계 기록을 3년간 보관한 뒤 파기합니다.\n")
-                .append("파기된 기록은 되돌릴 수 없으니, 필요하시면 파기 전에 앱에서 내려받아 보관해 주세요.\n")
-                .append("소담 앱 > 마이페이지 > 내 근무 기록에서 내려받을 수 있습니다.\n\n")
+                .append("파기된 기록은 되돌릴 수 없으니, 필요하시면 파기 전에 내려받아 보관해 주세요.\n")
+                .append("소담 앱 > 마이페이지 > 내 근무 기록 에서 CSV로 내려받을 수 있습니다.\n\n")
                 .append("문의: 소담 고객센터\n");
         return sb.toString();
     }
