@@ -91,7 +91,7 @@ export const BreakTimerSheet: React.FC<{
     />
 );
 
-/* 78 Manual Record Sheet — myPage/PersonalUserScreen(MultiStoreWorkScreen) "수동 시간 입력" 버튼에서 사용 */
+/* 78 Manual Record Sheet — myPage/PersonalUserScreen "수동 시간 입력" 버튼에서 사용 */
 export const ManualRecordSheet: React.FC<{
     visible: boolean;
     onClose: () => void;

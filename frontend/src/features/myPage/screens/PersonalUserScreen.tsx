@@ -8,7 +8,19 @@
  *   (서버 API 미사용, 이 화면의 로컬 기록장에만 저장 — 기존 동작 무변경).
  */
 /* eslint-disable react-native/no-unused-styles -- styles built via createStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
-import {AppToast, AppButton, AppCard, AppText, AmountText, MoneyCard} from '../../../common/components/ds';
+import {
+    AppToast,
+    AppButton,
+    AppCard,
+    AppText,
+    AmountText,
+    MoneyCard,
+    QuickMenuGrid,
+    type QuickMenuTileItem,
+} from '../../../common/components/ds';
+import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {ManualRecordSheet} from '../../attendance/components/AttendanceSheets';
 import React, { useState, useEffect, useMemo, useCallback, useContext } from 'react';
 import {
@@ -100,10 +112,34 @@ interface MonthlyStats {
     };
 }
 
-const MultiStoreWorkScreen: React.FC<PersonalUserScreenProps> = ({visualFixture}) => {
+const PersonalUserScreen: React.FC<PersonalUserScreenProps> = ({visualFixture}) => {
     const c = useThemeColors();
     const insets = useSafeAreaInsets();
     const styles = useMemo(() => createStyles(c), [c]);
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
+
+    /**
+     * 개인 모드 빠른 메뉴(WP-K.2).
+     *
+     * "소담 근무 기록"이 여기 있는 이유: 보존기간 만료 사전 고지 메일이
+     * "마이페이지 > 내 근무 기록에서 내려받으세요"라고 안내한다. 안내한 곳에 실제로 있어야 한다.
+     */
+    const quickMenuItems: QuickMenuTileItem[] = useMemo(() => [
+        {
+            key: 'work-history',
+            label: '소담 근무 기록',
+            icon: 'time-outline',
+            color: {bg: c.brandPrimarySoft, icon: c.brandPrimary},
+            onPress: () => navigation.navigate('MyWorkHistory'),
+        },
+        {
+            key: 'annual-tax',
+            label: '연간 세금',
+            icon: 'receipt-outline',
+            color: {bg: c.surfaceMuted, icon: c.textSecondary},
+            onPress: () => navigation.navigate('PersonalAnnualTax'),
+        },
+    ], [c, navigation]);
 
     // AuthContext에서 사용자 정보 가져오기
     const { user } = useContext(AuthContext);
@@ -737,6 +773,10 @@ const MultiStoreWorkScreen: React.FC<PersonalUserScreenProps> = ({visualFixture}
                     />
                 </AppCard>
 
+                {/* v3 QuickMenuGrid — 개인 모드에서 자주 가는 곳(WP-K.2).
+                    "소담 근무 기록"은 보존기간 만료 고지 메일이 안내하는 착지점이라 여기 노출한다. */}
+                <QuickMenuGrid items={quickMenuItems} style={styles.card} />
+
                 {/* money-card(시안) — 이번 달 요약 */}
                 <MoneyCard
                     label="이번 달"
@@ -1313,4 +1353,4 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     },
 });
 
-export default MultiStoreWorkScreen;
+export default PersonalUserScreen;
