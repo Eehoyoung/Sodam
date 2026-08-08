@@ -2,6 +2,7 @@ package com.rich.sodam.service;
 
 import com.rich.sodam.domain.Payroll;
 import com.rich.sodam.dto.response.VatDeadlineResponse;
+import com.rich.sodam.dto.response.WithholdingDeadlineResponse;
 import com.rich.sodam.dto.response.WithholdingMonthlyResponse;
 import com.rich.sodam.repository.PayrollRepository;
 import lombok.RequiredArgsConstructor;
@@ -60,6 +61,27 @@ public class WithholdingMonthlyService {
         }
 
         return buildMonthlySummary(storeId, year, month, totalWithheld, LocalDate.now());
+    }
+
+    /**
+     * 원천세 신고기한만 안내 — <b>급여 데이터를 읽지 않는다</b>(WP-D, FREE 개방 대상).
+     *
+     * <p>{@link #monthlySummary}와 달리 {@code payrollRepository}를 전혀 조회하지 않으므로,
+     * 무료 사용자가 호출해도 유료 영역인 금액 집계가 새지 않는다 — 응답 DTO 에서 금액 필드를
+     * 빼는 것에 그치지 않고 <b>계산 자체를 하지 않는</b> 것이 요점이다.</p>
+     */
+    @Transactional(readOnly = true)
+    public WithholdingDeadlineResponse monthlyDeadline(Long storeId, int year, int month) {
+        if (month < 1 || month > 12) {
+            throw new IllegalArgumentException("월은 1~12 사이여야 해요: " + month);
+        }
+        return buildMonthlyDeadline(storeId, year, month, LocalDate.now());
+    }
+
+    WithholdingDeadlineResponse buildMonthlyDeadline(Long storeId, int year, int month, LocalDate today) {
+        LocalDate dueDate = LocalDate.of(year, month, 1).plusMonths(1).withDayOfMonth(WITHHOLDING_DUE_DAY);
+        return new WithholdingDeadlineResponse(
+                storeId, year, month, dueDate, ChronoUnit.DAYS.between(today, dueDate), WITHHOLDING_DISCLAIMER);
     }
 
     /**
