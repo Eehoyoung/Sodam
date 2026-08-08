@@ -57,6 +57,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final Map<String, BucketEntry> resetBuckets = new ConcurrentHashMap<>();
     private final Map<String, BucketEntry> authBuckets = new ConcurrentHashMap<>();
     private final Map<String, BucketEntry> chatMessageBuckets = new ConcurrentHashMap<>();
+    private final Map<String, BucketEntry> publicBuckets = new ConcurrentHashMap<>();
     private final Map<String, BucketEntry> generalBuckets = new ConcurrentHashMap<>();
     private final int maxBucketsPerPolicy;
     private final AtomicLong nextCleanupNanos = new AtomicLong();
@@ -105,6 +106,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 .build());
     }
 
+    private Bucket resolvePublicBucket(String key) {
+        return resolveBucket(publicBuckets, key, () -> Bucket.builder()
+                .addLimit(Bandwidth.classic(30, Refill.intervally(30, Duration.ofMinutes(1))))
+                .build());
+    }
+
     private Bucket resolveGeneralBucket(String key) {
         return resolveBucket(generalBuckets, key, () -> Bucket.builder()
                 .addLimit(Bandwidth.classic(120, Refill.intervally(120, Duration.ofMinutes(1))))
@@ -128,7 +135,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
         long cutoff = now - BUCKET_IDLE_TTL.toNanos();
         for (Map<String, BucketEntry> buckets : java.util.List.of(
-                loginBuckets, webLoginIpBuckets, resetBuckets, authBuckets, chatMessageBuckets, generalBuckets)) {
+                loginBuckets, webLoginIpBuckets, resetBuckets, authBuckets, chatMessageBuckets,
+                publicBuckets, generalBuckets)) {
             buckets.entrySet().removeIf(entry -> entry.getValue().lastSeenNanos() < cutoff);
         }
     }
@@ -143,7 +151,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     int bucketCountForTest() {
         return loginBuckets.size() + webLoginIpBuckets.size() + resetBuckets.size()
-                + authBuckets.size() + chatMessageBuckets.size() + generalBuckets.size();
+                + authBuckets.size() + chatMessageBuckets.size() + publicBuckets.size()
+                + generalBuckets.size();
     }
 
     private record BucketEntry(Bucket bucket, long lastSeenNanos) {
@@ -186,6 +195,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
             bucket = resolveResetBucket(clientIp);
         } else if (path.equals("/api/join") || path.equals("/api/auth/refresh")) {
             bucket = resolveAuthBucket(clientIp);
+        } else if (path.startsWith("/api/public/")) {
+            // 공개 계산기(WP-A) — 인증이 없어 남용 표면이 넓다. 일반 120/분보다 낮은 30/분 전용 한도.
+            // 사람이 계산기를 쓰는 빈도로는 넉넉하고, 스크립트 반복 호출은 걸린다.
+            bucket = resolvePublicBucket(clientIp);
         } else if ("POST".equalsIgnoreCase(request.getMethod()) && CHAT_MESSAGE_SEND_PATH.matcher(path).matches()) {
             // 채팅 도배 스팸 방지 — 일반 120/분보다 낮은 전용 한도(recruitment-monetization-gamification-plan.md §4.5)
             bucket = resolveChatMessageBucket(clientIp);
