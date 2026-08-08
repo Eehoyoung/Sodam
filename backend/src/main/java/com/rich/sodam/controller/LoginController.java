@@ -56,6 +56,7 @@ public class LoginController {
     private final LocaleResolver localeResolver;
     private final LoginLockoutService loginLockoutService;
     private final WebLoginAccountRateLimiter accountRateLimiter;
+    private final PersonalModeService personalModeService;
 
     @Value("${spring.security.oauth2.client.registration.kakao.redirect-uri}")
     private String redirectUrl;
@@ -63,7 +64,7 @@ public class LoginController {
     @Value("${spring.security.oauth2.client.registration.kakao.client-id}")
     private String clientId;
 
-    public LoginController(KakaoAuthService kakaoAuthService, AppleAuthService appleAuthService, JwtTokenProvider jwtTokenProvider, TokenService tokenService, UserService userService, TokenStore redisService, RefreshTokenService refreshTokenService, KakaoOAuthStateService kakaoOAuthStateService, MessageSource messageSource, LocaleResolver localeResolver, LoginLockoutService loginLockoutService, WebLoginAccountRateLimiter accountRateLimiter) {
+    public LoginController(KakaoAuthService kakaoAuthService, AppleAuthService appleAuthService, JwtTokenProvider jwtTokenProvider, TokenService tokenService, UserService userService, TokenStore redisService, RefreshTokenService refreshTokenService, KakaoOAuthStateService kakaoOAuthStateService, MessageSource messageSource, LocaleResolver localeResolver, LoginLockoutService loginLockoutService, WebLoginAccountRateLimiter accountRateLimiter, PersonalModeService personalModeService) {
         this.kakaoAuthService = kakaoAuthService;
         this.appleAuthService = appleAuthService;
         this.jwtTokenProvider = jwtTokenProvider;
@@ -76,6 +77,7 @@ public class LoginController {
         this.localeResolver = localeResolver;
         this.loginLockoutService = loginLockoutService;
         this.accountRateLimiter = accountRateLimiter;
+        this.personalModeService = personalModeService;
     }
 
     @Operation(summary = "카카오 OAuth 인가 시작", description = "단일 사용 state와 PKCE 검증값을 발급합니다.")
@@ -411,6 +413,13 @@ public class LoginController {
             body.put("birthDate", user.getBirthDate());
             // FE 가 false 면 ProfileBasics 화면으로 강제 진입 (자동 로그인 후에도 일관 보장)
             body.put("profileCompleted", user.isProfileCompleted());
+            // 로그인 후 랜딩 판정용(WP-K) — 등급만으로는 개인 모드 사용자를 구분할 수 없다.
+            // 개인 모드는 등급을 낮추지 않으므로(PRD §2.1), 매장 소속 유무를 함께 봐야
+            // 소속 0건인 사람을 빈 직원 홈으로 보내지 않는다. 매장 목록 전체가 아니라 개수만 내린다.
+            PersonalModeService.Status personalMode = personalModeService.statusOf(user);
+            body.put("personalModeEnabled", personalMode.personalModeEnabled());
+            body.put("activeStoreCount", personalMode.activeStoreCount());
+            body.put("suggestPersonalMode", personalMode.suggestConversion());
             return ResponseEntity.ok(body);
         } catch (Exception e) {
             log.error("현재 사용자 정보 조회 실패: {}", e.getMessage(), e);

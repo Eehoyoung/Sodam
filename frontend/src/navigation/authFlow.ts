@@ -74,10 +74,30 @@ export const homeScreenForGrade = (grade: CanonicalGrade): HomeLandingScreen => 
     return 'UserMyPageScreen';
 };
 
+/** 랜딩 판정에 필요한 사용자 상태 — role 만으로는 개인 모드 사용자를 구분할 수 없다. */
+type LandingUser = Pick<User, 'role' | 'personalModeEnabled' | 'activeStoreCount'>;
+
+/**
+ * 로그인 후 첫 화면.
+ *
+ * 판정 기준은 등급이 아니라 **지금 소속이 있는가**다. 개인 모드는 역할이 아니라 상태라서
+ * 등급을 낮추지 않으므로(등급을 낮추면 인증채용·채용채팅·경력증명서가 전부 403 이 된다),
+ * role 만 보면 매장 소속이 0건인 사람도 직원 홈으로 보내게 된다 — 출근 버튼과 오늘 스케줄만
+ * 있는 화면이라 소속이 없으면 빈 껍데기가 된다.
+ *
+ * `activeStoreCount` 가 undefined 인 응답(구버전 BE·필드 누락)에서는 기존 동작을 그대로 유지한다.
+ */
 export const homeScreenForUser = (
-    user?: Pick<User, 'role'> | null,
+    user?: LandingUser | null,
     fallbackPurpose?: AuthPurpose,
-): HomeLandingScreen => homeScreenForGrade(resolveUserGrade(user, fallbackPurpose));
+): HomeLandingScreen => {
+    const grade = resolveUserGrade(user, fallbackPurpose);
+    if (grade === 'EMPLOYEE' && user?.activeStoreCount === 0 && user?.personalModeEnabled) {
+        // 소속이 없고 개인 모드를 켠 사용자 — 개인 기록장이 그의 홈이다.
+        return 'UserMyPageScreen';
+    }
+    return homeScreenForGrade(grade);
+};
 
 export const resolvePostAuthRoute = (
     user: User,
@@ -100,6 +120,9 @@ export const resolvePostAuthRoute = (
         };
     }
 
+    // 전환 권유(suggestPersonalMode)는 아직 라우팅하지 않는다 — 동의 화면의 필수 고지 문구가
+    // 법무·노무 검토 확정 전이라(임금·퇴직금 청구권 무영향 / 근로관계 종료와 무관 / 탈퇴 아님),
+    // 문구 없이 화면을 띄우면 근로자가 권리 포기로 오인할 수 있다.
     return {
         name: 'HomeRoot',
         params: {screen: homeScreenForUser(user, fallbackPurpose)},
