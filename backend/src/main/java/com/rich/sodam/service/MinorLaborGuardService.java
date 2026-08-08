@@ -82,7 +82,7 @@ public class MinorLaborGuardService {
         int age = ageAt(birthDate, today);
         boolean minor = age < MinorLaborStandards.MINOR_AGE_THRESHOLD;
 
-        // TODO[승인]: 친권자 동의서 PII 수집·저장은 법무 승인 후. 현재는 필요 플래그·안내만.
+        // 게이트 L-2(docs/RELEASE_GATES.md): 친권자 동의서 PII 수집·저장은 법무 승인 후. 현재는 필요 플래그·안내만.
         return new MinorGuardResponse(
                 employeeId,
                 minor,

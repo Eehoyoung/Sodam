@@ -130,7 +130,7 @@ export const fetchTips = async (): Promise<Tip[]> => {
  * @returns 사용자 후기 목록
  */
 export const fetchTestimonials = async (): Promise<Testimonial[]> => {
-    console.error('[홈 서비스] 사용자 후기 가져오기 실패: BE 엔드포인트 미구현(G-1)');
+    console.error('[홈 서비스] 사용자 후기 가져오기 실패: BE 엔드포인트 미구현(배선 리팩터링 계획서 G-1 — RELEASE_GATES.md 의 G-1 과 다른 체계)');
     throw new Error('TESTIMONIALS_NOT_IMPLEMENTED');
 };
 
@@ -141,7 +141,7 @@ export const fetchTestimonials = async (): Promise<Testimonial[]> => {
  * @returns 서비스 목록
  */
 export const getServices = async (): Promise<Service[]> => {
-    console.error('[홈 서비스] 서비스 정보 가져오기 실패: BE 엔드포인트 미구현(G-1)');
+    console.error('[홈 서비스] 서비스 정보 가져오기 실패: BE 엔드포인트 미구현(배선 리팩터링 계획서 G-1 — RELEASE_GATES.md 의 G-1 과 다른 체계)');
     throw new Error('SERVICES_NOT_IMPLEMENTED');
 };
 

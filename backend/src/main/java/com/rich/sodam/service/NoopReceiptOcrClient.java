@@ -7,7 +7,8 @@ import org.springframework.stereotype.Component;
 /**
  * 기본 OCR 클라이언트 — 빈 초안만 반환(외부 호출 없음, 비용 0).
  *
- * <p>영수증 자동인식(실 OCR)은 외부 API 계약·키·월비용이 필요해 인간 승인 대상이다.
+ * <p>영수증 자동인식(실 OCR)은 외부 API 계약·키·월비용이 필요해 인간 승인 대상이다
+ * (게이트 <b>H-1</b>, {@code docs/RELEASE_GATES.md}).
  * 승인·키 설정 후 실제 구현 빈을 등록하면 {@link ConditionalOnMissingBean} 으로 이 빈은
  * 비활성화된다. 그 전까지 매입장부는 <b>수기 입력</b>으로 완전히 동작한다.
  */
