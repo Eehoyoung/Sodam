@@ -25,6 +25,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PlanAccessService {
 
+    /**
+     * PRO 기본 매장 상한 — 첫 매장(무료 1곳) + 요금제 화면이 고지한 "멀티매장 1개 포함" = 2곳.
+     *
+     * <p>⚠️ 이 값은 <b>사용자에게 이미 고지된 문구</b>에서 나온 것이다. 바꾸려면 요금제 화면
+     * (SubscribeScreen)·플랜 카탈로그({@code PlanType}) 문구를 함께 고쳐야 하고, 기존 가입자에게는
+     * 약관 개정 절차(30일 사전고지)가 필요하다.</p>
+     */
+    static final int PRO_DEFAULT_STORE_QUOTA = 2;
+
     private final SubscriptionRepository subscriptionRepository;
     private final MasterStoreRelationRepository masterStoreRelationRepository;
     private final com.rich.sodam.config.AbTestProperties abTestProperties;
@@ -81,11 +90,45 @@ public class PlanAccessService {
         if (existingStoreCount < 1) {
             return; // 첫 매장은 무료 허용
         }
-        PlanType plan = currentPlan();
+        Subscription subscription = activeSubscription(currentUserId());
+        PlanType plan = subscription != null ? subscription.getPlan() : PlanType.FREE;
         if (!plan.hasFeature(PlanFeature.MULTI_STORE)) {
             throw new PlanRequiredException(PlanType.PRO, plan,
                     "매장은 1개까지 무료예요. 매장을 더 추가하려면 멀티매장 플랜(프로 이상)으로 올려주세요.");
         }
+
+        Integer quota = effectiveStoreQuota(plan, subscription);
+        if (quota != null && existingStoreCount >= quota) {
+            throw new PlanRequiredException(PlanType.PREMIUM, plan,
+                    plan.getDisplayName() + " 플랜은 매장 " + quota + "곳까지 등록할 수 있어요. "
+                            + "매장을 더 운영하시려면 프리미엄으로 올려주세요.");
+        }
+    }
+
+    /**
+     * 유효 매장 수 상한 — null 이면 무제한.
+     *
+     * <p>PREMIUM 은 요금제 화면·플랜 카탈로그 양쪽에 <b>"멀티매장 무제한"</b>으로 고지돼 있어
+     * 쿼터를 적용하지 않는다. 여기에 상한을 씌우면 약관법상 불이익 변경이 된다(2026-08-08 조사).</p>
+     *
+     * <p>PRO 는 반대다 — 화면에 "멀티매장 1개 포함"으로 고지해 왔는데 실제로는 제한이 없어
+     * 고지보다 과다 제공 중이었다. 따라서 상한 도입은 불이익 변경이 아니라 고지대로 맞추는 시정이다.
+     * 그럼에도 이미 더 많은 매장을 운영 중이던 사장님은 {@code storeQuota} 로 보호한다(grandfathering).</p>
+     */
+    private Integer effectiveStoreQuota(PlanType plan, Subscription subscription) {
+        if (plan == PlanType.PREMIUM) {
+            return null;
+        }
+        if (subscription != null && subscription.getStoreQuota() != null) {
+            return subscription.getStoreQuota();
+        }
+        return plan == PlanType.PRO ? PRO_DEFAULT_STORE_QUOTA : null;
+    }
+
+    private Subscription activeSubscription(Long userId) {
+        return subscriptionRepository
+                .findFirstByUser_IdAndStatusIn(userId, List.of(SubscriptionStatus.ACTIVE))
+                .orElse(null);
     }
 
     /** 직원 수 상한 검사(상한 초과 시 PlanRequiredException). */

@@ -27,7 +27,9 @@ public enum PlanType {
                     PlanFeature.INSURANCE_PREVIEW)),
 
     PRO("프로", 19_900, null,
-            "무제한 직원 + 풀 노동법 + 연차 + 4대보험 신고서 자동작성 + 전자계약 + 대시보드 + 멀티매장",
+            // 매장 수: 앱 요금제 화면(SubscribeScreen)의 "멀티매장 1개 포함"과 같은 뜻이다.
+            // 이 문구는 비인증 공개 카탈로그(/api/billing/plans)로도 나가므로 화면과 어긋나면 안 된다.
+            "무제한 직원 + 풀 노동법 + 연차 + 4대보험 신고서 자동작성 + 전자계약 + 대시보드 + 멀티매장(2곳)",
             Set.of(PlanFeature.PAYSLIP_PDF, PlanFeature.SEVERANCE,
                     PlanFeature.LABOR_LAW_BASIC, PlanFeature.LABOR_COST_RATIO,
                     PlanFeature.INSURANCE_PREVIEW, PlanFeature.LABOR_LAW_FULL,

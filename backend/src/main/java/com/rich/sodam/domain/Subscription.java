@@ -55,6 +55,18 @@ public class Subscription {
     @Column(name = "card_label", length = 60)
     private String cardLabel;
 
+    /**
+     * 등록 가능한 매장 수 상한(애드온). null 이면 플랜 기본값을 따른다.
+     *
+     * <p><b>{@code PlanType} enum 을 건드리지 않고 상한을 조정하기 위한 필드다.</b> enum 은 선언 순서가
+     * 곧 티어 서열이라 중간 삽입·재정렬이 금지돼 있어, 새 티어를 만드는 대신 구독 단위 애드온으로 푼다.</p>
+     *
+     * <p>기존 사용자 보호에도 쓰인다 — PRO 기본 상한을 도입할 때, 그보다 많은 매장을 이미 운영 중이던
+     * 사장님은 이 값에 현재 보유 수를 넣어 소급 차단되지 않게 한다(grandfathering).</p>
+     */
+    @Column(name = "store_quota")
+    private Integer storeQuota;
+
     /** 토스 customerKey — 사용자 식별용 영문 키. */
     @Column(name = "customer_key", length = 60, nullable = false)
     private String customerKey;
