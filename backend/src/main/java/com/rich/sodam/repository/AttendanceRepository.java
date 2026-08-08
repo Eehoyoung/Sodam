@@ -3,6 +3,7 @@ package com.rich.sodam.repository;
 import com.rich.sodam.domain.Attendance;
 import com.rich.sodam.domain.EmployeeProfile;
 import com.rich.sodam.domain.Store;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -119,5 +120,25 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
             @Param("storeId") Long storeId,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * 보존기간이 만료된 출퇴근 기록 조회 — 기산점은 <b>근로관계 종료일</b>({@code deactivatedAt})이다
+     * (근로기준법 시행령 §22 취지). 개별 기록 발생일 기준이 아니므로 재직 중 직원의 초기 기록이
+     * 퇴직 전에 먼저 만료되는 일이 없다.
+     *
+     * <p>반환 원소는 {@code [attendanceId, deactivatedAt]} 2요소 배열이다.</p>
+     *
+     * <p>재입사(같은 매장에 활성 관계가 다시 생긴 경우)는 {@code NOT EXISTS}로 제외한다 — 과거 퇴사
+     * 이력만 보고 현직자의 기록을 파기 대상으로 잡으면 안 된다. 같은 매장에 비활성 관계가 여러 건이면
+     * {@code MAX}로 가장 늦은 종료일을 취해 보수적으로 판정한다.</p>
+     */
+    @Query("SELECT a.id, MAX(r.deactivatedAt) FROM Attendance a, EmployeeStoreRelation r " +
+            "WHERE r.employeeProfile.id = a.employeeProfile.id AND r.store.id = a.store.id " +
+            "AND r.isActive = false AND r.deactivatedAt IS NOT NULL AND r.deactivatedAt <= :cutoff " +
+            "AND NOT EXISTS (SELECT 1 FROM EmployeeStoreRelation r2 " +
+            "  WHERE r2.employeeProfile.id = a.employeeProfile.id AND r2.store.id = a.store.id " +
+            "  AND r2.isActive = true) " +
+            "GROUP BY a.id ORDER BY a.id")
+    List<Object[]> findExpiredAfterEmploymentEnded(@Param("cutoff") LocalDateTime cutoff, Pageable pageable);
 
 }

@@ -87,6 +87,49 @@ public class RetentionPurgeSchedule {
         this.purgedAt = LocalDateTime.now();
     }
 
+    /**
+     * 파기 예정일까지 남은 일수 기준으로, 아직 보내지 않은 사전 고지 단계(30/15/1일)를 반환한다.
+     * 보낼 단계가 없으면 {@link java.util.OptionalInt#empty()}.
+     *
+     * <p>배치가 하루 걸러 돌거나 하루치를 놓쳐도 고지가 누락되지 않도록 <b>"남은 일수 이하"</b>로 판정한다 —
+     * 예를 들어 28일 남은 시점에 처음 스캔되면 30일 고지를 그때 보낸다. 이미 보낸 단계는 건너뛰므로
+     * 중복 발송은 생기지 않는다.</p>
+     */
+    public java.util.OptionalInt pendingNoticeMilestone(LocalDateTime now) {
+        if (legalHold || isPurged()) {
+            return java.util.OptionalInt.empty();
+        }
+        long daysLeft = java.time.Duration.between(now, scheduledPurgeAt).toDays();
+        if (daysLeft <= 1 && notice1dSentAt == null) {
+            return java.util.OptionalInt.of(1);
+        }
+        if (daysLeft <= 15 && notice15dSentAt == null) {
+            return java.util.OptionalInt.of(15);
+        }
+        if (daysLeft <= 30 && notice30dSentAt == null) {
+            return java.util.OptionalInt.of(30);
+        }
+        return java.util.OptionalInt.empty();
+    }
+
+    /**
+     * 30/15/1일 사전 고지가 모두 발송됐는지 — {@code noticeRequired=true}인 정책의 파기 전제조건이다.
+     * 하나라도 빠져 있으면 파기하지 않는다.
+     */
+    public boolean isNoticeCompleted() {
+        return notice30dSentAt != null && notice15dSentAt != null && notice1dSentAt != null;
+    }
+
+    /** 해당 단계의 고지 발송 시각을 기록한다. 이미 기록돼 있으면 덮어쓰지 않는다(중복 발송 방지). */
+    public void markNoticeSent(int milestoneDays, LocalDateTime sentAt) {
+        switch (milestoneDays) {
+            case 30 -> { if (notice30dSentAt == null) notice30dSentAt = sentAt; }
+            case 15 -> { if (notice15dSentAt == null) notice15dSentAt = sentAt; }
+            case 1 -> { if (notice1dSentAt == null) notice1dSentAt = sentAt; }
+            default -> throw new IllegalArgumentException("고지 단계는 30/15/1일만 허용됩니다: " + milestoneDays);
+        }
+    }
+
     /** 법적 분쟁 계류 등으로 파기를 보류한다 — 배치 설계 시 §2.2(c) 요구사항. */
     public void placeLegalHold(String reason) {
         this.legalHold = true;
