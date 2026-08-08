@@ -10,7 +10,7 @@ import { AttendanceRecord } from '../types';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useLocationConsentGate } from './useLocationConsentGate';
 
-export type CheckMethod = 'standard' | 'location' | 'nfc';
+export type CheckMethod = 'standard' | 'location' | 'nfc' | 'qr';
 
 interface UseAttendanceOptions {
   workplaceId?: string; // TODO: wire with real selected workplace from context or props
@@ -219,6 +219,11 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
         if (!ok) {return;}
         AppToast.show('NFC 스캔은 상세 화면에서 진행돼요.');
         return;
+      } else if (method === 'qr') {
+        // NFC와 같은 구조 — 실제 스캔은 카메라 화면이 담당한다.
+        // 카메라 스캐너는 신규 네이티브 의존성이 필요해 별도 작업으로 분리했다(WP-C 잔여).
+        AppToast.show('QR 스캔은 상세 화면에서 진행돼요.');
+        return;
       }
 
       const resp = await attendanceService.checkIn({
@@ -263,6 +268,9 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
         const ok = await ensureNFCAvailable();
         if (!ok) {return;}
         AppToast.show('NFC 스캔은 상세 화면에서 진행돼요.');
+        return;
+      } else if (method === 'qr') {
+        AppToast.show('QR 스캔은 상세 화면에서 진행돼요.');
         return;
       }
 

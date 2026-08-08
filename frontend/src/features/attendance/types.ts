@@ -70,6 +70,19 @@ export interface NfcAttendanceRequest {
 }
 
 /**
+ * QR 기반 출퇴근 요청 인터페이스. BE QrAttendanceRequestDto 와 매핑 —
+ * GPS 좌표 없이 매장에 게시된 QR 토큰 검증만으로 기록한다.
+ *
+ * iOS 는 NFC 가 1차 출시에서 빠져 GPS 만 남는데 실내 오차가 커서, 두 플랫폼 모두 되는 경로로 도입했다.
+ * 서버가 토큰의 매장 일치·유효기간(서버 시각 기준)까지 검증해 대리출근을 막는다.
+ */
+export interface QrAttendanceRequest {
+    employeeId: number;
+    workplaceId: string;
+    qrToken: string;
+}
+
+/**
  * 출퇴근 기록 수정 요청 인터페이스
  */
 export interface UpdateAttendanceRequest {

@@ -34,7 +34,7 @@ import {parseServerDateTime} from '../../../common/format/dateTime';
 import EmployeeWorkingRing from '../components/EmployeeWorkingRing';
 import {useLocationConsentGate} from '../hooks/useLocationConsentGate';
 
-type CheckInMethod = 'standard' | 'location' | 'nfc';
+type CheckInMethod = 'standard' | 'location' | 'nfc' | 'qr';
 export interface AttendanceVisualFixture {
     workplaces: {id: string; name: string}[];
     selectedWorkplaceId: string;
@@ -55,9 +55,14 @@ interface AttendanceScreenProps {
     /** Development-only deterministic state used by the Android visual harness. */
     visualFixture?: AttendanceVisualFixture;
 }
-// iOS는 CoreNFC 제약(entitlement·실기기 전용 등)으로 1차 출시에서 NFC 출퇴근을 제외 — GPS·사장승인 방식으로 대체
-const METHOD_ORDER: CheckInMethod[] = Platform.OS === 'ios' ? ['standard', 'location'] : ['standard', 'location', 'nfc'];
-const METHOD_LABELS = Platform.OS === 'ios' ? ['기본', '위치'] : ['기본', '위치', 'NFC'];
+// iOS는 CoreNFC 제약(entitlement·실기기 전용 등)으로 1차 출시에서 NFC 출퇴근을 제외 — GPS·사장승인 방식으로 대체.
+// QR(WP-C)은 두 플랫폼 모두 지원한다 — iOS에 NFC가 없어 GPS만 남으면 실내 오차를 감당할 수단이 없다.
+const METHOD_ORDER: CheckInMethod[] = Platform.OS === 'ios'
+    ? ['standard', 'location', 'qr']
+    : ['standard', 'location', 'nfc', 'qr'];
+const METHOD_LABELS = Platform.OS === 'ios'
+    ? ['기본', '위치', 'QR']
+    : ['기본', '위치', 'NFC', 'QR'];
 
 const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
