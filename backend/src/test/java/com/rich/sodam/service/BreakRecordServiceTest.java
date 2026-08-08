@@ -129,6 +129,7 @@ class BreakRecordServiceTest {
         assertThat(started.breakEndTime()).isNull();
         assertThat(started.grantedConfirmed()).isFalse();
 
+        awaitClockTick();
         BreakRecordResponse completed = service.completeByEmployee(10L, 1L, started.id());
 
         assertThat(completed.breakEndTime()).isNotNull();
@@ -156,10 +157,26 @@ class BreakRecordServiceTest {
         assertThat(started.recordedBy()).isEqualTo(RecordedBy.EMPLOYEE);
     }
 
+    /**
+     * 시스템 시계가 한 눈금 진행할 때까지 기다린다.
+     *
+     * <p>{@code BreakRecord.completeByEmployee}는 종료가 시작보다 <b>엄격히 나중</b>일 것을 요구하는데
+     * (도메인 사양, {@code BreakRecordDomainTest} 참조), 서비스는 양쪽 모두 {@code LocalDateTime.now()}를
+     * 쓴다. OS 시계 해상도에 따라 두 호출이 같은 값을 돌려주면 정상 시나리오가 실패하므로,
+     * 시계에 의존하는 테스트는 눈금이 바뀐 뒤에 다음 단계로 넘어간다(전체 스위트에서 간헐 실패한 원인).</p>
+     */
+    private static void awaitClockTick() {
+        java.time.LocalDateTime t0 = java.time.LocalDateTime.now();
+        while (!java.time.LocalDateTime.now().isAfter(t0)) {
+            Thread.onSpinWait();
+        }
+    }
+
     @Test
     @DisplayName("종료 후 재시작은 허용된다(직전 기록이 완료 상태이므로 중복 아님)")
     void employeeStart_afterCompleteAllowsRestart() {
         BreakRecordResponse first = service.startByEmployee(10L, 1L);
+        awaitClockTick();
         service.completeByEmployee(10L, 1L, first.id());
 
         BreakRecordResponse second = service.startByEmployee(10L, 1L);
