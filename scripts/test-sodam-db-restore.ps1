@@ -21,16 +21,24 @@ function Invoke-MySqlInContainer([string]$command) {
     }
 }
 
+function Invoke-MySqlStandardInput([string]$sql, [string]$database = '') {
+    $databaseArgument = if ($database) { " $database" } else { '' }
+    $sql | & docker exec -i $MySqlContainer sh -c ('mysql -uroot -p"$MYSQL_ROOT_PASSWORD"' + $databaseArgument)
+    if ($LASTEXITCODE -ne 0) {
+        throw "MySQL SQL 실행이 실패했습니다. exit=$LASTEXITCODE"
+    }
+}
+
 Push-Location $projectRoot
 try {
     # 운영 DB에는 절대 restore하지 않는다. 일회성 검증 DB만 생성하고 마지막에 제거한다.
-    Invoke-MySqlInContainer ('mysqladmin -uroot -p"$MYSQL_ROOT_PASSWORD" create ' + $verificationDatabase)
+    Invoke-MySqlStandardInput "CREATE DATABASE $verificationDatabase;"
     & docker cp $BackupFile "${MySqlContainer}:$containerFile"
     if ($LASTEXITCODE -ne 0) {
         throw "컨테이너로 백업 파일 복사에 실패했습니다. exit=$LASTEXITCODE"
     }
     Invoke-MySqlInContainer ('mysql -uroot -p"$MYSQL_ROOT_PASSWORD" ' + $verificationDatabase + ' < ' + $containerFile)
-    $tableNames = @(& docker exec $MySqlContainer sh -c ('mysql -N -uroot -p"$MYSQL_ROOT_PASSWORD" ' + $verificationDatabase + ' -e "SHOW TABLES"'))
+    $tableNames = @("SHOW TABLES;" | & docker exec -i $MySqlContainer sh -c ('mysql -N -uroot -p"$MYSQL_ROOT_PASSWORD" ' + $verificationDatabase))
     $tableCount = $tableNames.Count
     if ($LASTEXITCODE -ne 0 -or $tableCount -le 0) {
         throw '복원 검증 DB에 테이블이 없습니다.'
@@ -38,7 +46,7 @@ try {
     Write-Output "RESTORE_VERIFY_OK database=$verificationDatabase tables=$tableCount"
 }
 finally {
-    & docker exec $MySqlContainer sh -c ('mysqladmin -uroot -p"$MYSQL_ROOT_PASSWORD" drop --force ' + $verificationDatabase) | Out-Null
+    try { Invoke-MySqlStandardInput "DROP DATABASE IF EXISTS $verificationDatabase;" } catch { Write-Warning $_.Exception.Message }
     & docker exec $MySqlContainer rm -f $containerFile | Out-Null
     Pop-Location
 }
