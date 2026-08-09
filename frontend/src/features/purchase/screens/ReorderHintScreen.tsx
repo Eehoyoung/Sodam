@@ -126,7 +126,14 @@ export default function ReorderHintScreen({route, navigation}: Props) {
                                 <AppText variant="titleMd" numberOfLines={1} style={styles.itemName}>
                                     {h.itemName}
                                 </AppText>
-                                <AppBadge label={`평균 ${Math.round(h.avgIntervalDays)}일`} tone="success" />
+                                {/* 기간 내 매입이 1건뿐이면 avgIntervalDays가 null이다 — Math.round(null)이
+                                    0으로 평가돼 "평균 0일"로 오표시되던 버그(정적테스트 발견)를 막기 위해
+                                    null이면 평균 대신 "첫 매입" 배지를 보여준다. */}
+                                {h.avgIntervalDays !== null ? (
+                                    <AppBadge label={`평균 ${Math.round(h.avgIntervalDays)}일`} tone="success" />
+                                ) : (
+                                    <AppBadge label="첫 매입" tone="neutral" />
+                                )}
                             </View>
                             <AppText variant="caption" tone="tertiary" numberOfLines={1}>
                                 마지막 {h.lastPurchaseDate} · {h.lastQuantity.toLocaleString()}

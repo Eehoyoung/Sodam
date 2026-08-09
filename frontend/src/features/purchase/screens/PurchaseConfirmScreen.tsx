@@ -17,6 +17,7 @@ import {
     AppInput,
     AppText,
     AppToast,
+    ConfirmSheet,
     CtaStack,
     ErrorState,
     FilterChipRow,
@@ -84,6 +85,8 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
     const [loadError, setLoadError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [deleted, setDeleted] = useState(false);
 
     const [vendorName, setVendorName] = useState(draft?.vendorName ?? '');
     const [imageRef, setImageRef] = useState<string | undefined>(draft?.imageRef);
@@ -200,8 +203,12 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
     );
 
     // 영수증에 인쇄된 합계(OCR 인식)와 품목 합계가 다르면 안내만 한다 — 저장값을 덮어쓰지 않음(WP-03).
+    // ⚠️ undefined/null을 모두 걸러야 한다 — OCR 미설정(Noop, 기본값)일 때 BE가 recognizedTotal:null을
+    // 내려주는데 `!== undefined`만 쓰면 null을 "인식된 값"으로 오판해 모든 영수증 촬영 저장마다
+    // "영수증 인식 합계(undefined원)와 달라요" 오경고가 떴다(정적테스트 발견, eqeqeq 규칙상 `!= null` 대신
+    // 명시적으로 둘 다 비교).
     const recognizedMismatch =
-        draft?.recognizedTotal !== undefined && draft.recognizedTotal !== total;
+        draft?.recognizedTotal !== undefined && draft.recognizedTotal !== null && draft.recognizedTotal !== total;
 
     const updateRow = (key: string, patch: Partial<ItemRow>) =>
         setRows(prev => prev.map(r => (r.key === key ? {...r, ...patch} : r)));
@@ -259,7 +266,52 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
         }
     };
 
-    const header = <AppHeader title="확인하고 저장" onBack={() => navigation.goBack()} />;
+    // BE는 DELETE /api/stores/{storeId}/purchases/{purchaseId}(204)를 완비하고 있었지만 어느 화면에도
+    // 진입점이 없어 사장님이 잘못 입력한 매입을 지울 방법이 없었다(정적테스트 발견) — 수정 화면(edit
+    // 모드) 헤더에 삭제 액션을 추가한다.
+    const requestDelete = () => {
+        if (!isEdit || typeof purchaseId !== 'number') {
+            return;
+        }
+        ConfirmSheet.confirm({
+            title: '이 매입을 삭제할까요?',
+            description: '삭제하면 되돌릴 수 없어요.',
+            primary: {
+                label: '삭제',
+                destructive: true,
+                onPress: async () => {
+                    setDeleting(true);
+                    try {
+                        await purchaseService.remove(storeId, purchaseId);
+                        setDeleted(true);
+                    } catch {
+                        AppToast.error('매입을 삭제하지 못했어요. 잠시 후 다시 시도해 주세요.');
+                    } finally {
+                        setDeleting(false);
+                    }
+                },
+            },
+            secondary: {label: '취소'},
+        });
+    };
+
+    const header = (
+        <AppHeader
+            title="확인하고 저장"
+            onBack={() => navigation.goBack()}
+            actions={
+                isEdit
+                    ? [
+                          {
+                              icon: <Ionicons name="trash-outline" size={20} color={c.error} />,
+                              accessibilityLabel: '매입 삭제',
+                              onPress: requestDelete,
+                          },
+                      ]
+                    : []
+            }
+        />
+    );
 
     if (loading) {
         return (
@@ -280,6 +332,26 @@ export default function PurchaseConfirmScreen({route, navigation}: Props) {
                         onPress: () => typeof purchaseId === 'number' && loadExisting(purchaseId),
                     }}
                     secondary={{label: '돌아가기', onPress: () => navigation.goBack()}}
+                />
+            </ScreenContainer>
+        );
+    }
+
+    if (deleting) {
+        return (
+            <ScreenContainer header={<AppHeader title="확인하고 저장" onBack={() => navigation.goBack()} />}>
+                <LoadingState title="매입 삭제 중" description="잠시만 기다려 주세요" />
+            </ScreenContainer>
+        );
+    }
+
+    if (deleted) {
+        return (
+            <ScreenContainer header={<AppHeader title="확인하고 저장" onBack={() => navigation.goBack()} />}>
+                <SuccessState
+                    title="매입을 삭제했어요"
+                    description="매입장부 목록에서 사라졌어요."
+                    primary={{label: '확인', onPress: () => navigation.goBack()}}
                 />
             </ScreenContainer>
         );

@@ -69,15 +69,20 @@ export default function PriceTrendScreen({route, navigation}: Props) {
 
     const header = <AppHeader title="가격 추이" onBack={() => navigation.goBack()} />;
 
+    // ⚠️ undefined/null을 모두 걸러야 한다 — 이 품목의 매입 이력이 1건뿐이면 BE가
+    // changeRatePercent/previousUnitPrice를 null로 반환하는데(비교 대상 없음), `=== undefined`만
+    // 쓰는 가드는 null을 통과시켜 이후 null.toFixed()/null.toLocaleString() 호출로 화면이 크래시했다
+    // (정적테스트 발견 — 매입 1건뿐인 신규 품목을 조회할 때마다 재현. eqeqeq 규칙상 `!= null` 대신
+    // 명시적으로 둘 다 비교).
     const changeText = (() => {
-        if (trend?.changeRatePercent === undefined) {
+        if (trend?.changeRatePercent === undefined || trend.changeRatePercent === null) {
             return null;
         }
         const up = trend.changeRatePercent >= 0;
         const sign = up ? '+' : '';
         const arrow = up ? '▲' : '▼';
         const prevNow =
-            trend.previousUnitPrice !== undefined
+            trend.previousUnitPrice !== undefined && trend.previousUnitPrice !== null
                 ? ` (${trend.previousUnitPrice.toLocaleString()} → ${trend.currentUnitPrice.toLocaleString()})`
                 : '';
         return {
