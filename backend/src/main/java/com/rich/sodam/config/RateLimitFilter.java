@@ -33,6 +33,7 @@ import java.util.function.Supplier;
  *                                           {@link com.rich.sodam.service.webauth.WebLoginAccountRateLimiter}
  *                                           가 처리한다 — 필터는 요청 바디를 소비하지 않는다.
  *  - POST /api/auth/password-reset/**    : IP별 3회/분 (이메일 폭주 차단)
+ *  - POST /api/referrals/apply           : IP별 10회/분 (추천 코드 대입 공격 차단)
  *  - POST /api/join, /api/auth/refresh   : IP별 20회/분 (가입/refresh)
  *  - POST /api/chat-rooms/{id}/messages  : IP별 30회/분 (채팅 도배 스팸 방지,
  *                                           recruitment-monetization-gamification-plan.md §4.5)
@@ -55,6 +56,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final Map<String, BucketEntry> loginBuckets = new ConcurrentHashMap<>();
     private final Map<String, BucketEntry> webLoginIpBuckets = new ConcurrentHashMap<>();
     private final Map<String, BucketEntry> resetBuckets = new ConcurrentHashMap<>();
+    private final Map<String, BucketEntry> referralApplyBuckets = new ConcurrentHashMap<>();
     private final Map<String, BucketEntry> authBuckets = new ConcurrentHashMap<>();
     private final Map<String, BucketEntry> chatMessageBuckets = new ConcurrentHashMap<>();
     private final Map<String, BucketEntry> publicBuckets = new ConcurrentHashMap<>();
@@ -100,6 +102,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 .build());
     }
 
+    private Bucket resolveReferralApplyBucket(String key) {
+        return resolveBucket(referralApplyBuckets, key, () -> Bucket.builder()
+                .addLimit(Bandwidth.classic(10, Refill.intervally(10, Duration.ofMinutes(1))))
+                .build());
+    }
+
     private Bucket resolveChatMessageBucket(String key) {
         return resolveBucket(chatMessageBuckets, key, () -> Bucket.builder()
                 .addLimit(Bandwidth.classic(30, Refill.intervally(30, Duration.ofMinutes(1))))
@@ -135,7 +143,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
         long cutoff = now - BUCKET_IDLE_TTL.toNanos();
         for (Map<String, BucketEntry> buckets : java.util.List.of(
-                loginBuckets, webLoginIpBuckets, resetBuckets, authBuckets, chatMessageBuckets,
+                loginBuckets, webLoginIpBuckets, resetBuckets, referralApplyBuckets, authBuckets, chatMessageBuckets,
                 publicBuckets, generalBuckets)) {
             buckets.entrySet().removeIf(entry -> entry.getValue().lastSeenNanos() < cutoff);
         }
@@ -150,7 +158,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     int bucketCountForTest() {
-        return loginBuckets.size() + webLoginIpBuckets.size() + resetBuckets.size()
+        return loginBuckets.size() + webLoginIpBuckets.size() + resetBuckets.size() + referralApplyBuckets.size()
                 + authBuckets.size() + chatMessageBuckets.size() + publicBuckets.size()
                 + generalBuckets.size();
     }
@@ -193,6 +201,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
         } else if (path.startsWith("/api/auth/password-reset")) {
             // 보안: 이메일 폭주 방지 — IP 단위 3/분
             bucket = resolveResetBucket(clientIp);
+        } else if ("POST".equalsIgnoreCase(request.getMethod()) && path.equals("/api/referrals/apply")) {
+            bucket = resolveReferralApplyBucket(clientIp);
         } else if (path.equals("/api/join") || path.equals("/api/auth/refresh")) {
             bucket = resolveAuthBucket(clientIp);
         } else if (path.startsWith("/api/public/")) {

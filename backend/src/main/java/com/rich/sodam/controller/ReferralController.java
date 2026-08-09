@@ -4,6 +4,7 @@ import com.rich.sodam.security.UserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -40,6 +41,7 @@ public class ReferralController {
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor
     public static class ApplyReq {
         @NotBlank
+        @Pattern(regexp = "^[A-Za-z0-9]{8}$", message = "추천 코드는 영문과 숫자 8자리여야 해요.")
         private String code;
     }
 

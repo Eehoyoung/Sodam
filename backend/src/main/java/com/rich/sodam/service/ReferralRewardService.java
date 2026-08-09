@@ -1,7 +1,9 @@
 package com.rich.sodam.service;
 
 import com.rich.sodam.domain.Referral;
+import com.rich.sodam.domain.ReferralCodeMap;
 import com.rich.sodam.domain.User;
+import com.rich.sodam.repository.ReferralCodeMapRepository;
 import com.rich.sodam.repository.ReferralRepository;
 import com.rich.sodam.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
+import java.security.SecureRandom;
 
 /**
  * 레퍼럴 보상 루프 (S2/GR-NEW-01) — <b>키-레디</b>.
@@ -30,8 +32,10 @@ public class ReferralRewardService {
 
     /** 전환 성공 시 양측에게 줄 무료 개월 수(수익화 v3.1). */
     public static final int REWARD_MONTHS = 1;
+    private static final int MAX_CODE_GENERATION_ATTEMPTS = 10;
 
     private final ReferralRepository referralRepository;
+    private final ReferralCodeMapRepository referralCodeMapRepository;
     private final UserRepository userRepository;
 
     /**
@@ -74,8 +78,9 @@ public class ReferralRewardService {
     // ─────────────────────────────────────────────────────────────────
 
     /** 내 추천 코드 조회/발급 — 사용자당 1개 고정 코드. 영문+숫자 8자리. */
+    @Transactional
     public Map<String, Object> myCode(Long userId) {
-        String code = generateCodeFromUserId(userId);
+        String code = findOrIssueCode(userId);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("referralCode", code);
         body.put("shareText", String.format(
@@ -89,7 +94,9 @@ public class ReferralRewardService {
      */
     @Transactional
     public ApplyResult applyReferralCode(Long refereeUserId, String code) {
-        Long referrerUserId = parseCodeToUserId(code);
+        Long referrerUserId = referralCodeMapRepository.findByCode(normalizeCode(code))
+                .map(ReferralCodeMap::getUserId)
+                .orElse(null);
         if (referrerUserId == null) {
             return ApplyResult.failure("올바르지 않은 추천 코드예요.");
         }
@@ -128,23 +135,33 @@ public class ReferralRewardService {
                 }).toList();
     }
 
-    /** 사용자 ID 기반 결정적 8자리 코드. 외부 공유 안전. */
-    private static String generateCodeFromUserId(Long userId) {
-        String seed = "SODAM-REF-V1-" + userId;
-        String hash = UUID.nameUUIDFromBytes(seed.getBytes()).toString()
-                .replace("-", "").toUpperCase();
-        return "S" + hash.substring(0, 7); // 8자리
+    private String issueCode(Long userId) {
+        for (int attempt = 0; attempt < MAX_CODE_GENERATION_ATTEMPTS; attempt++) {
+            String code = ReferralCodeGenerator.randomCode();
+            if (referralCodeMapRepository.findByCode(code).isPresent()) {
+                continue;
+            }
+            referralCodeMapRepository.saveAndFlush(ReferralCodeMap.issue(code, userId));
+            return code;
+        }
+        throw new IllegalStateException("추천 코드 발급에 실패했어요. 잠시 후 다시 시도해 주세요.");
     }
 
-    /** 코드 → userId 역추적. 결정적이므로 가능. 무차별 추측 방지를 위해 hash 일치 검증. */
-    private static Long parseCodeToUserId(String code) {
-        if (code == null || code.length() != 8 || !code.startsWith("S")) return null;
-        // 1~1,000,000 까지 brute-force — 출시 초기에만 안전. 운영 시 별도 매핑 테이블 필요.
-        // TODO[Phase 2]: 코드 매핑 테이블(ReferralCode) 신규 도입 — UUID 무작위 코드 + DB 조회로 보안 강화.
-        for (long uid = 1; uid <= 1_000_000; uid++) {
-            if (generateCodeFromUserId(uid).equals(code)) return uid;
+    private String findOrIssueCode(Long userId) {
+        Optional<ReferralCodeMap> existing = referralCodeMapRepository.findByUserId(userId);
+        if (existing.isPresent()) {
+            return existing.get().getCode();
         }
-        return null;
+        // 같은 사용자에 대한 최초 발급을 직렬화해 uq_referral_code_map_user 경쟁 500을 방지한다.
+        userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없어요."));
+        return referralCodeMapRepository.findByUserId(userId)
+                .map(ReferralCodeMap::getCode)
+                .orElseGet(() -> issueCode(userId));
+    }
+
+    private static String normalizeCode(String code) {
+        return code == null ? "" : code.trim().toUpperCase();
     }
 
     /** 추천 코드 적용 결과. {@code success=false} 면 {@code message} 가 실패 사유. */

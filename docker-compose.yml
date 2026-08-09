@@ -24,6 +24,8 @@ services:
       dockerfile: Dockerfile
     container_name: sodam-be
     restart: unless-stopped
+    # t4g.large(8GB) 가정값: JVM 힙(MaxRAMPercentage=75)과 DB/Redis가 경쟁하지 않도록 상한을 둔다.
+    mem_limit: 3g
     depends_on:
       sodam-mysql:
         condition: service_healthy
@@ -135,6 +137,8 @@ services:
         NEXT_PUBLIC_API_BASE_URL: ${SODAM_WEB_MASTER_API_BASE_URL:-http://localhost:7070}
     container_name: sodam-web-master
     restart: unless-stopped
+    # t4g.large(8GB) 가정값
+    mem_limit: 512m
     depends_on:
       sodam-be:
         condition: service_healthy
@@ -162,6 +166,8 @@ services:
     image: mysql:8.0.36
     container_name: sodam-mysql
     restart: unless-stopped
+    # t4g.large(8GB) 가정값: 1GB buffer pool + MySQL 작업 메모리 여유
+    mem_limit: 2g
     environment:
       MYSQL_ROOT_PASSWORD: ${SODAM_DB_ROOT_PASSWORD:?SODAM_DB_ROOT_PASSWORD is required}
       MYSQL_DATABASE: sodam
@@ -199,6 +205,8 @@ services:
     image: redis:7-alpine
     container_name: sodam-redis
     restart: unless-stopped
+    # t4g.large(8GB) 가정값
+    mem_limit: 384m
     command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
     ports:
       - "127.0.0.1:${SODAM_REDIS_PORT:-16379}:6379"
@@ -217,6 +225,8 @@ services:
     image: redis:7-alpine
     container_name: sodam-session-redis
     restart: unless-stopped
+    # t4g.large(8GB) 가정값
+    mem_limit: 256m
     command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "noeviction"]
     ports:
       - "127.0.0.1:${SODAM_SESSION_REDIS_PORT:-16380}:6379"
@@ -235,6 +245,9 @@ services:
     image: adminer:4.8.1
     container_name: sodam-adminer
     restart: unless-stopped
+    # 기본 기동에서 제외한다. 로컬 DB 점검 때만 `docker compose --profile dev up -d`로 올린다.
+    profiles: ["dev"]
+    mem_limit: 128m
     depends_on:
       - sodam-mysql
     environment:

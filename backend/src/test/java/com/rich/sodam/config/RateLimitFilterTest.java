@@ -89,12 +89,32 @@ class RateLimitFilterTest {
         assertThat(otherClientResponse.getStatus()).isEqualTo(204);
     }
 
+    @Test
+    void referralApplyUsesDedicatedTenPerMinuteIpLimit() throws Exception {
+        RateLimitFilter filter = new RateLimitFilter();
+
+        for (int i = 0; i < 10; i++) {
+            assertThat(invokeReferralApply(filter).getStatus()).isEqualTo(204);
+        }
+
+        assertThat(invokeReferralApply(filter).getStatus()).isEqualTo(429);
+    }
+
     private MockHttpServletResponse invokeLogin(RateLimitFilter filter, String email) throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/login");
         request.setRemoteAddr("192.0.2.10");
         request.addParameter("email", email);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
+        filter.doFilterInternal(request, response, (req, res) ->
+                ((jakarta.servlet.http.HttpServletResponse) res).setStatus(204));
+        return response;
+    }
+
+    private MockHttpServletResponse invokeReferralApply(RateLimitFilter filter) throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/referrals/apply");
+        request.setRemoteAddr("192.0.2.11");
+        MockHttpServletResponse response = new MockHttpServletResponse();
         filter.doFilterInternal(request, response, (req, res) ->
                 ((jakarta.servlet.http.HttpServletResponse) res).setStatus(204));
         return response;
