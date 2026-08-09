@@ -139,6 +139,23 @@ public class User {
     private LocalDateTime profileCompletedAt;
 
     /**
+     * 개인 모드 사용 여부 — 매장에 속하지 않고 혼자 근무를 기록하는 상태(PRD §2.1, §4.14).
+     *
+     * <p><b>역할이 아니라 상태다.</b> 이 값이 true 여도 {@code userGrade}는 바꾸지 않는다 —
+     * 등급을 {@code Personal}로 낮추면 인증채용·채용채팅·경력증명서가 모두
+     * {@code @EmployeeOrMaster}에 막혀 403 이 되고, 퇴사자의 데이터 연속성이 깨진다.</p>
+     */
+    @Column(name = "personal_mode_enabled", nullable = false)
+    private boolean personalModeEnabled = false;
+
+    /**
+     * 개인 모드 전환에 동의한 시점 — null 이면 미동의.
+     * 동의 <b>버전</b> 이력은 {@code Consent}(TermsType.PERSONAL_MODE_CONVERSION)에 별도로 남는다.
+     */
+    @Column(name = "personal_mode_agreed_at")
+    private LocalDateTime personalModeAgreedAt;
+
+    /**
      * 회원 탈퇴 시점 — null 이면 정상 회원.
      * PIPA §21: 처리방침상 탈퇴 후 90일 보관 후 PII(phone/birthDate/name) 익명화.
      * UserDataRetentionScheduler 가 본 시점 기준 90일 경과분을 익명화한다.
@@ -291,6 +308,25 @@ public class User {
     public void clearAvatar() {
         this.avatarUrl = null;
         this.avatarKey = null;
+    }
+
+    /**
+     * 개인 모드를 켠다 — 동의 시점을 기록하되 {@code userGrade}는 건드리지 않는다(PRD §2.1).
+     * 이미 켜져 있으면 최초 동의 시점을 유지한다(재동의로 이력이 덮이지 않도록).
+     */
+    public void enablePersonalMode(LocalDateTime agreedAt) {
+        this.personalModeEnabled = true;
+        if (this.personalModeAgreedAt == null) {
+            this.personalModeAgreedAt = agreedAt;
+        }
+    }
+
+    /**
+     * 개인 모드를 끈다 — 동의 이력({@code personalModeAgreedAt})은 남긴다.
+     * 매장 재입사 시에도 자동으로 끄지 않는다(겸업이 흔하다, PRD §4.14 H.5).
+     */
+    public void disablePersonalMode() {
+        this.personalModeEnabled = false;
     }
 
     /**

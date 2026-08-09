@@ -127,9 +127,10 @@ export interface PriceTrend {
     itemName: string;
     unit?: string;
     currentUnitPrice: number;
-    previousUnitPrice?: number;
-    /** 지난번 대비 변화율(%) — 양수=인상, 음수=인하 */
-    changeRatePercent?: number;
+    /** 직전 매입 단가 — 이 품목 매입 이력이 1건뿐이면 BE가 null로 응답한다(비교 대상 없음). */
+    previousUnitPrice?: number | null;
+    /** 지난번 대비 변화율(%) — 양수=인상, 음수=인하. 직전 매입이 없으면 BE가 null로 응답한다. */
+    changeRatePercent?: number | null;
     cheapestVendor?: string;
     cheapestUnitPrice?: number;
     points: PriceTrendPoint[];
@@ -140,7 +141,8 @@ export interface ReorderHint {
     itemName: string;
     unit?: string;
     purchaseCount: number;
-    avgIntervalDays: number;
+    /** 평균 매입 간격(일) — 기간 내 매입이 1건뿐이면 평균을 낼 수 없어 BE가 null로 응답한다. */
+    avgIntervalDays: number | null;
     /** 'YYYY-MM-DD' */
     lastPurchaseDate: string;
     lastQuantity: number;

@@ -77,6 +77,30 @@ public class ConsentService {
         userRepository.save(user);
     }
 
+    /**
+     * 개인 모드 전환 동의 수집/철회 (PRD §4.14).
+     *
+     * <p>가입 시 받은 "계약 이행" 범위를 벗어난 신규 수집(닉네임·기본시급·자기신고 근무지)이라
+     * 별도 동의가 필요하다. 단일 타임스탬프가 아니라 {@code TermsAgreement} 이력으로 남기므로,
+     * 고지 문구가 개정되면 어느 버전에 동의했는지 추적할 수 있다.</p>
+     *
+     * <p>⚠️ 철회(agreed=false)해도 {@code personalModeAgreedAt}(최초 동의 시점)은 지우지 않는다 —
+     * 동의를 받았던 사실 자체가 이력이다. 기능만 꺼진다.</p>
+     */
+    @Transactional
+    public void recordPersonalModeConsent(Long userId, boolean agreed) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
+        LocalDateTime now = LocalDateTime.now();
+        if (agreed) {
+            user.enablePersonalMode(now);
+        } else {
+            user.disablePersonalMode();
+        }
+        audit(userId, TermsType.PERSONAL_MODE_CONVERSION, agreed, now);
+        userRepository.save(user);
+    }
+
     private void audit(Long userId, TermsType type, boolean agreed, LocalDateTime at) {
         termsAgreementRepository.save(
                 TermsAgreement.of(userId, type, TermsVersions.current(type), agreed, at));

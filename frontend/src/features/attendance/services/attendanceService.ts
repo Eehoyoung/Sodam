@@ -12,6 +12,7 @@ import {
     CheckInRequest,
     CheckOutRequest,
     NfcAttendanceRequest,
+    QrAttendanceRequest,
     UpdateAttendanceRequest
 } from '../types';
 import {NFCVerifyResponse, verifyCheckInByNFC, verifyCheckOutByNFC} from './nfcAttendanceService';
@@ -108,6 +109,19 @@ const toNfcAttendancePayload = (data: NfcAttendanceRequest) => {
     return { employeeId: employeeIdNum, storeId: storeIdNum, tagId: data.tagId };
 };
 
+/** QR 출퇴근 페이로드 — NFC와 같은 형태이고 태그 대신 QR 토큰을 보낸다(WP-C). */
+const toQrAttendancePayload = (data: QrAttendanceRequest) => {
+    const storeIdNum = Number(data.workplaceId);
+    const employeeIdNum = Number(data.employeeId);
+    if (!Number.isFinite(storeIdNum)) {
+        throw new Error('INVALID_STORE_ID');
+    }
+    if (!Number.isFinite(employeeIdNum)) {
+        throw new Error('INVALID_EMPLOYEE_ID');
+    }
+    return { employeeId: employeeIdNum, storeId: storeIdNum, qrToken: data.qrToken };
+};
+
 // 출퇴근 관련 서비스 객체
 const attendanceService = {
     getMonthlyWorkLog: async (
@@ -201,6 +215,36 @@ const attendanceService = {
         try {
             const payload = toNfcAttendancePayload(data);
             const response = await api.post<AttendanceRecord>('/api/attendance/check-out/nfc', payload);
+            return response.data;
+        } catch (error) {
+            logger.error('', 'ATTENDANCE_SERVICE', error);
+            throw error;
+        }
+    },
+
+    /**
+     * QR 전용 출근 처리 — 매장 QR 토큰 검증 후 위치 없이 기록(BE /check-in/qr).
+     *
+     * 토큰은 서버가 매장 일치·유효기간까지 함께 검증한다(대리출근 방지). 실패 시 403.
+     */
+    checkInWithQr: async (data: QrAttendanceRequest): Promise<AttendanceRecord> => {
+        try {
+            const payload = toQrAttendancePayload(data);
+            const response = await api.post<AttendanceRecord>('/api/attendance/check-in/qr', payload);
+            return response.data;
+        } catch (error) {
+            logger.error('', 'ATTENDANCE_SERVICE', error);
+            throw error;
+        }
+    },
+
+    /**
+     * QR 전용 퇴근 처리 — 출근과 대칭(BE /check-out/qr).
+     */
+    checkOutWithQr: async (data: QrAttendanceRequest): Promise<AttendanceRecord> => {
+        try {
+            const payload = toQrAttendancePayload(data);
+            const response = await api.post<AttendanceRecord>('/api/attendance/check-out/qr', payload);
             return response.data;
         } catch (error) {
             logger.error('', 'ATTENDANCE_SERVICE', error);

@@ -36,6 +36,15 @@ export interface User {
     locationConsented?: boolean;
     /** 아바타(프로필 사진) 공개 URL — null/undefined 면 기본 이미지 표시. */
     avatarUrl?: string | null;
+    /**
+     * 개인 모드(매장 소속 없이 혼자 근무를 기록하는 상태) 사용 여부.
+     * 역할이 아니라 상태라서 role 은 EMPLOYEE 그대로다 — 랜딩 판정에는 role 만으로 부족하다.
+     */
+    personalModeEnabled?: boolean;
+    /** 현재 활성 매장 소속 수. 0 이면 직원 홈(출근 버튼·오늘 스케줄)이 빈 화면이 된다. */
+    activeStoreCount?: number;
+    /** 개인 모드 전환 권유 화면을 띄워야 하는지(퇴사 후 7일 경과 + 아직 미전환). */
+    suggestPersonalMode?: boolean;
 }
 
 export interface LoginRequest {
@@ -87,6 +96,9 @@ interface RawUser {
     consentCompleted?: boolean;
     locationConsented?: boolean;
     avatarUrl?: string | null;
+    personalModeEnabled?: boolean;
+    activeStoreCount?: number;
+    suggestPersonalMode?: boolean;
 }
 
 interface RawAuthRoot extends RawUser {
@@ -146,6 +158,10 @@ const mapAuthResponse = async (data: RawAuthResponse): Promise<AuthResponse> => 
         consentCompleted: rawUser?.consentCompleted ?? root?.consentCompleted,
         locationConsented: rawUser?.locationConsented ?? root?.locationConsented,
         avatarUrl: rawUser?.avatarUrl ?? root?.avatarUrl,
+        // 랜딩 판정용(WP-K) — 로그인 응답에 없으면 undefined 로 두고, 이후 getCurrentUser 가 채운다.
+        personalModeEnabled: rawUser?.personalModeEnabled ?? root?.personalModeEnabled,
+        activeStoreCount: rawUser?.activeStoreCount ?? root?.activeStoreCount,
+        suggestPersonalMode: rawUser?.suggestPersonalMode ?? root?.suggestPersonalMode,
     };
 
     if (!accessToken) {

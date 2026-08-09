@@ -60,6 +60,7 @@ public class AttendanceService {
     private final MasterStoreRelationRepository masterStoreRelationRepository;
     private final NotificationService notificationService;
     private final NfcVerificationService nfcVerificationService;
+    private final StoreQrTokenService storeQrTokenService;
     private final AfterCommitExecutor afterCommitExecutor;
 
     /**
@@ -223,6 +224,36 @@ public class AttendanceService {
         Attendance result = checkIn(employeeId, storeId, null, null, resolveQueuedTime(queuedAt));
         liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.ATTENDANCE_CHANGED);
         notifyOwnersAttendance(result, true);
+        return result;
+    }
+
+    /**
+     * QR 전용 출근 처리 (WP-C) — 매장 QR 토큰 검증만으로 기록한다(GPS 좌표 없음).
+     *
+     * <p>iOS 는 NFC 가 빠져 GPS 만 남았는데 실내 오차가 커서, 두 플랫폼 모두 되는 경로가 필요하다.
+     * 대리출근 방지는 {@link StoreQrTokenService#verify}가 담당한다 — 토큰 존재·매장 일치·
+     * 서버 시각 기준 유효기간을 모두 본다.</p>
+     */
+    @Transactional
+    @CacheEvict(value = "attendance", allEntries = true)
+    public Attendance checkInWithQrVerification(Long employeeId, Long storeId, String qrToken, LocalDateTime queuedAt) {
+        storeQrTokenService.verify(storeId, qrToken);
+
+        Attendance result = checkIn(employeeId, storeId, null, null, resolveQueuedTime(queuedAt));
+        liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.ATTENDANCE_CHANGED);
+        notifyOwnersAttendance(result, true);
+        return result;
+    }
+
+    /** QR 전용 퇴근 처리 — {@link #checkInWithQrVerification}과 대칭. */
+    @Transactional
+    @CacheEvict(value = "attendance", allEntries = true)
+    public Attendance checkOutWithQrVerification(Long employeeId, Long storeId, String qrToken, LocalDateTime queuedAt) {
+        storeQrTokenService.verify(storeId, qrToken);
+
+        Attendance result = checkOut(employeeId, storeId, null, null, resolveQueuedTime(queuedAt));
+        liveSyncPublisher.publishStore(storeId, LiveSyncPublisher.SyncType.ATTENDANCE_CHANGED);
+        notifyOwnersAttendance(result, false);
         return result;
     }
 

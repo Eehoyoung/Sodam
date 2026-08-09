@@ -65,6 +65,9 @@ public class SecurityConfig {
                                 "/api/billing/webhook/**",
                                 // 정적 콘텐츠 페이지: 비인증 조회 허용 (앱 첫 화면용)
                                 "/api/info/**",
+                                // 공개 계산기(WP-A): 유입용. DB 를 조회하지 않는 순수 계산이라 노출 표면이 없고,
+                                // RateLimitFilter 가 IP 단위로 남용을 막는다.
+                                "/api/public/**",
                                 // H2 콘솔 (dev 프로필에서만 노출됨)
                                 "/h2-console/**",
                                 // 플랜 카탈로그: 비인증 조회 허용

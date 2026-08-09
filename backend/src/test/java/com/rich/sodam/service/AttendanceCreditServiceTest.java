@@ -196,9 +196,16 @@ class AttendanceCreditServiceTest {
                 .toList();
         assertThat(lots).isNotEmpty();
         AttendanceCreditTransaction lot = lots.get(0);
-        // plusMinutes(30): "지금보다 늦고, 이번 주(월~일) 안"을 만족시키되 일요일 자정 근접 경계에서의
-        // 날짜 넘어감(플레이키니스)을 피하기 위해 plusDays 대신 짧은 분 단위로 당긴다.
-        LocalDateTime soon = LocalDateTime.now(SEOUL).plusMinutes(30);
+        // 조건: expiresAt > now AND expiresAt <= 이번 주 일요일 23:59:59
+        //       (AttendanceCreditTransactionRepository.sumExpiringBetween)
+        // plusMinutes(30) 단독으로는 부족하다 — 2026-08-09(일) 23:32 에 실제로 실패했다.
+        // 일요일 23:30 이후에 돌리면 now+30분이 월요일로 넘어가 다음 주가 되어 0 이 나온다.
+        // 주말 끝으로 clamp 해 시각과 무관하게 항상 "이번 주 안"을 만족시킨다.
+        LocalDateTime now = LocalDateTime.now(SEOUL);
+        LocalDateTime weekEnd = now.toLocalDate()
+                .with(java.time.temporal.TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
+                .atTime(23, 59, 59);
+        LocalDateTime soon = now.plusMinutes(30).isAfter(weekEnd) ? weekEnd : now.plusMinutes(30);
         ReflectionTestUtils.setField(lot, "expiresAt", soon);
         transactionRepo.saveAndFlush(lot);
 

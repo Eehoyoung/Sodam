@@ -3,6 +3,7 @@ package com.rich.sodam.service.retention;
 import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 테이블 하나의 보존기간 정책(DB_OPTIMIZATION_PLAN.md §2.2(a), §2.5).
@@ -45,6 +46,25 @@ public interface RetentionPolicy {
 
     /** 실제 파기 실행(삭제 또는 PII 마스킹) — 되돌릴 수 없으므로 호출 전 반드시 유예·고지 확인 완료 상태여야 한다. */
     void purge(Long entityId);
+
+    /**
+     * 이 로우의 데이터 주체(=파기 사전 고지를 받아야 할 사용자)의 {@code user_id}.
+     *
+     * <p>{@link #noticeRequired()}가 true인 정책은 반드시 구현해야 한다 —
+     * {@code RetentionNoticeService}가 이 값으로 수신자를 찾고, 같은 사람의 여러 로우를 하나의 메일로
+     * 묶는다(출퇴근처럼 로우가 수백 건인 경우 1건당 1메일은 명백한 스팸이다).</p>
+     *
+     * <p>이미 삭제된 로우 등으로 주체를 특정할 수 없으면 {@link Optional#empty()}를 반환한다 —
+     * 그 경우 고지 없이 유예기간만 적용된다.</p>
+     */
+    default Optional<Long> dataSubjectUserId(Long entityId) {
+        return Optional.empty();
+    }
+
+    /** 고지 메일에서 사람이 읽을 데이터 종류 이름(예: "출퇴근 기록"). 기본값은 {@link #tableName()}. */
+    default String displayName() {
+        return tableName();
+    }
 
     /** 만료 대상 1건 — 실제 보존 시계가 시작된 시각을 함께 반환해야 정확한 만료일을 계산할 수 있다. */
     record ExpiredEntity(Long id, LocalDateTime anchoredAt) {

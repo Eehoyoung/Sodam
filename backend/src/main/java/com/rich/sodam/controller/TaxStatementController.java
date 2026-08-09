@@ -2,6 +2,7 @@ package com.rich.sodam.controller;
 
 import com.rich.sodam.dto.response.HeadcountTrendResponse;
 import com.rich.sodam.dto.response.VatDeadlineResponse;
+import com.rich.sodam.dto.response.WithholdingDeadlineResponse;
 import com.rich.sodam.dto.response.WithholdingMonthlyResponse;
 import com.rich.sodam.dto.response.WithholdingStatementResponse;
 import com.rich.sodam.domain.type.PlanType;
@@ -63,8 +64,23 @@ public class TaxStatementController {
         return ResponseEntity.ok(withholdingMonthlyService.monthlySummary(storeId, year, month));
     }
 
-    @Operation(summary = "부가세 분기 신고기한 안내", description = "다가오는 일반과세 분기 기한·D-day(금액 없이 기한 알림만, 매출 미접촉).")
-    @RequirePlan(min = PlanType.PRO)
+    @Operation(summary = "원천세 신고기한 안내(무료)",
+            description = "익월 10일 기한·D-day만 안내합니다. 금액 집계는 하지 않습니다 — 금액이 필요하면 "
+                    + "/withholding-monthly(PRO)를 사용하세요.")
+    // 게이팅 없음(WP-D) — 급여 데이터를 읽지 않고 달력상 기한만 계산하므로 유료 영역이 새지 않는다.
+    // "익월 10일까지 신고" 안내는 알려주는 것만으로 가치가 있고 잃을 매출이 없다.
+    @GetMapping("/withholding-deadline")
+    public ResponseEntity<WithholdingDeadlineResponse> withholdingDeadline(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long storeId,
+            @RequestParam int year,
+            @RequestParam int month) {
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        return ResponseEntity.ok(withholdingMonthlyService.monthlyDeadline(storeId, year, month));
+    }
+
+    @Operation(summary = "부가세 분기 신고기한 안내(무료)", description = "다가오는 일반과세 분기 기한·D-day(금액 없이 기한 알림만, 매출 미접촉).")
+    // 게이팅 없음(WP-D) — 원래부터 금액을 만지지 않는 순수 기한 안내였다.
     @GetMapping("/vat-deadline")
     public ResponseEntity<VatDeadlineResponse> vatDeadline(
             @AuthenticationPrincipal UserPrincipal principal,

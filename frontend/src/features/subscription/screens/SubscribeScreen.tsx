@@ -59,7 +59,7 @@ const buildPlanVisuals = (c: ThemeColors): Record<PlanType, {emoji: string; acce
             {text: '연차 관리', included: true},
             {text: '4대보험 신고서 자동작성 (직접 제출)', included: true},
             {text: '전자 근로계약서·문서 보관', included: true},
-            {text: '맞춤 대시보드 · 멀티매장 1개 포함', included: true},
+            {text: '맞춤 대시보드 · 멀티매장 2곳까지', included: true},
         ],
     },
     PREMIUM: {

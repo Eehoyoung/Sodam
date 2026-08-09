@@ -22,6 +22,7 @@ import org.springframework.stereotype.Component;
 public class RetentionNoticeScheduler {
 
     private final RetentionPurgeService retentionPurgeService;
+    private final RetentionNoticeService retentionNoticeService;
 
     @Value("${sodam.retention.purge.execute-enabled:false}")
     private boolean purgeExecutionEnabled;
@@ -33,6 +34,14 @@ public class RetentionNoticeScheduler {
             retentionPurgeService.scanAndSchedule();
         } catch (Exception e) {
             log.error("[RetentionPurge] scanAndSchedule 실패: {}", e.getMessage(), e);
+        }
+
+        // 고지는 파기 활성화 여부와 무관하게 항상 보낸다 — 메일 발송은 되돌릴 수 없는 파기와 달리 안전하고,
+        // 파기를 켜기 전에 고지 파이프라인이 실제로 도는지 운영에서 먼저 확인할 수 있어야 한다.
+        try {
+            retentionNoticeService.sendDueNotices();
+        } catch (Exception e) {
+            log.error("[RetentionNotice] sendDueNotices 실패: {}", e.getMessage(), e);
         }
 
         if (!purgeExecutionEnabled) {

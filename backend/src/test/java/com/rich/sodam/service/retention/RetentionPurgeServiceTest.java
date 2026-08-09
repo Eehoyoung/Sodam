@@ -71,8 +71,12 @@ class RetentionPurgeServiceTest {
         Optional<RetentionPurgeSchedule> expiredSchedule =
                 scheduleRepository.findByTableNameAndEntityId("domain_event", expiredEvent.getId());
         assertThat(expiredSchedule).isPresent();
+        // 유예는 "만료일로부터 30일" 이상이면서, 동시에 "발견(스케줄 등록) 시점으로부터 30일" 이상이어야 한다.
+        // 후자가 없으면 정책 신설 직후의 적체분이 등록되자마자 파기 대상이 되어 30/15/1일 사전 고지를
+        // 보낼 시간이 없다(WP-J).
         assertThat(expiredSchedule.get().getScheduledPurgeAt())
-                .isEqualTo(expiredSchedule.get().getRetentionExpiresAt().plusDays(30));
+                .isAfterOrEqualTo(expiredSchedule.get().getRetentionExpiresAt().plusDays(30))
+                .isAfter(LocalDateTime.now().plusDays(29));
 
         assertThat(scheduleRepository.findByTableNameAndEntityId("domain_event", freshEvent.getId()))
                 .isEmpty();

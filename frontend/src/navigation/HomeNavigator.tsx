@@ -15,7 +15,10 @@ import RequestStatusScreen from '../features/myPage/screens/RequestStatusScreen'
 import EmployeeMyPageRNScreen from '../features/myPage/screens/EmployeeMyPageRNScreen';
 import MasterMyPageScreen from '../features/myPage/screens/MasterMyPageScreen';
 import ManagerMyPageScreen from '../features/myPage/screens/ManagerMyPageScreen';
-import UserMyPageScreen from '../features/myPage/screens/PersonalUserScreen';
+// 라우트명은 'UserMyPageScreen' 그대로 둔다 — HomeStackParamList·authFlow 타입과 네비게이션
+// 호출부에 이미 박혀 있어 바꾸면 파급이 크다. 파일·컴포넌트명만 PersonalUserScreen 으로 통일했다(WP-K.3).
+import PersonalUserScreen from '../features/myPage/screens/PersonalUserScreen';
+import MyWorkHistoryScreen from '../features/myPage/screens/MyWorkHistoryScreen';
 import Header from '../common/components/layout/Header';
 import ProfileScreen from '../features/auth/screens/ProfileScreen';
 import SettingsScreen from '../features/settings/screens/SettingsScreen';
@@ -129,6 +132,8 @@ export type HomeStackParamList = {
     MasterMyPageScreen: undefined;
     ManagerMyPageScreen: undefined;
     UserMyPageScreen: undefined;
+    /** 내 소담 근무 기록 — 퇴사 매장 포함 본인 스코프 조회·내려받기(WP-H·K.2) */
+    MyWorkHistory: undefined;
     Settings: undefined;
     Profile: undefined;
     // 74 LegalWebview — 약관/개인정보 처리방침. kind 미지정 시 privacy 기본, body 미지정 시 기본 문구.
@@ -331,7 +336,12 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             />
             <Stack.Screen
                 name="UserMyPageScreen"
-                component={UserMyPageScreen}
+                component={PersonalUserScreen}
+                options={{headerShown: false}}
+            />
+            <Stack.Screen
+                name="MyWorkHistory"
+                component={MyWorkHistoryScreen}
                 options={{headerShown: false}}
             />
             <Stack.Screen

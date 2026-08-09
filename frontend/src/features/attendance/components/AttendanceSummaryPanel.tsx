@@ -81,6 +81,8 @@ export const AttendanceSummaryPanel: React.FC<Props> = ({ workplaceId, onPressVi
         {Platform.OS !== 'ios' && (
           <MethodChip label="NFC" active={method==='nfc'} onPress={() => onChangeMethod('nfc')} c={c} />
         )}
+        {/* QR(WP-C)은 두 플랫폼 모두 지원 — iOS는 NFC가 없어 GPS만 남으면 실내 오차를 감당할 수단이 없다 */}
+        <MethodChip label="QR" active={method==='qr'} onPress={() => onChangeMethod('qr')} c={c} />
       </View>
 
       <View style={styles.actions}>

@@ -6,6 +6,7 @@ import com.rich.sodam.dto.request.LocationVerifyRequest;
 import com.rich.sodam.dto.request.ManualAttendanceRequestDto;
 import com.rich.sodam.dto.request.NfcAttendanceRequestDto;
 import com.rich.sodam.dto.request.NfcVerifyRequest;
+import com.rich.sodam.dto.request.QrAttendanceRequestDto;
 import com.rich.sodam.dto.response.AttendanceResponseDto;
 import com.rich.sodam.dto.response.AttendanceWorkLogResponse;
 import com.rich.sodam.dto.response.LocationVerifyResponse;
@@ -121,6 +122,46 @@ public class AttendanceController {
                 request.getEmployeeId(),
                 request.getStoreId(),
                 request.getTagId(),
+                request.getQueuedAt()
+        );
+
+        return ResponseEntity.ok(AttendanceResponseDto.from(attendance));
+    }
+
+    @PostMapping("/check-in/qr")
+    @Operation(summary = "QR 전용 직원 출근 처리",
+            description = "GPS 좌표 없이 매장에 게시된 QR 스캔만으로 출근을 기록합니다. "
+                    + "토큰은 매장 일치·유효기간(서버 시각 기준)을 함께 검증합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "출근 처리 성공",
+                    content = @Content(schema = @Schema(implementation = AttendanceResponseDto.class))),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "403", description = "QR 토큰 검증 실패(만료·타 매장·무효)")
+    })
+    public ResponseEntity<AttendanceResponseDto> checkInWithQr(@AuthenticationPrincipal UserPrincipal principal,
+                                                               @RequestBody @Validated QrAttendanceRequestDto request) {
+        // IDOR 차단: 출근은 본인만. 타인 employeeId 로 대리출근 불가.
+        guard.assertSelf(principal.getId(), request.getEmployeeId());
+        Attendance attendance = attendanceService.checkInWithQrVerification(
+                request.getEmployeeId(),
+                request.getStoreId(),
+                request.getQrToken(),
+                request.getQueuedAt()
+        );
+
+        return ResponseEntity.ok(AttendanceResponseDto.from(attendance));
+    }
+
+    @PostMapping("/check-out/qr")
+    @Operation(summary = "QR 전용 직원 퇴근 처리", description = "QR 출근과 대칭. 좌표 없이 QR 스캔만으로 퇴근을 기록합니다.")
+    public ResponseEntity<AttendanceResponseDto> checkOutWithQr(@AuthenticationPrincipal UserPrincipal principal,
+                                                                @RequestBody @Validated QrAttendanceRequestDto request) {
+        guard.assertSelf(principal.getId(), request.getEmployeeId());
+        Attendance attendance = attendanceService.checkOutWithQrVerification(
+                request.getEmployeeId(),
+                request.getStoreId(),
+                request.getQrToken(),
                 request.getQueuedAt()
         );
 

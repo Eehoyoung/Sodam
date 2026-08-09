@@ -25,6 +25,7 @@ public final class TermsVersions {
         CURRENT.put(TermsType.AGE_14, "age14-v1.0");
         CURRENT.put(TermsType.LOCATION_INFO, "location-v1.0");
         CURRENT.put(TermsType.MARKETING, "marketing-v1.0");
+        CURRENT.put(TermsType.PERSONAL_MODE_CONVERSION, "personal-mode-v1.0");
     }
 
     /** 해당 약관의 현행 버전 식별자. */

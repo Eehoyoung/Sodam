@@ -1,6 +1,7 @@
 package com.rich.sodam.repository;
 
 import com.rich.sodam.domain.LaborContract;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -8,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,4 +35,26 @@ public interface LaborContractRepository extends JpaRepository<LaborContract, Lo
      * {@link #findFirstByEmployeeIdAndStoreIdOrderByCreatedAtDesc}와 동일한 결과를 얻을 수 있다.
      */
     List<LaborContract> findByStoreIdOrderByEmployeeIdAscCreatedAtDesc(Long storeId);
+
+    /**
+     * 보존기간이 만료된 근로계약 조회 — 기산점은 <b>근로관계 종료일</b>({@code deactivatedAt})이다
+     * (근로기준법 §42 및 시행령 §22 취지: 계약 서류는 근로관계가 끝난 때부터 보존기간을 센다).
+     *
+     * <p>반환 원소는 {@code [laborContractId, deactivatedAt]} 2요소 배열이다.
+     * 재입사 제외·복수 비활성 관계 처리는 {@link AttendanceRepository#findExpiredAfterEmploymentEnded}와 동일하다.</p>
+     */
+    @Query("SELECT c.id, MAX(r.deactivatedAt) FROM LaborContract c, EmployeeStoreRelation r " +
+            "WHERE r.employeeProfile.id = c.employeeId AND r.store.id = c.storeId " +
+            "AND r.isActive = false AND r.deactivatedAt IS NOT NULL AND r.deactivatedAt <= :cutoff " +
+            "AND NOT EXISTS (SELECT 1 FROM EmployeeStoreRelation r2 " +
+            "  WHERE r2.employeeProfile.id = c.employeeId AND r2.store.id = c.storeId " +
+            "  AND r2.isActive = true) " +
+            "GROUP BY c.id ORDER BY c.id")
+    List<Object[]> findExpiredAfterEmploymentEnded(@Param("cutoff") LocalDateTime cutoff, Pageable pageable);
+
+    /**
+     * 본인 근로계약 이력 — 매장을 가리지 않고 이 사용자의 계약 전부를 최신순으로(WP-H 데이터 연속성).
+     * 퇴사한 매장의 계약도 포함된다.
+     */
+    List<LaborContract> findByEmployeeIdOrderByCreatedAtDesc(Long employeeId);
 }
