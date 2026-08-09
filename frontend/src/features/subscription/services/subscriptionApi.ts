@@ -32,6 +32,23 @@ export interface PlanCatalogItem {
     features?: string[];
 }
 
+export type PaymentSourceType = 'SUBSCRIPTION' | 'ATTENDANCE_CREDIT_CHARGE' | 'RECRUITMENT_BOOST_PASS' | 'TAX_SERVICE';
+export type PaymentReceiptStatus = 'POLICY_PENDING' | 'QUEUED' | 'ISSUED' | 'FAILED' | 'CANCELLED';
+export interface PaymentReceipt {
+    id: number;
+    sourceType: PaymentSourceType;
+    orderId: string;
+    amountKrw: number;
+    status: PaymentReceiptStatus;
+}
+export interface PaymentRefundRequestResponse {
+    id: number;
+    sourceType: PaymentSourceType;
+    orderId: string;
+    amountKrw: number;
+    status: 'REQUESTED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+}
+
 /** BE /api/billing/plans 의 원시 응답 형태 (런타임 매핑용). */
 interface RawPlan {
     name?: string;
@@ -110,6 +127,16 @@ export const subscriptionApi = {
 
     async cancel(): Promise<void> {
         await api.delete<void>('/api/billing/cancel');
+    },
+
+    async getReceipts(): Promise<PaymentReceipt[]> {
+        const res = await api.get<PaymentReceipt[]>('/api/billing/receipts/me');
+        return Array.isArray(res.data) ? res.data : [];
+    },
+
+    async requestRefund(sourceType: PaymentSourceType, orderId: string, reason: string): Promise<PaymentRefundRequestResponse> {
+        const res = await api.post<PaymentRefundRequestResponse>('/api/billing/refunds', {sourceType, orderId, reason});
+        return res.data;
     },
 };
 

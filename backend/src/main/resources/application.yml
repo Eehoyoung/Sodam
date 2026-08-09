@@ -234,6 +234,16 @@ sodam:
   #  ※ 월 경계 주의 귀속월 규칙(주 종료일이 속한 월에 전액 귀속, 분할 금지)은 시스템 고정값 — 설정으로 열지 않음.
   payroll:
     week-start-policy: ${SODAM_PAYROLL_WEEK_START_POLICY:MONDAY}
+  # G-2 회신 전 발급 대상은 NONE으로 보류한다. MOCK에서만 선택값을 넣어 네 결제 경로를 검증할 수 있고,
+  # live 대행사/자격증명은 회신·계약 후에만 활성화한다.
+  fiscal-receipt:
+    mode: ${SODAM_FISCAL_RECEIPT_MODE:mock}
+    default-document-type: ${SODAM_FISCAL_RECEIPT_DEFAULT_DOCUMENT_TYPE:NONE}
+    provider-base-url: ${SODAM_FISCAL_RECEIPT_PROVIDER_BASE_URL:}
+    api-key: ${SODAM_FISCAL_RECEIPT_API_KEY:}
+  # 법적 환불 기준이 확정되기 전, 실결제(live)는 신청만 접수한다. mock 결제 흐름은 자동 취소까지 검증.
+  payment-refund:
+    auto-process-mode: ${SODAM_PAYMENT_REFUND_AUTO_PROCESS_MODE:mock}
   # 출근권(사장 전용 채용 재화) 이코노미 수치 — recruitment-monetization-gamification-plan.md §2.2·§2.3.
   # 파일럿 운영 데이터로 조정될 예정이라 하드코딩하지 않고 env override 가능하게 둔다.
   attendance-credit:

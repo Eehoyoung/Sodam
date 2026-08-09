@@ -166,4 +166,20 @@ describe('subscriptionApi', () => {
             expect(api.delete).toHaveBeenCalledWith('/api/billing/cancel');
         });
     });
+
+    describe('refunds and receipts', () => {
+        it('서버 영수증 목록만 조회하고 환불 금액·결제키는 전송하지 않는다', async () => {
+            const receipts = [{id: 1, sourceType: 'ATTENDANCE_CREDIT_CHARGE', orderId: 'ACC_1', amountKrw: 1900, status: 'ISSUED'}];
+            (api.get as jest.Mock).mockResolvedValue({data: receipts});
+            (api.post as jest.Mock).mockResolvedValue({data: {id: 2, status: 'COMPLETED'}});
+
+            await expect(subscriptionApi.getReceipts()).resolves.toEqual(receipts);
+            await subscriptionApi.requestRefund('ATTENDANCE_CREDIT_CHARGE', 'ACC_1', '사용자 환불 신청');
+
+            expect(api.get).toHaveBeenCalledWith('/api/billing/receipts/me');
+            expect(api.post).toHaveBeenCalledWith('/api/billing/refunds', {
+                sourceType: 'ATTENDANCE_CREDIT_CHARGE', orderId: 'ACC_1', reason: '사용자 환불 신청',
+            });
+        });
+    });
 });

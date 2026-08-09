@@ -16,7 +16,9 @@ import subscriptionApi, {
     PlanCatalogItem,
     PlanType,
     SubscriptionResponse,
+    PaymentReceipt,
 } from '../services/subscriptionApi';
+import PaymentRefundSheet from '../components/PaymentRefundSheet';
 
 // 결제 주기 세그먼트: 인덱스 ↔ BillingCycle 매핑 (월/반년/연)
 const CYCLE_OPTIONS = ['월납', '반년납', '연납'] as const;
@@ -108,6 +110,8 @@ const SubscribeScreen: React.FC<Props> = ({visualFixture}) => {
     const [processing, setProcessing] = useState(false);
     const [detailView, setDetailView] = useState<PlanCardView | null>(null);
     const [billingSheetVisible, setBillingSheetVisible] = useState(false);
+    const [refundSheetVisible, setRefundSheetVisible] = useState(false);
+    const [receipts, setReceipts] = useState<PaymentReceipt[]>([]);
 
     const billingCycle: BillingCycle = CYCLE_BY_INDEX[cycleIndex] ?? 'MONTHLY';
     const isPaidSelected = selectedPlan !== null && selectedPlan !== 'FREE';
@@ -213,6 +217,30 @@ const SubscribeScreen: React.FC<Props> = ({visualFixture}) => {
         }
         navigation.navigate('TossBillingAuth', {plan: current.plan, billingCycle: current.billingCycle ?? 'MONTHLY'});
     };
+    const openRefundSheet = async () => {
+        setProcessing(true);
+        try {
+            setReceipts(await subscriptionApi.getReceipts());
+            setRefundSheetVisible(true);
+        } catch {
+            AppToast.error('결제 내역을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
+        } finally {
+            setProcessing(false);
+        }
+    };
+    const requestRefund = async (receipt: PaymentReceipt) => {
+        setProcessing(true);
+        try {
+            const result = await subscriptionApi.requestRefund(receipt.sourceType, receipt.orderId, '사용자 환불 신청');
+            setRefundSheetVisible(false);
+            AppToast.success(result.status === 'COMPLETED' ? '환불이 반영됐어요.' : '환불 신청을 접수했어요.');
+        } catch (e: unknown) {
+            const message = (e as {response?: {data?: {message?: string}}})?.response?.data?.message ?? '환불 신청에 실패했어요.';
+            AppToast.error(message);
+        } finally {
+            setProcessing(false);
+        }
+    };
 
     const renderPlan = (plan: PlanCatalogItem) => {
         const v = planVisuals[plan.name];
@@ -309,6 +337,12 @@ const SubscribeScreen: React.FC<Props> = ({visualFixture}) => {
                         style={styles.billingMethodBtn}
                         onPress={openBillingMethodSheet}
                     />
+                    <AppButton label="결제 내역 · 환불 신청" variant="outline" loading={processing} onPress={openRefundSheet} />
+                </View>
+            ) : null}
+            {!loading && !isActive && !isPaused ? (
+                <View style={styles.refundOnlyBlock}>
+                    <AppButton label="결제 내역 · 환불 신청" variant="outline" loading={processing} onPress={openRefundSheet} />
                 </View>
             ) : null}
 
@@ -331,6 +365,8 @@ const SubscribeScreen: React.FC<Props> = ({visualFixture}) => {
                 nextBillingDate={current?.nextBillingAt ? current.nextBillingAt.slice(0, 10) : undefined}
                 onManageViaToss={handleManageViaToss}
             />
+            <PaymentRefundSheet visible={refundSheetVisible} receipts={receipts} submitting={processing}
+                onClose={() => setRefundSheetVisible(false)} onRequest={requestRefund} />
         </ScreenContainer>
     );
 };
@@ -371,6 +407,7 @@ const styles = StyleSheet.create({
     cycleTitle: {fontWeight: '700'},
     cycleHint: {marginTop: spacing.xs},
     manageBlock: {marginTop: spacing.xxl, gap: spacing.sm},
+    refundOnlyBlock: {marginTop: spacing.xxl},
     billingMethodBtn: {marginTop: spacing.xs},
 });
 

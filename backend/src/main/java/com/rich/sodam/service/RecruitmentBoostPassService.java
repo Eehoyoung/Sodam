@@ -7,6 +7,7 @@ import com.rich.sodam.domain.PaymentCancelReversalAudit;
 import com.rich.sodam.domain.RecruitmentBoostPass;
 import com.rich.sodam.domain.RecruitmentBoostPassOrder;
 import com.rich.sodam.domain.type.RecruitmentBoostPassProductCode;
+import com.rich.sodam.domain.type.PaymentSourceType;
 import com.rich.sodam.repository.PaymentCancelReversalAuditRepository;
 import com.rich.sodam.repository.RecruitmentBoostPassOrderRepository;
 import com.rich.sodam.repository.RecruitmentBoostPassRepository;
@@ -56,6 +57,7 @@ public class RecruitmentBoostPassService {
     private final RecruitmentBoostPassProperties properties;
     private final TossPaymentGateway paymentGateway;
     private final PaymentCancelReversalAuditRepository reversalAuditRepository;
+    private final PaymentReceiptService paymentReceiptService;
 
     // ─────────────────────────────────────────────────────────────────
     // 과금 우회 판정 — JobOfferService/JobApplicationService 과금 훅에서 호출
@@ -214,6 +216,8 @@ public class RecruitmentBoostPassService {
 
         order.markPaid(paymentKey);
         orderRepository.save(order);
+        paymentReceiptService.recordPaid(PaymentSourceType.RECRUITMENT_BOOST_PASS, order.getOrderId(),
+                order.getOwnerUserId(), paymentKey, order.getAmountKrw());
         log.info("무제한 패스 결제완료 orderId={} product={} 연장 후 만료일={}",
                 order.getOrderId(), order.getProductCode(), pass.getActiveUntil());
     }

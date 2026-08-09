@@ -6,6 +6,7 @@ import com.rich.sodam.config.integration.TossPaymentGateway;
 import com.rich.sodam.domain.AttendanceCreditChargeOrder;
 import com.rich.sodam.domain.PaymentCancelReversalAudit;
 import com.rich.sodam.domain.type.AttendanceCreditChargePackCode;
+import com.rich.sodam.domain.type.PaymentSourceType;
 import com.rich.sodam.repository.AttendanceCreditChargeOrderRepository;
 import com.rich.sodam.repository.PaymentCancelReversalAuditRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,7 @@ public class AttendanceCreditChargeService {
     private final AttendanceCreditProperties properties;
     private final TossPaymentGateway paymentGateway;
     private final PaymentCancelReversalAuditRepository reversalAuditRepository;
+    private final PaymentReceiptService paymentReceiptService;
 
     // ─────────────────────────────────────────────────────────────────
     // 카탈로그
@@ -178,6 +180,8 @@ public class AttendanceCreditChargeService {
                 properties.getCharge().getFirstPurchaseBonusMultiplier());
         order.markPaid(paymentKey, grant.bonusCreditQuantity());
         orderRepository.save(order);
+        paymentReceiptService.recordPaid(PaymentSourceType.ATTENDANCE_CREDIT_CHARGE, order.getOrderId(),
+                order.getOwnerUserId(), paymentKey, order.getAmountKrw());
         log.info("출근권 충전 결제완료 orderId={} pack={} 지급(기본+보너스)={}",
                 order.getOrderId(), order.getPackCode(), order.totalCreditQuantity());
     }

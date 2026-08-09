@@ -103,4 +103,8 @@ public class TaxServiceOrder {
     public boolean isPaid() {
         return status == OrderStatus.PAID;
     }
+
+    public boolean isCancelledOrRefunded() {
+        return status == OrderStatus.CANCELLED || status == OrderStatus.REFUNDED;
+    }
 }
