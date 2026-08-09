@@ -38,7 +38,7 @@ public class StorePhotoService {
                 .stream().map(p -> {
                     Map<String, Object> m = new LinkedHashMap<>();
                     m.put("id", p.getId());
-                    m.put("publicUrl", p.getPublicUrl());
+                    m.put("publicUrl", objectStorage.accessUrl(p.getStorageKey()));
                     m.put("displayOrder", p.getDisplayOrder());
                     m.put("uploadedAt", p.getUploadedAt());
                     return m;
@@ -75,13 +75,15 @@ public class StorePhotoService {
                 file.getBytes(),
                 contentType);
 
+        // publicUrl is a legacy non-null column. Keep an opaque key there for
+        // compatibility; responses are always built from storageKey below.
         StorePhoto saved = storePhotoRepository.save(StorePhoto.of(
-                store, res.getStorageKey(), res.getPublicUrl(),
+                store, res.getStorageKey(), res.getStorageKey(),
                 (int) currentCount, contentType, file.getSize()));
 
         Map<String, Object> body = Map.of(
                 "id", saved.getId(),
-                "publicUrl", saved.getPublicUrl(),
+                "publicUrl", objectStorage.accessUrl(saved.getStorageKey()),
                 "displayOrder", saved.getDisplayOrder()
         );
         return UploadResult.success(body);
