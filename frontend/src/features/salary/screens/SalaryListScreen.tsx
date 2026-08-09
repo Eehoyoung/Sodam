@@ -9,6 +9,7 @@ import {formatMoney} from '../../../common/format/money';
 import {spacing} from '../../../theme/tokens';
 
 import payrollService, {PayrollSummary} from '../services/payrollService';
+import storeService from '../../store/services/storeService';
 
 // 네비게이션 타입 — 같은 HomeStack 내 실제 등록된 라우트만 명시
 type SalaryStackParamList = {
@@ -53,16 +54,21 @@ const SalaryListScreen: React.FC<SalaryListScreenProps> = ({fixture}) => {
     const [selectedStoreId, setSelectedStoreId] = useState<number | null>(fixture?.stores[0]?.id ?? null);
     const [stores, setStores] = useState<{ id: number; name: string }[]>(fixture?.stores ?? []);
 
-    // 매장 목록 — 실제 매장 선택 API 연동 전까지 보유 매장 placeholder.
-    // (정산 목록은 매장 단위 /api/payroll/store/{id} 로만 조회 가능하므로 매장 선택이 필요)
     const fetchStores = useCallback(async () => {
-        // TODO(P1): /api/stores/master/current 연동 시 실제 매장으로 대체
-        const data = [
-            {id: 1, name: '카페 소담'},
-            {id: 2, name: '레스토랑 소담'},
-        ];
-        setStores(data);
-        setSelectedStoreId(prev => prev ?? data[0]?.id ?? null);
+        try {
+            const data = (await storeService.getMasterStores('current')).map(store => ({
+                id: store.id,
+                name: store.storeName,
+            }));
+            setStores(data);
+            setSelectedStoreId(prev => prev ?? data[0]?.id ?? null);
+        } catch (e) {
+            console.error('Unable to load payroll stores', e);
+            setStores([]);
+            setSelectedStoreId(null);
+            setError(true);
+            setLoading(false);
+        }
     }, []);
 
     const fetchPayrolls = useCallback(async (storeId: number | null) => {
