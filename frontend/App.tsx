@@ -23,6 +23,7 @@ import {AuthProvider} from './src/contexts/AuthContext';
 import {QueryClientProvider} from '@tanstack/react-query';
 import {queryClient} from './src/common/query/client';
 import {logRecovery, logWsodFix, logTimingCoordination} from './src/utils/logger';
+import {initializeSentry} from './src/common/monitoring/sentry';
 
 declare global {
   // 앱 시작 시각(디버깅/타이밍 분석용) — 필요 시 최초 1회만 기록
@@ -31,6 +32,7 @@ declare global {
 }
 
 const App: React.FC = () => {
+  initializeSentry();
   // 1) 마운트 시 진단용 로그/타임스탬프 기록
   useEffect(() => {
     logRecovery('App baseline mounted');
