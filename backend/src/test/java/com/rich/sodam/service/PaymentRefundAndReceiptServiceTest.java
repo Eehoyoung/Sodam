@@ -28,6 +28,7 @@ class PaymentRefundAndReceiptServiceTest {
     @Autowired private PaymentReceiptRepository receiptRepository;
     @Autowired private PaymentRefundService refundService;
     @Autowired private AttendanceCreditChargeOrderRepository attendanceOrderRepository;
+    @Autowired private TaxServiceOrderRepository taxOrderRepository;
 
     private User owner() {
         User user = new User("payment-flow-" + UUID.randomUUID() + "@x.com", "사장");
@@ -85,5 +86,25 @@ class PaymentRefundAndReceiptServiceTest {
         assertThatThrownBy(() -> refundService.request(other.getId(), PaymentSourceType.ATTENDANCE_CREDIT_CHARGE,
                 order.getOrderId(), "타인 시도"))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("mock 세무 서비스 환불은 주문을 REFUNDED로, 영수증을 CANCELLED로 반영한다")
+    void mockTaxServiceRefundUpdatesOrderAndReceipt() {
+        User user = owner();
+        TaxServiceOrder order = taxService.createOrder(user.getId(), TaxPackage.BOOKKEEPING_MONTHLY);
+        taxService.confirm(user.getId(), order.getOrderId(), "TAX_PK", order.getCustomerAmount());
+
+        PaymentRefundRequest request = refundService.request(user.getId(), PaymentSourceType.TAX_SERVICE,
+                order.getOrderId(), "세무 서비스 환불");
+
+        assertThat(refundService.myRequests(user.getId()).get(0).getStatus())
+                .isEqualTo(PaymentRefundRequest.Status.COMPLETED);
+        assertThat(taxOrderRepository.findByOrderId(order.getOrderId()).orElseThrow().getStatus())
+                .isEqualTo(TaxServiceOrder.OrderStatus.REFUNDED);
+        assertThat(receiptRepository.findBySourceTypeAndSourceOrderId(PaymentSourceType.TAX_SERVICE, order.getOrderId())
+                .orElseThrow().getStatus()).isEqualTo(PaymentReceipt.Status.CANCELLED);
+        assertThat(refundService.request(user.getId(), PaymentSourceType.TAX_SERVICE,
+                order.getOrderId(), "중복 환불").getId()).isEqualTo(request.getId());
     }
 }

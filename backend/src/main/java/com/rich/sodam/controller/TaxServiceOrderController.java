@@ -1,12 +1,17 @@
 package com.rich.sodam.controller;
 
 import com.rich.sodam.domain.TaxServiceOrder;
+import com.rich.sodam.domain.type.PlanFeature;
+import com.rich.sodam.domain.type.PlanType;
 import com.rich.sodam.domain.type.TaxPackage;
 import com.rich.sodam.dto.request.TaxOrderConfirmRequest;
+import com.rich.sodam.dto.response.TaxPaymentReadinessResponse;
 import com.rich.sodam.dto.response.TaxOrderResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
+import com.rich.sodam.security.annotation.RequirePlan;
 import com.rich.sodam.service.TaxServiceOrderService;
+import com.rich.sodam.service.TaxPaymentReadinessService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -31,22 +36,27 @@ import java.util.List;
 public class TaxServiceOrderController {
 
     private final TaxServiceOrderService taxServiceOrderService;
+    private final TaxPaymentReadinessService taxPaymentReadinessService;
 
     @Operation(summary = "세무 패키지 주문 생성", description = "PENDING 주문 생성 후 orderId/amount 반환. FE는 이 값으로 토스 결제창 호출.")
     @PostMapping
+    @RequirePlan(min = PlanType.PREMIUM, features = PlanFeature.PARTNER_REFERRAL)
     public ResponseEntity<TaxOrderResponse> create(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam TaxPackage packageType) {
+        taxPaymentReadinessService.assertAvailable();
         TaxServiceOrder order = taxServiceOrderService.createOrder(principal.getId(), packageType);
         return ResponseEntity.ok(TaxOrderResponse.from(order));
     }
 
     @Operation(summary = "세무 패키지 결제 승인", description = "토스 결제창 성공 후 paymentKey 로 서버 최종 승인.")
     @PostMapping("/{orderId}/confirm")
+    @RequirePlan(min = PlanType.PREMIUM, features = PlanFeature.PARTNER_REFERRAL)
     public ResponseEntity<TaxOrderResponse> confirm(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable String orderId,
             @Valid @RequestBody TaxOrderConfirmRequest req) {
+        taxPaymentReadinessService.assertAvailable();
         TaxServiceOrder order = taxServiceOrderService.confirm(
                 principal.getId(), orderId, req.getPaymentKey(), req.getAmount());
         return ResponseEntity.ok(TaxOrderResponse.from(order));
@@ -54,11 +64,18 @@ public class TaxServiceOrderController {
 
     @Operation(summary = "내 세무 주문 목록")
     @GetMapping("/me")
+    @RequirePlan(min = PlanType.PREMIUM, features = PlanFeature.PARTNER_REFERRAL)
     public ResponseEntity<List<TaxOrderResponse>> myOrders(
             @AuthenticationPrincipal UserPrincipal principal) {
         List<TaxOrderResponse> list = taxServiceOrderService.myOrders(principal.getId()).stream()
                 .map(TaxOrderResponse::from).toList();
         return ResponseEntity.ok(list);
+    }
+
+    @Operation(summary = "세무 결제 준비 상태")
+    @GetMapping("/payment-readiness")
+    public ResponseEntity<TaxPaymentReadinessResponse> paymentReadiness() {
+        return ResponseEntity.ok(taxPaymentReadinessService.readiness());
     }
 
     @Operation(summary = "세무 패키지 카탈로그")

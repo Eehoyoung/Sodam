@@ -1,6 +1,7 @@
 import React, {useCallback, useState} from 'react';
 import {Alert, StyleSheet, TouchableOpacity, View} from 'react-native';
 import {useNavigation, useRoute, RouteProp, useFocusEffect} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
     AppBadge,
@@ -16,6 +17,7 @@ import {
 } from '../../../common/components/ds';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {spacing} from '../../../theme/tokens';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import storeService from '../../store/services/storeService';
 import {
     fetchTaxReportHistory,
@@ -58,7 +60,7 @@ const fmtDateTime = (isoStr: string): string => {
  * 확정·지급완료 급여만 포함.
  */
 const TaxReportScreen: React.FC = () => {
-    const navigation = useNavigation();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const route = useRoute<Route>();
     const c = useThemeColors();
     const {storeId} = route.params;
@@ -214,6 +216,20 @@ const TaxReportScreen: React.FC = () => {
                         </AppText>
                     </AppCard>
 
+                    <AppCard
+                        variant="warm"
+                        style={styles.taxServiceCard}
+                        onPress={() => navigation.navigate('TaxServicePackages')}
+                        accessibilityLabel="세무 전문가 연결 패키지 보기">
+                        <AppText variant="titleMd" weight="700">세무 전문가가 필요하신가요?</AppText>
+                        <AppText variant="bodyMd" tone="secondary" style={styles.taxServiceDescription}>
+                            신고·기장 상담 패키지를 확인하고 모의 신청을 진행할 수 있어요.
+                        </AppText>
+                        <AppText variant="bodyMd" tone="brand" weight="700" style={styles.taxServiceLink}>
+                            세무 패키지 보기
+                        </AppText>
+                    </AppCard>
+
                     <AppText variant="caption" tone="secondary" style={styles.sectionLabel}>
                         발송 이력
                     </AppText>
@@ -262,6 +278,9 @@ const styles = StyleSheet.create({
     },
     monthArrow: {padding: spacing.xs},
     historyHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
+    taxServiceCard: {marginTop: spacing.lg},
+    taxServiceDescription: {marginTop: spacing.xs},
+    taxServiceLink: {marginTop: spacing.md},
 });
 
 export default TaxReportScreen;

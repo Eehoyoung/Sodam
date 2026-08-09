@@ -33,4 +33,10 @@ public class PaymentReceiptService {
     public List<PaymentReceipt> myReceipts(Long ownerUserId) {
         return receiptRepository.findByOwnerUserIdOrderByCreatedAtDesc(ownerUserId);
     }
+
+    @Transactional
+    public void cancel(PaymentSourceType sourceType, String orderId) {
+        receiptRepository.findBySourceTypeAndSourceOrderId(sourceType, orderId)
+                .ifPresent(PaymentReceipt::markCancelled);
+    }
 }

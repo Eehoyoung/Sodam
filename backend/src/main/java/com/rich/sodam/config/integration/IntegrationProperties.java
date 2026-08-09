@@ -51,6 +51,7 @@ public class IntegrationProperties {
         private String clientKey = "test_ck_dev";
         private String secretKey = "test_sk_dev";
         private String baseUrl = "https://api.tosspayments.com";
+        private String publicCallbackBaseUrl = "";
         // 보안: webhook 서명 검증용. 비어있으면 TossWebhookController 가 모든 webhook 거부.
         private String webhookSecret = "";
 

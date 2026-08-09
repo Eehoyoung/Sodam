@@ -63,6 +63,7 @@ public class SecurityConfig {
                                 "/api/auth/password-reset/**",
                                 // 결제 웹훅: 자체 HMAC 서명 검증으로 보호 — 인증 헤더 없이 진입 허용
                                 "/api/billing/webhook/**",
+                                "/api/billing/tax-orders/callback/**",
                                 // 정적 콘텐츠 페이지: 비인증 조회 허용 (앱 첫 화면용)
                                 "/api/info/**",
                                 // 공개 계산기(WP-A): 유입용. DB 를 조회하지 않는 순수 계산이라 노출 표면이 없고,

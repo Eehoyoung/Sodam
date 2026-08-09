@@ -116,6 +116,7 @@ sodam:
       secret-key: ${TOSS_SECRET_KEY}
       base-url: https://api.tosspayments.com
       webhook-secret: ${TOSS_WEBHOOK_SECRET}
+      public-callback-base-url: ${SODAM_TOSS_PUBLIC_CALLBACK_BASE_URL:}
     fcm:
       mode: live
       project-id: ${FCM_PROJECT_ID}

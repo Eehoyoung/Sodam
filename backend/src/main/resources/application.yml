@@ -305,6 +305,7 @@ sodam:
       secret-key: ${TOSS_SECRET_KEY:test_sk_dev}
       webhook-secret: ${TOSS_WEBHOOK_SECRET:}
       base-url: ${TOSS_BASE_URL:https://api.tosspayments.com}
+      public-callback-base-url: ${SODAM_TOSS_PUBLIC_CALLBACK_BASE_URL:}
     fcm:
       mode: ${SODAM_INTEGRATION_FCM_MODE:mock}
     sentry:

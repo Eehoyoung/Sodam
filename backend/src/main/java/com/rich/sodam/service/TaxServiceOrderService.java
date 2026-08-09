@@ -52,6 +52,9 @@ public class TaxServiceOrderService {
         if (order.isPaid()) {
             return order; // 멱등: 이미 승인된 주문
         }
+        if (order.isCancelledOrRefunded()) {
+            throw new IllegalStateException("이미 취소 또는 환불된 주문은 다시 결제할 수 없습니다.");
+        }
         if (clientAmount != order.getCustomerAmount()) {
             throw new IllegalArgumentException("결제 금액이 주문 금액과 일치하지 않습니다.");
         }
@@ -89,7 +92,12 @@ public class TaxServiceOrderService {
     public void cancelFromWebhook(String orderId) {
         orderRepository.findByOrderIdForUpdate(orderId).ifPresent(order -> {
             if (order.isCancelledOrRefunded()) return;
-            if (order.isPaid()) order.markRefunded(); else order.cancel();
+            if (order.isPaid()) {
+                order.markRefunded();
+                paymentReceiptService.cancel(PaymentSourceType.TAX_SERVICE, order.getOrderId());
+            } else {
+                order.cancel();
+            }
         });
     }
 }
