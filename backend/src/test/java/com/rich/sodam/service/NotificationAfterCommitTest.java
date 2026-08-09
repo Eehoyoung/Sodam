@@ -3,10 +3,13 @@ package com.rich.sodam.service;
 import com.rich.sodam.config.integration.MockPushNotifier;
 import com.rich.sodam.config.integration.PushNotifier.PushMessage;
 import com.rich.sodam.domain.DeviceToken;
+import com.rich.sodam.domain.NotificationPreference;
 import com.rich.sodam.domain.User;
+import com.rich.sodam.dto.request.NotificationPreferenceUpdateRequest;
 import com.rich.sodam.domain.type.UserGrade;
 import com.rich.sodam.repository.DeviceTokenRepository;
 import com.rich.sodam.repository.NotificationInboxRepository;
+import com.rich.sodam.repository.NotificationPreferenceRepository;
 import com.rich.sodam.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +43,7 @@ class NotificationAfterCommitTest {
     @Autowired private NotificationService notificationService;
     @Autowired private UserRepository userRepo;
     @Autowired private NotificationInboxRepository notificationInboxRepo;
+    @Autowired private NotificationPreferenceRepository notificationPreferenceRepo;
     @Autowired private DeviceTokenRepository deviceTokenRepo;
     @Autowired private PlatformTransactionManager txManager;
     @Autowired(required = false) private MockPushNotifier mockPushNotifier;
@@ -49,6 +53,7 @@ class NotificationAfterCommitTest {
     @AfterEach
     void cleanup() {
         if (createdUserId != null) {
+            notificationPreferenceRepo.deleteById(createdUserId);
             deviceTokenRepo.findByUser_Id(createdUserId).forEach(deviceTokenRepo::delete);
             notificationInboxRepo.findByUser_IdOrderByCreatedAtDesc(createdUserId, Pageable.unpaged())
                     .forEach(notificationInboxRepo::delete);
@@ -112,6 +117,49 @@ class NotificationAfterCommitTest {
                 .getTotalElements()).isEqualTo(1);
         if (mockPushNotifier != null) {
             assertThat(mockPushNotifier.getSentCount()).isEqualTo(before + 1);
+        }
+    }
+
+    @Test
+    @DisplayName("사장 커스텀 메시지도 inbox와 afterCommit 푸시 경로를 함께 사용한다")
+    void customMessage_commitSendsPushAndCreatesInbox() {
+        User target = fixtureUser("custom_message_target");
+        deviceTokenRepo.save(DeviceToken.of(target, "token-custom-" + target.getId(), DeviceToken.Platform.ANDROID));
+        int before = mockPushNotifier != null ? mockPushNotifier.getSentCount() : 0;
+
+        TransactionTemplate tt = new TransactionTemplate(txManager);
+        Boolean sent = tt.execute(status -> notificationService.sendCustomInboxMessage(
+                target.getId(), "사장님 메시지", "오늘 일정 확인 부탁드려요."));
+
+        assertThat(sent).isTrue();
+        assertThat(notificationInboxRepo.findByUser_IdOrderByCreatedAtDesc(target.getId(), Pageable.unpaged())
+                .getTotalElements()).isEqualTo(1);
+        if (mockPushNotifier != null) {
+            assertThat(mockPushNotifier.getSentCount()).isEqualTo(before + 1);
+        }
+    }
+
+    @Test
+    @DisplayName("수신 거부는 인앱 이력은 남기고 afterCommit FCM만 막는다")
+    void disabledPreference_blocksOnlyExternalPush() {
+        User target = fixtureUser("push_disabled_target");
+        deviceTokenRepo.save(DeviceToken.of(target, "token-disabled-" + target.getId(), DeviceToken.Platform.ANDROID));
+        NotificationPreference preference = NotificationPreference.defaultsFor(target.getId());
+        preference.update(new NotificationPreferenceUpdateRequest(
+                false, true, true, true, false, false, "22:00", "07:00"));
+        notificationPreferenceRepo.save(preference);
+        int before = mockPushNotifier != null ? mockPushNotifier.getSentCount() : 0;
+
+        TransactionTemplate tt = new TransactionTemplate(txManager);
+        tt.execute(status -> {
+            notificationService.push(target.getId(), testMessage());
+            return null;
+        });
+
+        assertThat(notificationInboxRepo.findByUser_IdOrderByCreatedAtDesc(target.getId(), Pageable.unpaged())
+                .getTotalElements()).isEqualTo(1);
+        if (mockPushNotifier != null) {
+            assertThat(mockPushNotifier.getSentCount()).isEqualTo(before);
         }
     }
 }

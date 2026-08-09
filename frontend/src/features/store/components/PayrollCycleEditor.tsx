@@ -81,11 +81,15 @@ const OFFSET_LABEL: Record<MonthOffset, string> = {
     NEXT_MONTH: '익월',
 };
 
-const PayrollCycleEditor: React.FC<Props> = ({value, onChange}) => {
-    const c = useThemeColors();
-    const set = (patch: Partial<PayrollCycleForm>) => onChange({...value, ...patch});
+interface OffsetToggleProps {
+    options: MonthOffset[];
+    active: MonthOffset;
+    onPick: (offset: MonthOffset) => void;
+}
 
-    const OffsetToggle = ({options, active, onPick}: {options: MonthOffset[]; active: MonthOffset; onPick: (o: MonthOffset) => void}) => (
+const OffsetToggle: React.FC<OffsetToggleProps> = ({options, active, onPick}) => {
+    const c = useThemeColors();
+    return (
         <View style={[styles.toggle, {borderColor: c.border}]}>
             {options.map(opt => {
                 const on = opt === active;
@@ -102,8 +106,17 @@ const PayrollCycleEditor: React.FC<Props> = ({value, onChange}) => {
             })}
         </View>
     );
+};
 
-    const DayField = ({day, onDay, disabled}: {day: string; onDay: (s: string) => void; disabled?: boolean}) => (
+interface DayFieldProps {
+    day: string;
+    onDay: (day: string) => void;
+    disabled?: boolean;
+}
+
+const DayField: React.FC<DayFieldProps> = ({day, onDay, disabled}) => {
+    const c = useThemeColors();
+    return (
         <View style={[styles.dayBox, {borderColor: c.border, backgroundColor: disabled ? c.surfaceMuted : c.surface}]}>
             <TextInput
                 style={[styles.dayInput, {color: disabled ? c.textTertiary : c.textPrimary}]}
@@ -119,8 +132,16 @@ const PayrollCycleEditor: React.FC<Props> = ({value, onChange}) => {
             <AppText variant="caption" tone="tertiary">일</AppText>
         </View>
     );
+};
 
-    const LastDayChip = ({on, onToggle}: {on: boolean; onToggle: () => void}) => (
+interface LastDayChipProps {
+    on: boolean;
+    onToggle: () => void;
+}
+
+const LastDayChip: React.FC<LastDayChipProps> = ({on, onToggle}) => {
+    const c = useThemeColors();
+    return (
         <TouchableOpacity
             style={[styles.chip, {borderColor: on ? c.brandPrimary : c.border, backgroundColor: on ? c.brandPrimarySoft : 'transparent'}]}
             onPress={onToggle}>
@@ -129,6 +150,10 @@ const PayrollCycleEditor: React.FC<Props> = ({value, onChange}) => {
             </AppText>
         </TouchableOpacity>
     );
+};
+
+const PayrollCycleEditor: React.FC<Props> = ({value, onChange}) => {
+    const set = (patch: Partial<PayrollCycleForm>) => onChange({...value, ...patch});
 
     return (
         <View style={styles.wrap}>

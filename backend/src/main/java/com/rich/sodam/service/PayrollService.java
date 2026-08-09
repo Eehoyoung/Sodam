@@ -1,6 +1,7 @@
 package com.rich.sodam.service;
 
 import com.rich.sodam.core.payroll.weeklyallowance.LaborLawConstants;
+import com.rich.sodam.core.payroll.weeklyallowance.ContractWeekStartRule;
 import com.rich.sodam.core.payroll.weeklyallowance.WeekStartPolicy;
 import com.rich.sodam.core.payroll.weeklyallowance.WeeklyAllowanceCalculatorResolver;
 import com.rich.sodam.core.payroll.weeklyallowance.WeeklyAllowanceContext;
@@ -79,6 +80,12 @@ public class PayrollService {
      */
     @Value("${sodam.payroll.week-start-policy:MONDAY}")
     private WeekStartPolicy weekStartPolicy;
+
+    /**
+     * 계약서 주휴일을 주 기산일로 해석하는 외부 정책이다. 노무사 회신 뒤 환경값만 바꾼다.
+     */
+    @Value("${sodam.payroll.contract-week-start-rule:DAY_AFTER_WEEKLY_HOLIDAY}")
+    private ContractWeekStartRule contractWeekStartRule;
 
     /**
      * 특정 기간의 급여 계산
@@ -1160,6 +1167,7 @@ public class PayrollService {
                 .getContractedWeeklyDays();
         List<LaborContract> contracts = laborContractRepository
                 .findByEmployeeIdAndStoreIdOrderByCreatedAtDesc(employeeId, storeId);
+        assertNoUnresolvedWeeklyHolidayTransition(contracts, startDate, endDate);
 
         // 월 경계에 걸친 주를 쪼개지 않기 위해 조회 범위를 "정산월에 걸친 주(週) 전체"로 확장한다.
         // (노무·법률 검토 결론: 주 종료일이 속한 월에 그 주의 주휴수당을 전액 귀속, 분할·중복 금지.
@@ -1201,7 +1209,7 @@ public class PayrollService {
         if (contractOnWorkDate != null) {
             try {
                 return workDate.with(java.time.temporal.TemporalAdjusters.previousOrSame(
-                        WeekStartPolicy.weekStartDayAfterWeeklyHoliday(contractOnWorkDate.getWeeklyHolidayDay())));
+                        contractWeekStartRule.weekStartDay(contractOnWorkDate.getWeeklyHolidayDay())));
             } catch (IllegalArgumentException ignored) {
                 // 유효하지 않은 과거 문자열은 전역 정책으로 안전하게 폴백한다.
             }
@@ -1213,8 +1221,46 @@ public class PayrollService {
         return contracts.stream()
                 .filter(contract -> isSignedContractEffectiveOn(contract, workDate))
                 .filter(contract -> contract.getWeeklyHolidayDay() != null && !contract.getWeeklyHolidayDay().isBlank())
+                .sorted(Comparator.comparing(LaborContract::getStartDate, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(LaborContract::getEmployeeSignedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(LaborContract::getId, Comparator.nullsLast(Comparator.reverseOrder())))
                 .findFirst()
                 .orElse(null);
+    }
+
+    /**
+     * 주휴일이 다른 서명 계약의 전환 주에는 두 7일 주기가 공통 경계를 갖지 않는다. 출근일마다
+     * 계약을 바꾸면 15시간을 둘로 나누거나 중복 집계할 수 있으므로, 노무 승인 전에는 자동 정산을
+     * 중단한다. 동일 주휴일 계약의 갱신은 단일 기산일이므로 계속 자동 계산한다.
+     */
+    private void assertNoUnresolvedWeeklyHolidayTransition(List<LaborContract> contracts,
+                                                            LocalDate periodStart, LocalDate periodEnd) {
+        List<LaborContract> effectiveContracts = contracts.stream()
+                .filter(contract -> contract.getSentAt() != null && contract.getEmployeeSignedAt() != null)
+                .filter(contract -> contract.getStartDate() != null)
+                .filter(contract -> contract.getWeeklyHolidayDay() != null && !contract.getWeeklyHolidayDay().isBlank())
+                // Attendance lookup includes the complete week that overlaps the
+                // requested period, so a transition up to six days beforehand can
+                // still split that payroll week's allowance.
+                .filter(contract -> !contract.getStartDate().isBefore(periodStart.minusDays(6))
+                        && !contract.getStartDate().isAfter(periodEnd))
+                .toList();
+
+        for (LaborContract successor : effectiveContracts) {
+            LaborContract predecessor = contracts.stream()
+                    .filter(contract -> contract.getId() == null || !contract.getId().equals(successor.getId()))
+                    .filter(contract -> isSignedContractEffectiveOn(contract, successor.getStartDate().minusDays(1)))
+                    .filter(contract -> contract.getWeeklyHolidayDay() != null && !contract.getWeeklyHolidayDay().isBlank())
+                    .max(Comparator.comparing(LaborContract::getStartDate)
+                            .thenComparing(LaborContract::getEmployeeSignedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                    .orElse(null);
+            if (predecessor != null && !predecessor.getWeeklyHolidayDay()
+                    .equalsIgnoreCase(successor.getWeeklyHolidayDay())) {
+                throw new BusinessException(
+                        "주휴일이 변경되는 서명 계약의 전환 주는 노무 검토 전 자동 정산할 수 없습니다.",
+                        "PAYROLL_WEEKLY_HOLIDAY_TRANSITION_PENDING");
+            }
+        }
     }
 
     private boolean isSignedContractEffectiveOn(LaborContract contract, LocalDate workDate) {

@@ -234,6 +234,8 @@ sodam:
   #  ※ 월 경계 주의 귀속월 규칙(주 종료일이 속한 월에 전액 귀속, 분할 금지)은 시스템 고정값 — 설정으로 열지 않음.
   payroll:
     week-start-policy: ${SODAM_PAYROLL_WEEK_START_POLICY:MONDAY}
+    # 계약서 주휴일을 주 기산일로 읽는 규칙은 노무사 회신으로만 바꾼다.
+    contract-week-start-rule: ${SODAM_PAYROLL_CONTRACT_WEEK_START_RULE:DAY_AFTER_WEEKLY_HOLIDAY}
   # G-2 회신 전 발급 대상은 NONE으로 보류한다. MOCK에서만 선택값을 넣어 네 결제 경로를 검증할 수 있고,
   # live 대행사/자격증명은 회신·계약 후에만 활성화한다.
   fiscal-receipt:
@@ -291,6 +293,12 @@ sodam:
   #   api-url: ${SODAM_OCR_API_URL:}        # CLOVA OCR Receipt Invoke URL
   #   secret-key: ${SODAM_OCR_SECRET_KEY:}  # X-OCR-SECRET
   integration:
+    # 사용자 업로드 파일: 기본 mock. live 전환은 private S3 bucket과 IAM 기본 자격 증명 체인이 준비된 뒤 명시적으로 수행한다.
+    object-storage:
+      mode: ${SODAM_INTEGRATION_OBJECT_STORAGE_MODE:mock}
+      bucket: ${SODAM_OBJECT_STORAGE_BUCKET:}
+      region: ${SODAM_OBJECT_STORAGE_REGION:ap-northeast-2}
+      presigned-get-ttl: ${SODAM_OBJECT_STORAGE_PRESIGNED_GET_TTL:15m}
     toss:
       mode: ${SODAM_INTEGRATION_TOSS_MODE:mock}
       client-key: ${TOSS_CLIENT_KEY:test_ck_dev}

@@ -38,6 +38,21 @@ interface SalaryCalculatorDemoProps {
     isVisible: boolean;
 }
 
+const formatCurrency = (amount: number) => new Intl.NumberFormat('ko-KR', {
+    style: 'currency',
+    currency: 'KRW',
+    maximumFractionDigits: 0,
+}).format(amount);
+
+const AnimatedNumber: React.FC<{value: number; prefix?: string}> = ({value, prefix = ''}) => (
+    <NumberCountAnimation
+        targetValue={value}
+        startValue={0}
+        config={{duration: 1500, easing: Easing.out(Easing.cubic)}}
+        formatter={amount => `${prefix}${formatCurrency(amount)}`}
+    />
+);
+
 const SalaryCalculatorDemo: React.FC<SalaryCalculatorDemoProps> = ({
                                                                        onDemoComplete,
                                                                        isVisible
@@ -121,27 +136,6 @@ const SalaryCalculatorDemo: React.FC<SalaryCalculatorDemoProps> = ({
             message: '데모가 취소됐어요.',
             timestamp: Date.now()
         });
-    };
-
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('ko-KR', {
-            style: 'currency',
-            currency: 'KRW',
-            maximumFractionDigits: 0,
-        }).format(amount);
-    };
-
-    // Animation styles are now handled by standardized animation components
-
-    const AnimatedNumber: React.FC<{ value: number; prefix?: string }> = ({value, prefix = ''}) => {
-        return (
-            <NumberCountAnimation
-                targetValue={value}
-                startValue={0}
-                config={{duration: 1500, easing: Easing.out(Easing.cubic)}}
-                formatter={(val) => `${prefix}${formatCurrency(val)}`}
-            />
-        );
     };
 
     const renderCalculator = () => (

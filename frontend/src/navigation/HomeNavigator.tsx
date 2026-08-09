@@ -20,6 +20,8 @@ import ManagerMyPageScreen from '../features/myPage/screens/ManagerMyPageScreen'
 import PersonalUserScreen from '../features/myPage/screens/PersonalUserScreen';
 import MyWorkHistoryScreen from '../features/myPage/screens/MyWorkHistoryScreen';
 import Header from '../common/components/layout/Header';
+
+const HomeHeader = () => <Header />;
 import ProfileScreen from '../features/auth/screens/ProfileScreen';
 import SettingsScreen from '../features/settings/screens/SettingsScreen';
 import StoreRegistrationScreen from '../features/store/StoreRegistraionScreen';
@@ -265,7 +267,7 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
                 component={HomeScreen}
                 options={{
                     headerShown: true,
-                    header: () => <Header/>, // props 전달하지 않고 단순히 Header 컴포넌트만 렌더링
+                    header: HomeHeader, // props 전달하지 않고 단순히 Header 컴포넌트만 렌더링
                 }}
             />
 

@@ -38,6 +38,11 @@ interface Props {
     visualFixture?: InboxItem[];
 }
 
+const NotificationSeparator: React.FC = () => {
+    const c = useThemeColors();
+    return <View style={[styles.separator, {backgroundColor: c.divider}]} />;
+};
+
 const NotificationCenterScreen: React.FC<Props> = ({visualFixture}) => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const c = useThemeColors();
@@ -134,7 +139,7 @@ const NotificationCenterScreen: React.FC<Props> = ({visualFixture}) => {
                         </View>
                     </Pressable>
                 )}
-                ItemSeparatorComponent={() => <View style={[styles.separator, {backgroundColor: c.divider}]} />}
+                ItemSeparatorComponent={NotificationSeparator}
                 ListEmptyComponent={
                     <EmptyState
                         glyph={<Ionicons name="notifications-outline" size={40} color={c.textInverse} />}

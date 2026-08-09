@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -107,6 +108,31 @@ class PayrollWeeklyAllowanceContractPolicyTest {
                 LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 31));
 
         assertThat(august.getWeeklyAllowance()).isEqualTo(8 * HOURLY_WAGE);
+    }
+
+    @Test
+    void different_weekly_holiday_amendment_in_a_month_is_held_for_labor_review() {
+        laborContractRepository.save(signedContract(LocalDate.of(2026, 8, 1), "SUNDAY"));
+        laborContractRepository.save(signedContract(LocalDate.of(2026, 8, 5), "SATURDAY"));
+        workFiveDays(LocalDate.of(2026, 8, 3));
+
+        assertThatThrownBy(() -> payrollService.calculatePayroll(employee.getId(), store.getId(),
+                LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 31)))
+                .isInstanceOf(com.rich.sodam.exception.BusinessException.class)
+                .hasMessageContaining("주휴일이 변경되는 서명 계약");
+    }
+
+    @Test
+    void different_weekly_holiday_amendment_before_month_boundary_is_held_for_labor_review() {
+        laborContractRepository.save(signedContract(LocalDate.of(2026, 7, 1), "SUNDAY"));
+        laborContractRepository.save(signedContract(LocalDate.of(2026, 7, 31), "SATURDAY"));
+        workFiveDays(LocalDate.of(2026, 7, 28));
+
+        assertThatThrownBy(() -> payrollService.calculatePayroll(employee.getId(), store.getId(),
+                LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 31)))
+                .isInstanceOfSatisfying(com.rich.sodam.exception.BusinessException.class,
+                        error -> assertThat(error.getErrorCode())
+                                .isEqualTo("PAYROLL_WEEKLY_HOLIDAY_TRANSITION_PENDING"));
     }
 
     @Test

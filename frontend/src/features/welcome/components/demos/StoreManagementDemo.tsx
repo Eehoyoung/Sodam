@@ -67,6 +67,73 @@ interface StoreManagementDemoProps {
     isVisible: boolean;
 }
 
+const formatCurrency = (amount: number) => new Intl.NumberFormat('ko-KR', {
+    style: 'currency',
+    currency: 'KRW',
+    maximumFractionDigits: 0,
+}).format(amount);
+
+const getStatusColor = (status: string) => {
+    switch (status) {
+        case 'active':
+        case 'working':
+            return '#4CAF50';
+        case 'busy':
+        case 'break':
+            return '#FF9800';
+        case 'closed':
+            return '#F44336';
+        case 'off':
+        default:
+            return '#9E9E9E';
+    }
+};
+
+const getStatusText = (status: string) => {
+    switch (status) {
+        case 'active': return '정상 운영';
+        case 'busy': return '바쁨';
+        case 'closed': return '영업 종료';
+        case 'working': return '근무중';
+        case 'break': return '휴식중';
+        case 'off': return '퇴근';
+        default: return status;
+    }
+};
+
+interface StoreCardProps {
+    store: Store;
+    animatedStyle: unknown;
+    onSelect: (store: Store) => void;
+}
+
+const StoreCard: React.FC<StoreCardProps> = ({store, animatedStyle, onSelect}) => (
+    <Animated.View style={animatedStyle}>
+        <TouchableOpacity
+            style={styles.storeCard}
+            onPress={() => onSelect(store)}
+            activeOpacity={0.8}>
+            <View style={styles.storeHeader}>
+                <Text style={styles.storeName}>{store.name}</Text>
+                <View style={[styles.statusBadge, {backgroundColor: getStatusColor(store.status)}]}>
+                    <Text style={styles.statusText}>{getStatusText(store.status)}</Text>
+                </View>
+            </View>
+            <Text style={styles.storeLocation}>{store.location}</Text>
+            <View style={styles.storeStats}>
+                <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{store.workingEmployees}/{store.employees}</Text>
+                    <Text style={styles.statLabel}>근무중</Text>
+                </View>
+                <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{formatCurrency(store.todayRevenue)}</Text>
+                    <Text style={styles.statLabel}>오늘 매출</Text>
+                </View>
+            </View>
+        </TouchableOpacity>
+    </Animated.View>
+);
+
 const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
                                                                      onDemoComplete,
                                                                      isVisible
@@ -172,7 +239,7 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
                 easing: Easing.out(Easing.back(1.1)),
             }));
         }
-    }, [isVisible]);
+    }, [isVisible, fadeAnim, scaleAnim, storeAnim1, storeAnim2, storeAnim3]);
 
     useEffect(() => {
         if (demoStep === 'management') {
@@ -217,7 +284,7 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
                 // Reanimated 3에서는 자동으로 애니메이션이 정리됨
             };
         }
-    }, [demoStep]);
+    }, [demoStep, onDemoComplete, progressAnim]);
 
     const closeDemo = () => {
         // Reanimated 3 parallel animations
@@ -234,14 +301,6 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
                 })();
             }
         });
-    };
-
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('ko-KR', {
-            style: 'currency',
-            currency: 'KRW',
-            maximumFractionDigits: 0,
-        }).format(amount);
     };
 
     // Animated styles using Reanimated 3
@@ -269,44 +328,6 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
         transform: [{scale: storeAnim3.value}],
     }));
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'active':
-                return '#4CAF50';
-            case 'busy':
-                return '#FF9800';
-            case 'closed':
-                return '#F44336';
-            case 'working':
-                return '#4CAF50';
-            case 'break':
-                return '#FF9800';
-            case 'off':
-                return '#9E9E9E';
-            default:
-                return '#9E9E9E';
-        }
-    };
-
-    const getStatusText = (status: string) => {
-        switch (status) {
-            case 'active':
-                return '정상 운영';
-            case 'busy':
-                return '바쁨';
-            case 'closed':
-                return '영업 종료';
-            case 'working':
-                return '근무중';
-            case 'break':
-                return '휴식중';
-            case 'off':
-                return '퇴근';
-            default:
-                return status;
-        }
-    };
-
     const handleStoreSelect = (store: Store) => {
         setSelectedStore(store);
         setDemoStep('details');
@@ -318,38 +339,6 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
         progressAnim.value = 0;
     };
 
-    const StoreCard: React.FC<{ store: Store; index: number }> = ({store, index}) => {
-        const storeStyles = [store1Style, store2Style, store3Style];
-
-        return (
-            <Animated.View style={storeStyles[index]}>
-                <TouchableOpacity
-                    style={styles.storeCard}
-                    onPress={() => handleStoreSelect(store)}
-                    activeOpacity={0.8}
-                >
-                    <View style={styles.storeHeader}>
-                        <Text style={styles.storeName}>{store.name}</Text>
-                        <View style={[styles.statusBadge, {backgroundColor: getStatusColor(store.status)}]}>
-                            <Text style={styles.statusText}>{getStatusText(store.status)}</Text>
-                        </View>
-                    </View>
-                    <Text style={styles.storeLocation}>{store.location}</Text>
-                    <View style={styles.storeStats}>
-                        <View style={styles.statItem}>
-                            <Text style={styles.statValue}>{store.workingEmployees}/{store.employees}</Text>
-                            <Text style={styles.statLabel}>근무중</Text>
-                        </View>
-                        <View style={styles.statItem}>
-                            <Text style={styles.statValue}>{formatCurrency(store.todayRevenue)}</Text>
-                            <Text style={styles.statLabel}>오늘 매출</Text>
-                        </View>
-                    </View>
-                </TouchableOpacity>
-            </Animated.View>
-        );
-    };
-
     const renderDashboard = () => (
         <View style={styles.dashboard}>
             <View style={styles.dashboardHeader}>
@@ -358,8 +347,8 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
             </View>
 
             <ScrollView style={styles.storesContainer} showsVerticalScrollIndicator={false}>
-                {stores.map((store, index) => (
-                    <StoreCard key={store.id} store={store} index={index}/>
+                {[store1Style, store2Style, store3Style].map((animatedStyle, index) => (
+                    <StoreCard key={stores[index].id} store={stores[index]} animatedStyle={animatedStyle} onSelect={handleStoreSelect} />
                 ))}
             </ScrollView>
         </View>

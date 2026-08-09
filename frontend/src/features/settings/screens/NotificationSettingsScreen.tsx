@@ -1,5 +1,5 @@
 /* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Platform, Pressable, StyleSheet, Text, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -8,21 +8,11 @@ import {tokens} from '../../../theme/tokens';
 import {AppBadge, AppHeader, AppListItem, AppText, ScreenContainer} from '../../../common/components/ds';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
+import notificationService, {NotificationPreferences} from '../../notification/services/notificationService';
 
 const STORAGE_KEY = 'notificationPrefs.v1';
 
-interface NotificationPrefs {
-    master: boolean;
-    attendance: boolean;
-    payroll: boolean;
-    billing: boolean;
-    marketing: boolean;
-    quietHoursEnabled: boolean;
-    quietStart: string; // HH:MM
-    quietEnd: string;
-}
-
-const DEFAULT_PREFS: NotificationPrefs = {
+const DEFAULT_PREFS: NotificationPreferences = {
     master: true,
     attendance: true,
     payroll: true,
@@ -50,8 +40,9 @@ const NotificationSettingsScreen: React.FC = () => {
     const styles = useStyles();
     const c = useThemeColors();
     const navigation = useNavigation();
-    const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
+    const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_PREFS);
     const [pickerOpenFor, setPickerOpenFor] = useState<null | 'start' | 'end'>(null);
+    const hasLocalChanges = useRef(false);
 
     useEffect(() => {
         (async () => {
@@ -59,14 +50,29 @@ const NotificationSettingsScreen: React.FC = () => {
                 const raw = await unifiedStorage.getItem(STORAGE_KEY);
                 if (raw) {setPrefs({...DEFAULT_PREFS, ...JSON.parse(raw)});}
             } catch (_) {/* ignore */}
+            try {
+                const serverPrefs = await notificationService.getPreferences();
+                const syncedPrefs = {...DEFAULT_PREFS, ...serverPrefs};
+                if (!hasLocalChanges.current) {
+                    setPrefs(syncedPrefs);
+                    await unifiedStorage.setItem(STORAGE_KEY, JSON.stringify(syncedPrefs));
+                }
+            } catch (_) {/* retain local cache as fallback */}
         })();
     }, []);
 
-    const update = async (next: NotificationPrefs) => {
+    const update = async (next: NotificationPreferences) => {
+        hasLocalChanges.current = true;
         setPrefs(next);
         try {
             await unifiedStorage.setItem(STORAGE_KEY, JSON.stringify(next));
         } catch (_) {/* ignore */}
+        try {
+            const serverPrefs = await notificationService.updatePreferences(next);
+            const syncedPrefs = {...DEFAULT_PREFS, ...serverPrefs};
+            setPrefs(syncedPrefs);
+            await unifiedStorage.setItem(STORAGE_KEY, JSON.stringify(syncedPrefs));
+        } catch (_) {/* local cache remains the offline fallback */}
     };
 
     const pad2 = (n: number) => String(n).padStart(2, '0');
