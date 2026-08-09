@@ -720,6 +720,9 @@ public class StoreManagementServiceImpl implements StoreManagementService {
         if (updateDto.getPayrollCycle() != null) {
             store.updatePayrollCycle(updateDto.getPayrollCycle().toDomain());
         }
+        if (updateDto.getWeeklyAllowanceWeekStartDay() != null) {
+            store.setWeeklyAllowanceWeekStartDay(updateDto.getWeeklyAllowanceWeekStartDay());
+        }
 
         return storeRepository.save(store);
     }

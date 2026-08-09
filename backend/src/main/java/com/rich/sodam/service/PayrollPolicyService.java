@@ -75,7 +75,6 @@ public class PayrollPolicyService {
         if (updateDto.getWeeklyAllowanceEnabled() != null) {
             policy.setWeeklyAllowanceEnabled(updateDto.getWeeklyAllowanceEnabled());
         }
-
         return payrollPolicyRepository.save(policy);
     }
 
@@ -91,6 +90,7 @@ public class PayrollPolicyService {
         policy.setOvertimeRate(1.5); // 기본값: 150%
         policy.setRegularHoursPerDay(8.0); // 기본값: 8시간
         policy.setWeeklyAllowanceEnabled(true); // 기본값: 주휴수당 활성화
+        policy.setWeeklyAllowanceForIncomeTax3_3Enabled(true); // 전문가 회신 전 현행 산정 유지
 
         return payrollPolicyRepository.save(policy);
     }

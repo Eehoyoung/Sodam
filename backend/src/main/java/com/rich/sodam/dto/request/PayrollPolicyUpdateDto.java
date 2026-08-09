@@ -38,4 +38,5 @@ public class PayrollPolicyUpdateDto {
     private Double regularHoursPerDay;
 
     private Boolean weeklyAllowanceEnabled;
+
 }

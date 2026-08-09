@@ -22,7 +22,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.ObjectNotFoundException;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +41,7 @@ public class PayrollService {
     private final EmployeeProfileRepository employeeProfileRepository;
     private final StoreRepository storeRepository;
     private final EmployeeStoreRelationRepository employeeStoreRelationRepository;
+    private final LaborContractRepository laborContractRepository;
     private final PayrollPolicyService payrollPolicyService;
     private final PayrollDetailRepository payrollDetailRepository;
     private final PayrollRepository payrollRepository;
@@ -202,7 +202,7 @@ public class PayrollService {
      * 두 경로의 주 기산이 달라 incompleteWeekAllowance 표시값과 실제 정산값이 다를 수 있다.
      * TODO[노무-정합]: 스케줄러도 weekStartPolicy 로 통일하거나, 표시 전용으로 역할 축소 — 별도 작업.</p>
      */
-    @Scheduled(cron = "0 40 23 * * ?")
+    // 경로 B는 실제 정산과 독립된 값을 쓰므로 비활성화한다. 컬럼과 과거 데이터는 롤백을 위해 보존한다.
     @Transactional
     public void calculateWeeklyAllowances() throws ObjectNotFoundException {
         List<EmployeeProfile> employees = employeeProfileRepository.findAll();
@@ -660,7 +660,10 @@ public class PayrollService {
         // 월급제는 별도 가산하지 않는다 — 월 통상임금 산정 기준시간 209h 에 유급주휴 35h(8h×4.345주)가
         // 포함되어 있어 월급 자체에 주휴수당이 내재(시행령 §6②). 별도 지급 시 이중지급이 된다.
         int weeklyAllowance = 0;
-        if (policy.getWeeklyAllowanceEnabled() && !monthlySalaried) {
+        TaxPolicyType effectiveTaxPolicy = resolveTaxPolicy(relation, policy);
+        boolean appliesToIncomeTax3_3 = effectiveTaxPolicy != TaxPolicyType.INCOME_TAX_3_3
+                || Boolean.TRUE.equals(policy.getWeeklyAllowanceForIncomeTax3_3Enabled());
+        if (policy.getWeeklyAllowanceEnabled() && appliesToIncomeTax3_3 && !monthlySalaried) {
             weeklyAllowance = calculateTotalWeeklyAllowance(employeeId, storeId, startDate, endDate);
         }
 
@@ -681,7 +684,6 @@ public class PayrollService {
 
         // 세금 계산 — 개인별 4대보험 가입 여부(socialInsuranceEnrolled)가 매장 정책을 오버라이드.
         // null(기본)이면 매장 PayrollPolicy.taxPolicyType 그대로 — 기존 동작과 동일(회귀 없음).
-        TaxPolicyType effectiveTaxPolicy = resolveTaxPolicy(relation, policy);
         int taxAmount = calculateTax(grossWage, effectiveTaxPolicy);
 
         // 임금명세서(§48②) 항목별 공제내역 — 4대보험 정책일 때 항목별 저장.
@@ -1147,19 +1149,23 @@ public class PayrollService {
      */
     private int calculateTotalWeeklyAllowance(Long employeeId, Long storeId, LocalDate startDate, LocalDate endDate) {
         // 입사일 기산 정책일 때만 입사일 조회 (불필요한 쿼리 회피)
+        EmployeeProfile employee = findEmployeeById(employeeId);
+        Store store = findStoreById(storeId);
         LocalDate hireAnchor = (weekStartPolicy == WeekStartPolicy.HIRE_DATE_ANCHORED)
-                ? findEarliestHireDate(findEmployeeById(employeeId))
+                ? findEarliestHireDate(employee)
                 : null;
 
         // 소정근로일(개근 판정 분모) — 직원-매장 관계에 설정돼 있으면 사용, 없으면 null(폴백)
-        Integer scheduledDays = findEmployeeStoreRelation(findEmployeeById(employeeId), findStoreById(storeId))
+        Integer scheduledDays = findEmployeeStoreRelation(employee, store)
                 .getContractedWeeklyDays();
+        List<LaborContract> contracts = laborContractRepository
+                .findByEmployeeIdAndStoreIdOrderByCreatedAtDesc(employeeId, storeId);
 
         // 월 경계에 걸친 주를 쪼개지 않기 위해 조회 범위를 "정산월에 걸친 주(週) 전체"로 확장한다.
         // (노무·법률 검토 결론: 주 종료일이 속한 월에 그 주의 주휴수당을 전액 귀속, 분할·중복 금지.
         //  귀속월 규칙은 시스템 고정값 — 사업장 설정으로 열지 않는다.)
-        LocalDate firstWeekStart = weekStartPolicy.weekStartOf(startDate, hireAnchor);
-        LocalDate lastWeekEnd = weekStartPolicy.weekStartOf(endDate, hireAnchor).plusDays(6);
+        LocalDate firstWeekStart = resolveWeekStart(startDate, hireAnchor, store, contracts);
+        LocalDate lastWeekEnd = resolveWeekStart(endDate, hireAnchor, store, contracts).plusDays(6);
 
         List<Attendance> attendances = attendanceRepository
                 .findByEmployeeIdAndStoreIdAndPeriodWithDetails(
@@ -1170,7 +1176,7 @@ public class PayrollService {
         for (Attendance a : attendances) {
             if (a.getCheckOutTime() == null) continue;
             LocalDate workDate = a.getCheckInTime().toLocalDate();
-            LocalDate weekStart = weekStartPolicy.weekStartOf(workDate, hireAnchor);
+            LocalDate weekStart = resolveWeekStart(workDate, hireAnchor, store, contracts);
             byWeek.computeIfAbsent(weekStart, k -> new ArrayList<>()).add(a);
         }
 
@@ -1187,6 +1193,34 @@ public class PayrollService {
             total += allowance.setScale(0, RoundingMode.HALF_UP).intValue();
         }
         return total;
+    }
+
+    private LocalDate resolveWeekStart(LocalDate workDate, LocalDate hireAnchor, Store store,
+                                       List<LaborContract> contracts) {
+        LaborContract contractOnWorkDate = findEffectiveSignedContract(contracts, workDate);
+        if (contractOnWorkDate != null) {
+            try {
+                return workDate.with(java.time.temporal.TemporalAdjusters.previousOrSame(
+                        WeekStartPolicy.weekStartDayAfterWeeklyHoliday(contractOnWorkDate.getWeeklyHolidayDay())));
+            } catch (IllegalArgumentException ignored) {
+                // 유효하지 않은 과거 문자열은 전역 정책으로 안전하게 폴백한다.
+            }
+        }
+        return weekStartPolicy.weekStartOf(workDate, hireAnchor, store.getWeeklyAllowanceWeekStartDay());
+    }
+
+    private LaborContract findEffectiveSignedContract(List<LaborContract> contracts, LocalDate workDate) {
+        return contracts.stream()
+                .filter(contract -> isSignedContractEffectiveOn(contract, workDate))
+                .filter(contract -> contract.getWeeklyHolidayDay() != null && !contract.getWeeklyHolidayDay().isBlank())
+                .findFirst()
+                .orElse(null);
+    }
+
+    private boolean isSignedContractEffectiveOn(LaborContract contract, LocalDate workDate) {
+        return contract.getSentAt() != null && contract.getEmployeeSignedAt() != null
+                && contract.getStartDate() != null && !contract.getStartDate().isAfter(workDate)
+                && (contract.getEndDate() == null || !contract.getEndDate().isBefore(workDate));
     }
 
     /**

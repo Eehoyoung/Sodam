@@ -5,6 +5,7 @@ import com.rich.sodam.domain.Store;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.time.DayOfWeek;
 
 /**
  * 매장 응답 DTO (WP-09 1단계 — Controller/DTO 경계 정리).
@@ -37,6 +38,7 @@ public class StoreResponseDto {
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
     private final PayrollCycle payrollCycle;
+    private final DayOfWeek weeklyAllowanceWeekStartDay;
     private final Long monthlyLaborCost;
     private final Integer todayAttendance;
     private final Long monthlyRevenue;
@@ -58,6 +60,7 @@ public class StoreResponseDto {
         this.createdAt = store.getCreatedAt();
         this.updatedAt = store.getUpdatedAt();
         this.payrollCycle = store.getPayrollCycle();
+        this.weeklyAllowanceWeekStartDay = store.getWeeklyAllowanceWeekStartDay();
         this.monthlyLaborCost = store.getMonthlyLaborCost();
         this.todayAttendance = store.getTodayAttendance();
         this.monthlyRevenue = store.getMonthlyRevenue();

@@ -27,6 +27,7 @@ public class PayrollPolicyDto {
     private Double overtimeRate;
     private Double regularHoursPerDay;
     private Boolean weeklyAllowanceEnabled;
+    private Boolean weeklyAllowanceForIncomeTax3_3Enabled;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -48,6 +49,7 @@ public class PayrollPolicyDto {
                 .overtimeRate(policy.getOvertimeRate())
                 .regularHoursPerDay(policy.getRegularHoursPerDay())
                 .weeklyAllowanceEnabled(policy.getWeeklyAllowanceEnabled())
+                .weeklyAllowanceForIncomeTax3_3Enabled(policy.getWeeklyAllowanceForIncomeTax3_3Enabled())
                 .createdAt(policy.getCreatedAt())
                 .updatedAt(policy.getUpdatedAt())
                 .build();

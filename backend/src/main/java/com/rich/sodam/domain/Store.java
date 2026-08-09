@@ -103,6 +103,11 @@ public class Store {
     @Embedded
     private PayrollCycle payrollCycle;
 
+    /** STORE_DEFINED 주휴 기산 정책에서만 쓰는 사업장 주 시작 요일. null이면 MONDAY로 폴백한다. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "weekly_allowance_week_start_day", length = 16)
+    private DayOfWeek weeklyAllowanceWeekStartDay;
+
     // 세무사(신고 대리인) 이메일 — 인건비 내역서 송부처. 미설정이면 발송 불가(400)
     @Column(name = "tax_accountant_email")
     private String taxAccountantEmail;
@@ -400,6 +405,11 @@ public class Store {
      */
     public void updatePayrollCycle(PayrollCycle newPayrollCycle) {
         this.payrollCycle = newPayrollCycle;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void setWeeklyAllowanceWeekStartDay(DayOfWeek weeklyAllowanceWeekStartDay) {
+        this.weeklyAllowanceWeekStartDay = weeklyAllowanceWeekStartDay;
         this.updatedAt = LocalDateTime.now();
     }
 
