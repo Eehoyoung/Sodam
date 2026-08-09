@@ -76,6 +76,7 @@
         // FCM — @react-native-firebase 설치 후 autolinking 으로 잡힌다 (key-ready)
         maybeImpl(":react-native-firebase_app")
         maybeImpl(":react-native-firebase_messaging")
+        maybeImpl(":sentry_react-native")
     }
 
     apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
