@@ -158,7 +158,7 @@ class PayrollWeeklyAllowanceContractPolicyTest {
             LocalDate day = start.plusDays(offset);
             Attendance attendance = new Attendance(employee, store);
             attendance.manualCheckIn(day.atTime(9, 0), 37.5665, 126.9780, relation.getAppliedHourlyWage());
-            attendance.manualCheckOut(day.atTime(17, 0), 37.5665, 126.9780);
+            attendance.manualCheckOut(day.atTime(18, 0), 37.5665, 126.9780);
             attendanceRepository.save(attendance);
         }
     }

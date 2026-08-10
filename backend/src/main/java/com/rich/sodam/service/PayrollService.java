@@ -50,6 +50,7 @@ public class PayrollService {
     private final com.rich.sodam.core.payroll.wage.NightWorkCalculator nightWorkCalculator;
     private final com.rich.sodam.core.payroll.wage.DailyWageCalculator dailyWageCalculator;
     private final com.rich.sodam.core.payroll.wage.WorkHoursCalculator workHoursCalculator;
+    private final com.rich.sodam.core.payroll.wage.WeeklyOvertimeCalculator weeklyOvertimeCalculator;
     private final com.rich.sodam.core.payroll.wage.MonthlySalaryCalculator monthlySalaryCalculator;
     private final com.rich.sodam.core.payroll.deduction.SocialInsuranceCalculator socialInsuranceCalculator;
     private final WorkShiftRepository workShiftRepository;
@@ -310,7 +311,9 @@ public class PayrollService {
 
         for (Attendance attendance : attendances) {
             if (attendance.getCheckOutTime() != null) {
-                double hours = attendance.getWorkingTimeInHours();
+                double hours = workHoursCalculator.calculate(
+                        attendance.getCheckInTime(), attendance.getCheckOutTime(),
+                        LaborLawConstants.STATUTORY_DAILY_HOURS.doubleValue()).paidHours();
                 totalHours = totalHours.add(BigDecimal.valueOf(hours));
             }
         }
@@ -580,7 +583,7 @@ public class PayrollService {
                     attendance.getCheckInTime(), attendance.getCheckOutTime(), policy.getRegularHoursPerDay());
 
             // 야간 근무 시간 계산 — 실제 출퇴근 일시 기준(자정통과 정확 처리, L-1)
-            double nightWorkHours = nightWorkCalculator.calculate(
+            double nightWorkHours = nightWorkCalculator.calculatePayable(
                     attendance.getCheckInTime(), attendance.getCheckOutTime(), policy.getNightWorkStartTime());
 
             boolean premiumApplicable = store.isPremiumApplicable();
@@ -653,6 +656,17 @@ public class PayrollService {
         }
 
         // ── 월급제 기본급 확정: 일할 기본급 − 근태 공제 + 소정 외 추가 기본분 ──
+        applyWeeklyOvertimePremium(details, employee, store, startDate, endDate, policy.getRegularHoursPerDay(),
+                hourlyWage, store.isPremiumApplicable(), monthlySalaried);
+        totalRegularHours = details.stream().mapToDouble(detail -> nz(detail.getRegularHours())).sum();
+        totalOvertimeHours = details.stream().mapToDouble(detail -> nz(detail.getOvertimeHours())).sum();
+        totalNightWorkHours = details.stream().mapToDouble(detail -> nz(detail.getNightWorkHours())).sum();
+        totalHolidayWorkHours = details.stream().mapToDouble(detail -> nz(detail.getHolidayWorkHours())).sum();
+        totalRegularWage = details.stream().mapToInt(detail -> nz(detail.getRegularWage())).sum();
+        totalOvertimeWage = details.stream().mapToInt(detail -> nz(detail.getOvertimeWage())).sum();
+        totalNightWorkWage = details.stream().mapToInt(detail -> nz(detail.getNightWorkWage())).sum();
+        totalHolidayWorkWage = details.stream().mapToInt(detail -> nz(detail.getHolidayWorkWage())).sum();
+
         if (monthlySalaried) {
             int proratedBase = monthlySalaryCalculator.proratedBaseSalary(
                     relation.getMonthlySalary(), startDate, endDate, relation.getHireDate());
@@ -1154,6 +1168,94 @@ public class PayrollService {
      * <p>⚠️ 월 경계에 걸친 주(週)는 정산월 내 출근일만 집계되어 소정근로시간이 일부만 반영될 수 있다.
      * 월 경계·교대 4주 평균 처리는 외부 노무사 확인 권장 항목(노무 검증 보고서 §1).</p>
      */
+    private void applyWeeklyOvertimePremium(List<PayrollDetail> details, EmployeeProfile employee, Store store,
+                                            LocalDate payrollStartDate, LocalDate payrollEndDate,
+                                            double regularHoursLimit, int hourlyWage,
+                                            boolean premiumApplicable, boolean monthlySalaried) {
+        LocalDate hireAnchor = (weekStartPolicy == WeekStartPolicy.HIRE_DATE_ANCHORED)
+                ? findEarliestHireDate(employee) : null;
+        List<LaborContract> contracts = laborContractRepository
+                .findByEmployeeIdAndStoreIdOrderByCreatedAtDesc(employee.getId(), store.getId());
+        LocalDate firstWeekStart = resolveWeekStart(payrollStartDate, hireAnchor, store, contracts);
+        LocalDate lastWeekEnd = resolveWeekStart(payrollEndDate, hireAnchor, store, contracts).plusDays(6);
+        List<Attendance> weeklyAttendances = attendanceRepository.findByEmployeeIdAndStoreIdAndPeriodWithDetails(
+                employee.getId(), store.getId(), firstWeekStart.atStartOfDay(), lastWeekEnd.atTime(23, 59, 59));
+
+        Map<LocalDate, List<Attendance>> attendancesByWeek = new HashMap<>();
+        for (Attendance attendance : weeklyAttendances) {
+            if (attendance.getCheckOutTime() == null || attendance.isHolidayWork()) {
+                continue;
+            }
+            LocalDate weekStart = resolveWeekStart(attendance.getCheckInTime().toLocalDate(), hireAnchor, store, contracts);
+            attendancesByWeek.computeIfAbsent(weekStart, ignored -> new ArrayList<>()).add(attendance);
+        }
+
+        Map<LocalDate, List<PayrollDetail>> detailsByWeek = new HashMap<>();
+        for (PayrollDetail detail : details) {
+            if (!detail.isHolidayWork()) {
+                LocalDate weekStart = resolveWeekStart(detail.getWorkDate(), hireAnchor, store, contracts);
+                detailsByWeek.computeIfAbsent(weekStart, ignored -> new ArrayList<>()).add(detail);
+            }
+        }
+
+        for (Map.Entry<LocalDate, List<Attendance>> entry : attendancesByWeek.entrySet()) {
+            LocalDate weekEnd = entry.getKey().plusDays(6);
+            if (weekEnd.isBefore(payrollStartDate) || weekEnd.isAfter(payrollEndDate)) {
+                continue;
+            }
+            double payableHours = entry.getValue().stream()
+                    .mapToDouble(attendance -> workHoursCalculator.calculate(
+                            attendance.getCheckInTime(), attendance.getCheckOutTime(), regularHoursLimit).paidHours())
+                    .sum();
+            double dailyOvertimeHours = entry.getValue().stream()
+                    .mapToDouble(attendance -> workHoursCalculator.calculate(
+                            attendance.getCheckInTime(), attendance.getCheckOutTime(), regularHoursLimit).overtimeHours())
+                    .sum();
+            double remainingWeeklyOvertime = weeklyOvertimeCalculator
+                    .additionalOvertimeHours(payableHours, dailyOvertimeHours);
+            if (remainingWeeklyOvertime == 0) {
+                continue;
+            }
+
+            List<PayrollDetail> weeklyDetails = detailsByWeek.getOrDefault(entry.getKey(), List.of());
+            if (weeklyDetails.isEmpty()) {
+                throw new BusinessException(
+                        "Complete-week overtime cannot be allocated to this payroll period without losing payable hours.",
+                        "PAYROLL_WEEKLY_OVERTIME_ALLOCATION_REQUIRED");
+            }
+
+            weeklyDetails.sort(Comparator.comparing(PayrollDetail::getWorkDate).reversed());
+            for (PayrollDetail detail : weeklyDetails) {
+                double reclassifiedHours = Math.min(remainingWeeklyOvertime, nz(detail.getRegularHours()));
+                if (reclassifiedHours <= 0) {
+                    continue;
+                }
+                double regularHours = nz(detail.getRegularHours()) - reclassifiedHours;
+                double overtimeHours = nz(detail.getOvertimeHours()) + reclassifiedHours;
+                detail.setRegularHours(regularHours);
+                detail.setOvertimeHours(overtimeHours);
+
+                com.rich.sodam.core.payroll.wage.DailyWageResult wage = dailyWageCalculator.calculate(
+                        hourlyWage, regularHours, overtimeHours, 0, premiumApplicable);
+                if (!monthlySalaried) {
+                    detail.setRegularWage(wage.regularWage());
+                }
+                detail.setOvertimeWage(wage.overtimeWage());
+                detail.setDailyWage(nz(detail.getRegularWage()) + nz(detail.getOvertimeWage())
+                        + nz(detail.getNightWorkWage()) + nz(detail.getHolidayWorkWage()));
+                remainingWeeklyOvertime -= reclassifiedHours;
+                if (remainingWeeklyOvertime <= 0) {
+                    break;
+                }
+            }
+            if (remainingWeeklyOvertime > 0) {
+                throw new BusinessException(
+                        "Complete-week overtime cannot be allocated to this payroll period without losing payable hours.",
+                        "PAYROLL_WEEKLY_OVERTIME_ALLOCATION_REQUIRED");
+            }
+        }
+    }
+
     private int calculateTotalWeeklyAllowance(Long employeeId, Long storeId, LocalDate startDate, LocalDate endDate) {
         // 입사일 기산 정책일 때만 입사일 조회 (불필요한 쿼리 회피)
         EmployeeProfile employee = findEmployeeById(employeeId);

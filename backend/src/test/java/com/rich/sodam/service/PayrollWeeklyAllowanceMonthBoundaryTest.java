@@ -179,6 +179,7 @@ class PayrollWeeklyAllowanceMonthBoundaryTest {
             LocalDateTime checkIn = day.atTime(9, 0);
             LocalDateTime checkOut = day.atTime(18, 0).minusHours(1); // 9~17시 = 8시간
 
+            checkOut = checkOut.plusHours(1); // preserve 8 payable hours after the statutory break
             attendance.manualCheckIn(checkIn, 37.5665, 126.9780, relation.getAppliedHourlyWage());
             attendance.manualCheckOut(checkOut, 37.5665, 126.9780);
             attendanceRepository.save(attendance);

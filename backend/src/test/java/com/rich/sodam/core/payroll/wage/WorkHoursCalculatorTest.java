@@ -60,6 +60,18 @@ class WorkHoursCalculatorTest {
     }
 
     @Test
+    void breakThresholdsUseExactDurationBeforeHourlyRounding() {
+        LocalDateTime start = LocalDateTime.of(2026, 6, 1, 9, 0);
+
+        assertThat(calculator.calculate(start, start.plusHours(3).plusMinutes(59).plusSeconds(59), 8.0)
+                .breakHours()).isZero();
+        assertThat(calculator.calculate(start, start.plusHours(4), 8.0).breakHours()).isEqualTo(0.5);
+        assertThat(calculator.calculate(start, start.plusHours(7).plusMinutes(59).plusSeconds(59), 8.0)
+                .breakHours()).isEqualTo(0.5);
+        assertThat(calculator.calculate(start, start.plusHours(8), 8.0).breakHours()).isEqualTo(1.0);
+    }
+
+    @Test
     @DisplayName("09:00~20:00 (11h) → 휴게 1h → 정상 8h + 연장 2h")
     void longShiftHasOvertime() {
         WorkHoursResult r = calculator.calculate(
@@ -68,6 +80,17 @@ class WorkHoursCalculatorTest {
         assertThat(r.regularHours()).isEqualTo(8.0);
         assertThat(r.overtimeHours()).isEqualTo(2.0);
         assertThat(r.breakHours()).isEqualTo(1.0);
+    }
+
+    @Test
+    @DisplayName("저장된 정책이 8시간을 초과해도 일일 법정 기준을 완화하지 않는다")
+    void legacyRegularHoursPolicyCannotExceedStatutoryDailyLimit() {
+        WorkHoursResult r = calculator.calculate(
+                LocalDateTime.of(2026, 6, 1, 9, 0),
+                LocalDateTime.of(2026, 6, 1, 20, 0), 12.0);
+
+        assertThat(r.regularHours()).isEqualTo(8.0);
+        assertThat(r.overtimeHours()).isEqualTo(2.0);
     }
 
     @Test

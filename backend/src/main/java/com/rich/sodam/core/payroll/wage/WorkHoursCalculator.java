@@ -29,12 +29,16 @@ public class WorkHoursCalculator {
             return new WorkHoursResult(0, 0, 0);
         }
 
-        double grossHours = round2(Duration.between(checkIn, checkOut).toMinutes() / 60.0);
-        double breakHours = statutoryBreakHours(grossHours);
+        Duration workedDuration = Duration.between(checkIn, checkOut);
+        double grossHours = round2(workedDuration.toSeconds() / 3600.0);
+        double breakHours = BreakTimeCalculator.requiredBreakMinutes(workedDuration) / 60.0;
         double netHours = Math.max(0, round2(grossHours - breakHours));
 
-        double regularHours = Math.min(netHours, regularHoursLimit);
-        double overtimeHours = Math.max(0, round2(netHours - regularHoursLimit));
+        // Keep more-favourable lower policy limits, but never let stored legacy values
+        // weaken the statutory daily eight-hour overtime threshold.
+        double effectiveRegularHoursLimit = Math.min(regularHoursLimit, LaborStandards.STATUTORY_DAILY_HOURS);
+        double regularHours = Math.min(netHours, effectiveRegularHoursLimit);
+        double overtimeHours = Math.max(0, round2(netHours - effectiveRegularHoursLimit));
 
         return new WorkHoursResult(regularHours, overtimeHours, breakHours);
     }

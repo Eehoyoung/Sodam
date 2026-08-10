@@ -1,6 +1,8 @@
 package com.rich.sodam.dto.request;
 
+import com.rich.sodam.core.payroll.constant.LaborStandards;
 import com.rich.sodam.domain.type.TaxPolicyType;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
@@ -35,8 +37,14 @@ public class PayrollPolicyUpdateDto {
 
     @DecimalMin(value = "1.0", message = "일일 기본 근무 시간은 최소 1.0 이상이어야 합니다")
     @DecimalMax(value = "12.0", message = "일일 기본 근무 시간은 최대 12.0 이하여야 합니다")
+    @DecimalMax(value = "8.0", message = "Regular daily hours must not exceed 8.0.")
     private Double regularHoursPerDay;
 
     private Boolean weeklyAllowanceEnabled;
+
+    @AssertTrue(message = "Night work must start at 22:00.")
+    public boolean isNightWorkStartStatutory() {
+        return nightWorkStartTime == null || nightWorkStartTime.equals(LaborStandards.NIGHT_START);
+    }
 
 }

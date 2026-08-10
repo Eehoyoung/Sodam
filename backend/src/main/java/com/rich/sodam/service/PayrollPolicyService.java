@@ -1,9 +1,11 @@
 package com.rich.sodam.service;
 
+import com.rich.sodam.core.payroll.constant.LaborStandards;
 import com.rich.sodam.domain.PayrollPolicy;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.type.TaxPolicyType;
 import com.rich.sodam.dto.request.PayrollPolicyUpdateDto;
+import com.rich.sodam.exception.BusinessException;
 import com.rich.sodam.exception.EntityNotFoundException;
 import com.rich.sodam.repository.PayrollPolicyRepository;
 import com.rich.sodam.repository.StoreRepository;
@@ -61,6 +63,10 @@ public class PayrollPolicyService {
         }
 
         if (updateDto.getNightWorkStartTime() != null) {
+            if (!updateDto.getNightWorkStartTime().equals(LaborStandards.NIGHT_START)) {
+                throw new BusinessException("Night work must start at 22:00.",
+                        "NIGHT_WORK_START_INVALID");
+            }
             policy.setNightWorkStartTime(updateDto.getNightWorkStartTime());
         }
 
@@ -69,6 +75,10 @@ public class PayrollPolicyService {
         }
 
         if (updateDto.getRegularHoursPerDay() != null) {
+            if (updateDto.getRegularHoursPerDay() > LaborStandards.STATUTORY_DAILY_HOURS) {
+                throw new BusinessException("Regular daily hours must not exceed 8.0.",
+                        "REGULAR_HOURS_PER_DAY_INVALID");
+            }
             policy.setRegularHoursPerDay(updateDto.getRegularHoursPerDay());
         }
 
