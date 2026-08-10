@@ -43,16 +43,8 @@ public class WorkHoursCalculator {
         return new WorkHoursResult(regularHours, overtimeHours, breakHours);
     }
 
-    /** §54 의무 휴게시간(무급). 근로시간 8h↑ 1시간, 4h↑ 30분, 그 미만 0. */
-    double statutoryBreakHours(double grossHours) {
-        if (grossHours >= LaborStandards.BREAK_THRESHOLD_8H) {
-            return LaborStandards.BREAK_MINUTES_OVER_8H;
-        }
-        if (grossHours >= LaborStandards.BREAK_THRESHOLD_4H) {
-            return LaborStandards.BREAK_MINUTES_OVER_4H;
-        }
-        return 0;
-    }
+    // §54 휴게시간 판정은 BreakTimeCalculator.requiredBreakMinutes(Duration) 이 담당한다.
+    // 반올림된 시간(double)으로 4h/8h 경계를 재면 3:59:59 가 4.0 으로 올라가 휴게가 잘못 붙는다.
 
     private double round2(double v) {
         return Math.round(v * 100) / 100.0;

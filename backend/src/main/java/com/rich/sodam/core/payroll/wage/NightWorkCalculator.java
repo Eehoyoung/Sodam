@@ -91,11 +91,16 @@ public class NightWorkCalculator {
         return seconds;
     }
 
+    /**
+     * 야간 구간의 시작은 항상 법정 22:00이다.
+     *
+     * <p>매장 정책의 {@code nightWorkStartTime} 은 쓰기 시점에 22:00 으로 강제되지만
+     * ({@code PayrollPolicyUpdateDto}), 그 검증 이전에 저장된 레거시 값이 남아 있을 수 있어
+     * 계산기에서도 한 번 더 고정한다. 정책값으로 야간 시작을 앞당기거나 미루지 않는다 —
+     * 미루면 §56③ 위반이고, 앞당기는 것은 정책이 아니라 별도 수당 항목으로 다룰 사안이다.</p>
+     */
     private LocalTime effectiveNightStart(LocalTime nightStart) {
-        if (nightStart == null || !nightStart.equals(LaborStandards.NIGHT_START)) {
-            return LaborStandards.NIGHT_START;
-        }
-        return nightStart;
+        return LaborStandards.NIGHT_START;
     }
 
     private double round2(double value) {

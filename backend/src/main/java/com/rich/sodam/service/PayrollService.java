@@ -89,6 +89,27 @@ public class PayrollService {
     private ContractWeekStartRule contractWeekStartRule;
 
     /**
+     * 주 40시간 초과 연장가산 산정 여부. RELEASE_GATES G-9 — 기본 비활성.
+     *
+     * <p>메커니즘과 테스트는 완성돼 있으나, 정산기간 경계에 걸친 주(週)의 귀속 규칙이 확정되기
+     * 전에는 켜지 않는다. 현재 규칙(주 종료일이 속한 기간에 전액 귀속)에는 주가 기간 시작일에
+     * 걸치면 앞뒤 기간 모두에서 빠지는 공백이 있어, 켜 두면 일부 주의 연장수당이 누락되거나
+     * 정산이 중단된다. 노무사 회신 뒤 이 값만 true 로 바꾼다.</p>
+     */
+    @Value("${sodam.payroll.weekly-overtime-enabled:false}")
+    private boolean weeklyOvertimeEnabled;
+
+    /**
+     * 야간가산에서 법정 휴게시간을 차감할지 여부. RELEASE_GATES G-10 — 기본 비활성.
+     *
+     * <p>휴게가 언제 있었는지는 기록되지 않아, 차감하려면 위치를 추정해야 한다. 추정이 빗나가면
+     * 실제로 일한 야간시간의 가산수당이 깎여 §56③·§43② 위반이 된다(노무 검토 의견). 기본값은
+     * 차감하지 않는 쪽 — 근로자에게 불리한 방향으로 추정하지 않는다.</p>
+     */
+    @Value("${sodam.payroll.night-break-deduction-enabled:false}")
+    private boolean nightBreakDeductionEnabled;
+
+    /**
      * 특정 기간의 급여 계산
      */
     @Transactional(readOnly = true)
@@ -583,8 +604,12 @@ public class PayrollService {
                     attendance.getCheckInTime(), attendance.getCheckOutTime(), policy.getRegularHoursPerDay());
 
             // 야간 근무 시간 계산 — 실제 출퇴근 일시 기준(자정통과 정확 처리, L-1)
-            double nightWorkHours = nightWorkCalculator.calculatePayable(
-                    attendance.getCheckInTime(), attendance.getCheckOutTime(), policy.getNightWorkStartTime());
+            // 휴게 차감(G-10)은 기본 비활성 — 휴게 시각을 추정해 가산을 깎지 않는다.
+            double nightWorkHours = nightBreakDeductionEnabled
+                    ? nightWorkCalculator.calculatePayable(
+                            attendance.getCheckInTime(), attendance.getCheckOutTime(), policy.getNightWorkStartTime())
+                    : nightWorkCalculator.calculate(
+                            attendance.getCheckInTime(), attendance.getCheckOutTime(), policy.getNightWorkStartTime());
 
             boolean premiumApplicable = store.isPremiumApplicable();
             boolean holiday = attendance.isHolidayWork();
@@ -655,9 +680,13 @@ public class PayrollService {
             totalHolidayWorkWage += holidayWorkWage;
         }
 
+        // 주 40시간 초과 연장가산 — G-9 회신 전에는 비활성(기본). 켜기 전 §3 귀속 규칙 확정 필요.
+        if (weeklyOvertimeEnabled) {
+            applyWeeklyOvertimePremium(details, employee, store, startDate, endDate, policy.getRegularHoursPerDay(),
+                    hourlyWage, store.isPremiumApplicable(), monthlySalaried, regularHoursByDate);
+        }
+
         // ── 월급제 기본급 확정: 일할 기본급 − 근태 공제 + 소정 외 추가 기본분 ──
-        applyWeeklyOvertimePremium(details, employee, store, startDate, endDate, policy.getRegularHoursPerDay(),
-                hourlyWage, store.isPremiumApplicable(), monthlySalaried);
         totalRegularHours = details.stream().mapToDouble(detail -> nz(detail.getRegularHours())).sum();
         totalOvertimeHours = details.stream().mapToDouble(detail -> nz(detail.getOvertimeHours())).sum();
         totalNightWorkHours = details.stream().mapToDouble(detail -> nz(detail.getNightWorkHours())).sum();
@@ -1171,7 +1200,8 @@ public class PayrollService {
     private void applyWeeklyOvertimePremium(List<PayrollDetail> details, EmployeeProfile employee, Store store,
                                             LocalDate payrollStartDate, LocalDate payrollEndDate,
                                             double regularHoursLimit, int hourlyWage,
-                                            boolean premiumApplicable, boolean monthlySalaried) {
+                                            boolean premiumApplicable, boolean monthlySalaried,
+                                            Map<LocalDate, Double> regularHoursByDate) {
         LocalDate hireAnchor = (weekStartPolicy == WeekStartPolicy.HIRE_DATE_ANCHORED)
                 ? findEarliestHireDate(employee) : null;
         List<LaborContract> contracts = laborContractRepository
@@ -1220,7 +1250,7 @@ public class PayrollService {
             List<PayrollDetail> weeklyDetails = detailsByWeek.getOrDefault(entry.getKey(), List.of());
             if (weeklyDetails.isEmpty()) {
                 throw new BusinessException(
-                        "Complete-week overtime cannot be allocated to this payroll period without losing payable hours.",
+                        "주 40시간 초과분을 이번 정산기간에 배분할 수 없어요. 근무한 주가 정산 시작일에 걸쳐 있어요.",
                         "PAYROLL_WEEKLY_OVERTIME_ALLOCATION_REQUIRED");
             }
 
@@ -1234,6 +1264,13 @@ public class PayrollService {
                 double overtimeHours = nz(detail.getOvertimeHours()) + reclassifiedHours;
                 detail.setRegularHours(regularHours);
                 detail.setOvertimeHours(overtimeHours);
+
+                // 월급제: 소정근로 시간만 월급(기본 100%)이 덮는다. 연장으로 재분류된 시간을
+                // 여기서 빼지 않으면, 그 시간의 100%가 월급에도 남고 연장수당(150%)에도 들어가
+                // 이중지급된다. 일 단위 연장은 애초에 이 맵에 담기지 않으므로 같은 규칙이다.
+                if (monthlySalaried) {
+                    regularHoursByDate.merge(detail.getWorkDate(), -reclassifiedHours, Double::sum);
+                }
 
                 com.rich.sodam.core.payroll.wage.DailyWageResult wage = dailyWageCalculator.calculate(
                         hourlyWage, regularHours, overtimeHours, 0, premiumApplicable);
@@ -1250,7 +1287,7 @@ public class PayrollService {
             }
             if (remainingWeeklyOvertime > 0) {
                 throw new BusinessException(
-                        "Complete-week overtime cannot be allocated to this payroll period without losing payable hours.",
+                        "주 40시간 초과분을 이번 정산기간에 배분할 수 없어요. 근무한 주가 정산 시작일에 걸쳐 있어요.",
                         "PAYROLL_WEEKLY_OVERTIME_ALLOCATION_REQUIRED");
             }
         }

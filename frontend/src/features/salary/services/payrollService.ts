@@ -94,13 +94,35 @@ export interface PayrollCalculationItem {
   netWage: number;
 }
 
+/** 계산이 중단된 직원. 매장 일괄 계산에서만 채워진다. */
+export interface PayrollCalculationFailure {
+  employeeId: number;
+  employeeName: string;
+  errorCode: string;
+  message: string;
+}
+
+export interface PayrollCalculationResult {
+  items: PayrollCalculationItem[];
+  /** 비어 있지 않으면 일부 직원의 정산이 중단된 것 — 반드시 화면에 노출해야 한다. */
+  failed: PayrollCalculationFailure[];
+}
+
 // WP-04(계획서): PayrollRunScreen.tsx가 직접 api.post 하던 것을 이관 — BE 응답의 중첩
 // employee.id/employee.user.name 형태를 화면이 쓰는 평탄한 형태로 매핑한다.
-async function calculate(payload: PayrollCalculatePayload): Promise<PayrollCalculationItem[]> {
-  const res = await api.post<any[]>('/api/payroll/calculate', payload);
+async function calculate(payload: PayrollCalculatePayload): Promise<PayrollCalculationResult> {
+  const res = await api.post<any>('/api/payroll/calculate', payload);
   const data: any = res.data as any;
   const list: any[] = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
-  return list.map(d => ({
+  const failed: PayrollCalculationFailure[] = Array.isArray(data?.failed)
+    ? data.failed.map((f: any) => ({
+        employeeId: f.employeeId,
+        employeeName: f.employeeName ?? '직원',
+        errorCode: f.errorCode ?? 'UNKNOWN',
+        message: f.message ?? '급여를 계산하지 못했어요.',
+      }))
+    : [];
+  const items = list.map(d => ({
     payrollId: d.id,
     employeeId: d.employee?.id ?? d.employeeId,
     employeeName: d.employee?.user?.name ?? d.employeeName ?? '직원',
@@ -116,6 +138,7 @@ async function calculate(payload: PayrollCalculatePayload): Promise<PayrollCalcu
     taxAmount: d.taxAmount ?? 0,
     netWage: d.netWage ?? 0,
   }));
+  return {items, failed};
 }
 
 // [API Mapping] PUT /api/payroll/{payrollId}/issue — 확정→지급완료 원자 처리(스텝업 비밀번호 필요)

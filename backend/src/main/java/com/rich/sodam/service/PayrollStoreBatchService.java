@@ -2,7 +2,9 @@ package com.rich.sodam.service;
 
 import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.Payroll;
+import com.rich.sodam.dto.response.PayrollBatchResultDto;
 import com.rich.sodam.dto.response.PayrollDto;
+import com.rich.sodam.exception.BusinessException;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,13 +43,14 @@ public class PayrollStoreBatchService {
      * (PAID·CONFIRMED 재계산 거부 등)는 {@code PayrollService.calculatePayroll}이 담당한다.
      * 직원 한 명의 계산 실패는 REQUIRES_NEW 독립 트랜잭션 덕분에 다른 직원에게 전혀 영향을 주지 않는다.
      */
-    public List<PayrollDto> calculatePayrollForStore(Long storeId, LocalDate startDate, LocalDate endDate) {
+    public PayrollBatchResultDto calculatePayrollForStore(Long storeId, LocalDate startDate, LocalDate endDate) {
         List<EmployeeStoreRelation> relations = employeeStoreRelationRepository
                 .findByStore_Id(storeId).stream()
                 .filter(r -> Boolean.TRUE.equals(r.getIsActive()))
                 .toList();
 
         List<PayrollDto> result = new ArrayList<>();
+        List<PayrollBatchResultDto.FailedEmployee> failed = new ArrayList<>();
         for (EmployeeStoreRelation rel : relations) {
             if (rel.getEmployeeProfile() == null) continue;
             Long employeeId = rel.getEmployeeProfile().getId();
@@ -56,10 +59,25 @@ public class PayrollStoreBatchService {
                 result.add(PayrollDto.from(p));
             } catch (Exception e) {
                 // REQUIRES_NEW 독립 트랜잭션이라 이미 커밋된 다른 직원의 결과에 영향을 주지 않는다.
+                // 다만 실패를 로그에만 남기면 사장님이 누락을 인지할 수 없으므로 응답에 함께 싣는다.
                 log.warn("매장 일괄 정산 실패 emp={} store={} reason={}",
                         employeeId, storeId, e.getMessage());
+                failed.add(new PayrollBatchResultDto.FailedEmployee(
+                        employeeId, resolveEmployeeName(rel), resolveErrorCode(e), e.getMessage()));
             }
         }
-        return result;
+        return new PayrollBatchResultDto(result, failed);
+    }
+
+    private String resolveErrorCode(Exception e) {
+        return (e instanceof BusinessException businessException && businessException.getErrorCode() != null)
+                ? businessException.getErrorCode()
+                : "UNKNOWN";
+    }
+
+    private String resolveEmployeeName(EmployeeStoreRelation relation) {
+        return relation.getEmployeeProfile() != null && relation.getEmployeeProfile().getUser() != null
+                ? relation.getEmployeeProfile().getUser().getName()
+                : null;
     }
 }

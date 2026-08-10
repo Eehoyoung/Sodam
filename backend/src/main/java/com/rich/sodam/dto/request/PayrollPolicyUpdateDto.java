@@ -35,14 +35,15 @@ public class PayrollPolicyUpdateDto {
     @DecimalMax(value = "3.0", message = "초과 근무 가산율은 최대 3.0 이하여야 합니다")
     private Double overtimeRate;
 
+    // §50① 일 8시간이 상한이다. 예전 상한(12.0)은 이 제약에 완전히 가려지므로 남기지 않는다 —
+    // 둘 다 두면 8.1~12.0 구간에서 메시지가 하나만, 12.0 초과에서 둘 다 뜬다.
     @DecimalMin(value = "1.0", message = "일일 기본 근무 시간은 최소 1.0 이상이어야 합니다")
-    @DecimalMax(value = "12.0", message = "일일 기본 근무 시간은 최대 12.0 이하여야 합니다")
-    @DecimalMax(value = "8.0", message = "Regular daily hours must not exceed 8.0.")
+    @DecimalMax(value = "8.0", message = "일 소정근로시간은 8시간을 넘을 수 없어요.")
     private Double regularHoursPerDay;
 
     private Boolean weeklyAllowanceEnabled;
 
-    @AssertTrue(message = "Night work must start at 22:00.")
+    @AssertTrue(message = "야간근로 시작 시각은 22:00으로 고정돼요.")
     public boolean isNightWorkStartStatutory() {
         return nightWorkStartTime == null || nightWorkStartTime.equals(LaborStandards.NIGHT_START);
     }

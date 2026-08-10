@@ -47,7 +47,7 @@ describe('payrollService (Phase 1 API mapping)', () => {
     const resp = await payrollService.calculate(payload);
 
     expect(postMock).toHaveBeenCalledWith('/api/payroll/calculate', payload);
-    expect(resp).toEqual([
+    expect(resp.items).toEqual([
       expect.objectContaining({
         payrollId: 1,
         employeeId: 7,
@@ -56,6 +56,38 @@ describe('payrollService (Phase 1 API mapping)', () => {
         regularWage: 1_600_000,
         netWage: 1_500_000,
       }),
+    ]);
+    expect(resp.failed).toEqual([]);
+  });
+
+  // 매장 일괄 계산에서 정산이 중단된 직원은 응답에서 조용히 빠지면 안 된다 —
+  // 사장님이 미지급을 인지하지 못하는 것이 과소지급보다 나쁘다.
+  test('calculate는 계산이 중단된 직원(failed)을 함께 반환한다', async () => {
+    const postMock = getPostMock();
+    postMock.mockResolvedValueOnce({
+      data: {
+        data: [{ id: 1, employee: { id: 7, user: { name: '홍길동' } } }],
+        failed: [
+          {
+            employeeId: 9,
+            employeeName: '김철수',
+            errorCode: 'PAYROLL_WEEKLY_HOLIDAY_TRANSITION_PENDING',
+            message: '주휴일이 변경되는 서명 계약의 전환 주는 노무 검토 전 자동 정산할 수 없습니다.',
+          },
+        ],
+      },
+    });
+
+    const resp = await payrollService.calculate({ storeId: 22 } as any);
+
+    expect(resp.items).toHaveLength(1);
+    expect(resp.failed).toEqual([
+      {
+        employeeId: 9,
+        employeeName: '김철수',
+        errorCode: 'PAYROLL_WEEKLY_HOLIDAY_TRANSITION_PENDING',
+        message: '주휴일이 변경되는 서명 계약의 전환 주는 노무 검토 전 자동 정산할 수 없습니다.',
+      },
     ]);
   });
 

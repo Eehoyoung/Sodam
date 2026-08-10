@@ -57,9 +57,4 @@ public enum WeekStartPolicy {
             }
         };
     }
-
-    /** 계약서의 휴일은 기산일이 아니므로, 그 다음 날을 주 시작으로 해석한다. */
-    public static DayOfWeek weekStartDayAfterWeeklyHoliday(String weeklyHolidayDay) {
-        return DayOfWeek.valueOf(weeklyHolidayDay.trim().toUpperCase(java.util.Locale.ROOT)).plus(1);
-    }
 }

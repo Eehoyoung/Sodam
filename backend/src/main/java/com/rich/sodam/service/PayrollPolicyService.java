@@ -62,11 +62,9 @@ public class PayrollPolicyService {
             policy.setNightWorkRate(updateDto.getNightWorkRate());
         }
 
+        // 22:00 고정·8시간 상한 검증은 DTO Bean Validation 이 담당한다(api-design.md:
+        // "서비스 안에서 수동 검증 중복 금지"). 이 서비스의 유일한 진입점인 컨트롤러가 @Valid 를 건다.
         if (updateDto.getNightWorkStartTime() != null) {
-            if (!updateDto.getNightWorkStartTime().equals(LaborStandards.NIGHT_START)) {
-                throw new BusinessException("Night work must start at 22:00.",
-                        "NIGHT_WORK_START_INVALID");
-            }
             policy.setNightWorkStartTime(updateDto.getNightWorkStartTime());
         }
 
@@ -75,10 +73,6 @@ public class PayrollPolicyService {
         }
 
         if (updateDto.getRegularHoursPerDay() != null) {
-            if (updateDto.getRegularHoursPerDay() > LaborStandards.STATUTORY_DAILY_HOURS) {
-                throw new BusinessException("Regular daily hours must not exceed 8.0.",
-                        "REGULAR_HOURS_PER_DAY_INVALID");
-            }
             policy.setRegularHoursPerDay(updateDto.getRegularHoursPerDay());
         }
 

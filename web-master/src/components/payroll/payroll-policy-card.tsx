@@ -85,11 +85,13 @@ export function PayrollPolicyCard({ storeId }: { storeId: number }) {
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label>야간근무 시작 시각</Label>
+            {/* 22:00 고정 — 근로기준법 §56③. 서버가 다른 값을 거절하므로 입력을 열어두지 않는다. */}
+            <Label>야간근무 시작 시각 (법정 22:00 고정)</Label>
             <Input
               type="time"
+              readOnly
+              disabled
               value={form.nightWorkStartTime.slice(0, 5)}
-              onChange={(e) => setForm({ ...form, nightWorkStartTime: e.target.value })}
             />
           </div>
 
@@ -118,12 +120,13 @@ export function PayrollPolicyCard({ storeId }: { storeId: number }) {
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label>일 기본 근무시간 (1~12)</Label>
+            {/* 상한 8h — 근로기준법 §50① 법정 일 소정근로시간. 서버 검증과 같은 값이어야 한다. */}
+            <Label>일 기본 근무시간 (1~8)</Label>
             <Input
               type="number"
               step={0.5}
               min={1}
-              max={12}
+              max={8}
               value={form.regularHoursPerDay}
               onChange={(e) => setForm({ ...form, regularHoursPerDay: Number(e.target.value) })}
             />

@@ -82,11 +82,13 @@ describe('payrollService', () => {
                 endDate: '2026-05-31',
             });
 
-            expect(result).toHaveLength(1);
-            expect(result[0].payrollId).toBe(42);
-            expect(result[0].employeeId).toBe(5);
-            expect(result[0].employeeName).toBe('홍길동');
-            expect(result[0].netWage).toBe(1000000);
+            expect(result.items).toHaveLength(1);
+            expect(result.items[0].payrollId).toBe(42);
+            expect(result.items[0].employeeId).toBe(5);
+            expect(result.items[0].employeeName).toBe('홍길동');
+            expect(result.items[0].netWage).toBe(1000000);
+            // failed 키가 없는 응답도 안전하게 빈 배열로 다룬다.
+            expect(result.failed).toEqual([]);
         });
     });
 

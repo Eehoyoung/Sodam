@@ -102,7 +102,7 @@ class WeekStartPolicyMonthBoundaryTest {
     // ===== STORE_DEFINED / 계약서 휴일 매핑 =====
 
     @Test
-    @DisplayName("STORE_DEFINED: 현재는 MONDAY 와 동일하게 동작한다(RELEASE_GATES T-8)")
+    @DisplayName("STORE_DEFINED: 매장 기산요일을 쓰고, 미설정이면 MONDAY 로 폴백한다")
     void store_defined_사업장_기산요일과_폴백을_사용한다() {
         LocalDate friday = LocalDate.of(2026, 7, 31);
         assertEquals(LocalDate.of(2026, 7, 26),
@@ -111,10 +111,28 @@ class WeekStartPolicyMonthBoundaryTest {
                 WeekStartPolicy.STORE_DEFINED.weekStartOf(friday, null, null));
     }
 
+    /**
+     * 계약서 주휴일 → 주 기산일 변환은 {@link ContractWeekStartRule} 만 담당한다. 같은 변환을
+     * 다른 곳에 복제하면 노무사 회신으로 규칙이 바뀔 때 한쪽만 고쳐지고 어긋난다.
+     */
     @Test
-    @DisplayName("Contract holiday maps to following week start")
-    void contract_holiday_maps_to_following_week_start() {
-        assertEquals(DayOfWeek.MONDAY, WeekStartPolicy.weekStartDayAfterWeeklyHoliday("SUNDAY"));
-        assertEquals(DayOfWeek.SUNDAY, WeekStartPolicy.weekStartDayAfterWeeklyHoliday("SATURDAY"));
+    @DisplayName("ContractWeekStartRule: 두 해석 규칙이 각각 다른 기산요일을 낸다")
+    void contract_week_start_rule_은_두_해석을_구분한다() {
+        assertEquals(DayOfWeek.MONDAY,
+                ContractWeekStartRule.DAY_AFTER_WEEKLY_HOLIDAY.weekStartDay("SUNDAY"));
+        assertEquals(DayOfWeek.SUNDAY,
+                ContractWeekStartRule.DAY_AFTER_WEEKLY_HOLIDAY.weekStartDay("SATURDAY"));
+
+        assertEquals(DayOfWeek.SUNDAY,
+                ContractWeekStartRule.WEEKLY_HOLIDAY_DAY.weekStartDay("SUNDAY"));
+        assertEquals(DayOfWeek.SATURDAY,
+                ContractWeekStartRule.WEEKLY_HOLIDAY_DAY.weekStartDay("SATURDAY"));
+    }
+
+    @Test
+    @DisplayName("ContractWeekStartRule: 소문자·공백이 섞인 계약서 값도 해석한다")
+    void contract_week_start_rule_은_입력을_정규화한다() {
+        assertEquals(DayOfWeek.MONDAY,
+                ContractWeekStartRule.DAY_AFTER_WEEKLY_HOLIDAY.weekStartDay("  sunday "));
     }
 }

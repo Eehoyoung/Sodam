@@ -150,13 +150,20 @@ const PayrollRunScreen: React.FC<Props> = ({visualFixture}) => {
         const endDateIso = dateDigitsToIso(endDate);
         setLoading(true);
         try {
-            const items = await payrollService.calculate({
+            const {items, failed} = await payrollService.calculate({
                 storeId,
                 startDate: startDateIso,
                 endDate: endDateIso,
             });
             setPreviews(items);
             setStep('PREVIEW');
+            // 일부 직원의 정산이 중단됐다면 반드시 알린다 — 조용히 빠지면 미지급으로 이어진다.
+            if (failed.length > 0) {
+                const names = failed.map(f => f.employeeName).join(', ');
+                AppToast.warn(
+                    `${names} 님은 급여를 계산하지 못했어요. ${failed[0].message}`,
+                );
+            }
             // 연장근로 한도 경보는 정산을 막지 않는 부가 정보 — 실패해도 정산 흐름 유지.
             loadOvertime(storeId, startDateIso);
         } catch (e: any) {

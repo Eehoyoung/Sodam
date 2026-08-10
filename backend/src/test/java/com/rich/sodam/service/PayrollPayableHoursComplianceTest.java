@@ -25,7 +25,14 @@ import java.time.LocalDateTime;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
+/**
+ * 주 40시간 초과 연장가산 메커니즘 검증.
+ *
+ * <p>운영 기본값은 비활성(RELEASE_GATES G-9)이지만 구현은 완성된 상태로 유지하므로, 이 클래스는
+ * 스위치를 켠 상태에서 계산 정확성을 고정한다. 기본값이 꺼져 있다는 사실 자체는
+ * {@code PayrollWeeklyOvertimeDisabledByDefaultTest} 가 별도로 지킨다.</p>
+ */
+@SpringBootTest(properties = "sodam.payroll.weekly-overtime-enabled=true")
 @ActiveProfiles("test")
 @Transactional
 class PayrollPayableHoursComplianceTest {

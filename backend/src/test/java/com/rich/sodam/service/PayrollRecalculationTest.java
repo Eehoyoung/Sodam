@@ -221,10 +221,18 @@ class PayrollRecalculationTest {
         org.springframework.test.context.transaction.TestTransaction.end();
         org.springframework.test.context.transaction.TestTransaction.start();
 
-        List<PayrollDto> results = payrollStoreBatchService.calculatePayrollForStore(store.getId(), start, end);
+        com.rich.sodam.dto.response.PayrollBatchResultDto result =
+                payrollStoreBatchService.calculatePayrollForStore(store.getId(), start, end);
+        List<PayrollDto> results = result.getData();
 
-        // 결함 직원은 결과에서 빠지고, 정상 직원은 성공적으로 계산·저장된다(연쇄 실패 없음).
+        // 결함 직원은 성공 목록에서 빠지고, 정상 직원은 성공적으로 계산·저장된다(연쇄 실패 없음).
         assertThat(results).extracting(PayrollDto::getEmployeeId).containsExactly(okEmp.getId());
+
+        // 그리고 빠진 직원은 반드시 실패 목록으로 보고돼야 한다 — 응답에서 그냥 사라지면
+        // 사장님이 미지급을 인지할 수 없다.
+        assertThat(result.getFailed())
+                .extracting(com.rich.sodam.dto.response.PayrollBatchResultDto.FailedEmployee::getEmployeeId)
+                .containsExactly(badEmp.getId());
 
         List<Payroll> okSaved = payrollRepository.findByEmployeeIdAndPeriod(okEmp.getId(), start, end).stream()
                 .filter(p -> p.getStore().getId().equals(store.getId()))
