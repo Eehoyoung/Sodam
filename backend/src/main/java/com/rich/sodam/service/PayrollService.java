@@ -282,7 +282,7 @@ public class PayrollService {
         }
 
         // 주휴수당 계산 (스케줄러 표시 경로 — 소정근로일 미상이므로 폴백). 실제 정산은 calculateTotalWeeklyAllowance.
-        BigDecimal weeklyAllowance = calculateWeeklyAllowance(attendances, weeklyHours, null);
+        BigDecimal weeklyAllowance = calculateWeeklyAllowance(attendances, weeklyHours, null).amount();
 
         // 주가 바뀌는 경우 (이번 주 종료)
         if (isCarriedOverWeek(startDate, endDate, now)) {
@@ -357,12 +357,13 @@ public class PayrollService {
      * </ul>
      * </p>
      */
-    private BigDecimal calculateWeeklyAllowance(List<Attendance> attendances, BigDecimal weeklyHours, Integer scheduledDays) {
+    private WeeklyAllowanceResult calculateWeeklyAllowance(List<Attendance> attendances, BigDecimal weeklyHours,
+                                                           Integer scheduledDays) {
         int workedDays = (int) attendances.stream()
                 .filter(a -> a.getCheckOutTime() != null)
                 .count();
         if (workedDays == 0) {
-            return BigDecimal.ZERO;
+            return WeeklyAllowanceResult.zero("NO_ATTENDANCE", "출근 기록 없음");
         }
 
         // 대표 시급: 해당 주 출근기록의 적용시급 최댓값(주중 단일 시급이 일반적)
@@ -384,8 +385,8 @@ public class PayrollService {
                 WeeklyWorkPattern.AUTO
         );
 
-        WeeklyAllowanceResult result = weeklyAllowanceResolver.resolve(context);
-        return result.amount();
+        // paidHours 를 버리지 않는다 — 시행령 §27조의2 대응으로 명세서에 주휴 환산 시간을 표기한다.
+        return weeklyAllowanceResolver.resolve(context);
     }
 
     /**
@@ -701,13 +702,14 @@ public class PayrollService {
         // 주휴수당 계산.
         // 월급제는 별도 가산하지 않는다 — 월 통상임금 산정 기준시간 209h 에 유급주휴 35h(8h×4.345주)가
         // 포함되어 있어 월급 자체에 주휴수당이 내재(시행령 §6②). 별도 지급 시 이중지급이 된다.
-        int weeklyAllowance = 0;
         TaxPolicyType effectiveTaxPolicy = resolveTaxPolicy(relation, policy);
         boolean appliesToIncomeTax3_3 = effectiveTaxPolicy != TaxPolicyType.INCOME_TAX_3_3
                 || Boolean.TRUE.equals(policy.getWeeklyAllowanceForIncomeTax3_3Enabled());
-        if (policy.getWeeklyAllowanceEnabled() && appliesToIncomeTax3_3 && !monthlySalaried) {
-            weeklyAllowance = calculateTotalWeeklyAllowance(employeeId, storeId, startDate, endDate);
-        }
+        WeeklyAllowanceTotal weeklyAllowanceTotal =
+                (policy.getWeeklyAllowanceEnabled() && appliesToIncomeTax3_3 && !monthlySalaried)
+                        ? calculateTotalWeeklyAllowance(employeeId, storeId, startDate, endDate)
+                        : WeeklyAllowanceTotal.none();
+        int weeklyAllowance = weeklyAllowanceTotal.amount();
 
         // 즉시 보너스(급여합산형) 자동 합산 — "오늘 바빠서 1만원 더" 같은 비정기 포상금.
         // 통상임금·최저임금 산정에는 영향 없음(PayrollBonus 클래스 정책 주석 참고), 급여 총액에는 합산해 원천징수한다.
@@ -759,6 +761,7 @@ public class PayrollService {
         payroll.setNightWorkWage(totalNightWorkWage);
         payroll.setHolidayWorkWage(totalHolidayWorkWage);
         payroll.setWeeklyAllowance(weeklyAllowance);
+        payroll.setWeeklyAllowanceHours(weeklyAllowanceTotal.paidHours());
         payroll.setWeeklyOvertimeHours(weeklyOvertime.hours());
         payroll.setWeeklyOvertimeWage(weeklyOvertime.wage());
         payroll.setBonusWage(bonusWage);
@@ -1052,15 +1055,23 @@ public class PayrollService {
             addKv(table, "근로일수", details.size() + "일", fontH, fontN);
             addKv(table, "기본 근무 시간",
                     String.format("%.1fh", nz(payroll.getRegularHours())), fontH, fontN);
-            addKv(table, "연장 근무 시간",
+            // 시행령 §27조의2 — 연장근로는 금액과 함께 "그 시간 수"를 적는다.
+            // 일 8시간 초과분과 주 40시간 초과분을 나눠 적어야 근로자가 산정 근거를 검증할 수 있다.
+            addKv(table, "연장 근무 시간(일 8시간 초과)",
                     String.format("%.1fh", nz(payroll.getOvertimeHours())), fontH, fontN);
+            addKv(table, "연장 근무 시간(주 40시간 초과)",
+                    String.format("%.1fh", nz(payroll.getWeeklyOvertimeHours())), fontH, fontN);
             addKv(table, "야간 근무 시간",
                     String.format("%.1fh", nz(payroll.getNightWorkHours())), fontH, fontN);
+            addKv(table, "주휴 환산 시간",
+                    String.format("%.1fh", nz(payroll.getWeeklyAllowanceHours())), fontH, fontN);
             // 지급 항목 (§48② 항목별 지급내역)
             addKv(table, "[지급] 기본급",
                     String.format("%,d원", nz(payroll.getRegularWage())), fontH, fontN);
-            addKv(table, "[지급] 연장수당",
+            addKv(table, "[지급] 연장수당(일 8시간 초과)",
                     String.format("%,d원", nz(payroll.getOvertimeWage())), fontH, fontN);
+            addKv(table, "[지급] 연장수당(주 40시간 초과 가산분)",
+                    String.format("%,d원", nz(payroll.getWeeklyOvertimeWage())), fontH, fontN);
             addKv(table, "[지급] 야간수당",
                     String.format("%,d원", nz(payroll.getNightWorkWage())), fontH, fontN);
             addKv(table, "[지급] 휴일수당",
@@ -1141,10 +1152,18 @@ public class PayrollService {
         // 지급 항목 (임금명세서 §48② — 항목별 지급내역)
         pdfContent.append("[지급 항목]\n");
         pdfContent.append("  기본급: ").append(String.format("%,d", nz(payroll.getRegularWage()))).append(" 원\n");
-        pdfContent.append("  연장수당: ").append(String.format("%,d", nz(payroll.getOvertimeWage()))).append(" 원\n");
+        // 시행령 §27조의2 — 연장근로는 금액과 함께 시간 수를 적는다.
+        pdfContent.append("  연장수당(일 8시간 초과, ")
+                .append(String.format("%.1f", nz(payroll.getOvertimeHours()))).append("h): ")
+                .append(String.format("%,d", nz(payroll.getOvertimeWage()))).append(" 원\n");
+        pdfContent.append("  연장수당(주 40시간 초과 가산분, ")
+                .append(String.format("%.1f", nz(payroll.getWeeklyOvertimeHours()))).append("h): ")
+                .append(String.format("%,d", nz(payroll.getWeeklyOvertimeWage()))).append(" 원\n");
         pdfContent.append("  야간수당: ").append(String.format("%,d", nz(payroll.getNightWorkWage()))).append(" 원\n");
         pdfContent.append("  휴일수당: ").append(String.format("%,d", nz(payroll.getHolidayWorkWage()))).append(" 원\n");
-        pdfContent.append("  주휴수당: ").append(String.format("%,d", nz(payroll.getWeeklyAllowance()))).append(" 원\n");
+        pdfContent.append("  주휴수당(")
+                .append(String.format("%.1f", nz(payroll.getWeeklyAllowanceHours()))).append("h): ")
+                .append(String.format("%,d", nz(payroll.getWeeklyAllowance()))).append(" 원\n");
         pdfContent.append("  지급총액: ").append(String.format("%,d", nz(payroll.getGrossWage()))).append(" 원\n");
 
         // 공제 항목 (임금명세서 §48② — 항목별 공제내역)
@@ -1258,7 +1277,8 @@ public class PayrollService {
         return Math.round(value * 100) / 100.0;
     }
 
-    private int calculateTotalWeeklyAllowance(Long employeeId, Long storeId, LocalDate startDate, LocalDate endDate) {
+    private WeeklyAllowanceTotal calculateTotalWeeklyAllowance(Long employeeId, Long storeId,
+                                                               LocalDate startDate, LocalDate endDate) {
         // 입사일 기산 정책일 때만 입사일 조회 (불필요한 쿼리 회피)
         EmployeeProfile employee = findEmployeeById(employeeId);
         Store store = findStoreById(storeId);
@@ -1294,6 +1314,7 @@ public class PayrollService {
 
         // 주 종료일(주휴일)이 정산월에 속하는 주만, 그 주 전체로 산정해 전액 귀속 (분할·중복 방지).
         int total = 0;
+        double totalPaidHours = 0;
         for (Map.Entry<LocalDate, List<Attendance>> entry : byWeek.entrySet()) {
             LocalDate weekEnd = entry.getKey().plusDays(6);
             boolean belongsToThisMonth = !weekEnd.isBefore(startDate) && !weekEnd.isAfter(endDate);
@@ -1301,10 +1322,25 @@ public class PayrollService {
                 continue; // 주 종료일이 전월/익월 → 그 달 정산에 귀속 (이번 달에서 제외)
             }
             BigDecimal weeklyHours = calculateWeeklyHours(entry.getValue());
-            BigDecimal allowance = calculateWeeklyAllowance(entry.getValue(), weeklyHours, scheduledDays);
-            total += allowance.setScale(0, RoundingMode.HALF_UP).intValue();
+            WeeklyAllowanceResult result = calculateWeeklyAllowance(entry.getValue(), weeklyHours, scheduledDays);
+            total += result.amountAsInt();
+            totalPaidHours += result.paidHours().doubleValue();
         }
-        return total;
+        return new WeeklyAllowanceTotal(total, round2(totalPaidHours));
+    }
+
+    /**
+     * 정산기간 주휴수당 합계와 그 환산 시간.
+     *
+     * <p>금액만 두지 않는 이유는 주 40시간 초과 연장가산과 같다 — 시행령 §27조의2 는 임금 구성항목이
+     * 근로일수·시간에 따라 달라지면 그 계산방법을 적도록 요구하고, 예외는 정액 수당뿐이다.
+     * 주휴수당이 그 예외에 해당하는지는 확정되지 않았으므로(RELEASE_GATES G-9 각주) 안전한 쪽으로
+     * 시간을 함께 보관한다.</p>
+     */
+    public record WeeklyAllowanceTotal(int amount, double paidHours) {
+        static WeeklyAllowanceTotal none() {
+            return new WeeklyAllowanceTotal(0, 0);
+        }
     }
 
     private LocalDate resolveWeekStart(LocalDate workDate, LocalDate hireAnchor, Store store,

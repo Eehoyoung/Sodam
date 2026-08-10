@@ -49,6 +49,13 @@ public class Payroll {
     private Integer nightWorkWage;        // 야간 근무 급여
     private Integer holidayWorkWage;      // 휴일 근무 급여(§56②)
     private Integer weeklyAllowance;      // 주휴수당
+    /**
+     * 주휴 환산 시간(유급으로 처리한 시간 수).
+     *
+     * <p>주휴수당이 시행령 §27조의2 의 "정액 수당" 예외에 해당하는지는 확정되지 않았다
+     * (RELEASE_GATES G-9 각주). 예외가 아니라면 시간 수 기재가 필요하므로 안전한 쪽으로 보관한다.</p>
+     */
+    private Double weeklyAllowanceHours;
 
     /**
      * 주 40시간 초과 연장근로 시간 수(§56①). 일 8시간 초과로 이미 가산된 시간은 제외한 순증분.
