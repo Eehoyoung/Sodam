@@ -116,7 +116,7 @@ export interface PayrollCalculationResult {
 // employee.id/employee.user.name 형태를 화면이 쓰는 평탄한 형태로 매핑한다.
 async function calculate(payload: PayrollCalculatePayload): Promise<PayrollCalculationResult> {
   const res = await api.post<any>('/api/payroll/calculate', payload);
-  const data: any = res.data as any;
+  const data = res.data;
   const list: any[] = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
   const failed: PayrollCalculationFailure[] = Array.isArray(data?.failed)
     ? data.failed.map((f: any) => ({
