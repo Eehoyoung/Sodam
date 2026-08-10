@@ -14,6 +14,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 /**
  * V81 전 사용자에게 발급됐던 결정적 추천 코드를 매핑 테이블로 보존한다.
  *
@@ -33,22 +39,40 @@ public class ReferralCodeMapLegacyBackfillRunner implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        // 이관이 끝난 뒤의 재기동에서는 즉시 빠져나간다. 이 가드가 없으면 사용자 수에 비례한
+        // 조회가 부팅마다 반복된다(사용자 2만 명 = 매 기동 4만 쿼리).
+        long userCount = userRepository.count();
+        if (referralCodeMapRepository.count() >= userCount) {
+            log.debug("추천 코드 레거시 매핑 이관 생략: 이미 완료됨(users={})", userCount);
+            return;
+        }
+
         int pageNumber = 0;
         long created = 0;
         long collisions = 0;
         Page<User> page;
         do {
             page = userRepository.findAll(PageRequest.of(pageNumber++, PAGE_SIZE, Sort.by("id").ascending()));
-            for (User user : page.getContent()) {
-                if (referralCodeMapRepository.findByUserId(user.getId()).isPresent()) {
-                    continue;
+            List<Long> userIds = page.getContent().stream().map(User::getId).toList();
+            // 페이지당 2회 조회로 고정한다 — 사용자 1명당 2회 조회하면 이관이 O(사용자 수) 왕복이 된다.
+            Set<Long> mappedUserIds = new HashSet<>(referralCodeMapRepository.findUserIdsByUserIdIn(userIds));
+            Map<Long, String> legacyCodes = new LinkedHashMap<>();
+            for (Long userId : userIds) {
+                if (!mappedUserIds.contains(userId)) {
+                    legacyCodes.put(userId, ReferralCodeGenerator.legacyCodeForUserId(userId));
                 }
-                String legacyCode = ReferralCodeGenerator.legacyCodeForUserId(user.getId());
-                if (referralCodeMapRepository.findByCode(legacyCode).isPresent()) {
+            }
+            Set<String> takenCodes = legacyCodes.isEmpty()
+                    ? new HashSet<>()
+                    : new HashSet<>(referralCodeMapRepository.findCodesByCodeIn(legacyCodes.values()));
+
+            for (Map.Entry<Long, String> entry : legacyCodes.entrySet()) {
+                // 같은 페이지 안에서 레거시 코드가 겹치는 경우까지 막는다.
+                if (!takenCodes.add(entry.getValue())) {
                     collisions++;
                     continue;
                 }
-                referralCodeMapRepository.save(ReferralCodeMap.issue(legacyCode, user.getId()));
+                referralCodeMapRepository.save(ReferralCodeMap.issue(entry.getValue(), entry.getKey()));
                 created++;
             }
             referralCodeMapRepository.flush();

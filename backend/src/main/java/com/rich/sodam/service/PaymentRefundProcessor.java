@@ -39,10 +39,16 @@ public class PaymentRefundProcessor {
         request.markProcessing();
         try {
             SourcePayment source = lockPaidSource(request.getOwnerUserId(), request.getSourceType(), request.getSourceOrderId());
-            if (request.getSourceType() == PaymentSourceType.SUBSCRIPTION) {
-                tossBillingClient.cancel(source.paymentKey(), request.getReason());
-            } else {
-                tossPaymentGateway.cancel(source.paymentKey(), request.getReason());
+            // PG 취소는 한 번만. 이전 시도에서 취소는 성공하고 후속 처리만 실패했다면 여기서 건너뛴다 —
+            // 다시 호출하면 이미 취소된 결제에 중복 취소가 나간다.
+            if (!request.isPgCancelled()) {
+                if (request.getSourceType() == PaymentSourceType.SUBSCRIPTION) {
+                    tossBillingClient.cancel(source.paymentKey(), request.getReason());
+                } else {
+                    tossPaymentGateway.cancel(source.paymentKey(), request.getReason());
+                }
+                // 이 시점부터 돈은 이미 나갔다. 아래 후속 처리가 실패해도 이 사실은 보존돼야 한다.
+                request.markPgCancelled();
             }
             applyRefund(request.getSourceType(), request.getSourceOrderId(), source.amountKrw());
             receiptRepository.findBySourceTypeAndSourceOrderId(request.getSourceType(), request.getSourceOrderId())
@@ -50,7 +56,14 @@ public class PaymentRefundProcessor {
             request.markCompleted();
         } catch (RuntimeException e) {
             request.markFailed(e.getClass().getSimpleName());
-            log.warn("환불 후속 처리 보류 requestId={} sourceType={}", requestId, request.getSourceType());
+            if (request.isPgCancelled()) {
+                // 돈은 나갔는데 권리 회수·증빙 취소가 안 끝난 상태다. 운영이 반드시 손으로 확인해야 한다.
+                log.error("환불 PG 취소 후 후속 처리 실패 — 수동 확인 필요 requestId={} sourceType={} attempt={}",
+                        requestId, request.getSourceType(), request.getAttemptCount(), e);
+            } else {
+                log.warn("환불 PG 취소 실패 — 재시도 가능 requestId={} sourceType={} attempt={}",
+                        requestId, request.getSourceType(), request.getAttemptCount(), e);
+            }
         }
     }
 

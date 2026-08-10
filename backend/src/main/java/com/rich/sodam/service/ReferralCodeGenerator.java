@@ -2,6 +2,7 @@ package com.rich.sodam.service;
 
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.util.Locale;
 import java.util.UUID;
 
 /** 추천 코드 형식과 레거시 코드 이관 알고리즘을 한곳에 둔다. */
@@ -26,7 +27,7 @@ final class ReferralCodeGenerator {
     static String legacyCodeForUserId(Long userId) {
         String seed = "SODAM-REF-V1-" + userId;
         String hash = UUID.nameUUIDFromBytes(seed.getBytes(StandardCharsets.UTF_8)).toString()
-                .replace("-", "").toUpperCase();
+                .replace("-", "").toUpperCase(Locale.ROOT);
         return "S" + hash.substring(0, 7);
     }
 }

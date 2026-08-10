@@ -20,7 +20,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PaymentRefundService {
     private final PaymentRefundRequestRepository requestRepository;
-    private final PaymentReceiptRepository receiptRepository;
     private final PaymentHistoryRepository paymentHistoryRepository;
     private final AttendanceCreditChargeOrderRepository attendanceOrderRepository;
     private final RecruitmentBoostPassOrderRepository boostOrderRepository;
@@ -35,17 +34,29 @@ public class PaymentRefundService {
         // 원주문을 먼저 잠가 동시 POST가 두 번의 PG cancel로 진입하는 것을 막는다. 요청 row의
         // unique 제약은 앱 재시작·예외 경로까지 막는 마지막 방어선이다.
         SourcePayment source = lockOwnedSource(ownerUserId, sourceType, orderId);
-        PaymentRefundRequest alreadyHandled = requestRepository.findBySourceTypeAndSourceOrderIdOrderByCreatedAtDesc(sourceType, orderId)
+        PaymentRefundRequest existing = requestRepository.findBySourceTypeAndSourceOrderIdOrderByCreatedAtDesc(sourceType, orderId)
                 .stream().filter(r -> r.getOwnerUserId().equals(ownerUserId)).findFirst().orElse(null);
-        if (alreadyHandled != null) return alreadyHandled;
-        if (!source.paid()) throw new IllegalArgumentException("환불 가능한 본인 결제를 찾을 수 없습니다.");
 
-        PaymentRefundRequest request = requestRepository.save(PaymentRefundRequest.request(
-                sourceType, orderId, ownerUserId, reason.trim(), source.amountKrw()));
+        PaymentRefundRequest request;
+        if (existing == null) {
+            if (!source.paid()) throw new IllegalArgumentException("환불 가능한 본인 결제를 찾을 수 없습니다.");
+            request = requestRepository.save(PaymentRefundRequest.request(
+                    sourceType, orderId, ownerUserId, reason.trim(), source.amountKrw()));
+        } else if (existing.getStatus() == PaymentRefundRequest.Status.FAILED) {
+            // 주문당 신청 row 는 하나(uq_payment_refund_source)라 새 row 를 만들 수 없다. 실패한
+            // 신청을 다시 대기로 돌려주지 않으면 이용자가 환불을 영영 다시 요청할 수 없다.
+            existing.markRetryQueued();
+            request = existing;
+        } else {
+            // 접수·처리 중이거나 이미 완료된 신청은 그대로 돌려준다(멱등).
+            return existing;
+        }
+
         // 기본은 mock만 자동 취소한다. live는 정책·세무 회신 전 REQUESTED로 보존하며, 회신 뒤
         // SODAM_PAYMENT_REFUND_AUTO_PROCESS_MODE=live 한 줄로 동일한 아래 메커니즘을 활성화한다.
         if (refundProperties.allows(integrationProperties.getToss().resolvedMode())) {
-            afterCommitExecutor.execute(() -> paymentRefundProcessor.process(request.getId()));
+            Long requestId = request.getId();
+            afterCommitExecutor.execute(() -> paymentRefundProcessor.process(requestId));
         }
         return request;
     }

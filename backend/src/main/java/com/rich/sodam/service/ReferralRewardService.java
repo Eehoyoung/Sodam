@@ -7,14 +7,16 @@ import com.rich.sodam.repository.ReferralCodeMapRepository;
 import com.rich.sodam.repository.ReferralRepository;
 import com.rich.sodam.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.security.SecureRandom;
 
 /**
  * 레퍼럴 보상 루프 (S2/GR-NEW-01) — <b>키-레디</b>.
@@ -26,6 +28,7 @@ import java.security.SecureRandom;
  * {@link #processRefereeFirstPayment} 호출 → 전환, 양측 구독을
  * {@code Subscription#grantFreeMonths(REWARD_MONTHS)} 로 무료 개월 부여(다음 청구 연기).
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ReferralRewardService {
@@ -141,8 +144,14 @@ public class ReferralRewardService {
             if (referralCodeMapRepository.findByCode(code).isPresent()) {
                 continue;
             }
-            referralCodeMapRepository.saveAndFlush(ReferralCodeMap.issue(code, userId));
-            return code;
+            try {
+                referralCodeMapRepository.saveAndFlush(ReferralCodeMap.issue(code, userId));
+                return code;
+            } catch (DataIntegrityViolationException e) {
+                // 조회와 저장 사이에 다른 트랜잭션이 같은 코드를 선점한 경우. uq 제약이 최종
+                // 방어선이므로 500 대신 다음 후보로 넘어간다.
+                log.debug("추천 코드 선점 충돌 — 재발급 시도 {}", attempt + 1);
+            }
         }
         throw new IllegalStateException("추천 코드 발급에 실패했어요. 잠시 후 다시 시도해 주세요.");
     }
@@ -161,7 +170,8 @@ public class ReferralRewardService {
     }
 
     private static String normalizeCode(String code) {
-        return code == null ? "" : code.trim().toUpperCase();
+        // Locale.ROOT 고정 — 기본 로케일에 따라 'i' 가 'İ' 로 올라가면 코드 조회가 빗나간다.
+        return code == null ? "" : code.trim().toUpperCase(Locale.ROOT);
     }
 
     /** 추천 코드 적용 결과. {@code success=false} 면 {@code message} 가 실패 사유. */
