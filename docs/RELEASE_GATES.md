@@ -78,12 +78,13 @@
 
 L-1 `CONTRACT_MANAGE`·`PAYROLL_CONFIRM` · L-2 친권자 동의서 PII · L-3 노무 문구·근로계약서 검토 · L-4 `incompleteWeekAllowance` 노출 금지
 
-### 기술 부채 (T, 출시 차단 아님) — 8건
+### 기술 부채 (T, 출시 차단 아님) — 6건
 
 T-1 PII 백필 배치 · T-2 `legalHold` 자동화 · T-3 파기 고지 실패 모니터링 · T-6 홈 후기 API ·
-**T-9 FE 비활성 테스트 4건** · **T-10 lint 경고 1,040건** · **T-11 시급 이력 조회 실패(FG-01)** · T-12 Flyway 결번 V82·V84
+**T-10 lint 경고 1,040건** · T-12 Flyway 결번 V82·V84
 
 > **다음 마이그레이션 번호는 V91 이다.** V82·V84 는 영구 결번(T-12).
+> T-9(비활성 테스트)·T-11(시급 이력)은 2026-08-10 해소 — §8 참조.
 
 ---
 
@@ -364,9 +365,9 @@ DSN을 켜기 전에 실값으로 교체할 것. 예외 메시지·스택의 PII
 | **T-6** | FE 홈 후기·서비스정보 BE 엔드포인트 미구현 | `homeService.ts` — 별도 G 체계(§1 주의 참조) |
 | ~~**T-7**~~ | ~~주휴수당 스케줄러 공회전~~ | ✅ **해소** — `PayrollService.calculateWeeklyAllowances()` 의 `@Scheduled` 제거(경로 B 비활성). 메서드·컬럼은 롤백 대비 보존 |
 | ~~**T-8**~~ | ~~`WeekStartPolicy.STORE_DEFINED` 가 MONDAY 하드코딩~~ | ✅ **해소** — `Store.weeklyAllowanceWeekStartDay` 신설(V87), `STORE_DEFINED` 가 실제 사업장 값 사용 |
-| **T-9** | FE 비활성 테스트 4건 | `describe.skip` — `app.bootstrap`, `navigation/flow.moderate`, `navigation/role-landing.smoke`, `ui/SectionComponents`. `.claude/rules/testing.md` "실패를 스킵으로 덮지 말 것" 위반 상태. (BE `@Disabled` 2건은 수동 실행 도구라 정상) |
+| ~~**T-9**~~ | ~~FE 비활성 테스트 4건~~ | ✅ **해소** — 4건 전부 RTL 실렌더링으로 재작성해 활성화. 스킵 0건(112 suites·618 tests). 곁들여 `jest.setup.js` 에 `Appearance` mock 추가 — 없으면 App 전체 마운트가 ErrorBoundary 에 삼켜져 "가짜 초록"이 된다 |
 | **T-10** | FE lint 경고 1,040건 | `no-console` 396 · `no-explicit-any` 378 · `no-color-literals` 193 등. error 는 0 |
-| **T-11** | 시급 이력 조회가 항상 실패 | `WageSettingsScreen.tsx:64` 의 빈 `catch (_)` 가 원인을 삼킨다. 주석("WageHistory 조회 API 미노출")은 **사실과 다름** — API 는 `WageController.java:97` 에 실재. 유력 가설은 `@MasterOnly`(:96) 로 인한 403. 계획서 FG-01 |
+| ~~**T-11**~~ | ~~시급 이력 조회가 항상 실패~~ | ✅ **전제 기각** — 체인이 끝까지 건전하다(FE 경로·응답 처리·storeId 가드·BE 인가·`@Transactional(readOnly=true)`·기록 지점 2곳). 주석의 "API 미노출"은 API 신설 전에 쓰인 낡은 문장이었다. 진짜 결함은 빈 `catch (_)` 3개가 실패를 감춘 것 — 실패와 "이력 없음"을 구분해 노출하도록 수정 |
 | **T-12** | Flyway 결번 V82·V84 | 계획서가 예약했으나 V83+ 가 먼저 적용돼 뒤늦게 채우면 Flyway 가 건너뛴다. **영구 결번으로 둔다**(ShedLock 은 V90 으로 이동). 새 마이그레이션은 V91 부터 |
 
 ---

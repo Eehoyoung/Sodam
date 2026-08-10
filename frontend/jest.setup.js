@@ -165,6 +165,13 @@ jest.mock('react-native', () => ({
         addEventListener: jest.fn(() => ({remove: jest.fn()})),
         removeEventListener: jest.fn(),
     },
+    // ThemeProvider 가 시스템 다크모드를 읽는다. 이게 없으면 App 전체 마운트가
+    // getColorScheme 에서 터지고 ErrorBoundary 가 삼켜, 테스트는 통과하는데 실제로는
+    // 에러 화면이 렌더된 상태가 된다(app.bootstrap 이 오래 스킵돼 있던 이유).
+    Appearance: {
+        getColorScheme: jest.fn(() => 'light'),
+        addChangeListener: jest.fn(() => ({remove: jest.fn()})),
+    },
     NativeModules: {},
     PixelRatio: {get: jest.fn(() => 2), getFontScale: jest.fn(() => 1)},
     PermissionsAndroid: {
