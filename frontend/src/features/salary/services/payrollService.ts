@@ -99,6 +99,12 @@ export interface PayrollCalculationItem {
 }
 
 /** 계산이 중단된 직원. 매장 일괄 계산에서만 채워진다. */
+/**
+ * 퇴사자인데 정산기간에 근무기록이 있어 수동 최종정산이 필요하다는 신호(BE `PayrollStoreBatchService`).
+ * 계산 오류가 아니라 의도적 보류라 화면에서 문구를 달리 낸다 — RELEASE_GATES T-13.
+ */
+export const RESIGNED_NEEDS_MANUAL_SETTLEMENT = 'PAYROLL_RESIGNED_NEEDS_MANUAL_SETTLEMENT';
+
 export interface PayrollCalculationFailure {
   employeeId: number;
   employeeName: string;

@@ -128,8 +128,8 @@ class PayrollMidCycleResignationTest {
     }
 
     @Test
-    @DisplayName("매장 일괄 정산은 퇴사자를 성공·실패 어느 목록에도 넣지 않고 조용히 건너뛴다")
-    void 일괄정산은_퇴사자를_조용히_건너뛴다() {
+    @DisplayName("일괄 정산은 근무기록이 있는 퇴사자를 수동 정산 필요로 보고한다(T-13)")
+    void 일괄정산은_근무기록_있는_퇴사자를_보고한다() {
         // Given — 같은 매장에 재직자 1명 + 정산기간 도중 퇴사자 1명
         Store store = newStore();
         payrollPolicyService.getPayrollPolicyByStore(store.getId());
@@ -154,14 +154,52 @@ class PayrollMidCycleResignationTest {
         PayrollBatchResultDto result =
                 payrollStoreBatchService.calculatePayrollForStore(store.getId(), PERIOD_START, PERIOD_END);
 
-        // Then — 재직자만 계산되고, 퇴사자는 어디에도 나타나지 않는다
+        // Then — 계산은 재직자만. 퇴사자는 계산하지 않되 "수동 정산 필요"로 반드시 보고된다.
         assertThat(result.getData()).extracting(PayrollDto::getEmployeeId)
                 .contains(activeId)
+                .as("퇴사일이 없어 월급제 일할·퇴사 주 주휴 규칙이 미확정이므로 자동 계산하지 않는다(G-15)")
                 .doesNotContain(resignedId);
         assertThat(result.getFailed())
-                .as("실패로도 보고되지 않기 때문에 사장님이 미정산을 인지할 단서가 없다")
+                .as("보고되지 않으면 사장님이 미정산을 인지할 단서가 없다 — §36 금품청산 14일")
+                .anySatisfy(f -> {
+                    assertThat(f.getEmployeeId()).isEqualTo(resignedId);
+                    assertThat(f.getErrorCode())
+                            .isEqualTo(PayrollStoreBatchService.RESIGNED_NEEDS_MANUAL_SETTLEMENT);
+                });
+    }
+
+    @Test
+    @DisplayName("근무기록이 없는 퇴사자는 보고하지 않는다(과거 퇴사자로 경고가 무의미해지는 것 방지)")
+    void 근무기록_없는_퇴사자는_보고하지_않는다() {
+        // Given — 퇴사자이지만 이 정산기간에는 출근 기록이 없다
+        Store store = newStore();
+        payrollPolicyService.getPayrollPolicyByStore(store.getId());
+
+        EmployeeStoreRelation active = hourlyEmployee(store, "batch-active2");
+        workWeekdaysUntil(active, PERIOD_START, LAST_WORKING_DAY);
+
+        EmployeeStoreRelation longGone = hourlyEmployee(store, "batch-longgone");
+        longGone.changeActive(false);
+        relationRepository.save(longGone);
+
+        Long longGoneId = longGone.getEmployeeProfile().getId();
+
+        TestTransaction.flagForCommit();
+        TestTransaction.end();
+        TestTransaction.start();
+
+        // When
+        PayrollBatchResultDto result =
+                payrollStoreBatchService.calculatePayrollForStore(store.getId(), PERIOD_START, PERIOD_END);
+
+        // Then — 정산할 것이 없으므로 조용히 넘어간다.
+        //        매달 과거 퇴사자 전원을 경고로 띄우면 경고 자체가 무시된다.
+        assertThat(result.getFailed())
                 .extracting(PayrollBatchResultDto.FailedEmployee::getEmployeeId)
-                .doesNotContain(resignedId);
+                .doesNotContain(longGoneId);
+        assertThat(result.getData())
+                .extracting(PayrollDto::getEmployeeId)
+                .doesNotContain(longGoneId);
     }
 
     @Test

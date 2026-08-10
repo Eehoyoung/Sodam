@@ -11,7 +11,7 @@ import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors'
 import {useAuth} from '../../../contexts/AuthContext';
 import {DATE_DIGITS_HELPER, dateDigitsToIso, isValidDateDigits, sanitizeDateDigits} from '../../../common/utils/dateTimeInput';
 import storeService, {StoreSummaryDto} from '../../store/services/storeService';
-import payrollService from '../services/payrollService';
+import payrollService, {RESIGNED_NEEDS_MANUAL_SETTLEMENT} from '../services/payrollService';
 import {fetchOvertimeCheck, OvertimeCheck} from '../services/overtimeService';
 
 // 정산 계산 로직 보존을 위한 경량 어댑터 (구식 Badge/Input → DS)
@@ -158,10 +158,19 @@ const PayrollRunScreen: React.FC<Props> = ({visualFixture}) => {
             setPreviews(items);
             setStep('PREVIEW');
             // 일부 직원의 정산이 중단됐다면 반드시 알린다 — 조용히 빠지면 미지급으로 이어진다.
-            if (failed.length > 0) {
-                const names = failed.map(f => f.employeeName).join(', ');
+            // 퇴사자의 수동 최종정산 안내는 "계산 오류"와 성격이 달라 문구를 나눈다.
+            const resigned = failed.filter(f => f.errorCode === RESIGNED_NEEDS_MANUAL_SETTLEMENT);
+            const errors = failed.filter(f => f.errorCode !== RESIGNED_NEEDS_MANUAL_SETTLEMENT);
+            if (errors.length > 0) {
+                const names = errors.map(f => f.employeeName).join(', ');
                 AppToast.warn(
-                    `${names} 님은 급여를 계산하지 못했어요. ${failed[0].message}`,
+                    `${names} 님은 급여를 계산하지 못했어요. ${errors[0].message}`,
+                );
+            }
+            if (resigned.length > 0) {
+                const names = resigned.map(f => f.employeeName).join(', ');
+                AppToast.warn(
+                    `${names} 님은 퇴사 처리됐지만 이 기간에 근무기록이 있어요. 최종 정산을 직접 확인해 주세요.`,
                 );
             }
             // 연장근로 한도 경보는 정산을 막지 않는 부가 정보 — 실패해도 정산 흐름 유지.
