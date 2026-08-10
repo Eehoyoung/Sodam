@@ -86,20 +86,39 @@ public class NotificationPreference {
         this.updatedAt = LocalDateTime.now();
     }
 
+    /**
+     * 정보통신망법 §50③이 요구하는 야간(21:00~08:00) 광고성 정보 전송 제한 구간.
+     * 이용자의 방해금지시간 설정과 무관하게 적용된다 — 그 설정은 §50③이 요구하는
+     * "별도의 사전 동의"를 갈음하지 못하기 때문이다.
+     */
+    private static final LocalTime AD_NIGHT_BLOCK_START = LocalTime.of(21, 0);
+    private static final LocalTime AD_NIGHT_BLOCK_END = LocalTime.of(8, 0);
+
     /** 인앱 이력과 분리된 외부 푸시의 수신 허용 여부다. */
     public boolean allows(NotificationInbox.Category category, LocalTime now) {
         if (!master || !allowsCategory(category)) {
             return false;
         }
+        // 광고성 정보의 야간 전송은 별도 동의 없이는 불가하므로, 수신 동의(marketing=true)만으로
+        // 열지 않는다. 별도 동의 항목이 생기기 전까지는 이 구간을 항상 막는다.
+        if (category == NotificationInbox.Category.MARKETING
+                && isWithin(now, AD_NIGHT_BLOCK_START, AD_NIGHT_BLOCK_END)) {
+            return false;
+        }
         if (!quietHoursEnabled) {
             return true;
         }
-        LocalTime start = LocalTime.parse(quietStart);
-        LocalTime end = LocalTime.parse(quietEnd);
-        boolean inQuietHours = start.equals(end)
-                || (start.isBefore(end) ? !now.isBefore(start) && now.isBefore(end)
-                : !now.isBefore(start) || now.isBefore(end));
-        return !inQuietHours;
+        return !isWithin(now, LocalTime.parse(quietStart), LocalTime.parse(quietEnd));
+    }
+
+    /** 자정을 넘는 구간(예: 22:00~07:00)까지 처리한다. start == end 는 24시간 전체로 본다. */
+    private static boolean isWithin(LocalTime now, LocalTime start, LocalTime end) {
+        if (start.equals(end)) {
+            return true;
+        }
+        return start.isBefore(end)
+                ? !now.isBefore(start) && now.isBefore(end)
+                : !now.isBefore(start) || now.isBefore(end);
     }
 
     private boolean allowsCategory(NotificationInbox.Category category) {
