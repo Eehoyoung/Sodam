@@ -196,9 +196,7 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
             if (selectedStore) {
                 loadStoreScopedData(selectedStore);
             }
-            // eslint-disable-next-line react-hooks/exhaustive-deps
         // managedStores.refetch is stable; depending on the whole query result would recreate the focus callback.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [loadStores, selectedStore?.id, loadStoreScopedData, managedStores.refetch]),
     );
 

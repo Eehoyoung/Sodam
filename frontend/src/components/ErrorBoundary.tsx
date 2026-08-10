@@ -341,17 +341,18 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
  * 함수형 컴포넌트를 위한 ErrorBoundary HOC
  */
 export function withErrorBoundary<P extends object>(
-    Component: React.ComponentType<P>,
+    // 이름을 Component 로 두면 상단 `import {Component}` 를 가린다(no-shadow).
+    WrappedComponentType: React.ComponentType<P>,
     errorBoundaryProps?: Omit<ErrorBoundaryProps, 'children'>
 ) {
     const WrappedComponent = (props: P) => (
         <ErrorBoundary {...errorBoundaryProps}>
-            <Component {...props} />
+            <WrappedComponentType {...props} />
         </ErrorBoundary>
     );
 
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- blank displayName should fall back to component name, so ?? would be wrong
-    WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;
+    WrappedComponent.displayName = `withErrorBoundary(${WrappedComponentType.displayName || WrappedComponentType.name})`;
 
     return WrappedComponent;
 }

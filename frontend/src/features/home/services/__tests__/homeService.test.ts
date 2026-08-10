@@ -81,9 +81,16 @@ describe('homeService — WP-03: raw axios(/api/v1/*) → common/api(실제 BE �
         await expect(homeService.fetchPolicies()).rejects.toThrow('Network Error');
     });
 
-    it('fetchTestimonials/getServices는 G-1 기본 처분에 따라 BE 호출 없이 항상 실패한다(신규 API 미생성)', async () => {
-        await expect(homeService.fetchTestimonials()).rejects.toThrow('TESTIMONIALS_NOT_IMPLEMENTED');
-        await expect(homeService.getServices()).rejects.toThrow('SERVICES_NOT_IMPLEMENTED');
-        expect(mockedGet).not.toHaveBeenCalled();
+    // fetchTestimonials/getServices/fetchHomeData 는 2026-08-10 에 제거했다(RELEASE_GATES T-6).
+    // 항상 throw 하는 플레이스홀더였고 프로덕션 호출부가 0건이라, 만들 API 가 아니라 지울 코드였다.
+    // 다시 살아나면 소비처 없는 죽은 표면이 또 생기므로 여기서 막는다.
+    it('제거된 플레이스홀더가 되살아나지 않는다', () => {
+        expect(Object.keys(homeService)).toEqual([
+            'fetchEvents',
+            'fetchLaborInfo',
+            'fetchPolicies',
+            'fetchTaxInfo',
+            'fetchTips',
+        ]);
     });
 });

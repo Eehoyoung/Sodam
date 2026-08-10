@@ -181,16 +181,17 @@ export class InitializationErrorBoundary extends Component<
  * HOC for wrapping components with InitializationErrorBoundary
  */
 export function withInitializationErrorBoundary<P extends object>(
-    Component: React.ComponentType<P>,
+    // 이름을 Component 로 두면 상단 `import {Component}` 를 가린다(no-shadow).
+    WrappedComponentType: React.ComponentType<P>,
     errorBoundaryProps?: Omit<InitializationErrorBoundaryProps, 'children'>
 ) {
     const WrappedComponent = (props: P) => (
         <InitializationErrorBoundary {...errorBoundaryProps}>
-            <Component {...props} />
+            <WrappedComponentType {...props} />
         </InitializationErrorBoundary>
     );
 
-    WrappedComponent.displayName = `withInitializationErrorBoundary(${Component.displayName ?? Component.name})`;
+    WrappedComponent.displayName = `withInitializationErrorBoundary(${WrappedComponentType.displayName ?? WrappedComponentType.name})`;
 
     return WrappedComponent;
 }

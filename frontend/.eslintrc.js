@@ -17,6 +17,10 @@ module.exports = {
     'react-native/no-color-literals': 'warn',
 
     // 일반 규칙
+    // `void load()` 는 이 코드베이스에서 "일부러 await 하지 않는다"를 표시하는 관용구다
+    // (useFocusEffect·useStoreLiveSync 등 23곳). 문(statement) 위치의 void 만 허용해,
+    // 표현식 안에 숨은 void(진짜 실수)는 계속 잡는다.
+    'no-void': ['warn', {allowAsStatement: true}],
     'no-console': 'warn',
     'prefer-const': 'error',
     'no-var': 'error',

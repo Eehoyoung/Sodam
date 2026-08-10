@@ -78,13 +78,18 @@
 
 L-1 `CONTRACT_MANAGE`·`PAYROLL_CONFIRM` · L-2 친권자 동의서 PII · L-3 노무 문구·근로계약서 검토 · L-4 `incompleteWeekAllowance` 노출 금지
 
-### 기술 부채 (T, 출시 차단 아님) — 6건
+### 기술 부채 (T, 출시 차단 아님) — 2건
 
-T-1 PII 백필 배치 · T-2 `legalHold` 자동화 · T-3 파기 고지 실패 모니터링 · T-6 홈 후기 API ·
-**T-10 lint 경고 1,040건** · T-12 Flyway 결번 V82·V84
+- **T-2** 파기 `legalHold` 자동 설정 — ⚠️ **코드로 닫을 수 없다.** 수동 지정 경로와 파기 제외 로직은
+  이미 동작한다. 자동화하려면 "분쟁·노동위 구제신청 진행 중"을 판단할 데이터가 있어야 하는데
+  그 기능 자체가 없다. 부채라기보다 **선행 제품 결정 대기**다
+- **T-10** FE lint 경고 1,011건 — `no-console` 397 · `no-explicit-any` 377 · `no-color-literals` 193 ·
+  `no-inline-styles` 42. **error 는 0.** 위험도 높은 계층(`exhaustive-deps`·
+  `no-unstable-nested-components`·`no-shadow`·`no-bitwise`·`no-return-assign`·`no-void`)은
+  2026-08-10 전부 해소했고, 남은 셋은 대량 기계 작업이라 별도 세션이 낫다
 
 > **다음 마이그레이션 번호는 V91 이다.** V82·V84 는 영구 결번(T-12).
-> T-9(비활성 테스트)·T-11(시급 이력)은 2026-08-10 해소 — §8 참조.
+> T-1·T-3·T-6·T-9·T-11·T-12 는 2026-08-10 해소 — §8 참조.
 
 ---
 
@@ -357,18 +362,18 @@ DSN을 켜기 전에 실값으로 교체할 것. 예외 메시지·스택의 PII
 
 | ID | 항목 | 위치 |
 |---|---|---|
-| **T-1** | PII 암호화 일괄 백필 배치 미구현 | `StringCryptoConverter` |
-| **T-2** | 파기 `legalHold` 자동 설정 | 분쟁·노동위 구제신청 추적 데이터가 없어 현재 수동만 |
-| **T-3** | 파기 사전 고지 발송 실패분 모니터링 | `RetentionNoticeService` — 실패 시 재시도는 되나 잔량 지표 없음 |
+| ~~**T-1**~~ | ~~PII 암호화 일괄 백필 배치 미구현~~ | ✅ **해소** — `PiiEncryptionBackfillService` 신설. 대상은 손으로 적지 않고 `@Convert(StringCryptoConverter)` 매핑에서 도출한다(새 PII 필드 자동 포함). 접두사 없는 행만 갱신해 멱등. 키 미설정이면 실행하지 않는다 |
+| **T-2** | 파기 `legalHold` 자동 설정 | ⚠️ 코드로 닫을 수 없다 — 수동 지정·파기 제외는 동작하나, 자동화하려면 "분쟁·구제신청 진행 중"을 판단할 데이터가 필요하고 그 기능 자체가 없다. 선행 제품 결정 대기 |
+| ~~**T-3**~~ | ~~파기 사전 고지 발송 실패분 모니터링~~ | ✅ **해소** — 매 회차 발송·실패 건수를 남기고, 실패 잔량은 ERROR 로 승격. 파기 전 고지는 법정 의무라 조용한 재시도만으로는 부족했다 |
 | ~~**T-4**~~ | ~~HikariCP 커넥션 풀 크기 미설정~~ | ✅ **해소** — `application.yml:66-71` 에 `maximum-pool-size` 등 5개 값 설정됨(2026-08-10 확인) |
 | ~~**T-5**~~ | ~~로그인 rate limit 이메일 파라미터 버그~~ | ✅ **설계로 해소** — 필터는 바디를 읽지 않고 IP 단위만, 계정 단위는 `WebLoginAccountRateLimiter`(컨트롤러 계층)가 담당(`RateLimitFilter.java:33-34,199`) |
-| **T-6** | FE 홈 후기·서비스정보 BE 엔드포인트 미구현 | `homeService.ts` — 별도 G 체계(§1 주의 참조) |
+| ~~**T-6**~~ | ~~FE 홈 후기·서비스정보 BE 엔드포인트 미구현~~ | ✅ **전제 기각** — 소비처가 0건이었다. 만들 API 가 아니라 지울 코드였다. `fetchTestimonials`·`getServices`·`fetchHomeData`(항상 전체 실패하던 집계)와 고아 컴포넌트 `Testimonials.tsx` 제거. 그 컴포넌트는 실명처럼 보이는 **가짜 후기**를 하드코딩하고 있어 노출됐다면 표시광고법 §3 소지가 있었다 |
 | ~~**T-7**~~ | ~~주휴수당 스케줄러 공회전~~ | ✅ **해소** — `PayrollService.calculateWeeklyAllowances()` 의 `@Scheduled` 제거(경로 B 비활성). 메서드·컬럼은 롤백 대비 보존 |
 | ~~**T-8**~~ | ~~`WeekStartPolicy.STORE_DEFINED` 가 MONDAY 하드코딩~~ | ✅ **해소** — `Store.weeklyAllowanceWeekStartDay` 신설(V87), `STORE_DEFINED` 가 실제 사업장 값 사용 |
 | ~~**T-9**~~ | ~~FE 비활성 테스트 4건~~ | ✅ **해소** — 4건 전부 RTL 실렌더링으로 재작성해 활성화. 스킵 0건(112 suites·618 tests). 곁들여 `jest.setup.js` 에 `Appearance` mock 추가 — 없으면 App 전체 마운트가 ErrorBoundary 에 삼켜져 "가짜 초록"이 된다 |
-| **T-10** | FE lint 경고 1,040건 | `no-console` 396 · `no-explicit-any` 378 · `no-color-literals` 193 등. error 는 0 |
+| **T-10** | FE lint 경고 1,011건 | `no-console` 397 · `no-explicit-any` 377 · `no-color-literals` 193 · `no-inline-styles` 42. error 0. 위험 계층(exhaustive-deps·no-unstable-nested-components·no-shadow·no-bitwise·no-return-assign·no-void)은 2026-08-10 전량 해소 |
 | ~~**T-11**~~ | ~~시급 이력 조회가 항상 실패~~ | ✅ **전제 기각** — 체인이 끝까지 건전하다(FE 경로·응답 처리·storeId 가드·BE 인가·`@Transactional(readOnly=true)`·기록 지점 2곳). 주석의 "API 미노출"은 API 신설 전에 쓰인 낡은 문장이었다. 진짜 결함은 빈 `catch (_)` 3개가 실패를 감춘 것 — 실패와 "이력 없음"을 구분해 노출하도록 수정 |
-| **T-12** | Flyway 결번 V82·V84 | 계획서가 예약했으나 V83+ 가 먼저 적용돼 뒤늦게 채우면 Flyway 가 건너뛴다. **영구 결번으로 둔다**(ShedLock 은 V90 으로 이동). 새 마이그레이션은 V91 부터 |
+| ~~**T-12**~~ | ~~Flyway 결번 V82·V84~~ | ✅ **해소** — `FlywayMigrationNumberingTest` 가 결번 재사용·버전 중복·문서화되지 않은 새 구멍을 막는다. 새 마이그레이션은 V91 부터 |
 
 ---
 

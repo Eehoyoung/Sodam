@@ -315,10 +315,14 @@ class ErrorMonitoringSystem {
      * 고유한 에러 ID 생성
      */
     private generateErrorId(type: ErrorType, message: string): string {
-        const hash = message.split('').reduce((a, b) => {
-            a = ((a << 5) - a) + b.charCodeAt(0);
-            return a & a;
+        // djb2 계열 문자열 해시 — 비트 연산이 알고리즘의 일부라 no-bitwise 를 지역적으로 끈다.
+        // (32비트로 감싸는 `& a` 가 없으면 값이 불어나 ID 가 길어진다.)
+        /* eslint-disable no-bitwise */
+        const hash = message.split('').reduce((acc, char) => {
+            const next = ((acc << 5) - acc) + char.charCodeAt(0);
+            return next & next;
         }, 0);
+        /* eslint-enable no-bitwise */
         return `${type}_${Math.abs(hash)}`;
     }
 
