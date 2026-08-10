@@ -11,4 +11,8 @@ public class MockFiscalReceiptIssuer implements FiscalReceiptIssuer {
     @Override public Result issue(PaymentReceipt receipt) {
         return new Result("MOCK-FISCAL-" + receipt.getId());
     }
+
+    @Override public Result amend(PaymentReceipt receipt, int remainingTaxableAmountKrw, String reason) {
+        return new Result("MOCK-FISCAL-AMEND-" + receipt.getId() + "-" + remainingTaxableAmountKrw);
+    }
 }

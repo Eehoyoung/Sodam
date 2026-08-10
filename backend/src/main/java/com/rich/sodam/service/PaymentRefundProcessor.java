@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class PaymentRefundProcessor {
     private final PaymentRefundRequestRepository requestRepository;
-    private final PaymentReceiptRepository receiptRepository;
+    private final PaymentReceiptService paymentReceiptService;
     private final PaymentHistoryRepository paymentHistoryRepository;
     private final AttendanceCreditChargeOrderRepository attendanceOrderRepository;
     private final RecruitmentBoostPassOrderRepository boostOrderRepository;
@@ -51,8 +51,10 @@ public class PaymentRefundProcessor {
                 request.markPgCancelled();
             }
             applyRefund(request.getSourceType(), request.getSourceOrderId(), source.amountKrw());
-            receiptRepository.findBySourceTypeAndSourceOrderId(request.getSourceType(), request.getSourceOrderId())
-                    .ifPresent(PaymentReceipt::markCancelled);
+            // 이미 발급된 증빙이면 내부 CANCELLED 로 끝내지 않고 수정세금계산서 통지까지 간다
+            // (시행령 §70, G-11 선결 2). 전액 환불이므로 남는 과세표준은 0.
+            paymentReceiptService.cancel(request.getSourceType(), request.getSourceOrderId(),
+                    0, request.getReason());
             request.markCompleted();
         } catch (RuntimeException e) {
             request.markFailed(e.getClass().getSimpleName());

@@ -29,4 +29,26 @@ public class PaymentReceiptIssuanceService {
                     receiptId, receipt.getSourceType(), receipt.getSourceOrderId());
         }
     }
+
+    /**
+     * 발급된 증빙의 수정세금계산서 통지(시행령 §70). 실패해도 환불 자체는 되돌리지 않고
+     * {@code AMEND_PENDING} 으로 남긴다 — 다만 <b>미이행 세무 의무</b>이므로 ERROR 로 승격해
+     * 사람이 반드시 보게 한다(조용한 재시도만으로는 부족하다).
+     *
+     * @param remainingTaxableAmountKrw 수정 후 남는 과세표준. 전액 환불이면 0
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void amend(Long receiptId, int remainingTaxableAmountKrw, String reason) {
+        PaymentReceipt receipt = receiptRepository.findById(receiptId).orElse(null);
+        if (receipt == null || receipt.getStatus() != PaymentReceipt.Status.AMEND_PENDING) return;
+        try {
+            receipt.markAmended(
+                    fiscalReceiptIssuer.amend(receipt, remainingTaxableAmountKrw, reason).reference());
+        } catch (RuntimeException e) {
+            receipt.markAmendFailed(e.getClass().getSimpleName());
+            log.error("수정세금계산서 통지 실패 — 세무 의무 미이행 상태로 남음, 수동 확인 필요 "
+                            + "receiptId={} sourceType={} orderId={}",
+                    receiptId, receipt.getSourceType(), receipt.getSourceOrderId(), e);
+        }
+    }
 }
