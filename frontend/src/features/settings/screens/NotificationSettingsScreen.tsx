@@ -32,9 +32,10 @@ const useStyles = () => {
  * 40 NotificationSettings — v3 아티팩트(sodam-v3-06-settings.html) 반영.
  * Switch 대신 배지형 리스트(AppListItem + AppBadge "켜짐"/"꺼짐") — 행 전체를 탭하면 토글된다.
  * on/off 저장 로직(update/AsyncStorage)은 그대로 유지, 시각 표현만 배지로 교체.
- * AsyncStorage 에 즉시 저장. BE 동기화는 P1.
+ * AsyncStorage 에 즉시 저장하고 `PUT /api/notifications/prefs` 로 서버에 동기화한다.
  *
- * TODO[P1 BE]: PUT /api/notifications/prefs — 서버 동기화 + 디바이스 간 일관성.
+ * <p>서버가 최종 기준이다 — 외부 푸시(FCM) 발송 여부는 BE 가 `NotificationPreference` 로
+ * 판정한다. 인앱 알림함은 이 설정과 무관하게 항상 적재된다.</p>
  */
 const NotificationSettingsScreen: React.FC = () => {
     const styles = useStyles();

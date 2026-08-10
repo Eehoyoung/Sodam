@@ -1,5 +1,6 @@
 package com.rich.sodam.service;
 
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import com.rich.sodam.domain.EmployeeDocument;
 import com.rich.sodam.domain.MasterStoreRelation;
 import com.rich.sodam.repository.EmployeeDocumentRepository;
@@ -36,6 +37,7 @@ public class DocumentExpiryScheduler {
 
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Seoul")
     @Transactional(readOnly = true)
+    @SchedulerLock(name = "documentExpiry", lockAtMostFor = "PT15M", lockAtLeastFor = "PT1M")
     public void scanExpiringDocuments() {
         LocalDate today = LocalDate.now();
         List<EmployeeDocument> docs =

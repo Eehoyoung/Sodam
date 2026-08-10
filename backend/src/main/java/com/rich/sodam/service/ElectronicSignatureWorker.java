@@ -1,5 +1,6 @@
 package com.rich.sodam.service;
 
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rich.sodam.config.integration.IntegrationProperties;
 import com.rich.sodam.core.electronicsignature.*;
@@ -97,6 +98,7 @@ public class ElectronicSignatureWorker {
     }
 
     @Scheduled(fixedDelayString = "${sodam.integration.electronic-signature.worker-delay-ms:3000}")
+    @SchedulerLock(name = "electronicSignatureWorker", lockAtMostFor = "PT5M", lockAtLeastFor = "PT1S")
     public void runDueWork() {
         List<Long> ids = outboxRepository.findDueIds(
                 EnumSet.of(SignatureOutboxStatus.PENDING, SignatureOutboxStatus.RETRY),

@@ -42,6 +42,51 @@
 
 ---
 
+## 0. 열려 있는 게이트 한눈에 (2026-08-10 전수 점검)
+
+> 아래는 **아직 닫히지 않은 항목만** 추린 목록이다. 해소된 것은 각 절에서 취소선으로 남겨 둔다
+> (같은 항목을 다시 조사하지 않게 하려는 것 — 지운 게 아니다).
+> 상세는 각 ID 를 §1~§8 에서 찾아볼 것.
+
+### 출시를 막는 것 (G) — 12건
+
+| ID | 한 줄 | 누구의 회신이 필요한가 |
+|---|---|---|
+| **G-1** ⚠️ | 선불전자지급수단(전자금융거래법) — **이미 판매 중인 출근권이 대상** | 핀테크 변호사 |
+| **G-2** ⚠️ | 세금계산서·현금영수증 발급 인프라 부재 — 구독료가 매달 반복돼 가산세가 시간에 비례 | 세무사 |
+| **G-3** | 결제 취소·환불 세무 처리 | 세무사 |
+| **G-4** | 위치기반서비스사업 신고 | 행정사·변호사 |
+| **G-5** | live 자동환불 기준 + **전자상거래법 §18② 3영업일 SLA**(코드 밖 운영 프로세스) | 변호사 + 운영 |
+| **G-6** | 근로기록 보존기간 기산일 | 노무사 |
+| **G-7** | 계약 주휴일 → 주 기산일 **해석 규칙의 기본값** (기능 자체는 구현됨) | 노무사 |
+| **G-8** | 3.3% 원천징수 대상자에게 주휴수당 지급 — 실질과세 근로자성 정황 | 세무사 |
+| **G-10** | 야간가산에서 법정 휴게 차감(기본 비활성) | 노무사 |
+| **G-11** | 세무 증빙 live 발급 전 선결 2건(대리수취 과세표준·수정세금계산서 경로) | 세무사 |
+| **G-12** | Sentry 국외이전 고지 — 리전·보관기간 placeholder 실값 교체 | 개인정보 전문가 |
+| **G-13** | 광고성 정보 야간 전송 별도 동의(현재 21~08시 하드 차단 중) | 변호사 |
+
+### 사람이 눌러야 하는 것 (H·C·D·P) — 19건
+
+| 분류 | 항목 |
+|---|---|
+| **H** 돈이 나감 | H-1 CLOVA OCR 유료화 · H-3 추천 보상 빌링 반영 · H-4 A/B 과금값 주입 · **H-5 Toss 실키 전환** |
+| **C** 문구·자료 | C-1 개인모드 동의 문구 · **C-2 GitHub Pages 활성화(1클릭)** · C-3 약관 부칙 실값 · C-4 위치기반 신고 · C-5 판촉 문구 전수 점검 |
+| **D** 판단 대기 | D-1 iOS IAP 대응 · D-2 QR 카메라 의존성 · D-4 매출 기능 노출 범위 · D-5 PRO 매장 상한 · D-6 매입장부 부가세 필드 |
+| **P** 외부 작업 | P-1 Apple Developer · P-2 GoogleService-Info·APNs · P-3 Xcode Capabilities · P-4 Kakao 콘솔 · P-5 운영 env 값 |
+
+### 개방·확장 금지 (L) — 4건
+
+L-1 `CONTRACT_MANAGE`·`PAYROLL_CONFIRM` · L-2 친권자 동의서 PII · L-3 노무 문구·근로계약서 검토 · L-4 `incompleteWeekAllowance` 노출 금지
+
+### 기술 부채 (T, 출시 차단 아님) — 8건
+
+T-1 PII 백필 배치 · T-2 `legalHold` 자동화 · T-3 파기 고지 실패 모니터링 · T-6 홈 후기 API ·
+**T-9 FE 비활성 테스트 4건** · **T-10 lint 경고 1,040건** · **T-11 시급 이력 조회 실패(FG-01)** · T-12 Flyway 결번 V82·V84
+
+> **다음 마이그레이션 번호는 V91 이다.** V82·V84 는 영구 결번(T-12).
+
+---
+
 ## 1. G — 출시 차단 (전문가 서면확인 필요)
 
 개발·배선은 진행해도 되지만 **실서비스 출시(스토어 배포·결제 라이브 전환) 전에 반드시 해소**한다.
@@ -225,7 +270,7 @@ DSN을 켜기 전에 실값으로 교체할 것. 예외 메시지·스택의 PII
 | ID | 항목 | 켜면 생기는 일 | 근거 |
 |---|---|---|---|
 | **H-1** | CLOVA 영수증 OCR 유료 활성화 | 외부 API 호출당 과금 | `NoopReceiptOcrClient`, `ReceiptOcrClient` |
-| **H-2** | 급여명세서 무료 발급 게이팅(WP-F) | FREE 사용자에게 402 노출 | `PayslipFreeGrant` — 카운터만 있고 게이트 미배선 |
+| ~~**H-2**~~ | ~~급여명세서 무료 발급 게이팅(WP-F)~~ | ✅ **배선 완료** — 하드 차단(402)이 아니라 **워터마크 방식**으로 구현됐다. 402 로 막으면 직원의 본인 명세서 조회까지 차단되기 때문(`PayrollService:1000-1002`). 무료 플랜도 매장당 월 1회는 워터마크 없이 정식 발급 |
 | **H-3** | 추천인 보상의 빌링 반영 | 실제 청구 금액 변동 | `ReferralController` — 현재 읽기 전용 |
 | **H-4** | A/B 과금·패키징 값 주입 | 플랜 상한 변경 | `AbTestProperties` — 값을 채워 배포하는 것 자체가 승인 게이트 |
 | **H-5** | Toss 실키 전환 + `FLYWAY_ENABLED=true` | 실결제 개시 | 런북 `docs/02-runbook/결제-라이브-전환.md` |
@@ -314,11 +359,15 @@ DSN을 켜기 전에 실값으로 교체할 것. 예외 메시지·스택의 PII
 | **T-1** | PII 암호화 일괄 백필 배치 미구현 | `StringCryptoConverter` |
 | **T-2** | 파기 `legalHold` 자동 설정 | 분쟁·노동위 구제신청 추적 데이터가 없어 현재 수동만 |
 | **T-3** | 파기 사전 고지 발송 실패분 모니터링 | `RetentionNoticeService` — 실패 시 재시도는 되나 잔량 지표 없음 |
-| **T-4** | HikariCP 커넥션 풀 크기 미설정 | Spring 기본값(10)으로 동작. 부하테스트에서 p95 지연 원인으로 추정 |
-| **T-5** | 로그인 rate limit 이메일 파라미터 버그 | JSON 바디를 필터가 못 읽어 IP 단위로만 동작 |
+| ~~**T-4**~~ | ~~HikariCP 커넥션 풀 크기 미설정~~ | ✅ **해소** — `application.yml:66-71` 에 `maximum-pool-size` 등 5개 값 설정됨(2026-08-10 확인) |
+| ~~**T-5**~~ | ~~로그인 rate limit 이메일 파라미터 버그~~ | ✅ **설계로 해소** — 필터는 바디를 읽지 않고 IP 단위만, 계정 단위는 `WebLoginAccountRateLimiter`(컨트롤러 계층)가 담당(`RateLimitFilter.java:33-34,199`) |
 | **T-6** | FE 홈 후기·서비스정보 BE 엔드포인트 미구현 | `homeService.ts` — 별도 G 체계(§1 주의 참조) |
-| **T-7** | 주휴수당 스케줄러가 매일 23:40 전 직원을 돌며 **아무도 읽지 않는 값**을 계산·저장 | `PayrollService.calculateWeeklyAllowances()`. 폐기 여부는 [[L-4]]·[[G-7]] 결정 후 |
-| **T-8** | `WeekStartPolicy.STORE_DEFINED`가 MONDAY로 하드코딩 | `WeekStartPolicy.java:38-39`. `Store`에 기산 요일 필드 자체가 없음 — 옵션명이 관리자에게 잘못된 확신을 준다. [[G-7]]과 함께 처리 |
+| ~~**T-7**~~ | ~~주휴수당 스케줄러 공회전~~ | ✅ **해소** — `PayrollService.calculateWeeklyAllowances()` 의 `@Scheduled` 제거(경로 B 비활성). 메서드·컬럼은 롤백 대비 보존 |
+| ~~**T-8**~~ | ~~`WeekStartPolicy.STORE_DEFINED` 가 MONDAY 하드코딩~~ | ✅ **해소** — `Store.weeklyAllowanceWeekStartDay` 신설(V87), `STORE_DEFINED` 가 실제 사업장 값 사용 |
+| **T-9** | FE 비활성 테스트 4건 | `describe.skip` — `app.bootstrap`, `navigation/flow.moderate`, `navigation/role-landing.smoke`, `ui/SectionComponents`. `.claude/rules/testing.md` "실패를 스킵으로 덮지 말 것" 위반 상태. (BE `@Disabled` 2건은 수동 실행 도구라 정상) |
+| **T-10** | FE lint 경고 1,040건 | `no-console` 396 · `no-explicit-any` 378 · `no-color-literals` 193 등. error 는 0 |
+| **T-11** | 시급 이력 조회가 항상 실패 | `WageSettingsScreen.tsx:64` 의 빈 `catch (_)` 가 원인을 삼킨다. 주석("WageHistory 조회 API 미노출")은 **사실과 다름** — API 는 `WageController.java:97` 에 실재. 유력 가설은 `@MasterOnly`(:96) 로 인한 403. 계획서 FG-01 |
+| **T-12** | Flyway 결번 V82·V84 | 계획서가 예약했으나 V83+ 가 먼저 적용돼 뒤늦게 채우면 Flyway 가 건너뛴다. **영구 결번으로 둔다**(ShedLock 은 V90 으로 이동). 새 마이그레이션은 V91 부터 |
 
 ---
 

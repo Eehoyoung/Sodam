@@ -1,5 +1,6 @@
 package com.rich.sodam.service;
 
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -20,6 +21,7 @@ public class WinBackScheduler {
     private final WinBackService winBackService;
 
     @Scheduled(cron = "0 0 10 * * *", zone = "Asia/Seoul")
+    @SchedulerLock(name = "dailyWinBack", lockAtMostFor = "PT20M", lockAtLeastFor = "PT1M")
     public void runDailyWinBack() {
         int sent = winBackService.sendWinBackForDay(LocalDateTime.now());
         if (sent > 0) {

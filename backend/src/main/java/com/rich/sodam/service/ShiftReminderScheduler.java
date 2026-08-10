@@ -1,5 +1,6 @@
 package com.rich.sodam.service;
 
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import com.rich.sodam.config.integration.PushNotifier.PushMessage;
 import com.rich.sodam.domain.WorkShift;
 import com.rich.sodam.repository.WorkShiftRepository;
@@ -33,6 +34,7 @@ public class ShiftReminderScheduler {
 
     @Scheduled(cron = "0 0/15 * * * *", zone = "Asia/Seoul")
     @Transactional(readOnly = true)
+    @SchedulerLock(name = "shiftReminder", lockAtMostFor = "PT10M", lockAtLeastFor = "PT30S")
     public void remindUpcomingShifts() {
         LocalDateTime now = LocalDateTime.now();
         int reminded = 0;

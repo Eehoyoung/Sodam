@@ -1,5 +1,6 @@
 package com.rich.sodam.service;
 
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import com.rich.sodam.domain.RefreshToken;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.repository.RefreshTokenRepository;
@@ -125,6 +126,7 @@ public class RefreshTokenService {
      * 매일 자정에 실행됩니다.
      */
     @Scheduled(cron = "0 0 0 * * ?")
+    @SchedulerLock(name = "refreshTokenCleanup", lockAtMostFor = "PT15M", lockAtLeastFor = "PT1M")
     public void cleanupExpiredTokens() {
         LocalDateTime now = LocalDateTime.now();
         refreshTokenRepository.deleteExpiredTokens(now);

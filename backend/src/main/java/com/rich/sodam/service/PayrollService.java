@@ -228,8 +228,9 @@ public class PayrollService {
      * <p>⚠️ 정합성 주의: 이 스케줄러는 입사일 기준 회전 + 월말 truncate 로 attendance.weeklyAllowance 를
      * 채우는 구(舊) 경로다. 월 급여 집계({@code calculateTotalWeeklyAllowance})는 더 이상 이 저장값에
      * 의존하지 않고 week-start-policy(기본 MONDAY)로 주 단위 재계산한다(노무 검토 반영).
-     * 두 경로의 주 기산이 달라 incompleteWeekAllowance 표시값과 실제 정산값이 다를 수 있다.
-     * TODO[노무-정합]: 스케줄러도 weekStartPolicy 로 통일하거나, 표시 전용으로 역할 축소 — 별도 작업.</p>
+     * 두 경로의 주 기산이 달라 incompleteWeekAllowance 표시값과 실제 정산값이 다를 수 있었다.
+     * 그래서 이 경로는 <b>비활성</b>이다(@Scheduled 제거, RELEASE_GATES T-7). 메서드와 컬럼은
+     * 롤백을 위해 남겨 두며, 이 값을 화면·API 에 노출하는 것은 L-4 로 금지돼 있다.</p>
      */
     // 경로 B는 실제 정산과 독립된 값을 쓰므로 비활성화한다. 컬럼과 과거 데이터는 롤백을 위해 보존한다.
     @Transactional
@@ -977,14 +978,13 @@ public class PayrollService {
     }
 
     /**
-     * 급여명세서 PDF 생성 (HIGH-BE-002)
-     * 기본 구현: 텍스트 기반 급여명세서를 바이트 배열로 반환
-     * <p>
-     * TODO: 추후 iText, Apache PDFBox 등의 PDF 라이브러리로 교체하여
-     *       실제 PDF 레이아웃, 폰트, 이미지 등을 포함한 전문적인 명세서 생성 가능
+     * 급여명세서 PDF 생성 (HIGH-BE-002).
+     *
+     * <p>OpenPDF 로 실제 PDF 를 만든다(레이아웃·한글 폰트·워터마크 포함). 아래 텍스트 생성
+     * 경로는 PDF 생성이 실패했을 때의 폴백이며, 정상 경로가 아니다.</p>
      *
      * @param payrollId 급여 ID
-     * @return PDF 바이트 배열 (현재는 UTF-8 텍스트)
+     * @return PDF 바이트 배열 (생성 실패 시 UTF-8 텍스트 폴백)
      * @throws EntityNotFoundException 급여 내역을 찾을 수 없을 경우
      */
     // readOnly 아님 — 무료발급 게이팅이 payslipFreeGrantService.tryConsumeFreeGrant()로 실제 쓰기를

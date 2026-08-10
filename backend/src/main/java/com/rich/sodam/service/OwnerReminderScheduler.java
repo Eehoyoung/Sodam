@@ -1,5 +1,6 @@
 package com.rich.sodam.service;
 
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import com.rich.sodam.config.integration.PushNotifier.PushMessage;
 import com.rich.sodam.domain.AttendanceApprovalRequest;
 import com.rich.sodam.domain.PayrollCycle;
@@ -74,6 +75,7 @@ public class OwnerReminderScheduler {
 
     @Scheduled(cron = "0 */10 * * * *", zone = "Asia/Seoul")
     @Transactional
+    @SchedulerLock(name = "ownerRemindSalesInput", lockAtMostFor = "PT5M", lockAtLeastFor = "PT30S")
     public void remindSalesInput() {
         remindSalesInput(LocalDateTime.now());
     }
@@ -139,6 +141,7 @@ public class OwnerReminderScheduler {
 
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Seoul")
     @Transactional
+    @SchedulerLock(name = "ownerRemindPaydayD3", lockAtMostFor = "PT15M", lockAtLeastFor = "PT1M")
     public void remindPaydayD3() {
         remindPaydayD3(LocalDate.now());
     }
@@ -182,6 +185,7 @@ public class OwnerReminderScheduler {
 
     @Scheduled(cron = "0 0 9 * * MON", zone = "Asia/Seoul")
     @Transactional
+    @SchedulerLock(name = "ownerRemindWeeklyReport", lockAtMostFor = "PT15M", lockAtLeastFor = "PT1M")
     public void remindWeeklyReport() {
         remindWeeklyReport(LocalDate.now());
     }
@@ -211,6 +215,7 @@ public class OwnerReminderScheduler {
 
     @Scheduled(cron = "0 */10 * * * *", zone = "Asia/Seoul")
     @Transactional
+    @SchedulerLock(name = "ownerRemindLateCheckIn", lockAtMostFor = "PT5M", lockAtLeastFor = "PT30S")
     public void remindLateCheckIn() {
         remindLateCheckIn(LocalDateTime.now());
     }

@@ -1,5 +1,6 @@
 package com.rich.sodam.service;
 
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -20,6 +21,7 @@ public class BillingScheduler {
 
     /** 매일 03:00 (KST) — application 이 KST 로 설정된 경우. */
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Seoul")
+    @SchedulerLock(name = "dailyBilling", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     public void runDailyBilling() {
         int processed = subscriptionService.runScheduledBilling(LocalDateTime.now());
         log.info("BillingScheduler 완료: {}건 처리", processed);

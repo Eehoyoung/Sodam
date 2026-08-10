@@ -1,5 +1,6 @@
 package com.rich.sodam.service;
 
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -20,6 +21,7 @@ public class AccountSleepScheduler {
     private final AccountSleepService accountSleepService;
 
     @Scheduled(cron = "0 30 3 * * *", zone = "Asia/Seoul")
+    @SchedulerLock(name = "accountSleep", lockAtMostFor = "PT20M", lockAtLeastFor = "PT1M")
     public void runDailySleep() {
         int slept = accountSleepService.sleepDormantFreeSubscriptions(LocalDateTime.now(), INACTIVE_DAYS);
         if (slept > 0) {
