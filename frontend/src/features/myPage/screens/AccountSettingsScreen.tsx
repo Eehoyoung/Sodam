@@ -139,7 +139,8 @@ const AccountSettingsScreen: React.FC<Props> = ({visualWithdrawOpen, captureMark
                                 accessibilityState={{selected: on}}
                                 style={[
                                     styles.themeChip,
-                                    {borderColor: on ? c.brandPrimary : c.border, backgroundColor: on ? c.brandPrimarySoft : 'transparent'},
+                                    !on && styles.themeChipOff,
+                                    {borderColor: on ? c.brandPrimary : c.border, ...(on ? {backgroundColor: c.brandPrimarySoft} : null)},
                                 ]}>
                                 <AppText variant="caption" weight="800" tone={on ? 'brand' : 'secondary'}>
                                     {m === 'system' ? '시스템' : m === 'light' ? '라이트' : '다크'}
@@ -207,6 +208,7 @@ const AccountSettingsScreen: React.FC<Props> = ({visualWithdrawOpen, captureMark
 };
 
 const styles = StyleSheet.create({
+    themeChipOff: {backgroundColor: 'transparent'},
     cta: {marginTop: spacing.md},
     sectionTitle: {marginTop: spacing.xl, marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.5},
     helper: {marginTop: spacing.sm},

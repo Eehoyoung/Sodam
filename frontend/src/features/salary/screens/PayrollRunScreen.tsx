@@ -526,7 +526,7 @@ const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust}) => {
                         />
                         <Text style={styles.modalLabel}>사유</Text>
                         <TextInput
-                            style={[styles.modalInput, {height: 80, textAlignVertical: 'top'}]}
+                            style={[styles.modalInput, fieldStyles.multilineInput]}
                             value={adjustReason}
                             onChangeText={setAdjustReason}
                             multiline
@@ -647,6 +647,7 @@ function pad(n: number): string {
 }
 
 const fieldStyles = StyleSheet.create({
+    multilineInput: {height: 80, textAlignVertical: 'top'},
     gap: {gap: tokens.spacing.lg},
 });
 

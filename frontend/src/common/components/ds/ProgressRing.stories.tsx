@@ -1,14 +1,19 @@
 import type {Meta, StoryObj} from '@storybook/react-native-web-vite';
-import {View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
+import {colors} from '../../../theme/tokens';
 import {ProgressRing} from './ProgressRing';
 import {AppText} from './AppText';
+
+const styles = StyleSheet.create({
+    canvas: {padding: 24, alignItems: 'center', backgroundColor: colors.surfaceCanvas},
+});
 
 const meta: Meta<typeof ProgressRing> = {
     title: 'DS/ProgressRing',
     component: ProgressRing,
     decorators: [
         Story => (
-            <View style={{padding: 24, alignItems: 'center', backgroundColor: '#F7F7F4'}}>
+            <View style={styles.canvas}>
                 <Story />
             </View>
         ),

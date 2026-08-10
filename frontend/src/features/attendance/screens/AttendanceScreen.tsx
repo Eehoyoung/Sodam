@@ -1015,6 +1015,26 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
     );
 };
 
+/**
+ * 59 NFCScanModal 고정 팔레트 — 이 모달은 라이트/다크 설정과 무관하게 **항상 다크**다
+ * (v3 시안 03-employee.html "59 NFCScanModal" device__screen--dark 고정).
+ * 그래서 테마 토큰(c.*)을 쓰면 안 되고, 대신 값을 여기 한곳에 모아 이름을 준다 —
+ * StyleSheet 안에 hex 를 흩뿌리면 어느 색이 무슨 역할인지 추적할 수 없다.
+ */
+const NFC_SCAN = {
+    canvas: '#12141B',
+    iconCircle: '#173330',
+    text: '#F5F3EF',
+    textMuted: 'rgba(245,243,239,0.7)',
+    cardBg: 'rgba(255,255,255,0.06)',
+    cardBorder: 'rgba(245,243,239,0.2)',
+    track: 'rgba(255,255,255,0.12)',
+    fill: '#2DD4BF',
+    cancelBorder: 'rgba(245,243,239,0.35)',
+    /** 시각 회귀 캡처용 투명 마커 — 화면에 보이지 않아야 한다. */
+    invisible: 'transparent',
+} as const;
+
 const makeStyles = (c: ThemeColors) => StyleSheet.create({
     listContainer: {
         paddingHorizontal: 24,
@@ -1155,12 +1175,11 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         color: c.textTertiary,
         textAlign: 'center',
     },
-    // 59 NFCScanModal — 항상 다크(라이트/다크 모드 설정과 무관, 시안 device__screen--dark 고정)라
-    // 테마 토큰(c.*) 대신 고정 hex 를 쓴다(§ v3 03-employee.html "59 NFCScanModal").
-    captureMarker: {position: 'absolute', width: 1, height: 1, fontSize: 1, lineHeight: 1, color: 'transparent'},
+    // 59 NFCScanModal — 고정 팔레트는 위 NFC_SCAN 상수 참조.
+    captureMarker: {position: 'absolute', width: 1, height: 1, fontSize: 1, lineHeight: 1, color: NFC_SCAN.invisible},
     nfcDarkContainer: {
         flex: 1,
-        backgroundColor: '#12141B',
+        backgroundColor: NFC_SCAN.canvas,
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 32,
@@ -1169,7 +1188,7 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         width: 72,
         height: 72,
         borderRadius: 36,
-        backgroundColor: '#173330',
+        backgroundColor: NFC_SCAN.iconCircle,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 24,
@@ -1178,14 +1197,14 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         fontSize: 22,
         lineHeight: 30,
         fontWeight: '800',
-        color: '#F5F3EF',
+        color: NFC_SCAN.text,
         textAlign: 'center',
     },
     nfcDarkSub: {
         marginTop: 10,
         fontSize: 14,
         lineHeight: 21,
-        color: 'rgba(245,243,239,0.7)',
+        color: NFC_SCAN.textMuted,
         textAlign: 'center',
     },
     nfcProgressCard: {
@@ -1193,26 +1212,26 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         marginTop: 28,
         padding: 16,
         borderRadius: 16,
-        backgroundColor: 'rgba(255,255,255,0.06)',
+        backgroundColor: NFC_SCAN.cardBg,
         borderWidth: 1,
-        borderColor: 'rgba(245,243,239,0.2)',
+        borderColor: NFC_SCAN.cardBorder,
     },
     nfcProgressTrack: {
         height: 6,
         borderRadius: 3,
-        backgroundColor: 'rgba(255,255,255,0.12)',
+        backgroundColor: NFC_SCAN.track,
         overflow: 'hidden',
     },
     nfcProgressFill: {
         width: '66%',
         height: '100%',
         borderRadius: 3,
-        backgroundColor: '#2DD4BF',
+        backgroundColor: NFC_SCAN.fill,
     },
     nfcProgressLabel: {
         marginTop: 8,
         fontSize: 13,
-        color: 'rgba(245,243,239,0.7)',
+        color: NFC_SCAN.textMuted,
     },
     nfcCancelBtn: {
         marginTop: 20,
@@ -1220,11 +1239,11 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         paddingVertical: 14,
         borderRadius: 14,
         borderWidth: 1,
-        borderColor: 'rgba(245,243,239,0.35)',
+        borderColor: NFC_SCAN.cancelBorder,
         alignItems: 'center',
     },
     nfcCancelText: {
-        color: '#F5F3EF',
+        color: NFC_SCAN.text,
         fontSize: 15,
         fontWeight: '700',
     },

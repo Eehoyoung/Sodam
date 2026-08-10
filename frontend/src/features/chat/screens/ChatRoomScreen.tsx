@@ -338,10 +338,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({message, onLongPress}) => 
                     style={[
                         styles.bubble,
                         mine
-                            ? {backgroundColor: recruit.primary, borderBottomRightRadius: 4}
-                            : {backgroundColor: c.surfaceMuted, borderBottomLeftRadius: 4},
+                            ? [styles.bubbleMineTail, {backgroundColor: recruit.primary}]
+                            : [styles.bubbleTheirsTail, {backgroundColor: c.surfaceMuted}],
                     ]}>
-                    <AppText variant="bodyMd" style={{color: mine ? '#FFFFFF' : c.textPrimary}}>
+                    <AppText variant="bodyMd" style={{color: mine ? c.textInverse : c.textPrimary}}>
                         {message.content}
                     </AppText>
                 </Pressable>
@@ -368,6 +368,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({message, onLongPress}) => 
 };
 
 const styles = StyleSheet.create({
+    bubbleMineTail: {borderBottomRightRadius: 4},
+    bubbleTheirsTail: {borderBottomLeftRadius: 4},
     flex: {flex: 1},
     menuCard: {
         position: 'absolute',

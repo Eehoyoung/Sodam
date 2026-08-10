@@ -27,7 +27,7 @@ export const CtaStack: React.FC<CtaStackProps> = ({children, bordered = false, t
         <View
             style={[
                 styles.wrap,
-                bordered && {borderTopWidth: 1, borderTopColor: c.divider},
+                bordered && [styles.bordered, {borderTopColor: c.divider}],
                 !transparent && {backgroundColor: c.surfaceCanvas},
                 {paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.xs},
             ]}>
@@ -37,6 +37,7 @@ export const CtaStack: React.FC<CtaStackProps> = ({children, bordered = false, t
 };
 
 const styles = StyleSheet.create({
+    bordered: {borderTopWidth: 1},
     wrap: {
         paddingHorizontal: spacing.lg,
         paddingTop: spacing.md,

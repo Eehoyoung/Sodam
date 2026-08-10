@@ -1,5 +1,6 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {demoPalette} from './demoPalette';
 import {ENABLE_ANIMATIONS, stageAtLeast, ANIMATION_RECOVERY_STAGE} from '../../../../navigation/config';
 
 // Conditionally import Reanimated components only when needed
@@ -77,15 +78,15 @@ const getStatusColor = (status: string) => {
     switch (status) {
         case 'active':
         case 'working':
-            return '#4CAF50';
+            return demoPalette.success;
         case 'busy':
         case 'break':
-            return '#FF9800';
+            return demoPalette.accent;
         case 'closed':
-            return '#F44336';
+            return demoPalette.danger;
         case 'off':
         default:
-            return '#9E9E9E';
+            return demoPalette.muted;
     }
 };
 
@@ -162,7 +163,7 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
     // Create dynamic styles that depend on dimensions (moved from StyleSheet.create)
     const dynamicStyles = useMemo(() => ({
         demoModal: {
-            backgroundColor: '#FFFFFF',
+            backgroundColor: demoPalette.white,
             borderRadius: 20,
             padding: 24,
             width: dimensions.screenWidth * 0.9,  // ✅ Safe access to dimensions
@@ -461,7 +462,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backgroundColor: demoPalette.overlay,
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 1000,
@@ -473,14 +474,14 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#F1EEE9',
+        backgroundColor: demoPalette.surfaceWarm,
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 1001,
     },
     closeButtonText: {
         fontSize: 16,
-        color: '#666666',
+        color: demoPalette.textSecondary,
         fontWeight: 'bold',
     },
     dashboard: {
@@ -494,23 +495,23 @@ const styles = StyleSheet.create({
     dashboardTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#333333',
+        color: demoPalette.textPrimary,
         marginBottom: 4,
     },
     dashboardSubtitle: {
         fontSize: 14,
-        color: '#666666',
+        color: demoPalette.textSecondary,
     },
     storesContainer: {
         maxHeight: 200,
     },
     storeCard: {
-        backgroundColor: '#F8F8F8',
+        backgroundColor: demoPalette.surface,
         borderRadius: 12,
         padding: 16,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: demoPalette.border,
     },
     storeHeader: {
         flexDirection: 'row',
@@ -521,7 +522,7 @@ const styles = StyleSheet.create({
     storeName: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#333333',
+        color: demoPalette.textPrimary,
     },
     statusBadge: {
         paddingHorizontal: 8,
@@ -530,12 +531,12 @@ const styles = StyleSheet.create({
     },
     statusText: {
         fontSize: 12,
-        color: '#FFFFFF',
+        color: demoPalette.white,
         fontWeight: '600',
     },
     storeLocation: {
         fontSize: 14,
-        color: '#666666',
+        color: demoPalette.textSecondary,
         marginBottom: 12,
     },
     storeStats: {
@@ -548,11 +549,11 @@ const styles = StyleSheet.create({
     statValue: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#333333',
+        color: demoPalette.textPrimary,
     },
     statLabel: {
         fontSize: 12,
-        color: '#666666',
+        color: demoPalette.textSecondary,
         marginTop: 2,
     },
     demoContent: {
@@ -562,20 +563,20 @@ const styles = StyleSheet.create({
     demoTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#333333',
+        color: demoPalette.textPrimary,
         marginBottom: 12,
         textAlign: 'center',
     },
     demoDescription: {
         fontSize: 14,
-        color: '#666666',
+        color: demoPalette.textSecondary,
         textAlign: 'center',
         lineHeight: 20,
         marginBottom: 16,
     },
     instructionText: {
         fontSize: 14,
-        color: '#FF9800',
+        color: demoPalette.accent,
         textAlign: 'center',
         fontWeight: '600',
     },
@@ -588,7 +589,7 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#333333',
+        color: demoPalette.textPrimary,
         marginBottom: 12,
     },
     employeeRow: {
@@ -597,16 +598,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 8,
         borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F0',
+        borderBottomColor: demoPalette.surfaceMuted,
     },
     employeeName: {
         fontSize: 14,
-        color: '#333333',
+        color: demoPalette.textPrimary,
         flex: 1,
     },
     employeeRole: {
         fontSize: 12,
-        color: '#666666',
+        color: demoPalette.textSecondary,
         marginRight: 8,
     },
     employeeStatus: {
@@ -616,16 +617,16 @@ const styles = StyleSheet.create({
     },
     employeeStatusText: {
         fontSize: 10,
-        color: '#FFFFFF',
+        color: demoPalette.white,
         fontWeight: '600',
     },
     manageButton: {
-        backgroundColor: '#FF9800',
+        backgroundColor: demoPalette.accent,
         paddingVertical: 12,
         paddingHorizontal: 24,
         borderRadius: 8,
         alignItems: 'center',
-        shadowColor: '#FF9800',
+        shadowColor: demoPalette.accent,
         shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.3,
         shadowRadius: 4,
@@ -634,25 +635,25 @@ const styles = StyleSheet.create({
     manageButtonText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#FFFFFF',
+        color: demoPalette.white,
     },
     progressText: {
         fontSize: 24,
         fontWeight: '700',
-        color: '#FF9800',
+        color: demoPalette.accent,
         marginBottom: 16,
     },
     progressBar: {
         width: '100%',
         height: 8,
-        backgroundColor: '#E0E0E0',
+        backgroundColor: demoPalette.border,
         borderRadius: 4,
         marginBottom: 16,
         overflow: 'hidden',
     },
     progressFill: {
         height: '100%',
-        backgroundColor: '#FF9800',
+        backgroundColor: demoPalette.accent,
         borderRadius: 4,
     },
     managementSteps: {
@@ -661,20 +662,20 @@ const styles = StyleSheet.create({
     },
     stepText: {
         fontSize: 14,
-        color: '#666666',
+        color: demoPalette.textSecondary,
         marginBottom: 8,
         lineHeight: 20,
     },
     completeTitle: {
         fontSize: 22,
         fontWeight: '700',
-        color: '#FF4081',
+        color: demoPalette.highlight,
         marginBottom: 16,
         textAlign: 'center',
     },
     completeDescription: {
         fontSize: 14,
-        color: '#666666',
+        color: demoPalette.textSecondary,
         textAlign: 'center',
         marginBottom: 16,
         lineHeight: 20,
@@ -685,7 +686,7 @@ const styles = StyleSheet.create({
     },
     featureItem: {
         fontSize: 14,
-        color: '#333333',
+        color: demoPalette.textPrimary,
         marginBottom: 8,
         lineHeight: 20,
     },

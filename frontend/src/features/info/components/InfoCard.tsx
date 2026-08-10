@@ -62,10 +62,10 @@ const InfoCard: React.FC<InfoCardProps> = ({
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.white,
         borderRadius: 12,
         marginBottom: spacing.md,
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.1,
         shadowRadius: 4,
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     image: {
         width: '100%',
         height: 160,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: colors.lightGray,
     },
     textContainer: {
         padding: spacing.md,
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
         marginBottom: spacing.sm,
     },
     category: {
-        color: '#ffffff',
+        color: colors.white,
         fontSize: 12,
         fontWeight: '600',
     },
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
     },
     date: {
         fontSize: 12,
-        color: '#999',
+        color: colors.textLight,
         marginTop: spacing.xs,
     },
 });

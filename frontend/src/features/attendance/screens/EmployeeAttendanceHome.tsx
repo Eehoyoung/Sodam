@@ -196,7 +196,11 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
             if (selectedStore) {
                 loadStoreScopedData(selectedStore);
             }
-        // managedStores.refetch is stable; depending on the whole query result would recreate the focus callback.
+        // 세 값은 의도적으로 좁혀서 의존한다 —
+        //  · managedStores: refetch 만 안정적이고, 쿼리 결과 전체를 넣으면 매 갱신마다 콜백이 새로 만들어진다
+        //  · selectedStore: 객체 정체성이 stores 갱신마다 바뀐다(아래 useEffect 의 무한 루프 주석과 같은 이유). id 로 충분
+        //  · visualFixture: 시각 검증 전용 prop 이라 마운트 동안 불변이다
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- 위 세 값은 의도적으로 좁혀 의존한다(무한 루프·불필요한 재생성 방지)
         }, [loadStores, selectedStore?.id, loadStoreScopedData, managedStores.refetch]),
     );
 
@@ -725,7 +729,7 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
                                 </View>
                             </View>
 
-                            <View style={[styles.timerPanel, {backgroundColor: c.brandPrimarySoft, borderWidth: 1, borderColor: c.brandPrimary}]}>
+                            <View style={[styles.timerPanel, styles.hairlineRing, {backgroundColor: c.brandPrimarySoft, borderColor: c.brandPrimary}]}>
                                 {state === 'WORKING' ? (
                                     // 22 EmployeeWorking(중복 통합) — AttendanceScreen 의 isWorking 히어로와
                                     // 동일한 EmployeeWorkingRing 을 사용(코랄→틸 진행률 링).
@@ -847,7 +851,7 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
                                             </AppText>
                                             {policy.isNew ? (
                                                 <View style={[styles.policyNewBadge, {backgroundColor: c.infoBg}]}>
-                                                    <AppText variant="caption" weight="700" style={{color: c.info, fontSize: 10}}>
+                                                    <AppText variant="caption" weight="700" style={[styles.badgeText, {color: c.info}]}>
                                                         NEW
                                                     </AppText>
                                                 </View>
@@ -1163,6 +1167,8 @@ const styles = StyleSheet.create({
     policyDot: {width: 6, height: 6, borderRadius: 3, flexShrink: 0},
     policyTitleRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: 2},
     policyNewBadge: {paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.pill, flexShrink: 0},
+    badgeText: {fontSize: 10},
+    hairlineRing: {borderWidth: 1},
 
     flex: {
         flex: 1,

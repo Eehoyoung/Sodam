@@ -1,5 +1,6 @@
 import React from 'react';
 import {StyleSheet, Text, TextStyle, TouchableOpacity, View, ViewStyle,} from 'react-native';
+import {colors} from '../../../theme/tokens';
 
 interface CheckboxProps {
     checked: boolean;
@@ -99,7 +100,7 @@ const styles = StyleSheet.create({
     checkmark: {
         borderBottomWidth: 2,
         borderLeftWidth: 2,
-        borderColor: '#fff',
+        borderColor: colors.textInverse,
         transform: [{rotate: '-45deg'}],
         marginBottom: 3,
     },

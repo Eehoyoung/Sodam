@@ -1,6 +1,7 @@
 import React from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { COLORS } from '../../../common/components/logo/Colors';
+import {colors} from '../../../theme/tokens';
 import { AttendanceRecord, AttendanceStatus } from '../types';
 
 interface Props {
@@ -69,7 +70,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
-    shadowColor: '#000',
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 6,

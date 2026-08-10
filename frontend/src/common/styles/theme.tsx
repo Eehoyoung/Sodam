@@ -16,6 +16,12 @@ export const colors = {
     warning: '#FFCC00',
     error: '#FF3B30',
     info: '#5AC8FA',
+    // 중립색 — 컴포넌트에 흩어져 있던 리터럴을 이름으로 모은 것(값 변경 없음).
+    // ⚠️ 이 팔레트는 v2 잔재다. 새 화면은 theme/tokens.ts 의 v3 토큰을 쓴다(frontend.md).
+    white: '#FFFFFF',
+    lightGray: '#F0F0F0',
+    textLight: '#999999',
+    shadow: '#000000',
 };
 
 // 간격 정의

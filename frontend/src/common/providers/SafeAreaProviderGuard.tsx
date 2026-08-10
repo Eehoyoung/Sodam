@@ -1,5 +1,5 @@
 import React from 'react';
-import { UIManager, View } from 'react-native';
+import { StyleSheet, UIManager, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 interface Props {
@@ -18,10 +18,14 @@ const SafeAreaProviderGuard: React.FC<Props> = ({ children }) => {
 
   if (!hasSafeAreaVM) {
     console.warn('[SAFE-AREA] RNCSafeAreaProvider ViewManager not found. Falling back to View.');
-    return <View style={{ flex: 1 }}>{children}</View>;
+    return <View style={styles.fill}>{children}</View>;
   }
 
   return <SafeAreaProvider>{children}</SafeAreaProvider>;
 };
+
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+});
 
 export default SafeAreaProviderGuard;

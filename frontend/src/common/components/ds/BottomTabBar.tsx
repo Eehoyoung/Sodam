@@ -13,7 +13,7 @@
 import React, {ReactNode} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {radius, shadow, spacing} from '../../../theme/tokens';
+import {colors, radius, shadow, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../hooks/useThemeColors';
 
 export type TabRole = 'owner' | 'manager' | 'employee' | 'personal';
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     wrap: {
         paddingHorizontal: spacing.md,
         paddingTop: spacing.sm,
-        backgroundColor: 'transparent',
+        backgroundColor: colors.transparent,
     },
     bar: {
         height: 62,

@@ -5,7 +5,7 @@
  */
 
 import React, {ReactNode} from 'react';
-import {ViewStyle, View, NativeSyntheticEvent, NativeScrollEvent} from 'react-native';
+import {ViewStyle, View, StyleSheet, NativeSyntheticEvent, NativeScrollEvent} from 'react-native';
 import {ENABLE_ANIMATIONS, stageAtLeast, ANIMATION_RECOVERY_STAGE} from '../../navigation/config';
 
 // Conditionally import Reanimated components only when needed
@@ -156,7 +156,7 @@ export const JSISafeFadeAnimation: React.FC<FadeAnimationProps> = ({
     if (!shouldUseAnimations) {
         // Fallback to regular View when animations are disabled
         return (
-            <View style={[{opacity: isVisible ? 1 : 0}, style]}>
+            <View style={[isVisible ? styles.visible : styles.hidden, style]}>
                 {children}
             </View>
         );
@@ -355,19 +355,19 @@ export const JSISafeProgressBar: React.FC<ProgressBarProps> = ({
     return (
         <Animated.View
             style={[
+                styles.clip,
                 {
                     height,
                     backgroundColor,
                     borderRadius: height / 2,
-                    overflow: 'hidden',
                 },
                 style,
             ]}
         >
             <Animated.View
                 style={[
+                    styles.fillHeight,
                     {
-                        height: '100%',
                         backgroundColor: progressColor,
                         borderRadius: height / 2,
                     },
@@ -530,6 +530,13 @@ export const JSISafeCombinedAnimation: React.FC<CombinedAnimationProps> = ({
         </Animated.View>
     );
 };
+
+const styles = StyleSheet.create({
+    visible: {opacity: 1},
+    hidden: {opacity: 0},
+    clip: {overflow: 'hidden'},
+    fillHeight: {height: '100%'},
+});
 
 export default {
     JSISafeFadeAnimation,

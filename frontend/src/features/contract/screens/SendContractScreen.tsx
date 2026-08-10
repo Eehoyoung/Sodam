@@ -29,7 +29,7 @@ import {
     ScreenContainer,
     AppHeader,
 } from '../../../common/components/ds';
-import {spacing} from '../../../theme/tokens';
+import {colors, spacing} from '../../../theme/tokens';
 import {
     DATE_DIGITS_HELPER,
     TIME_DIGITS_HELPER,
@@ -1777,7 +1777,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: '#CBD5E1',
+        borderColor: colors.border,
         marginTop: spacing.sm,
     },
     helpButtonText: {lineHeight: 16},

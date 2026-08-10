@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
 import type {Meta, StoryObj} from '@storybook/react-native-web-vite';
-import {View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
+import {colors} from '../../../theme/tokens';
 import {StorePassRow, StorePassItem} from './StorePassRow';
 
 const SAMPLE_STORES: StorePassItem[] = [
@@ -15,12 +16,16 @@ const InteractiveStorePassRow: React.FC<{items: StorePassItem[]}> = ({items}) =>
     return <StorePassRow items={items} selectedId={selectedId} onSelect={setSelectedId} />;
 };
 
+const styles = StyleSheet.create({
+    canvas: {padding: 16, maxWidth: 400, backgroundColor: colors.surfaceCanvas},
+});
+
 const meta: Meta<typeof StorePassRow> = {
     title: 'DS/StorePassRow',
     component: StorePassRow,
     decorators: [
         Story => (
-            <View style={{padding: 16, maxWidth: 400, backgroundColor: '#F7F7F4'}}>
+            <View style={styles.canvas}>
                 <Story />
             </View>
         ),

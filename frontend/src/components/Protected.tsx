@@ -1,5 +1,5 @@
 import React, {useEffect} from 'react';
-import {ActivityIndicator, View} from 'react-native';
+import {ActivityIndicator, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {useAuth} from '../contexts/AuthContext';
 import {RootNavigationProp} from '../navigation/types';
@@ -31,7 +31,7 @@ const Protected: React.FC<Props> = ({children}) => {
 
     if (loading) {
         return (
-            <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
+            <View style={styles.center}>
                 <ActivityIndicator />
             </View>
         );
@@ -43,5 +43,9 @@ const Protected: React.FC<Props> = ({children}) => {
 
     return <>{children}</>;
 };
+
+const styles = StyleSheet.create({
+    center: {flex: 1, alignItems: 'center', justifyContent: 'center'},
+});
 
 export default Protected;

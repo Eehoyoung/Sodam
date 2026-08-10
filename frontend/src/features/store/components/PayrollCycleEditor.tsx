@@ -2,7 +2,7 @@ import React from 'react';
 import {StyleSheet, TextInput, TouchableOpacity, View} from 'react-native';
 import {AppText} from '../../../common/components/ds';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import {spacing} from '../../../theme/tokens';
+import {colors, spacing} from '../../../theme/tokens';
 
 export type MonthOffset = 'PREV_MONTH' | 'CURRENT_MONTH' | 'NEXT_MONTH';
 
@@ -143,7 +143,7 @@ const LastDayChip: React.FC<LastDayChipProps> = ({on, onToggle}) => {
     const c = useThemeColors();
     return (
         <TouchableOpacity
-            style={[styles.chip, {borderColor: on ? c.brandPrimary : c.border, backgroundColor: on ? c.brandPrimarySoft : 'transparent'}]}
+            style={[styles.chip, !on && styles.chipOff, {borderColor: on ? c.brandPrimary : c.border, ...(on ? {backgroundColor: c.brandPrimarySoft} : null)}]}
             onPress={onToggle}>
             <AppText variant="caption" weight="700" style={{color: on ? c.brandPrimary : c.textSecondary}}>
                 말일{on ? ' ✓' : ''}
@@ -188,6 +188,7 @@ const PayrollCycleEditor: React.FC<Props> = ({value, onChange}) => {
 };
 
 const styles = StyleSheet.create({
+    chipOff: {backgroundColor: colors.transparent},
     wrap: {gap: spacing.md},
     row: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap'},
     rowLabel: {width: 52},

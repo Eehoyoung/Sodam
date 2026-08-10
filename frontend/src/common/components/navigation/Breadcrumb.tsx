@@ -1,5 +1,6 @@
 import React from 'react';
 import {StyleSheet, Text, TextStyle, TouchableOpacity, View, ViewStyle} from 'react-native';
+import {colors} from '../../../theme/tokens';
 
 // 경로 아이템 타입 정의
 export interface BreadcrumbItem {
@@ -96,15 +97,15 @@ const styles = StyleSheet.create({
     },
     text: {
         fontSize: 14,
-        color: '#8E8E93',
+        color: colors.textSecondary,
     },
     activeText: {
-        color: '#000000',
+        color: colors.textPrimary,
         fontWeight: '500',
     },
     separator: {
         marginHorizontal: 4,
-        color: '#C7C7CC',
+        color: colors.textTertiary,
         fontSize: 14,
     },
 });

@@ -199,12 +199,13 @@ interface RowProps {
 
 // v3 아티팩트 40: Switch 대신 배지(켜짐=teal/success, 꺼짐=neutral) — 행 전체 탭으로 토글.
 const Row: React.FC<RowProps> = ({label, sub, value, disabled, onChange}) => {
+    const styles = useStyles();
     return (
         <AppListItem
             title={label}
             subtitle={sub}
             onPress={disabled ? undefined : () => onChange(!value)}
-            style={disabled ? {opacity: 0.5} : undefined}
+            style={disabled ? styles.dimmed : undefined}
             right={<AppBadge label={value ? '켜짐' : '꺼짐'} tone={value ? 'success' : 'neutral'} />}
         />
     );
@@ -217,7 +218,7 @@ const Section: React.FC<{
 }> = ({title, children, disabled}) => {
     const styles = useStyles();
     return (
-        <View style={[styles.section, disabled && {opacity: 0.5}]}>
+        <View style={[styles.section, disabled && styles.dimmed]}>
             <Text style={styles.sectionTitle}>{title}</Text>
             <View style={styles.list}>{children}</View>
         </View>
@@ -241,6 +242,7 @@ const QuietTimePicker: React.FC<{
 };
 
 const makeStyles = (c: ThemeColors) => StyleSheet.create({
+    dimmed: {opacity: 0.5},
     title: {marginBottom: tokens.spacing.xs},
     subtitle: {
         fontSize: tokens.typography.sizes.md,

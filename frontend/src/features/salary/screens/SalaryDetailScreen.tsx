@@ -173,7 +173,7 @@ const SalaryDetailScreen: React.FC<Props> = ({route, visualFixture}) => {
                             key={idx}
                             style={[
                                 styles.itemRow,
-                                idx < items.length - 1 ? {borderBottomWidth: 1, borderBottomColor: c.divider} : null,
+                                idx < items.length - 1 ? [styles.itemDivider, {borderBottomColor: c.divider}] : null,
                             ]}>
                             <View style={styles.itemLabel}>
                                 <AppText variant="bodyMd" weight="600" numberOfLines={1}>{String(it.workDate)}</AppText>
@@ -205,6 +205,7 @@ const Row: React.FC<{label: string; value: string; highlight?: boolean}> = ({lab
 );
 
 const styles = StyleSheet.create({
+    itemDivider: {borderBottomWidth: 1},
     heroBlock: {paddingTop: spacing.sm, paddingBottom: spacing.xl},
     summary: {marginBottom: spacing.xxl, gap: spacing.xs},
     row: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6},

@@ -37,7 +37,7 @@ export const InfoChecklist: React.FC<InfoChecklistProps> = ({items, style}) => {
                     key={idx}
                     style={[
                         styles.row,
-                        idx < items.length - 1 ? {borderBottomWidth: 1, borderBottomColor: c.border} : null,
+                        idx < items.length - 1 ? [styles.rowDivider, {borderBottomColor: c.border}] : null,
                     ]}>
                     <View style={[styles.dot, {backgroundColor: c.infoBg}]}>
                         <AppText variant="caption" weight="800" style={{color: c.info}}>
@@ -85,6 +85,7 @@ export const buildContentChecklist = (content: string | undefined, max = 3): Inf
 };
 
 const styles = StyleSheet.create({
+    rowDivider: {borderBottomWidth: 1},
     card: {borderWidth: 1, borderRadius: radius.xl, overflow: 'hidden'},
     row: {flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, padding: spacing.md},
     dot: {

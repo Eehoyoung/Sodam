@@ -117,13 +117,13 @@ export const JSIPerformanceDashboard: React.FC<DashboardProps> = ({
     const getHealthStatusColor = (status: string) => {
         switch (status) {
             case 'healthy':
-                return '#4CAF50';
+                return DASH.good;
             case 'warning':
-                return '#FF9800';
+                return DASH.warn;
             case 'critical':
-                return '#F44336';
+                return DASH.bad;
             default:
-                return '#9E9E9E';
+                return DASH.muted;
         }
     };
 
@@ -206,9 +206,9 @@ export const JSIPerformanceDashboard: React.FC<DashboardProps> = ({
                     width={dimensions.screenWidth - 40}
                     height={200}
                     chartConfig={{
-                        backgroundColor: '#ffffff',
-                        backgroundGradientFrom: '#ffffff',
-                        backgroundGradientTo: '#ffffff',
+                        backgroundColor: DASH.white,
+                        backgroundGradientFrom: DASH.white,
+                        backgroundGradientTo: DASH.white,
                         decimalPlaces: 0,
                         color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`,
                         labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
@@ -246,9 +246,9 @@ export const JSIPerformanceDashboard: React.FC<DashboardProps> = ({
                     width={dimensions.screenWidth - 40}
                     height={200}
                     chartConfig={{
-                        backgroundColor: '#ffffff',
-                        backgroundGradientFrom: '#ffffff',
-                        backgroundGradientTo: '#ffffff',
+                        backgroundColor: DASH.white,
+                        backgroundGradientFrom: DASH.white,
+                        backgroundGradientTo: DASH.white,
                         decimalPlaces: 1,
                         color: (opacity = 1) => `rgba(255, 152, 0, ${opacity})`,
                         labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
@@ -382,6 +382,27 @@ export const JSIPerformanceDashboard: React.FC<DashboardProps> = ({
     );
 };
 
+/**
+ * JSI 성능 대시보드(개발·관리자 전용) 팔레트.
+ *
+ * <p>계측값을 읽는 디버그 UI라 v3 디자인 시스템의 적용 대상이 아니다 — 상태색(정상/경고/오류)이
+ * 제품 브랜드색과 섞이면 오히려 판독을 방해한다. 흩어져 있던 리터럴을 이름으로 모으기만 한다.</p>
+ */
+const DASH = {
+    info: '#2196F3',
+    good: '#4CAF50',
+    warn: '#FF9800',
+    bad: '#F44336',
+    muted: '#9E9E9E',
+    textPrimary: '#333333',
+    textSecondary: '#666666',
+    white: '#FFFFFF',
+    surface: '#F8F9FA',
+    surfaceWarm: '#F1EEE9',
+    border: '#E0E0E0',
+    overlay: 'rgba(0, 0, 0, 0.8)',
+} as const;
+
 const styles = StyleSheet.create({
     overlay: {
         position: 'absolute',
@@ -389,13 +410,13 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backgroundColor: DASH.overlay,
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 1000,
     },
     dashboard: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: DASH.white,
         borderRadius: 20,
         width: '95%',
         height: '90%',
@@ -407,46 +428,46 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 20,
         borderBottomWidth: 1,
-        borderBottomColor: '#E0E0E0',
+        borderBottomColor: DASH.border,
     },
     title: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#333333',
+        color: DASH.textPrimary,
     },
     closeButton: {
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#F1EEE9',
+        backgroundColor: DASH.surfaceWarm,
         justifyContent: 'center',
         alignItems: 'center',
     },
     closeButtonText: {
         fontSize: 18,
-        color: '#666666',
+        color: DASH.textSecondary,
     },
     controls: {
         flexDirection: 'row',
         justifyContent: 'space-around',
         padding: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#E0E0E0',
+        borderBottomColor: DASH.border,
     },
     controlButton: {
-        backgroundColor: '#2196F3',
+        backgroundColor: DASH.info,
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 8,
     },
     controlButtonText: {
-        color: '#FFFFFF',
+        color: DASH.white,
         fontWeight: 'bold',
     },
     tabs: {
         flexDirection: 'row',
         borderBottomWidth: 1,
-        borderBottomColor: '#E0E0E0',
+        borderBottomColor: DASH.border,
     },
     tab: {
         flex: 1,
@@ -455,14 +476,14 @@ const styles = StyleSheet.create({
     },
     activeTab: {
         borderBottomWidth: 2,
-        borderBottomColor: '#2196F3',
+        borderBottomColor: DASH.info,
     },
     tabText: {
         fontSize: 16,
-        color: '#666666',
+        color: DASH.textSecondary,
     },
     activeTabText: {
-        color: '#2196F3',
+        color: DASH.info,
         fontWeight: 'bold',
     },
     content: {
@@ -470,7 +491,7 @@ const styles = StyleSheet.create({
         padding: 16,
     },
     healthCard: {
-        backgroundColor: '#F8F9FA',
+        backgroundColor: DASH.surface,
         borderRadius: 12,
         padding: 16,
         marginBottom: 16,
@@ -479,7 +500,7 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
         marginBottom: 12,
-        color: '#333333',
+        color: DASH.textPrimary,
     },
     healthStatusContainer: {
         flexDirection: 'row',
@@ -499,7 +520,7 @@ const styles = StyleSheet.create({
     },
     healthScore: {
         fontSize: 14,
-        color: '#666666',
+        color: DASH.textSecondary,
     },
     issuesContainer: {
         marginTop: 12,
@@ -507,12 +528,12 @@ const styles = StyleSheet.create({
     issuesTitle: {
         fontSize: 14,
         fontWeight: 'bold',
-        color: '#F44336',
+        color: DASH.bad,
         marginBottom: 4,
     },
     issueText: {
         fontSize: 12,
-        color: '#F44336',
+        color: DASH.bad,
         marginBottom: 2,
     },
     recommendationsContainer: {
@@ -521,18 +542,18 @@ const styles = StyleSheet.create({
     recommendationsTitle: {
         fontSize: 14,
         fontWeight: 'bold',
-        color: '#2196F3',
+        color: DASH.info,
         marginBottom: 4,
     },
     recommendationText: {
         fontSize: 12,
-        color: '#2196F3',
+        color: DASH.info,
         marginBottom: 2,
     },
     quickStats: {
         flexDirection: 'row',
         justifyContent: 'space-around',
-        backgroundColor: '#F8F9FA',
+        backgroundColor: DASH.surface,
         borderRadius: 12,
         padding: 16,
         marginBottom: 16,
@@ -543,15 +564,15 @@ const styles = StyleSheet.create({
     statValue: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#2196F3',
+        color: DASH.info,
     },
     statLabel: {
         fontSize: 12,
-        color: '#666666',
+        color: DASH.textSecondary,
         marginTop: 4,
     },
     chartContainer: {
-        backgroundColor: '#F8F9FA',
+        backgroundColor: DASH.surface,
         borderRadius: 12,
         padding: 16,
         marginBottom: 16,
@@ -561,13 +582,13 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         marginBottom: 12,
-        color: '#333333',
+        color: DASH.textPrimary,
     },
     chart: {
         borderRadius: 16,
     },
     crashContainer: {
-        backgroundColor: '#F8F9FA',
+        backgroundColor: DASH.surface,
         borderRadius: 12,
         padding: 16,
     },
@@ -575,39 +596,39 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         marginBottom: 12,
-        color: '#333333',
+        color: DASH.textPrimary,
     },
     crashItem: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: DASH.white,
         borderRadius: 8,
         padding: 12,
         marginBottom: 8,
         borderLeftWidth: 4,
-        borderLeftColor: '#F44336',
+        borderLeftColor: DASH.bad,
     },
     crashTimestamp: {
         fontSize: 12,
-        color: '#666666',
+        color: DASH.textSecondary,
         marginBottom: 4,
     },
     crashComponent: {
         fontSize: 14,
         fontWeight: 'bold',
-        color: '#333333',
+        color: DASH.textPrimary,
         marginBottom: 4,
     },
     crashError: {
         fontSize: 12,
-        color: '#F44336',
+        color: DASH.bad,
         marginBottom: 4,
     },
     crashPlatform: {
         fontSize: 12,
-        color: '#666666',
+        color: DASH.textSecondary,
     },
     noDataText: {
         fontSize: 14,
-        color: '#666666',
+        color: DASH.textSecondary,
         textAlign: 'center',
         fontStyle: 'italic',
     },

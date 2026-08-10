@@ -458,7 +458,7 @@ export default function MasterMyPageScreen({navigation, visualFixture}: MasterMy
                     ⚠️ 'spot' 강조(코랄 테두리)는 OwnerDashboardScreen의 "오늘 처리할 일" 같은
                     CTA 콜아웃 전용 — 여기는 숫자 요약(KPI)이라 일반 카드 테두리를 쓴다. */}
                 <View style={styles.section}>
-                    <View style={[styles.heroCard, {backgroundColor: c.background, borderWidth: 1, borderColor: c.border}]}>
+                    <View style={[styles.heroCard, styles.hairlineRing, {backgroundColor: c.background, borderColor: c.border}]}>
                         <AppText variant="caption" tone="secondary" style={styles.heroLabel}>이번달 총 인건비</AppText>
                         <AmountText size={28} tone="brand">{fmt(masterInfo.monthlyTotalLaborCost)}원</AmountText>
                         <View style={[styles.heroDivider, {backgroundColor: c.border}]} />
@@ -597,7 +597,7 @@ export default function MasterMyPageScreen({navigation, visualFixture}: MasterMy
                                                 </AppText>
                                                 {policy.isNew && (
                                                     <View style={[styles.newBadge, {backgroundColor: c.infoBg}]}>
-                                                        <AppText variant="caption" weight="700" style={{color: c.info, fontSize: 10}}>
+                                                        <AppText variant="caption" weight="700" style={[styles.badgeText, {color: c.info}]}>
                                                             NEW
                                                         </AppText>
                                                     </View>
@@ -655,6 +655,8 @@ export default function MasterMyPageScreen({navigation, visualFixture}: MasterMy
 }
 
 const styles = StyleSheet.create({
+    hairlineRing: {borderWidth: 1},
+    badgeText: {fontSize: 10},
     scrollView: {flex: 1},
 
     /* ── 헤더 ── */

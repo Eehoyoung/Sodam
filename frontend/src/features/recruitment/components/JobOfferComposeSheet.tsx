@@ -202,10 +202,10 @@ export const JobOfferComposeSheet: React.FC<JobOfferComposeSheetProps> = ({
                                 accessibilityState={{selected, disabled: !enabled}}
                                 style={[
                                     styles.chip,
+                                    enabled ? styles.chipEnabled : styles.chipDisabled,
                                     {
                                         borderColor: selected ? c.brandPrimary : c.border,
                                         backgroundColor: selected ? c.brandPrimarySoft : c.background,
-                                        opacity: enabled ? 1 : 0.4,
                                     },
                                 ]}>
                                 <AppText
@@ -313,6 +313,8 @@ export const JobOfferComposeSheet: React.FC<JobOfferComposeSheetProps> = ({
 };
 
 const styles = StyleSheet.create({
+    chipEnabled: {opacity: 1},
+    chipDisabled: {opacity: 0.4},
     section: {marginBottom: spacing.md},
     sectionTitle: {marginBottom: spacing.xs},
     chipRow: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm},

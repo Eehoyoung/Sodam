@@ -13,7 +13,7 @@
  */
 import React, {ReactNode} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {layout, spacing} from '../../../theme/tokens';
+import {colors, layout, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../hooks/useThemeColors';
 
 export interface HeaderAction {
@@ -51,8 +51,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({title, subtitle, onBack, ac
             style={[
                 styles.header,
                 dark
-                    ? {backgroundColor: 'transparent'}
-                    : {backgroundColor: c.background, borderBottomWidth: 1, borderBottomColor: c.divider},
+                    ? styles.headerDark
+                    : [styles.headerLight, {backgroundColor: c.background, borderBottomColor: c.divider}],
             ]}>
             <View style={styles.side}>
                 {onBack ? (
@@ -118,6 +118,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({title, subtitle, onBack, ac
 };
 
 const styles = StyleSheet.create({
+    headerDark: {backgroundColor: colors.transparent},
+    headerLight: {borderBottomWidth: 1},
     header: {
         height: layout.headerHeight,
         flexDirection: 'row',
