@@ -22,17 +22,16 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 
 /**
- * 주 40시간 초과 연장가산은 기본적으로 꺼져 있어야 한다 (RELEASE_GATES G-9).
+ * 주 40시간 초과 연장가산의 <b>비상 차단 스위치</b>가 실제로 동작하는지 검증한다.
  *
- * <p>정산기간 경계에 걸친 주(週)의 귀속 규칙이 확정되기 전에 이 기능을 켜면, 주가 정산 시작일에
- * 걸릴 때 앞뒤 기간 모두에서 그 주의 연장수당이 빠지거나 정산이 중단된다. 노무사 회신 전까지
- * 누군가 실수로 기본값을 뒤집지 못하도록 여기서 고정한다. 켠 상태의 계산 정확성은
- * {@code PayrollPayableHoursComplianceTest} 가 검증한다.</p>
+ * <p>운영 기본값은 활성(true)이다 — 끄면 주 6일×7시간 같은 스케줄에서 §56① 가산임금이
+ * 체계적으로 누락된다(노무·법무 2자 검토, 2026-08-10). 이 스위치는 사고 시 되돌릴 수단으로만
+ * 남겨 둔 것이므로, 여기서는 "끄면 정말 꺼지는가"만 확인한다. 켠 상태(=기본값)의 계산
+ * 정확성은 {@code PayrollPayableHoursComplianceTest} 가 검증한다.</p>
  */
-@SpringBootTest
+@SpringBootTest(properties = "sodam.payroll.weekly-overtime-enabled=false")
 @ActiveProfiles("test")
 @Transactional
 class PayrollWeeklyOvertimeDisabledByDefaultTest {
@@ -61,8 +60,8 @@ class PayrollWeeklyOvertimeDisabledByDefaultTest {
     }
 
     @Test
-    @DisplayName("주 42시간을 일해도 기본 설정에서는 주 단위 연장가산이 붙지 않는다")
-    void 주40시간_초과분은_기본설정에서_가산되지_않는다() {
+    @DisplayName("스위치를 끄면 주 42시간을 일해도 주 단위 가산이 산정되지 않는다")
+    void 스위치를_끄면_주단위_가산이_산정되지_않는다() {
         LocalDate monday = LocalDate.of(2026, 8, 3);
         for (int offset = 0; offset < 6; offset++) {
             LocalDate day = monday.plusDays(offset);
@@ -72,25 +71,12 @@ class PayrollWeeklyOvertimeDisabledByDefaultTest {
         Payroll payroll = payrollService.calculatePayroll(employee.getId(), store.getId(),
                 LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 31));
 
-        // 일 8시간을 넘긴 날이 없으므로 연장은 0이어야 한다(주 단위 가산이 꺼져 있음).
+        assertThat(payroll.getWeeklyOvertimeHours()).isZero();
+        assertThat(payroll.getWeeklyOvertimeWage()).isZero();
+        // 일 8시간을 넘긴 날은 없으므로 일 단위 연장도 0이다.
         assertThat(payroll.getOvertimeHours()).isZero();
-        assertThat(payroll.getOvertimeWage()).isZero();
-    }
-
-    @Test
-    @DisplayName("주가 정산 시작일에 걸쳐도 정산이 중단되지 않는다")
-    void 정산기간_경계에_걸친_주에도_정산이_막히지_않는다() {
-        // 월~토(7/27~8/1) 근무 후, 정산기간이 8/1 에 시작해 그 주의 종료일(8/2)만 포함하는 상황.
-        // 기능이 켜져 있으면 PAYROLL_WEEKLY_OVERTIME_ALLOCATION_REQUIRED 로 중단되던 패턴이다.
-        LocalDate monday = LocalDate.of(2026, 7, 27);
-        for (int offset = 0; offset < 6; offset++) {
-            LocalDate day = monday.plusDays(offset);
-            work(day, day.atTime(16, 30));
-        }
-
-        assertThatCode(() -> payrollService.calculatePayroll(employee.getId(), store.getId(),
-                LocalDate.of(2026, 8, 2), LocalDate.of(2026, 8, 2)))
-                .doesNotThrowAnyException();
+        // 근로시간과 기본임금은 그대로 지급된다 — 사라지는 것은 가산분뿐이다.
+        assertThat(payroll.getRegularHours()).isEqualTo(42.0);
     }
 
     private void work(LocalDate day, java.time.LocalDateTime checkOut) {

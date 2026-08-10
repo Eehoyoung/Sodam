@@ -236,9 +236,9 @@ sodam:
     week-start-policy: ${SODAM_PAYROLL_WEEK_START_POLICY:MONDAY}
     # 계약서 주휴일을 주 기산일로 읽는 규칙은 노무사 회신으로만 바꾼다.
     contract-week-start-rule: ${SODAM_PAYROLL_CONTRACT_WEEK_START_RULE:DAY_AFTER_WEEKLY_HOLIDAY}
-    # G-9: 주 40시간 초과 연장가산. 구현·테스트는 완료됐으나 정산기간 경계에 걸친 주(週)의 귀속
-    #      규칙이 확정되기 전까지 비활성 — 켜면 일부 주의 연장수당이 앞뒤 기간 모두에서 누락된다.
-    weekly-overtime-enabled: ${SODAM_PAYROLL_WEEKLY_OVERTIME_ENABLED:false}
+    # 주 40시간 초과 연장가산(§56①). 끄면 주 6일×7시간 같은 스케줄에서 가산임금이 누락된다.
+    # 되돌릴 수단으로만 남긴 스위치 — 임의로 끄지 말 것.
+    weekly-overtime-enabled: ${SODAM_PAYROLL_WEEKLY_OVERTIME_ENABLED:true}
     # G-10: 야간가산에서 법정 휴게시간 차감. 휴게 시각이 기록되지 않아 위치를 추정해야 하므로,
     #       근로자에게 불리한 추정을 하지 않도록 기본 비활성. 노무사 회신 후에만 켠다.
     night-break-deduction-enabled: ${SODAM_PAYROLL_NIGHT_BREAK_DEDUCTION_ENABLED:false}

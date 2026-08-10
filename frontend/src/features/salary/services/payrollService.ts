@@ -88,6 +88,10 @@ export interface PayrollCalculationItem {
   nightWorkHours: number;
   nightWorkWage: number;
   weeklyAllowance: number;
+  /** 주 40시간 초과 연장근로 시간 수(§56①). 시행령 §27조의2 상 명세서에 시간 수를 함께 적어야 한다. */
+  weeklyOvertimeHours: number;
+  /** 위 시간의 가산분(50%). 기본 100%는 정상근로 임금에 이미 포함돼 있다. */
+  weeklyOvertimeWage: number;
   bonusWage: number;
   grossWage: number;
   taxAmount: number;
@@ -133,6 +137,8 @@ async function calculate(payload: PayrollCalculatePayload): Promise<PayrollCalcu
     nightWorkHours: d.nightWorkHours ?? 0,
     nightWorkWage: d.nightWorkWage ?? 0,
     weeklyAllowance: d.weeklyAllowance ?? 0,
+    weeklyOvertimeHours: d.weeklyOvertimeHours ?? 0,
+    weeklyOvertimeWage: d.weeklyOvertimeWage ?? 0,
     bonusWage: d.bonusWage ?? 0,
     grossWage: d.grossWage ?? 0,
     taxAmount: d.taxAmount ?? 0,
