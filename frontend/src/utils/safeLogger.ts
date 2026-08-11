@@ -24,9 +24,13 @@ class SafeLogger {
         this.maxLogBoxErrors = options.maxLogBoxErrors ?? 3;
 
         // 원본 console 메서드 저장
+        // LogBox 무한 루프를 끊으려면 교체되기 전의 원본 console 을 붙잡아 둬야 한다.
+        // 여기서 logger 를 쓰면 순환이 된다.
+        /* eslint-disable no-console -- 원본 console 캡처 지점 */
         this.originalConsoleError = console.error;
         this.originalConsoleWarn = console.warn;
         this.originalConsoleLog = console.log;
+        /* eslint-enable no-console */
     }
 
     /**

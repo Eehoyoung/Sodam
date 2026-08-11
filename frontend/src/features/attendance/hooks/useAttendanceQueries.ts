@@ -1,6 +1,7 @@
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import attendanceService from '../services/attendanceService';
 import {handleQueryError} from '../../../common/query/errorHandler';
+import {logger} from '../../../utils/logger';
 import {
     AttendanceFilter,
     AttendanceRecord,
@@ -265,10 +266,10 @@ export const useCheckIn = () => {
                 predicate: (query) => query.queryKey.includes('records')
             });
 
-            console.log('[TanStack Query] 출근 처리 완료 - 캐시 업데이트');
+            logger.debug('[TanStack Query] 출근 처리 완료 - 캐시 업데이트');
         },
         onError: (error: any) => {
-            console.error('[TanStack Query] 출근 처리 실패:', error);
+            logger.error('[TanStack Query] 출근 처리 실패:', error);
         },
         meta: {
             errorMessage: '출근 처리에 실패했습니다.',
@@ -316,10 +317,10 @@ export const useCheckOut = () => {
                 predicate: (query) => query.queryKey.includes('records')
             });
 
-            console.log('[TanStack Query] 퇴근 처리 완료 - 캐시 업데이트');
+            logger.debug('[TanStack Query] 퇴근 처리 완료 - 캐시 업데이트');
         },
         onError: (error: any) => {
-            console.error('[TanStack Query] 퇴근 처리 실패:', error);
+            logger.error('[TanStack Query] 퇴근 처리 실패:', error);
         },
         meta: {
             errorMessage: '퇴근 처리에 실패했습니다.',
@@ -372,10 +373,10 @@ export const useUpdateAttendance = () => {
                 predicate: (query) => query.queryKey.includes('records')
             });
 
-            console.log('[TanStack Query] 출퇴근 기록 수정 완료 - 캐시 업데이트');
+            logger.debug('[TanStack Query] 출퇴근 기록 수정 완료 - 캐시 업데이트');
         },
         onError: (error: any) => {
-            console.error('[TanStack Query] 출퇴근 기록 수정 실패:', error);
+            logger.error('[TanStack Query] 출퇴근 기록 수정 실패:', error);
         },
         meta: {
             errorMessage: '출퇴근 기록 수정에 실패했습니다.',
@@ -414,10 +415,10 @@ export const useDeleteAttendance = () => {
                     query.queryKey.includes('employee')
             });
 
-            console.log('[TanStack Query] 출퇴근 기록 삭제 완료 - 캐시 업데이트');
+            logger.debug('[TanStack Query] 출퇴근 기록 삭제 완료 - 캐시 업데이트');
         },
         onError: (error: any) => {
-            console.error('[TanStack Query] 출퇴근 기록 삭제 실패:', error);
+            logger.error('[TanStack Query] 출퇴근 기록 삭제 실패:', error);
         },
         meta: {
             errorMessage: '출퇴근 기록 삭제에 실패했습니다.',
@@ -489,10 +490,10 @@ export const useBatchUpdateAttendanceStatus = () => {
                 queryKey: attendanceQueryKeys.all
             });
 
-            console.log('[TanStack Query] 출퇴근 상태 일괄 업데이트 완료 - 캐시 무효화');
+            logger.debug('[TanStack Query] 출퇴근 상태 일괄 업데이트 완료 - 캐시 무효화');
         },
         onError: (error: any) => {
-            console.error('[TanStack Query] 출퇴근 상태 일괄 업데이트 실패:', error);
+            logger.error('[TanStack Query] 출퇴근 상태 일괄 업데이트 실패:', error);
         },
         meta: {
             errorMessage: '출퇴근 상태 일괄 업데이트에 실패했습니다.',

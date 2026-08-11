@@ -11,6 +11,7 @@ import {
     RESULTS
 } from 'react-native-permissions';
 import {safeLogger} from '../utils/safeLogger';
+import {logger} from '../utils/logger';
 
 /**
  * 권한 타입 정의
@@ -106,7 +107,7 @@ export class PermissionService {
             const permission = this.getPermissionForPlatform(type);
             const status = await check(permission);
 
-            console.log(`[DEBUG_LOG] 권한 확인 - ${type}:`, status);
+            logger.debug(`[DEBUG_LOG] 권한 확인 - ${type}:`, status);
 
             return {
                 granted: status === RESULTS.GRANTED,
@@ -114,7 +115,7 @@ export class PermissionService {
                 canAskAgain: status !== RESULTS.BLOCKED,
             };
         } catch (error) {
-            console.error(`[DEBUG_LOG] 권한 확인 실패 - ${type}:`, error);
+            logger.error(`[DEBUG_LOG] 권한 확인 실패 - ${type}:`, error);
             safeLogger.error(`Permission check failed for ${type}`, error);
 
             return {
@@ -166,7 +167,7 @@ export class PermissionService {
                 }
             }
 
-            console.log('[DEBUG_LOG] 다중 권한 확인 결과:', {
+            logger.debug('[DEBUG_LOG] 다중 권한 확인 결과:', {
                 allGranted,
                 deniedPermissions,
                 blockedPermissions,
@@ -179,7 +180,7 @@ export class PermissionService {
                 blockedPermissions,
             };
         } catch (error) {
-            console.error('[DEBUG_LOG] 다중 권한 확인 실패:', error);
+            logger.error('[DEBUG_LOG] 다중 권한 확인 실패:', error);
             safeLogger.error('Multiple permissions check failed', error);
 
             // 에러 발생 시 모든 권한을 거부된 것으로 처리
@@ -251,10 +252,10 @@ export class PermissionService {
             }
 
             // 권한 요청
-            console.log(`[DEBUG_LOG] 권한 요청 - ${type}`);
+            logger.debug(`[DEBUG_LOG] 권한 요청 - ${type}`);
             const status = await request(permission);
 
-            console.log(`[DEBUG_LOG] 권한 요청 결과 - ${type}:`, status);
+            logger.debug(`[DEBUG_LOG] 권한 요청 결과 - ${type}:`, status);
 
             return {
                 granted: status === RESULTS.GRANTED,
@@ -262,7 +263,7 @@ export class PermissionService {
                 canAskAgain: status !== RESULTS.BLOCKED,
             };
         } catch (error) {
-            console.error(`[DEBUG_LOG] 권한 요청 실패 - ${type}:`, error);
+            logger.error(`[DEBUG_LOG] 권한 요청 실패 - ${type}:`, error);
             safeLogger.error(`Permission request failed for ${type}`, error);
 
             return {
@@ -322,7 +323,7 @@ export class PermissionService {
                 return acc;
             }, {} as Record<Permission, Permission>);
 
-            console.log('[DEBUG_LOG] 다중 권한 요청:', permissionsToRequest);
+            logger.debug('[DEBUG_LOG] 다중 권한 요청:', permissionsToRequest);
             const statuses = await requestMultiple(Object.keys(permissions) as Permission[]);
 
             // 결과 업데이트
@@ -351,7 +352,7 @@ export class PermissionService {
 
             const allGranted = Object.values(updatedResults).every(result => result.granted);
 
-            console.log('[DEBUG_LOG] 다중 권한 요청 결과:', {
+            logger.debug('[DEBUG_LOG] 다중 권한 요청 결과:', {
                 allGranted,
                 deniedPermissions: newDeniedPermissions,
                 blockedPermissions: newBlockedPermissions,
@@ -364,7 +365,7 @@ export class PermissionService {
                 blockedPermissions: newBlockedPermissions,
             };
         } catch (error) {
-            console.error('[DEBUG_LOG] 다중 권한 요청 실패:', error);
+            logger.error('[DEBUG_LOG] 다중 권한 요청 실패:', error);
             safeLogger.error('Multiple permissions request failed', error);
 
             return {
@@ -391,13 +392,13 @@ export class PermissionService {
         const requiredPermissions: PermissionType[] = ['location'];
         const optionalPermissions: PermissionType[] = ['nfc'];
 
-        console.log('[DEBUG_LOG] 출퇴근 관리 권한 요청 시작');
+        logger.debug('[DEBUG_LOG] 출퇴근 관리 권한 요청 시작');
 
         // 필수 권한 먼저 요청
         const requiredResult = await this.requestMultiplePermissions(requiredPermissions, true);
 
         if (!requiredResult.allGranted) {
-            console.warn('[DEBUG_LOG] 필수 권한이 허용되지 않음:', requiredResult.deniedPermissions);
+            logger.warn('[DEBUG_LOG] 필수 권한이 허용되지 않음:', requiredResult.deniedPermissions);
             return requiredResult;
         }
 
@@ -429,7 +430,7 @@ export class PermissionService {
         try {
             await openSettings();
         } catch (error) {
-            console.error('[DEBUG_LOG] 앱 설정 열기 실패:', error);
+            logger.error('[DEBUG_LOG] 앱 설정 열기 실패:', error);
             safeLogger.error('Failed to open app settings', error);
         }
     }
@@ -512,7 +513,7 @@ export class PermissionService {
                         text: '설정으로 이동',
                         onPress: () => {
                             openSettings().catch(() => {
-                                console.error('[DEBUG_LOG] 설정 화면 열기 실패');
+                                logger.error('[DEBUG_LOG] 설정 화면 열기 실패');
                             });
                             resolve();
                         },
@@ -542,7 +543,7 @@ export class PermissionService {
                         text: '설정으로 이동',
                         onPress: () => {
                             openSettings().catch(() => {
-                                console.error('[DEBUG_LOG] 설정 화면 열기 실패');
+                                logger.error('[DEBUG_LOG] 설정 화면 열기 실패');
                             });
                             resolve();
                         },

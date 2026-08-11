@@ -10,6 +10,7 @@ import {spacing} from '../../../theme/tokens';
 
 import payrollService, {PayrollSummary} from '../services/payrollService';
 import storeService from '../../store/services/storeService';
+import {logger} from '../../../utils/logger';
 
 // 네비게이션 타입 — 같은 HomeStack 내 실제 등록된 라우트만 명시
 type SalaryStackParamList = {
@@ -63,7 +64,7 @@ const SalaryListScreen: React.FC<SalaryListScreenProps> = ({fixture}) => {
             setStores(data);
             setSelectedStoreId(prev => prev ?? data[0]?.id ?? null);
         } catch (e) {
-            console.error('Unable to load payroll stores', e);
+            logger.error('Unable to load payroll stores', e);
             setStores([]);
             setSelectedStoreId(null);
             setError(true);
@@ -84,7 +85,7 @@ const SalaryListScreen: React.FC<SalaryListScreenProps> = ({fixture}) => {
             const list = await payrollService.listByStore(storeId);
             setRows(Array.isArray(list) ? list : []);
         } catch (e) {
-            console.error('급여 목록을 가져오는 중 오류가 생겼어요:', e);
+            logger.error('급여 목록을 가져오는 중 오류가 생겼어요:', e);
             setError(true);
             AppToast.error('급여 목록을 불러오는 데 실패했어요. 다시 시도해 주세요.');
         } finally {

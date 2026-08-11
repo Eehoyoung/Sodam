@@ -6,6 +6,7 @@
 
 import {useMemo} from 'react';
 import {Dimensions} from 'react-native';
+import {logger} from '../../utils/logger';
 
 export interface ScreenDimensions {
     screenWidth: number;
@@ -91,7 +92,7 @@ export const useJSISafeDimensions = (): JSISafeDimensions => {
                 const {width, height} = windowDimensions;
                 return {width, height};
             } catch (error) {
-                console.error('useJSISafeDimensions: Failed to get dimensions:', error);
+                logger.error('useJSISafeDimensions: Failed to get dimensions:', error);
                 return {width: 375, height: 667};
             }
         }, []);

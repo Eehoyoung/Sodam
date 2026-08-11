@@ -7,6 +7,7 @@ import { subscribeSessionExpired } from '../common/auth/sessionCoordinator';
 import {navigate} from '../navigation/navigationRef';
 import PaywallHost from '../features/subscription/components/PaywallHost';
 import {useFcmRegistration} from '../common/hooks/useFcmRegistration';
+import {logger} from '../utils/logger';
 
 /**
  * 인증 컨텍스트 타입 정의
@@ -60,7 +61,7 @@ export const useAuth = (): AuthContextType => {
     const context = useContext(AuthContext);
 
     if (context === undefined) {
-        console.error('[useAuth] AuthContext not found - using default values');
+        logger.error('[useAuth] AuthContext not found - using default values');
         safeLogger.error('AuthContext not found', new Error('AuthProvider not mounted'));
 
         // 기본값 반환으로 앱 크래시 방지
@@ -132,10 +133,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
         (async () => {
             try {
                 await unifiedStorage.initialize();
-                console.log('[AuthProvider] 통합 스토리지 초기화 완료');
+                logger.debug('[AuthProvider] 통합 스토리지 초기화 완료');
                 refetchAuthRef.current();
             } catch (error) {
-                console.error('[AuthProvider] 통합 스토리지 초기화 실패:', error);
+                logger.error('[AuthProvider] 통합 스토리지 초기화 실패:', error);
                 safeLogger.error('Storage initialization failed', error);
             }
         })();
@@ -171,12 +172,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
      */
     const login = async (email: string, password: string): Promise<User> => {
         try {
-            console.log('[AuthProvider] 로그인 시도:', email);
+            logger.debug('[AuthProvider] 로그인 시도:', email);
             const result = await loginMutation.mutateAsync({email, password});
-            console.log('[AuthProvider] 로그인 성공');
+            logger.debug('[AuthProvider] 로그인 성공');
             return result.user;
         } catch (error) {
-            console.error('[AuthProvider] 로그인 실패:', error);
+            logger.error('[AuthProvider] 로그인 실패:', error);
             safeLogger.error('Login failed', error);
             throw error;
         }
@@ -188,11 +189,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
      */
     const logout = async (): Promise<void> => {
         try {
-            console.log('[AuthProvider] 로그아웃 시도');
+            logger.debug('[AuthProvider] 로그아웃 시도');
             await logoutMutation.mutateAsync();
-            console.log('[AuthProvider] 로그아웃 성공');
+            logger.debug('[AuthProvider] 로그아웃 성공');
         } catch (error) {
-            console.error('[AuthProvider] 로그아웃 실패:', error);
+            logger.error('[AuthProvider] 로그아웃 실패:', error);
             safeLogger.error('Logout failed', error);
             throw error;
         }
@@ -204,12 +205,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
      */
     const kakaoLogin = async (code: string, state: string, codeVerifier: string): Promise<User> => {
         try {
-            console.log('[AuthProvider] 카카오 로그인 시도');
+            logger.debug('[AuthProvider] 카카오 로그인 시도');
             const result = await kakaoLoginMutation.mutateAsync({code, state, codeVerifier});
-            console.log('[AuthProvider] 카카오 로그인 성공');
+            logger.debug('[AuthProvider] 카카오 로그인 성공');
             return result.user;
         } catch (error) {
-            console.error('[AuthProvider] 카카오 로그인 실패:', error);
+            logger.error('[AuthProvider] 카카오 로그인 실패:', error);
             safeLogger.error('Kakao login failed', error);
             throw error;
         }
@@ -221,12 +222,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
      */
     const appleLogin = async (identityToken: string): Promise<User> => {
         try {
-            console.log('[AuthProvider] Apple 로그인 시도');
+            logger.debug('[AuthProvider] Apple 로그인 시도');
             const result = await appleLoginMutation.mutateAsync(identityToken);
-            console.log('[AuthProvider] Apple 로그인 성공');
+            logger.debug('[AuthProvider] Apple 로그인 성공');
             return result.user;
         } catch (error) {
-            console.error('[AuthProvider] Apple 로그인 실패:', error);
+            logger.error('[AuthProvider] Apple 로그인 실패:', error);
             safeLogger.error('Apple login failed', error);
             throw error;
         }
@@ -237,7 +238,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
      */
     useEffect(() => {
         if (authError) {
-            console.error('[AuthProvider] 인증 오류:', authError);
+            logger.error('[AuthProvider] 인증 오류:', authError);
             safeLogger.error('Authentication error', authError);
         }
     }, [authError]);
@@ -247,16 +248,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
      */
     useEffect(() => {
         if (loginMutation.error) {
-            console.error('[AuthProvider] 로그인 뮤테이션 오류:', loginMutation.error);
+            logger.error('[AuthProvider] 로그인 뮤테이션 오류:', loginMutation.error);
         }
         if (logoutMutation.error) {
-            console.error('[AuthProvider] 로그아웃 뮤테이션 오류:', logoutMutation.error);
+            logger.error('[AuthProvider] 로그아웃 뮤테이션 오류:', logoutMutation.error);
         }
         if (kakaoLoginMutation.error) {
-            console.error('[AuthProvider] 카카오 로그인 뮤테이션 오류:', kakaoLoginMutation.error);
+            logger.error('[AuthProvider] 카카오 로그인 뮤테이션 오류:', kakaoLoginMutation.error);
         }
         if (appleLoginMutation.error) {
-            console.error('[AuthProvider] Apple 로그인 뮤테이션 오류:', appleLoginMutation.error);
+            logger.error('[AuthProvider] Apple 로그인 뮤테이션 오류:', appleLoginMutation.error);
         }
     }, [loginMutation.error, logoutMutation.error, kakaoLoginMutation.error, appleLoginMutation.error]);
 
@@ -299,7 +300,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
      */
     useEffect(() => {
         if (__DEV__) {
-            console.log('[AuthProvider] 상태 변경:', {
+            logger.debug('[AuthProvider] 상태 변경:', {
                 isAuthenticated,
                 user: user ? {id: user.id, name: user.name, role: user.role} : null,
                 loading,
@@ -373,7 +374,7 @@ export const RequireAuth: React.FC<RequireAuthProps> = ({
 
     // 특정 역할이 필요한 경우 역할 확인
     if (roles.length > 0 && (!user.role || !roles.includes(user.role))) {
-        console.warn('[RequireAuth] 권한 부족:', { userRole: user.role, requiredRoles: roles });
+        logger.warn('[RequireAuth] 권한 부족:', { userRole: user.role, requiredRoles: roles });
         return <>{fallback}</>;
     }
 

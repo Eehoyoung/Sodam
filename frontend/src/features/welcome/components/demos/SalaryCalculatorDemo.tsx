@@ -13,10 +13,11 @@ try {
     Easing = reanimated.Easing;
   }
 } catch (error) {
-  console.warn('[RECOVERY] SalaryCalculatorDemo: Reanimated import failed, using fallback', error);
+  logger.warn('[RECOVERY] SalaryCalculatorDemo: Reanimated import failed, using fallback', error);
 }
 import {useJSISafeDimensions} from '../../../../hooks/useJSISafeDimensions';
 import {CombinedAnimation, NumberCountAnimation, ProgressAnimation} from '../../../../common/components/animations';
+import {logger} from '../../../../utils/logger';
 
 interface SalaryCalculation {
     hours: number;
@@ -68,7 +69,7 @@ const SalaryCalculatorDemo: React.FC<SalaryCalculatorDemoProps> = ({
     try {
         useJSISafeDimensions();
     } catch (error) {
-        console.error('SalaryCalculatorDemo: Failed to get dimensions:', error);
+        logger.error('SalaryCalculatorDemo: Failed to get dimensions:', error);
         throw error;
     }
 

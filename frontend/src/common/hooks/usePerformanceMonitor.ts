@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
+import {logger} from '../../utils/logger';
 
 /**
  * 성능 지표 타입 정의
@@ -304,7 +305,7 @@ export const usePerformanceMonitor = (config: Partial<PerformanceMonitorConfig> 
 
             if (finalConfig.enableDetailedLogging) {
                 newAlerts.forEach(alert => {
-                    console.warn(`[Performance Alert] ${alert.severity.toUpperCase()}: ${alert.message}`);
+                    logger.warn(`[Performance Alert] ${alert.severity.toUpperCase()}: ${alert.message}`);
                 });
             }
         }
@@ -323,7 +324,7 @@ export const usePerformanceMonitor = (config: Partial<PerformanceMonitorConfig> 
         checkThresholds(currentMetrics);
 
         if (finalConfig.enableDetailedLogging) {
-            console.log('[Performance Monitor] 지표 업데이트:', {
+            logger.debug('[Performance Monitor] 지표 업데이트:', {
                 cacheHitRate: `${currentMetrics.cacheHitRate}%`,
                 totalCacheSize: currentMetrics.totalCacheSize,
                 averageResponseTime: `${currentMetrics.averageResponseTime}ms`,
@@ -400,7 +401,7 @@ export const usePerformanceMonitor = (config: Partial<PerformanceMonitorConfig> 
 
         if (cleanedCount > 0) {
             gcCount.current++;
-            console.log(`[Performance Monitor] 캐시 정리 완료: ${cleanedCount}개 쿼리 제거`);
+            logger.debug(`[Performance Monitor] 캐시 정리 완료: ${cleanedCount}개 쿼리 제거`);
         }
 
         return cleanedCount;
@@ -454,7 +455,7 @@ export const usePerformanceMonitor = (config: Partial<PerformanceMonitorConfig> 
         };
 
         if (finalConfig.enableDetailedLogging) {
-            console.log('[Performance Report]', report);
+            logger.debug('[Performance Report]', report);
         }
 
         return report;
@@ -476,7 +477,7 @@ export const usePerformanceMonitor = (config: Partial<PerformanceMonitorConfig> 
             updateMetrics();
         }, finalConfig.monitoringInterval);
 
-        console.log('[Performance Monitor] 모니터링 시작');
+        logger.debug('[Performance Monitor] 모니터링 시작');
     }, [isMonitoring, finalConfig.enabled, finalConfig.monitoringInterval, updateMetrics]);
 
     /**
@@ -492,7 +493,7 @@ export const usePerformanceMonitor = (config: Partial<PerformanceMonitorConfig> 
             monitoringInterval.current = null;
         }
 
-        console.log('[Performance Monitor] 모니터링 중지');
+        logger.debug('[Performance Monitor] 모니터링 중지');
     }, [isMonitoring]);
 
     /**
@@ -506,7 +507,7 @@ export const usePerformanceMonitor = (config: Partial<PerformanceMonitorConfig> 
         requestTrackers.current.clear();
         setAlerts([]);
 
-        console.log('[Performance Monitor] 통계 초기화');
+        logger.debug('[Performance Monitor] 통계 초기화');
     }, []);
 
     /**

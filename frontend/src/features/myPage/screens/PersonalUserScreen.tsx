@@ -38,6 +38,7 @@ import {colors, radius, shadow, spacing} from '../../../theme/tokens';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import AuthContext from '../../../contexts/AuthContext';
 import storeService from '../../store/services/storeService';
+import {logger} from '../../../utils/logger';
 
 // 타입 정의
 export interface Store {
@@ -422,7 +423,7 @@ const PersonalUserScreen: React.FC<PersonalUserScreenProps> = ({visualFixture}) 
                     setSelectedStoreId(mappedStores[0].id);
                 }
             } catch (error) {
-                console.error('매장 로딩 실패:', error);
+                logger.error('매장 로딩 실패:', error);
                 AppToast.error('매장 정보를 불러올 수 없어요.');
             } finally {
                 setLoadingStores(false);

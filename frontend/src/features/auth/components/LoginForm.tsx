@@ -3,6 +3,7 @@ import React, {useMemo, useState} from 'react';
 import {StyleSheet, View, TextInput, TouchableOpacity, Text, ActivityIndicator} from 'react-native';
 import {spacing} from '../../../common/styles/theme';
 import {ThemeColors, useThemeColors} from '../../../common/hooks/useThemeColors';
+import {logger} from '../../../utils/logger';
 
 interface LoginFormProps {
     onSubmit: (email: string, password: string) => Promise<void>;
@@ -47,7 +48,7 @@ const LoginForm: React.FC<LoginFormProps> = ({onSubmit, isLoading = false}) => {
             try {
                 await onSubmit(email, password);
             } catch (error) {
-                console.error('로그인 오류:', error);
+                logger.error('로그인 오류:', error);
             }
         }
     };

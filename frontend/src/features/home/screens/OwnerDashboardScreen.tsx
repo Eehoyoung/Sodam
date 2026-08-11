@@ -30,6 +30,7 @@ import {PastDueBanner} from '../../subscription/components/PastDueBanner';
 import {useManagedStores} from '../../manager/hooks/useManagedStores';
 import type {ManagedStore, ManagerPermission} from '../../manager/types';
 import {AttendanceCreditPopupHost} from '../../recruitment/components/AttendanceCreditPopupHost';
+import {logger} from '../../../utils/logger';
 
 type MonthPayroll = MonthPayrollStats;
 
@@ -115,7 +116,7 @@ export const OwnerDashboardContent: React.FC<OwnerDashboardContentProps> = ({vis
             );
         } catch (e) {
             // 핵심 매장 조회 실패 — 조용히 삼키지 않고 에러/재시도 UI 로 노출
-            console.warn('[OwnerDashboard] load failed', e);
+            logger.warn('[OwnerDashboard] load failed', e);
             setError(true);
             setLoaded(true);
         }
@@ -350,7 +351,7 @@ export const ManagerDashboardContent: React.FC<ManagerDashboardContentProps> = (
             const data = await fetchTodayStats(storeId);
             setToday(data);
         } catch (e) {
-            console.warn('[ManagerDashboard] load failed', e);
+            logger.warn('[ManagerDashboard] load failed', e);
             setError(true);
         }
     }, [storeId, visualFixture]);

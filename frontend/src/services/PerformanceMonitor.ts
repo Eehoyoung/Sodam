@@ -1,3 +1,4 @@
+import {logger} from '../utils/logger';
 // Performance Monitor Service for Phase 2 Implementation
 // Provides advanced performance monitoring and optimization
 
@@ -116,7 +117,7 @@ class PerformanceMonitor {
         this.initializeRenderTimeMonitoring();
         this.initializeBundleSizeMonitoring();
 
-        console.log('Performance monitoring started');
+        logger.debug('Performance monitoring started');
     }
 
     /**
@@ -143,7 +144,7 @@ class PerformanceMonitor {
             this.performanceObserver = null;
         }
 
-        console.log('Performance monitoring stopped');
+        logger.debug('Performance monitoring stopped');
     }
 
     /**
@@ -248,12 +249,12 @@ class PerformanceMonitor {
                 },
             });
         } catch (error) {
-            console.warn('Failed to track performance issue:', error);
+            logger.warn('Failed to track performance issue:', error);
         }
 
         // Log critical issues immediately
         if (issue.severity === 'critical') {
-            console.error('Critical performance issue:', issue);
+            logger.error('Critical performance issue:', issue);
         }
 
         // Keep only recent issues (last 100)
@@ -460,7 +461,7 @@ class PerformanceMonitor {
                     this.metrics.memoryUsage = Math.random() * 50 + 30; // Simulated value
                 }
             } catch (error) {
-                console.warn('Failed to monitor memory usage:', error);
+                logger.warn('Failed to monitor memory usage:', error);
             }
         }, 5000); // Check every 5 seconds
     }
@@ -495,7 +496,7 @@ class PerformanceMonitor {
                 this.performanceObserver.observe({entryTypes: ['measure']});
             }
         } catch (error) {
-            console.warn('Performance Observer not available:', error);
+            logger.warn('Performance Observer not available:', error);
         }
     }
 
@@ -513,7 +514,7 @@ class PerformanceMonitor {
             // - Build tool analysis
             // - Network monitoring
         } catch (error) {
-            console.warn('Failed to monitor bundle size:', error);
+            logger.warn('Failed to monitor bundle size:', error);
         }
     }
 
@@ -559,7 +560,7 @@ export const performanceUtils = {
         const result = await fn();
         const end = performance.now();
 
-        console.log(`${name} took ${(end - start).toFixed(2)}ms`);
+        logger.debug(`${name} took ${(end - start).toFixed(2)}ms`);
 
         // Track in performance monitor
         performanceMonitor.trackInteractionLatency(start);

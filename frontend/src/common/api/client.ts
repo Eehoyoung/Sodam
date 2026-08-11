@@ -3,6 +3,7 @@ import TokenManager from '../auth/tokenStore';
 import {unifiedStorage} from '../utils/unifiedStorage';
 import {env} from '../config/env';
 import {refresh as refreshAccessToken, emitSessionExpired} from '../auth/sessionCoordinator';
+import {logger} from '../../utils/logger';
 
 /**
  * API 클라이언트 설정 및 인터셉터 (Access/Refresh with single-flight queue) — WP-01/WP-02.
@@ -19,7 +20,7 @@ import {refresh as refreshAccessToken, emitSessionExpired} from '../auth/session
  */
 
 const BASE_URL = env.apiBaseUrl;
-if (env.debug) {console.log('[API] BASE_URL =', BASE_URL);}
+if (env.debug) {logger.debug('[API] BASE_URL =', BASE_URL);}
 
 // API 클라이언트 인스턴스 생성
 const apiClient: AxiosInstance = axios.create({
@@ -44,7 +45,7 @@ apiClient.interceptors.request.use(
 
         // 요청 로그 — 개발 빌드에서만, body 제외. (운영에서 로그인 비밀번호 등 PII 노출 방지)
         if (__DEV__) {
-            console.log(
+            logger.debug(
                 `[API Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`,
             );
         }

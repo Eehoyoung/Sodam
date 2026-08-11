@@ -1,5 +1,6 @@
 import {api, unwrapData} from '../../../common/api';
 import {Event, LaborInfo, Policy, TaxInfo, Tip} from '../types';
+import {logger} from '../../../utils/logger';
 
 /**
  * 홈 화면에 필요한 데이터를 가져오는 서비스 (WP-03).
@@ -59,7 +60,7 @@ export const fetchEvents = async (): Promise<Event[]> => {
         const response = await api.get<BeCampaign[]>('/api/campaigns/active');
         return unwrapData(response.data).map(toEvent);
     } catch (error) {
-        console.error('[홈 서비스] 이벤트 데이터 가져오기 실패:', error);
+        logger.error('[홈 서비스] 이벤트 데이터 가져오기 실패:', error);
         throw error;
     }
 };
@@ -73,7 +74,7 @@ export const fetchLaborInfo = async (): Promise<LaborInfo[]> => {
         const response = await api.get<BeContentInfo[]>('/api/labor-info');
         return unwrapData(response.data).map(toContentInfo);
     } catch (error) {
-        console.error('[홈 서비스] 노동법 정보 가져오기 실패:', error);
+        logger.error('[홈 서비스] 노동법 정보 가져오기 실패:', error);
         throw error;
     }
 };
@@ -87,7 +88,7 @@ export const fetchPolicies = async (): Promise<Policy[]> => {
         const response = await api.get<BeContentInfo[]>('/api/policy-info');
         return unwrapData(response.data).map(toContentInfo);
     } catch (error) {
-        console.error('[홈 서비스] 정책 정보 가져오기 실패:', error);
+        logger.error('[홈 서비스] 정책 정보 가져오기 실패:', error);
         throw error;
     }
 };
@@ -101,7 +102,7 @@ export const fetchTaxInfo = async (): Promise<TaxInfo[]> => {
         const response = await api.get<BeContentInfo[]>('/api/tax-info');
         return unwrapData(response.data).map(toContentInfo);
     } catch (error) {
-        console.error('[홈 서비스] 세금 정보 가져오기 실패:', error);
+        logger.error('[홈 서비스] 세금 정보 가져오기 실패:', error);
         throw error;
     }
 };
@@ -115,7 +116,7 @@ export const fetchTips = async (): Promise<Tip[]> => {
         const response = await api.get<BeContentInfo[]>('/api/tip-info');
         return unwrapData(response.data).map(toContentInfo);
     } catch (error) {
-        console.error('[홈 서비스] 팁 정보 가져오기 실패:', error);
+        logger.error('[홈 서비스] 팁 정보 가져오기 실패:', error);
         throw error;
     }
 };

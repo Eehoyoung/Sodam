@@ -43,6 +43,7 @@ import SectionHeader from '../../../common/components/sections/SectionHeader';
 import RoleTabBar from '../../../common/components/navigation/RoleTabBar';
 import {gradient, radius, recruit, shadow, spacing} from '../../../theme/tokens';
 import {useManagedStores} from '../../manager/hooks/useManagedStores';
+import {logger} from '../../../utils/logger';
 
 type AttendanceState = 'IDLE' | 'WORKING' | 'DONE' | 'LOADING';
 
@@ -142,7 +143,7 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
                 setState('IDLE');
             }
         } catch (error) {
-            console.warn('[EmployeeAttendanceHome] loadStores failed', error);
+            logger.warn('[EmployeeAttendanceHome] loadStores failed', error);
             AppToast.error('매장 정보를 불러오지 못했어요.');
             setState('IDLE');
         }
@@ -175,7 +176,7 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
             setMonthlyAttendances(monthList.filter(item => item.storeId === store.id));
             setState(determineState(today));
         } catch (error) {
-            console.warn('[EmployeeAttendanceHome] loadStoreScopedData failed', error);
+            logger.warn('[EmployeeAttendanceHome] loadStoreScopedData failed', error);
             setTodayRecord(null);
             setWeekShifts([]);
             setMonthlyAttendances([]);

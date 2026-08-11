@@ -1,3 +1,4 @@
+import {logger} from '../utils/logger';
 // Accessibility Service for Phase 2 Implementation
 // Provides comprehensive accessibility support including screen reader, keyboard navigation, and WCAG compliance
 
@@ -109,7 +110,7 @@ class AccessibilityService {
                 metadata: {config: this.config},
             });
         } catch (error) {
-            console.warn('Failed to track accessibility config change:', error);
+            logger.warn('Failed to track accessibility config change:', error);
         }
     }
 
@@ -184,9 +185,9 @@ class AccessibilityService {
         try {
             // For React Native, you would use a different approach
             // This is a placeholder for the keyboard event handling
-            console.log('Keyboard navigation setup completed');
+            logger.debug('Keyboard navigation setup completed');
         } catch (error) {
-            console.warn('Failed to setup keyboard navigation:', error);
+            logger.warn('Failed to setup keyboard navigation:', error);
         }
     }
 
@@ -334,7 +335,7 @@ class AccessibilityService {
         this.announcements = [];
         this.currentFocusIndex = -1;
 
-        console.log('Accessibility service cleaned up');
+        logger.debug('Accessibility service cleaned up');
     }
 
     /**
@@ -345,7 +346,7 @@ class AccessibilityService {
         this.setupKeyboardNavigation();
         this.loadUserPreferences();
 
-        console.log('Accessibility service initialized');
+        logger.debug('Accessibility service initialized');
     }
 
     /**
@@ -390,7 +391,7 @@ class AccessibilityService {
                 'medium'
             );
         } catch (error) {
-            console.warn('Failed to focus item:', error);
+            logger.warn('Failed to focus item:', error);
         }
     }
 
@@ -410,7 +411,7 @@ class AccessibilityService {
 
             this.announceToScreenReader(`Activated ${currentItem.label}`, 'high');
         } catch (error) {
-            console.warn('Failed to activate item:', error);
+            logger.warn('Failed to activate item:', error);
         }
     }
 
@@ -450,7 +451,7 @@ class AccessibilityService {
      */
     private applyHighContrastMode(): void {
         // This would modify the app's theme to use high contrast colors
-        console.log('High contrast mode applied');
+        logger.debug('High contrast mode applied');
 
         // In a real implementation, you would:
         // - Update theme colors to high contrast variants
@@ -463,7 +464,7 @@ class AccessibilityService {
      */
     private applyReducedMotion(): void {
         // This would disable or reduce animations
-        console.log('Reduced motion applied');
+        logger.debug('Reduced motion applied');
 
         // In a real implementation, you would:
         // - Disable non-essential animations
@@ -483,7 +484,7 @@ class AccessibilityService {
         };
 
         const multiplier = fontSizeMultipliers[this.config.fontSize];
-        console.log(`Font size applied: ${this.config.fontSize} (${multiplier}x)`);
+        logger.debug(`Font size applied: ${this.config.fontSize} (${multiplier}x)`);
 
         // In a real implementation, you would:
         // - Update theme font sizes
@@ -495,7 +496,7 @@ class AccessibilityService {
      * Apply color blindness support
      */
     private applyColorBlindnessSupport(): void {
-        console.log('Color blindness support applied');
+        logger.debug('Color blindness support applied');
 
         // In a real implementation, you would:
         // - Use patterns or shapes in addition to colors
@@ -514,10 +515,10 @@ class AccessibilityService {
 
             if (this.isScreenReaderActive) {
                 this.config.screenReaderSupport = true;
-                console.log('Screen reader detected');
+                logger.debug('Screen reader detected');
             }
         } catch (error) {
-            console.warn('Failed to detect screen reader:', error);
+            logger.warn('Failed to detect screen reader:', error);
         }
     }
 
@@ -530,12 +531,12 @@ class AccessibilityService {
         try {
             // Platform-specific screen reader announcement
             // For React Native, you would use AccessibilityInfo.announceForAccessibility
-            console.log(`Screen reader announcement: ${announcement.message}`);
+            logger.debug(`Screen reader announcement: ${announcement.message}`);
 
             // Remove processed announcement
             this.announcements = this.announcements.filter(a => a !== announcement);
         } catch (error) {
-            console.warn('Failed to process announcement:', error);
+            logger.warn('Failed to process announcement:', error);
         }
     }
 
@@ -584,7 +585,7 @@ class AccessibilityService {
                 this.applyAccessibilitySettings();
             }
         } catch (error) {
-            console.warn('Failed to load accessibility preferences:', error);
+            logger.warn('Failed to load accessibility preferences:', error);
         }
     }
 
@@ -596,7 +597,7 @@ class AccessibilityService {
             const {unifiedStorage} = await import('../common/utils/unifiedStorage');
             await unifiedStorage.setItem('accessibility_preferences', JSON.stringify(this.config));
         } catch (error) {
-            console.warn('Failed to save accessibility preferences:', error);
+            logger.warn('Failed to save accessibility preferences:', error);
         }
     }
 

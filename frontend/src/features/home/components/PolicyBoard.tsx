@@ -4,6 +4,7 @@ import {FlatList, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator} f
 import homeService from '../services/homeService';
 import {Policy} from '../types';
 import {ThemeColors, useThemeColors} from '../../../common/hooks/useThemeColors';
+import {logger} from '../../../utils/logger';
 
 const PolicyBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
     const c = useThemeColors();
@@ -31,7 +32,7 @@ const PolicyBoard: React.FC<{ navigation?: any }> = ({navigation}) => {
                 ]);
             }
         } catch (err) {
-            console.error('정책 데이터를 가져오는 중 오류가 생겼어요:', err);
+            logger.error('정책 데이터를 가져오는 중 오류가 생겼어요:', err);
             setError(true);
             // 백업 데이터 (API 호출 실패 시)
             setPolicies([

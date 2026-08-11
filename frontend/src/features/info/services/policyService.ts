@@ -5,6 +5,7 @@
 
 import api from '../../../common/api/client';
 import {PolicyInfo, InfoCategory, InfoDto} from '../types';
+import {logger} from '../../../utils/logger';
 
 // 공통 DTO -> UI 타입 매퍼
 const mapToPolicyInfo = (dto: InfoDto): PolicyInfo => ({
@@ -35,7 +36,7 @@ const policyService = {
             const res = await api.get<InfoDto[]>(`/api/policy-info`);
             return (res.data || []).map(mapToPolicyInfo);
         } catch (error) {
-            console.error('카테고리별 정책 정보를 가져오는 중 오류가 발생했습니다:', error);
+            logger.error('카테고리별 정책 정보를 가져오는 중 오류가 발생했습니다:', error);
             throw error;
         }
     },
@@ -47,7 +48,7 @@ const policyService = {
             const res = await api.get<InfoDto>(`/api/policy-info/${policyId}`);
             return mapToPolicyInfo(res.data);
         } catch (error) {
-            console.error('정책 정보 상세를 가져오는 중 오류가 발생했습니다:', error);
+            logger.error('정책 정보 상세를 가져오는 중 오류가 발생했습니다:', error);
             throw error;
         }
     },
@@ -58,7 +59,7 @@ const policyService = {
             const res = await api.get<InfoDto[]>(`/api/policy-info/search/title`, { keyword: searchTerm });
             return (res.data || []).map(mapToPolicyInfo);
         } catch (error) {
-            console.error('정책 정보 검색 중 오류가 발생했습니다:', error);
+            logger.error('정책 정보 검색 중 오류가 발생했습니다:', error);
             throw error;
         }
     },
@@ -69,7 +70,7 @@ const policyService = {
             const res = await api.get<InfoDto[]>(`/api/policy-info/recent`, { limit });
             return (res.data || []).map(mapToPolicyInfo);
         } catch (error) {
-            console.error('최근 정책 정보를 가져오는 중 오류가 발생했습니다:', error);
+            logger.error('최근 정책 정보를 가져오는 중 오류가 발생했습니다:', error);
             throw error;
         }
     },
@@ -78,7 +79,7 @@ const policyService = {
             const res = await api.get<InfoDto[]>(`/api/policy-info/deadline`, { limit });
             return (res.data || []).map(mapToPolicyInfo);
         } catch (error) {
-            console.error('마감 임박 정책 정보를 가져오는 중 오류가 발생했습니다:', error);
+            logger.error('마감 임박 정책 정보를 가져오는 중 오류가 발생했습니다:', error);
             throw error;
         }
     },
@@ -87,7 +88,7 @@ const policyService = {
             const res = await api.get<InfoDto[]>(`/api/policy-info/region`, { region });
             return (res.data || []).map(mapToPolicyInfo);
         } catch (error) {
-            console.error('지역별 정책 정보를 가져오는 중 오류가 발생했습니다:', error);
+            logger.error('지역별 정책 정보를 가져오는 중 오류가 발생했습니다:', error);
             throw error;
         }
     },

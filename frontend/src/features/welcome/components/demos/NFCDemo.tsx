@@ -3,6 +3,7 @@ import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {demoPalette} from './demoPalette';
 import {useJSISafeDimensions} from '../../../../hooks/useJSISafeDimensions';
 import {ProgressAnimation, PulseAnimation} from '../../../../common/components/animations';
+import {logger} from '../../../../utils/logger';
 
 interface DemoResult {
     success: boolean;
@@ -23,7 +24,7 @@ const NFCDemo: React.FC<NFCDemoProps> = ({onDemoComplete, isVisible}) => {
     try {
         useJSISafeDimensions();
     } catch (error) {
-        console.error('NFCDemo: Failed to get dimensions:', error);
+        logger.error('NFCDemo: Failed to get dimensions:', error);
         throw error;
     }
 

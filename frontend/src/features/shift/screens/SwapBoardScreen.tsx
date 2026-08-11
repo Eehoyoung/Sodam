@@ -29,6 +29,7 @@ import {spacing} from '../../../theme/tokens';
 import storeService from '../../store/services/storeService';
 import {shortTime} from '../services/shiftService';
 import {applySwap, fetchOpenSwaps, SwapRequest} from '../services/swapBoardService';
+import {logger} from '../../../utils/logger';
 
 interface MyStore {
     id: number;
@@ -110,7 +111,7 @@ const SwapBoardScreen: React.FC<{visualFixture?: SwapBoardVisualFixture}> = ({vi
             }
             setPhase('ready');
         } catch (error) {
-            console.warn('[SwapBoardScreen] load failed', error);
+            logger.warn('[SwapBoardScreen] load failed', error);
             setPhase('error');
         }
     }, [user?.id, loadSwaps, visualFixture]);
@@ -135,7 +136,7 @@ const SwapBoardScreen: React.FC<{visualFixture?: SwapBoardVisualFixture}> = ({vi
                 await loadSwaps(storeId);
                 setPhase('ready');
             } catch (error) {
-                console.warn('[SwapBoardScreen] store swap list failed', error);
+                logger.warn('[SwapBoardScreen] store swap list failed', error);
                 setPhase('error');
             }
         },

@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import {AppToast} from '../../../common/components/ds';
 import storeService, { StoreRegistrationPayload } from '../services/storeService';
+import {logger} from '../../../utils/logger';
 
 interface Options {
   onSuccess?: (storeId: number) => void;
@@ -17,7 +18,7 @@ export const useStoreRegistration = (options?: Options) => {
       AppToast.success('매장이 등록됐어요.');
       options?.onSuccess?.(id);
     } catch (e: any) {
-      console.error('[StoreRegistration] submit error', e);
+      logger.error('[StoreRegistration] submit error', e);
       const status = e?.response?.status;
       const data = e?.response?.data;
       // 402 PLAN_REQUIRED 는 전역 인터셉터가 페이월을 띄우므로 여기서 토스트를 중복으로 띄우지 않는다.

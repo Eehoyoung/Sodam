@@ -27,9 +27,10 @@ try {
     withTiming = reanimated.withTiming;
   }
 } catch (error) {
-  console.warn('[RECOVERY] StoreManagementDemo: Reanimated import failed, using fallback', error);
+  logger.warn('[RECOVERY] StoreManagementDemo: Reanimated import failed, using fallback', error);
 }
 import {useJSISafeDimensions} from '../../../../hooks/useJSISafeDimensions';
+import {logger} from '../../../../utils/logger';
 
 interface Store {
     id: string;
@@ -156,7 +157,7 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
         const hookResult = useJSISafeDimensions();
         dimensions = hookResult.dimensions;
     } catch (error) {
-        console.error('StoreManagementDemo: Failed to get dimensions:', error);
+        logger.error('StoreManagementDemo: Failed to get dimensions:', error);
         throw error;
     }
 

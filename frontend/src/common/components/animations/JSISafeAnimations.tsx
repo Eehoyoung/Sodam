@@ -37,9 +37,10 @@ try {
     withTiming = reanimated.withTiming;
   }
 } catch (error) {
-  console.warn('[RECOVERY] JSISafeAnimations: Reanimated import failed, using fallback', error);
+  logger.warn('[RECOVERY] JSISafeAnimations: Reanimated import failed, using fallback', error);
 }
 import {useJSISafeDimensions} from '../../../hooks/useJSISafeDimensions';
+import {logger} from '../../../utils/logger';
 
 // Mock Hook implementations for when Reanimated is not available
 const mockUseSharedValue = (initialValue: number) => ({ value: initialValue });
@@ -263,24 +264,24 @@ export const ProgressAnimation: React.FC<ProgressAnimationProps> = ({
                                                                         style,
                                                                         onProgressComplete,
                                                                     }) => {
-    console.log('[DEBUG_LOG] ProgressAnimation: Component initialization started');
-    console.log('[DEBUG_LOG] ProgressAnimation: Props received:', {progress});
+    logger.debug('[DEBUG_LOG] ProgressAnimation: Component initialization started');
+    logger.debug('[DEBUG_LOG] ProgressAnimation: Props received:', {progress});
 
     const shouldUseAnimations = ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE);
 
     // Use JSI-safe dimensions hook
-    console.log('[DEBUG_LOG] ProgressAnimation: About to call useJSISafeDimensions hook');
+    logger.debug('[DEBUG_LOG] ProgressAnimation: About to call useJSISafeDimensions hook');
     let dimensions;
     try {
         const hookResult = useJSISafeDimensions();
         dimensions = hookResult.dimensions;
-        console.log('[DEBUG_LOG] ProgressAnimation: useJSISafeDimensions hook called successfully');
-        console.log('[DEBUG_LOG] ProgressAnimation: Received dimensions:', dimensions);
-        console.log('[DEBUG_LOG] ProgressAnimation: Full hook result:', hookResult);
+        logger.debug('[DEBUG_LOG] ProgressAnimation: useJSISafeDimensions hook called successfully');
+        logger.debug('[DEBUG_LOG] ProgressAnimation: Received dimensions:', dimensions);
+        logger.debug('[DEBUG_LOG] ProgressAnimation: Full hook result:', hookResult);
     } catch (error) {
-        console.error('[DEBUG_LOG] ProgressAnimation: ERROR calling useJSISafeDimensions:', error);
+        logger.error('[DEBUG_LOG] ProgressAnimation: ERROR calling useJSISafeDimensions:', error);
         if (error instanceof Error) {
-            console.error('[DEBUG_LOG] ProgressAnimation: Error stack:', error.stack);
+            logger.error('[DEBUG_LOG] ProgressAnimation: Error stack:', error.stack);
         }
         throw error;
     }

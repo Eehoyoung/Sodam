@@ -12,6 +12,7 @@ import {
     verifyCheckOutByNFC
 } from '../services/nfcAttendanceService';
 import {Icon} from '../../../common/components/Icon';
+import {logger} from '../../../utils/logger';
 
 const c = colors as any;
 
@@ -67,7 +68,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
             const isSupported = await NfcManager.isSupported();
 
             if (!isMountedRef.current) {
-                console.log('[DEBUG_LOG] NFCAttendance: Component unmounted during NFC initialization, skipping state update');
+                logger.debug('[DEBUG_LOG] NFCAttendance: Component unmounted during NFC initialization, skipping state update');
                 return;
             }
 
@@ -85,7 +86,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
             const isEnabled = await NfcManager.isEnabled();
 
             if (!isMountedRef.current) {
-                console.log('[DEBUG_LOG] NFCAttendance: Component unmounted during NFC status check, skipping state update');
+                logger.debug('[DEBUG_LOG] NFCAttendance: Component unmounted during NFC status check, skipping state update');
                 return;
             }
 
@@ -109,7 +110,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                 });
             }
         } catch (error) {
-            console.error('[DEBUG_LOG] NFCAttendance: NFC initialization failed:', error);
+            logger.error('[DEBUG_LOG] NFCAttendance: NFC initialization failed:', error);
             if (!isMountedRef.current) {return;}
 
             if (onError) {onError('NFC 초기화에 실패했어요.');}
@@ -126,12 +127,12 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
     const handleNFCTagScanned = async (nfcData: string) => {
         // Check if component is still mounted
         if (!isMountedRef.current) {
-            console.log('[DEBUG_LOG] NFCAttendance: Component unmounted, skipping NFC tag processing');
+            logger.debug('[DEBUG_LOG] NFCAttendance: Component unmounted, skipping NFC tag processing');
             return;
         }
 
         if (loading) {
-            console.log('[DEBUG_LOG] NFCAttendance: Already processing, ignoring duplicate NFC tag');
+            logger.debug('[DEBUG_LOG] NFCAttendance: Already processing, ignoring duplicate NFC tag');
             return;
         }
 
@@ -166,7 +167,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
             });
 
             if (!isMountedRef.current) {
-                console.log('[DEBUG_LOG] NFCAttendance: Component unmounted during API call, skipping result processing');
+                logger.debug('[DEBUG_LOG] NFCAttendance: Component unmounted during API call, skipping result processing');
                 return;
             }
 
@@ -187,7 +188,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                 throw new Error(result.message || 'NFC 출퇴근 처리에 실패했어요.');
             }
         } catch (error) {
-            console.error('[DEBUG_LOG] NFCAttendance: NFC tag processing failed:', error);
+            logger.error('[DEBUG_LOG] NFCAttendance: NFC tag processing failed:', error);
 
             if (!isMountedRef.current) {return;}
 
@@ -231,7 +232,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
             const tag = await NfcManager.getTag();
 
             if (!isMountedRef.current) {
-                console.log('[DEBUG_LOG] NFCAttendance: Component unmounted during NFC reading, canceling operation');
+                logger.debug('[DEBUG_LOG] NFCAttendance: Component unmounted during NFC reading, canceling operation');
                 await NfcManager.cancelTechnologyRequest();
                 return;
             }
@@ -252,7 +253,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                 }
             }
         } catch (error) {
-            console.error('[DEBUG_LOG] NFCAttendance: NFC reading failed:', error);
+            logger.error('[DEBUG_LOG] NFCAttendance: NFC reading failed:', error);
 
             if (!isMountedRef.current) {return;}
 
@@ -288,7 +289,7 @@ const NFCAttendance: React.FC<NFCAttendanceProps> = ({
                 setIsActive(false);
             }
         } catch (error) {
-            console.error('[DEBUG_LOG] NFCAttendance: Failed to stop NFC reading:', error);
+            logger.error('[DEBUG_LOG] NFCAttendance: Failed to stop NFC reading:', error);
         }
     };
 

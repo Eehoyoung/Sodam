@@ -1,3 +1,4 @@
+import {logger} from '../../utils/logger';
 /**
  * 백엔드 Redis와 연동한 최적화된 캐시 전략
  * 데이터 타입별 특성을 고려한 세밀한 캐시 설정
@@ -358,7 +359,7 @@ export const logCacheStrategy = (
     context?: string
 ): void => {
     if (__DEV__) {
-        console.log(`[Cache Strategy] ${dataType}${context ? ` (${context})` : ''}:`, {
+        logger.debug(`[Cache Strategy] ${dataType}${context ? ` (${context})` : ''}:`, {
             staleTime: `${strategy.staleTime / 1000}s`,
             gcTime: `${strategy.gcTime / 1000}s`,
             refetchInterval: strategy.refetchInterval ? `${strategy.refetchInterval / 1000}s` : 'disabled',

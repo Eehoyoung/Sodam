@@ -1,6 +1,7 @@
 import {Client, type IMessage, type StompSubscription} from '@stomp/stompjs';
 import {env} from '../config/env';
 import TokenManager from '../auth/tokenStore';
+import {logger} from '../../utils/logger';
 
 export interface SyncEvent {
     type: 'EMPLOYEES_CHANGED' | 'ATTENDANCE_CHANGED' | 'STORE_UPDATED' | 'PAYROLL_CHANGED' |
@@ -92,12 +93,12 @@ function ensureClient(): void {
         },
         onStompError: frame => {
             if (client === createdClient) {
-                console.warn('[LiveSync] STOMP error', frame.headers.message);
+                logger.warn('[LiveSync] STOMP error', frame.headers.message);
             }
         },
         onWebSocketError: () => {
             if (client === createdClient) {
-                console.warn('[LiveSync] WebSocket connection failed', wsUrl());
+                logger.warn('[LiveSync] WebSocket connection failed', wsUrl());
             }
         },
     });

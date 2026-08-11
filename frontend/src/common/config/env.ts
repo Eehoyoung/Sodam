@@ -13,6 +13,7 @@
  *  3) 운영 기본값
  */
 import {Platform, NativeModules} from 'react-native';
+import {logger} from '../../utils/logger';
 
 type Env = 'dev' | 'staging' | 'prod';
 
@@ -99,7 +100,7 @@ export const env = {
 if (env.debug) {
     // 시크릿 마스킹
     const mask = (s: string) => (s ? `${s.slice(0, 6)}…(${s.length}b)` : '(empty)');
-    console.log('[SODAM env]', {
+    logger.debug('[SODAM env]', {
         name: env.name,
         apiBaseUrl: env.apiBaseUrl,
         tossClientKey: mask(env.tossClientKey),

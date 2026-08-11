@@ -7,6 +7,7 @@ import {spacing} from '../../../theme/tokens';
 import {formatWage} from '../../../common/format/money';
 import storeService from '../services/storeService';
 import {wageService} from '../../wage/services/wageService';
+import {logger} from '../../../utils/logger';
 
 interface EmployeeWageRow {
     id: number;
@@ -62,7 +63,7 @@ const WageSettingsScreen: React.FC<Props> = ({visualFixture}) => {
                 }
             } catch (e) {
                 // 조용히 삼키면 시급이 비어 보이는 이유를 아무도 알 수 없다.
-                console.warn('[WageSettings] 매장 조회 실패', e);
+                logger.warn('[WageSettings] 매장 조회 실패', e);
                 setLoadError('현재 시급을 불러오지 못했어요.');
             }
             try {
@@ -71,7 +72,7 @@ const WageSettingsScreen: React.FC<Props> = ({visualFixture}) => {
             } catch (e) {
                 // "이력이 없음"과 "불러오기 실패"는 다른 상태다 — 같은 빈 화면으로 보이면
                 // 실패가 정상처럼 읽힌다(이 화면이 오래 깨진 채 방치됐던 이유).
-                console.warn('[WageSettings] 시급 이력 조회 실패', e);
+                logger.warn('[WageSettings] 시급 이력 조회 실패', e);
                 setHistoryFailed(true);
             }
             // 18 WageSettings 시안의 "직원별 적용 시급" 리스트 — 매장 기본/개별 시급 구분 배지.

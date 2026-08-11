@@ -33,6 +33,7 @@ import { useThemeColors, ThemeColors } from '../../../common/hooks/useThemeColor
 import {parseServerDateTime} from '../../../common/format/dateTime';
 import EmployeeWorkingRing from '../components/EmployeeWorkingRing';
 import {useLocationConsentGate} from '../hooks/useLocationConsentGate';
+import {logger} from '../../../utils/logger';
 
 type CheckInMethod = 'standard' | 'location' | 'nfc' | 'qr';
 export interface AttendanceVisualFixture {
@@ -128,7 +129,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
 
             return true;
         } catch (error) {
-            console.error('NFC 지원 확인 실패:', error);
+            logger.error('NFC 지원 확인 실패:', error);
             AppToast.error('NFC 상태를 확인할 수 없어요.');
             return false;
         }
@@ -161,7 +162,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
             await handleNFCTagScanned(scannedTag);
         } catch (error) {
             if (!isMountedRef.current) {return;}
-            console.error('NFC 태그 스캔 실패:', error);
+            logger.error('NFC 태그 스캔 실패:', error);
             AppToast.error('NFC 태그 읽기에 실패했어요. 다시 시도해 주세요.');
             setShowNFCReader(false);
         } finally {
@@ -210,7 +211,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
                 }
             }
         } catch (error) {
-            console.error('출퇴근 기록을 가져오는 중 오류가 생겼어요:', error);
+            logger.error('출퇴근 기록을 가져오는 중 오류가 생겼어요:', error);
             AppToast.error('출퇴근 기록을 불러오는 데 실패했어요. 다시 시도해 주세요.');
         } finally {
             setLoading(false);
@@ -233,7 +234,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
                 setSelectedWorkplaceId('');
             }
         } catch (error) {
-            console.error('근무지 목록을 가져오는 중 오류가 생겼어요:', error);
+            logger.error('근무지 목록을 가져오는 중 오류가 생겼어요:', error);
             AppToast.error('근무지 목록을 불러오지 못했어요.');
         }
     };
@@ -255,7 +256,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
                 AppToast.warn('위치 기반 출퇴근을 쓰려면 위치 권한이 필요해요.');
             }
         } catch (error) {
-            console.error('위치 권한 요청 중 오류가 생겼어요:', error);
+            logger.error('위치 권한 요청 중 오류가 생겼어요:', error);
         }
     };
 
@@ -297,7 +298,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
                             return;
                         }
 
-                        console.error('AttendanceScreen: Location error:', error);
+                        logger.error('AttendanceScreen: Location error:', error);
                         AppToast.error('위치 정보를 가져오는 데 실패했어요. 다시 시도해 주세요.');
                     },
                     {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000}
@@ -334,7 +335,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
             try {
                 Geolocation.stopObserving();
             } catch (error) {
-                console.warn('AttendanceScreen: Error stopping location observing:', error);
+                logger.warn('AttendanceScreen: Error stopping location observing:', error);
             }
 
             // Cancel any in-flight NFC scan to avoid leaking the native tech session
@@ -440,7 +441,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
             setCurrentAttendance(response);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('출근 처리 중 오류가 생겼어요:', error);
+            logger.error('출근 처리 중 오류가 생겼어요:', error);
             AppToast.error('출근 처리에 실패했어요. 다시 시도해 주세요.');
         }
     };
@@ -498,7 +499,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
             setCurrentAttendance(response);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('위치 기반 출근 처리 중 오류가 생겼어요:', error);
+            logger.error('위치 기반 출근 처리 중 오류가 생겼어요:', error);
             AppToast.error('위치 기반 출근 처리에 실패했어요. 다시 시도해 주세요.');
         }
     };
@@ -524,7 +525,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
             setCurrentAttendance(response);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('NFC 태그 기반 출근 처리 중 오류가 생겼어요:', error);
+            logger.error('NFC 태그 기반 출근 처리 중 오류가 생겼어요:', error);
             const message = (error as any)?.response?.data?.message;
             AppToast.error(message ?? 'NFC 태그 기반 출근 처리에 실패했어요. 등록된 태그인지 확인해 주세요.');
         }
@@ -553,7 +554,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
             setCurrentAttendance(null);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('퇴근 처리 중 오류가 생겼어요:', error);
+            logger.error('퇴근 처리 중 오류가 생겼어요:', error);
             AppToast.error('퇴근 처리에 실패했어요. 다시 시도해 주세요.');
         }
     };
@@ -610,7 +611,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
             setCurrentAttendance(null);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('위치 기반 퇴근 처리 중 오류가 생겼어요:', error);
+            logger.error('위치 기반 퇴근 처리 중 오류가 생겼어요:', error);
             AppToast.error('위치 기반 퇴근 처리에 실패했어요. 다시 시도해 주세요.');
         }
     };
@@ -636,7 +637,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
             setCurrentAttendance(null);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('NFC 태그 기반 퇴근 처리 중 오류가 생겼어요:', error);
+            logger.error('NFC 태그 기반 퇴근 처리 중 오류가 생겼어요:', error);
             const message = (error as any)?.response?.data?.message;
             AppToast.error(message ?? 'NFC 태그 기반 퇴근 처리에 실패했어요. 등록된 태그인지 확인해 주세요.');
         }

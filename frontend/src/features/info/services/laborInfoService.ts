@@ -5,6 +5,7 @@
 
 import api from '../../../common/api/client';
 import {LaborInfo, InfoCategory} from '../types';
+import {logger} from '../../../utils/logger';
 
 // 공통 DTO -> UI 타입 매퍼
 const mapToLaborInfo = (dto: any): LaborInfo => ({
@@ -41,7 +42,7 @@ const laborInfoService = {
             const res = await api.get<any[]>(`/api/labor-info`);
             return (res.data || []).map(mapToLaborInfo);
         } catch (error) {
-            console.error('카테고리별 노동법 정보를 가져오는 중 오류가 발생했습니다:', error);
+            logger.error('카테고리별 노동법 정보를 가져오는 중 오류가 발생했습니다:', error);
             throw error;
         }
     },
@@ -54,7 +55,7 @@ const laborInfoService = {
             const res = await api.get<any>(`/api/labor-info/${infoId}`);
             return mapToLaborInfo(res.data);
         } catch (error) {
-            console.error('노동법 정보 상세를 가져오는 중 오류가 발생했습니다:', error);
+            logger.error('노동법 정보 상세를 가져오는 중 오류가 발생했습니다:', error);
             throw error;
         }
     },
@@ -67,7 +68,7 @@ const laborInfoService = {
             const res = await api.get<any[]>(`/api/labor-info/search/title`, { keyword: searchTerm });
             return (res.data || []).map(mapToLaborInfo);
         } catch (error) {
-            console.error('노동법 정보 검색 중 오류가 발생했습니다:', error);
+            logger.error('노동법 정보 검색 중 오류가 발생했습니다:', error);
             throw error;
         }
     },
@@ -78,7 +79,7 @@ const laborInfoService = {
             const res = await api.get<any[]>(`/api/labor-info/recent`, { limit });
             return (res.data || []).map(mapToLaborInfo);
         } catch (error) {
-            console.error('최근 노동법 정보를 가져오는 중 오류가 발생했습니다:', error);
+            logger.error('최근 노동법 정보를 가져오는 중 오류가 발생했습니다:', error);
             throw error;
         }
     },
@@ -87,7 +88,7 @@ const laborInfoService = {
             const res = await api.get<any[]>(`/api/labor-info/popular`, { limit });
             return (res.data || []).map(mapToLaborInfo);
         } catch (error) {
-            console.error('인기 노동법 정보를 가져오는 중 오류가 발생했습니다:', error);
+            logger.error('인기 노동법 정보를 가져오는 중 오류가 발생했습니다:', error);
             throw error;
         }
     },

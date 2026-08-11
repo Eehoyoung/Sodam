@@ -3,6 +3,7 @@ import React, {Component, ReactNode, useMemo} from 'react';
 import {View, Text, ScrollView, StyleSheet} from 'react-native';
 import {safeLogger} from '../utils/safeLogger';
 import {ThemeColors, useThemeColors} from '../common/hooks/useThemeColors';
+import {logger} from '../utils/logger';
 
 /**
  * InitializationErrorBoundary Props Interface
@@ -102,7 +103,7 @@ export class InitializationErrorBoundary extends Component<
      * Handle ReactNoCrashSoftException and other timing issues
      */
     private handleTimingIssue(error: Error, errorInfo: React.ErrorInfo) {
-        console.warn('[TIMING_ISSUE] ReactNoCrashSoftException detected:', error.message);
+        logger.warn('[TIMING_ISSUE] ReactNoCrashSoftException detected:', error.message);
 
         // Log as warning, not error
         safeLogger.warn('React Native timing issue detected (non-critical)', {
@@ -128,12 +129,11 @@ export class InitializationErrorBoundary extends Component<
 
         // Analytics event for tracking frequency
         if (__DEV__) {
-            console.group('[TIMING_ISSUE] Detailed Timing Issue Information');
-            console.warn('Timing Issue:', error);
-            console.warn('Component Stack:', errorInfo.componentStack);
-            console.warn('Impact: None - App continues normally');
-            console.warn('Action Required: Monitor frequency, optimize if needed');
-            console.groupEnd();
+            logger.warn('[TIMING_ISSUE] Detailed Timing Issue Information');
+            logger.warn('Timing Issue:', error);
+            logger.warn('Component Stack:', errorInfo.componentStack);
+            logger.warn('Impact: None - App continues normally');
+            logger.warn('Action Required: Monitor frequency, optimize if needed');
         }
 
         // Don't set error state - let the app continue
@@ -143,7 +143,7 @@ export class InitializationErrorBoundary extends Component<
      * Handle regular errors (non-timing issues)
      */
     private handleRegularError(error: Error, errorInfo: React.ErrorInfo) {
-        console.error('[INIT_ERROR] Critical initialization error:', error);
+        logger.error('[INIT_ERROR] Critical initialization error:', error);
 
         // Log as actual error
         safeLogger.error('Critical initialization error', {

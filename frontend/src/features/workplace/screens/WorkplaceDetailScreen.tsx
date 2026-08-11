@@ -16,6 +16,7 @@ import {
 import {spacing} from '../../../theme/tokens';
 import {useAuth} from '../../../contexts/AuthContext';
 import attendanceService, {AttendanceWorkLogResponse} from '../../attendance/services/attendanceService';
+import {logger} from '../../../utils/logger';
 
 /** 개발용 시각 검증 전용 — getMonthlyWorkLog 조회를 고정 데이터로 대체한다. */
 export interface WorkplaceDetailVisualFixture {
@@ -55,7 +56,7 @@ const WorkplaceDetailScreen: React.FC<Props> = ({visualFixture}) => {
             const res = await attendanceService.getMonthlyWorkLog(user.id, storeId, now.getFullYear(), now.getMonth() + 1);
             setData(res);
         } catch (e) {
-            console.warn('[WorkplaceDetail] load failed', e);
+            logger.warn('[WorkplaceDetail] load failed', e);
             setError(true);
             AppToast.error('근무지 정보를 불러오지 못했어요.');
         } finally {

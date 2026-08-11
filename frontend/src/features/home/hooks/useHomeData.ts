@@ -1,4 +1,5 @@
 import {useState, useEffect} from 'react';
+import {logger} from '../../../utils/logger';
 
 /** 홈 배너 이벤트 카드. */
 export interface HomeEvent {
@@ -74,7 +75,7 @@ export const useHomeData = () => {
 
             } catch (err: unknown) {
                 setError(err instanceof Error ? err.message : '데이터를 불러오는 중 오류가 발생했습니다.');
-                console.error('홈 데이터 로딩 오류:', err);
+                logger.error('홈 데이터 로딩 오류:', err);
             } finally {
                 setIsLoading(false);
             }
@@ -129,7 +130,7 @@ export const useHomeData = () => {
 
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : '데이터를 불러오는 중 오류가 발생했습니다.');
-            console.error('홈 데이터 새로고침 오류:', err);
+            logger.error('홈 데이터 새로고침 오류:', err);
         } finally {
             setIsLoading(false);
         }

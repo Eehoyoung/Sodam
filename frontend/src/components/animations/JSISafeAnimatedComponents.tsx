@@ -38,9 +38,10 @@ try {
     withTiming = reanimated.withTiming;
   }
 } catch (error) {
-  console.warn('[RECOVERY] JSISafeAnimatedComponents: Reanimated import failed, using fallback', error);
+  logger.warn('[RECOVERY] JSISafeAnimatedComponents: Reanimated import failed, using fallback', error);
 }
 import {useAnimationDimensions} from '../../hooks/useJSISafeDimensions';
+import {logger} from '../../utils/logger';
 
 // =============================================================================
 // INTERFACES AND TYPES
@@ -407,7 +408,7 @@ export const useJSISafeScrollHandler = (
                 thresholds.forEach((threshold, index) => {
                     if (event.nativeEvent.contentOffset.y > threshold) {
                         runOnJS(() => {
-                            console.log(`[JSI-Safe] Scroll threshold ${index + 1} reached: ${threshold}`);
+                            logger.debug(`[JSI-Safe] Scroll threshold ${index + 1} reached: ${threshold}`);
                         })();
                     }
                 });

@@ -6,6 +6,7 @@
 
 import {useMemo} from 'react';
 import {Dimensions} from 'react-native';
+import {logger} from '../utils/logger';
 
 export interface ScreenDimensions {
     screenWidth: number;
@@ -60,61 +61,61 @@ export interface JSISafeDimensions {
  * ```
  */
 export const useJSISafeDimensions = (): JSISafeDimensions => {
-    console.log('[DEBUG_LOG] useJSISafeDimensions: Hook execution started');
+    logger.debug('[DEBUG_LOG] useJSISafeDimensions: Hook execution started');
 
     try {
         // Cache raw dimensions first to prevent JSI violations
-        console.log('[DEBUG_LOG] useJSISafeDimensions: About to create rawDimensions useMemo');
+        logger.debug('[DEBUG_LOG] useJSISafeDimensions: About to create rawDimensions useMemo');
         // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: hooks wrapped in try/catch to survive native bridge unavailability
         const rawDimensions = useMemo(() => {
-            console.log('[DEBUG_LOG] useJSISafeDimensions: Inside rawDimensions useMemo callback');
+            logger.debug('[DEBUG_LOG] useJSISafeDimensions: Inside rawDimensions useMemo callback');
             try {
                 // Check if Dimensions API is available and ready
-                console.log('[DEBUG_LOG] useJSISafeDimensions: Checking Dimensions API availability');
+                logger.debug('[DEBUG_LOG] useJSISafeDimensions: Checking Dimensions API availability');
                 if (typeof Dimensions === 'undefined') {
-                    console.warn('[DEBUG_LOG] useJSISafeDimensions: Dimensions is undefined, using fallback');
+                    logger.warn('[DEBUG_LOG] useJSISafeDimensions: Dimensions is undefined, using fallback');
                     return {width: 375, height: 667};
                 }
 
                 if (typeof Dimensions.get !== 'function') {
-                    console.warn('[DEBUG_LOG] useJSISafeDimensions: Dimensions.get is not a function, using fallback');
+                    logger.warn('[DEBUG_LOG] useJSISafeDimensions: Dimensions.get is not a function, using fallback');
                     return {width: 375, height: 667};
                 }
 
-                console.log('[DEBUG_LOG] useJSISafeDimensions: About to call Dimensions.get("window")');
+                logger.debug('[DEBUG_LOG] useJSISafeDimensions: About to call Dimensions.get("window")');
                 const windowDimensions = Dimensions.get('window');
-                console.log('[DEBUG_LOG] useJSISafeDimensions: Raw window dimensions received:', windowDimensions);
+                logger.debug('[DEBUG_LOG] useJSISafeDimensions: Raw window dimensions received:', windowDimensions);
 
                 // Validate dimensions are reasonable
                 if (!windowDimensions || typeof windowDimensions.width !== 'number' || typeof windowDimensions.height !== 'number') {
-                    console.warn('[DEBUG_LOG] useJSISafeDimensions: Invalid dimensions object, using fallback');
+                    logger.warn('[DEBUG_LOG] useJSISafeDimensions: Invalid dimensions object, using fallback');
                     return {width: 375, height: 667};
                 }
 
                 if (windowDimensions.width <= 0 || windowDimensions.height <= 0) {
-                    console.warn('[DEBUG_LOG] useJSISafeDimensions: Invalid dimensions values:', windowDimensions, 'using fallback');
+                    logger.warn('[DEBUG_LOG] useJSISafeDimensions: Invalid dimensions values:', windowDimensions, 'using fallback');
                     return {width: 375, height: 667};
                 }
 
                 if (windowDimensions.width > 10000 || windowDimensions.height > 10000) {
-                    console.warn('[DEBUG_LOG] useJSISafeDimensions: Unreasonable dimensions values:', windowDimensions, 'using fallback');
+                    logger.warn('[DEBUG_LOG] useJSISafeDimensions: Unreasonable dimensions values:', windowDimensions, 'using fallback');
                     return {width: 375, height: 667};
                 }
 
                 const {width, height} = windowDimensions;
-                console.log('[DEBUG_LOG] useJSISafeDimensions: Got valid dimensions:', {width, height});
+                logger.debug('[DEBUG_LOG] useJSISafeDimensions: Got valid dimensions:', {width, height});
                 return {width, height};
             } catch (error) {
-                console.error('[DEBUG_LOG] useJSISafeDimensions: ERROR in rawDimensions:', error);
+                logger.error('[DEBUG_LOG] useJSISafeDimensions: ERROR in rawDimensions:', error);
                 if (error instanceof Error) {
-                    console.error('[DEBUG_LOG] useJSISafeDimensions: Error name:', error.name);
-                    console.error('[DEBUG_LOG] useJSISafeDimensions: Error message:', error.message);
-                    console.error('[DEBUG_LOG] useJSISafeDimensions: Error stack:', error.stack);
+                    logger.error('[DEBUG_LOG] useJSISafeDimensions: Error name:', error.name);
+                    logger.error('[DEBUG_LOG] useJSISafeDimensions: Error message:', error.message);
+                    logger.error('[DEBUG_LOG] useJSISafeDimensions: Error stack:', error.stack);
                 }
                 return {width: 375, height: 667};
             }
         }, []);
-        console.log('[DEBUG_LOG] useJSISafeDimensions: rawDimensions created successfully:', rawDimensions);
+        logger.debug('[DEBUG_LOG] useJSISafeDimensions: rawDimensions created successfully:', rawDimensions);
 
         // Cache screen dimensions using raw dimensions
         // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: hooks wrapped in try/catch to survive native bridge unavailability
@@ -128,7 +129,7 @@ export const useJSISafeDimensions = (): JSISafeDimensions => {
                 aspectRatio: width / height,
             };
         }, [rawDimensions]);
-        console.log('[DEBUG_LOG] useJSISafeDimensions: dimensions created successfully');
+        logger.debug('[DEBUG_LOG] useJSISafeDimensions: dimensions created successfully');
 
         // Cache responsive breakpoints using raw width
         // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: hooks wrapped in try/catch to survive native bridge unavailability
@@ -178,7 +179,7 @@ export const useJSISafeDimensions = (): JSISafeDimensions => {
             animationValues,
         };
     } catch (error) {
-        console.error('[DEBUG_LOG] useJSISafeDimensions: Error occurred:', error);
+        logger.error('[DEBUG_LOG] useJSISafeDimensions: Error occurred:', error);
 
         // Return fallback values in case of error
         const fallbackDimensions = {width: 375, height: 667}; // iPhone 6/7/8 dimensions as fallback

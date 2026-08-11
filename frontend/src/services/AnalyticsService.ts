@@ -4,6 +4,7 @@
 import {AppState} from 'react-native';
 import {safeLogger} from '../utils/safeLogger';
 import {unifiedStorage} from '../common/utils/unifiedStorage';
+import {logger} from '../utils/logger';
 
 export interface AnalyticsEvent {
     eventName: string;
@@ -80,7 +81,7 @@ class AnalyticsService {
                 this.flushEvents();
             }
         } catch (error) {
-            console.error('Failed to track event:', error);
+            logger.error('Failed to track event:', error);
         }
     }
 
@@ -131,7 +132,7 @@ class AnalyticsService {
             steps.push(funnelStep);
             await unifiedStorage.setItem('conversion_funnel_steps', JSON.stringify(steps));
         } catch (error) {
-            console.warn('Failed to store funnel step locally:', error);
+            logger.warn('Failed to store funnel step locally:', error);
         }
     }
 
@@ -165,7 +166,7 @@ class AnalyticsService {
                 await this.flushInteractions();
             }
         } catch (error) {
-            console.error('Failed to track interaction:', error);
+            logger.error('Failed to track interaction:', error);
         }
     }
 
@@ -254,7 +255,7 @@ class AnalyticsService {
                 conversionFunnel: funnelSteps,
             };
         } catch (error) {
-            console.error('Failed to get analytics summary:', error);
+            logger.error('Failed to get analytics summary:', error);
             return {
                 totalEvents: 0,
                 totalInteractions: 0,
@@ -296,7 +297,7 @@ class AnalyticsService {
             this.eventQueue = [];
             this.interactionQueue = [];
 
-            console.log('Analytics data cleared');
+            logger.debug('Analytics data cleared');
         } catch (error) {
             safeLogger.asyncStorageError('Failed to clear analytics data:', error);
         }
@@ -333,7 +334,7 @@ class AnalyticsService {
                 }
             });
         } catch (error) {
-            console.warn('Failed to set up app state listener:', error);
+            logger.warn('Failed to set up app state listener:', error);
         }
 
         // Track session start
@@ -355,7 +356,7 @@ class AnalyticsService {
         try {
             // In a real implementation, this would send to your analytics backend
             // For now, we'll store locally and log
-            console.log(`Flushing ${this.eventQueue.length} analytics events`);
+            logger.debug(`Flushing ${this.eventQueue.length} analytics events`);
 
             // Store events locally
             const existingEvents = await unifiedStorage.getItem('analytics_events');
@@ -366,7 +367,7 @@ class AnalyticsService {
             // Clear queue
             this.eventQueue = [];
         } catch (error) {
-            console.error('Failed to flush events:', error);
+            logger.error('Failed to flush events:', error);
         }
     }
 
@@ -397,7 +398,7 @@ class AnalyticsService {
             const key = `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             await unifiedStorage.setItem(key, JSON.stringify(event));
         } catch (error) {
-            console.warn('Failed to store event locally:', error);
+            logger.warn('Failed to store event locally:', error);
         }
     }
 

@@ -5,6 +5,7 @@
 
 import api from '../../../common/api/client';
 import {TaxInfo, InfoCategory, InfoDto} from '../types';
+import {logger} from '../../../utils/logger';
 
 // 공통 DTO -> UI 타입 매퍼
 const mapToTaxInfo = (dto: InfoDto): TaxInfo => ({
@@ -34,7 +35,7 @@ const taxInfoService = {
             const res = await api.get<InfoDto[]>(`/api/tax-info`);
             return (res.data || []).map(mapToTaxInfo);
         } catch (error) {
-            console.error('카테고리별 세금 정보를 가져오는 중 오류가 발생했습니다:', error);
+            logger.error('카테고리별 세금 정보를 가져오는 중 오류가 발생했습니다:', error);
             throw error;
         }
     },
@@ -45,7 +46,7 @@ const taxInfoService = {
             const res = await api.get<InfoDto>(`/api/tax-info/${infoId}`);
             return mapToTaxInfo(res.data);
         } catch (error) {
-            console.error('세금 정보 상세를 가져오는 중 오류가 발생했습니다:', error);
+            logger.error('세금 정보 상세를 가져오는 중 오류가 발생했습니다:', error);
             throw error;
         }
     },
@@ -56,7 +57,7 @@ const taxInfoService = {
             const res = await api.get<InfoDto[]>(`/api/tax-info/search/title`, { keyword: searchTerm });
             return (res.data || []).map(mapToTaxInfo);
         } catch (error) {
-            console.error('세금 정보 검색 중 오류가 발생했습니다:', error);
+            logger.error('세금 정보 검색 중 오류가 발생했습니다:', error);
             throw error;
         }
     },
@@ -67,7 +68,7 @@ const taxInfoService = {
             const res = await api.get<InfoDto[]>(`/api/tax-info/recent`, { limit });
             return (res.data || []).map(mapToTaxInfo);
         } catch (error) {
-            console.error('최근 세금 정보를 가져오는 중 오류가 발생했습니다:', error);
+            logger.error('최근 세금 정보를 가져오는 중 오류가 발생했습니다:', error);
             throw error;
         }
     },
@@ -78,7 +79,7 @@ const taxInfoService = {
             const res = await api.get<InfoDto[]>(`/api/tax-info/year`, { year });
             return (res.data || []).map(mapToTaxInfo);
         } catch (error) {
-            console.error('연도별 세금 정보를 가져오는 중 오류가 발생했습니다:', error);
+            logger.error('연도별 세금 정보를 가져오는 중 오류가 발생했습니다:', error);
             throw error;
         }
     },
@@ -87,7 +88,7 @@ const taxInfoService = {
             const res = await api.get<InfoDto[]>(`/api/tax-info/group`, { group });
             return (res.data || []).map(mapToTaxInfo);
         } catch (error) {
-            console.error('그룹별 세금 정보를 가져오는 중 오류가 발생했습니다:', error);
+            logger.error('그룹별 세금 정보를 가져오는 중 오류가 발생했습니다:', error);
             throw error;
         }
     },

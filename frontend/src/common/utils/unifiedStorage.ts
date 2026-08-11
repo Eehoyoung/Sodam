@@ -5,6 +5,7 @@
  */
 
 import {memoryStorage} from './memoryStorage';
+import {logger} from '../../utils/logger';
 
 /**
  * 스토리지 인터페이스 정의
@@ -426,7 +427,7 @@ export class UnifiedStorage implements StorageInterface {
      */
     private log(message: string, ...args: any[]): void {
         if (this.config.enableLogging) {
-            console.log(`[UnifiedStorage]`, message, ...args);
+            logger.debug(`[UnifiedStorage]`, message, ...args);
         }
     }
 }

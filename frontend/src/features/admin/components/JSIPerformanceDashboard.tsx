@@ -13,6 +13,7 @@ import JSIPerformanceMonitor, {
     JSIMetrics,
 } from '../../../services/JSIPerformanceMonitor';
 import {FadeAnimation, ScaleAnimation} from '../../../common/components/animations';
+import {logger} from '../../../utils/logger';
 
 interface DashboardProps {
     isVisible: boolean;
@@ -23,22 +24,22 @@ export const JSIPerformanceDashboard: React.FC<DashboardProps> = ({
                                                                       isVisible,
                                                                       onClose,
                                                                   }) => {
-    console.log('[DEBUG_LOG] JSIPerformanceDashboard: Component initialization started');
-    console.log('[DEBUG_LOG] JSIPerformanceDashboard: Props received:', {isVisible});
+    logger.debug('[DEBUG_LOG] JSIPerformanceDashboard: Component initialization started');
+    logger.debug('[DEBUG_LOG] JSIPerformanceDashboard: Props received:', {isVisible});
 
     // Use JSI-safe dimensions hook
-    console.log('[DEBUG_LOG] JSIPerformanceDashboard: About to call useJSISafeDimensions hook');
+    logger.debug('[DEBUG_LOG] JSIPerformanceDashboard: About to call useJSISafeDimensions hook');
     let dimensions;
     try {
         const hookResult = useJSISafeDimensions();
         dimensions = hookResult.dimensions;
-        console.log('[DEBUG_LOG] JSIPerformanceDashboard: useJSISafeDimensions hook called successfully');
-        console.log('[DEBUG_LOG] JSIPerformanceDashboard: Received dimensions:', dimensions);
-        console.log('[DEBUG_LOG] JSIPerformanceDashboard: Full hook result:', hookResult);
+        logger.debug('[DEBUG_LOG] JSIPerformanceDashboard: useJSISafeDimensions hook called successfully');
+        logger.debug('[DEBUG_LOG] JSIPerformanceDashboard: Received dimensions:', dimensions);
+        logger.debug('[DEBUG_LOG] JSIPerformanceDashboard: Full hook result:', hookResult);
     } catch (error) {
-        console.error('[DEBUG_LOG] JSIPerformanceDashboard: ERROR calling useJSISafeDimensions:', error);
+        logger.error('[DEBUG_LOG] JSIPerformanceDashboard: ERROR calling useJSISafeDimensions:', error);
         if (error instanceof Error) {
-            console.error('[DEBUG_LOG] JSIPerformanceDashboard: Error stack:', error.stack);
+            logger.error('[DEBUG_LOG] JSIPerformanceDashboard: Error stack:', error.stack);
         }
         throw error;
     }
@@ -110,7 +111,7 @@ export const JSIPerformanceDashboard: React.FC<DashboardProps> = ({
 
     const handleExportData = () => {
         const exportData = JSIPerformanceMonitor.exportMetrics();
-        console.log('Exported JSI Performance Data:', exportData);
+        logger.debug('Exported JSI Performance Data:', exportData);
         Alert.alert('Export Complete', 'Data exported to console');
     };
 

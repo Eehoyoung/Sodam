@@ -10,6 +10,7 @@ import {useResponsiveStyles} from "../../../utils/responsive";
 import {useAuth} from '../../../contexts/AuthContext';
 import SodamLogo from '../logo/SodamLogo';
 import {tokens} from '../../../theme/tokens';
+import {logger} from '../../../utils/logger';
 // 복합 네비게이션 타입 정의
 type HeaderNavigationProp = CompositeNavigationProp<
     NativeStackNavigationProp<RootStackParamList>,
@@ -69,7 +70,7 @@ const Header: React.FC<HeaderProps> = ({title}) => {
                                 await logout();
                                 Alert.alert('알림', '로그아웃 되었습니다.');
                             } catch (error) {
-                                console.error('로그아웃 중 오류가 발생했습니다:', error);
+                                logger.error('로그아웃 중 오류가 발생했습니다:', error);
                                 Alert.alert('오류', '로그아웃 중 오류가 발생했습니다.');
                             }
                         }
