@@ -11,6 +11,7 @@ import {useAuth} from '../../../contexts/AuthContext';
 import {AuthStackParamList} from '../../../navigation/types';
 import {resetToRootRoute, resolvePostAuthRoute} from '../../../navigation/authFlow';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
+import {getErrorMessage} from '../../../common/errors';
 
 type KakaoStatus = 'idle' | 'opening' | 'waiting' | 'cancelled' | 'failed' | 'success';
 
@@ -90,10 +91,10 @@ const KakaoLoginScreen: React.FC = () => {
             setStatus('success');
             setMessage('인증이 완료되었습니다. 다음 단계로 이동합니다.');
             resetToRootRoute(navigation, resolvePostAuthRoute(user, route.params?.selectedPurpose));
-        } catch (e: any) {
+        } catch (e: unknown) {
             await clearPendingAuthorization();
             setStatus('failed');
-            const beMsg = e?.response?.data?.message;
+            const beMsg = getErrorMessage(e);
             setMessage(typeof beMsg === 'string' ? beMsg : '카카오 인증에 실패했습니다. 다시 시도하거나 이메일 로그인을 이용해 주세요.');
             AppToast.error('카카오 인증에 실패했습니다.');
         }
@@ -135,7 +136,7 @@ const KakaoLoginScreen: React.FC = () => {
             await authApi.openKakaoLogin(transaction);
             setStatus('waiting');
             setMessage('브라우저에서 인증을 마치면 앱으로 돌아옵니다. 돌아오지 않으면 이메일 로그인으로 진행해 주세요.');
-        } catch (e: any) {
+        } catch (e: unknown) {
             await clearPendingAuthorization();
             setStatus('failed');
             setMessage('카카오 인증 화면을 열지 못했습니다. 네트워크 상태를 확인하거나 이메일 로그인을 이용해 주세요.');

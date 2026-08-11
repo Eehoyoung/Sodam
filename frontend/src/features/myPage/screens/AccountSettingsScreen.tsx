@@ -8,6 +8,7 @@ import {spacing} from '../../../theme/tokens';
 import accountService from '../services/accountService';
 import {useAuth} from '../../../contexts/AuthContext';
 import {useTheme, useThemeColors, ThemeMode} from '../../../common/hooks/useThemeColors';
+import {getErrorMessage, toApiError} from '../../../common/errors';
 
 // 76 AccountDeleteFlow — 탈퇴는 파괴적 작업이라 되돌릴 수 없다는 걸 손으로 입력해서 재확인시킨다.
 const WITHDRAW_CONFIRM_PHRASE = '회원탈퇴';
@@ -47,7 +48,7 @@ const AccountSettingsScreen: React.FC<Props> = ({visualWithdrawOpen, captureMark
                         // AuthProvider 가 isAuthenticated=false 로 바뀌면 AuthNavigator 가 자동으로
                         // Auth 스택으로 reset 한다. 추가 navigation 호출 없음.
                         AppToast.success('로그아웃됐어요.');
-                    } catch (e: any) {
+                    } catch (e: unknown) {
                         AppToast.error('로그아웃에 실패했어요. 잠시 후 다시 시도해 주세요.');
                     } finally {
                         setLoggingOut(false);
@@ -67,8 +68,8 @@ const AccountSettingsScreen: React.FC<Props> = ({visualWithdrawOpen, captureMark
         try {
             await accountService.updateMe({name: name.trim()});
             AppToast.success('이름이 변경됐어요.');
-        } catch (e: any) {
-            AppToast.error(e?.response?.data?.message ?? '변경에 실패했어요.');
+        } catch (e: unknown) {
+            AppToast.error(getErrorMessage(e, '변경에 실패했어요.'));
         } finally {
             setSaving(false);
         }
@@ -100,11 +101,11 @@ const AccountSettingsScreen: React.FC<Props> = ({visualWithdrawOpen, captureMark
                 await logout?.();
             } catch (_) {/* ignore */}
             navigation.reset({index: 0, routes: [{name: 'Auth'}]});
-        } catch (e: any) {
-            const msg =
-                e?.response?.data?.message ??
-                (e?.response?.status === 400 ? '활성 구독을 먼저 해지해 주세요.' : '탈퇴 처리에 실패했어요.');
-            AppToast.error(msg);
+        } catch (e: unknown) {
+            const fallback = toApiError(e).status === 400
+                ? '활성 구독을 먼저 해지해 주세요.'
+                : '탈퇴 처리에 실패했어요.';
+            AppToast.error(getErrorMessage(e, fallback));
         } finally {
             setWithdrawing(false);
         }

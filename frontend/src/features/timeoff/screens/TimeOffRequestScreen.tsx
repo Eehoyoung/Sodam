@@ -28,6 +28,7 @@ import {
 } from '../../../common/utils/dateTimeInput';
 import myLeaveService from '../services/myLeaveService';
 import type {TimeOffLeaveType, TimeOffUnit} from '../types';
+import {getErrorMessage} from '../../../common/errors';
 
 /**
  * 26 TimeOffRequest 확정 시안 — 직원 본인 휴가 셀프 신청.
@@ -137,8 +138,8 @@ const TimeOffRequestScreen: React.FC<TimeOffRequestScreenProps> = ({visualFixtur
                 endTime: isHours ? timeDigitsToHHmmss(endTime) : undefined,
             });
             setSubmitted(true);
-        } catch (e: any) {
-            AppToast.error(e?.response?.data?.message ?? '신청에 실패했어요. 잔여 연차나 입력값을 확인해 주세요.');
+        } catch (e: unknown) {
+            AppToast.error(getErrorMessage(e, '신청에 실패했어요. 잔여 연차나 입력값을 확인해 주세요.'));
         } finally {
             setLoading(false);
         }

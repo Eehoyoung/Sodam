@@ -8,6 +8,7 @@ import {formatWage} from '../../../common/format/money';
 import storeService from '../services/storeService';
 import {wageService} from '../../wage/services/wageService';
 import {logger} from '../../../utils/logger';
+import {getErrorMessage} from '../../../common/errors';
 
 interface EmployeeWageRow {
     id: number;
@@ -121,8 +122,8 @@ const WageSettingsScreen: React.FC<Props> = ({visualFixture}) => {
             await wageService.putStandardHourlyWage(storeId, wage);
             setCurrentWage(wage);
             AppToast.success('매장 기본 시급이 변경됐어요.');
-        } catch (e: any) {
-            AppToast.error(e?.response?.data?.message ?? '시급 변경에 실패했어요.');
+        } catch (e: unknown) {
+            AppToast.error(getErrorMessage(e, '시급 변경에 실패했어요.'));
         } finally {
             setLoading(false);
         }

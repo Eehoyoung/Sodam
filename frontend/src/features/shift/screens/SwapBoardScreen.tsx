@@ -30,6 +30,7 @@ import storeService from '../../store/services/storeService';
 import {shortTime} from '../services/shiftService';
 import {applySwap, fetchOpenSwaps, SwapRequest} from '../services/swapBoardService';
 import {logger} from '../../../utils/logger';
+import {getErrorMessage, toApiError} from '../../../common/errors';
 
 interface MyStore {
     id: number;
@@ -158,9 +159,9 @@ const SwapBoardScreen: React.FC<{visualFixture?: SwapBoardVisualFixture}> = ({vi
                 if (selectedStore) {
                     await loadSwaps(selectedStore.id).catch(() => {});
                 }
-            } catch (error: any) {
-                const status = error?.response?.status;
-                const serverMessage = error?.response?.data?.message;
+            } catch (error: unknown) {
+                const status = toApiError(error).status;
+                const serverMessage = getErrorMessage(error);
                 if (status === 409) {
                     AppToast.error(serverMessage ?? '이미 지원했거나 마감된 모집이에요.');
                     if (selectedStore) {

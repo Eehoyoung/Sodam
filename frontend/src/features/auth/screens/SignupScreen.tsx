@@ -20,6 +20,7 @@ import ConsentBlock, {ConsentValue} from '../components/ConsentBlock';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
 import {AuthStackParamList} from '../../../navigation/types';
 import {AuthPurpose, purposeLabel, purposeToPendingSlug} from '../../../navigation/authFlow';
+import {getErrorMessage} from '../../../common/errors';
 
 interface SignupScreenProps {
     navigation: NavigationProp<any>;
@@ -235,8 +236,8 @@ const SignUpScreen: React.FC<SignupScreenProps> = ({navigation, route}) => {
             setPassword('');
             setEmailAvailable(null);
             setCheckedEmail('');
-        } catch (e: any) {
-            const beMsg = e?.response?.data?.message;
+        } catch (e: unknown) {
+            const beMsg = getErrorMessage(e);
             AppToast.error(beMsg && typeof beMsg === 'string'
                 ? beMsg
                 : '회원가입에 실패했습니다. 입력값을 확인하고 다시 시도해 주세요.');

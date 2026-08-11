@@ -53,7 +53,23 @@ export function toApiError(error: unknown): ApiError {
   return new ApiError({message: '알 수 없는 오류가 발생했어요.', raw: error});
 }
 
-/** 화면에 바로 보여줄 수 있는 오류 메시지 — toApiError의 message를 그대로 노출한다. */
-export function getErrorMessage(error: unknown): string {
-  return toApiError(error).message;
+/**
+ * 화면에 바로 보여줄 수 있는 오류 메시지 — toApiError의 message를 그대로 노출한다.
+ *
+ * <p>{@code fallback} 을 주면 <b>서버가 message 를 내려준 경우에만</b> 그 값을 쓰고, 아니면
+ * 화면별 문구를 쓴다. `catch (e: unknown) { getErrorMessage(e, '저장 실패') }` 로 흩어져
+ * 있던 관용구를 타입 안전하게 대체하려는 것이다 — {@code e} 를 {@code any} 로 두면 오타
+ * (`e.reponse`)가 조용히 undefined 가 되어 항상 fallback 만 나온다.</p>
+ */
+export function getErrorMessage(error: unknown, fallback?: string): string {
+  const {message} = toApiError(error);
+  if (fallback === undefined) {
+    return message;
+  }
+  return hasServerMessage(error) ? message : fallback;
+}
+
+/** 서버가 응답 본문에 message 를 실어 보냈는지. */
+function hasServerMessage(error: unknown): boolean {
+  return isAxiosLikeError(error) && typeof error.response?.data?.message === 'string';
 }

@@ -19,6 +19,7 @@ import authApi from '../services/authApi';
 import {User} from '../services/authService';
 import {AuthStackParamList} from '../../../navigation/types';
 import {resetToRootRoute, resolvePostAuthRoute} from '../../../navigation/authFlow';
+import {getErrorMessage} from '../../../common/errors';
 
 interface Props {
     navigation: NavigationProp<any>;
@@ -69,8 +70,8 @@ export default function ConsentScreen({navigation, route}: Props) {
             queryClient.setQueryData<User | null>(authQueryKeys.currentUser(), nextUser);
 
             resetToRootRoute(navigation, resolvePostAuthRoute(nextUser, route.params?.selectedPurpose));
-        } catch (e: any) {
-            const msg = e?.response?.data?.message ?? '약관 동의 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.';
+        } catch (e: unknown) {
+            const msg = getErrorMessage(e, '약관 동의 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.');
             AppToast.error(msg);
         } finally {
             setSubmitting(false);

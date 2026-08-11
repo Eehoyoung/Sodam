@@ -44,6 +44,7 @@ import RoleTabBar from '../../../common/components/navigation/RoleTabBar';
 import {gradient, radius, recruit, shadow, spacing} from '../../../theme/tokens';
 import {useManagedStores} from '../../manager/hooks/useManagedStores';
 import {logger} from '../../../utils/logger';
+import {getErrorMessage} from '../../../common/errors';
 
 type AttendanceState = 'IDLE' | 'WORKING' | 'DONE' | 'LOADING';
 
@@ -418,8 +419,8 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
             AppToast.success(reqType === 'CHECK_IN'
                 ? '출근 승인을 요청했어요. 사장님 승인을 기다려 주세요.'
                 : '퇴근 승인을 요청했어요. 사장님 승인을 기다려 주세요.');
-        } catch (err: any) {
-            AppToast.error(err?.response?.data?.message || '요청에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        } catch (err: unknown) {
+            AppToast.error(getErrorMessage(err) || '요청에 실패했어요. 잠시 후 다시 시도해 주세요.');
         } finally {
             setApprovalBusy(false);
         }
@@ -791,8 +792,8 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
                                             await breakRecordService.end(selectedStore.id, activeBreakRecordId);
                                             setActiveBreakRecordId(null);
                                             AppToast.success('휴게 종료를 기록했어요.');
-                                        } catch (e: any) {
-                                            AppToast.error(e?.response?.data?.message || '휴게 종료 기록에 실패했어요.');
+                                        } catch (e: unknown) {
+                                            AppToast.error(getErrorMessage(e) || '휴게 종료 기록에 실패했어요.');
                                         } finally {
                                             setBreakBusy(false);
                                         }
@@ -879,8 +880,8 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
                         const record = await breakRecordService.start(selectedStore.id);
                         setActiveBreakRecordId(record.id);
                         AppToast.success('휴게 시작을 기록했어요.');
-                    } catch (e: any) {
-                        AppToast.error(e?.response?.data?.message || '휴게 시작 기록에 실패했어요.');
+                    } catch (e: unknown) {
+                        AppToast.error(getErrorMessage(e) || '휴게 시작 기록에 실패했어요.');
                     } finally {
                         setBreakBusy(false);
                     }

@@ -19,6 +19,7 @@ import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {spacing} from '../../../theme/tokens';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import storeService from '../../store/services/storeService';
+import {getErrorMessage, toApiError} from '../../../common/errors';
 import {
     fetchTaxReportHistory,
     sendTaxReport,
@@ -105,8 +106,8 @@ const TaxReportScreen: React.FC = () => {
             await updateAccountantEmail(storeId, email.trim());
             setSavedEmail(email.trim() || null);
             Alert.alert('저장 완료', email.trim() ? '세무사 이메일이 저장되었어요.' : '세무사 이메일이 해제되었어요.');
-        } catch (e: any) {
-            Alert.alert('저장 실패', e?.response?.data?.message ?? '이메일 형식을 확인해 주세요.');
+        } catch (e: unknown) {
+            Alert.alert('저장 실패', getErrorMessage(e, '이메일 형식을 확인해 주세요.'));
         } finally {
             setSavingEmail(false);
         }
@@ -119,15 +120,15 @@ const TaxReportScreen: React.FC = () => {
             await sendTaxReport(storeId, from, to, force);
             Alert.alert('발송 완료', `${label} 인건비 내역서를 세무사에게 보냈어요.`);
             load();
-        } catch (e: any) {
-            const errorCode = e?.response?.data?.errorCode;
+        } catch (e: unknown) {
+            const errorCode = toApiError(e).errorCode;
             if (errorCode === 'TAX_REPORT_ALREADY_SENT') {
                 Alert.alert('이미 발송된 기간이에요', '같은 정산기간에 발송한 이력이 있어요. 다시 보낼까요?', [
                     {text: '취소', style: 'cancel'},
                     {text: '다시 보내기', onPress: () => doSend(true)},
                 ]);
             } else {
-                Alert.alert('발송 실패', e?.response?.data?.message ?? '잠시 후 다시 시도해 주세요.');
+                Alert.alert('발송 실패', getErrorMessage(e, '잠시 후 다시 시도해 주세요.'));
             }
         } finally {
             setSending(false);

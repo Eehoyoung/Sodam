@@ -8,6 +8,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import attendanceCorrectionService from '../services/attendanceCorrectionService';
+import {getErrorMessage} from '../../../common/errors';
 import {
     TIME_DIGITS_HELPER,
     compactDateFromApi,
@@ -70,8 +71,8 @@ const AttendanceCorrectionRequestScreen: React.FC<AttendanceCorrectionRequestScr
                 reason: reason.trim(),
             });
             setSubmitted(true);
-        } catch (e: any) {
-            AppToast.error(e?.response?.data?.message ?? '요청 전송에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        } catch (e: unknown) {
+            AppToast.error(getErrorMessage(e, '요청 전송에 실패했어요. 잠시 후 다시 시도해 주세요.'));
         } finally {
             setLoading(false);
         }

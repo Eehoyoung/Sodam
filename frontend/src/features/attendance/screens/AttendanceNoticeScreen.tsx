@@ -19,6 +19,7 @@ import {spacing} from '../../../theme/tokens';
 import {DATE_DIGITS_HELPER, dateDigitsToIso, isValidDateDigits, sanitizeDateDigits} from '../../../common/utils/dateTimeInput';
 import attendanceIrregularityService from '../services/attendanceIrregularityService';
 import type {AttendanceNoticeType} from '../types';
+import {getErrorMessage} from '../../../common/errors';
 
 /**
  * 지각/조퇴/결근 사전 신고 — 직원 본인. 사장에게 알리는 용도일 뿐 임금 계산에는 영향이 없다.
@@ -78,8 +79,8 @@ const AttendanceNoticeScreen: React.FC<{visualFixture?: AttendanceNoticeVisualFi
                 storeId, dateDigitsToIso(forDate), TYPE_OPTIONS[typeIdx].value, message.trim() || undefined,
             );
             setSubmitted(true);
-        } catch (e: any) {
-            AppToast.error(e?.response?.data?.message ?? '신고에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        } catch (e: unknown) {
+            AppToast.error(getErrorMessage(e, '신고에 실패했어요. 잠시 후 다시 시도해 주세요.'));
         } finally {
             setLoading(false);
         }

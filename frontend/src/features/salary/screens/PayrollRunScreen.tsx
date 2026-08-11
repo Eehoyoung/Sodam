@@ -13,6 +13,7 @@ import {DATE_DIGITS_HELPER, dateDigitsToIso, isValidDateDigits, sanitizeDateDigi
 import storeService, {StoreSummaryDto} from '../../store/services/storeService';
 import payrollService, {RESIGNED_NEEDS_MANUAL_SETTLEMENT} from '../services/payrollService';
 import {fetchOvertimeCheck, OvertimeCheck} from '../services/overtimeService';
+import {getErrorMessage} from '../../../common/errors';
 
 // 정산 계산 로직 보존을 위한 경량 어댑터 (구식 Badge/Input → DS)
 const Badge: React.FC<any> = ({text, type}) => (
@@ -175,8 +176,8 @@ const PayrollRunScreen: React.FC<Props> = ({visualFixture}) => {
             }
             // 연장근로 한도 경보는 정산을 막지 않는 부가 정보 — 실패해도 정산 흐름 유지.
             loadOvertime(storeId, startDateIso);
-        } catch (e: any) {
-            AppToast.error(e?.response?.data?.message ?? '급여 계산 중 오류가 났어요. 잠시 후 다시 시도해 주세요.');
+        } catch (e: unknown) {
+            AppToast.error(getErrorMessage(e, '급여 계산 중 오류가 났어요. 잠시 후 다시 시도해 주세요.'));
         } finally {
             setLoading(false);
         }
