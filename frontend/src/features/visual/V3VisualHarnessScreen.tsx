@@ -2833,8 +2833,16 @@ const VisualRouteFrame: React.FC<{source: 'reference' | 'actual'; screenId: stri
 
 const V3VisualHarnessScreen: React.FC<Props> = ({navigation, route}) => {
     const {screenId, source} = route.params;
+    // key 로 화면마다 재마운트를 강제한다.
+    //
+    // 캡처는 같은 라우트에 params 만 바꿔 가며 딥링크한다. key 가 없으면 React 가 기존
+    // 컴포넌트를 재사용해 상태가 넘어오고, 화면들이 `useState(visualFixture?.step ?? ...)`
+    // 처럼 마운트 시에만 fixture 를 읽으면 이전 화면의 상태가 그대로 남는다.
+    // 실제로 2026-08-13 기준선 재수립에서 069(PayrollIssueSuccess)가 068(Confirm)의
+    // 3단계 화면을 그린 채 찍혔다 — fixture 는 step:'DONE' 을 넘기고 있었는데도.
+    // 캡처가 안정될 때까지 기다려도 소용없다. 안정된 상태가 틀린 상태였기 때문이다.
     const visual = (content: React.ReactNode) => (
-        <VisualRouteFrame source={source} screenId={screenId}>{content}</VisualRouteFrame>
+        <VisualRouteFrame key={`${source}-${screenId}`} source={source} screenId={screenId}>{content}</VisualRouteFrame>
     );
 
     if (screenId === V3_VISUAL_SCREEN_IDS.welcomeSplash) {
