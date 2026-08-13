@@ -8,7 +8,7 @@
  * configuration. It never displays a PNG, HTML, or WebView.
  */
 import React from 'react';
-import {Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
+import {LogBox, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -2802,16 +2802,34 @@ const ReferenceButton: React.FC<{label: string; variant: 'primary' | 'kakao'}> =
     );
 };
 
-const VisualRouteFrame: React.FC<{source: 'reference' | 'actual'; screenId: string; children: React.ReactNode}> = ({source, screenId, children}) => (
-    <View style={styles.visualRoute}>
-        <Text
-            accessibilityLabel={`v3-visual-${source}-${screenId}`}
-            style={styles.visualRouteMarker}>
-            {`v3-visual-${source}-${screenId}`}
-        </Text>
-        {children}
-    </View>
-);
+const VisualRouteFrame: React.FC<{source: 'reference' | 'actual'; screenId: string; children: React.ReactNode}> = ({source, screenId, children}) => {
+    // LogBox 배너를 캡처 동안만 끈다.
+    //
+    // 이 화면들은 픽셀 비교 대상이라 제품 UI 밖의 오버레이가 한 픽셀이라도 끼면 안 된다.
+    // 실제로 2026-08-13 T-14 재검증에서 154화면 중 133개가 이것 때문에 MISMATCH 로
+    // 나왔다 — 기준 캡처에는 "경고 4건" 배지와 타임스탬프가, 대상 캡처에는
+    // "Each child in a list should…" 에러가 화면 하단 같은 자리에 그려졌다.
+    // 제품 회귀는 0건이었는데 리포트는 전부 빨간 상태였다.
+    //
+    // index.js 의 LogBox.ignoreLogs 는 패턴 화이트리스트라 새 경고가 계속 새어 나온다.
+    // 여기서는 캡처 경로에 한해 전부 끄고, 벗어나면 원래대로 되돌린다 —
+    // 개발 중 경고를 영구히 숨기면 그것대로 문제다.
+    React.useEffect(() => {
+        LogBox.ignoreAllLogs(true);
+        return () => LogBox.ignoreAllLogs(false);
+    }, []);
+
+    return (
+        <View style={styles.visualRoute}>
+            <Text
+                accessibilityLabel={`v3-visual-${source}-${screenId}`}
+                style={styles.visualRouteMarker}>
+                {`v3-visual-${source}-${screenId}`}
+            </Text>
+            {children}
+        </View>
+    );
+};
 
 const V3VisualHarnessScreen: React.FC<Props> = ({navigation, route}) => {
     const {screenId, source} = route.params;

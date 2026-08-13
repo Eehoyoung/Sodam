@@ -237,7 +237,38 @@ async function compareScreens(outputDirectory) {
         ? manifest.screens.filter((screen) => selectedIds.has(screen.id))
         : manifest.screens;
 
-    const identicalSource = referenceSource?.commitSha === actualSource?.commitSha;
+    // 이 하네스는 두 가지 전혀 다른 질문에 쓰인다. 어느 쪽인지는 두 축(캡처 모드 source,
+    // 커밋 SHA) 중 무엇이 다른가로 정해진다.
+    //
+    //   ┌ source 같음 + SHA 같음   → 자기 자신과의 비교. 무엇을 바꿔도 초록이다(무의미)
+    //   ├ source 같음 + SHA 다름   → 회귀 검증: "이 변경이 화면을 깨뜨렸나"
+    //   ├ source 다름 + SHA 같음   → 시안 적합성: "실 컴포넌트가 시안과 같나"
+    //   └ source 다름 + SHA 다름   → 변수 두 개가 동시에 움직인다. 결과 해석 불가
+    //
+    // 마지막 조합을 막지 않으면 결과가 조용히 무의미해진다. 2026-08-13 T-14 재검증이
+    // 정확히 여기 빠졌다 — 기준을 옛 커밋의 'reference'(손전사 목업)로, 대상을 새 커밋의
+    // 'actual'(실 컴포넌트)로 찍어 놓고 136 MISMATCH 를 회귀로 읽을 뻔했다. 실제 회귀는
+    // 0건이었고, 차이는 목업과 실화면의 문구 차이(예: "명세 확인까지" vs "명세 확인을")였다.
+    // SHA 축만 검사하던 기존 가드로는 이걸 잡지 못한다.
+    if (referenceSource && actualSource) {
+        const sourceDiffers = referenceSource.source !== actualSource.source;
+        const shaDiffers = referenceSource.commitSha !== actualSource.commitSha;
+        if (sourceDiffers && shaDiffers) {
+            throw new Error(
+                'Cannot compare: both the capture mode and the commit changed.\n'
+                + `  reference: source=${referenceSource.source} sha=${referenceSource.commitSha?.slice(0, 7)}\n`
+                + `  actual:    source=${actualSource.source} sha=${actualSource.commitSha?.slice(0, 7)}\n`
+                + 'Hold one axis fixed:\n'
+                + '  regression  — same source, different commit (capture the baseline with the SAME source at the old commit)\n'
+                + '  conformance — different source, same commit',
+            );
+        }
+    }
+
+    const identicalSource = referenceSource
+        && actualSource
+        && referenceSource.commitSha === actualSource.commitSha
+        && referenceSource.source === actualSource.source;
     const results = [];
     if (identicalSource) {
         for (const screen of selectedScreens) {
