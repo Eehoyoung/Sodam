@@ -5,6 +5,7 @@
  */
 
 import {Platform} from 'react-native';
+import {logger} from '../utils/logger';
 
 export interface JSIMetrics {
     frameRate: number;
@@ -50,12 +51,12 @@ class JSIPerformanceMonitorService {
      */
     startMonitoring(): void {
         if (this.isMonitoring) {
-            console.warn('[JSI Monitor] Already monitoring');
+            logger.warn('[JSI Monitor] Already monitoring');
             return;
         }
 
         this.isMonitoring = true;
-        console.log('[JSI Monitor] Starting performance monitoring');
+        logger.debug('[JSI Monitor] Starting performance monitoring');
 
         // Monitor metrics every 5 seconds
         this.monitoringInterval = setInterval(() => {
@@ -75,7 +76,7 @@ class JSIPerformanceMonitorService {
         }
 
         this.isMonitoring = false;
-        console.log('[JSI Monitor] Stopping performance monitoring');
+        logger.debug('[JSI Monitor] Stopping performance monitoring');
 
         if (this.monitoringInterval) {
             clearInterval(this.monitoringInterval as unknown as number);
@@ -93,7 +94,7 @@ class JSIPerformanceMonitorService {
      */
     registerAnimation(animationId: string): void {
         this.animationRegistry.add(animationId);
-        console.log(`[JSI Monitor] Animation registered: ${animationId}`);
+        logger.debug(`[JSI Monitor] Animation registered: ${animationId}`);
     }
 
     /**
@@ -101,7 +102,7 @@ class JSIPerformanceMonitorService {
      */
     unregisterAnimation(animationId: string): void {
         this.animationRegistry.delete(animationId);
-        console.log(`[JSI Monitor] Animation unregistered: ${animationId}`);
+        logger.debug(`[JSI Monitor] Animation unregistered: ${animationId}`);
     }
 
     /**
@@ -124,7 +125,7 @@ class JSIPerformanceMonitorService {
         };
 
         this.crashReports.push(crashReport);
-        console.error('[JSI Monitor] Crash reported:', crashReport);
+        logger.error('[JSI Monitor] Crash reported:', crashReport);
 
         // Keep only last 50 crash reports
         if (this.crashReports.length > 50) {
@@ -239,7 +240,7 @@ class JSIPerformanceMonitorService {
     clearData(): void {
         this.metrics = [];
         this.crashReports = [];
-        console.log('[JSI Monitor] Data cleared');
+        logger.debug('[JSI Monitor] Data cleared');
     }
 
     /**
@@ -273,7 +274,7 @@ class JSIPerformanceMonitorService {
             this.metrics = this.metrics.slice(-1000);
         }
 
-        console.log('[JSI Monitor] Metrics collected:', metrics);
+        logger.debug('[JSI Monitor] Metrics collected:', metrics);
     }
 
     private setupFrameRateMonitoring(): void {
@@ -326,7 +327,7 @@ class JSIPerformanceMonitorService {
     private sendCrashToAnalytics(crashReport: JSICrashReport): void {
         // Placeholder for analytics integration
         // In production, this would send to services like Crashlytics, Sentry, etc.
-        console.log('[JSI Monitor] Sending crash report to analytics:', crashReport.id);
+        logger.debug('[JSI Monitor] Sending crash report to analytics:', crashReport.id);
 
         // Example integration points:
         // - Firebase Crashlytics

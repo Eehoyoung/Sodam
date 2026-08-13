@@ -8,6 +8,7 @@
 import React, {Component, ReactNode, useMemo} from 'react';
 import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {ThemeColors, useThemeColors} from '../hooks/useThemeColors';
+import {logger} from '../../utils/logger';
 
 interface Props {
     children: ReactNode;
@@ -90,8 +91,8 @@ export class ErrorBoundary extends Component<Props, State> {
 
     componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
         // Log error details
-        console.error('ErrorBoundary caught an error:', error);
-        console.error('Error info:', errorInfo);
+        logger.error('ErrorBoundary caught an error:', error);
+        logger.error('Error info:', errorInfo);
 
         // Update state with error info
         this.setState({errorInfo});
@@ -129,11 +130,10 @@ export class ErrorBoundary extends Component<Props, State> {
     private logErrorToService = (error: Error, errorInfo: React.ErrorInfo) => {
         // TODO: Integrate with crash reporting service (e.g., Firebase Crashlytics)
         if (__DEV__) {
-            console.group('🚨 Error Boundary Report');
-            console.error('Error:', error);
-            console.error('Component Stack:', errorInfo.componentStack);
-            console.error('Error Stack:', error.stack);
-            console.groupEnd();
+            logger.error('🚨 Error Boundary Report');
+            logger.error('Error:', error);
+            logger.error('Component Stack:', errorInfo.componentStack);
+            logger.error('Error Stack:', error.stack);
         }
     };
 

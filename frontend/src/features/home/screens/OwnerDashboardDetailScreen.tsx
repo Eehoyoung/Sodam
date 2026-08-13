@@ -18,6 +18,7 @@ import {recruit, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {formatMoney} from '../../../common/format/money';
 import {fetchDashboardStats, MonthPayrollStats} from '../../store/services/insightsService';
+import {logger} from '../../../utils/logger';
 
 /** 개발용 시각 검증 전용 — fetchDashboardStats 호출을 고정 데이터로 대체한다. */
 export interface OwnerDashboardDetailVisualFixture {
@@ -56,7 +57,7 @@ const OwnerDashboardDetailScreen: React.FC<Props> = ({visualFixture}) => {
             const dashboard = await fetchDashboardStats(storeId);
             setMonthly(dashboard.payroll);
         } catch (e) {
-            console.warn('[OwnerDashboardDetail] load failed', e);
+            logger.warn('[OwnerDashboardDetail] load failed', e);
             setError(true);
         } finally {
             setLoading(false);

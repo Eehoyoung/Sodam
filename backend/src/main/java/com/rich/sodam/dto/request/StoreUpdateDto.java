@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.DayOfWeek;
+
 /**
  * 매장 일반 정보 업데이트 DTO
  * 선택적으로 전달된 필드만 업데이트됩니다.
@@ -52,4 +54,7 @@ public class StoreUpdateDto {
     @Schema(description = "급여 정산 주기(시작/마감/지급일). 전달 시 전체 교체")
     @Valid
     private PayrollCycleDto payrollCycle;
+
+    @Schema(description = "STORE_DEFINED 주휴 기산 정책의 주 시작 요일", example = "MONDAY")
+    private DayOfWeek weeklyAllowanceWeekStartDay;
 }

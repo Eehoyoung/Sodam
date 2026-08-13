@@ -55,6 +55,8 @@ jest.mock('../../../src/features/subscription/services/subscriptionApi', () => {
         pause: jest.fn().mockResolvedValue({id: 1, plan: 'STARTER', status: 'PAUSED'}),
         resume: jest.fn().mockResolvedValue({id: 1, plan: 'STARTER', status: 'ACTIVE'}),
         cancel: jest.fn(),
+        getReceipts: jest.fn().mockResolvedValue([]),
+        requestRefund: jest.fn(),
     };
     return {__esModule: true, default: api, subscriptionApi: api};
 });
@@ -223,6 +225,21 @@ describe('SubscribeScreen', () => {
             await flush();
         });
         expect((subscriptionApi as any).pause).toHaveBeenCalledTimes(1);
+    });
+
+    test('현재 ACTIVE 구독이면 결제 내역·환불 신청을 열어 서버 영수증만 조회한다', async () => {
+        (subscriptionApi as any).getMyCurrent.mockResolvedValueOnce({id: 1, plan: 'STARTER', status: 'ACTIVE'});
+        (subscriptionApi as any).getReceipts.mockResolvedValueOnce([
+            {id: 1, sourceType: 'SUBSCRIPTION', orderId: 'ORD_1', amountKrw: 9900, status: 'ISSUED'},
+        ]);
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => { renderer = ReactTestRenderer.create(<SubscribeScreen />); await flush(); });
+        const button = renderer!.root.findAllByType('Pressable')
+            .find(p => p.props.accessibilityLabel === '결제 내역 · 환불 신청');
+        expect(button).toBeTruthy();
+        await act(async () => { button!.props.onPress(); await flush(); });
+        expect((subscriptionApi as any).getReceipts).toHaveBeenCalledTimes(1);
+        expect(renderer!.root.findAllByType('Text').map(t => t.props.children)).toContain('환불 신청');
     });
 
     test('현재 PAUSED 구독이면 "구독 재개하기" 버튼 → resume() 호출', async () => {

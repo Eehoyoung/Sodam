@@ -43,6 +43,8 @@ import SectionHeader from '../../../common/components/sections/SectionHeader';
 import RoleTabBar from '../../../common/components/navigation/RoleTabBar';
 import {gradient, radius, recruit, shadow, spacing} from '../../../theme/tokens';
 import {useManagedStores} from '../../manager/hooks/useManagedStores';
+import {logger} from '../../../utils/logger';
+import {getErrorMessage} from '../../../common/errors';
 
 type AttendanceState = 'IDLE' | 'WORKING' | 'DONE' | 'LOADING';
 
@@ -102,7 +104,7 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
     const [todayRecord, setTodayRecord] = useState<TodayAttendance | null>(visualFixture?.todayRecord ?? null);
     const [weekShifts, setWeekShifts] = useState<WorkShift[]>(visualFixture?.weekShifts ?? []);
     const [monthlyAttendances, setMonthlyAttendances] = useState<TodayAttendance[]>(visualFixture?.monthlyAttendances ?? []);
-    const [tick, setTick] = useState(0);
+    const [tick, setTick] = useState(() => Date.now());
     const [policies, setPolicies] = useState<PolicyInfo[]>(visualFixture?.policies ?? []);
     const [pendingContractCount, setPendingContractCount] = useState(visualFixture?.pendingContractCount ?? 0);
     const [unreadNoticeCount, setUnreadNoticeCount] = useState(visualFixture?.unreadNoticeCount ?? 0);
@@ -142,7 +144,7 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
                 setState('IDLE');
             }
         } catch (error) {
-            console.warn('[EmployeeAttendanceHome] loadStores failed', error);
+            logger.warn('[EmployeeAttendanceHome] loadStores failed', error);
             AppToast.error('매장 정보를 불러오지 못했어요.');
             setState('IDLE');
         }
@@ -175,7 +177,7 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
             setMonthlyAttendances(monthList.filter(item => item.storeId === store.id));
             setState(determineState(today));
         } catch (error) {
-            console.warn('[EmployeeAttendanceHome] loadStoreScopedData failed', error);
+            logger.warn('[EmployeeAttendanceHome] loadStoreScopedData failed', error);
             setTodayRecord(null);
             setWeekShifts([]);
             setMonthlyAttendances([]);
@@ -196,9 +198,11 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
             if (selectedStore) {
                 loadStoreScopedData(selectedStore);
             }
-            // eslint-disable-next-line react-hooks/exhaustive-deps
-        // managedStores.refetch is stable; depending on the whole query result would recreate the focus callback.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // 세 값은 의도적으로 좁혀서 의존한다 —
+        //  · managedStores: refetch 만 안정적이고, 쿼리 결과 전체를 넣으면 매 갱신마다 콜백이 새로 만들어진다
+        //  · selectedStore: 객체 정체성이 stores 갱신마다 바뀐다(아래 useEffect 의 무한 루프 주석과 같은 이유). id 로 충분
+        //  · visualFixture: 시각 검증 전용 prop 이라 마운트 동안 불변이다
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- 위 세 값은 의도적으로 좁혀 의존한다(무한 루프·불필요한 재생성 방지)
         }, [loadStores, selectedStore?.id, loadStoreScopedData, managedStores.refetch]),
     );
 
@@ -226,9 +230,13 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
         if (state !== 'WORKING') {
             return;
         }
-        const id = setInterval(() => setTick(t => t + 1), 1000);
+        const id = setInterval(() => setTick(Date.now()), 1000);
         return () => clearInterval(id);
     }, [state]);
+
+    // `tick` holds the current timestamp and advances once per second while working.
+    // The elapsed-time calculations consume it directly to preserve real-time refresh.
+    const currentTimeMs = visualFixture?.nowMs ?? tick;
 
     // 정부 지원 정책 — MasterMyPageScreen 과 동일 패턴(상위 3건만 요약 표시).
     useFocusEffect(
@@ -251,7 +259,7 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
                     }));
                 } catch {/* 보조 정보 무시 */}
             })();
-        }, []),
+        }, [visualFixture]),
     );
 
     // 알림 스트립 — 이미 존재하는 서비스 함수(내 계약서/내 공지)로만 계산. 새 BE 엔드포인트 추가 없음.
@@ -282,7 +290,7 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
             return () => {
                 active = false;
             };
-        }, []),
+        }, [visualFixture]),
     );
 
     // 22 EmployeeWorking(중복 통합) — AttendanceScreen 과 공유하는 EmployeeWorkingRing 이
@@ -292,9 +300,8 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
             return 0;
         }
         const start = parseServerDateTime(todayRecord.checkInTime).getTime();
-        const now = visualFixture?.nowMs ?? Date.now();
-        return Math.max(0, now - start) / 1000;
-    }, [state, todayRecord?.checkInTime, tick, visualFixture?.nowMs]);
+        return Math.max(0, currentTimeMs - start) / 1000;
+    }, [currentTimeMs, state, todayRecord?.checkInTime]);
 
     const todaySchedule = useMemo(() => {
         const today = toIsoDate(new Date());
@@ -325,8 +332,7 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
             estimatedWage += Math.round(hours * (item.appliedHourlyWage ?? selectedStore?.appliedHourlyWage ?? 0));
         }
         if (state === 'WORKING' && todayRecord?.checkInTime && selectedStore) {
-            const now = visualFixture?.nowMs ?? Date.now();
-            const elapsedHours = Math.max(0, now - parseServerDateTime(todayRecord.checkInTime).getTime()) / 3600000;
+            const elapsedHours = Math.max(0, currentTimeMs - parseServerDateTime(todayRecord.checkInTime).getTime()) / 3600000;
             estimatedWage += Math.round(elapsedHours * selectedStore.appliedHourlyWage);
             attendanceDays.add(todayRecord.checkInTime.slice(0, 10));
         }
@@ -334,7 +340,7 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
             attendanceDays: attendanceDays.size,
             estimatedWage,
         };
-    }, [monthlyAttendances, selectedStore, state, todayRecord, visualFixture?.nowMs]);
+    }, [currentTimeMs, monthlyAttendances, selectedStore, state, todayRecord]);
 
     // 이번 달 근무시간(신규) — monthlySummary(estimatedWage/attendanceDays)는 그대로 두고 옆에 시간 합산만 추가.
     const monthlyWorkedMinutes = useMemo(() => {
@@ -347,11 +353,10 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
             }
         }
         if (state === 'WORKING' && todayRecord?.checkInTime) {
-            const now = visualFixture?.nowMs ?? Date.now();
-            minutes += Math.max(0, now - parseServerDateTime(todayRecord.checkInTime).getTime()) / 60000;
+            minutes += Math.max(0, currentTimeMs - parseServerDateTime(todayRecord.checkInTime).getTime()) / 60000;
         }
         return minutes;
-    }, [monthlyAttendances, state, todayRecord?.checkInTime, tick, visualFixture?.nowMs]);
+    }, [currentTimeMs, monthlyAttendances, state, todayRecord?.checkInTime]);
     const monthlyWorkedHoursLabel = `${Math.round(monthlyWorkedMinutes / 60)}시간`;
 
     // 매장 헤더의 '시급'은 현재 적용 시급(wages 엔드포인트로 갱신된 selectedStore)을 우선 표시한다.
@@ -371,14 +376,17 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
     // 포커스 복귀 시 진행 중인 휴게 기록이 있는지 서버에서 확인(앱을 껐다 켜도 상태 유지).
     useFocusEffect(
         useCallback(() => {
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- boolean condition (logical OR), not value coalescing
-            if (visualFixture || !selectedStore) {
+            if (visualFixture) {
+                return;
+            }
+            const breakStoreId = selectedStore?.id;
+            if (!breakStoreId) {
                 return;
             }
             let active = true;
             (async () => {
                 try {
-                    const records = await breakRecordService.list(selectedStore.id);
+                    const records = await breakRecordService.list(breakStoreId);
                     const inProgress = records.find(r => r.recordedBy === 'EMPLOYEE' && !r.breakEndTime);
                     if (active) {
                         setActiveBreakRecordId(inProgress?.id ?? null);
@@ -411,8 +419,8 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
             AppToast.success(reqType === 'CHECK_IN'
                 ? '출근 승인을 요청했어요. 사장님 승인을 기다려 주세요.'
                 : '퇴근 승인을 요청했어요. 사장님 승인을 기다려 주세요.');
-        } catch (err: any) {
-            AppToast.error(err?.response?.data?.message || '요청에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        } catch (err: unknown) {
+            AppToast.error(getErrorMessage(err) || '요청에 실패했어요. 잠시 후 다시 시도해 주세요.');
         } finally {
             setApprovalBusy(false);
         }
@@ -723,7 +731,7 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
                                 </View>
                             </View>
 
-                            <View style={[styles.timerPanel, {backgroundColor: c.brandPrimarySoft, borderWidth: 1, borderColor: c.brandPrimary}]}>
+                            <View style={[styles.timerPanel, styles.hairlineRing, {backgroundColor: c.brandPrimarySoft, borderColor: c.brandPrimary}]}>
                                 {state === 'WORKING' ? (
                                     // 22 EmployeeWorking(중복 통합) — AttendanceScreen 의 isWorking 히어로와
                                     // 동일한 EmployeeWorkingRing 을 사용(코랄→틸 진행률 링).
@@ -784,8 +792,8 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
                                             await breakRecordService.end(selectedStore.id, activeBreakRecordId);
                                             setActiveBreakRecordId(null);
                                             AppToast.success('휴게 종료를 기록했어요.');
-                                        } catch (e: any) {
-                                            AppToast.error(e?.response?.data?.message || '휴게 종료 기록에 실패했어요.');
+                                        } catch (e: unknown) {
+                                            AppToast.error(getErrorMessage(e) || '휴게 종료 기록에 실패했어요.');
                                         } finally {
                                             setBreakBusy(false);
                                         }
@@ -845,7 +853,7 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
                                             </AppText>
                                             {policy.isNew ? (
                                                 <View style={[styles.policyNewBadge, {backgroundColor: c.infoBg}]}>
-                                                    <AppText variant="caption" weight="700" style={{color: c.info, fontSize: 10}}>
+                                                    <AppText variant="caption" weight="700" style={[styles.badgeText, {color: c.info}]}>
                                                         NEW
                                                     </AppText>
                                                 </View>
@@ -872,8 +880,8 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
                         const record = await breakRecordService.start(selectedStore.id);
                         setActiveBreakRecordId(record.id);
                         AppToast.success('휴게 시작을 기록했어요.');
-                    } catch (e: any) {
-                        AppToast.error(e?.response?.data?.message || '휴게 시작 기록에 실패했어요.');
+                    } catch (e: unknown) {
+                        AppToast.error(getErrorMessage(e) || '휴게 시작 기록에 실패했어요.');
                     } finally {
                         setBreakBusy(false);
                     }
@@ -1161,6 +1169,8 @@ const styles = StyleSheet.create({
     policyDot: {width: 6, height: 6, borderRadius: 3, flexShrink: 0},
     policyTitleRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: 2},
     policyNewBadge: {paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.pill, flexShrink: 0},
+    badgeText: {fontSize: 10},
+    hairlineRing: {borderWidth: 1},
 
     flex: {
         flex: 1,

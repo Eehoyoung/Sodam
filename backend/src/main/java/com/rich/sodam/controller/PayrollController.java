@@ -140,11 +140,12 @@ public class PayrollController {
                 requestDto.getStoreId(), requestDto.getStartDate(), requestDto.getEndDate(), () -> {
                     // 매장 일괄 계산 모드: employeeId 미지정 → 매장 활성 직원 전체
                     if (requestDto.getEmployeeId() == null) {
-                        java.util.List<PayrollDto> all = payrollStoreBatchService.calculatePayrollForStore(
+                        // 성공분(data)과 계산이 중단된 직원(failed)을 함께 반환한다 — 실패를 응답에서
+                        // 빼면 사장님이 누락을 인지할 수 없다.
+                        return ResponseEntity.ok(payrollStoreBatchService.calculatePayrollForStore(
                                 requestDto.getStoreId(),
                                 requestDto.getStartDate(),
-                                requestDto.getEndDate());
-                        return ResponseEntity.ok(all);
+                                requestDto.getEndDate()));
                     }
 
                     Payroll payroll = payrollService.calculatePayroll(

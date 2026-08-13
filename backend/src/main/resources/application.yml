@@ -234,6 +234,24 @@ sodam:
   #  ※ 월 경계 주의 귀속월 규칙(주 종료일이 속한 월에 전액 귀속, 분할 금지)은 시스템 고정값 — 설정으로 열지 않음.
   payroll:
     week-start-policy: ${SODAM_PAYROLL_WEEK_START_POLICY:MONDAY}
+    # 계약서 주휴일을 주 기산일로 읽는 규칙은 노무사 회신으로만 바꾼다.
+    contract-week-start-rule: ${SODAM_PAYROLL_CONTRACT_WEEK_START_RULE:DAY_AFTER_WEEKLY_HOLIDAY}
+    # 주 40시간 초과 연장가산(§56①). 끄면 주 6일×7시간 같은 스케줄에서 가산임금이 누락된다.
+    # 되돌릴 수단으로만 남긴 스위치 — 임의로 끄지 말 것.
+    weekly-overtime-enabled: ${SODAM_PAYROLL_WEEKLY_OVERTIME_ENABLED:true}
+    # G-10: 야간가산에서 법정 휴게시간 차감. 휴게 시각이 기록되지 않아 위치를 추정해야 하므로,
+    #       근로자에게 불리한 추정을 하지 않도록 기본 비활성. 노무사 회신 후에만 켠다.
+    night-break-deduction-enabled: ${SODAM_PAYROLL_NIGHT_BREAK_DEDUCTION_ENABLED:false}
+  # G-2 회신 전 발급 대상은 NONE으로 보류한다. MOCK에서만 선택값을 넣어 네 결제 경로를 검증할 수 있고,
+  # live 대행사/자격증명은 회신·계약 후에만 활성화한다.
+  fiscal-receipt:
+    mode: ${SODAM_FISCAL_RECEIPT_MODE:mock}
+    default-document-type: ${SODAM_FISCAL_RECEIPT_DEFAULT_DOCUMENT_TYPE:NONE}
+    provider-base-url: ${SODAM_FISCAL_RECEIPT_PROVIDER_BASE_URL:}
+    api-key: ${SODAM_FISCAL_RECEIPT_API_KEY:}
+  # 법적 환불 기준이 확정되기 전, 실결제(live)는 신청만 접수한다. mock 결제 흐름은 자동 취소까지 검증.
+  payment-refund:
+    auto-process-mode: ${SODAM_PAYMENT_REFUND_AUTO_PROCESS_MODE:mock}
   # 출근권(사장 전용 채용 재화) 이코노미 수치 — recruitment-monetization-gamification-plan.md §2.2·§2.3.
   # 파일럿 운영 데이터로 조정될 예정이라 하드코딩하지 않고 env override 가능하게 둔다.
   attendance-credit:
@@ -281,12 +299,19 @@ sodam:
   #   api-url: ${SODAM_OCR_API_URL:}        # CLOVA OCR Receipt Invoke URL
   #   secret-key: ${SODAM_OCR_SECRET_KEY:}  # X-OCR-SECRET
   integration:
+    # 사용자 업로드 파일: 기본 mock. live 전환은 private S3 bucket과 IAM 기본 자격 증명 체인이 준비된 뒤 명시적으로 수행한다.
+    object-storage:
+      mode: ${SODAM_INTEGRATION_OBJECT_STORAGE_MODE:mock}
+      bucket: ${SODAM_OBJECT_STORAGE_BUCKET:}
+      region: ${SODAM_OBJECT_STORAGE_REGION:ap-northeast-2}
+      presigned-get-ttl: ${SODAM_OBJECT_STORAGE_PRESIGNED_GET_TTL:15m}
     toss:
       mode: ${SODAM_INTEGRATION_TOSS_MODE:mock}
       client-key: ${TOSS_CLIENT_KEY:test_ck_dev}
       secret-key: ${TOSS_SECRET_KEY:test_sk_dev}
       webhook-secret: ${TOSS_WEBHOOK_SECRET:}
       base-url: ${TOSS_BASE_URL:https://api.tosspayments.com}
+      public-callback-base-url: ${SODAM_TOSS_PUBLIC_CALLBACK_BASE_URL:}
     fcm:
       mode: ${SODAM_INTEGRATION_FCM_MODE:mock}
     sentry:

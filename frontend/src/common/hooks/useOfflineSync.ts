@@ -3,6 +3,7 @@ import {useQueryClient} from '@tanstack/react-query';
 import {AppState, AppStateStatus} from 'react-native';
 import {authQueryKeys} from '../auth/queryKeys';
 import {adjustCacheForNetwork} from '../utils/cacheStrategy';
+import {logger} from '../../utils/logger';
 
 // attendance는 features/attendance가 소유한 쿼리 키다 — common 계층(이 훅)이 feature query key를
 // import하지 않는다는 WP-05 2단계 원칙에 따라, attendanceQueryKeys.all과 동일한 리터럴을 직접 쓴다.
@@ -107,7 +108,7 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
             return;
         }
 
-        console.log('[OfflineSync] 중요 쿼리 동기화 시작');
+        logger.debug('[OfflineSync] 중요 쿼리 동기화 시작');
 
         // 'auth' 는 나머지 쿼리보다 먼저, 단독으로 끝낸다 — 동시에 돌리면 auth 쿼리(useAuthStatus →
         // authService.isAuthenticated())와 attendance/user-profile 쿼리(401 시 client.ts 인터셉터)가
@@ -118,7 +119,7 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
             try {
                 await queryClient.invalidateQueries({queryKey: authQueryKeys.all});
             } catch (error) {
-                console.error('[OfflineSync] auth 동기화 실패:', error);
+                logger.error('[OfflineSync] auth 동기화 실패:', error);
             }
         }
 
@@ -144,16 +145,16 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
                         });
                         break;
                     default:
-                        console.warn(`[OfflineSync] 알 수 없는 쿼리 타입: ${queryType}`);
+                        logger.warn(`[OfflineSync] 알 수 없는 쿼리 타입: ${queryType}`);
                 }
             } catch (error) {
-                console.error(`[OfflineSync] ${queryType} 동기화 실패:`, error);
+                logger.error(`[OfflineSync] ${queryType} 동기화 실패:`, error);
                 throw error;
             }
         });
 
         await Promise.allSettled(syncPromises);
-        console.log('[OfflineSync] 중요 쿼리 동기화 완료');
+        logger.debug('[OfflineSync] 중요 쿼리 동기화 완료');
     }, [queryClient, finalConfig]);
 
     /**
@@ -168,7 +169,7 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
         setSyncState(prev => ({...prev, isSyncing: true, syncErrors: []}));
 
         try {
-            console.log('[OfflineSync] 전체 쿼리 동기화 시작');
+            logger.debug('[OfflineSync] 전체 쿼리 동기화 시작');
 
             // 1단계: 중요 쿼리 우선 동기화
             await syncCriticalQueries();
@@ -186,7 +187,7 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
                 syncErrors: [],
             }));
 
-            console.log('[OfflineSync] 전체 쿼리 동기화 완료');
+            logger.debug('[OfflineSync] 전체 쿼리 동기화 완료');
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
 
@@ -196,7 +197,7 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
                 syncErrors: [...prev.syncErrors, errorMessage],
             }));
 
-            console.error('[OfflineSync] 동기화 실패:', error);
+            logger.error('[OfflineSync] 동기화 실패:', error);
         } finally {
             syncInProgress.current = false;
         }
@@ -210,7 +211,7 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
             await syncAllQueries();
         } catch (error) {
             if (attempt < finalConfig.maxRetryAttempts) {
-                console.log(`[OfflineSync] 동기화 재시도 ${attempt}/${finalConfig.maxRetryAttempts}`);
+                logger.debug(`[OfflineSync] 동기화 재시도 ${attempt}/${finalConfig.maxRetryAttempts}`);
 
                 const timeout = setTimeout(() => {
                     syncWithRetry(attempt + 1);
@@ -218,7 +219,7 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
 
                 retryTimeouts.current.push(timeout);
             } else {
-                console.error('[OfflineSync] 최대 재시도 횟수 초과');
+                logger.error('[OfflineSync] 최대 재시도 횟수 초과');
             }
         }
     }, [syncAllQueries, finalConfig]);
@@ -228,7 +229,7 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
      */
     const handleNetworkReconnect = useCallback(() => {
         if (finalConfig.syncOnNetworkReconnect && networkState.isConnected) {
-            console.log('[OfflineSync] 네트워크 재연결 감지 - 동기화 시작');
+            logger.debug('[OfflineSync] 네트워크 재연결 감지 - 동기화 시작');
             syncWithRetry();
         }
     }, [finalConfig.syncOnNetworkReconnect, networkState.isConnected, syncWithRetry]);
@@ -243,7 +244,7 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
             nextAppState === 'active' &&
             networkState.isConnected
         ) {
-            console.log('[OfflineSync] 앱 포그라운드 감지 - 동기화 시작');
+            logger.debug('[OfflineSync] 앱 포그라운드 감지 - 동기화 시작');
             syncWithRetry();
         }
         appStateRef.current = nextAppState;
@@ -260,7 +261,7 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
         if (networkState.isConnected) {
             await syncWithRetry();
         } else {
-            console.warn('[OfflineSync] 오프라인 상태에서는 동기화할 수 없습니다');
+            logger.warn('[OfflineSync] 오프라인 상태에서는 동기화할 수 없습니다');
         }
     }, [networkState.isConnected, syncWithRetry]);
 
@@ -268,7 +269,7 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
      * 오프라인 모드 활성화
      */
     const enableOfflineMode = useCallback(() => {
-        console.log('[OfflineSync] 오프라인 모드 활성화');
+        logger.debug('[OfflineSync] 오프라인 모드 활성화');
 
         // 모든 쿼리의 캐시 시간을 연장
         const queries = queryClient.getQueryCache().getAll();
@@ -285,14 +286,14 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
                 );
 
                 // 쿼리 옵션 업데이트 (실제로는 새로운 쿼리 생성 시 적용됨)
-                console.log(`[OfflineSync] ${query.queryKey.join('-')} 캐시 시간 연장`);
+                logger.debug(`[OfflineSync] ${query.queryKey.join('-')} 캐시 시간 연장`);
             }
         });
 
         // 뮤테이션 일시 중지
         queryClient.getMutationCache().getAll().forEach(mutation => {
             if (mutation.state.status === 'pending') {
-                console.log('[OfflineSync] 뮤테이션 일시 중지:', mutation.options.mutationKey);
+                logger.debug('[OfflineSync] 뮤테이션 일시 중지:', mutation.options.mutationKey);
             }
         });
     }, [queryClient]);
@@ -301,7 +302,7 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
      * 온라인 모드 복구
      */
     const restoreOnlineMode = useCallback(() => {
-        console.log('[OfflineSync] 온라인 모드 복구');
+        logger.debug('[OfflineSync] 온라인 모드 복구');
 
         // 일시 중지된 뮤테이션 재개
         queryClient.resumePausedMutations();
@@ -405,7 +406,7 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
                     isInternetReachable: true,
                 });
             } catch (error) {
-                console.error('[OfflineSync] 초기 네트워크 상태 확인 실패:', error);
+                logger.error('[OfflineSync] 초기 네트워크 상태 확인 실패:', error);
             }
         };
 

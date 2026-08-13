@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import {colors} from '../theme/tokens';
 
 const MinimalNavigator: React.FC = () => {
   return (
@@ -14,10 +15,10 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0f172a', // slate-900 for high contrast
+    backgroundColor: colors.surfaceInverse, // 잉크 — 고대비 폴백 화면
   },
   text: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 18,
   },
 });

@@ -86,7 +86,7 @@ const Toggle: React.FC<ToggleProps> = ({
             style={[
                 styles.container,
                 containerStyle,
-                {flexDirection: labelPosition === 'left' ? 'row-reverse' : 'row'},
+                labelPosition === 'left' ? styles.rowReverse : styles.row,
                 style,
             ]}>
             {label && <Text style={textStyle}>{label}</Text>}
@@ -107,6 +107,8 @@ const Toggle: React.FC<ToggleProps> = ({
 };
 
 const styles = StyleSheet.create({
+    row: {flexDirection: 'row'},
+    rowReverse: {flexDirection: 'row-reverse'},
     container: {
         flexDirection: 'row',
         alignItems: 'center',

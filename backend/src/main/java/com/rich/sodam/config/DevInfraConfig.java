@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
+import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -30,6 +31,12 @@ import jakarta.annotation.PostConstruct;
 @Profile({"dev", "test"})
 public class DevInfraConfig {
 
+    private final RedisProperties redisProperties;
+
+    public DevInfraConfig(RedisProperties redisProperties) {
+        this.redisProperties = redisProperties;
+    }
+
     /**
      * 캐시명별 TTL 차이가 필요한 운영과 달리, dev 는 단순 ConcurrentMap 캐시로 충분.
      * 캐시명은 RedisConfig 와 동일하게 사전 등록한다 (애노테이션 기반 @Cacheable 동작 보장).
@@ -54,7 +61,8 @@ public class DevInfraConfig {
      */
     @Bean
     public RedisConnectionFactory cacheConnectionFactory() {
-        RedisStandaloneConfiguration cfg = new RedisStandaloneConfiguration("localhost", 6379);
+        RedisStandaloneConfiguration cfg = new RedisStandaloneConfiguration(
+                redisProperties.getHost(), redisProperties.getPort());
         LettuceClientConfiguration client = LettuceClientConfiguration.builder().build();
         LettuceConnectionFactory factory = new LettuceConnectionFactory(cfg, client);
         factory.setValidateConnection(false); // dev 미연동 환경에서 부팅 차단 방지

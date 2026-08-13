@@ -1,5 +1,6 @@
 import {Workplace} from '../types';
 import {api} from '../../../common/api';
+import {logger} from '../../../utils/logger';
 
 /**
  * 매장 관리 서비스
@@ -32,19 +33,19 @@ const mockWorkplaces: Workplace[] = [
  */
 export const getWorkplaces = async (userId?: string): Promise<Workplace[]> => {
     try {
-        console.log('[DEBUG_LOG] 매장 목록 조회 API 호출 시작');
+        logger.debug('[DEBUG_LOG] 매장 목록 조회 API 호출 시작');
 
         // 실제 API 호출
         const response = await api.get<Workplace[]>(`/api/stores/master/${userId ?? 'current'}`);
 
-        console.log('[DEBUG_LOG] 매장 목록 조회 성공:', response.data);
+        logger.debug('[DEBUG_LOG] 매장 목록 조회 성공:', response.data);
         return response.data;
     } catch (error) {
-        console.error('[DEBUG_LOG] 매장 목록 조회 실패:', error);
+        logger.error('[DEBUG_LOG] 매장 목록 조회 실패:', error);
 
         // API 실패 시 Mock 데이터 반환 (개발 환경에서만)
         if (__DEV__) {
-            console.warn('[DEBUG_LOG] 개발 환경에서 Mock 데이터 사용');
+            logger.warn('[DEBUG_LOG] 개발 환경에서 Mock 데이터 사용');
             return mockWorkplaces;
         }
 
@@ -59,19 +60,19 @@ export const getWorkplaces = async (userId?: string): Promise<Workplace[]> => {
  */
 export const getWorkplaceById = async (id: string): Promise<Workplace | undefined> => {
     try {
-        console.log('[DEBUG_LOG] 매장 상세 정보 조회 API 호출 시작:', id);
+        logger.debug('[DEBUG_LOG] 매장 상세 정보 조회 API 호출 시작:', id);
 
         // 실제 API 호출
         const response = await api.get<Workplace>(`/api/stores/${id}`);
 
-        console.log('[DEBUG_LOG] 매장 상세 정보 조회 성공:', response.data);
+        logger.debug('[DEBUG_LOG] 매장 상세 정보 조회 성공:', response.data);
         return response.data;
     } catch (error) {
-        console.error('[DEBUG_LOG] 매장 상세 정보 조회 실패:', error);
+        logger.error('[DEBUG_LOG] 매장 상세 정보 조회 실패:', error);
 
         // API 실패 시 Mock 데이터에서 검색 (개발 환경에서만)
         if (__DEV__) {
-            console.warn('[DEBUG_LOG] 개발 환경에서 Mock 데이터 사용');
+            logger.warn('[DEBUG_LOG] 개발 환경에서 Mock 데이터 사용');
             const workplace = mockWorkplaces.find(wp => wp.id === id);
             return workplace;
         }
@@ -87,14 +88,14 @@ export const getWorkplaceById = async (id: string): Promise<Workplace | undefine
  */
 export const createWorkplace = async (workplace: Omit<Workplace, 'id'>): Promise<Workplace> => {
     try {
-        console.log('[DEBUG_LOG] 매장 등록 API 호출 시작:', workplace);
+        logger.debug('[DEBUG_LOG] 매장 등록 API 호출 시작:', workplace);
 
         const response = await api.post<Workplace>('/api/stores/registration', workplace);
 
-        console.log('[DEBUG_LOG] 매장 등록 성공:', response.data);
+        logger.debug('[DEBUG_LOG] 매장 등록 성공:', response.data);
         return response.data;
     } catch (error) {
-        console.error('[DEBUG_LOG] 매장 등록 실패:', error);
+        logger.error('[DEBUG_LOG] 매장 등록 실패:', error);
         throw new Error('매장 등록에 실패했습니다. 입력 정보를 확인해주세요.');
     }
 };
@@ -107,14 +108,14 @@ export const createWorkplace = async (workplace: Omit<Workplace, 'id'>): Promise
  */
 export const updateWorkplace = async (id: string, workplace: Partial<Workplace>): Promise<Workplace> => {
     try {
-        console.log('[DEBUG_LOG] 매장 정보 수정 API 호출 시작:', id, workplace);
+        logger.debug('[DEBUG_LOG] 매장 정보 수정 API 호출 시작:', id, workplace);
 
         const response = await api.put<Workplace>(`/api/stores/${id}`, workplace);
 
-        console.log('[DEBUG_LOG] 매장 정보 수정 성공:', response.data);
+        logger.debug('[DEBUG_LOG] 매장 정보 수정 성공:', response.data);
         return response.data;
     } catch (error) {
-        console.error('[DEBUG_LOG] 매장 정보 수정 실패:', error);
+        logger.error('[DEBUG_LOG] 매장 정보 수정 실패:', error);
         throw new Error('매장 정보 수정에 실패했습니다. 입력 정보를 확인해주세요.');
     }
 };
@@ -125,13 +126,13 @@ export const updateWorkplace = async (id: string, workplace: Partial<Workplace>)
  */
 export const deleteWorkplace = async (id: string): Promise<void> => {
     try {
-        console.log('[DEBUG_LOG] 매장 삭제 API 호출 시작:', id);
+        logger.debug('[DEBUG_LOG] 매장 삭제 API 호출 시작:', id);
 
         await api.delete(`/api/stores/${id}`);
 
-        console.log('[DEBUG_LOG] 매장 삭제 성공');
+        logger.debug('[DEBUG_LOG] 매장 삭제 성공');
     } catch (error) {
-        console.error('[DEBUG_LOG] 매장 삭제 실패:', error);
+        logger.error('[DEBUG_LOG] 매장 삭제 실패:', error);
         throw new Error('매장 삭제에 실패했습니다. 다시 시도해주세요.');
     }
 };
@@ -143,14 +144,14 @@ export const deleteWorkplace = async (id: string): Promise<void> => {
  */
 export const getWorkplaceEmployees = async (storeId: string): Promise<any[]> => {
     try {
-        console.log('[DEBUG_LOG] 매장 직원 목록 조회 API 호출 시작:', storeId);
+        logger.debug('[DEBUG_LOG] 매장 직원 목록 조회 API 호출 시작:', storeId);
 
         const response = await api.get<any[]>(`/api/stores/${storeId}/employees`);
 
-        console.log('[DEBUG_LOG] 매장 직원 목록 조회 성공:', response.data);
+        logger.debug('[DEBUG_LOG] 매장 직원 목록 조회 성공:', response.data);
         return response.data;
     } catch (error) {
-        console.error('[DEBUG_LOG] 매장 직원 목록 조회 실패:', error);
+        logger.error('[DEBUG_LOG] 매장 직원 목록 조회 실패:', error);
         throw new Error('직원 목록을 불러오는데 실패했습니다. 네트워크 연결을 확인해주세요.');
     }
 };

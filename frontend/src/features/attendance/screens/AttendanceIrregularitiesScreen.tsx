@@ -28,6 +28,7 @@ import {spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import attendanceIrregularityService from '../services/attendanceIrregularityService';
 import type {AttendanceIrregularity, AttendanceIrregularityType} from '../types';
+import {getErrorMessage} from '../../../common/errors';
 
 type Route = RouteProp<{R: {storeId: number}}, 'R'>;
 
@@ -117,8 +118,8 @@ const AttendanceIrregularitiesScreen: React.FC<{visualFixture?: AttendanceIrregu
             await action(storeId, item.id);
             AppToast.success(successMessage);
             await load();
-        } catch (e: any) {
-            AppToast.error(e?.response?.data?.message || '처리에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        } catch (e: unknown) {
+            AppToast.error(getErrorMessage(e) || '처리에 실패했어요. 잠시 후 다시 시도해 주세요.');
         } finally {
             setBusyId(null);
         }

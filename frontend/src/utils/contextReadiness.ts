@@ -1,4 +1,5 @@
 import {InteractionManager} from 'react-native';
+import {logger} from './logger';
 
 /**
  * Context Readiness Manager - SIMPLIFIED VERSION
@@ -12,7 +13,7 @@ export class ContextReadinessManager {
     private constructor() {
         // Simplified constructor - no complex Promise setup needed
         this.readyTimestamp = Date.now();
-        console.log('[CONTEXT_READINESS] ContextReadinessManager simplified - always ready');
+        logger.debug('[CONTEXT_READINESS] ContextReadinessManager simplified - always ready');
     }
 
     /**
@@ -43,7 +44,7 @@ export class ContextReadinessManager {
      * Signal that React Native context is ready - simplified
      */
     public signalReady(): void {
-        console.log('[CONTEXT_READINESS] signalReady called (simplified mode - no-op)');
+        logger.debug('[CONTEXT_READINESS] signalReady called (simplified mode - no-op)');
         // No complex logic needed - always ready
     }
 
@@ -54,9 +55,9 @@ export class ContextReadinessManager {
         // Execute immediately since we're always ready
         try {
             callback();
-            console.log('[CONTEXT_READINESS] onReady callback executed immediately');
+            logger.debug('[CONTEXT_READINESS] onReady callback executed immediately');
         } catch (error) {
-            console.error('[CONTEXT_READINESS] Error in immediate callback:', error);
+            logger.error('[CONTEXT_READINESS] Error in immediate callback:', error);
         }
     }
 
@@ -71,7 +72,7 @@ export class ContextReadinessManager {
      * Reset readiness state - simplified (no-op since always ready)
      */
     public reset(): void {
-        console.log('[CONTEXT_READINESS] Reset called (simplified mode - no-op, always ready)');
+        logger.debug('[CONTEXT_READINESS] Reset called (simplified mode - no-op, always ready)');
         // No complex state to reset - always ready
         this.readyTimestamp = Date.now();
     }
@@ -85,9 +86,9 @@ export class ContextReadinessManager {
                 (global as any).__REACT_CONTEXT_READY__ = true;
                 (global as any).__REACT_CONTEXT_READY_TIMESTAMP__ = this.readyTimestamp;
             }
-            console.log('[CONTEXT_READINESS] Native layer notified (simplified mode)');
+            logger.debug('[CONTEXT_READINESS] Native layer notified (simplified mode)');
         } catch (error) {
-            console.warn('[CONTEXT_READINESS] Failed to signal native layer:', error);
+            logger.warn('[CONTEXT_READINESS] Failed to signal native layer:', error);
         }
     }
 }
@@ -117,7 +118,7 @@ export const executeWhenReady = async <T>(
         await Promise.race([manager.waitForReady(), timeoutPromise]);
         return operation();
     } catch (error) {
-        console.warn('[CONTEXT_READINESS] Operation failed or timed out:', error);
+        logger.warn('[CONTEXT_READINESS] Operation failed or timed out:', error);
         throw error;
     }
 };
@@ -158,8 +159,8 @@ export const logContextReadinessTiming = (): void => {
 
     if (timestamp) {
         const initTime = timestamp - (global as any).__APP_START_TIME__ || 0;
-        console.log(`[CONTEXT_READINESS] Context became ready ${initTime}ms after app start`);
+        logger.debug(`[CONTEXT_READINESS] Context became ready ${initTime}ms after app start`);
     } else {
-        console.log('[CONTEXT_READINESS] Context not yet ready');
+        logger.debug('[CONTEXT_READINESS] Context not yet ready');
     }
 };

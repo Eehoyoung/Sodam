@@ -19,6 +19,7 @@ import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import storeService from '../services/storeService';
 import {TIME_DIGITS_HELPER, compactTimeFromApi, isValidTimeDigits, sanitizeTimeDigits, timeDigitsToHHmmss} from '../../../common/utils/dateTimeInput';
+import {getErrorMessage} from '../../../common/errors';
 
 type DayOfWeek =
     | 'MONDAY'
@@ -187,8 +188,8 @@ const StoreOperatingHoursScreen: React.FC<{visualFixture?: StoreOperatingHoursVi
             await storeService.updateStoreOperatingHours(storeId, operatingHours);
             AppToast.success('운영시간이 저장됐어요.');
             navigation.goBack();
-        } catch (e: any) {
-            AppToast.error(e?.response?.data?.message ?? '저장에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        } catch (e: unknown) {
+            AppToast.error(getErrorMessage(e, '저장에 실패했어요. 잠시 후 다시 시도해 주세요.'));
         } finally {
             setSaving(false);
         }

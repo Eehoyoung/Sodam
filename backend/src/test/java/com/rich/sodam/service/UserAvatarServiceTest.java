@@ -76,7 +76,7 @@ class UserAvatarServiceTest {
 
         User result = userService.uploadAvatar(1L, file);
 
-        assertThat(result.getAvatarUrl()).isEqualTo("/uploads/users/1/avatar/uuid.png");
+        assertThat(result.getAvatarUrl()).isNull();
         assertThat(result.getAvatarKey()).isEqualTo("users/1/avatar/uuid.png");
         verify(objectStorage, never()).delete(anyString()); // 기존 파일 없었으므로 delete 호출 안 됨
     }
@@ -142,7 +142,7 @@ class UserAvatarServiceTest {
         User result = userService.uploadAvatar(1L, file);
 
         verify(objectStorage, times(1)).delete("users/1/avatar/old.png");
-        assertThat(result.getAvatarUrl()).isEqualTo("/uploads/users/1/avatar/new.png");
+        assertThat(result.getAvatarUrl()).isNull();
         assertThat(result.getAvatarKey()).isEqualTo("users/1/avatar/new.png");
     }
 
@@ -171,5 +171,13 @@ class UserAvatarServiceTest {
         verify(objectStorage, never()).delete(anyString());
         assertThat(result.getAvatarUrl()).isNull();
         assertThat(result.getAvatarKey()).isNull();
+    }
+
+    @Test
+    void resolveAvatarUrl_doesNotExposeLegacyPublicUrlInLiveMode() {
+        user.updateAvatar("https://legacy-public.example/avatar.png", null);
+        when(objectStorage.isLive()).thenReturn(true);
+
+        assertThat(userService.resolveAvatarUrl(user)).isNull();
     }
 }

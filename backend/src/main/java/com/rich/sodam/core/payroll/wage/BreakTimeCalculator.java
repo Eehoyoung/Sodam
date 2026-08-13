@@ -1,6 +1,7 @@
 package com.rich.sodam.core.payroll.wage;
 
 import java.time.LocalTime;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -39,6 +40,20 @@ public final class BreakTimeCalculator {
             return MIN_BREAK_MINUTES_OVER_8H;
         }
         if (workedMinutes >= FOUR_HOURS_MINUTES) {
+            return MIN_BREAK_MINUTES_OVER_4H;
+        }
+        return 0;
+    }
+
+    /** Uses the exact elapsed duration for statutory 4h/8h boundaries. */
+    public static int requiredBreakMinutes(Duration workedDuration) {
+        if (workedDuration == null || workedDuration.isNegative()) {
+            return 0;
+        }
+        if (workedDuration.compareTo(Duration.ofHours(8)) >= 0) {
+            return MIN_BREAK_MINUTES_OVER_8H;
+        }
+        if (workedDuration.compareTo(Duration.ofHours(4)) >= 0) {
             return MIN_BREAK_MINUTES_OVER_4H;
         }
         return 0;

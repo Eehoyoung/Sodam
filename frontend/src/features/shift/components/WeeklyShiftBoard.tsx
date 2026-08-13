@@ -16,7 +16,7 @@ import Animated, {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {AppText} from '../../../common/components/ds';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import {radius, spacing} from '../../../theme/tokens';
+import {colors, radius, spacing} from '../../../theme/tokens';
 import {isOvernight, shortTime, WorkShift} from '../services/shiftService';
 
 const ROW_HEIGHT = 84;
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.sm,
         borderRadius: radius.md,
         borderWidth: 1,
-        shadowColor: '#000',
+        shadowColor: colors.shadowColor,
         shadowRadius: 6,
         shadowOffset: {width: 0, height: 3},
     },

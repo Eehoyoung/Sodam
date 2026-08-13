@@ -137,7 +137,10 @@ public class TaxReportService {
                     .append(p.getStartDate()).append(',')
                     .append(p.getEndDate()).append(',')
                     .append(nz(p.getRegularWage())).append(',')
-                    .append(nz(p.getOvertimeWage())).append(',')
+                    // 일 8h 초과 + 주 40h 초과 = §56① 연장근로수당. 합치지 않으면 항목 합계가
+                    // 세전총액(grossWage 는 주 40h 분을 포함)보다 적어져 세무사가 과세표준을
+                    // 오인할 수 있다. 원천징수 목적상 두 항목의 구분 보고는 요구되지 않는다.
+                    .append(nz(p.getOvertimeWage()) + nz(p.getWeeklyOvertimeWage())).append(',')
                     .append(nz(p.getNightWorkWage())).append(',')
                     .append(nz(p.getHolidayWorkWage())).append(',')
                     .append(nz(p.getWeeklyAllowance())).append(',')

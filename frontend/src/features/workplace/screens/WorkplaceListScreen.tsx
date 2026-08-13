@@ -17,6 +17,7 @@ import {
 import {spacing} from '../../../theme/tokens';
 import {useAuth} from '../../../contexts/AuthContext';
 import storeService, {StoreSummaryDto} from '../../store/services/storeService';
+import {logger} from '../../../utils/logger';
 
 /**
  * 15 WorkplaceList — 신규 화면(v3 §4.1).
@@ -57,7 +58,7 @@ const WorkplaceListScreen: React.FC<Props> = ({visualFixture}) => {
             const list = await storeService.getEmployeeStores(user.id);
             setStores(list);
         } catch (e) {
-            console.warn('[WorkplaceList] load failed', e);
+            logger.warn('[WorkplaceList] load failed', e);
             setError(true);
             AppToast.error('근무지 목록을 불러오지 못했어요.');
         } finally {

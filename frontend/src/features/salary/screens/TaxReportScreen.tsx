@@ -1,6 +1,7 @@
 import React, {useCallback, useState} from 'react';
 import {Alert, StyleSheet, TouchableOpacity, View} from 'react-native';
 import {useNavigation, useRoute, RouteProp, useFocusEffect} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
     AppBadge,
@@ -16,7 +17,9 @@ import {
 } from '../../../common/components/ds';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {spacing} from '../../../theme/tokens';
+import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import storeService from '../../store/services/storeService';
+import {getErrorMessage, toApiError} from '../../../common/errors';
 import {
     fetchTaxReportHistory,
     sendTaxReport,
@@ -58,7 +61,7 @@ const fmtDateTime = (isoStr: string): string => {
  * 확정·지급완료 급여만 포함.
  */
 const TaxReportScreen: React.FC = () => {
-    const navigation = useNavigation();
+    const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const route = useRoute<Route>();
     const c = useThemeColors();
     const {storeId} = route.params;
@@ -103,8 +106,8 @@ const TaxReportScreen: React.FC = () => {
             await updateAccountantEmail(storeId, email.trim());
             setSavedEmail(email.trim() || null);
             Alert.alert('저장 완료', email.trim() ? '세무사 이메일이 저장되었어요.' : '세무사 이메일이 해제되었어요.');
-        } catch (e: any) {
-            Alert.alert('저장 실패', e?.response?.data?.message ?? '이메일 형식을 확인해 주세요.');
+        } catch (e: unknown) {
+            Alert.alert('저장 실패', getErrorMessage(e, '이메일 형식을 확인해 주세요.'));
         } finally {
             setSavingEmail(false);
         }
@@ -117,15 +120,15 @@ const TaxReportScreen: React.FC = () => {
             await sendTaxReport(storeId, from, to, force);
             Alert.alert('발송 완료', `${label} 인건비 내역서를 세무사에게 보냈어요.`);
             load();
-        } catch (e: any) {
-            const errorCode = e?.response?.data?.errorCode;
+        } catch (e: unknown) {
+            const errorCode = toApiError(e).errorCode;
             if (errorCode === 'TAX_REPORT_ALREADY_SENT') {
                 Alert.alert('이미 발송된 기간이에요', '같은 정산기간에 발송한 이력이 있어요. 다시 보낼까요?', [
                     {text: '취소', style: 'cancel'},
                     {text: '다시 보내기', onPress: () => doSend(true)},
                 ]);
             } else {
-                Alert.alert('발송 실패', e?.response?.data?.message ?? '잠시 후 다시 시도해 주세요.');
+                Alert.alert('발송 실패', getErrorMessage(e, '잠시 후 다시 시도해 주세요.'));
             }
         } finally {
             setSending(false);
@@ -214,6 +217,20 @@ const TaxReportScreen: React.FC = () => {
                         </AppText>
                     </AppCard>
 
+                    <AppCard
+                        variant="warm"
+                        style={styles.taxServiceCard}
+                        onPress={() => navigation.navigate('TaxServicePackages')}
+                        accessibilityLabel="세무 전문가 연결 패키지 보기">
+                        <AppText variant="titleMd" weight="700">세무 전문가가 필요하신가요?</AppText>
+                        <AppText variant="bodyMd" tone="secondary" style={styles.taxServiceDescription}>
+                            신고·기장 상담 패키지를 확인하고 모의 신청을 진행할 수 있어요.
+                        </AppText>
+                        <AppText variant="bodyMd" tone="brand" weight="700" style={styles.taxServiceLink}>
+                            세무 패키지 보기
+                        </AppText>
+                    </AppCard>
+
                     <AppText variant="caption" tone="secondary" style={styles.sectionLabel}>
                         발송 이력
                     </AppText>
@@ -262,6 +279,9 @@ const styles = StyleSheet.create({
     },
     monthArrow: {padding: spacing.xs},
     historyHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
+    taxServiceCard: {marginTop: spacing.lg},
+    taxServiceDescription: {marginTop: spacing.xs},
+    taxServiceLink: {marginTop: spacing.md},
 });
 
 export default TaxReportScreen;

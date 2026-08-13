@@ -23,6 +23,7 @@ import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import timeOffService from '../../myPage/services/timeOffService';
 import {formatConsumedDays, TIME_OFF_LEAVE_TYPE_LABEL, TIME_OFF_UNIT_LABEL, type TimeOffResponse} from '../types';
 import {useStoreLiveSync} from '../../../common/realtime/useStoreLiveSync';
+import {getErrorMessage} from '../../../common/errors';
 
 /** 개발용 시각 검증에서만 쓰는 결정형 휴가 승인 대기 목록. */
 export interface TimeOffApprovalVisualFixture {
@@ -69,8 +70,8 @@ export default function TimeOffApprovalScreen({visualFixture}: {visualFixture?: 
             setItems(storeId
                 ? await timeOffService.fetchStorePendingTimeOffs(storeId)
                 : await timeOffService.fetchPendingTimeOffs());
-        } catch (err: any) {
-            setError(err?.response?.data?.message || '승인 대기 목록을 불러오지 못했어요.');
+        } catch (err: unknown) {
+            setError(getErrorMessage(err) || '승인 대기 목록을 불러오지 못했어요.');
         } finally {
             setLoading(false);
         }
@@ -102,8 +103,8 @@ export default function TimeOffApprovalScreen({visualFixture}: {visualFixture?: 
             }
             AppToast.success(`${item.employeeName}님 휴가 신청을 승인했어요.`);
             await load();
-        } catch (err: any) {
-            AppToast.error(err?.response?.data?.message || '승인에 실패했어요. 잔여 연차를 확인해 주세요.');
+        } catch (err: unknown) {
+            AppToast.error(getErrorMessage(err) || '승인에 실패했어요. 잔여 연차를 확인해 주세요.');
         } finally {
             setBusyId(null);
         }
@@ -142,8 +143,8 @@ export default function TimeOffApprovalScreen({visualFixture}: {visualFixture?: 
             AppToast.show(`${rejectTarget.employeeName}님 휴가 신청을 거부했어요.`);
             closeReject();
             await load();
-        } catch (err: any) {
-            AppToast.error(err?.response?.data?.message || '처리에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        } catch (err: unknown) {
+            AppToast.error(getErrorMessage(err) || '처리에 실패했어요. 잠시 후 다시 시도해 주세요.');
         } finally {
             setBusyId(null);
         }

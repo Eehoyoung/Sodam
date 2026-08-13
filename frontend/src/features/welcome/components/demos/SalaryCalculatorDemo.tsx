@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {StyleSheet, Text, TextInput, TouchableOpacity, View} from 'react-native';
+import {demoPalette} from './demoPalette';
 import {ENABLE_ANIMATIONS, stageAtLeast, ANIMATION_RECOVERY_STAGE} from '../../../../navigation/config';
 
 // Conditionally import Reanimated components only when needed
@@ -12,10 +13,11 @@ try {
     Easing = reanimated.Easing;
   }
 } catch (error) {
-  console.warn('[RECOVERY] SalaryCalculatorDemo: Reanimated import failed, using fallback', error);
+  logger.warn('[RECOVERY] SalaryCalculatorDemo: Reanimated import failed, using fallback', error);
 }
 import {useJSISafeDimensions} from '../../../../hooks/useJSISafeDimensions';
 import {CombinedAnimation, NumberCountAnimation, ProgressAnimation} from '../../../../common/components/animations';
+import {logger} from '../../../../utils/logger';
 
 interface SalaryCalculation {
     hours: number;
@@ -38,6 +40,21 @@ interface SalaryCalculatorDemoProps {
     isVisible: boolean;
 }
 
+const formatCurrency = (amount: number) => new Intl.NumberFormat('ko-KR', {
+    style: 'currency',
+    currency: 'KRW',
+    maximumFractionDigits: 0,
+}).format(amount);
+
+const AnimatedNumber: React.FC<{value: number; prefix?: string}> = ({value, prefix = ''}) => (
+    <NumberCountAnimation
+        targetValue={value}
+        startValue={0}
+        config={{duration: 1500, easing: Easing.out(Easing.cubic)}}
+        formatter={amount => `${prefix}${formatCurrency(amount)}`}
+    />
+);
+
 const SalaryCalculatorDemo: React.FC<SalaryCalculatorDemoProps> = ({
                                                                        onDemoComplete,
                                                                        isVisible
@@ -52,7 +69,7 @@ const SalaryCalculatorDemo: React.FC<SalaryCalculatorDemoProps> = ({
     try {
         useJSISafeDimensions();
     } catch (error) {
-        console.error('SalaryCalculatorDemo: Failed to get dimensions:', error);
+        logger.error('SalaryCalculatorDemo: Failed to get dimensions:', error);
         throw error;
     }
 
@@ -121,27 +138,6 @@ const SalaryCalculatorDemo: React.FC<SalaryCalculatorDemoProps> = ({
             message: '데모가 취소됐어요.',
             timestamp: Date.now()
         });
-    };
-
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('ko-KR', {
-            style: 'currency',
-            currency: 'KRW',
-            maximumFractionDigits: 0,
-        }).format(amount);
-    };
-
-    // Animation styles are now handled by standardized animation components
-
-    const AnimatedNumber: React.FC<{ value: number; prefix?: string }> = ({value, prefix = ''}) => {
-        return (
-            <NumberCountAnimation
-                targetValue={value}
-                startValue={0}
-                config={{duration: 1500, easing: Easing.out(Easing.cubic)}}
-                formatter={(val) => `${prefix}${formatCurrency(val)}`}
-            />
-        );
     };
 
     const renderCalculator = () => (
@@ -318,13 +314,13 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backgroundColor: demoPalette.overlay,
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 1000,
     },
     demoModal: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: demoPalette.white,
         borderRadius: 20,
         padding: 24,
         width: '90%',
@@ -338,14 +334,14 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#F1EEE9',
+        backgroundColor: demoPalette.surfaceWarm,
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 1001,
     },
     closeButtonText: {
         fontSize: 16,
-        color: '#666666',
+        color: demoPalette.textSecondary,
         fontWeight: 'bold',
     },
     calculator: {
@@ -356,7 +352,7 @@ const styles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: '#E8F5E8',
+        backgroundColor: demoPalette.successSoft,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 16,
@@ -367,13 +363,13 @@ const styles = StyleSheet.create({
     calculatingIndicator: {
         width: 200,
         height: 8,
-        backgroundColor: '#E0E0E0',
+        backgroundColor: demoPalette.border,
         borderRadius: 4,
         overflow: 'hidden',
     },
     calculatingBar: {
         height: '100%',
-        backgroundColor: '#4CAF50',
+        backgroundColor: demoPalette.success,
         borderRadius: 4,
     },
     resultDisplay: {
@@ -382,7 +378,7 @@ const styles = StyleSheet.create({
     resultTitle: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#4CAF50',
+        color: demoPalette.success,
         marginBottom: 8,
     },
     demoContent: {
@@ -392,13 +388,13 @@ const styles = StyleSheet.create({
     demoTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#333333',
+        color: demoPalette.textPrimary,
         marginBottom: 12,
         textAlign: 'center',
     },
     demoDescription: {
         fontSize: 14,
-        color: '#666666',
+        color: demoPalette.textSecondary,
         textAlign: 'center',
         lineHeight: 20,
         marginBottom: 24,
@@ -413,35 +409,35 @@ const styles = StyleSheet.create({
     inputLabel: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#333333',
+        color: demoPalette.textPrimary,
         marginBottom: 8,
     },
     inputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: demoPalette.border,
         borderRadius: 8,
         paddingHorizontal: 12,
-        backgroundColor: '#F8F8F8',
+        backgroundColor: demoPalette.surface,
     },
     textInput: {
         flex: 1,
         paddingVertical: 12,
         fontSize: 16,
-        color: '#333333',
+        color: demoPalette.textPrimary,
     },
     inputUnit: {
         fontSize: 14,
-        color: '#666666',
+        color: demoPalette.textSecondary,
         marginLeft: 8,
     },
     calculateButton: {
-        backgroundColor: '#4CAF50',
+        backgroundColor: demoPalette.success,
         paddingVertical: 12,
         paddingHorizontal: 24,
         borderRadius: 8,
-        shadowColor: '#4CAF50',
+        shadowColor: demoPalette.success,
         shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.3,
         shadowRadius: 4,
@@ -450,12 +446,12 @@ const styles = StyleSheet.create({
     calculateButtonText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#FFFFFF',
+        color: demoPalette.white,
     },
     progressText: {
         fontSize: 24,
         fontWeight: '700',
-        color: '#4CAF50',
+        color: demoPalette.success,
         marginBottom: 16,
     },
     calculationSteps: {
@@ -464,19 +460,19 @@ const styles = StyleSheet.create({
     },
     stepText: {
         fontSize: 14,
-        color: '#666666',
+        color: demoPalette.textSecondary,
         marginBottom: 8,
         lineHeight: 20,
     },
     successTitle: {
         fontSize: 24,
         fontWeight: '700',
-        color: '#4CAF50',
+        color: demoPalette.success,
         marginBottom: 20,
         textAlign: 'center',
     },
     resultCard: {
-        backgroundColor: '#F8F8F8',
+        backgroundColor: demoPalette.surface,
         borderRadius: 12,
         padding: 16,
         width: '100%',
@@ -489,33 +485,33 @@ const styles = StyleSheet.create({
     },
     resultLabel: {
         fontSize: 14,
-        color: '#666666',
+        color: demoPalette.textSecondary,
     },
     resultValue: {
         fontSize: 14,
-        color: '#333333',
+        color: demoPalette.textPrimary,
         fontWeight: '600',
     },
     divider: {
         height: 1,
-        backgroundColor: '#E0E0E0',
+        backgroundColor: demoPalette.border,
         marginVertical: 8,
     },
     finalLabel: {
         fontSize: 16,
-        color: '#4CAF50',
+        color: demoPalette.success,
         fontWeight: '700',
     },
     completeTitle: {
         fontSize: 22,
         fontWeight: '700',
-        color: '#FF4081',
+        color: demoPalette.highlight,
         marginBottom: 16,
         textAlign: 'center',
     },
     completeDescription: {
         fontSize: 14,
-        color: '#666666',
+        color: demoPalette.textSecondary,
         textAlign: 'center',
         marginBottom: 16,
         lineHeight: 20,
@@ -526,7 +522,7 @@ const styles = StyleSheet.create({
     },
     featureItem: {
         fontSize: 14,
-        color: '#333333',
+        color: demoPalette.textPrimary,
         marginBottom: 8,
         lineHeight: 20,
     },

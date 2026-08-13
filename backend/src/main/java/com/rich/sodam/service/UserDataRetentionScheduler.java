@@ -1,5 +1,6 @@
 package com.rich.sodam.service;
 
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -24,6 +25,7 @@ public class UserDataRetentionScheduler {
 
     /** 매일 03:10 KST. */
     @Scheduled(cron = "0 10 3 * * *", zone = "Asia/Seoul")
+    @SchedulerLock(name = "userDataRetention", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     public void anonymizeExpiredWithdrawnUsers() {
         try {
             int count = userService.anonymizeExpiredWithdrawnUsers();

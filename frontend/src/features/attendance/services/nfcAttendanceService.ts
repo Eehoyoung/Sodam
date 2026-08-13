@@ -1,4 +1,5 @@
 import {api} from '../../../common/api';
+import {logger} from '../../../utils/logger';
 
 // [API Mapping] NFC verify standardized; legacy NFC verify endpoint fallback removed per Phase 0 AC (2025-10-02).
 
@@ -36,7 +37,7 @@ export const verifyCheckInByNFC = async (
             timestamp: data?.timestamp,
         };
     } catch (error) {
-        console.error('NFC 태그 기반 출근 인증 실패:', error);
+        logger.error('NFC 태그 기반 출근 인증 실패:', error);
         // Legacy NFC verify endpoint fallback removed per Phase 0 AC (2025-10-02)
         return {
             success: false,
@@ -70,7 +71,7 @@ export const verifyCheckOutByNFC = async (
             timestamp: data?.timestamp,
         };
     } catch (error) {
-        console.error('NFC 태그 기반 퇴근 인증 실패:', error);
+        logger.error('NFC 태그 기반 퇴근 인증 실패:', error);
         // Legacy NFC verify endpoint fallback removed per Phase 0 AC (2025-10-02)
         return {
             success: false,
@@ -98,7 +99,7 @@ export const generateStoreNFCTag = async (
         );
         return response.data.nfcTagData;
     } catch (error) {
-        console.error('NFC 태그 생성 실패:', error);
+        logger.error('NFC 태그 생성 실패:', error);
         throw new Error('NFC 태그 생성에 실패했습니다. 다시 시도해주세요.');
     }
 };
@@ -126,7 +127,7 @@ export const parseNFCTagData = (nfcData: string): { storeId: number; timestamp: 
             };
         } catch (jsonError) {
             // JSON 파싱 실패 시, 태그 ID 기반 파싱 시도
-            console.log('[DEBUG_LOG] NFC 태그 JSON 파싱 실패, 태그 ID 기반 파싱 시도:', jsonError);
+            logger.debug('[DEBUG_LOG] NFC 태그 JSON 파싱 실패, 태그 ID 기반 파싱 시도:', jsonError);
 
             // 태그 ID가 특정 패턴을 따르는 경우 (예: "STORE_123_20240804120000")
             const tagIdPattern = /^STORE_(\d+)_(\d{14})$/;
@@ -166,7 +167,7 @@ export const parseNFCTagData = (nfcData: string): { storeId: number; timestamp: 
             throw new Error('NFC 태그 데이터에서 매장 정보를 찾을 수 없습니다.');
         }
     } catch (error) {
-        console.error('NFC 태그 데이터 파싱 실패:', error);
+        logger.error('NFC 태그 데이터 파싱 실패:', error);
         return null;
     }
 };
@@ -186,7 +187,7 @@ export const isNFCTagValid = (timestamp: string, expiryMinutes: number = 30): bo
         // NFC 태그 기본 유효 시간은 30분입니다.
         return diffMinutes <= expiryMinutes;
     } catch (error) {
-        console.error('NFC 태그 유효성 검사 실패:', error);
+        logger.error('NFC 태그 유효성 검사 실패:', error);
         return false;
     }
 };
@@ -228,10 +229,10 @@ export const writeNFCTag = async (tagData: string): Promise<boolean> => {
             throw new Error('유효하지 않은 태그 데이터입니다.');
         }
 
-        console.log('[DEBUG_LOG] NFC 태그 데이터 검증 완료:', parsedData);
+        logger.debug('[DEBUG_LOG] NFC 태그 데이터 검증 완료:', parsedData);
         return true;
     } catch (error) {
-        console.error('NFC 태그 쓰기 검증 실패:', error);
+        logger.error('NFC 태그 쓰기 검증 실패:', error);
         return false;
     }
 };
@@ -246,7 +247,7 @@ export const getStoreNFCSettings = async (storeId: number) => {
         const response = await api.get(`/api/stores/${storeId}/nfc-settings`);
         return response.data;
     } catch (error) {
-        console.error('매장 NFC 설정 조회 실패:', error);
+        logger.error('매장 NFC 설정 조회 실패:', error);
         throw new Error('매장 NFC 설정을 조회할 수 없습니다.');
     }
 };
@@ -269,7 +270,7 @@ export const updateStoreNFCSettings = async (
         const response = await api.put(`/api/stores/${storeId}/nfc-settings`, settings);
         return response.data;
     } catch (error) {
-        console.error('매장 NFC 설정 업데이트 실패:', error);
+        logger.error('매장 NFC 설정 업데이트 실패:', error);
         throw new Error('매장 NFC 설정 업데이트에 실패했습니다.');
     }
 };

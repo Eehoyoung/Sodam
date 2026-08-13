@@ -1,11 +1,12 @@
 import { Linking } from 'react-native';
 import api from '../../../common/api/client';
 import {env as sodamEnv} from '../../../common/config/env';
+import {logger} from '../../../utils/logger';
 
 // Lightweight auth API wrapper for RN client
 
 const API_BASE_URL = sodamEnv.apiBaseUrl;
-if (sodamEnv.debug) {console.log('API_BASE_URL:', API_BASE_URL);}
+if (sodamEnv.debug) {logger.debug('API_BASE_URL:', API_BASE_URL);}
 export interface LoginResponse {
   message: string;
   data?: {

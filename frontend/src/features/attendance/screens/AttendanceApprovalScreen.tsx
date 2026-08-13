@@ -18,6 +18,7 @@ import {
 } from '../../../common/components/ds';
 import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
+import {getErrorMessage} from '../../../common/errors';
 import {
     AttendanceApproval,
     approveRequest,
@@ -70,8 +71,8 @@ export default function AttendanceApprovalScreen({route, navigation, visualFixtu
             setLoading(true);
             setError(null);
             setItems(await fetchStoreApprovals(storeId, 'PENDING'));
-        } catch (err: any) {
-            setError(err?.message ?? '승인 요청을 불러오지 못했어요.');
+        } catch (err: unknown) {
+            setError(getErrorMessage(err, '승인 요청을 불러오지 못했어요.'));
         } finally {
             setLoading(false);
         }
@@ -106,8 +107,8 @@ export default function AttendanceApprovalScreen({route, navigation, visualFixtu
                 AppToast.show(`${item.employeeName}님 ${verb} 요청을 거절했어요.`);
             }
             await load();
-        } catch (err: any) {
-            AppToast.error(err?.response?.data?.message || '처리에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        } catch (err: unknown) {
+            AppToast.error(getErrorMessage(err) || '처리에 실패했어요. 잠시 후 다시 시도해 주세요.');
         } finally {
             setBusyId(null);
         }

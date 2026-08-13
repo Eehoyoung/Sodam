@@ -308,7 +308,7 @@ const DayCell: React.FC<{
 
     return (
         <Pressable onPress={day ? onPress : undefined} style={[styles.dayCell, selected && {backgroundColor: c.brandPrimary}]} disabled={!day}>
-            <Text style={[styles.dayNumber, {color: selected ? c.textInverse : c.textPrimary, fontWeight: selected ? '800' : '600'}, !day && styles.dayEmpty]}>{day ?? ''}</Text>
+            <Text style={[styles.dayNumber, selected ? styles.daySelectedWeight : styles.dayDefaultWeight, {color: selected ? c.textInverse : c.textPrimary}, !day && styles.dayEmpty]}>{day ?? ''}</Text>
             {!selected && status === 'CHECKED_IN' ? <View style={[styles.dot, {backgroundColor: c.attendanceCheckedIn}]} /> : null}
             {!selected && status === 'WORKING' ? <View style={[styles.dot, {backgroundColor: c.warning}]} /> : null}
         </Pressable>
@@ -359,6 +359,8 @@ function pad(n: number): string {
 }
 
 const styles = StyleSheet.create({
+    daySelectedWeight: {fontWeight: '800'},
+    dayDefaultWeight: {fontWeight: '600'},
     headerRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md},
     navBtn: {padding: spacing.sm, minWidth: 44, alignItems: 'center'},
     summaryCard: {marginBottom: spacing.md},

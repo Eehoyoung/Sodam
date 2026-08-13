@@ -96,7 +96,7 @@ export const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
             style={[
                 styles.card,
                 // 앵커(PRO)는 선택 전에도 옅은 브랜드 ring 으로 강조 — 선택 시 AppCard 가 굵은 ring 처리.
-                isAnchor && !selected ? {borderWidth: 1.5, borderColor: c.brandPrimaryMuted} : null,
+                isAnchor && !selected ? [styles.anchorRing, {borderColor: c.brandPrimaryMuted}] : null,
             ]}>
             <View style={styles.header}>
                 <View style={styles.titleRow}>
@@ -149,6 +149,7 @@ export const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
 };
 
 const styles = StyleSheet.create({
+    anchorRing: {borderWidth: 1.5},
     card: {},
     header: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start'},
     titleRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1},

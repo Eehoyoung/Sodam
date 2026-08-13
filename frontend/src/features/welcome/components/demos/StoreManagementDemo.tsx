@@ -1,5 +1,6 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {demoPalette} from './demoPalette';
 import {ENABLE_ANIMATIONS, stageAtLeast, ANIMATION_RECOVERY_STAGE} from '../../../../navigation/config';
 
 // Conditionally import Reanimated components only when needed
@@ -26,9 +27,10 @@ try {
     withTiming = reanimated.withTiming;
   }
 } catch (error) {
-  console.warn('[RECOVERY] StoreManagementDemo: Reanimated import failed, using fallback', error);
+  logger.warn('[RECOVERY] StoreManagementDemo: Reanimated import failed, using fallback', error);
 }
 import {useJSISafeDimensions} from '../../../../hooks/useJSISafeDimensions';
+import {logger} from '../../../../utils/logger';
 
 interface Store {
     id: string;
@@ -67,6 +69,73 @@ interface StoreManagementDemoProps {
     isVisible: boolean;
 }
 
+const formatCurrency = (amount: number) => new Intl.NumberFormat('ko-KR', {
+    style: 'currency',
+    currency: 'KRW',
+    maximumFractionDigits: 0,
+}).format(amount);
+
+const getStatusColor = (status: string) => {
+    switch (status) {
+        case 'active':
+        case 'working':
+            return demoPalette.success;
+        case 'busy':
+        case 'break':
+            return demoPalette.accent;
+        case 'closed':
+            return demoPalette.danger;
+        case 'off':
+        default:
+            return demoPalette.muted;
+    }
+};
+
+const getStatusText = (status: string) => {
+    switch (status) {
+        case 'active': return '정상 운영';
+        case 'busy': return '바쁨';
+        case 'closed': return '영업 종료';
+        case 'working': return '근무중';
+        case 'break': return '휴식중';
+        case 'off': return '퇴근';
+        default: return status;
+    }
+};
+
+interface StoreCardProps {
+    store: Store;
+    animatedStyle: unknown;
+    onSelect: (store: Store) => void;
+}
+
+const StoreCard: React.FC<StoreCardProps> = ({store, animatedStyle, onSelect}) => (
+    <Animated.View style={animatedStyle}>
+        <TouchableOpacity
+            style={styles.storeCard}
+            onPress={() => onSelect(store)}
+            activeOpacity={0.8}>
+            <View style={styles.storeHeader}>
+                <Text style={styles.storeName}>{store.name}</Text>
+                <View style={[styles.statusBadge, {backgroundColor: getStatusColor(store.status)}]}>
+                    <Text style={styles.statusText}>{getStatusText(store.status)}</Text>
+                </View>
+            </View>
+            <Text style={styles.storeLocation}>{store.location}</Text>
+            <View style={styles.storeStats}>
+                <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{store.workingEmployees}/{store.employees}</Text>
+                    <Text style={styles.statLabel}>근무중</Text>
+                </View>
+                <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{formatCurrency(store.todayRevenue)}</Text>
+                    <Text style={styles.statLabel}>오늘 매출</Text>
+                </View>
+            </View>
+        </TouchableOpacity>
+    </Animated.View>
+);
+
 const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
                                                                      onDemoComplete,
                                                                      isVisible
@@ -88,14 +157,14 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
         const hookResult = useJSISafeDimensions();
         dimensions = hookResult.dimensions;
     } catch (error) {
-        console.error('StoreManagementDemo: Failed to get dimensions:', error);
+        logger.error('StoreManagementDemo: Failed to get dimensions:', error);
         throw error;
     }
 
     // Create dynamic styles that depend on dimensions (moved from StyleSheet.create)
     const dynamicStyles = useMemo(() => ({
         demoModal: {
-            backgroundColor: '#FFFFFF',
+            backgroundColor: demoPalette.white,
             borderRadius: 20,
             padding: 24,
             width: dimensions.screenWidth * 0.9,  // ✅ Safe access to dimensions
@@ -172,7 +241,7 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
                 easing: Easing.out(Easing.back(1.1)),
             }));
         }
-    }, [isVisible]);
+    }, [isVisible, fadeAnim, scaleAnim, storeAnim1, storeAnim2, storeAnim3]);
 
     useEffect(() => {
         if (demoStep === 'management') {
@@ -217,7 +286,7 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
                 // Reanimated 3에서는 자동으로 애니메이션이 정리됨
             };
         }
-    }, [demoStep]);
+    }, [demoStep, onDemoComplete, progressAnim]);
 
     const closeDemo = () => {
         // Reanimated 3 parallel animations
@@ -234,14 +303,6 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
                 })();
             }
         });
-    };
-
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('ko-KR', {
-            style: 'currency',
-            currency: 'KRW',
-            maximumFractionDigits: 0,
-        }).format(amount);
     };
 
     // Animated styles using Reanimated 3
@@ -269,44 +330,6 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
         transform: [{scale: storeAnim3.value}],
     }));
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'active':
-                return '#4CAF50';
-            case 'busy':
-                return '#FF9800';
-            case 'closed':
-                return '#F44336';
-            case 'working':
-                return '#4CAF50';
-            case 'break':
-                return '#FF9800';
-            case 'off':
-                return '#9E9E9E';
-            default:
-                return '#9E9E9E';
-        }
-    };
-
-    const getStatusText = (status: string) => {
-        switch (status) {
-            case 'active':
-                return '정상 운영';
-            case 'busy':
-                return '바쁨';
-            case 'closed':
-                return '영업 종료';
-            case 'working':
-                return '근무중';
-            case 'break':
-                return '휴식중';
-            case 'off':
-                return '퇴근';
-            default:
-                return status;
-        }
-    };
-
     const handleStoreSelect = (store: Store) => {
         setSelectedStore(store);
         setDemoStep('details');
@@ -318,38 +341,6 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
         progressAnim.value = 0;
     };
 
-    const StoreCard: React.FC<{ store: Store; index: number }> = ({store, index}) => {
-        const storeStyles = [store1Style, store2Style, store3Style];
-
-        return (
-            <Animated.View style={storeStyles[index]}>
-                <TouchableOpacity
-                    style={styles.storeCard}
-                    onPress={() => handleStoreSelect(store)}
-                    activeOpacity={0.8}
-                >
-                    <View style={styles.storeHeader}>
-                        <Text style={styles.storeName}>{store.name}</Text>
-                        <View style={[styles.statusBadge, {backgroundColor: getStatusColor(store.status)}]}>
-                            <Text style={styles.statusText}>{getStatusText(store.status)}</Text>
-                        </View>
-                    </View>
-                    <Text style={styles.storeLocation}>{store.location}</Text>
-                    <View style={styles.storeStats}>
-                        <View style={styles.statItem}>
-                            <Text style={styles.statValue}>{store.workingEmployees}/{store.employees}</Text>
-                            <Text style={styles.statLabel}>근무중</Text>
-                        </View>
-                        <View style={styles.statItem}>
-                            <Text style={styles.statValue}>{formatCurrency(store.todayRevenue)}</Text>
-                            <Text style={styles.statLabel}>오늘 매출</Text>
-                        </View>
-                    </View>
-                </TouchableOpacity>
-            </Animated.View>
-        );
-    };
-
     const renderDashboard = () => (
         <View style={styles.dashboard}>
             <View style={styles.dashboardHeader}>
@@ -358,8 +349,8 @@ const StoreManagementDemo: React.FC<StoreManagementDemoProps> = ({
             </View>
 
             <ScrollView style={styles.storesContainer} showsVerticalScrollIndicator={false}>
-                {stores.map((store, index) => (
-                    <StoreCard key={store.id} store={store} index={index}/>
+                {[store1Style, store2Style, store3Style].map((animatedStyle, index) => (
+                    <StoreCard key={stores[index].id} store={stores[index]} animatedStyle={animatedStyle} onSelect={handleStoreSelect} />
                 ))}
             </ScrollView>
         </View>
@@ -472,7 +463,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backgroundColor: demoPalette.overlay,
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 1000,
@@ -484,14 +475,14 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#F1EEE9',
+        backgroundColor: demoPalette.surfaceWarm,
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 1001,
     },
     closeButtonText: {
         fontSize: 16,
-        color: '#666666',
+        color: demoPalette.textSecondary,
         fontWeight: 'bold',
     },
     dashboard: {
@@ -505,23 +496,23 @@ const styles = StyleSheet.create({
     dashboardTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#333333',
+        color: demoPalette.textPrimary,
         marginBottom: 4,
     },
     dashboardSubtitle: {
         fontSize: 14,
-        color: '#666666',
+        color: demoPalette.textSecondary,
     },
     storesContainer: {
         maxHeight: 200,
     },
     storeCard: {
-        backgroundColor: '#F8F8F8',
+        backgroundColor: demoPalette.surface,
         borderRadius: 12,
         padding: 16,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: demoPalette.border,
     },
     storeHeader: {
         flexDirection: 'row',
@@ -532,7 +523,7 @@ const styles = StyleSheet.create({
     storeName: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#333333',
+        color: demoPalette.textPrimary,
     },
     statusBadge: {
         paddingHorizontal: 8,
@@ -541,12 +532,12 @@ const styles = StyleSheet.create({
     },
     statusText: {
         fontSize: 12,
-        color: '#FFFFFF',
+        color: demoPalette.white,
         fontWeight: '600',
     },
     storeLocation: {
         fontSize: 14,
-        color: '#666666',
+        color: demoPalette.textSecondary,
         marginBottom: 12,
     },
     storeStats: {
@@ -559,11 +550,11 @@ const styles = StyleSheet.create({
     statValue: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#333333',
+        color: demoPalette.textPrimary,
     },
     statLabel: {
         fontSize: 12,
-        color: '#666666',
+        color: demoPalette.textSecondary,
         marginTop: 2,
     },
     demoContent: {
@@ -573,20 +564,20 @@ const styles = StyleSheet.create({
     demoTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#333333',
+        color: demoPalette.textPrimary,
         marginBottom: 12,
         textAlign: 'center',
     },
     demoDescription: {
         fontSize: 14,
-        color: '#666666',
+        color: demoPalette.textSecondary,
         textAlign: 'center',
         lineHeight: 20,
         marginBottom: 16,
     },
     instructionText: {
         fontSize: 14,
-        color: '#FF9800',
+        color: demoPalette.accent,
         textAlign: 'center',
         fontWeight: '600',
     },
@@ -599,7 +590,7 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#333333',
+        color: demoPalette.textPrimary,
         marginBottom: 12,
     },
     employeeRow: {
@@ -608,16 +599,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 8,
         borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F0',
+        borderBottomColor: demoPalette.surfaceMuted,
     },
     employeeName: {
         fontSize: 14,
-        color: '#333333',
+        color: demoPalette.textPrimary,
         flex: 1,
     },
     employeeRole: {
         fontSize: 12,
-        color: '#666666',
+        color: demoPalette.textSecondary,
         marginRight: 8,
     },
     employeeStatus: {
@@ -627,16 +618,16 @@ const styles = StyleSheet.create({
     },
     employeeStatusText: {
         fontSize: 10,
-        color: '#FFFFFF',
+        color: demoPalette.white,
         fontWeight: '600',
     },
     manageButton: {
-        backgroundColor: '#FF9800',
+        backgroundColor: demoPalette.accent,
         paddingVertical: 12,
         paddingHorizontal: 24,
         borderRadius: 8,
         alignItems: 'center',
-        shadowColor: '#FF9800',
+        shadowColor: demoPalette.accent,
         shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.3,
         shadowRadius: 4,
@@ -645,25 +636,25 @@ const styles = StyleSheet.create({
     manageButtonText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#FFFFFF',
+        color: demoPalette.white,
     },
     progressText: {
         fontSize: 24,
         fontWeight: '700',
-        color: '#FF9800',
+        color: demoPalette.accent,
         marginBottom: 16,
     },
     progressBar: {
         width: '100%',
         height: 8,
-        backgroundColor: '#E0E0E0',
+        backgroundColor: demoPalette.border,
         borderRadius: 4,
         marginBottom: 16,
         overflow: 'hidden',
     },
     progressFill: {
         height: '100%',
-        backgroundColor: '#FF9800',
+        backgroundColor: demoPalette.accent,
         borderRadius: 4,
     },
     managementSteps: {
@@ -672,20 +663,20 @@ const styles = StyleSheet.create({
     },
     stepText: {
         fontSize: 14,
-        color: '#666666',
+        color: demoPalette.textSecondary,
         marginBottom: 8,
         lineHeight: 20,
     },
     completeTitle: {
         fontSize: 22,
         fontWeight: '700',
-        color: '#FF4081',
+        color: demoPalette.highlight,
         marginBottom: 16,
         textAlign: 'center',
     },
     completeDescription: {
         fontSize: 14,
-        color: '#666666',
+        color: demoPalette.textSecondary,
         textAlign: 'center',
         marginBottom: 16,
         lineHeight: 20,
@@ -696,7 +687,7 @@ const styles = StyleSheet.create({
     },
     featureItem: {
         fontSize: 14,
-        color: '#333333',
+        color: demoPalette.textPrimary,
         marginBottom: 8,
         lineHeight: 20,
     },

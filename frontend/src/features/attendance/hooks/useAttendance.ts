@@ -9,6 +9,7 @@ import storeService from '../../store/services/storeService';
 import { AttendanceRecord } from '../types';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useLocationConsentGate } from './useLocationConsentGate';
+import {logger} from '../../../utils/logger';
 
 export type CheckMethod = 'standard' | 'location' | 'nfc' | 'qr';
 
@@ -74,7 +75,7 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
         if (isMountedRef.current && curr) {setCurrentAttendance(curr);}
       }
     } catch (e) {
-      console.warn('[useAttendance] Failed to load current status', e);
+      logger.warn('[useAttendance] Failed to load current status', e);
     } finally {
       if (isMountedRef.current) {setLoading(false);}
     }
@@ -94,7 +95,7 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
       });
       if (isMountedRef.current) {setRecords(data);}
     } catch (e) {
-      console.warn('[useAttendance] Failed to load records', e);
+      logger.warn('[useAttendance] Failed to load records', e);
     } finally {
       if (isMountedRef.current) {setRecordsLoading(false);}
     }
@@ -115,7 +116,7 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
       }
       return granted;
     } catch (e) {
-      console.warn('[useAttendance] requestLocationPermission error', e);
+      logger.warn('[useAttendance] requestLocationPermission error', e);
       return false;
     }
   }, []);

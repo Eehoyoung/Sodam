@@ -34,9 +34,16 @@ public enum WeekStartPolicy {
      * @param hireAnchor 입사일(HIRE_DATE_ANCHORED 에서 기산점). 다른 정책은 무시. null 이면 MONDAY 로 폴백.
      */
     public LocalDate weekStartOf(LocalDate workDate, LocalDate hireAnchor) {
+        return weekStartOf(workDate, hireAnchor, null);
+    }
+
+    /** 사업장 기산일을 함께 받는 계산 경로. STORE_DEFINED 이외 정책은 이 값을 무시한다. */
+    public LocalDate weekStartOf(LocalDate workDate, LocalDate hireAnchor, DayOfWeek storeWeekStartDay) {
         return switch (this) {
-            case MONDAY, STORE_DEFINED ->
+            case MONDAY ->
                     workDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+            case STORE_DEFINED -> workDate.with(TemporalAdjusters.previousOrSame(
+                    storeWeekStartDay == null ? DayOfWeek.MONDAY : storeWeekStartDay));
             case SUNDAY ->
                     workDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY));
             case HIRE_DATE_ANCHORED -> {

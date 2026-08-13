@@ -5,6 +5,7 @@
 
 import api from '../../../common/api/client';
 import {TipsInfo, InfoCategory, InfoDto} from '../types';
+import {logger} from '../../../utils/logger';
 
 // 공통 DTO -> UI 타입 매퍼
 const mapToTipInfo = (dto: InfoDto): TipsInfo => ({
@@ -34,7 +35,7 @@ const tipsService = {
             const res = await api.get<InfoDto[]>(`/api/tip-info`);
             return (res.data || []).map(mapToTipInfo);
         } catch (error) {
-            console.error('카테고리별 팁 정보를 가져오는 중 오류가 발생했습니다:', error);
+            logger.error('카테고리별 팁 정보를 가져오는 중 오류가 발생했습니다:', error);
             throw error;
         }
     },
@@ -45,7 +46,7 @@ const tipsService = {
             const res = await api.get<InfoDto>(`/api/tip-info/${tipId}`);
             return mapToTipInfo(res.data);
         } catch (error) {
-            console.error('팁 정보 상세를 가져오는 중 오류가 발생했습니다:', error);
+            logger.error('팁 정보 상세를 가져오는 중 오류가 발생했습니다:', error);
             throw error;
         }
     },
@@ -56,7 +57,7 @@ const tipsService = {
             const res = await api.get<InfoDto[]>(`/api/tip-info/search/title`, { keyword: searchTerm });
             return (res.data || []).map(mapToTipInfo);
         } catch (error) {
-            console.error('팁 정보 검색 중 오류가 발생했습니다:', error);
+            logger.error('팁 정보 검색 중 오류가 발생했습니다:', error);
             throw error;
         }
     },
@@ -67,7 +68,7 @@ const tipsService = {
             const res = await api.get<InfoDto[]>(`/api/tip-info/recent`, { limit });
             return (res.data || []).map(mapToTipInfo);
         } catch (error) {
-            console.error('최근 팁 정보를 가져오는 중 오류가 발생했습니다:', error);
+            logger.error('최근 팁 정보를 가져오는 중 오류가 발생했습니다:', error);
             throw error;
         }
     },
@@ -78,7 +79,7 @@ const tipsService = {
             const res = await api.get<InfoDto[]>(`/api/tip-info/popular`, { limit });
             return (res.data || []).map(mapToTipInfo);
         } catch (error) {
-            console.error('인기 팁 정보를 가져오는 중 오류가 발생했습니다:', error);
+            logger.error('인기 팁 정보를 가져오는 중 오류가 발생했습니다:', error);
             throw error;
         }
     },
@@ -87,7 +88,7 @@ const tipsService = {
             const res = await api.get<InfoDto[]>(`/api/tip-info/difficulty`, { difficulty });
             return (res.data || []).map(mapToTipInfo);
         } catch (error) {
-            console.error('난이도별 팁 정보를 가져오는 중 오류가 발생했습니다:', error);
+            logger.error('난이도별 팁 정보를 가져오는 중 오류가 발생했습니다:', error);
             throw error;
         }
     },

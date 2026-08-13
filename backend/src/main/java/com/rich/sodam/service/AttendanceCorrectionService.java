@@ -4,6 +4,7 @@ import com.rich.sodam.config.integration.PushNotifier;
 import com.rich.sodam.domain.Attendance;
 import com.rich.sodam.domain.AttendanceCorrectionRequest;
 import com.rich.sodam.domain.User;
+import com.rich.sodam.domain.type.ManagerPermission;
 import com.rich.sodam.repository.AttendanceCorrectionRequestRepository;
 import com.rich.sodam.repository.AttendanceRepository;
 import com.rich.sodam.repository.UserRepository;
@@ -32,6 +33,7 @@ public class AttendanceCorrectionService {
     private final UserRepository userRepo;
     private final NotificationService notificationService;
     private final ManagerSupervisionNotificationService supervision;
+    private final StorePermissionRecipientService permissionRecipients;
 
     /** 정정 요청 생성 결과 — 컨트롤러가 그대로 응답을 조립할 수 있도록 필요한 값만 담는다. */
     public record CorrectionRequestResult(Long id, String status, boolean forbidden) {
@@ -57,9 +59,26 @@ public class AttendanceCorrectionService {
                         proposedCheckIn, proposedCheckOut,
                         reason));
 
-        // 사장에게 알림 — 매장 기준 (단순화: 별도 알림 메시지)
-        // TODO[P2]: 사장 매장 관계 조회 후 모든 사장에게 발송
+        notifyCorrectionRequested(attendance, requester);
         return new CorrectionRequestResult(req.getId(), req.getStatus().name(), false);
+    }
+
+    private void notifyCorrectionRequested(Attendance attendance, User requester) {
+        if (attendance.getStore() == null || attendance.getStore().getId() == null) {
+            return;
+        }
+        Long storeId = attendance.getStore().getId();
+        String requesterName = requester.getName() == null || requester.getName().isBlank()
+                ? "직원" : requester.getName();
+        for (Long recipientUserId : permissionRecipients.ownersAndManagers(
+                storeId, ManagerPermission.ATTENDANCE_APPROVE)) {
+            notificationService.push(recipientUserId, PushNotifier.PushMessage.builder()
+                    .title("출퇴근 정정 요청")
+                    .body(requesterName + "님이 출퇴근 기록 정정을 요청했어요.")
+                    .deepLink("sodam://attendance")
+                    .data(Map.of("type", "ATTENDANCE_CORRECTION_REQUESTED"))
+                    .build());
+        }
     }
 
     @Transactional(readOnly = true)

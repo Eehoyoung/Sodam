@@ -211,7 +211,7 @@ const refreshStoredSession = async (): Promise<boolean> => {
         await sessionCoordinator.refresh();
         return true;
     } catch (error) {
-        logger.error('refreshStoredSession failed', 'AUTH_SERVICE', error);
+        logger.error('[AUTH_SERVICE] refreshStoredSession failed', error);
         await TokenManager.clear();
         return false;
     }
@@ -223,7 +223,7 @@ const authService = {
             const res = await postWithFallback<RawAuthResponse>('/api/login', '/api/login', loginRequest);
             return await mapAuthResponse(res.data);
         } catch (error) {
-            logger.error('login failed', 'AUTH_SERVICE', error);
+            logger.error('[AUTH_SERVICE] login failed', error);
             throw error;
         }
     },
@@ -236,7 +236,7 @@ const authService = {
             });
             return await mapAuthResponse(res.data);
         } catch (error) {
-            logger.error('kakaoLogin failed', 'AUTH_SERVICE', error);
+            logger.error('[AUTH_SERVICE] kakaoLogin failed', error);
             throw error;
         }
     },
@@ -247,7 +247,7 @@ const authService = {
             const res = await api.post<RawAuthResponse>('/apple/auth/proc', {identityToken});
             return await mapAuthResponse(res.data);
         } catch (error) {
-            logger.error('appleLogin failed', 'AUTH_SERVICE', error);
+            logger.error('[AUTH_SERVICE] appleLogin failed', error);
             throw error;
         }
     },
@@ -271,7 +271,7 @@ const authService = {
                 success: res.data?.success,
             };
         } catch (error) {
-            logger.error('signup failed', 'AUTH_SERVICE', error);
+            logger.error('[AUTH_SERVICE] signup failed', error);
             throw error;
         }
     },
@@ -312,7 +312,7 @@ const authService = {
             // 401/403/404 는 정상적인 미인증/엔드포인트 미존재 상태 — LogBox 도배 방지 위해 silent
             const status = statusOf(error);
             if (status !== 401 && status !== 403 && status !== 404) {
-                logger.error('getCurrentUser failed', 'AUTH_SERVICE', error);
+                logger.error('[AUTH_SERVICE] getCurrentUser failed', error);
             }
             throw error;
         }
@@ -322,7 +322,7 @@ const authService = {
         try {
             await postWithFallback('/api/auth/password/reset/request', '/api/password-reset-request', {email});
         } catch (error) {
-            logger.error('requestPasswordReset failed', 'AUTH_SERVICE', error);
+            logger.error('[AUTH_SERVICE] requestPasswordReset failed', error);
             throw error;
         }
     },
@@ -331,7 +331,7 @@ const authService = {
         try {
             await postWithFallback('/api/auth/password/reset', '/api/password-reset', {token, newPassword});
         } catch (error) {
-            logger.error('resetPassword failed', 'AUTH_SERVICE', error);
+            logger.error('[AUTH_SERVICE] resetPassword failed', error);
             throw error;
         }
     },

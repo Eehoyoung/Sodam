@@ -15,7 +15,8 @@ if (defaultConfig.watcher) {
 const customConfig = {
     resolver: {
         assetExts: defaultConfig.resolver.assetExts.filter(ext => ext !== 'svg'),
-        sourceExts: [...defaultConfig.resolver.sourceExts, 'svg'],
+        // Sentry's CommonJS compatibility shims require their .cjs targets.
+        sourceExts: [...defaultConfig.resolver.sourceExts, 'svg', 'cjs'],
         // Metro v0.81+ 에서는 blockList 가 RegExp 또는 RegExp[] 직접 받음
         blockList: [
             /out\/production\/.*/,

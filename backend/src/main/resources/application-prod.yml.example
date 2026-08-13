@@ -104,12 +104,19 @@ sodam:
       # 기본 비활성. 스테이징에서 유예·고지 동작을 먼저 검증한 뒤에만 true로 전환할 것 — 되돌릴 수 없다.
       execute-enabled: false
   integration:
+    # private S3 bucket과 AWS IAM role/default credential chain이 준비된 경우에만 mode를 live로 전환한다.
+    object-storage:
+      mode: ${SODAM_INTEGRATION_OBJECT_STORAGE_MODE:mock}
+      bucket: ${SODAM_OBJECT_STORAGE_BUCKET:}
+      region: ${SODAM_OBJECT_STORAGE_REGION:ap-northeast-2}
+      presigned-get-ttl: ${SODAM_OBJECT_STORAGE_PRESIGNED_GET_TTL:15m}
     toss:
       mode: live
       client-key: ${TOSS_CLIENT_KEY}
       secret-key: ${TOSS_SECRET_KEY}
       base-url: https://api.tosspayments.com
       webhook-secret: ${TOSS_WEBHOOK_SECRET}
+      public-callback-base-url: ${SODAM_TOSS_PUBLIC_CALLBACK_BASE_URL:}
     fcm:
       mode: live
       project-id: ${FCM_PROJECT_ID}

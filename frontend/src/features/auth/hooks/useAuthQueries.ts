@@ -5,6 +5,7 @@ import userService from '../services/userService';
 import * as sessionCoordinator from '../../../common/auth/sessionCoordinator';
 import {handleQueryError} from '../../../common/query/errorHandler';
 import {authQueryKeys} from '../../../common/auth/queryKeys';
+import {logger} from '../../../utils/logger';
 
 // axios 에러에서 HTTP 상태코드만 안전하게 추출 (인증·존재 에러 분기용).
 const statusOf = (error: unknown): number | undefined =>
@@ -93,11 +94,11 @@ export const useLogin = () => {
         },
         onSuccess: (data: AuthResponse) => {
             cacheAuthenticatedUser(queryClient, data);
-            console.log('[TanStack Query] Login success - auth cache updated');
+            logger.debug('[TanStack Query] Login success - auth cache updated');
         },
         onError: (error: unknown) => {
             queryClient.removeQueries({queryKey: authQueryKeys.all});
-            console.error('[TanStack Query] Login failed:', error);
+            logger.error('[TanStack Query] Login failed:', error);
         },
         meta: {
             errorMessage: '로그인에 실패했습니다.',
@@ -119,11 +120,11 @@ export const useKakaoLogin = () => {
         },
         onSuccess: (data: AuthResponse) => {
             cacheAuthenticatedUser(queryClient, data);
-            console.log('[TanStack Query] Kakao login success - auth cache updated');
+            logger.debug('[TanStack Query] Kakao login success - auth cache updated');
         },
         onError: (error: unknown) => {
             queryClient.removeQueries({queryKey: authQueryKeys.all});
-            console.error('[TanStack Query] Kakao login failed:', error);
+            logger.error('[TanStack Query] Kakao login failed:', error);
         },
         meta: {
             errorMessage: '카카오 로그인에 실패했습니다.',
@@ -145,11 +146,11 @@ export const useAppleLogin = () => {
         },
         onSuccess: (data: AuthResponse) => {
             cacheAuthenticatedUser(queryClient, data);
-            console.log('[TanStack Query] Apple login success - auth cache updated');
+            logger.debug('[TanStack Query] Apple login success - auth cache updated');
         },
         onError: (error: unknown) => {
             queryClient.removeQueries({queryKey: authQueryKeys.all});
-            console.error('[TanStack Query] Apple login failed:', error);
+            logger.error('[TanStack Query] Apple login failed:', error);
         },
         meta: {
             errorMessage: 'Apple 로그인에 실패했습니다.',
@@ -168,10 +169,10 @@ export const useSignup = () => {
             }
         },
         onSuccess: () => {
-            console.log('[TanStack Query] Signup success');
+            logger.debug('[TanStack Query] Signup success');
         },
         onError: (error: unknown) => {
-            console.error('[TanStack Query] Signup failed:', error);
+            logger.error('[TanStack Query] Signup failed:', error);
         },
         meta: {
             errorMessage: '회원가입에 실패했습니다.',
@@ -192,11 +193,11 @@ export const useLogout = () => {
         },
         onSuccess: () => {
             queryClient.clear();
-            console.log('[TanStack Query] Logout complete - cache cleared');
+            logger.debug('[TanStack Query] Logout complete - cache cleared');
         },
         onError: (error: unknown) => {
             queryClient.clear();
-            console.error('[TanStack Query] Logout failed:', error);
+            logger.error('[TanStack Query] Logout failed:', error);
         },
         meta: {
             errorMessage: '로그아웃 처리 중 오류가 발생했습니다.',
@@ -215,10 +216,10 @@ export const usePasswordResetRequest = () => {
             }
         },
         onSuccess: () => {
-            console.log('[TanStack Query] Password reset request complete');
+            logger.debug('[TanStack Query] Password reset request complete');
         },
         onError: (error: unknown) => {
-            console.error('[TanStack Query] Password reset request failed:', error);
+            logger.error('[TanStack Query] Password reset request failed:', error);
         },
         meta: {
             errorMessage: '비밀번호 재설정 요청에 실패했습니다.',
@@ -237,10 +238,10 @@ export const usePasswordReset = () => {
             }
         },
         onSuccess: () => {
-            console.log('[TanStack Query] Password reset complete');
+            logger.debug('[TanStack Query] Password reset complete');
         },
         onError: (error: unknown) => {
-            console.error('[TanStack Query] Password reset failed:', error);
+            logger.error('[TanStack Query] Password reset failed:', error);
         },
         meta: {
             errorMessage: '비밀번호 재설정에 실패했습니다.',

@@ -375,17 +375,17 @@ function WorkLogTableRow({row, onCorrection}: {row: WorkLogRow; onCorrection: ()
             <Cell width={120} align="right">{row.dailyWage ? formatWon(row.dailyWage) : '-'}</Cell>
             <Cell width={108} align="right">{row.bonusAmount ? formatWon(row.bonusAmount) : '-'}</Cell>
             <Cell width={142}>{row.memo}</Cell>
-            <View style={[styles.cell, {width: 86}]}>
+            <View style={[styles.cell, styles.statusCell]}>
                 <View style={[
                     styles.rowStatus,
                     {backgroundColor: statusBg(row.status, c)},
                 ]}>
-                    <AppText variant="caption" weight="800" style={{color: statusColor(row.status, c), fontSize: 11}}>
+                    <AppText variant="caption" weight="800" style={[styles.statusText, {color: statusColor(row.status, c)}]}>
                         {statusLabel(row.status)}
                     </AppText>
                 </View>
             </View>
-            <View style={[styles.cell, {width: 82}]}>
+            <View style={[styles.cell, styles.actionCell]}>
                 {row.attendanceId ? (
                     <Pressable onPress={onCorrection} hitSlop={8} style={[styles.correctionBtn, {borderColor: c.border}]}>
                         <AppText variant="caption" tone="brand" weight="800">요청</AppText>
@@ -532,6 +532,9 @@ function statusColor(status: WorkLogRow['status'], c: ReturnType<typeof useTheme
 }
 
 const styles = StyleSheet.create({
+    statusCell: {width: 86},
+    statusText: {fontSize: 11},
+    actionCell: {width: 82},
     body: {
         paddingHorizontal: spacing.lg,
         paddingTop: spacing.md,

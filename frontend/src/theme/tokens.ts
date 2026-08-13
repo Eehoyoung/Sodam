@@ -61,6 +61,7 @@ export const colors = {
     payrollCancelled: '#FF4D6D',
 
     // === Translucent ===
+    transparent: 'transparent',   // 테마와 무관한 키워드 — 리터럴이 흩어지지 않게 토큰으로 고정
     overlayDark: 'rgba(21, 23, 27, 0.55)',
     shadowColor: '#15171B',
 } as const;
@@ -115,6 +116,7 @@ export const darkColors: Record<keyof typeof colors, string> = {
     payrollPending: '#FFC24D',
     payrollCancelled: '#FF7288',
 
+    transparent: 'transparent',
     overlayDark: 'rgba(0, 0, 0, 0.6)',
     shadowColor: '#000000',
 };

@@ -6,6 +6,7 @@
 import React, {useCallback, useEffect, useRef} from 'react';
 import {Platform} from 'react-native';
 import JSIPerformanceMonitor from '../services/JSIPerformanceMonitor';
+import {logger} from '../utils/logger';
 
 interface CrashReportingConfig {
     componentName: string;
@@ -47,10 +48,13 @@ export const useJSICrashReporting = (
     useEffect(() => {
         if (!enableAutoReporting) {return;}
 
+        // eslint-disable-next-line no-console -- console 을 가로채 JSI 오류를 수집하는 지점이라 console 자체를 참조해야 한다
         const originalConsoleError = console.error;
+        // eslint-disable-next-line no-console -- console 을 가로채 JSI 오류를 수집하는 지점이라 console 자체를 참조해야 한다
         const originalConsoleWarn = console.warn;
 
         // Override console.error to catch JSI-related errors
+        // eslint-disable-next-line no-console -- console 을 가로채 JSI 오류를 수집하는 지점이라 console 자체를 참조해야 한다
         console.error = (...args: unknown[]) => {
             const errorMessage = args.join(' ');
 
@@ -66,6 +70,7 @@ export const useJSICrashReporting = (
         };
 
         // Override console.warn to catch JSI warnings
+        // eslint-disable-next-line no-console -- console 을 가로채 JSI 오류를 수집하는 지점이라 console 자체를 참조해야 한다
         console.warn = (...args: unknown[]) => {
             const warningMessage = args.join(' ');
 
@@ -109,7 +114,9 @@ export const useJSICrashReporting = (
 
         // Cleanup function
         return () => {
+            // eslint-disable-next-line no-console -- console 을 가로채 JSI 오류를 수집하는 지점이라 console 자체를 참조해야 한다
             console.error = originalConsoleError;
+            // eslint-disable-next-line no-console -- console 을 가로채 JSI 오류를 수집하는 지점이라 console 자체를 참조해야 한다
             console.warn = originalConsoleWarn;
 
             if (Platform.OS === 'web') {
@@ -142,11 +149,11 @@ export const useJSICrashReporting = (
             try {
                 onCrashDetected(error);
             } catch (handlerError) {
-                console.error('[JSI Crash Reporting] Error in crash handler:', handlerError);
+                logger.error('[JSI Crash Reporting] Error in crash handler:', handlerError);
             }
         }
 
-        console.error(`[JSI Crash Reporting] Crash detected in ${componentName}:`, {
+        logger.error(`[JSI Crash Reporting] Crash detected in ${componentName}:`, {
             error: error.message,
             context,
             crashCount: crashCountRef.current,

@@ -11,8 +11,9 @@ import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors'
 import {useAuth} from '../../../contexts/AuthContext';
 import {DATE_DIGITS_HELPER, dateDigitsToIso, isValidDateDigits, sanitizeDateDigits} from '../../../common/utils/dateTimeInput';
 import storeService, {StoreSummaryDto} from '../../store/services/storeService';
-import payrollService from '../services/payrollService';
+import payrollService, {RESIGNED_NEEDS_MANUAL_SETTLEMENT} from '../services/payrollService';
 import {fetchOvertimeCheck, OvertimeCheck} from '../services/overtimeService';
+import {getErrorMessage} from '../../../common/errors';
 
 // 정산 계산 로직 보존을 위한 경량 어댑터 (구식 Badge/Input → DS)
 const Badge: React.FC<any> = ({text, type}) => (
@@ -150,17 +151,33 @@ const PayrollRunScreen: React.FC<Props> = ({visualFixture}) => {
         const endDateIso = dateDigitsToIso(endDate);
         setLoading(true);
         try {
-            const items = await payrollService.calculate({
+            const {items, failed} = await payrollService.calculate({
                 storeId,
                 startDate: startDateIso,
                 endDate: endDateIso,
             });
             setPreviews(items);
             setStep('PREVIEW');
+            // 일부 직원의 정산이 중단됐다면 반드시 알린다 — 조용히 빠지면 미지급으로 이어진다.
+            // 퇴사자의 수동 최종정산 안내는 "계산 오류"와 성격이 달라 문구를 나눈다.
+            const resigned = failed.filter(f => f.errorCode === RESIGNED_NEEDS_MANUAL_SETTLEMENT);
+            const errors = failed.filter(f => f.errorCode !== RESIGNED_NEEDS_MANUAL_SETTLEMENT);
+            if (errors.length > 0) {
+                const names = errors.map(f => f.employeeName).join(', ');
+                AppToast.warn(
+                    `${names} 님은 급여를 계산하지 못했어요. ${errors[0].message}`,
+                );
+            }
+            if (resigned.length > 0) {
+                const names = resigned.map(f => f.employeeName).join(', ');
+                AppToast.warn(
+                    `${names} 님은 퇴사 처리됐지만 이 기간에 근무기록이 있어요. 최종 정산을 직접 확인해 주세요.`,
+                );
+            }
             // 연장근로 한도 경보는 정산을 막지 않는 부가 정보 — 실패해도 정산 흐름 유지.
             loadOvertime(storeId, startDateIso);
-        } catch (e: any) {
-            AppToast.error(e?.response?.data?.message ?? '급여 계산 중 오류가 났어요. 잠시 후 다시 시도해 주세요.');
+        } catch (e: unknown) {
+            AppToast.error(getErrorMessage(e, '급여 계산 중 오류가 났어요. 잠시 후 다시 시도해 주세요.'));
         } finally {
             setLoading(false);
         }
@@ -519,7 +536,7 @@ const PreviewList: React.FC<any> = ({previews, totalNet, onAdjust}) => {
                         />
                         <Text style={styles.modalLabel}>사유</Text>
                         <TextInput
-                            style={[styles.modalInput, {height: 80, textAlignVertical: 'top'}]}
+                            style={[styles.modalInput, fieldStyles.multilineInput]}
                             value={adjustReason}
                             onChangeText={setAdjustReason}
                             multiline
@@ -640,6 +657,7 @@ function pad(n: number): string {
 }
 
 const fieldStyles = StyleSheet.create({
+    multilineInput: {height: 80, textAlignVertical: 'top'},
     gap: {gap: tokens.spacing.lg},
 });
 

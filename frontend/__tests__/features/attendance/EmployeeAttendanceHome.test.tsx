@@ -1,7 +1,10 @@
 import React from 'react';
 import ReactTestRenderer, {act} from 'react-test-renderer';
+import {AppToast} from '../../../src/common/components/ds';
 
 const mockAlert = jest.fn();
+/** 매장 미선택 안내는 Alert 가 아니라 전역 토스트로 나간다. */
+const mockToastShow = jest.spyOn(AppToast, 'show').mockImplementation(() => {});
 
 jest.mock('react-native', () => ({
     StyleSheet: {create: (s: any) => s},
@@ -91,6 +94,7 @@ describe('EmployeeAttendanceHome', () => {
         jest.clearAllMocks();
         mockAlert.mockClear();
         mockNavigate.mockClear();
+        mockToastShow.mockClear();
     });
 
     afterEach(() => {
@@ -330,7 +334,11 @@ describe('EmployeeAttendanceHome', () => {
         expect(labels).not.toContain('대타 지원');
     });
 
-    test.skip('selectedStore 가 없을 때 handleAction → 알림 노출', async () => {
+    // 소속 매장이 없는 직원이 매장 스코프 기능(휴가 신청 등)을 누르면 조용히 실패하는 대신
+    // 무엇을 먼저 해야 하는지 안내해야 한다.
+    // 이 테스트는 Alert + '먼저 매장을 선택해 주세요.' 를 단언하다 스킵돼 있었는데, 화면이
+    // AppToast 로 바뀌고 문구도 달라진 뒤였다. 현재 계약으로 되살린다.
+    test('소속 매장이 없으면 매장 스코프 기능은 안내 토스트를 띄우고 이동하지 않는다', async () => {
         apiMock.get.mockImplementation((url: string) => {
             if (url.startsWith('/api/stores/employee/')) {
                 return Promise.resolve({data: []}) as any;
@@ -344,16 +352,21 @@ describe('EmployeeAttendanceHome', () => {
             await flush();
         });
 
-        // 매장 없음 → 안내 텍스트
+        // 매장 없음이 화면에 드러난다.
         const texts = renderer!.root.findAllByType('Text').map(t => t.props.children);
-        expect(texts).toContain('소속 매장이 아직 없어요.');
+        expect(texts).toContain('소속 매장이 없어요');
 
-        // 동그라미 누르면 알림
-        const pressables = renderer!.root.findAllByType('Pressable');
+        const timeOffTile = renderer!.root.find(
+            (node: any) => node.props?.accessibilityLabel === '휴가 신청'
+                || (typeof node.props?.label === 'string' && node.props.label === '휴가 신청'),
+        );
+
         await act(async () => {
-            pressables[0].props.onPress();
+            timeOffTile.props.onPress();
             await flush();
         });
-        expect(mockAlert).toHaveBeenCalledWith('알림', '먼저 매장을 선택해 주세요.');
+
+        expect(mockToastShow).toHaveBeenCalledWith('먼저 소속 매장을 선택해 주세요.');
+        expect(mockNavigate).not.toHaveBeenCalledWith('TimeOffRequest', expect.anything());
     });
 });

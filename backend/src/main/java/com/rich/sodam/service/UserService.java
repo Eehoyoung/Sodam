@@ -457,8 +457,20 @@ public class UserService {
         ObjectStorage.PutResult res = objectStorage.put(
                 "users/" + userId + "/avatar", file.getBytes(), contentType);
 
-        user.updateAvatar(res.getPublicUrl(), res.getStorageKey());
+        // A live presigned URL is a temporary bearer credential and must not be
+        // stored in avatar_url. The object key is sufficient to generate it.
+        user.updateAvatar(null, res.getStorageKey());
         return userRepository.save(user);
+    }
+
+    /** 저장된 key가 있으면 매 응답에 새 접근 URL을 만들고, 과거 레코드는 저장 URL로 호환한다. */
+    public String resolveAvatarUrl(User user) {
+        if (user == null || user.getAvatarKey() == null || user.getAvatarKey().isBlank()) {
+            // Legacy rows have only a historical public URL. Do not re-expose it
+            // after switching to a private bucket; migration can populate keys.
+            return user == null || objectStorage.isLive() ? null : user.getAvatarUrl();
+        }
+        return objectStorage.accessUrl(user.getAvatarKey());
     }
 
     /**

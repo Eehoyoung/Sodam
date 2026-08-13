@@ -92,6 +92,12 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.PAYMENT_REQUIRED);
     }
 
+    @ExceptionHandler(PaymentUnavailableException.class)
+    public ResponseEntity<ApiResponse<Object>> handlePaymentUnavailable(PaymentUnavailableException e) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiResponse.error("PAYMENT_UNAVAILABLE", e.getMessage()));
+    }
+
     /**
      * 출근권 잔액 부족(402) — 채용 제안 발송/지원서 열람+채팅 개설에 필요한 출근권이 부족할 때.
      * FE 가 충전(페이월) 유도로 분기한다(api-design.md: 결제 필요 402 + errorCode).

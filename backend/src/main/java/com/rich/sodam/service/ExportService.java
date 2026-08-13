@@ -76,7 +76,9 @@ public class ExportService {
                     .append(emp).append(',')
                     .append(p.getStartDate()).append('~').append(p.getEndDate()).append(',')
                     .append(p.getRegularWage() == null ? 0 : p.getRegularWage()).append(',')
-                    .append(p.getOvertimeWage() == null ? 0 : p.getOvertimeWage()).append(',')
+                    // 일 8h 초과 + 주 40h 초과 = §56① 연장근로수당. 합쳐야 세전 합계와 맞는다.
+                    .append((p.getOvertimeWage() == null ? 0 : p.getOvertimeWage())
+                            + (p.getWeeklyOvertimeWage() == null ? 0 : p.getWeeklyOvertimeWage())).append(',')
                     .append(p.getNightWorkWage() == null ? 0 : p.getNightWorkWage()).append(',')
                     .append(p.getWeeklyAllowance() == null ? 0 : p.getWeeklyAllowance()).append(',')
                     .append(p.getGrossWage() == null ? 0 : p.getGrossWage()).append(',')

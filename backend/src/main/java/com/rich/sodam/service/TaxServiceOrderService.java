@@ -4,6 +4,7 @@ import com.rich.sodam.config.integration.TossPaymentGateway;
 import com.rich.sodam.domain.TaxServiceOrder;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.domain.type.TaxPackage;
+import com.rich.sodam.domain.type.PaymentSourceType;
 import com.rich.sodam.repository.TaxServiceOrderRepository;
 import com.rich.sodam.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class TaxServiceOrderService {
     private final TaxServiceOrderRepository orderRepository;
     private final UserRepository userRepository;
     private final TossPaymentGateway paymentGateway;
+    private final PaymentReceiptService paymentReceiptService;
 
     @Transactional
     public TaxServiceOrder createOrder(Long userId, TaxPackage pkg) {
@@ -50,6 +52,9 @@ public class TaxServiceOrderService {
         if (order.isPaid()) {
             return order; // 멱등: 이미 승인된 주문
         }
+        if (order.isCancelledOrRefunded()) {
+            throw new IllegalStateException("이미 취소 또는 환불된 주문은 다시 결제할 수 없습니다.");
+        }
         if (clientAmount != order.getCustomerAmount()) {
             throw new IllegalArgumentException("결제 금액이 주문 금액과 일치하지 않습니다.");
         }
@@ -60,6 +65,10 @@ public class TaxServiceOrderService {
             throw new IllegalStateException("결제 승인 실패: " + result.getFailureReason());
         }
         order.markPaid(result.getPaymentKey());
+        // 예수금(세무사 전달분)을 함께 넘긴다 — 전액을 공급가액으로 발급하면 과세표준이 실매출보다
+        // 과대계상된다(G-11 선결 1). 결제·환불 금액은 그대로 customerAmount 전액이다.
+        paymentReceiptService.recordPaid(PaymentSourceType.TAX_SERVICE, order.getOrderId(), userId,
+                result.getPaymentKey(), order.getCustomerAmount(), order.getPartnerPayable());
         log.info("세무 주문 결제 완료 orderId={} 매출(송객수수료)={} 예수금(세무사)={}",
                 orderId, order.getReferralFee(), order.getPartnerPayable());
         return order;
@@ -68,5 +77,29 @@ public class TaxServiceOrderService {
     @Transactional(readOnly = true)
     public List<TaxServiceOrder> myOrders(Long userId) {
         return orderRepository.findByUser_IdOrderByCreatedAtDesc(userId);
+    }
+
+    /** FE confirm 유실을 보완하는 Toss DONE 웹훅 경로. */
+    @Transactional
+    public void applyFromWebhook(String orderId, String paymentKey) {
+        orderRepository.findByOrderIdForUpdate(orderId).ifPresent(order -> {
+            if (order.isPaid() || order.isCancelledOrRefunded()) return;
+            order.markPaid(paymentKey);
+            paymentReceiptService.recordPaid(PaymentSourceType.TAX_SERVICE, order.getOrderId(),
+                    order.getUser().getId(), paymentKey, order.getCustomerAmount(), order.getPartnerPayable());
+        });
+    }
+
+    @Transactional
+    public void cancelFromWebhook(String orderId) {
+        orderRepository.findByOrderIdForUpdate(orderId).ifPresent(order -> {
+            if (order.isCancelledOrRefunded()) return;
+            if (order.isPaid()) {
+                order.markRefunded();
+                paymentReceiptService.cancel(PaymentSourceType.TAX_SERVICE, order.getOrderId());
+            } else {
+                order.cancel();
+            }
+        });
     }
 }

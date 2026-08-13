@@ -187,6 +187,54 @@ import RoleTabBar from '../../common/components/navigation/RoleTabBar';
 import {radius, spacing} from '../../theme/tokens';
 import {RootStackParamList} from '../../navigation/types';
 
+/**
+ * v3 시각 회귀 하네스 전용 고정 참조색.
+ *
+ * <p>이 화면은 v3 시안(HTML 목업)과 픽셀 단위로 대조하기 위한 <b>결정적 렌더 하네스</b>다.
+ * 그래서 값이 테마(라이트/다크 설정)를 따라가면 안 된다 — {@code useThemeColors()} 로 바꾸면
+ * 기기 설정에 따라 캡처가 흔들려 회귀 검증 자체가 무의미해진다. 대신 흩어져 있던 리터럴을
+ * 여기 모아 이름을 준다.</p>
+ *
+ * ⚠️ 제품 화면에서 이 팔레트를 쓰지 말 것. 신규 작업은 `theme/tokens.ts` 의 v3 토큰이 기준이다.
+ */
+const REF = {
+    coral: '#FF4D6D',          // brandPrimary (라이트)
+    coralDark: '#FF7288',      // brandPrimary (다크 테마 대응값)
+    coralSoft: '#FFE1E6',      // brandPrimarySoft
+    teal: '#12B8A6',           // v3 그라디언트 종점
+    ink: '#15171B',            // 잉크(brandSecondary)
+    inkOnDark: '#F2F1EE',      // 다크 위 잉크 반전
+    paper: '#F5F3EF',          // 따뜻한 종이 배경
+    paperMuted: '#F1F1EC',     // surfaceWarm
+    hairline: '#E7E7E2',       // 얇은 구분선·트랙
+    white: '#FFFFFF',
+    shadow: '#000000',
+    mutedText: '#A6A9AE',
+
+    // 고정 다크 화면(설정 무관) — NFC 스캔·미지원 안내 등
+    darkCanvas: '#12141B',
+    // `as string[]` — 바깥 `as const` 가 배열까지 readonly 로 만들면 LinearGradient 의 colors 가 못 받는다.
+    darkGradient: ['#1E1A33', '#17151F', '#1C1712'] as string[],
+    onDark72: 'rgba(245,243,239,0.72)',
+    onDark90: 'rgba(245,243,239,0.9)',
+    onDark30: 'rgba(245,243,239,0.3)',
+    onDark22: 'rgba(245,243,239,0.22)',
+    onDark18: 'rgba(245,243,239,0.18)',
+    onDarkAlt30: 'rgba(245,245,239,0.3)',
+    white10: 'rgba(255,255,255,0.1)',
+    white09: 'rgba(255,255,255,0.09)',
+    white06: 'rgba(255,255,255,0.06)',
+    white04: 'rgba(255,255,255,0.04)',
+
+    // 외부 브랜드색(카카오) — 가이드라인상 변경 불가
+    kakaoYellow: '#FEE500',
+    kakaoLabel: '#1F1A0E',
+
+    /** 시각 회귀 캡처 마커·투명 배경 — 화면에 보이지 않아야 한다. */
+    transparent: 'transparent',
+} as const;
+
+
 type Props = NativeStackScreenProps<RootStackParamList, 'V3Visual'>;
 
 export const V3_VISUAL_SCREEN_IDS = {
@@ -1427,7 +1475,7 @@ const NativeReferenceSubscriptionGate: React.FC = () => {
                 <AppText variant="bodyMd" tone="secondary" center style={styles.subscriptionDesc}>
                     급여명세 발급은 비즈니스 플랜 기능이에요. 지금 시작하면 바로 직원에게 명세서를 보낼 수 있어요.
                 </AppText>
-                <AppCard variant="flat" style={[styles.subscriptionCard, {backgroundColor: c.brandPrimarySoft, borderWidth: 1.5, borderColor: c.brandPrimary}]}>
+                <AppCard variant="flat" style={[styles.subscriptionCard, styles.brandRing, {backgroundColor: c.brandPrimarySoft, borderColor: c.brandPrimary}]}>
                     <AppText variant="titleMd" tone="primary" weight="700">비즈니스 플랜</AppText>
                     <AmountText size={20} tone="brand" style={styles.subscriptionPrice}>월 15,000원</AmountText>
                     <AppText variant="caption" tone="tertiary" style={styles.subscriptionSub}>급여명세 발급 · 직원 알림 · 정산 준비 자동화</AppText>
@@ -1654,7 +1702,7 @@ const MISSING_ATTENDANCE_CENTER_FIXTURE: MissingAttendanceVisualFixture = {
 
 const PERSONAL_HOME_NOW_MS = new Date('2026-07-20T14:30:00+09:00').getTime();
 const PERSONAL_HOME_FIXTURE: PersonalUserVisualFixture = {
-    stores: [{id: '101', name: '카페 소담', color: '#FF4D6D', hourlyWage: 10500}],
+    stores: [{id: '101', name: '카페 소담', color: REF.coral, hourlyWage: 10500}],
     selectedStoreId: '101',
     workSessions: {
         '101': {
@@ -2485,7 +2533,7 @@ const NativeReferenceRoleStart: React.FC = () => {
 
     return (
         <LinearGradient
-            colors={['#1E1A33', '#17151F', '#1C1712']}
+            colors={REF.darkGradient}
             start={{x: 0, y: 0}}
             end={{x: 1, y: 1}}
             style={styles.flex}>
@@ -2538,7 +2586,7 @@ const NativeReferenceRoleStart: React.FC = () => {
 
 const NativeReferenceOnboarding: React.FC = () => (
     <LinearGradient
-        colors={['#1E1A33', '#17151F', '#1C1712']}
+        colors={REF.darkGradient}
         start={{x: 0, y: 0}}
         end={{x: 1, y: 1}}
         style={styles.flex}>
@@ -2575,7 +2623,7 @@ const NativeReferenceKakaoLogin: React.FC = () => {
 
     return (
         <LinearGradient
-            colors={['#1E1A33', '#17151F', '#1C1712']}
+            colors={REF.darkGradient}
             start={{x: 0, y: 0}}
             end={{x: 1, y: 1}}
             style={styles.flex}>
@@ -2601,7 +2649,7 @@ const NativeReferenceKakaoLogin: React.FC = () => {
 const NativeReferenceSplash: React.FC = () => (
     <SafeAreaView style={styles.splashSafeArea}>
         <LinearGradient
-            colors={['#1E1A33', '#17151F', '#1C1712']}
+            colors={REF.darkGradient}
             start={{x: 0, y: 0}}
             end={{x: 1, y: 1}}
             style={styles.splashGradient}>
@@ -2620,7 +2668,7 @@ const NativeReferenceSplash: React.FC = () => (
 
 const NativeReferenceWelcomeMain: React.FC = () => (
     <LinearGradient
-        colors={['#1E1A33', '#17151F', '#1C1712']}
+        colors={REF.darkGradient}
         start={{x: 0, y: 0}}
         end={{x: 1, y: 1}}
         style={styles.flex}>
@@ -2659,7 +2707,7 @@ const LandingButton: React.FC<{label: string; primary?: boolean}> = ({label, pri
 
 const NativeReferenceLogin: React.FC = () => (
     <LinearGradient
-        colors={['#1E1A33', '#17151F', '#1C1712']}
+        colors={REF.darkGradient}
         start={{x: 0, y: 0}}
         end={{x: 1, y: 1}}
         style={styles.flex}>
@@ -3684,31 +3732,32 @@ const V3VisualHarnessScreen: React.FC<Props> = ({navigation, route}) => {
 };
 
 const styles = StyleSheet.create({
+    brandRing: {borderWidth: 1.5},
     flex: {flex: 1},
     addressSearchList: {gap: spacing.xs, marginTop: spacing.sm},
     addressSearchCta: {marginTop: spacing.md},
     toastExampleNote: {marginTop: spacing.xs},
     toastExampleToast: {
         flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-        marginTop: spacing.xl, padding: spacing.md, borderRadius: radius.lg, backgroundColor: '#15171B',
+        marginTop: spacing.xl, padding: spacing.md, borderRadius: radius.lg, backgroundColor: REF.ink,
     },
     componentRulesList: {gap: spacing.md},
     componentRulesRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.md},
     componentRulesDot: {
-        width: 24, height: 24, borderRadius: 12, backgroundColor: '#12B8A6',
+        width: 24, height: 24, borderRadius: 12, backgroundColor: REF.teal,
         alignItems: 'center', justifyContent: 'center',
     },
     contractStepsRow: {flexDirection: 'row', alignItems: 'center', marginBottom: spacing.lg},
     contractStepDotWrap: {flexDirection: 'row', alignItems: 'center', flex: 1},
     contractStepDot: {
-        width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, borderColor: '#E7E7E2',
-        alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff',
+        width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, borderColor: REF.hairline,
+        alignItems: 'center', justifyContent: 'center', backgroundColor: REF.white,
     },
-    contractStepDotDone: {backgroundColor: '#12B8A6', borderColor: '#12B8A6'},
-    contractStepDotActive: {backgroundColor: '#FF4D6D', borderColor: '#FF4D6D'},
-    contractStepDotTextOn: {color: '#fff'},
-    contractStepLine: {flex: 1, height: 2, backgroundColor: '#E7E7E2'},
-    contractStepLineDone: {backgroundColor: '#12B8A6'},
+    contractStepDotDone: {backgroundColor: REF.teal, borderColor: REF.teal},
+    contractStepDotActive: {backgroundColor: REF.coral, borderColor: REF.coral},
+    contractStepDotTextOn: {color: REF.white},
+    contractStepLine: {flex: 1, height: 2, backgroundColor: REF.hairline},
+    contractStepLineDone: {backgroundColor: REF.teal},
     contractSectionLabel: {marginTop: spacing.lg, marginBottom: spacing.sm},
     contractField: {marginTop: spacing.md},
     contractRow: {flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.sm},
@@ -3727,7 +3776,7 @@ const styles = StyleSheet.create({
     bonusCta: {marginTop: spacing.lg, marginBottom: spacing.xl},
     bonusSectionLabel: {marginBottom: spacing.sm},
     visualRoute: {flex: 1},
-    visualRouteMarker: {position: 'absolute', width: 1, height: 1, fontSize: 1, lineHeight: 1, color: 'transparent'},
+    visualRouteMarker: {position: 'absolute', width: 1, height: 1, fontSize: 1, lineHeight: 1, color: REF.transparent},
     stateCenter: {flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20},
     stateInner: {width: '100%', maxWidth: 320, alignItems: 'center'},
     stateMark: {width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 12},
@@ -3736,9 +3785,9 @@ const styles = StyleSheet.create({
     stateCopy: {marginTop: 8, fontSize: 14, lineHeight: 21, textAlign: 'center'},
     stateCta: {marginTop: 16, alignSelf: 'stretch'},
     stateCtaSub: {marginTop: 8, alignSelf: 'stretch'},
-    stateProgressCard: {width: '100%', marginTop: 16, padding: 16, borderRadius: 16, backgroundColor: '#F1F1EC'},
-    stateProgressTrack: {height: 6, borderRadius: 999, backgroundColor: '#E7E7E2', overflow: 'hidden'},
-    stateProgressValue: {width: '48%', height: '100%', borderRadius: 999, backgroundColor: '#FF4D6D'},
+    stateProgressCard: {width: '100%', marginTop: 16, padding: 16, borderRadius: 16, backgroundColor: REF.paperMuted},
+    stateProgressTrack: {height: 6, borderRadius: 999, backgroundColor: REF.hairline, overflow: 'hidden'},
+    stateProgressValue: {width: '48%', height: '100%', borderRadius: 999, backgroundColor: REF.coral},
     subscriptionCenter: {flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20},
     subscriptionTitle: {marginTop: 12},
     subscriptionDesc: {marginTop: 8, maxWidth: 320},
@@ -3852,7 +3901,7 @@ const styles = StyleSheet.create({
     scheduleStoreBoardHeader: {width: 52, alignItems: 'center', justifyContent: 'center', gap: 2},
     scheduleStoreBoardAdd: {width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center'},
     scheduleStoreBoardBody: {flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
-    scheduleStoreBoardChip: {flexDirection: 'row', alignItems: 'center', gap: spacing.xs, maxWidth: 150, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: radius.md, borderWidth: 1, shadowColor: '#000', shadowRadius: 6, shadowOffset: {width: 0, height: 3}},
+    scheduleStoreBoardChip: {flexDirection: 'row', alignItems: 'center', gap: spacing.xs, maxWidth: 150, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: radius.md, borderWidth: 1, shadowColor: REF.shadow, shadowRadius: 6, shadowOffset: {width: 0, height: 3}},
     scheduleStoreBoardChipText: {flexShrink: 1},
     scheduleRequestsTitle: {marginBottom: spacing.sm},
     scheduleRequestsTitleGap: {marginTop: spacing.xxl, marginBottom: spacing.xs},
@@ -3898,20 +3947,20 @@ const styles = StyleSheet.create({
     salaryCardBottom: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12},
     salaryMeta: {flexShrink: 1, gap: 2},
     salaryAmount: {flexShrink: 0, maxWidth: '55%'},
-    splashSafeArea: {flex: 1, backgroundColor: '#15171B'},
+    splashSafeArea: {flex: 1, backgroundColor: REF.ink},
     splashGradient: {flex: 1, alignItems: 'center', justifyContent: 'center'},
     splashCenter: {alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24},
     splashBrandName: {
         fontSize: 35,
         fontWeight: '900',
-        color: '#FFFFFF',
+        color: REF.white,
         marginTop: 16,
         marginBottom: 8,
     },
     splashSlogan: {
         fontSize: 14,
         lineHeight: 20,
-        color: '#FFFFFF',
+        color: REF.white,
         textAlign: 'center',
     },
     roleBody: {flex: 1, paddingHorizontal: 24, paddingTop: 24},
@@ -3925,22 +3974,22 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         borderRadius: 14,
         borderWidth: 1,
-        borderColor: 'rgba(245,243,239,0.18)',
-        backgroundColor: 'rgba(255,255,255,0.04)',
+        borderColor: REF.onDark18,
+        backgroundColor: REF.white04,
         paddingHorizontal: 16,
         paddingVertical: 12,
     },
-    roleCardSelected: {borderColor: '#FF7288', backgroundColor: 'rgba(255,255,255,0.09)'},
+    roleCardSelected: {borderColor: REF.coralDark, backgroundColor: REF.white09},
     roleCardText: {flexShrink: 1},
     roleHint: {marginTop: 2, opacity: 0.7},
     roleRecommendBadge: {
-        backgroundColor: '#FFE1E6',
+        backgroundColor: REF.coralSoft,
         borderRadius: 999,
         paddingHorizontal: 10,
         paddingVertical: 4,
         marginLeft: 8,
     },
-    roleRecommendText: {color: '#FF4D6D'},
+    roleRecommendText: {color: REF.coral},
     roleFooter: {paddingHorizontal: 24, paddingBottom: 16},
     onboardingSkipRow: {
         flexDirection: 'row',
@@ -3949,7 +3998,7 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
     },
     onboardingSkipButton: {paddingHorizontal: 12, paddingVertical: 8},
-    onboardingSkipText: {color: 'rgba(245,243,239,0.72)', fontSize: 15, fontWeight: '500'},
+    onboardingSkipText: {color: REF.onDark72, fontSize: 15, fontWeight: '500'},
     onboardingSlide: {
         flex: 1,
         alignItems: 'center',
@@ -3962,14 +4011,14 @@ const styles = StyleSheet.create({
         fontSize: 30,
         lineHeight: 38,
         fontWeight: '800',
-        color: '#F5F3EF',
+        color: REF.paper,
         textAlign: 'center',
         letterSpacing: -1,
     },
     onboardingCopy: {
         marginTop: 16,
         fontSize: 17,
-        color: 'rgba(245,243,239,0.72)',
+        color: REF.onDark72,
         textAlign: 'center',
         lineHeight: 26,
     },
@@ -3980,8 +4029,8 @@ const styles = StyleSheet.create({
         paddingVertical: 20,
     },
     onboardingDot: {width: 8, height: 8, borderRadius: 4},
-    onboardingDotActive: {backgroundColor: '#FF7288', width: 24},
-    onboardingDotInactive: {backgroundColor: 'rgba(245,243,239,0.3)'},
+    onboardingDotActive: {backgroundColor: REF.coralDark, width: 24},
+    onboardingDotInactive: {backgroundColor: REF.onDark30},
     onboardingFooter: {paddingHorizontal: 16, paddingBottom: 16},
     kakaoCenter: {flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24},
     kakaoTitle: {marginTop: 24, letterSpacing: -1},
@@ -3991,7 +4040,7 @@ const styles = StyleSheet.create({
     hero: {alignItems: 'flex-start'},
     title: {
         marginTop: 13,
-        color: '#F5F3EF',
+        color: REF.paper,
         fontSize: 23,
         lineHeight: 29,
         fontWeight: '800',
@@ -4000,7 +4049,7 @@ const styles = StyleSheet.create({
     },
     copy: {
         marginTop: 11,
-        color: '#F5F3EF',
+        color: REF.paper,
         fontSize: 13,
         lineHeight: 21,
         fontWeight: '400',
@@ -4018,7 +4067,7 @@ const styles = StyleSheet.create({
     salaryDetailSubtitle: {marginBottom: spacing.md},
     salaryDetailItemsCard: {paddingVertical: spacing.xs},
     salaryDetailItemRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md, gap: spacing.md},
-    salaryDetailItemBorder: {borderBottomWidth: 1, borderBottomColor: '#E7E7E2'},
+    salaryDetailItemBorder: {borderBottomWidth: 1, borderBottomColor: REF.hairline},
     salaryDetailItemLabel: {flexShrink: 1, gap: 2},
     calcDetailBody: {gap: spacing.xs, paddingBottom: spacing.sm},
     calcDetailMoney: {marginBottom: spacing.md},
@@ -4037,8 +4086,8 @@ const styles = StyleSheet.create({
         height: 43,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: 'rgba(245,243,239,0.22)',
-        backgroundColor: 'rgba(255,255,255,0.06)',
+        borderColor: REF.onDark22,
+        backgroundColor: REF.white06,
         justifyContent: 'center',
         paddingHorizontal: 14,
     },
@@ -4047,7 +4096,7 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 15,
         fontWeight: '500',
-        color: 'rgba(245,243,239,0.9)',
+        color: REF.onDark90,
         padding: 0,
         textAlignVertical: 'center',
     },
@@ -4067,22 +4116,22 @@ const styles = StyleSheet.create({
     },
     primaryButton: {
         marginTop: 2,
-        backgroundColor: '#FF7288',
+        backgroundColor: REF.coralDark,
         // AppButton's v3 primary elevation is a coral glow. Keep this
         // native reference independent, but use the canonical token value.
-        shadowColor: '#FF4D6D',
+        shadowColor: REF.coral,
         shadowOffset: {width: 0, height: 8},
         shadowOpacity: 0.32,
         shadowRadius: 16,
         elevation: 8,
     },
-    kakaoButton: {backgroundColor: '#FEE500'},
+    kakaoButton: {backgroundColor: REF.kakaoYellow},
     buttonRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center'},
     buttonText: {fontSize: 14, fontWeight: '700', letterSpacing: -0.2, textAlign: 'center'},
-    primaryButtonText: {color: '#F5F3EF'},
-    kakaoButtonText: {color: '#1F1A0E'},
+    primaryButtonText: {color: REF.paper},
+    kakaoButtonText: {color: REF.kakaoLabel},
     footerRow: {flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 18},
-    footerText: {color: '#F5F3EF', fontSize: 12, lineHeight: 16, fontWeight: '400', opacity: 0.65},
+    footerText: {color: REF.paper, fontSize: 12, lineHeight: 16, fontWeight: '400', opacity: 0.65},
     landingHeader: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -4090,20 +4139,20 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 20,
     },
-    landingHeaderTitle: {color: '#F5F3EF', fontSize: 12, lineHeight: 16, fontWeight: '400', opacity: 0.65},
+    landingHeaderTitle: {color: REF.paper, fontSize: 12, lineHeight: 16, fontWeight: '400', opacity: 0.65},
     landingHeaderPill: {
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: REF.white10,
         borderRadius: 999,
         paddingHorizontal: 10,
         paddingVertical: 4,
     },
-    landingHeaderPillText: {color: '#F5F3EF', fontSize: 12, lineHeight: 16, fontWeight: '700'},
+    landingHeaderPillText: {color: REF.paper, fontSize: 12, lineHeight: 16, fontWeight: '700'},
     landingContent: {flex: 1, justifyContent: 'center', paddingHorizontal: 22, paddingTop: 20, paddingBottom: 20},
     landingLogoZone: {alignItems: 'center', justifyContent: 'center', gap: 8},
     landingBrandmark: {transform: [{translateY: -4}]},
     landingTitle: {
         marginTop: 4,
-        color: '#F5F3EF',
+        color: REF.paper,
         fontSize: 26,
         lineHeight: 34,
         fontWeight: '700',
@@ -4113,7 +4162,7 @@ const styles = StyleSheet.create({
     landingTagline: {
         marginTop: 3,
         maxWidth: 280,
-        color: '#F5F3EF',
+        color: REF.paper,
         fontSize: 15,
         lineHeight: 23,
         fontWeight: '400',
@@ -4130,22 +4179,22 @@ const styles = StyleSheet.create({
         alignSelf: 'stretch',
     },
     landingPrimaryButton: {
-        backgroundColor: '#FF7288',
-        shadowColor: '#FF4D6D',
+        backgroundColor: REF.coralDark,
+        shadowColor: REF.coral,
         shadowOffset: {width: 0, height: 8},
         shadowOpacity: 0.32,
         shadowRadius: 16,
         elevation: 8,
     },
     landingOutlineButton: {
-        backgroundColor: 'transparent',
-        borderColor: 'rgba(245,245,239,0.3)',
+        backgroundColor: REF.transparent,
+        borderColor: REF.onDarkAlt30,
         borderWidth: 1,
     },
-    landingButtonText: {color: '#F5F3EF', fontSize: 14, fontWeight: '700', letterSpacing: -0.2, textAlign: 'center'},
-    unsupported: {flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#12141B', padding: 24},
-    unsupportedTitle: {color: '#F2F1EE', fontSize: 18, fontWeight: '700'},
-    unsupportedCopy: {marginTop: 8, color: '#A6A9AE', textAlign: 'center'},
+    landingButtonText: {color: REF.paper, fontSize: 14, fontWeight: '700', letterSpacing: -0.2, textAlign: 'center'},
+    unsupported: {flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: REF.darkCanvas, padding: 24},
+    unsupportedTitle: {color: REF.inkOnDark, fontSize: 18, fontWeight: '700'},
+    unsupportedCopy: {marginTop: 8, color: REF.mutedText, textAlign: 'center'},
 });
 
 export default V3VisualHarnessScreen;

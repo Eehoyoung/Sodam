@@ -8,6 +8,7 @@ import {useAuth} from '../../../contexts/AuthContext';
 import {useWorkplaces} from '../../workplace/hooks/useWorkplaces';
 import {isWithinRadius, verifyCheckInByLocation, verifyCheckOutByLocation} from '../services/locationAttendanceService';
 import {useLocationConsentGate} from '../hooks/useLocationConsentGate';
+import {logger} from '../../../utils/logger';
 
 interface LocationAttendanceProps {
     storeId: string;
@@ -55,7 +56,7 @@ const LocationAttendance: React.FC<LocationAttendanceProps> = ({
             try {
                 Geolocation.stopObserving();
             } catch (error) {
-                console.warn('LocationAttendance: Error stopping location observing:', error);
+                logger.warn('LocationAttendance: Error stopping location observing:', error);
             }
         };
     }, []);
@@ -96,7 +97,7 @@ const LocationAttendance: React.FC<LocationAttendanceProps> = ({
                 }
             }
         } catch (err) {
-            console.warn(err);
+            logger.warn(err);
             setLocationStatus('denied');
             onError?.('위치 권한 요청 중 오류가 생겼어요.');
         }
@@ -162,7 +163,7 @@ const LocationAttendance: React.FC<LocationAttendanceProps> = ({
                         return;
                     }
 
-                    console.error('LocationAttendance: Location error:', error);
+                    logger.error('LocationAttendance: Location error:', error);
                     setLoading(false);
                     if (onError) {onError('위치 정보를 가져오는데 실패했어요.');}
                     Toast.show({

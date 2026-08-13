@@ -79,7 +79,7 @@ const ProgressBar: React.FC<{step: Step}> = ({step}) => {
                     <Text
                         style={[
                             styles.progressLabel,
-                            i === idx && {color: c.brandPrimary, fontWeight: '700'},
+                            i === idx && [styles.progressLabelActive, {color: c.brandPrimary}],
                         ]}
                     >
                         {label}
@@ -398,6 +398,7 @@ function maskEmail(email: string): string {
 }
 
 const makeStyles = (c: ThemeColors) => StyleSheet.create({
+    progressLabelActive: {fontWeight: '700'},
     progressRow: {
         flexDirection: 'row' as const,
         justifyContent: 'space-around' as const,

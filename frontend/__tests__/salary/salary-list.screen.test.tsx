@@ -72,6 +72,7 @@ describe('SalaryListScreen', () => {
   });
 
   test('BE PayrollDto[](id/netWage/평평한 날짜)를 정상적으로 금액·기간으로 표시한다', async () => {
+    getMock.mockResolvedValueOnce({data: [{id: 1, storeName: 'Store A'}]});
     getMock.mockResolvedValueOnce({
       data: [
         {
@@ -97,6 +98,7 @@ describe('SalaryListScreen', () => {
   });
 
   test('카드를 탭하면 BE id 값 그대로(payrollId undefined/0 아님) SalaryDetail 로 이동한다', async () => {
+    getMock.mockResolvedValueOnce({data: [{id: 1, storeName: 'Store A'}]});
     getMock.mockResolvedValueOnce({
       data: [
         {id: 202, employeeId: 8, employeeName: '김직원', storeId: 1, startDate: '2026-06-01', endDate: '2026-06-30', netWage: 2_100_000, status: 'CONFIRMED'},
@@ -114,6 +116,7 @@ describe('SalaryListScreen', () => {
   });
 
   test('목록이 비어 있으면 빈 상태를 보여준다', async () => {
+    getMock.mockResolvedValueOnce({data: [{id: 1, storeName: 'Store A'}]});
     getMock.mockResolvedValueOnce({data: []});
 
     const {findByText} = render(<SalaryListScreen />);

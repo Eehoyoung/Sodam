@@ -38,7 +38,7 @@ const SubscriptionGateScreen: React.FC<Props> = ({mode = 'gate', featureName = '
                 {/* 아티팩트 O9 plan-card: 코랄 테두리 + 코랄소프트 배경(--coral-soft = brandPrimarySoft) */}
                 <AppCard
                     variant="flat"
-                    style={[styles.card, {backgroundColor: c.brandPrimarySoft, borderWidth: 1.5, borderColor: c.brandPrimary}]}>
+                    style={[styles.card, styles.brandRing, {backgroundColor: c.brandPrimarySoft, borderColor: c.brandPrimary}]}>
                     <AppText variant="titleMd" tone="primary" weight="700">비즈니스 플랜</AppText>
                     <AmountText size={20} tone="brand" style={styles.cardPrice}>월 15,000원</AmountText>
                     <AppText variant="caption" tone="tertiary" style={styles.cardSub}>급여명세 발급 · 직원 알림 · 정산 준비 자동화</AppText>
@@ -54,6 +54,7 @@ const SubscriptionGateScreen: React.FC<Props> = ({mode = 'gate', featureName = '
 };
 
 const styles = StyleSheet.create({
+    brandRing: {borderWidth: 1.5},
     center: {flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl},
     title: {marginTop: spacing.md},
     desc: {marginTop: spacing.sm, maxWidth: 320},

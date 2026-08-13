@@ -43,6 +43,10 @@ public class PayrollPolicy {
     // 주휴수당 지급 여부
     private Boolean weeklyAllowanceEnabled = true;
 
+    /** 3.3% 원천징수 대상에도 주휴수당을 산정할지 여부. 전문가 회신 전 현행값(true)을 유지한다. */
+    @Column(nullable = false)
+    private Boolean weeklyAllowanceForIncomeTax3_3Enabled = true;
+
     // 생성일/수정일
     private LocalDateTime createdAt;
 

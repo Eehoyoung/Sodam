@@ -16,6 +16,7 @@ import {
 } from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 import storeService, {StoreSummaryDto} from '../services/storeService';
+import {logger} from '../../../utils/logger';
 
 /** 개발용 시각 검증 전용 — 실 매장 목록 조회를 고정 목록으로 대체한다. */
 export interface StoreListVisualFixture {
@@ -47,7 +48,7 @@ const StoreListScreen: React.FC<Props> = ({visualFixture}) => {
             const list = await storeService.getMasterStores('current');
             setStores(list);
         } catch (e) {
-            console.warn('[StoreList] load failed', e);
+            logger.warn('[StoreList] load failed', e);
             setError(true);
             AppToast.error('매장 목록을 불러오지 못했어요.');
         } finally {

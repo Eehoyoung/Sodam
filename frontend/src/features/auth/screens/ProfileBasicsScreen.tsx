@@ -21,6 +21,7 @@ import {resetToRootRoute, resolvePostAuthRoute} from '../../../navigation/authFl
 import {authQueryKeys} from '../../../common/auth/queryKeys';
 import {User} from '../services/authService';
 import {DATE_DIGITS_HELPER, dateDigitsToIso, isValidDateDigits, sanitizeDateDigits} from '../../../common/utils/dateTimeInput';
+import {getErrorMessage} from '../../../common/errors';
 
 interface Props {
     navigation: NavigationProp<any>;
@@ -146,8 +147,8 @@ export default function ProfileBasicsScreen({navigation, route}: Props) {
 
             AppToast.success('기본 정보가 저장되었습니다. 이제 시작해 볼까요?');
             resetToRootRoute(navigation, resolvePostAuthRoute(nextUser, route.params?.selectedPurpose));
-        } catch (e: any) {
-            const msg = e?.response?.data?.message ?? '저장에 실패했습니다. 잠시 후 다시 시도해 주세요.';
+        } catch (e: unknown) {
+            const msg = getErrorMessage(e, '저장에 실패했습니다. 잠시 후 다시 시도해 주세요.');
             AppToast.error(msg);
         } finally {
             setSubmitting(false);

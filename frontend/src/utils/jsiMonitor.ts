@@ -5,6 +5,7 @@
  */
 
 import {runOnJS} from 'react-native-reanimated';
+import {logger} from './logger';
 
 interface JSIViolation {
     type: 'DIMENSIONS_GET' | 'DATE_NOW' | 'MATH_RANDOM' | 'CONSOLE_METHODS' | 'UNKNOWN';
@@ -48,7 +49,7 @@ class JSIMonitor {
         if (this.config.enabled) {
             this.setupGlobalErrorHandling();
             this.patchDangerousAPIs();
-            console.log('🔍 JSI Monitor initialized - watching for violations...');
+            logger.debug('🔍 JSI Monitor initialized - watching for violations...');
         }
 
         this.isInitialized = true;
@@ -120,7 +121,7 @@ class JSIMonitor {
         // This should be called via runOnJS from worklets for tracking
         if (__DEV__) {
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- blank component name should fall back to default text, so ?? would be wrong
-            console.log(`⚡ Worklet executed: ${workletName} in ${component || 'unknown component'}`);
+            logger.debug(`⚡ Worklet executed: ${workletName} in ${component || 'unknown component'}`);
         }
     };
 
@@ -131,7 +132,7 @@ class JSIMonitor {
         'worklet';
         // This can be called from worklets safely
         runOnJS(() => {
-            console.log(`[WORKLET] ${message}`, data);
+            logger.debug(`[WORKLET] ${message}`, data);
         })();
     };
 
@@ -153,7 +154,9 @@ class JSIMonitor {
         }
 
         // Monitor console errors for JSI-related messages
+        // eslint-disable-next-line no-console -- console 을 가로채 JSI 오류를 수집하는 지점이라 console 자체를 참조해야 한다
         const originalConsoleError = console.error;
+        // eslint-disable-next-line no-console -- console 을 가로채 JSI 오류를 수집하는 지점이라 console 자체를 참조해야 한다
         console.error = (...args: any[]) => {
             const message = args.join(' ');
             if (this.isJSIRelatedError(message)) {
@@ -291,26 +294,25 @@ class JSIMonitor {
         const emoji = violation.severity === 'CRITICAL' ? '🚨' : '⚠️';
         const timestamp = new Date(violation.timestamp).toISOString();
 
-        console.group(`${emoji} JSI VIOLATION DETECTED [${violation.severity}]`);
-        console.log(`🕐 Time: ${timestamp}`);
-        console.log(`🔍 Type: ${violation.type}`);
-        console.log(`📝 Message: ${violation.message}`);
+        logger.debug(`${emoji} JSI VIOLATION DETECTED [${violation.severity}]`);
+        logger.debug(`🕐 Time: ${timestamp}`);
+        logger.debug(`🔍 Type: ${violation.type}`);
+        logger.debug(`📝 Message: ${violation.message}`);
 
         if (violation.component) {
-            console.log(`📄 Component: ${violation.component}`);
+            logger.debug(`📄 Component: ${violation.component}`);
         }
 
         if (violation.workletType) {
-            console.log(`⚡ Worklet: ${violation.workletType}`);
+            logger.debug(`⚡ Worklet: ${violation.workletType}`);
         }
 
         if (violation.stackTrace && this.config.enableStackTrace) {
-            console.log(`📚 Stack Trace:`);
-            console.log(violation.stackTrace);
+            logger.debug(`📚 Stack Trace:`);
+            logger.debug(violation.stackTrace);
         }
 
-        console.log(`💡 Suggestion: ${this.getViolationSuggestion(violation.type)}`);
-        console.groupEnd();
+        logger.debug(`💡 Suggestion: ${this.getViolationSuggestion(violation.type)}`);
     }
 
     /**
@@ -321,7 +323,7 @@ class JSIMonitor {
             DIMENSIONS_GET: 'Cache Dimensions.get() with useMemo outside the worklet',
             DATE_NOW: 'Use useSharedValue(Date.now()) or runOnJS wrapper',
             MATH_RANDOM: 'Use useSharedValue(Math.random()) or runOnJS wrapper',
-            CONSOLE_METHODS: 'Use runOnJS(() => console.log(...))() for debugging',
+            CONSOLE_METHODS: 'Use runOnJS(() => logger.debug(...))() for debugging',
             UNKNOWN: 'Review worklet code for JavaScript API calls'
         };
         return suggestions[type] || 'Wrap JavaScript API calls with runOnJS()';
@@ -335,8 +337,8 @@ class JSIMonitor {
         if (__DEV__) {
             // Use runOnJS to safely call JavaScript functions
             runOnJS(() => {
-                console.error('🚨 CRITICAL JSI VIOLATION - This may cause app crashes!');
-                console.error('Fix this violation immediately to prevent JSI assertion failures.');
+                logger.error('🚨 CRITICAL JSI VIOLATION - This may cause app crashes!');
+                logger.error('Fix this violation immediately to prevent JSI assertion failures.');
             })();
         }
     }
@@ -348,7 +350,7 @@ class JSIMonitor {
         // Placeholder for analytics integration
         // In a real implementation, this would send to Crashlytics, Sentry, etc.
         if (__DEV__) {
-            console.log('📊 Would send to analytics:', {
+            logger.debug('📊 Would send to analytics:', {
                 event: 'jsi_violation',
                 type: violation.type,
                 severity: violation.severity,

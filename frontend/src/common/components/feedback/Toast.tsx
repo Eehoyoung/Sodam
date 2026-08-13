@@ -3,6 +3,7 @@ import React, {useCallback, useEffect, useMemo, useRef} from 'react';
 import {Platform, StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle, View} from 'react-native';
 import {ENABLE_ANIMATIONS, stageAtLeast, ANIMATION_RECOVERY_STAGE} from '../../../navigation/config';
 import {ThemeColors, useThemeColors} from '../../hooks/useThemeColors';
+import {logger} from '../../../utils/logger';
 
 // Conditionally import Reanimated components only when needed
 let Animated: any;
@@ -24,7 +25,7 @@ try {
     withTiming = reanimated.withTiming;
   }
 } catch (error) {
-  console.warn('[RECOVERY] Toast: Reanimated import failed, using fallback', error);
+  logger.warn('[RECOVERY] Toast: Reanimated import failed, using fallback', error);
 }
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
@@ -252,7 +253,7 @@ Toast.show = (params: ToastShowParams) => {
 
     // This is a simple implementation that logs the toast message
     // In a real implementation, this would manage a global toast state
-    console.log(`Toast: ${params.text1} - ${params.text2}; duration=${duration}`);
+    logger.debug(`Toast: ${params.text1} - ${params.text2}; duration=${duration}`);
 
     // You would typically use a state management solution or a ref to manage toast visibility
     // For now, we're just logging the message

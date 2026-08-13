@@ -1,5 +1,6 @@
 package com.rich.sodam.service;
 
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import com.rich.sodam.core.payroll.constant.MinimumWage;
 import com.rich.sodam.core.payroll.wage.MonthlySalaryCalculator;
 import com.rich.sodam.core.electronicsignature.ElectronicSignaturePdfSupport;
@@ -92,6 +93,7 @@ public class EmploymentAmendmentService {
 
     @Scheduled(cron = "0 5 0 * * *", zone = "Asia/Seoul")
     @Transactional
+    @SchedulerLock(name = "employmentAmendment", lockAtMostFor = "PT15M", lockAtLeastFor = "PT1M")
     public void applyDueVerifiedAmendments() {
         amendmentRepository.findByStatusAndEffectiveDateLessThanEqual(
                 EmploymentAmendmentStatus.VERIFIED, LocalDate.now()).forEach(this::apply);

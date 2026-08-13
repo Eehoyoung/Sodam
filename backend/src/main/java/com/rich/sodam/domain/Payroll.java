@@ -49,6 +49,24 @@ public class Payroll {
     private Integer nightWorkWage;        // 야간 근무 급여
     private Integer holidayWorkWage;      // 휴일 근무 급여(§56②)
     private Integer weeklyAllowance;      // 주휴수당
+    /**
+     * 주휴 환산 시간(유급으로 처리한 시간 수).
+     *
+     * <p>주휴수당이 시행령 §27조의2 의 "정액 수당" 예외에 해당하는지는 확정되지 않았다
+     * (RELEASE_GATES G-9 각주). 예외가 아니라면 시간 수 기재가 필요하므로 안전한 쪽으로 보관한다.</p>
+     */
+    private Double weeklyAllowanceHours;
+
+    /**
+     * 주 40시간 초과 연장근로 시간 수(§56①). 일 8시간 초과로 이미 가산된 시간은 제외한 순증분.
+     *
+     * <p>금액만 두지 않고 시간 수를 함께 보관한다 — 시행령 §27조의2 가 연장근로에 대해 "그 시간
+     * 수"를 임금명세서에 적도록 요구하고, 정액 수당이 아닌 변동 항목에는 예외가 없다.</p>
+     */
+    private Double weeklyOvertimeHours;
+    /** 위 시간에 대한 가산분(50%)만. 기본 100%는 정상근로 임금·월급에 이미 포함돼 있다. */
+    private Integer weeklyOvertimeWage;
+
     private Integer bonusWage;            // 즉시 보너스 합산액(PayrollBonus, INCLUDED_IN_PAYROLL 건만)
     private Integer grossWage;            // 총 급여 (세전)
 
@@ -110,6 +128,7 @@ public class Payroll {
         if (this.nightWorkWage != null) total += this.nightWorkWage;
         if (this.holidayWorkWage != null) total += this.holidayWorkWage;
         if (this.weeklyAllowance != null) total += this.weeklyAllowance;
+        if (this.weeklyOvertimeWage != null) total += this.weeklyOvertimeWage;
         if (this.bonusWage != null) total += this.bonusWage;
 
         this.grossWage = total;

@@ -3,6 +3,10 @@ package com.rich.sodam.repository;
 import com.rich.sodam.domain.PaymentHistory;
 import com.rich.sodam.domain.PaymentHistory.PaymentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 
 import java.util.List;
 import java.util.Optional;
@@ -10,6 +14,11 @@ import java.util.Optional;
 public interface PaymentHistoryRepository extends JpaRepository<PaymentHistory, Long> {
 
     Optional<PaymentHistory> findByOrderId(String orderId);
+
+    /** 환불 신청과 웹훅 취소가 같은 구독 결제를 중복 처리하지 않도록 직렬화한다. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from PaymentHistory p where p.orderId = :orderId")
+    Optional<PaymentHistory> findByOrderIdForUpdate(@Param("orderId") String orderId);
 
     Optional<PaymentHistory> findByPaymentKey(String paymentKey);
 

@@ -16,6 +16,7 @@ import {
 } from '../../../common/components/ds';
 import {spacing} from '../../../theme/tokens';
 import {pickReceiptImage as pickPhoto} from '../../purchase/utils/imagePicker';
+import {getErrorMessage} from '../../../common/errors';
 
 /**
  * 43 Profile — 확정 시안.
@@ -36,8 +37,8 @@ const ProfileScreen: React.FC = () => {
     const handleRefresh = async () => {
         try {
             await currentUserQuery.refetch();
-        } catch (e: any) {
-            AppToast.error(e?.response?.data?.message || '프로필을 새로고침하는 중 오류가 생겼어요.');
+        } catch (e: unknown) {
+            AppToast.error(getErrorMessage(e) || '프로필을 새로고침하는 중 오류가 생겼어요.');
         }
     };
 
@@ -71,8 +72,8 @@ const ProfileScreen: React.FC = () => {
         try {
             await uploadAvatar.mutateAsync(picked);
             AppToast.success('프로필 사진을 변경했어요.');
-        } catch (e: any) {
-            AppToast.error(e?.response?.data?.message || '프로필 사진 업로드에 실패했어요.');
+        } catch (e: unknown) {
+            AppToast.error(getErrorMessage(e) || '프로필 사진 업로드에 실패했어요.');
         }
     };
 
@@ -81,8 +82,8 @@ const ProfileScreen: React.FC = () => {
         try {
             await deleteAvatar.mutateAsync();
             AppToast.success('기본 이미지로 되돌렸어요.');
-        } catch (e: any) {
-            AppToast.error(e?.response?.data?.message || '사진 삭제에 실패했어요.');
+        } catch (e: unknown) {
+            AppToast.error(getErrorMessage(e) || '사진 삭제에 실패했어요.');
         }
     };
 

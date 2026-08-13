@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { View, ViewProps } from 'react-native';
+import { StyleSheet, View, ViewProps } from 'react-native';
 import { ENABLE_ANIMATIONS, ANIMATION_RECOVERY_STAGE, stageAtLeast } from '../../../navigation/config';
 
 interface SafeAnimatedWrapperProps extends ViewProps {
@@ -57,11 +57,15 @@ export const withSafeAnimations = <P extends object>(
 
     if (!shouldEnableAnimations) {
       // Return a minimal placeholder
-      return <View style={{ flex: 1 }} />;
+      return <View style={styles.fill} />;
     }
 
     return <Component {...props} />;
   };
 };
+
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+});
 
 export default SafeAnimatedWrapper;

@@ -7,6 +7,8 @@ import {spacing} from '../../../theme/tokens';
 import {formatWage} from '../../../common/format/money';
 import storeService from '../services/storeService';
 import {wageService} from '../../wage/services/wageService';
+import {logger} from '../../../utils/logger';
+import {getErrorMessage} from '../../../common/errors';
 
 interface EmployeeWageRow {
     id: number;
@@ -41,6 +43,9 @@ const WageSettingsScreen: React.FC<Props> = ({visualFixture}) => {
     const [history, setHistory] = useState<Array<any>>(visualFixture?.history ?? []);
     const [employeeWages, setEmployeeWages] = useState<EmployeeWageRow[]>(visualFixture?.employeeWages ?? []);
     const [loading, setLoading] = useState(false);
+    /** 이력 조회가 실패했는지 — "이력 없음"과 구분해서 보여준다. */
+    const [historyFailed, setHistoryFailed] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     useEffect(() => {
         if (visualFixture) {
@@ -57,11 +62,20 @@ const WageSettingsScreen: React.FC<Props> = ({visualFixture}) => {
                     setCurrentWage(wage);
                     setStandardWage(String(wage));
                 }
-            } catch (_) {/* ignore */}
+            } catch (e) {
+                // 조용히 삼키면 시급이 비어 보이는 이유를 아무도 알 수 없다.
+                logger.warn('[WageSettings] 매장 조회 실패', e);
+                setLoadError('현재 시급을 불러오지 못했어요.');
+            }
             try {
-                const list = await wageService.getStandardWageHistory(storeId);
-                setHistory(list);
-            } catch (_) {/* TODO[P2 BE]: WageHistory 조회 API 미노출 */}
+                setHistory(await wageService.getStandardWageHistory(storeId));
+                setHistoryFailed(false);
+            } catch (e) {
+                // "이력이 없음"과 "불러오기 실패"는 다른 상태다 — 같은 빈 화면으로 보이면
+                // 실패가 정상처럼 읽힌다(이 화면이 오래 깨진 채 방치됐던 이유).
+                logger.warn('[WageSettings] 시급 이력 조회 실패', e);
+                setHistoryFailed(true);
+            }
             // 18 WageSettings 시안의 "직원별 적용 시급" 리스트 — 매장 기본/개별 시급 구분 배지.
             try {
                 const employees = await storeService.getStoreEmployees(storeId);
@@ -108,8 +122,8 @@ const WageSettingsScreen: React.FC<Props> = ({visualFixture}) => {
             await wageService.putStandardHourlyWage(storeId, wage);
             setCurrentWage(wage);
             AppToast.success('매장 기본 시급이 변경됐어요.');
-        } catch (e: any) {
-            AppToast.error(e?.response?.data?.message ?? '시급 변경에 실패했어요.');
+        } catch (e: unknown) {
+            AppToast.error(getErrorMessage(e, '시급 변경에 실패했어요.'));
         } finally {
             setLoading(false);
         }
@@ -131,7 +145,7 @@ const WageSettingsScreen: React.FC<Props> = ({visualFixture}) => {
                     {currentWage ? `${currentWage.toLocaleString()}원` : '미설정'}
                 </AmountText>
                 <AppText variant="caption" tone="tertiary" style={styles.heroSub}>
-                    직원별 개별 시급이 없으면 이 시급이 적용돼요.
+                    {loadError ?? '직원별 개별 시급이 없으면 이 시급이 적용돼요.'}
                 </AppText>
             </View>
 
@@ -170,7 +184,13 @@ const WageSettingsScreen: React.FC<Props> = ({visualFixture}) => {
 
             <View style={styles.section}>
                 <AppText variant="titleMd" tone="secondary" style={styles.sectionTitle}>변경 이력</AppText>
-                {history.length === 0 ? (
+                {historyFailed ? (
+                    <AppCard variant="plain">
+                        <AppText variant="bodyMd" tone="tertiary" style={styles.empty}>
+                            변경 이력을 불러오지 못했어요. 잠시 후 다시 열어 주세요.
+                        </AppText>
+                    </AppCard>
+                ) : history.length === 0 ? (
                     <AppCard variant="plain">
                         <AppText variant="bodyMd" tone="tertiary" style={styles.empty}>
                             변경 이력이 없어요. 시급 변경 시 자동으로 기록돼요.

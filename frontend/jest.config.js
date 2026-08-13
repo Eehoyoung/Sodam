@@ -38,6 +38,7 @@ module.exports = {
         '^@contexts/(.*)$': '<rootDir>/src/contexts/$1',
         '^@types/(.*)$': '<rootDir>/src/types/$1',
         '^react-native-gesture-handler$': '<rootDir>/tests/mocks/react-native-gesture-handler.js',
+        '^@sentry/react-native$': '<rootDir>/tests/mocks/sentry-react-native.js',
         '^\\./src/contexts/AuthContext$': '<rootDir>/src/tests/mocks/AuthContext.mock.ts'
     },
     transformIgnorePatterns: [

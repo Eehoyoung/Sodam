@@ -4,7 +4,7 @@
  * tone 으로 색을 고른다 (다크 카드 위에서는 tone="inverse").
  */
 import React from 'react';
-import {StyleProp, Text, TextProps, TextStyle} from 'react-native';
+import {StyleProp, StyleSheet, Text, TextProps, TextStyle} from 'react-native';
 import {typography} from '../../../theme/tokens';
 import {useThemeColors} from '../../hooks/useThemeColors';
 
@@ -49,7 +49,7 @@ export const AppText: React.FC<AppTextProps> = ({
                     fontWeight: weight ?? s.fontWeight,
                     color: toneColors[tone],
                 },
-                center ? {textAlign: 'center'} : null,
+                center ? styles.center : null,
                 style,
             ]}
             {...rest}>
@@ -105,10 +105,10 @@ export const AmountText: React.FC<AmountTextProps> = ({
                     fontSize: size,
                     lineHeight: Math.round(size * 1.12),
                     fontWeight: weight,
-                    letterSpacing: -1,
                     color: toneColors[tone],
                 },
-                center ? {textAlign: 'center'} : null,
+                styles.amountTracking,
+                center ? styles.center : null,
                 style,
             ]}
             {...rest}>
@@ -116,5 +116,11 @@ export const AmountText: React.FC<AmountTextProps> = ({
         </Text>
     );
 };
+
+const styles = StyleSheet.create({
+    center: {textAlign: 'center'},
+    /** v3 금액 타이포 — 큰 숫자의 자간을 좁혀 히어로로 읽히게 한다. */
+    amountTracking: {letterSpacing: -1},
+});
 
 export default AppText;

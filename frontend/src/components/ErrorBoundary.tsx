@@ -3,6 +3,7 @@ import React, {Component, ReactNode, useMemo} from 'react';
 import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {safeLogger} from '../utils/safeLogger';
 import {ThemeColors, useThemeColors} from '../common/hooks/useThemeColors';
+import {logger} from '../utils/logger';
 
 /**
  * ErrorBoundary Props 인터페이스
@@ -114,7 +115,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
      * @returns 새로운 상태
      */
     static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-        console.error('[ErrorBoundary] Error caught by boundary:', error);
+        logger.error('[ErrorBoundary] Error caught by boundary:', error);
         return {
             hasError: true,
             error
@@ -127,7 +128,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
      * @param errorInfo 에러 정보 (컴포넌트 스택 등)
      */
     componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-        console.error('[ErrorBoundary] Component stack trace:', errorInfo.componentStack);
+        logger.error('[ErrorBoundary] Component stack trace:', errorInfo.componentStack);
 
         // 상태에 에러 정보 저장
         this.setState({
@@ -188,14 +189,13 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
             // 개발 환경에서는 콘솔에 상세 정보 출력
             if (__DEV__) {
-                console.group('[ErrorBoundary] Detailed Error Information');
-                console.error('Error:', error);
-                console.error('Error Info:', errorInfo);
-                console.error('Component Stack:', errorInfo.componentStack);
-                console.groupEnd();
+                logger.error('[ErrorBoundary] Detailed Error Information');
+                logger.error('Error:', error);
+                logger.error('Error Info:', errorInfo);
+                logger.error('Component Stack:', errorInfo.componentStack);
             }
         } catch (loggingError) {
-            console.error('[ErrorBoundary] Failed to log error:', loggingError);
+            logger.error('[ErrorBoundary] Failed to log error:', loggingError);
         }
     }
 
@@ -203,7 +203,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
      * 에러 상태를 초기화하고 다시 시도합니다.
      */
     private handleRetry = () => {
-        console.log('[ErrorBoundary] Retrying after error...');
+        logger.debug('[ErrorBoundary] Retrying after error...');
         this.setState({
             hasError: false,
             error: undefined,
@@ -216,7 +216,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
      */
     private handleRestart = () => {
         if (__DEV__) {
-            console.log('[ErrorBoundary] Restarting app in development mode...');
+            logger.debug('[ErrorBoundary] Restarting app in development mode...');
             // 개발 환경에서는 페이지 새로고침 (웹 환경에서만)
             const g: any = typeof globalThis !== 'undefined' ? (globalThis as any) : {};
             if (g.window?.location && typeof g.window.location.reload === 'function') {
@@ -224,7 +224,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             }
         } else {
             // 프로덕션에서는 앱 재시작 로직 구현
-            console.log('[ErrorBoundary] App restart requested in production mode');
+            logger.debug('[ErrorBoundary] App restart requested in production mode');
             this.handleRetry();
         }
     };
@@ -341,17 +341,18 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
  * 함수형 컴포넌트를 위한 ErrorBoundary HOC
  */
 export function withErrorBoundary<P extends object>(
-    Component: React.ComponentType<P>,
+    // 이름을 Component 로 두면 상단 `import {Component}` 를 가린다(no-shadow).
+    WrappedComponentType: React.ComponentType<P>,
     errorBoundaryProps?: Omit<ErrorBoundaryProps, 'children'>
 ) {
     const WrappedComponent = (props: P) => (
         <ErrorBoundary {...errorBoundaryProps}>
-            <Component {...props} />
+            <WrappedComponentType {...props} />
         </ErrorBoundary>
     );
 
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- blank displayName should fall back to component name, so ?? would be wrong
-    WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;
+    WrappedComponent.displayName = `withErrorBoundary(${WrappedComponentType.displayName || WrappedComponentType.name})`;
 
     return WrappedComponent;
 }

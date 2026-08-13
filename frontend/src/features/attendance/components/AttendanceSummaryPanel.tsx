@@ -4,6 +4,7 @@ import { shadow } from '../../../theme/tokens';
 import { useThemeColors, ThemeColors } from '../../../common/hooks/useThemeColors';
 import useAttendance, { CheckMethod } from '../hooks/useAttendance';
 import { requestApproval } from '../services/attendanceApprovalService';
+import {getErrorMessage} from '../../../common/api/error';
 
 interface Props {
   workplaceId?: string;
@@ -46,8 +47,8 @@ export const AttendanceSummaryPanel: React.FC<Props> = ({ workplaceId, onPressVi
       setApprovalMsg(type === 'CHECK_IN'
         ? '출근 승인을 요청했어요. 사장님 승인 대기 중…'
         : '퇴근 승인을 요청했어요. 사장님 승인 대기 중…');
-    } catch (e: any) {
-      setApprovalMsg(e?.response?.data?.message || '요청에 실패했어요. 잠시 후 다시 시도해 주세요.');
+    } catch (e: unknown) {
+      setApprovalMsg(getErrorMessage(e) || '요청에 실패했어요. 잠시 후 다시 시도해 주세요.');
     } finally {
       setApprovalBusy(false);
     }

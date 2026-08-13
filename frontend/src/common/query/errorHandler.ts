@@ -11,6 +11,7 @@
 import {queryClient} from './client';
 import {authQueryKeys} from '../auth/queryKeys';
 import {toApiError} from '../api/error';
+import {logger} from '../../utils/logger';
 
 const codeMessageMap: Record<string, string> = {
     LOCATION_VERIFICATION_FAILED: '매장 반경 밖입니다.',
@@ -24,7 +25,7 @@ const codeMessageMap: Record<string, string> = {
  * 에러 처리 헬퍼 — TanStack Query mutationFn/queryFn의 catch 블록에서 호출한다.
  */
 export const handleQueryError = (error: unknown, context?: string) => {
-    console.error(`[TanStack Query Error]${context ? ` ${context}:` : ''}`, error);
+    logger.error(`[TanStack Query Error]${context ? ` ${context}:` : ''}`, error);
 
     const apiError = toApiError(error);
     // axios 응답이 없는 에러(순수 JS Error 등)는 원래도 상태코드 분기를 타지 않았다.
@@ -35,7 +36,7 @@ export const handleQueryError = (error: unknown, context?: string) => {
     if (apiError.errorCode) {
         const mapped = codeMessageMap[apiError.errorCode];
         if (mapped) {
-            console.warn(`[TanStack Query] ${mapped}`);
+            logger.warn(`[TanStack Query] ${mapped}`);
         }
     }
 
@@ -44,15 +45,15 @@ export const handleQueryError = (error: unknown, context?: string) => {
             queryClient.invalidateQueries({queryKey: authQueryKeys.all});
             break;
         case 403:
-            console.warn('[TanStack Query] 권한이 없습니다.');
+            logger.warn('[TanStack Query] 권한이 없습니다.');
             break;
         case 400:
-            console.warn('[TanStack Query] 입력 데이터를 확인해주세요.');
+            logger.warn('[TanStack Query] 입력 데이터를 확인해주세요.');
             break;
         case 500:
-            console.error('[TanStack Query] 서버 오류가 발생했습니다.');
+            logger.error('[TanStack Query] 서버 오류가 발생했습니다.');
             break;
         default:
-            console.error('[TanStack Query] API 오류:', apiError.status);
+            logger.error('[TanStack Query] API 오류:', apiError.status);
     }
 };

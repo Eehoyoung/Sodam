@@ -3,7 +3,9 @@ import {Dimensions, NativeSyntheticEvent, NativeScrollEvent, ScrollView, StyleSh
 import Header from './Header'; // 같은 디렉토리에 있으므로 경로 수정
 import Footer from './Footer'; // 같은 디렉토리에 있으므로 경로 수정
 import {useResponsiveStyles} from '../../../utils/responsive';
+import {colors} from '../../../theme/tokens';
 import {ENABLE_ANIMATIONS, stageAtLeast, ANIMATION_RECOVERY_STAGE} from '../../../navigation/config';
+import {logger} from '../../../utils/logger';
 
 // Conditionally import Animated components only when needed
 let Animated: any;
@@ -25,7 +27,7 @@ try {
     Extrapolate = reanimated.Extrapolate;
   }
 } catch (error) {
-  console.warn('[RECOVERY] MainLayout: Reanimated import failed, using fallback', error);
+  logger.warn('[RECOVERY] MainLayout: Reanimated import failed, using fallback', error);
 }
 
 interface MainLayoutProps {
@@ -111,7 +113,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({children, title}) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: colors.background,
     },
     scrollView: {
         flex: 1,
@@ -130,7 +132,7 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: '#fff',
+        backgroundColor: colors.background,
     },
 });
 

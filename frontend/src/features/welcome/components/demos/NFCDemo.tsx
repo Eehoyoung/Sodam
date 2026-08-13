@@ -1,7 +1,9 @@
 import React, {useEffect, useState} from 'react';
 import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {demoPalette} from './demoPalette';
 import {useJSISafeDimensions} from '../../../../hooks/useJSISafeDimensions';
 import {ProgressAnimation, PulseAnimation} from '../../../../common/components/animations';
+import {logger} from '../../../../utils/logger';
 
 interface DemoResult {
     success: boolean;
@@ -22,7 +24,7 @@ const NFCDemo: React.FC<NFCDemoProps> = ({onDemoComplete, isVisible}) => {
     try {
         useJSISafeDimensions();
     } catch (error) {
-        console.error('NFCDemo: Failed to get dimensions:', error);
+        logger.error('NFCDemo: Failed to get dimensions:', error);
         throw error;
     }
 
@@ -199,30 +201,30 @@ const NFCDemo: React.FC<NFCDemoProps> = ({onDemoComplete, isVisible}) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8f9fa',
+        backgroundColor: demoPalette.surfaceAlt,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: 20,
-        backgroundColor: '#4CAF50',
+        backgroundColor: demoPalette.success,
     },
     title: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#fff',
+        color: demoPalette.white,
     },
     closeButton: {
         width: 30,
         height: 30,
         borderRadius: 15,
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        backgroundColor: demoPalette.whiteAlpha,
         justifyContent: 'center',
         alignItems: 'center',
     },
     closeButtonText: {
-        color: '#fff',
+        color: demoPalette.white,
         fontSize: 16,
         fontWeight: 'bold',
     },
@@ -239,10 +241,10 @@ const styles = StyleSheet.create({
         width: 200,
         height: 200,
         borderRadius: 100,
-        backgroundColor: '#fff',
+        backgroundColor: demoPalette.white,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#000',
+        shadowColor: demoPalette.shadow,
         shadowOffset: {
             width: 0,
             height: 4,
@@ -256,12 +258,12 @@ const styles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: '#4CAF50',
+        backgroundColor: demoPalette.success,
         justifyContent: 'center',
         alignItems: 'center',
     },
     nfcIconText: {
-        color: '#fff',
+        color: demoPalette.white,
         fontSize: 18,
         fontWeight: 'bold',
     },
@@ -275,7 +277,7 @@ const styles = StyleSheet.create({
     wave: {
         position: 'absolute',
         borderWidth: 2,
-        borderColor: '#4CAF50',
+        borderColor: demoPalette.success,
         borderRadius: 100,
         opacity: 0.6,
     },
@@ -295,12 +297,12 @@ const styles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: '#4CAF50',
+        backgroundColor: demoPalette.success,
         justifyContent: 'center',
         alignItems: 'center',
     },
     successText: {
-        color: '#fff',
+        color: demoPalette.white,
         fontSize: 40,
         fontWeight: 'bold',
     },
@@ -311,33 +313,33 @@ const styles = StyleSheet.create({
     instructionTitle: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#333',
+        color: demoPalette.textPrimary,
         marginBottom: 10,
         textAlign: 'center',
     },
     instructionText: {
         fontSize: 16,
-        color: '#666',
+        color: demoPalette.textSecondary,
         textAlign: 'center',
         lineHeight: 24,
     },
     successTitle: {
         fontSize: 28,
         fontWeight: 'bold',
-        color: '#4CAF50',
+        color: demoPalette.success,
         marginBottom: 10,
         textAlign: 'center',
     },
     successMessage: {
         fontSize: 16,
-        color: '#333',
+        color: demoPalette.textPrimary,
         textAlign: 'center',
         lineHeight: 24,
     },
     progressContainer: {
         width: 200,
         height: 8,
-        backgroundColor: '#e0e0e0',
+        backgroundColor: demoPalette.border,
         borderRadius: 4,
         marginTop: 20,
         marginBottom: 10,
@@ -349,12 +351,12 @@ const styles = StyleSheet.create({
     },
     progressFill: {
         height: '100%',
-        backgroundColor: '#4CAF50',
+        backgroundColor: demoPalette.success,
         borderRadius: 4,
     },
     progressText: {
         fontSize: 14,
-        color: '#4CAF50',
+        color: demoPalette.success,
         fontWeight: 'bold',
     },
     footer: {
@@ -362,11 +364,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     startButton: {
-        backgroundColor: '#4CAF50',
+        backgroundColor: demoPalette.success,
         paddingVertical: 15,
         paddingHorizontal: 30,
         borderRadius: 25,
-        shadowColor: '#000',
+        shadowColor: demoPalette.shadow,
         shadowOffset: {
             width: 0,
             height: 2,
@@ -376,16 +378,16 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
     startButtonText: {
-        color: '#fff',
+        color: demoPalette.white,
         fontSize: 18,
         fontWeight: 'bold',
     },
     infoContainer: {
-        backgroundColor: '#fff',
+        backgroundColor: demoPalette.white,
         margin: 20,
         padding: 20,
         borderRadius: 12,
-        shadowColor: '#000',
+        shadowColor: demoPalette.shadow,
         shadowOffset: {
             width: 0,
             height: 2,
@@ -397,7 +399,7 @@ const styles = StyleSheet.create({
     infoTitle: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#333',
+        color: demoPalette.textPrimary,
         marginBottom: 12,
     },
     infoList: {
@@ -405,7 +407,7 @@ const styles = StyleSheet.create({
     },
     infoItem: {
         fontSize: 14,
-        color: '#666',
+        color: demoPalette.textSecondary,
         lineHeight: 20,
     },
 });

@@ -60,7 +60,9 @@ public class LegalLedgerService {
             Long eid = p.getEmployee().getId();
             long[] acc = agg.computeIfAbsent(eid, k -> new long[8]);
             acc[0] += nz(p.getRegularWage());
-            acc[1] += nz(p.getOvertimeWage());
+            // 일 8시간 초과분과 주 40시간 초과분은 둘 다 §56① 연장근로수당이라 한 칸에 합산한다.
+            // 빼면 항목 합계가 grossWage 와 어긋난다.
+            acc[1] += nz(p.getOvertimeWage()) + nz(p.getWeeklyOvertimeWage());
             acc[2] += nz(p.getNightWorkWage());
             acc[3] += nz(p.getHolidayWorkWage());
             acc[4] += nz(p.getWeeklyAllowance());

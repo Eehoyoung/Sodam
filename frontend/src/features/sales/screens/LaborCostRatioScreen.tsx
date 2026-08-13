@@ -99,7 +99,7 @@ const LaborCostRatioScreen: React.FC = () => {
             return null;
         }
         return (
-            <View style={[styles.heroCard, {backgroundColor: c.background, borderWidth: 1.5, borderColor: c.brandPrimary}]}>
+            <View style={[styles.heroCard, styles.brandRing, {backgroundColor: c.background, borderColor: c.brandPrimary}]}>
                 <AppText variant="caption" tone="secondary" style={styles.heroLabel}>이번 정산기간 인건비율</AppText>
                 {cyclePct !== null ? (
                     <AmountText size={36} tone="brand">{cyclePct.toFixed(1)}%</AmountText>
@@ -213,6 +213,7 @@ const LaborCostRatioScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+    brandRing: {borderWidth: 1.5},
     heroCard: {
         borderRadius: radius.xxl,
         padding: spacing.xl,

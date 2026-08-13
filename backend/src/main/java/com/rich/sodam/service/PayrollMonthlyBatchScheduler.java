@@ -1,5 +1,6 @@
 package com.rich.sodam.service;
 
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
@@ -38,6 +39,7 @@ public class PayrollMonthlyBatchScheduler {
      * 매월 1일 01:00에 실행되어 지난 달의 급여를 계산한다.
      */
     @Scheduled(cron = "0 0 1 1 * ?")
+    @SchedulerLock(name = "payrollMonthlyBatch", lockAtMostFor = "PT2H", lockAtLeastFor = "PT5M")
     public void calculateMonthlyPayrolls() {
         // 지난 달의 시작일과 종료일 계산
         YearMonth previousMonth = YearMonth.now().minusMonths(1);

@@ -21,6 +21,7 @@ import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {fetchDashboardStats} from '../../store/services/insightsService';
 import attendanceService from '../services/attendanceService';
 import {AttendanceStatistics} from '../types';
+import {logger} from '../../../utils/logger';
 
 const RANGES = ['오늘', '이번 주', '이번 달'];
 
@@ -98,7 +99,7 @@ const AttendanceOverviewScreen: React.FC<AttendanceOverviewScreenProps> = ({fixt
                 setRangeStats(null);
             }
         } catch (e) {
-            console.warn('[AttendanceOverview] load failed', e);
+            logger.warn('[AttendanceOverview] load failed', e);
             setError(true);
         } finally {
             setLoading(false);

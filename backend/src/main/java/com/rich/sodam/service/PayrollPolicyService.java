@@ -1,9 +1,11 @@
 package com.rich.sodam.service;
 
+import com.rich.sodam.core.payroll.constant.LaborStandards;
 import com.rich.sodam.domain.PayrollPolicy;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.type.TaxPolicyType;
 import com.rich.sodam.dto.request.PayrollPolicyUpdateDto;
+import com.rich.sodam.exception.BusinessException;
 import com.rich.sodam.exception.EntityNotFoundException;
 import com.rich.sodam.repository.PayrollPolicyRepository;
 import com.rich.sodam.repository.StoreRepository;
@@ -60,6 +62,8 @@ public class PayrollPolicyService {
             policy.setNightWorkRate(updateDto.getNightWorkRate());
         }
 
+        // 22:00 고정·8시간 상한 검증은 DTO Bean Validation 이 담당한다(api-design.md:
+        // "서비스 안에서 수동 검증 중복 금지"). 이 서비스의 유일한 진입점인 컨트롤러가 @Valid 를 건다.
         if (updateDto.getNightWorkStartTime() != null) {
             policy.setNightWorkStartTime(updateDto.getNightWorkStartTime());
         }
@@ -75,7 +79,6 @@ public class PayrollPolicyService {
         if (updateDto.getWeeklyAllowanceEnabled() != null) {
             policy.setWeeklyAllowanceEnabled(updateDto.getWeeklyAllowanceEnabled());
         }
-
         return payrollPolicyRepository.save(policy);
     }
 
@@ -91,6 +94,7 @@ public class PayrollPolicyService {
         policy.setOvertimeRate(1.5); // 기본값: 150%
         policy.setRegularHoursPerDay(8.0); // 기본값: 8시간
         policy.setWeeklyAllowanceEnabled(true); // 기본값: 주휴수당 활성화
+        policy.setWeeklyAllowanceForIncomeTax3_3Enabled(true); // 전문가 회신 전 현행 산정 유지
 
         return payrollPolicyRepository.save(policy);
     }

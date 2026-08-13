@@ -93,9 +93,17 @@ public class RetentionNoticeService {
                 sent++;
             }
         }
-        if (sent > 0) {
-            log.info("[RetentionNotice] 사전 고지 {}통 발송(대상 로우 {}건)",
-                    sent, grouped.values().stream().mapToInt(List::size).sum());
+        // 실패는 다음 배치가 재시도하지만, 계속 실패하면 아무도 모른 채 파기 시점이 다가온다.
+        // 잔량을 매 회차 남겨 "며칠째 몇 건이 안 나가는지"가 로그만으로 드러나게 한다(T-3).
+        int failed = grouped.size() - sent;
+        if (sent > 0 || failed > 0) {
+            log.info("[RetentionNotice] 사전 고지 발송 {}통 / 실패 {}건(대상 로우 {}건)",
+                    sent, failed, grouped.values().stream().mapToInt(List::size).sum());
+        }
+        if (failed > 0) {
+            // 파기 전 고지는 법정 의무라 실패 잔량은 경고 이상으로 다룬다.
+            log.error("[RetentionNotice] 고지 미발송 잔량 {}건 — 다음 배치가 재시도한다."
+                    + " 연속 발생하면 메일 발송 경로를 점검할 것", failed);
         }
         return sent;
     }

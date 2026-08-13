@@ -1,5 +1,6 @@
 import {api, unwrapData} from '../../../common/api';
-import {Event, LaborInfo, Policy, Service, TaxInfo, Testimonial, Tip} from '../types';
+import {Event, LaborInfo, Policy, TaxInfo, Tip} from '../types';
+import {logger} from '../../../utils/logger';
 
 /**
  * 홈 화면에 필요한 데이터를 가져오는 서비스 (WP-03).
@@ -59,7 +60,7 @@ export const fetchEvents = async (): Promise<Event[]> => {
         const response = await api.get<BeCampaign[]>('/api/campaigns/active');
         return unwrapData(response.data).map(toEvent);
     } catch (error) {
-        console.error('[홈 서비스] 이벤트 데이터 가져오기 실패:', error);
+        logger.error('[홈 서비스] 이벤트 데이터 가져오기 실패:', error);
         throw error;
     }
 };
@@ -73,7 +74,7 @@ export const fetchLaborInfo = async (): Promise<LaborInfo[]> => {
         const response = await api.get<BeContentInfo[]>('/api/labor-info');
         return unwrapData(response.data).map(toContentInfo);
     } catch (error) {
-        console.error('[홈 서비스] 노동법 정보 가져오기 실패:', error);
+        logger.error('[홈 서비스] 노동법 정보 가져오기 실패:', error);
         throw error;
     }
 };
@@ -87,7 +88,7 @@ export const fetchPolicies = async (): Promise<Policy[]> => {
         const response = await api.get<BeContentInfo[]>('/api/policy-info');
         return unwrapData(response.data).map(toContentInfo);
     } catch (error) {
-        console.error('[홈 서비스] 정책 정보 가져오기 실패:', error);
+        logger.error('[홈 서비스] 정책 정보 가져오기 실패:', error);
         throw error;
     }
 };
@@ -101,7 +102,7 @@ export const fetchTaxInfo = async (): Promise<TaxInfo[]> => {
         const response = await api.get<BeContentInfo[]>('/api/tax-info');
         return unwrapData(response.data).map(toContentInfo);
     } catch (error) {
-        console.error('[홈 서비스] 세금 정보 가져오기 실패:', error);
+        logger.error('[홈 서비스] 세금 정보 가져오기 실패:', error);
         throw error;
     }
 };
@@ -115,64 +116,18 @@ export const fetchTips = async (): Promise<Tip[]> => {
         const response = await api.get<BeContentInfo[]>('/api/tip-info');
         return unwrapData(response.data).map(toContentInfo);
     } catch (error) {
-        console.error('[홈 서비스] 팁 정보 가져오기 실패:', error);
+        logger.error('[홈 서비스] 팁 정보 가져오기 실패:', error);
         throw error;
     }
 };
 
-/**
- * 사용자 후기 목록을 가져옵니다.
- *
- * G-1 기본 처분(작업계획서 §13) — BE에 대응 리소스가 없다. 신규 API를 만들지 않고 항상
- * 실패시켜(과거 `/api/v1/testimonials` raw axios 호출이 항상 404였던 것과 동일하게) 호출부의
- * 기존 실패 처리 분기를 그대로 태운다. 제품 판단(정적 데이터 채택/BE 신규 구현/완전 제거)이
- * 내려지면 이 함수를 실제 구현으로 교체한다.
- * @returns 사용자 후기 목록
- */
-export const fetchTestimonials = async (): Promise<Testimonial[]> => {
-    console.error('[홈 서비스] 사용자 후기 가져오기 실패: BE 엔드포인트 미구현(배선 리팩터링 계획서 G-1 — RELEASE_GATES.md 의 G-1 과 다른 체계)');
-    throw new Error('TESTIMONIALS_NOT_IMPLEMENTED');
-};
-
-/**
- * 서비스 목록을 가져옵니다.
- *
- * G-1 기본 처분 — fetchTestimonials와 동일한 사유·처분.
- * @returns 서비스 목록
- */
-export const getServices = async (): Promise<Service[]> => {
-    console.error('[홈 서비스] 서비스 정보 가져오기 실패: BE 엔드포인트 미구현(배선 리팩터링 계획서 G-1 — RELEASE_GATES.md 의 G-1 과 다른 체계)');
-    throw new Error('SERVICES_NOT_IMPLEMENTED');
-};
-
-/**
- * 홈 화면에 필요한 모든 데이터를 한 번에 가져옵니다.
- * @returns 홈 화면 데이터 객체
- */
-export const fetchHomeData = async () => {
-    try {
-        const [events, laborInfo, policies, taxInfo, tips, testimonials] = await Promise.all([
-            fetchEvents(),
-            fetchLaborInfo(),
-            fetchPolicies(),
-            fetchTaxInfo(),
-            fetchTips(),
-            fetchTestimonials(),
-        ]);
-
-        return {
-            events,
-            laborInfo,
-            policies,
-            taxInfo,
-            tips,
-            testimonials,
-        };
-    } catch (error) {
-        console.error('[홈 서비스] 홈 데이터 가져오기 실패:', error);
-        throw error;
-    }
-};
+// 제거된 것 (RELEASE_GATES T-6, 2026-08-10):
+//   fetchTestimonials / getServices — 항상 throw 하는 플레이스홀더였고 프로덕션 호출부가 0건이었다.
+//   fetchHomeData — 위 두 함수를 Promise.all 에 넣어 "항상 전체 실패"하는 집계였고, 역시 호출부 0건.
+//   components/Testimonials.tsx — 어떤 화면에도 붙지 않은 고아 컴포넌트. 실명처럼 보이는 가짜 후기를
+//     하드코딩하고 있어, 노출됐다면 표시광고법 §3(거짓·과장) 소지가 있었다.
+// "BE 엔드포인트 미구현"으로 등재돼 있었으나 소비처가 없었다 — 만들 API 가 아니라 지울 코드였다.
+// 후기·서비스 소개를 다시 하기로 하면 그때 실제 소비처와 함께 설계할 것.
 
 export default {
     fetchEvents,
@@ -180,7 +135,4 @@ export default {
     fetchPolicies,
     fetchTaxInfo,
     fetchTips,
-    fetchTestimonials,
-    fetchHomeData,
-    getServices,
 };

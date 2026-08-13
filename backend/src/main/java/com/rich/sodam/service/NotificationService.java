@@ -8,6 +8,7 @@ import com.rich.sodam.domain.User;
 import com.rich.sodam.dto.request.DeviceTokenRequest;
 import com.rich.sodam.repository.DeviceTokenRepository;
 import com.rich.sodam.repository.NotificationInboxRepository;
+import com.rich.sodam.repository.NotificationPreferenceRepository;
 import com.rich.sodam.repository.UserRepository;
 import com.rich.sodam.service.support.AfterCommitExecutor;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.Clock;
+import java.time.LocalTime;
 
 /**
  * 도메인 이벤트 → 푸시 알림 매핑.
@@ -39,6 +42,8 @@ public class NotificationService {
     private final PushNotifier pushNotifier;
     private final DeviceTokenRepository deviceTokenRepository;
     private final NotificationInboxRepository inboxRepository;
+    private final NotificationPreferenceRepository notificationPreferenceRepository;
+    private final Clock clock;
     private final UserRepository userRepository;
     private final AfterCommitExecutor afterCommitExecutor;
 
@@ -241,8 +246,14 @@ public class NotificationService {
         if (employee == null) {
             return false;
         }
-        inboxRepository.save(NotificationInbox.of(
-                employee, NotificationInbox.Category.NOTICE, title, message, "sodam://home"));
+        // push()가 inbox 적재와 afterCommit FCM 발송을 함께 보장한다. 여기서 inbox만 직접
+        // 저장하면 사장 커스텀 메시지만 실제 기기 알림이 누락된다.
+        push(employee.getId(), PushMessage.builder()
+                .title(title)
+                .body(message)
+                .deepLink("sodam://home")
+                .data(Map.of("type", "CUSTOM_MESSAGE"))
+                .build());
         return true;
     }
 
@@ -297,6 +308,10 @@ public class NotificationService {
     }
 
     private void sendPush(Long userId, PushMessage message) {
+        if (!isExternalPushAllowed(userId, message)) {
+            log.debug("푸시 수신 설정으로 외부 발송 생략 userId={}", userId);
+            return;
+        }
         List<DeviceToken> tokens = deviceTokenRepository.findByUser_Id(userId);
         if (tokens.isEmpty()) {
             log.debug("푸시 대상 디바이스 없음 userId={}", userId);
@@ -306,6 +321,13 @@ public class NotificationService {
         PushNotifier.SendResult res = pushNotifier.sendToTokens(rawTokens, message);
         log.debug("푸시 발송 userId={} success={} fail={}",
                 userId, res.getSuccessCount(), res.getFailureCount());
+    }
+
+    /** 인앱 알림함은 보존하고 FCM 같은 외부 전달만 사용자 수신 설정을 따른다. */
+    private boolean isExternalPushAllowed(Long userId, PushMessage message) {
+        return notificationPreferenceRepository.findById(userId)
+                .map(preference -> preference.allows(resolveCategory(message), LocalTime.now(clock)))
+                .orElse(true);
     }
 
     private NotificationInbox.Category resolveCategory(PushMessage m) {

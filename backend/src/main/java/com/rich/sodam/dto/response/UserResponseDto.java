@@ -31,7 +31,7 @@ public class UserResponseDto {
     /** 아바타(프로필 사진) 공개 URL — null 이면 기본 이미지를 FE 가 표시. */
     private final String avatarUrl;
 
-    private UserResponseDto(User user) {
+    private UserResponseDto(User user, String avatarUrl) {
         this.id = user.getId();
         this.email = user.getEmail();
         this.name = user.getName();
@@ -42,10 +42,17 @@ public class UserResponseDto {
         this.consentCompleted = user.hasCompletedRequiredConsents();
         this.locationConsented = user.hasAgreedLocationInfo();
         this.createdAt = user.getCreatedAt();
-        this.avatarUrl = user.getAvatarUrl();
+        this.avatarUrl = avatarUrl;
     }
 
-    public static UserResponseDto from(User user) {
-        return new UserResponseDto(user);
+    /**
+     * private object storage에서는 응답 시점에 생성한 presigned URL을 사용한다.
+     *
+     * <p>{@code avatarUrl} 은 반드시 {@code UserService#resolveAvatarUrl} 로 만들어 넘길 것.
+     * 엔티티의 {@code avatarUrl} 컬럼은 live 전환 이후 채워지지 않으므로, 그 값을 그대로 쓰면
+     * 아바타가 항상 비어 보인다. (단일 인자 오버로드를 두지 않는 이유)</p>
+     */
+    public static UserResponseDto from(User user, String avatarUrl) {
+        return new UserResponseDto(user, avatarUrl);
     }
 }

@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
 import {Image, ImageSourcePropType, ImageStyle, StyleSheet, Text, View, ViewStyle,} from 'react-native';
+import {colors} from '../../../theme/tokens';
 
 interface AvatarProps {
     source?: ImageSourcePropType;
@@ -112,7 +113,7 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     initialsText: {
-        color: '#fff',
+        color: colors.textInverse,
         fontWeight: 'bold',
     },
 });

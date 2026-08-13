@@ -82,4 +82,26 @@ class TaxServiceOrderServiceTest {
         assertThatThrownBy(() -> service.confirm(other.getId(), order.getOrderId(), "PK", 99_000))
                 .isInstanceOf(IllegalStateException.class);
     }
+
+    @Test
+    @DisplayName("취소 또는 환불로 종결된 주문은 confirm으로 다시 결제할 수 없다")
+    void rejectsConfirmForCancelledOrRefundedOrder() {
+        User user = master();
+        TaxServiceOrder cancelled = service.createOrder(user.getId(), TaxPackage.INCOME_TAX_FILING);
+        service.cancelFromWebhook(cancelled.getOrderId());
+
+        assertThatThrownBy(() -> service.confirm(user.getId(), cancelled.getOrderId(), "PK_CANCELLED",
+                cancelled.getCustomerAmount()))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(cancelled.getStatus()).isEqualTo(TaxServiceOrder.OrderStatus.CANCELLED);
+
+        TaxServiceOrder refunded = service.createOrder(user.getId(), TaxPackage.INCOME_TAX_FILING);
+        service.confirm(user.getId(), refunded.getOrderId(), "PK_PAID", refunded.getCustomerAmount());
+        service.cancelFromWebhook(refunded.getOrderId());
+
+        assertThatThrownBy(() -> service.confirm(user.getId(), refunded.getOrderId(), "PK_REFUNDED",
+                refunded.getCustomerAmount()))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(refunded.getStatus()).isEqualTo(TaxServiceOrder.OrderStatus.REFUNDED);
+    }
 }

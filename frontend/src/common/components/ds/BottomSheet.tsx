@@ -9,7 +9,7 @@
 import React, {ReactNode} from 'react';
 import {Modal, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {radius, spacing} from '../../../theme/tokens';
+import {colors, radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../hooks/useThemeColors';
 import {AppText} from './AppText';
 import {AppButton, ButtonVariant} from './AppButton';
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     desc: {marginBottom: spacing.md},
     cta: {marginTop: spacing.md},
     ctaSub: {marginTop: spacing.sm},
-    captureMarker: {position: 'absolute', width: 1, height: 1, fontSize: 1, lineHeight: 1, color: 'transparent'},
+    captureMarker: {position: 'absolute', width: 1, height: 1, fontSize: 1, lineHeight: 1, color: colors.transparent},
 });
 
 export default BottomSheet;

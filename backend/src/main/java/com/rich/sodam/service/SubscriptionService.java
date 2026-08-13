@@ -9,6 +9,7 @@ import com.rich.sodam.domain.type.BillingCycle;
 import com.rich.sodam.domain.type.DomainEventType;
 import com.rich.sodam.domain.type.PlanType;
 import com.rich.sodam.domain.type.SubscriptionStatus;
+import com.rich.sodam.domain.type.PaymentSourceType;
 import com.rich.sodam.repository.PaymentHistoryRepository;
 import com.rich.sodam.repository.SubscriptionRepository;
 import com.rich.sodam.repository.UserRepository;
@@ -43,6 +44,7 @@ public class SubscriptionService {
     private final ReferralRewardService referralRewardService;
     private final DomainEventService domainEventService;
     private final SentryReporter sentryReporter;
+    private final PaymentReceiptService paymentReceiptService;
 
     /**
      * 무료 플랜 가입 — 카드 없이 즉시 ACTIVE.
@@ -255,6 +257,8 @@ public class SubscriptionService {
             ph.markSuccess(result.getPaymentKey());
             LocalDateTime periodStart = LocalDateTime.now();
             s.activate(periodStart, cycle.periodEndFrom(periodStart));
+            paymentReceiptService.recordPaid(PaymentSourceType.SUBSCRIPTION, ph.getOrderId(),
+                    s.getUser().getId(), result.getPaymentKey(), ph.getAmount());
         } else {
             ph.markFailed(result.getFailureReason());
             s.markPaymentFailed();

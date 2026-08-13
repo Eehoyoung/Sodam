@@ -1,4 +1,5 @@
 import {api} from '../../../common/api';
+import {logger} from '../../../utils/logger';
 
 export interface SalaryPredictionRequest {
     employeeId: number;
@@ -46,7 +47,7 @@ export const getSalaryPrediction = async (
         );
         return response.data;
     } catch (error) {
-        console.error('급여 예측 조회 실패:', error);
+        logger.error('급여 예측 조회 실패:', error);
         throw new Error('급여 예측 정보를 가져오는데 실패했습니다.');
     }
 };

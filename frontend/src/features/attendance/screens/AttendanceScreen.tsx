@@ -33,6 +33,7 @@ import { useThemeColors, ThemeColors } from '../../../common/hooks/useThemeColor
 import {parseServerDateTime} from '../../../common/format/dateTime';
 import EmployeeWorkingRing from '../components/EmployeeWorkingRing';
 import {useLocationConsentGate} from '../hooks/useLocationConsentGate';
+import {logger} from '../../../utils/logger';
 
 type CheckInMethod = 'standard' | 'location' | 'nfc' | 'qr';
 export interface AttendanceVisualFixture {
@@ -128,7 +129,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
 
             return true;
         } catch (error) {
-            console.error('NFC 지원 확인 실패:', error);
+            logger.error('NFC 지원 확인 실패:', error);
             AppToast.error('NFC 상태를 확인할 수 없어요.');
             return false;
         }
@@ -161,7 +162,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
             await handleNFCTagScanned(scannedTag);
         } catch (error) {
             if (!isMountedRef.current) {return;}
-            console.error('NFC 태그 스캔 실패:', error);
+            logger.error('NFC 태그 스캔 실패:', error);
             AppToast.error('NFC 태그 읽기에 실패했어요. 다시 시도해 주세요.');
             setShowNFCReader(false);
         } finally {
@@ -210,7 +211,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
                 }
             }
         } catch (error) {
-            console.error('출퇴근 기록을 가져오는 중 오류가 생겼어요:', error);
+            logger.error('출퇴근 기록을 가져오는 중 오류가 생겼어요:', error);
             AppToast.error('출퇴근 기록을 불러오는 데 실패했어요. 다시 시도해 주세요.');
         } finally {
             setLoading(false);
@@ -233,7 +234,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
                 setSelectedWorkplaceId('');
             }
         } catch (error) {
-            console.error('근무지 목록을 가져오는 중 오류가 생겼어요:', error);
+            logger.error('근무지 목록을 가져오는 중 오류가 생겼어요:', error);
             AppToast.error('근무지 목록을 불러오지 못했어요.');
         }
     };
@@ -255,7 +256,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
                 AppToast.warn('위치 기반 출퇴근을 쓰려면 위치 권한이 필요해요.');
             }
         } catch (error) {
-            console.error('위치 권한 요청 중 오류가 생겼어요:', error);
+            logger.error('위치 권한 요청 중 오류가 생겼어요:', error);
         }
     };
 
@@ -297,7 +298,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
                             return;
                         }
 
-                        console.error('AttendanceScreen: Location error:', error);
+                        logger.error('AttendanceScreen: Location error:', error);
                         AppToast.error('위치 정보를 가져오는 데 실패했어요. 다시 시도해 주세요.');
                     },
                     {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000}
@@ -334,7 +335,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
             try {
                 Geolocation.stopObserving();
             } catch (error) {
-                console.warn('AttendanceScreen: Error stopping location observing:', error);
+                logger.warn('AttendanceScreen: Error stopping location observing:', error);
             }
 
             // Cancel any in-flight NFC scan to avoid leaking the native tech session
@@ -440,7 +441,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
             setCurrentAttendance(response);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('출근 처리 중 오류가 생겼어요:', error);
+            logger.error('출근 처리 중 오류가 생겼어요:', error);
             AppToast.error('출근 처리에 실패했어요. 다시 시도해 주세요.');
         }
     };
@@ -498,7 +499,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
             setCurrentAttendance(response);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('위치 기반 출근 처리 중 오류가 생겼어요:', error);
+            logger.error('위치 기반 출근 처리 중 오류가 생겼어요:', error);
             AppToast.error('위치 기반 출근 처리에 실패했어요. 다시 시도해 주세요.');
         }
     };
@@ -524,7 +525,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
             setCurrentAttendance(response);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('NFC 태그 기반 출근 처리 중 오류가 생겼어요:', error);
+            logger.error('NFC 태그 기반 출근 처리 중 오류가 생겼어요:', error);
             const message = (error as any)?.response?.data?.message;
             AppToast.error(message ?? 'NFC 태그 기반 출근 처리에 실패했어요. 등록된 태그인지 확인해 주세요.');
         }
@@ -553,7 +554,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
             setCurrentAttendance(null);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('퇴근 처리 중 오류가 생겼어요:', error);
+            logger.error('퇴근 처리 중 오류가 생겼어요:', error);
             AppToast.error('퇴근 처리에 실패했어요. 다시 시도해 주세요.');
         }
     };
@@ -610,7 +611,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
             setCurrentAttendance(null);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('위치 기반 퇴근 처리 중 오류가 생겼어요:', error);
+            logger.error('위치 기반 퇴근 처리 중 오류가 생겼어요:', error);
             AppToast.error('위치 기반 퇴근 처리에 실패했어요. 다시 시도해 주세요.');
         }
     };
@@ -636,7 +637,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
             setCurrentAttendance(null);
             fetchAttendanceRecords();
         } catch (error) {
-            console.error('NFC 태그 기반 퇴근 처리 중 오류가 생겼어요:', error);
+            logger.error('NFC 태그 기반 퇴근 처리 중 오류가 생겼어요:', error);
             const message = (error as any)?.response?.data?.message;
             AppToast.error(message ?? 'NFC 태그 기반 퇴근 처리에 실패했어요. 등록된 태그인지 확인해 주세요.');
         }
@@ -1015,6 +1016,26 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
     );
 };
 
+/**
+ * 59 NFCScanModal 고정 팔레트 — 이 모달은 라이트/다크 설정과 무관하게 **항상 다크**다
+ * (v3 시안 03-employee.html "59 NFCScanModal" device__screen--dark 고정).
+ * 그래서 테마 토큰(c.*)을 쓰면 안 되고, 대신 값을 여기 한곳에 모아 이름을 준다 —
+ * StyleSheet 안에 hex 를 흩뿌리면 어느 색이 무슨 역할인지 추적할 수 없다.
+ */
+const NFC_SCAN = {
+    canvas: '#12141B',
+    iconCircle: '#173330',
+    text: '#F5F3EF',
+    textMuted: 'rgba(245,243,239,0.7)',
+    cardBg: 'rgba(255,255,255,0.06)',
+    cardBorder: 'rgba(245,243,239,0.2)',
+    track: 'rgba(255,255,255,0.12)',
+    fill: '#2DD4BF',
+    cancelBorder: 'rgba(245,243,239,0.35)',
+    /** 시각 회귀 캡처용 투명 마커 — 화면에 보이지 않아야 한다. */
+    invisible: 'transparent',
+} as const;
+
 const makeStyles = (c: ThemeColors) => StyleSheet.create({
     listContainer: {
         paddingHorizontal: 24,
@@ -1155,12 +1176,11 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         color: c.textTertiary,
         textAlign: 'center',
     },
-    // 59 NFCScanModal — 항상 다크(라이트/다크 모드 설정과 무관, 시안 device__screen--dark 고정)라
-    // 테마 토큰(c.*) 대신 고정 hex 를 쓴다(§ v3 03-employee.html "59 NFCScanModal").
-    captureMarker: {position: 'absolute', width: 1, height: 1, fontSize: 1, lineHeight: 1, color: 'transparent'},
+    // 59 NFCScanModal — 고정 팔레트는 위 NFC_SCAN 상수 참조.
+    captureMarker: {position: 'absolute', width: 1, height: 1, fontSize: 1, lineHeight: 1, color: NFC_SCAN.invisible},
     nfcDarkContainer: {
         flex: 1,
-        backgroundColor: '#12141B',
+        backgroundColor: NFC_SCAN.canvas,
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 32,
@@ -1169,7 +1189,7 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         width: 72,
         height: 72,
         borderRadius: 36,
-        backgroundColor: '#173330',
+        backgroundColor: NFC_SCAN.iconCircle,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 24,
@@ -1178,14 +1198,14 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         fontSize: 22,
         lineHeight: 30,
         fontWeight: '800',
-        color: '#F5F3EF',
+        color: NFC_SCAN.text,
         textAlign: 'center',
     },
     nfcDarkSub: {
         marginTop: 10,
         fontSize: 14,
         lineHeight: 21,
-        color: 'rgba(245,243,239,0.7)',
+        color: NFC_SCAN.textMuted,
         textAlign: 'center',
     },
     nfcProgressCard: {
@@ -1193,26 +1213,26 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         marginTop: 28,
         padding: 16,
         borderRadius: 16,
-        backgroundColor: 'rgba(255,255,255,0.06)',
+        backgroundColor: NFC_SCAN.cardBg,
         borderWidth: 1,
-        borderColor: 'rgba(245,243,239,0.2)',
+        borderColor: NFC_SCAN.cardBorder,
     },
     nfcProgressTrack: {
         height: 6,
         borderRadius: 3,
-        backgroundColor: 'rgba(255,255,255,0.12)',
+        backgroundColor: NFC_SCAN.track,
         overflow: 'hidden',
     },
     nfcProgressFill: {
         width: '66%',
         height: '100%',
         borderRadius: 3,
-        backgroundColor: '#2DD4BF',
+        backgroundColor: NFC_SCAN.fill,
     },
     nfcProgressLabel: {
         marginTop: 8,
         fontSize: 13,
-        color: 'rgba(245,243,239,0.7)',
+        color: NFC_SCAN.textMuted,
     },
     nfcCancelBtn: {
         marginTop: 20,
@@ -1220,11 +1240,11 @@ const makeStyles = (c: ThemeColors) => StyleSheet.create({
         paddingVertical: 14,
         borderRadius: 14,
         borderWidth: 1,
-        borderColor: 'rgba(245,243,239,0.35)',
+        borderColor: NFC_SCAN.cancelBorder,
         alignItems: 'center',
     },
     nfcCancelText: {
-        color: '#F5F3EF',
+        color: NFC_SCAN.text,
         fontSize: 15,
         fontWeight: '700',
     },

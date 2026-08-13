@@ -12,6 +12,7 @@ import PayrollCycleEditor, {PayrollCycleForm, defaultPayrollCycle, fromStorePayr
 import BusinessTypePicker from '../components/BusinessTypePicker';
 import AddressSearchModal, {AddressSearchResult} from '../components/AddressSearchModal';
 import {RadiusSelectorSheet} from '../components/StoreSheets';
+import {getErrorMessage} from '../../../common/errors';
 
 /** 개발용 시각 검증 전용 — GET /api/stores/{storeId} 조회를 고정 폼 초기값으로 대체한다. */
 export interface StoreEditVisualFixture {
@@ -123,8 +124,8 @@ const StoreEditScreen: React.FC<Props> = ({visualFixture}) => {
 
             AppToast.success('매장 정보가 변경됐어요.');
             navigation.goBack();
-        } catch (e: any) {
-            AppToast.error(e?.response?.data?.message ?? '변경에 실패했어요.');
+        } catch (e: unknown) {
+            AppToast.error(getErrorMessage(e, '변경에 실패했어요.'));
         } finally {
             setLoading(false);
         }

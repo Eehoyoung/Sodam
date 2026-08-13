@@ -7,6 +7,7 @@ import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {Alert} from 'react-native';
 import JSIPerformanceMonitor, {JSIHealthStatus} from '../services/JSIPerformanceMonitor';
 import {useJSICrashReporting} from './useJSICrashReporting';
+import {logger} from '../utils/logger';
 
 interface HealthMonitoringConfig {
     componentName: string;
@@ -81,7 +82,7 @@ export const useJSIHealthMonitoring = (
 
                 // Log significant health changes
                 if (Math.abs(scoreDifference) >= 10) {
-                    console.log(`[JSI Health Monitor] ${componentName} health score changed by ${scoreDifference}: ${previousHealthScoreRef.current} → ${currentHealth.score}`);
+                    logger.debug(`[JSI Health Monitor] ${componentName} health score changed by ${scoreDifference}: ${previousHealthScoreRef.current} → ${currentHealth.score}`);
                 }
             }
 
@@ -123,11 +124,11 @@ export const useJSIHealthMonitoring = (
 
     const startMonitoring = useCallback(() => {
         if (isMonitoring) {
-            console.warn(`[JSI Health Monitor] ${componentName} is already monitoring`);
+            logger.warn(`[JSI Health Monitor] ${componentName} is already monitoring`);
             return;
         }
 
-        console.log(`[JSI Health Monitor] Starting health monitoring for ${componentName}`);
+        logger.debug(`[JSI Health Monitor] Starting health monitoring for ${componentName}`);
         setIsMonitoring(true);
 
         // Start the JSI performance monitor if not already started
@@ -147,7 +148,7 @@ export const useJSIHealthMonitoring = (
             return;
         }
 
-        console.log(`[JSI Health Monitor] Stopping health monitoring for ${componentName}`);
+        logger.debug(`[JSI Health Monitor] Stopping health monitoring for ${componentName}`);
         setIsMonitoring(false);
 
         if (monitoringIntervalRef.current) {
@@ -202,7 +203,7 @@ export const useJSIHealthMonitoring = (
         const alertTitle = `JSI Health Alert - ${componentName}`;
         const alertMessage = `Status: ${health.status.toUpperCase()}\nScore: ${health.score}/100\n\nIssues:\n${health.issues.join('\n')}\n\nRecommendations:\n${health.recommendations.join('\n')}`;
 
-        console.warn(`[JSI Health Monitor] ${alertTitle}`, alertMessage);
+        logger.warn(`[JSI Health Monitor] ${alertTitle}`, alertMessage);
 
         // Show native alert for critical issues
         if (health.status === 'critical') {
@@ -217,7 +218,7 @@ export const useJSIHealthMonitoring = (
                     {
                         text: 'View Details',
                         onPress: () => {
-                            console.log('[JSI Health Monitor] Full health status:', health);
+                            logger.debug('[JSI Health Monitor] Full health status:', health);
                         },
                     },
                 ]

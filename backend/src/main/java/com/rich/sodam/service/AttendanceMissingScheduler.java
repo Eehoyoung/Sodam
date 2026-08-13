@@ -1,5 +1,6 @@
 package com.rich.sodam.service;
 
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import com.rich.sodam.domain.Attendance;
 import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.Store;
@@ -44,6 +45,7 @@ public class AttendanceMissingScheduler {
     /** 매 15분마다 점검. */
     @Scheduled(cron = "0 */15 * * * *", zone = "Asia/Seoul")
     @Transactional(readOnly = true)
+    @SchedulerLock(name = "attendanceMissing", lockAtMostFor = "PT10M", lockAtLeastFor = "PT30S")
     public void detectMissingAttendance() {
         LocalDateTime now = LocalDateTime.now();
         DayOfWeek today = now.getDayOfWeek();

@@ -70,7 +70,7 @@ public class UserController {
             User convertedUser = userService.convertToOwner(userId);
 
             ApiResponse<UserResponseDto> response =
-                    ApiResponse.success("사업주 전환이 완료되었습니다.", UserResponseDto.from(convertedUser));
+                    ApiResponse.success("사업주 전환이 완료되었습니다.", userResponse(convertedUser));
 
             return ResponseEntity.ok(response);
 
@@ -116,7 +116,7 @@ public class UserController {
                     .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. ID: " + userId));
 
             ApiResponse<UserResponseDto> response =
-                    ApiResponse.success("사용자 정보 조회가 완료되었습니다.", UserResponseDto.from(user));
+                    ApiResponse.success("사용자 정보 조회가 완료되었습니다.", userResponse(user));
 
             return ResponseEntity.ok(response);
 
@@ -133,6 +133,11 @@ public class UserController {
         return principal.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .anyMatch("ROLE_MASTER"::equals);
+    }
+
+    /** private object storage의 아바타는 응답 시점에 새 presigned URL을 만든다. */
+    private UserResponseDto userResponse(User user) {
+        return UserResponseDto.from(user, userService.resolveAvatarUrl(user));
     }
 
     /**
@@ -164,7 +169,7 @@ public class UserController {
             User updatedEmployee = userService.updateEmployeeInfo(employeeId, updateDto);
 
             ApiResponse<UserResponseDto> response =
-                    ApiResponse.success("직원 정보 수정이 완료되었습니다.", UserResponseDto.from(updatedEmployee));
+                    ApiResponse.success("직원 정보 수정이 완료되었습니다.", userResponse(updatedEmployee));
 
             return ResponseEntity.ok(response);
 
@@ -229,7 +234,7 @@ public class UserController {
         String name = (body == null) ? null : body.get("name");
         try {
             User updated = userService.updateBasicInfo(principal.getId(), name);
-            return ResponseEntity.ok(ApiResponse.success("정보가 변경됐어요.", UserResponseDto.from(updated)));
+            return ResponseEntity.ok(ApiResponse.success("정보가 변경됐어요.", userResponse(updated)));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error("INVALID", e.getMessage()));
         }
@@ -251,7 +256,7 @@ public class UserController {
         }
         User updated = userService.uploadAvatar(principal.getId(), file);
         return ResponseEntity.ok(ApiResponse.success(
-                "아바타가 업로드됐어요.", java.util.Map.of("avatarUrl", updated.getAvatarUrl())));
+                "아바타가 업로드됐어요.", java.util.Map.of("avatarUrl", userService.resolveAvatarUrl(updated))));
     }
 
     /**

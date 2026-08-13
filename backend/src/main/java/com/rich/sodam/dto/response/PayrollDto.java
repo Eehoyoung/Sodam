@@ -44,6 +44,13 @@ public class PayrollDto {
     private Integer overtimeWage;
     private Integer nightWorkWage;
     private Integer weeklyAllowance;
+    /** 주휴 환산 시간 — 명세서 시간 수 기재용. */
+    private Double weeklyAllowanceHours;
+
+    /** 주 40시간 초과 연장근로 시간 수(§56①) — 시행령 §27조의2 상 임금명세서 필수 기재. */
+    private Double weeklyOvertimeHours;
+    /** 위 시간의 가산분(50%). */
+    private Integer weeklyOvertimeWage;
     private Integer bonusWage;
     private Integer grossWage;
 
@@ -94,6 +101,9 @@ public class PayrollDto {
                 .overtimeWage(payroll.getOvertimeWage())
                 .nightWorkWage(payroll.getNightWorkWage())
                 .weeklyAllowance(payroll.getWeeklyAllowance())
+                .weeklyAllowanceHours(payroll.getWeeklyAllowanceHours())
+                .weeklyOvertimeHours(payroll.getWeeklyOvertimeHours())
+                .weeklyOvertimeWage(payroll.getWeeklyOvertimeWage())
                 .bonusWage(payroll.getBonusWage())
                 .grossWage(payroll.getGrossWage())
                 .taxRate(payroll.getTaxRate())

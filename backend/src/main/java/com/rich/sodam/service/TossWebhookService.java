@@ -37,6 +37,8 @@ public class TossWebhookService {
     private final PaymentHistoryRepository paymentHistoryRepository;
     private final AttendanceCreditChargeService attendanceCreditChargeService;
     private final RecruitmentBoostPassService recruitmentBoostPassService;
+    private final TaxServiceOrderService taxServiceOrderService;
+    private final PaymentReceiptService paymentReceiptService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -64,6 +66,7 @@ public class TossWebhookService {
         if (!matchedSubscription) {
             handleAttendanceCreditCharge(orderId, rawPaymentKey, status, cancelInfo);
             handleRecruitmentBoostPass(orderId, rawPaymentKey, status, cancelInfo);
+            handleTaxServiceOrder(orderId, rawPaymentKey, status);
         }
     }
 
@@ -72,6 +75,8 @@ public class TossWebhookService {
             case "DONE" -> {
                 ph.markSuccess(paymentKey);
                 activateSubscriptionIfNeeded(ph);
+                paymentReceiptService.recordPaid(com.rich.sodam.domain.type.PaymentSourceType.SUBSCRIPTION,
+                        ph.getOrderId(), ph.getSubscription().getUser().getId(), paymentKey, ph.getAmount());
             }
             case "CANCELED", "PARTIAL_CANCELED" -> ph.markRefunded();
             case "ABORTED", "EXPIRED" -> ph.markFailed("webhook:" + status);
@@ -102,6 +107,15 @@ public class TossWebhookService {
             case "CANCELED", "PARTIAL_CANCELED", "ABORTED", "EXPIRED" ->
                     recruitmentBoostPassService.cancelFromWebhook(orderId, status, cancelInfo);
             default -> log.debug("처리하지 않는 상태(무제한 패스): {}", status);
+        }
+    }
+
+    private void handleTaxServiceOrder(String orderId, String paymentKey, String status) {
+        if (orderId == null || orderId.isBlank()) return;
+        switch (status.toUpperCase()) {
+            case "DONE" -> taxServiceOrderService.applyFromWebhook(orderId, paymentKey);
+            case "CANCELED", "PARTIAL_CANCELED", "ABORTED", "EXPIRED" -> taxServiceOrderService.cancelFromWebhook(orderId);
+            default -> log.debug("처리하지 않는 상태(세무 서비스): {}", status);
         }
     }
 

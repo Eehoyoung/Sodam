@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import {ENABLE_ANIMATIONS, stageAtLeast, ANIMATION_RECOVERY_STAGE} from '../../../navigation/config';
 import {ThemeColors, useThemeColors} from '../../hooks/useThemeColors';
+import {logger} from '../../../utils/logger';
 
 // Conditionally import Reanimated components only when needed
 let Animated: any;
@@ -30,7 +31,7 @@ try {
     withTiming = reanimated.withTiming;
   }
 } catch (error) {
-  console.warn('[RECOVERY] Modal: Reanimated import failed, using fallback', error);
+  logger.warn('[RECOVERY] Modal: Reanimated import failed, using fallback', error);
 }
 
 // 모달 컴포넌트의 Props 타입 정의

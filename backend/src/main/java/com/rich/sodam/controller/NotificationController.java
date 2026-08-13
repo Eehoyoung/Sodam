@@ -1,6 +1,8 @@
 package com.rich.sodam.controller;
 
 import com.rich.sodam.dto.request.DeviceTokenRequest;
+import com.rich.sodam.dto.request.NotificationPreferenceUpdateRequest;
+import com.rich.sodam.dto.response.NotificationPreferenceResponse;
 import com.rich.sodam.security.UserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -11,6 +13,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import com.rich.sodam.security.annotation.AnyAuthenticated;
 import com.rich.sodam.service.NotificationService;
+import com.rich.sodam.service.NotificationPreferenceService;
 
 @AnyAuthenticated
 @RestController
@@ -20,7 +23,23 @@ import com.rich.sodam.service.NotificationService;
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final NotificationPreferenceService notificationPreferenceService;
     private final com.rich.sodam.security.authorization.StoreAuthorizationPolicy storeAccessGuard;
+
+    @Operation(summary = "알림 수신 설정 조회", description = "인증된 사용자의 알림 수신 설정을 조회합니다.")
+    @GetMapping("/prefs")
+    public ResponseEntity<NotificationPreferenceResponse> getPreferences(
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(notificationPreferenceService.getPreferences(principal.getId()));
+    }
+
+    @Operation(summary = "알림 수신 설정 변경", description = "인증된 사용자의 알림 수신 설정을 변경합니다.")
+    @PutMapping("/prefs")
+    public ResponseEntity<NotificationPreferenceResponse> updatePreferences(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody NotificationPreferenceUpdateRequest request) {
+        return ResponseEntity.ok(notificationPreferenceService.updatePreferences(principal.getId(), request));
+    }
 
     @Operation(summary = "FCM 토큰 등록", description = "앱 실행 시 토큰을 서버에 저장하여 푸시 발송 대상으로 등록.")
     @PostMapping("/token")
@@ -67,13 +86,12 @@ public class NotificationController {
         if (message.length() > 300) message = message.substring(0, 300);
         // BOLA 차단: 사장의 매장에 소속된 직원에게만 발송(임의 사용자 푸시·사칭 방지)
         storeAccessGuard.assertCanViewEmployee(principal.getId(), employeeId, true);
-        // 알림 이력 적재 (NotificationCenter 에서 보임)
+        // inbox 적재와 실제 FCM 발송은 NotificationService.push() 경로를 재사용한다.
         boolean sent = notificationService.sendCustomInboxMessage(employeeId, title, message);
         if (!sent) {
             return ResponseEntity.badRequest()
                     .body(java.util.Map.of("message", "직원을 찾을 수 없어요."));
         }
-        // TODO[실 푸시]: NotificationService.push 호출로 FCM 전송 — bean 주입 추가 필요
         return ResponseEntity.ok(java.util.Map.of("message", "메시지를 전달했어요."));
     }
 

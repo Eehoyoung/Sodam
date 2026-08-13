@@ -33,6 +33,7 @@ import {
     slideUp,
 } from './commonAnimations';
 import {ANIMATION_VALUES, SPRING_CONFIGS, TIMING_CONFIGS,} from './constants';
+import {logger} from '../logger';
 import type {
     AnimationCallback,
     CombinedAnimationHook,
@@ -447,7 +448,7 @@ export const useAnimationPerformance = (animationName: string) => {
         const duration = endTime.value - startTime.value;
 
         runOnJS(() => {
-            console.log(`[ANIMATION_PERFORMANCE] ${animationName}: ${duration}ms`);
+            logger.debug(`[ANIMATION_PERFORMANCE] ${animationName}: ${duration}ms`);
         })();
 
         return duration;

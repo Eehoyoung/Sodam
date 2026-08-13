@@ -1,5 +1,6 @@
 package com.rich.sodam.service.retention;
 
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,6 +30,7 @@ public class RetentionNoticeScheduler {
 
     /** 매일 03:30 KST — UserDataRetentionScheduler(03:10)와 겹치지 않게 20분 뒤. */
     @Scheduled(cron = "0 30 3 * * *", zone = "Asia/Seoul")
+    @SchedulerLock(name = "retentionNotice", lockAtMostFor = "PT20M", lockAtLeastFor = "PT1M")
     public void run() {
         try {
             retentionPurgeService.scanAndSchedule();

@@ -16,9 +16,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "attendance", indexes = {
-        @Index(name = "idx_attendance_employee_id", columnList = "employee_id"),
         @Index(name = "idx_attendance_store_id", columnList = "store_id"),
-        @Index(name = "idx_attendance_check_in_time", columnList = "checkInTime"),
         @Index(name = "idx_attendance_check_out_time", columnList = "checkOutTime"),
         @Index(name = "idx_attendance_employee_store", columnList = "employee_id, store_id"),
         @Index(name = "idx_attendance_date_range", columnList = "checkInTime, checkOutTime")

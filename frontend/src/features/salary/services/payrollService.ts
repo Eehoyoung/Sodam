@@ -23,6 +23,10 @@ interface RawPayrollDto {
   startDate?: string;
   endDate?: string;
   totalHours?: number;
+  weeklyOvertimeHours?: number;
+  weeklyOvertimeWage?: number;
+  weeklyAllowanceHours?: number;
+  weeklyAllowance?: number;
   netWage?: number;
   status?: string;
 }
@@ -36,6 +40,10 @@ export interface PayrollSummary {
   storeId: number;
   storeName?: string;
   totalHours?: number;
+  weeklyOvertimeHours?: number;
+  weeklyOvertimeWage?: number;
+  weeklyAllowanceHours?: number;
+  weeklyAllowance?: number;
   totalPay?: number;
   status?: string;
   period?: { startDate: string; endDate: string };
@@ -69,6 +77,10 @@ function toSummary(dto: RawPayrollDto): PayrollSummary {
     storeId: dto.storeId,
     storeName: dto.storeName,
     totalHours: dto.totalHours,
+    weeklyOvertimeHours: dto.weeklyOvertimeHours ?? 0,
+    weeklyOvertimeWage: dto.weeklyOvertimeWage ?? 0,
+    weeklyAllowanceHours: dto.weeklyAllowanceHours ?? 0,
+    weeklyAllowance: dto.weeklyAllowance ?? 0,
     totalPay: dto.netWage,
     status: dto.status,
     period: dto.startDate && dto.endDate ? {startDate: dto.startDate, endDate: dto.endDate} : undefined,
@@ -88,19 +100,51 @@ export interface PayrollCalculationItem {
   nightWorkHours: number;
   nightWorkWage: number;
   weeklyAllowance: number;
+  /** 주 40시간 초과 연장근로 시간 수(§56①). 시행령 §27조의2 상 명세서에 시간 수를 함께 적어야 한다. */
+  weeklyOvertimeHours: number;
+  /** 위 시간의 가산분(50%). 기본 100%는 정상근로 임금에 이미 포함돼 있다. */
+  weeklyOvertimeWage: number;
   bonusWage: number;
   grossWage: number;
   taxAmount: number;
   netWage: number;
 }
 
+/** 계산이 중단된 직원. 매장 일괄 계산에서만 채워진다. */
+/**
+ * 퇴사자인데 정산기간에 근무기록이 있어 수동 최종정산이 필요하다는 신호(BE `PayrollStoreBatchService`).
+ * 계산 오류가 아니라 의도적 보류라 화면에서 문구를 달리 낸다 — RELEASE_GATES T-13.
+ */
+export const RESIGNED_NEEDS_MANUAL_SETTLEMENT = 'PAYROLL_RESIGNED_NEEDS_MANUAL_SETTLEMENT';
+
+export interface PayrollCalculationFailure {
+  employeeId: number;
+  employeeName: string;
+  errorCode: string;
+  message: string;
+}
+
+export interface PayrollCalculationResult {
+  items: PayrollCalculationItem[];
+  /** 비어 있지 않으면 일부 직원의 정산이 중단된 것 — 반드시 화면에 노출해야 한다. */
+  failed: PayrollCalculationFailure[];
+}
+
 // WP-04(계획서): PayrollRunScreen.tsx가 직접 api.post 하던 것을 이관 — BE 응답의 중첩
 // employee.id/employee.user.name 형태를 화면이 쓰는 평탄한 형태로 매핑한다.
-async function calculate(payload: PayrollCalculatePayload): Promise<PayrollCalculationItem[]> {
-  const res = await api.post<any[]>('/api/payroll/calculate', payload);
-  const data: any = res.data as any;
+async function calculate(payload: PayrollCalculatePayload): Promise<PayrollCalculationResult> {
+  const res = await api.post<any>('/api/payroll/calculate', payload);
+  const data = res.data;
   const list: any[] = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
-  return list.map(d => ({
+  const failed: PayrollCalculationFailure[] = Array.isArray(data?.failed)
+    ? data.failed.map((f: any) => ({
+        employeeId: f.employeeId,
+        employeeName: f.employeeName ?? '직원',
+        errorCode: f.errorCode ?? 'UNKNOWN',
+        message: f.message ?? '급여를 계산하지 못했어요.',
+      }))
+    : [];
+  const items = list.map(d => ({
     payrollId: d.id,
     employeeId: d.employee?.id ?? d.employeeId,
     employeeName: d.employee?.user?.name ?? d.employeeName ?? '직원',
@@ -111,11 +155,14 @@ async function calculate(payload: PayrollCalculatePayload): Promise<PayrollCalcu
     nightWorkHours: d.nightWorkHours ?? 0,
     nightWorkWage: d.nightWorkWage ?? 0,
     weeklyAllowance: d.weeklyAllowance ?? 0,
+    weeklyOvertimeHours: d.weeklyOvertimeHours ?? 0,
+    weeklyOvertimeWage: d.weeklyOvertimeWage ?? 0,
     bonusWage: d.bonusWage ?? 0,
     grossWage: d.grossWage ?? 0,
     taxAmount: d.taxAmount ?? 0,
     netWage: d.netWage ?? 0,
   }));
+  return {items, failed};
 }
 
 // [API Mapping] PUT /api/payroll/{payrollId}/issue — 확정→지급완료 원자 처리(스텝업 비밀번호 필요)

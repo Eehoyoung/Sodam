@@ -4,6 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.time.DayOfWeek;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -98,19 +99,40 @@ class WeekStartPolicyMonthBoundaryTest {
                 WeekStartPolicy.HIRE_DATE_ANCHORED.weekStartOf(LocalDate.of(2026, 7, 31), null));
     }
 
-    // ===== STORE_DEFINED — 현재 구현 상태를 고정 =====
+    // ===== STORE_DEFINED / 계약서 휴일 매핑 =====
 
     @Test
-    @DisplayName("STORE_DEFINED: 현재는 MONDAY 와 동일하게 동작한다(RELEASE_GATES T-8)")
-    void store_defined_는_현재_MONDAY_와_동일하다() {
-        // ⚠️ 이 테스트는 "이래야 한다"가 아니라 "지금 이렇다"를 고정한 것이다.
-        //    STORE_DEFINED 는 이름과 달리 사업장 설정을 전혀 참조하지 않는다 — Store 엔티티에
-        //    기산 요일 필드 자체가 없다. RELEASE_GATES.md T-8 로 등재돼 있으며, G-7(노무사 서면확인)
-        //    해소 시 이 동작이 바뀐다. 그때 이 테스트는 함께 고쳐야 한다.
-        for (int day = 27; day <= 31; day++) {
-            LocalDate d = LocalDate.of(2026, 7, day);
-            assertEquals(WeekStartPolicy.MONDAY.weekStartOf(d, null),
-                    WeekStartPolicy.STORE_DEFINED.weekStartOf(d, null));
-        }
+    @DisplayName("STORE_DEFINED: 매장 기산요일을 쓰고, 미설정이면 MONDAY 로 폴백한다")
+    void store_defined_사업장_기산요일과_폴백을_사용한다() {
+        LocalDate friday = LocalDate.of(2026, 7, 31);
+        assertEquals(LocalDate.of(2026, 7, 26),
+                WeekStartPolicy.STORE_DEFINED.weekStartOf(friday, null, DayOfWeek.SUNDAY));
+        assertEquals(WeekStartPolicy.MONDAY.weekStartOf(friday, null),
+                WeekStartPolicy.STORE_DEFINED.weekStartOf(friday, null, null));
+    }
+
+    /**
+     * 계약서 주휴일 → 주 기산일 변환은 {@link ContractWeekStartRule} 만 담당한다. 같은 변환을
+     * 다른 곳에 복제하면 노무사 회신으로 규칙이 바뀔 때 한쪽만 고쳐지고 어긋난다.
+     */
+    @Test
+    @DisplayName("ContractWeekStartRule: 두 해석 규칙이 각각 다른 기산요일을 낸다")
+    void contract_week_start_rule_은_두_해석을_구분한다() {
+        assertEquals(DayOfWeek.MONDAY,
+                ContractWeekStartRule.DAY_AFTER_WEEKLY_HOLIDAY.weekStartDay("SUNDAY"));
+        assertEquals(DayOfWeek.SUNDAY,
+                ContractWeekStartRule.DAY_AFTER_WEEKLY_HOLIDAY.weekStartDay("SATURDAY"));
+
+        assertEquals(DayOfWeek.SUNDAY,
+                ContractWeekStartRule.WEEKLY_HOLIDAY_DAY.weekStartDay("SUNDAY"));
+        assertEquals(DayOfWeek.SATURDAY,
+                ContractWeekStartRule.WEEKLY_HOLIDAY_DAY.weekStartDay("SATURDAY"));
+    }
+
+    @Test
+    @DisplayName("ContractWeekStartRule: 소문자·공백이 섞인 계약서 값도 해석한다")
+    void contract_week_start_rule_은_입력을_정규화한다() {
+        assertEquals(DayOfWeek.MONDAY,
+                ContractWeekStartRule.DAY_AFTER_WEEKLY_HOLIDAY.weekStartDay("  sunday "));
     }
 }

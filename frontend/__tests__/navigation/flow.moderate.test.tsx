@@ -1,72 +1,59 @@
 import React from 'react';
-import ReactTestRenderer, { act } from 'react-test-renderer';
-import WelcomeMainScreen from '../../src/features/welcome/screens/SodamLandingScreen';
-import LoginScreen from '../../src/features/auth/screens/LoginScreen';
+import {render, fireEvent} from '@testing-library/react-native';
+import SodamLandingScreen from '../../src/features/welcome/screens/SodamLandingScreen';
 
-// We will spy on useNavigation from the (already globally mocked) module in jest.setup.js
-const getNavModule = () => require('@react-navigation/native');
+/**
+ * 랜딩 화면의 진입 분기 검증 (Welcome → Auth).
+ *
+ * <p>랜딩에는 목적이 다른 CTA 가 셋 있고, 잘못 이어지면 신규 사용자가 역할 선택을 건너뛰거나
+ * 기존 사용자가 가입 흐름으로 빠진다. 화면에 보이는 라벨로 눌러 목적지를 확인한다.</p>
+ *
+ * <p>이전 버전은 react-test-renderer 로 {@code node.type === 'TouchableOpacity'} 를 찾고
+ * "시작하기 → Login" 을 단언했는데, 그 계약은 이미 사라졌다(현재는 "무료로 시작하기 → RoleStart").
+ * 내부 구현 타입을 뒤지는 대신 RTL 실렌더링으로 다시 썼다.</p>
+ */
 
-// SKIP: WelcomeMainScreen 내부 Animated.parallel 호출이 jest mock 의 undefined 반환에 의존.
-// → Phase 3 에서 react-native-reanimated 실제 mock + RTL real-render 로 재작성.
-describe.skip('Moderate Navigation Flow (Welcome → Auth → Home)', () => {
-  let mockNavigate: jest.Mock;
-  let mockReset: jest.Mock;
+const mockNavigate = jest.fn();
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockNavigate = jest.fn();
-    mockReset = jest.fn();
+// 이 화면은 navigation 을 훅이 아니라 prop 으로 받는다(NavigationProp<RootStackParamList>).
+const renderLanding = () =>
+    render(<SodamLandingScreen navigation={{navigate: mockNavigate} as any} />);
 
-    const navModule = getNavModule();
-    jest.spyOn(navModule, 'useNavigation').mockImplementation(() => ({
-      navigate: mockNavigate,
-      goBack: jest.fn(),
-      reset: mockReset,
-    } as any));
-  });
-
-  test('WelcomeMainScreen renders and has 시작하기 CTA (snapshot smoke)', () => {
-    let renderer: any;
-    act(() => {
-      renderer = ReactTestRenderer.create(React.createElement(WelcomeMainScreen));
-    });
-    const tree = renderer!.toJSON();
-    expect(tree).toBeTruthy();
-
-    // Find the 시작하기 button by accessibilityLabel
-    const startButtons = renderer!.root.findAll((node: any) => node.type === 'TouchableOpacity' && node.props.accessibilityLabel === '시작하기 (로그인으로 이동)');
-    expect(startButtons.length).toBe(1);
-  });
-
-  test('Welcome → Auth(Login) navigation when pressing 시작하기', () => {
-    let renderer: any;
-    act(() => {
-      renderer = ReactTestRenderer.create(React.createElement(WelcomeMainScreen));
-    });
-    const startButton = renderer.root.find((node: any) => node.type === 'TouchableOpacity' && node.props.accessibilityLabel === '시작하기 (로그인으로 이동)');
-
-    act(() => {
-      startButton.props.onPress();
+describe('랜딩 화면 진입 분기', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
     });
 
-    expect(mockNavigate).toHaveBeenCalledWith('Auth', { screen: 'Login' });
-  });
+    it('핵심 가치 문구와 CTA 3종을 보여준다', () => {
+        const {getByText} = renderLanding();
 
-  test('Login success resets to HomeRoot (clears back stack)', () => {
-    const authNavMock = { navigate: jest.fn() } as any; // minimal Auth stack nav prop
-    let renderer: any;
-    act(() => {
-      renderer = ReactTestRenderer.create(React.createElement(LoginScreen, { navigation: authNavMock }));
+        expect(getByText('월말 정산이\n30분 안에 끝나요')).toBeTruthy();
+        expect(getByText('무료로 시작하기')).toBeTruthy();
+        expect(getByText('이미 계정이 있어요')).toBeTruthy();
     });
 
-    // Find RN Button by title="로그인 성공"
-    const loginButtons = renderer.root.findAll((node: any) => node.type === 'Button' && node.props.title === '로그인 성공');
-    expect(loginButtons.length).toBe(1);
+    it('"무료로 시작하기"는 로그인이 아니라 역할 선택으로 보낸다', () => {
+        const {getByText} = renderLanding();
 
-    act(() => {
-      loginButtons[0].props.onPress();
+        fireEvent.press(getByText('무료로 시작하기'));
+
+        // 역할(사장/직원)을 먼저 고르지 않으면 이후 가입 흐름이 갈라지지 않는다.
+        expect(mockNavigate).toHaveBeenCalledWith('Auth', {screen: 'RoleStart'});
     });
 
-    expect(mockReset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'HomeRoot' }] });
-  });
+    it('"이미 계정이 있어요"는 로그인으로 보낸다', () => {
+        const {getByText} = renderLanding();
+
+        fireEvent.press(getByText('이미 계정이 있어요'));
+
+        expect(mockNavigate).toHaveBeenCalledWith('Auth', {screen: 'Login'});
+    });
+
+    it('헤더의 로그인 버튼도 로그인으로 보낸다', () => {
+        const {getByLabelText} = renderLanding();
+
+        fireEvent.press(getByLabelText('로그인'));
+
+        expect(mockNavigate).toHaveBeenCalledWith('Auth', {screen: 'Login'});
+    });
 });

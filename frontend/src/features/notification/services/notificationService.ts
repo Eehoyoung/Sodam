@@ -10,7 +10,28 @@ export interface InboxItem {
     createdAt: string;
 }
 
+export interface NotificationPreferences {
+    master: boolean;
+    attendance: boolean;
+    payroll: boolean;
+    billing: boolean;
+    marketing: boolean;
+    quietHoursEnabled: boolean;
+    quietStart: string;
+    quietEnd: string;
+}
+
 const notificationService = {
+    getPreferences: async (): Promise<NotificationPreferences> => {
+        const res = await api.get<NotificationPreferences>('/api/notifications/prefs');
+        return res.data;
+    },
+
+    updatePreferences: async (preferences: NotificationPreferences): Promise<NotificationPreferences> => {
+        const res = await api.put<NotificationPreferences>('/api/notifications/prefs', preferences);
+        return res.data;
+    },
+
     // [API Mapping] GET /api/notifications/inbox — 알림함 목록(페이지네이션)
     listInbox: async (page = 0, size = 50): Promise<InboxItem[]> => {
         const res = await api.get<InboxItem[]>(`/api/notifications/inbox?page=${page}&size=${size}`);

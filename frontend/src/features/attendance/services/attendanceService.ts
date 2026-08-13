@@ -189,7 +189,7 @@ const attendanceService = {
             );
             return response.data;
         } catch (error) {
-            logger.error('출퇴�?기록??가?�오??�??�류가 발생?�습?�다', 'ATTENDANCE_SERVICE', error);
+            logger.error('[ATTENDANCE_SERVICE] 출퇴�?기록??가?�오??�??�류가 발생?�습?�다', error);
             throw error;
         }
     },
@@ -203,7 +203,7 @@ const attendanceService = {
             const response = await api.post<AttendanceRecord>('/api/attendance/check-in/nfc', payload);
             return response.data;
         } catch (error) {
-            logger.error('', 'ATTENDANCE_SERVICE', error);
+            logger.error('[ATTENDANCE_SERVICE]', error);
             throw error;
         }
     },
@@ -217,7 +217,7 @@ const attendanceService = {
             const response = await api.post<AttendanceRecord>('/api/attendance/check-out/nfc', payload);
             return response.data;
         } catch (error) {
-            logger.error('', 'ATTENDANCE_SERVICE', error);
+            logger.error('[ATTENDANCE_SERVICE]', error);
             throw error;
         }
     },
@@ -233,7 +233,7 @@ const attendanceService = {
             const response = await api.post<AttendanceRecord>('/api/attendance/check-in/qr', payload);
             return response.data;
         } catch (error) {
-            logger.error('', 'ATTENDANCE_SERVICE', error);
+            logger.error('[ATTENDANCE_SERVICE]', error);
             throw error;
         }
     },
@@ -247,7 +247,7 @@ const attendanceService = {
             const response = await api.post<AttendanceRecord>('/api/attendance/check-out/qr', payload);
             return response.data;
         } catch (error) {
-            logger.error('', 'ATTENDANCE_SERVICE', error);
+            logger.error('[ATTENDANCE_SERVICE]', error);
             throw error;
         }
     },
@@ -262,7 +262,7 @@ const attendanceService = {
             const response = await api.get<AttendanceRecord>(`/api/attendance/${attendanceId}`);
             return response.data;
         } catch (error) {
-            logger.error('?�정 출퇴�?기록??가?�오??�??�류가 발생?�습?�다', 'ATTENDANCE_SERVICE', error);
+            logger.error('[ATTENDANCE_SERVICE] ?�정 출퇴�?기록??가?�오??�??�류가 발생?�습?�다', error);
             throw error;
         }
     },
@@ -276,7 +276,7 @@ const attendanceService = {
             const response = await api.post<AttendanceRecord>('/api/attendance/check-in', payload);
             return response.data;
         } catch (error) {
-            logger.error('', 'ATTENDANCE_SERVICE', error);
+            logger.error('[ATTENDANCE_SERVICE]', error);
             throw error;
         }
     },
@@ -290,7 +290,7 @@ const attendanceService = {
             const response = await api.post<AttendanceRecord>('/api/attendance/check-out', payload);
             return response.data;
         } catch (error) {
-            logger.error('', 'ATTENDANCE_SERVICE', error);
+            logger.error('[ATTENDANCE_SERVICE]', error);
             throw error;
         }
     },
@@ -304,7 +304,7 @@ const attendanceService = {
             const response = await api.post<AttendanceRecord>('/api/attendance/check-out', payload);
             return response.data;
         } catch (error) {
-            logger.error('', 'ATTENDANCE_SERVICE', error);
+            logger.error('[ATTENDANCE_SERVICE]', error);
             throw error;
         }
     },
@@ -320,7 +320,7 @@ const attendanceService = {
             const response = await api.put<AttendanceRecord>(`/api/attendance/${attendanceId}`, updateData);
             return response.data;
         } catch (error) {
-            logger.error('', 'ATTENDANCE_SERVICE', error);
+            logger.error('[ATTENDANCE_SERVICE]', error);
             throw error;
         }
     },
@@ -333,7 +333,7 @@ const attendanceService = {
         try {
             await api.delete(`/api/attendance/${attendanceId}`);
         } catch (error) {
-            logger.error('', 'ATTENDANCE_SERVICE', error);
+            logger.error('[ATTENDANCE_SERVICE]', error);
             throw error;
         }
     },
@@ -360,7 +360,7 @@ const attendanceService = {
             if (error?.response?.status === 404) {
                 return null; // 오늘 기록 없음
             }
-            logger.error('', 'ATTENDANCE_SERVICE', error);
+            logger.error('[ATTENDANCE_SERVICE]', error);
             throw error;
         }
     },
@@ -375,7 +375,7 @@ const attendanceService = {
             const response = await api.get<AttendanceStatistics>('/api/attendance/statistics', filter);
             return response.data;
         } catch (error) {
-            logger.error('', 'ATTENDANCE_SERVICE', error);
+            logger.error('[ATTENDANCE_SERVICE]', error);
             throw error;
         }
     },
@@ -399,7 +399,7 @@ const attendanceService = {
             });
             return response.data;
         } catch (error) {
-            logger.error('', 'ATTENDANCE_SERVICE', error);
+            logger.error('[ATTENDANCE_SERVICE]', error);
             throw error;
         }
     },
@@ -424,7 +424,7 @@ const attendanceService = {
             });
             return response.data;
         } catch (error) {
-            logger.error('', 'ATTENDANCE_SERVICE', error);
+            logger.error('[ATTENDANCE_SERVICE]', error);
             throw error;
         }
     },
@@ -446,7 +446,7 @@ const attendanceService = {
             });
             return response.data;
         } catch (error) {
-            logger.error('', 'ATTENDANCE_SERVICE', error);
+            logger.error('[ATTENDANCE_SERVICE]', error);
             throw error;
         }
     },
@@ -485,7 +485,7 @@ const attendanceService = {
                 message: data?.message ?? data?.reason,
             };
         } catch (error) {
-            logger.error('', 'ATTENDANCE_SERVICE', error);
+            logger.error('[ATTENDANCE_SERVICE]', error);
             throw error;
         }
     },

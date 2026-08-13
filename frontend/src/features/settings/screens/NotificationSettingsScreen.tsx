@@ -1,5 +1,5 @@
 /* eslint-disable react-native/no-unused-styles -- styles built via makeStyles(theme) factory; the rule cannot statically track factory-created stylesheets and flags every (used) entry as unused */
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Platform, Pressable, StyleSheet, Text, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -8,21 +8,11 @@ import {tokens} from '../../../theme/tokens';
 import {AppBadge, AppHeader, AppListItem, AppText, ScreenContainer} from '../../../common/components/ds';
 import {useThemeColors, ThemeColors} from '../../../common/hooks/useThemeColors';
 import {unifiedStorage} from '../../../common/utils/unifiedStorage';
+import notificationService, {NotificationPreferences} from '../../notification/services/notificationService';
 
 const STORAGE_KEY = 'notificationPrefs.v1';
 
-interface NotificationPrefs {
-    master: boolean;
-    attendance: boolean;
-    payroll: boolean;
-    billing: boolean;
-    marketing: boolean;
-    quietHoursEnabled: boolean;
-    quietStart: string; // HH:MM
-    quietEnd: string;
-}
-
-const DEFAULT_PREFS: NotificationPrefs = {
+const DEFAULT_PREFS: NotificationPreferences = {
     master: true,
     attendance: true,
     payroll: true,
@@ -42,16 +32,18 @@ const useStyles = () => {
  * 40 NotificationSettings — v3 아티팩트(sodam-v3-06-settings.html) 반영.
  * Switch 대신 배지형 리스트(AppListItem + AppBadge "켜짐"/"꺼짐") — 행 전체를 탭하면 토글된다.
  * on/off 저장 로직(update/AsyncStorage)은 그대로 유지, 시각 표현만 배지로 교체.
- * AsyncStorage 에 즉시 저장. BE 동기화는 P1.
+ * AsyncStorage 에 즉시 저장하고 `PUT /api/notifications/prefs` 로 서버에 동기화한다.
  *
- * TODO[P1 BE]: PUT /api/notifications/prefs — 서버 동기화 + 디바이스 간 일관성.
+ * <p>서버가 최종 기준이다 — 외부 푸시(FCM) 발송 여부는 BE 가 `NotificationPreference` 로
+ * 판정한다. 인앱 알림함은 이 설정과 무관하게 항상 적재된다.</p>
  */
 const NotificationSettingsScreen: React.FC = () => {
     const styles = useStyles();
     const c = useThemeColors();
     const navigation = useNavigation();
-    const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
+    const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_PREFS);
     const [pickerOpenFor, setPickerOpenFor] = useState<null | 'start' | 'end'>(null);
+    const hasLocalChanges = useRef(false);
 
     useEffect(() => {
         (async () => {
@@ -59,14 +51,29 @@ const NotificationSettingsScreen: React.FC = () => {
                 const raw = await unifiedStorage.getItem(STORAGE_KEY);
                 if (raw) {setPrefs({...DEFAULT_PREFS, ...JSON.parse(raw)});}
             } catch (_) {/* ignore */}
+            try {
+                const serverPrefs = await notificationService.getPreferences();
+                const syncedPrefs = {...DEFAULT_PREFS, ...serverPrefs};
+                if (!hasLocalChanges.current) {
+                    setPrefs(syncedPrefs);
+                    await unifiedStorage.setItem(STORAGE_KEY, JSON.stringify(syncedPrefs));
+                }
+            } catch (_) {/* retain local cache as fallback */}
         })();
     }, []);
 
-    const update = async (next: NotificationPrefs) => {
+    const update = async (next: NotificationPreferences) => {
+        hasLocalChanges.current = true;
         setPrefs(next);
         try {
             await unifiedStorage.setItem(STORAGE_KEY, JSON.stringify(next));
         } catch (_) {/* ignore */}
+        try {
+            const serverPrefs = await notificationService.updatePreferences(next);
+            const syncedPrefs = {...DEFAULT_PREFS, ...serverPrefs};
+            setPrefs(syncedPrefs);
+            await unifiedStorage.setItem(STORAGE_KEY, JSON.stringify(syncedPrefs));
+        } catch (_) {/* local cache remains the offline fallback */}
     };
 
     const pad2 = (n: number) => String(n).padStart(2, '0');
@@ -192,12 +199,13 @@ interface RowProps {
 
 // v3 아티팩트 40: Switch 대신 배지(켜짐=teal/success, 꺼짐=neutral) — 행 전체 탭으로 토글.
 const Row: React.FC<RowProps> = ({label, sub, value, disabled, onChange}) => {
+    const styles = useStyles();
     return (
         <AppListItem
             title={label}
             subtitle={sub}
             onPress={disabled ? undefined : () => onChange(!value)}
-            style={disabled ? {opacity: 0.5} : undefined}
+            style={disabled ? styles.dimmed : undefined}
             right={<AppBadge label={value ? '켜짐' : '꺼짐'} tone={value ? 'success' : 'neutral'} />}
         />
     );
@@ -210,7 +218,7 @@ const Section: React.FC<{
 }> = ({title, children, disabled}) => {
     const styles = useStyles();
     return (
-        <View style={[styles.section, disabled && {opacity: 0.5}]}>
+        <View style={[styles.section, disabled && styles.dimmed]}>
             <Text style={styles.sectionTitle}>{title}</Text>
             <View style={styles.list}>{children}</View>
         </View>
@@ -234,6 +242,7 @@ const QuietTimePicker: React.FC<{
 };
 
 const makeStyles = (c: ThemeColors) => StyleSheet.create({
+    dimmed: {opacity: 0.5},
     title: {marginBottom: tokens.spacing.xs},
     subtitle: {
         fontSize: tokens.typography.sizes.md,

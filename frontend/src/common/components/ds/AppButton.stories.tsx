@@ -1,13 +1,17 @@
 import type {Meta, StoryObj} from '@storybook/react-native-web-vite';
-import {View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {AppButton} from './AppButton';
+
+const styles = StyleSheet.create({
+    canvas: {padding: 16, maxWidth: 360},
+});
 
 const meta: Meta<typeof AppButton> = {
     title: 'DS/AppButton',
     component: AppButton,
     decorators: [
         Story => (
-            <View style={{padding: 16, maxWidth: 360}}>
+            <View style={styles.canvas}>
                 <Story />
             </View>
         ),

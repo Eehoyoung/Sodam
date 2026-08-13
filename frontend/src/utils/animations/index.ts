@@ -144,6 +144,7 @@ export {
 
 // Conditionally re-export Reanimated functions based on feature flags
 import {ENABLE_ANIMATIONS, stageAtLeast, ANIMATION_RECOVERY_STAGE} from '../../../src/navigation/config';
+import {logger} from '../logger';
 
 // Placeholder exports when animations are disabled
 const createPlaceholderExports = () => ({
@@ -202,7 +203,7 @@ try {
         reanimatedExports = createPlaceholderExports();
     }
 } catch (error) {
-    console.warn('[RECOVERY] animations/index: Reanimated import failed, using placeholders', error);
+    logger.warn('[RECOVERY] animations/index: Reanimated import failed, using placeholders', error);
     reanimatedExports = createPlaceholderExports();
 }
 
@@ -315,7 +316,7 @@ export const PerformanceUtils = {
             end: () => {
                 const endTime = Date.now();
                 const duration = endTime - startTime;
-                console.log(`[ANIMATION_PERFORMANCE] ${name}: ${duration}ms`);
+                logger.debug(`[ANIMATION_PERFORMANCE] ${name}: ${duration}ms`);
                 return duration;
             },
         };
@@ -323,7 +324,7 @@ export const PerformanceUtils = {
 
     logFrameRate: (fps: number) => {
         if (fps < PERFORMANCE_CONSTANTS.TARGET_FPS * 0.9) {
-            console.warn(`[ANIMATION_PERFORMANCE] Low frame rate detected: ${fps}fps`);
+            logger.warn(`[ANIMATION_PERFORMANCE] Low frame rate detected: ${fps}fps`);
         }
     },
 

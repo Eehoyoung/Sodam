@@ -1,4 +1,5 @@
 import {api} from '../../../common/api';
+import {logger} from '../../../utils/logger';
 
 export interface LocationVerifyRequest {
     employeeId: number;
@@ -36,7 +37,7 @@ export const verifyCheckInByLocation = async (
             timestamp: data?.timestamp,
         };
     } catch (error) {
-        console.error('위치 기반 출근 인증 실패:', error);
+        logger.error('위치 기반 출근 인증 실패:', error);
         return {
             success: false,
             message: '위치 기반 출근 인증에 실패했습니다. 다시 시도해주세요.'
@@ -70,7 +71,7 @@ export const verifyCheckOutByLocation = async (
             timestamp: data?.timestamp,
         };
     } catch (error) {
-        console.error('위치 기반 퇴근 인증 실패:', error);
+        logger.error('위치 기반 퇴근 인증 실패:', error);
         return {
             success: false,
             message: '위치 기반 퇴근 인증에 실패했습니다. 다시 시도해주세요.'

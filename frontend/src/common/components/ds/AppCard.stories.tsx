@@ -1,14 +1,20 @@
 import type {Meta, StoryObj} from '@storybook/react-native-web-vite';
-import {View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
+import {colors} from '../../../theme/tokens';
 import {AppCard} from './AppCard';
 import {AppText} from './AppText';
+
+const styles = StyleSheet.create({
+    canvas: {padding: 16, maxWidth: 360, backgroundColor: colors.surfaceCanvas},
+    subLabel: {marginTop: 4},
+});
 
 const meta: Meta<typeof AppCard> = {
     title: 'DS/AppCard',
     component: AppCard,
     decorators: [
         Story => (
-            <View style={{padding: 16, maxWidth: 360, backgroundColor: '#F7F7F4'}}>
+            <View style={styles.canvas}>
                 <Story />
             </View>
         ),
@@ -32,7 +38,7 @@ type Story = StoryObj<typeof AppCard>;
 const CardBody = () => (
     <View>
         <AppText variant="headingSm" weight="700">이번 주 근무 요약</AppText>
-        <AppText variant="bodyMd" tone="secondary" style={{marginTop: 4}}>
+        <AppText variant="bodyMd" tone="secondary" style={styles.subLabel}>
             5일 근무 · 32시간 12분
         </AppText>
     </View>

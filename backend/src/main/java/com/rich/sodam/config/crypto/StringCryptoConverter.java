@@ -57,6 +57,30 @@ public class StringCryptoConverter implements AttributeConverter<String, String>
         return key != null;
     }
 
+    /**
+     * 암호화 키가 주입돼 있는지 — 백필 배치가 실행 가능 여부를 판단할 때 쓴다.
+     * 키가 없으면 이 컨버터는 평문을 그대로 저장하므로 백필해도 바뀌는 게 없다.
+     */
+    public static boolean isKeyConfigured() {
+        return key != null;
+    }
+
+    /** 암호문 판별용 접두사. 백필이 "아직 평문인 행"을 SQL 로 골라낼 때 쓴다. */
+    public static String cipherPrefix() {
+        return CIPHER_PREFIX;
+    }
+
+    /**
+     * 백필 전용 암호화 진입점 (RELEASE_GATES T-1).
+     *
+     * <p>백필은 JPA 를 거치지 않고 원본 컬럼을 직접 갱신한다 — 엔티티로 읽으면 컨버터가 이미
+     * 복호화해버려 "이 행이 평문인지"를 구분할 수 없기 때문이다. 그래서 같은 암호화 로직을
+     * 정적으로 한 번 더 열어 둔다. 이미 암호문이면 그대로 반환하므로 이중 암호화가 없다.</p>
+     */
+    public static String encryptForBackfill(String plaintext) {
+        return new StringCryptoConverter().convertToDatabaseColumn(plaintext);
+    }
+
     @Override
     public String convertToDatabaseColumn(String attribute) {
         if (attribute == null) {
