@@ -22,7 +22,7 @@ import {useQueryClient} from '@tanstack/react-query';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {AppHeader, AppText, AppToast, ConfirmSheet, ScreenContainer} from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
-import {layout, radius, recruit, spacing} from '../../../theme/tokens';
+import {colors, layout, radius, recruit, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {useAuth} from '../../../contexts/AuthContext';
 import type {ChatSyncMessage} from '../../../common/realtime/storeSyncClient';
@@ -341,7 +341,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({message, onLongPress}) => 
                             ? [styles.bubbleMineTail, {backgroundColor: recruit.primary}]
                             : [styles.bubbleTheirsTail, {backgroundColor: c.surfaceMuted}],
                     ]}>
-                    <AppText variant="bodyMd" style={{color: mine ? c.textInverse : c.textPrimary}}>
+                    <AppText variant="bodyMd" style={{color: mine ? colors.textInverse : c.textPrimary}}>
                         {message.content}
                     </AppText>
                 </Pressable>
