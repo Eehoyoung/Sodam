@@ -48,7 +48,14 @@ public enum PaymentProduct {
             CallbackStrategy.CLIENT_INTERCEPT,
             "/attendance-credit-charge",
             "sodam://payment/attendance-credit/success",
-            "sodam://payment/attendance-credit/fail");
+            "sodam://payment/attendance-credit/fail"),
+
+    /** 채용 부스트패스 — 결제 WebView가 sodam.local 센티넬 URL을 직접 가로챈다. */
+    RECRUITMENT_BOOST_PASS(
+            CallbackStrategy.CLIENT_INTERCEPT,
+            "/recruitment-boost-pass",
+            "sodam://payment/recruitment-boost-pass/success",
+            "sodam://payment/recruitment-boost-pass/fail");
 
     public enum CallbackStrategy {
         /** 토스 → 서버 URL → 앱 딥링크. 서버 컨트롤러 필수. */

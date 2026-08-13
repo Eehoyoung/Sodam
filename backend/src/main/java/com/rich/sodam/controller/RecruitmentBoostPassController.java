@@ -5,9 +5,12 @@ import com.rich.sodam.domain.type.RecruitmentBoostPassProductCode;
 import com.rich.sodam.dto.request.RecruitmentBoostPassConfirmRequest;
 import com.rich.sodam.dto.response.RecruitmentBoostPassOrderResponse;
 import com.rich.sodam.dto.response.RecruitmentBoostPassSummaryResponse;
+import com.rich.sodam.dto.response.TaxPaymentReadinessResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.service.RecruitmentBoostPassService;
+import com.rich.sodam.service.PaymentProduct;
+import com.rich.sodam.service.PaymentReadinessService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -36,6 +39,12 @@ import java.util.List;
 public class RecruitmentBoostPassController {
 
     private final RecruitmentBoostPassService passService;
+    private final PaymentReadinessService paymentReadinessService;
+
+    @GetMapping("/payment-readiness")
+    public ResponseEntity<TaxPaymentReadinessResponse> paymentReadiness() {
+        return ResponseEntity.ok(paymentReadinessService.readiness(PaymentProduct.RECRUITMENT_BOOST_PASS));
+    }
 
     @Operation(summary = "무제한 패스 현재 상태",
             description = "활성 패스 보유 여부·만료일(D-day)·상품 목록(3/7/30일권, 설정값)을 함께 반환합니다.")

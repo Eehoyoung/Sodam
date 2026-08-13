@@ -21,6 +21,7 @@ import recruitmentBoostPassApi, {
     RecruitmentBoostPassSummary,
 } from '../services/recruitmentBoostPassApi';
 import PurchaseLegalNotice from '../components/PurchaseLegalNotice';
+import {useRecruitmentBoostPassPaymentReadiness} from '../hooks/useRecruitmentBoostPassPaymentReadiness';
 
 /**
  * 채용 부스트 무제한 패스 — 사장 전용 애드온 구매 화면(recruitment-monetization-gamification-plan.md
@@ -70,6 +71,7 @@ const RecruitmentBoostPassScreen: React.FC<Props> = ({visualFixture}) => {
     const [summary, setSummary] = useState<RecruitmentBoostPassSummary | null>(visualFixture?.summary ?? null);
     const [loading, setLoading] = useState(!visualFixture);
     const [purchasingCode, setPurchasingCode] = useState<string | null>(null);
+    const readinessQuery = useRecruitmentBoostPassPaymentReadiness(!visualFixture);
 
     const load = useCallback(async () => {
         if (visualFixture) {
@@ -94,18 +96,33 @@ const RecruitmentBoostPassScreen: React.FC<Props> = ({visualFixture}) => {
     );
 
     const handlePurchase = async (product: RecruitmentBoostPassProduct) => {
-        if (!isTossLive()) {
+        const readiness = readinessQuery.data;
+        const livePaymentEnabled = isTossLive();
+        const hasLiveCallbacks = !!readiness?.successUrl && !!readiness?.failUrl;
+        if (!readiness || readiness.mode === 'UNAVAILABLE') {
+            AppToast.show('유료 결제는 준비 중이에요. 곧 만나요!');
+            return;
+        }
+        const mockAgreed = readiness.mode === 'MOCK' && !livePaymentEnabled;
+        const liveAgreed = readiness.mode === 'LIVE' && livePaymentEnabled && hasLiveCallbacks;
+        if (!mockAgreed && !liveAgreed) {
             AppToast.show('유료 결제는 준비 중이에요. 곧 만나요!');
             return;
         }
         setPurchasingCode(product.code);
         try {
             const order = await recruitmentBoostPassApi.createOrder(product.code);
-            navigation.navigate('RecruitmentBoostPassPayment', {
-                orderId: order.orderId,
-                amountKrw: order.amountKrw,
-                orderName: order.orderName,
-            });
+            if (mockAgreed) {
+                await recruitmentBoostPassApi.confirmOrder(order.orderId, `mock_${order.orderId}`, order.amountKrw);
+                AppToast.success('채용 부스트패스가 적용됐어요!');
+                await load();
+            } else {
+                navigation.navigate('RecruitmentBoostPassPayment', {
+                    orderId: order.orderId,
+                    amountKrw: order.amountKrw,
+                    orderName: order.orderName,
+                });
+            }
         } catch (e: unknown) {
             const message =
                 (e as {response?: {data?: {message?: string}}})?.response?.data?.message ??

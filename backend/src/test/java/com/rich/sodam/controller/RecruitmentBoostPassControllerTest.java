@@ -86,6 +86,18 @@ class RecruitmentBoostPassControllerTest {
     }
 
     @Test
+    @DisplayName("사장 본인 결제 준비 상태 조회 -> MOCK")
+    void masterToken_paymentReadiness_ok() throws Exception {
+        User master = master();
+
+        mockMvc.perform(get("/api/recruitment-boost-passes/payment-readiness").with(asPrincipal(master)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mode").value("MOCK"))
+                .andExpect(jsonPath("$.successUrl").value("sodam://payment/recruitment-boost-pass/success"))
+                .andExpect(jsonPath("$.failUrl").value("sodam://payment/recruitment-boost-pass/fail"));
+    }
+
+    @Test
     @DisplayName("사장 본인 주문 생성 → 200, PENDING 상태로 orderId/금액 반환")
     void masterToken_createOrder_ok() throws Exception {
         User master = master();

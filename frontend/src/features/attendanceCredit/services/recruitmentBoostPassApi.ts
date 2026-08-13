@@ -1,4 +1,5 @@
 import api from '../../../common/api/client';
+import type {PaymentReadiness} from './attendanceCreditApi';
 
 /**
  * 채용 부스트 무제한 패스 API 래퍼 — BE `RecruitmentBoostPassController` 1:1(recruitment-
@@ -44,6 +45,11 @@ export interface RecruitmentBoostPassOrder {
 }
 
 export const recruitmentBoostPassApi = {
+    async getPaymentReadiness(): Promise<PaymentReadiness> {
+        const res = await api.get<PaymentReadiness>('/api/recruitment-boost-passes/payment-readiness');
+        return res.data;
+    },
+
     async getMe(): Promise<RecruitmentBoostPassSummary> {
         const res = await api.get<RecruitmentBoostPassSummary>('/api/recruitment-boost-passes/me');
         return res.data;
