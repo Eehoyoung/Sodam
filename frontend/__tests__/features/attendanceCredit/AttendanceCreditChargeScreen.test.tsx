@@ -212,4 +212,38 @@ describe('AttendanceCreditChargeScreen', () => {
         expect(mockConfirmCharge).toHaveBeenCalledWith('ACC_1_mock', 'mock_ACC_1_mock', 1900);
         expect(mockNavigate).not.toHaveBeenCalled();
     });
+
+    // 아래 두 조합은 코드가 막고 있지만 위 두 테스트만으로는 고정되지 않는다. 결제 가드는
+    // 이 사이클에서 한 번 제거됐던 자리라(RELEASE_GATES §10 V-2) 매트릭스를 다 채워 둔다.
+    test.each([
+        [
+            '서버 MOCK 인데 클라이언트가 실키면',
+            true,
+            {mode: 'MOCK', successUrl: 'sodam://success', failUrl: 'sodam://fail'},
+        ],
+        [
+            '서버가 UNAVAILABLE 이면',
+            false,
+            {mode: 'UNAVAILABLE', successUrl: null, failUrl: null},
+        ],
+    ])('%s 주문 생성·승인·navigate 하지 않는다', async (_label, liveKey, readiness) => {
+        (isTossLive as jest.Mock).mockReturnValue(liveKey);
+        mockReadiness = readiness as typeof mockReadiness;
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<AttendanceCreditChargeScreen />);
+            await flush();
+        });
+        const buyButton = renderer!.root.findAllByType('Pressable')
+            .find(p => p.props.accessibilityLabel === '구매하기')!;
+        await act(async () => {
+            buyButton.props.onPress();
+            await flush();
+        });
+
+        expect(mockCreateChargeOrder).not.toHaveBeenCalled();
+        expect(mockConfirmCharge).not.toHaveBeenCalled();
+        expect(mockNavigate).not.toHaveBeenCalled();
+    });
 });
