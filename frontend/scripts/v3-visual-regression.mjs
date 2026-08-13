@@ -33,6 +33,10 @@ function relativeOutputPath(outputDirectory, path) {
     return normalizedPath(relative(outputDirectory, path));
 }
 
+async function readJson(path) {
+    return JSON.parse((await readFile(path, 'utf8')).replace(/^\uFEFF/, ''));
+}
+
 function parseCrop(value) {
     const values = value.split(',').map((part) => Number.parseInt(part, 10));
     if (values.length !== 4 || values.some((part) => !Number.isInteger(part) || part < 0)) {
@@ -192,7 +196,7 @@ async function compareScreens(outputDirectory) {
         throw new Error(`Reference manifest not found: ${manifestPath}. Run \`npm run visual:v3:reference\` first.`);
     }
 
-    const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+    const manifest = await readJson(manifestPath);
     if (manifest.artifactCardCount !== expectedArtifactCardCount || manifest.screens.length !== expectedArtifactCardCount) {
         throw new Error(`Manifest must contain exactly ${expectedArtifactCardCount} cards from the current artifact source.`);
     }
@@ -202,6 +206,17 @@ async function compareScreens(outputDirectory) {
     const diffDirectory = resolve(option('--diff-dir', join(outputDirectory, 'diff')));
     const channelThreshold = Number.parseInt(option('--channel-threshold', '0'), 10);
     const pixelBudget = Number.parseInt(option('--pixel-budget', '0'), 10);
+    const referenceSourceManifestPath = option('--reference-source-manifest');
+    const actualSourceManifestPath = option('--actual-source-manifest');
+    if ((referenceSourceManifestPath && !actualSourceManifestPath) || (!referenceSourceManifestPath && actualSourceManifestPath)) {
+        throw new Error('Independent source verification requires both source manifests.');
+    }
+    let referenceSource = null;
+    let actualSource = null;
+    if (referenceSourceManifestPath && actualSourceManifestPath) {
+        referenceSource = await readJson(resolve(referenceSourceManifestPath));
+        actualSource = await readJson(resolve(actualSourceManifestPath));
+    }
     if (!Number.isInteger(channelThreshold) || channelThreshold < 0 || channelThreshold > 255) {
         throw new Error('--channel-threshold must be an integer from 0 to 255.');
     }
@@ -222,16 +237,22 @@ async function compareScreens(outputDirectory) {
         ? manifest.screens.filter((screen) => selectedIds.has(screen.id))
         : manifest.screens;
 
+    const identicalSource = referenceSource?.commitSha === actualSource?.commitSha;
     const results = [];
-    for (const screen of selectedScreens) {
+    if (identicalSource) {
+        for (const screen of selectedScreens) {
+            results.push({id: screen.id, status: 'IDENTICAL_SOURCE'});
+        }
+    }
+    for (const screen of identicalSource ? [] : selectedScreens) {
         const referencePath = join(referenceDirectory, `${screen.id}.png`);
         const actualPath = join(actualDirectory, `${screen.id}.png`);
         if (!existsSync(referencePath)) {
-            results.push({id: screen.id, status: 'missing-reference'});
+            results.push({id: screen.id, status: 'MISSING_REFERENCE'});
             continue;
         }
         if (!existsSync(actualPath)) {
-            results.push({id: screen.id, status: 'missing-actual'});
+            results.push({id: screen.id, status: 'MISMATCH', reason: 'MISSING_ACTUAL'});
             continue;
         }
 
@@ -240,7 +261,8 @@ async function compareScreens(outputDirectory) {
         if (reference.width !== actual.width || reference.height !== actual.height) {
             results.push({
                 id: screen.id,
-                status: 'dimension-mismatch',
+                status: 'MISMATCH',
+                reason: 'DIMENSION_MISMATCH',
                 reference: `${reference.width}x${reference.height}`,
                 actual: `${actual.width}x${actual.height}`,
             });
@@ -248,8 +270,8 @@ async function compareScreens(outputDirectory) {
         }
 
         const comparison = buildDiff(reference, actual, channelThreshold);
-        const status = comparison.differingPixels <= pixelBudget ? 'passed' : 'pixel-mismatch';
-        if (status !== 'passed') {
+        const status = comparison.differingPixels <= pixelBudget ? 'PASS' : 'MISMATCH';
+        if (status !== 'PASS') {
             await writePng(join(diffDirectory, `${screen.id}.png`), comparison.diff);
         }
         results.push({
@@ -260,9 +282,12 @@ async function compareScreens(outputDirectory) {
         });
     }
 
-    const failures = results.filter((result) => result.status !== 'passed');
+    const failures = results.filter((result) => result.status !== 'PASS');
     const report = {
         generatedAt: new Date().toISOString(),
+        referenceSource,
+        actualSource,
+        referenceCommitSha: referenceSource?.commitSha ?? manifest.source?.commitSha ?? null,
         artifactCardCount: manifest.artifactCardCount,
         comparedScreenCount: selectedScreens.length,
         referenceDirectory: relativeOutputPath(outputDirectory, referenceDirectory),
@@ -270,12 +295,11 @@ async function compareScreens(outputDirectory) {
         channelThreshold,
         pixelBudget,
         summary: {
-            passed: results.length - failures.length,
+            PASS: results.filter((result) => result.status === 'PASS').length,
+            MISMATCH: results.filter((result) => result.status === 'MISMATCH').length,
+            MISSING_REFERENCE: results.filter((result) => result.status === 'MISSING_REFERENCE').length,
+            IDENTICAL_SOURCE: results.filter((result) => result.status === 'IDENTICAL_SOURCE').length,
             failed: failures.length,
-            missingReference: results.filter((result) => result.status === 'missing-reference').length,
-            missingActual: results.filter((result) => result.status === 'missing-actual').length,
-            dimensionMismatch: results.filter((result) => result.status === 'dimension-mismatch').length,
-            pixelMismatch: results.filter((result) => result.status === 'pixel-mismatch').length,
         },
         results,
     };
@@ -284,6 +308,9 @@ async function compareScreens(outputDirectory) {
     console.log(JSON.stringify(report.summary));
     console.log(`Report: ${reportPath}`);
     if (failures.length > 0) {
+        if (identicalSource) {
+            console.error(`IDENTICAL_SOURCE: reference and actual both use ${referenceSource.commitSha}`);
+        }
         process.exitCode = 1;
     }
 }

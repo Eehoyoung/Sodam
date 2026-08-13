@@ -49,7 +49,8 @@
     "visual:v3:reference:strict-154": "node ./scripts/v3-visual-regression.mjs reference --expected-screen-count 154",
     "visual:v3:compare": "node ./scripts/v3-visual-regression.mjs compare",
     "visual:v3:catalog": "node ./scripts/v3-visual-catalog.mjs",
-    "visual:v3:compare:native": "node ./scripts/v3-visual-regression.mjs compare --reference-dir ../artifacts/v3-visual/native-reference --actual ../artifacts/v3-visual/actual --diff-dir ../artifacts/v3-visual/native-diff --report-file ../artifacts/v3-visual/native-strict-report.json --channel-threshold 0 --pixel-budget 0",
+    "visual:v3:verify-catalog": "node ./scripts/v3-visual-verify-catalog.mjs",
+    "visual:v3:compare:native": "node ./scripts/v3-visual-regression.mjs compare --reference-dir ../artifacts/v3-visual/native-reference --actual ../artifacts/v3-visual/actual --diff-dir ../artifacts/v3-visual/native-diff --report-file ../artifacts/v3-visual/native-strict-report.json --reference-source-manifest ../artifacts/v3-visual/native-reference/source-manifest.json --actual-source-manifest ../artifacts/v3-visual/actual/source-manifest.json --channel-threshold 0 --pixel-budget 0",
     "visual:v3:prepare": "powershell -ExecutionPolicy Bypass -File .\\scripts\\prepare-v3-android-screen.ps1",
     "visual:v3:capture": "powershell -ExecutionPolicy Bypass -File .\\scripts\\capture-v3-android-screen.ps1",
     "visual:v3:capture:native": "powershell -ExecutionPolicy Bypass -File .\\scripts\\capture-v3-android-visual.ps1"
