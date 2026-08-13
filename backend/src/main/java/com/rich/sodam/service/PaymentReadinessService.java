@@ -25,6 +25,11 @@ public class PaymentReadinessService {
     }
 
     private TaxPaymentReadinessResponse liveReadiness(PaymentProduct product) {
+        // 콜백이 배선되지 않은 상품은 LIVE 에서 URL 을 지어내지 않는다 — 지어내면 FE 의
+        // hasLiveCallbacks 검사가 통과해버려, 게이트만 열리고 결제는 404 로 깨진다.
+        if (!product.supportsLiveCallback()) {
+            return unavailable();
+        }
         URI baseUrl = validHttpsBaseUrl(integrationProperties.getToss().getPublicCallbackBaseUrl());
         if (baseUrl == null) {
             return unavailable();

@@ -64,6 +64,23 @@ class AttendanceCreditChargeControllerTest {
                 .andExpect(jsonPath("$.successUrl").doesNotExist());
     }
 
+    @Test
+    @DisplayName("LIVE 콜백이 배선되지 않은 출근권은 baseUrl 이 멀쩡해도 UNAVAILABLE 이다")
+    void readiness_liveWithoutCallbackWiring_isUnavailable() throws Exception {
+        User master = master();
+        integrationProperties.getToss().setMode("live");
+        integrationProperties.getToss().setPublicCallbackBaseUrl("https://pay.sodam.test/");
+
+        // 세무서비스와 달리 출근권에는 LIVE 콜백 컨트롤러가 없다. 여기서 URL 을 지어내면
+        // FE 의 hasLiveCallbacks 검사가 통과해 결제 화면까지 갔다가 404 로 깨진다 —
+        // 게이트만 열리고 기능은 없는 상태가 가장 나쁘다. 사실대로 UNAVAILABLE 을 준다.
+        mockMvc.perform(get("/api/attendance-credits/charge/readiness").with(asPrincipal(master)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mode").value("UNAVAILABLE"))
+                .andExpect(jsonPath("$.successUrl").doesNotExist())
+                .andExpect(jsonPath("$.failUrl").doesNotExist());
+    }
+
     private User master() {
         User u = new User("attendance_credit_charge_ctrl_master" + (emailSeq++) + "@x.com", "사장");
         u.setUserGrade(UserGrade.MASTER);
