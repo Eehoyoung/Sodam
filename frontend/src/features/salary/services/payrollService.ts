@@ -23,6 +23,10 @@ interface RawPayrollDto {
   startDate?: string;
   endDate?: string;
   totalHours?: number;
+  weeklyOvertimeHours?: number;
+  weeklyOvertimeWage?: number;
+  weeklyAllowanceHours?: number;
+  weeklyAllowance?: number;
   netWage?: number;
   status?: string;
 }
@@ -36,6 +40,10 @@ export interface PayrollSummary {
   storeId: number;
   storeName?: string;
   totalHours?: number;
+  weeklyOvertimeHours?: number;
+  weeklyOvertimeWage?: number;
+  weeklyAllowanceHours?: number;
+  weeklyAllowance?: number;
   totalPay?: number;
   status?: string;
   period?: { startDate: string; endDate: string };
@@ -69,6 +77,10 @@ function toSummary(dto: RawPayrollDto): PayrollSummary {
     storeId: dto.storeId,
     storeName: dto.storeName,
     totalHours: dto.totalHours,
+    weeklyOvertimeHours: dto.weeklyOvertimeHours ?? 0,
+    weeklyOvertimeWage: dto.weeklyOvertimeWage ?? 0,
+    weeklyAllowanceHours: dto.weeklyAllowanceHours ?? 0,
+    weeklyAllowance: dto.weeklyAllowance ?? 0,
     totalPay: dto.netWage,
     status: dto.status,
     period: dto.startDate && dto.endDate ? {startDate: dto.startDate, endDate: dto.endDate} : undefined,

@@ -187,6 +187,14 @@ const SalaryDetailScreen: React.FC<Props> = ({route, visualFixture}) => {
                 </AppCard>
             )}
 
+            <AppText variant="titleMd" style={styles.calculationBasisTitle}>급여 계산 근거</AppText>
+            <AppCard variant="plain" style={styles.calculationBasisCard}>
+                <Row label="주간 초과근로 시간" value={`${summary.weeklyOvertimeHours ?? 0}h`} />
+                <Row label="주간 초과근로 가산액" value={formatMoney(summary.weeklyOvertimeWage ?? 0)} />
+                <Row label="주휴 인정 시간" value={`${summary.weeklyAllowanceHours ?? 0}h`} />
+                <Row label="주휴수당" value={formatMoney(summary.weeklyAllowance ?? 0)} />
+            </AppCard>
+
             <PayrollCalculationDetailModal
                 visible={calcDetailVisible}
                 onClose={() => setCalcDetailVisible(false)}
@@ -208,6 +216,8 @@ const styles = StyleSheet.create({
     itemDivider: {borderBottomWidth: 1},
     heroBlock: {paddingTop: spacing.sm, paddingBottom: spacing.xl},
     summary: {marginBottom: spacing.xxl, gap: spacing.xs},
+    calculationBasisTitle: {marginTop: spacing.xxl, marginBottom: spacing.md},
+    calculationBasisCard: {marginBottom: spacing.xxl, gap: spacing.xs},
     row: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6},
     subtitle: {marginBottom: spacing.md},
     itemsCard: {paddingVertical: spacing.xs},
