@@ -16,11 +16,18 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,7 +45,17 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest
 @ActiveProfiles("test")
+@Import(NotificationAfterCommitTest.FixedClockConfig.class)
 class NotificationAfterCommitTest {
+
+    @TestConfiguration
+    static class FixedClockConfig {
+        @Bean
+        @Primary
+        Clock fixedNotificationClock() {
+            return Clock.fixed(Instant.parse("2026-08-13T13:00:00Z"), ZoneId.of("Asia/Seoul"));
+        }
+    }
 
     @Autowired private NotificationService notificationService;
     @Autowired private UserRepository userRepo;
@@ -120,6 +137,15 @@ class NotificationAfterCommitTest {
         }
     }
 
+    private PushMessage marketingMessage() {
+        return PushMessage.builder()
+                .title("마케팅 테스트")
+                .body("야간 외부 발송 차단 검증")
+                .deepLink("sodam://marketing")
+                .data(Map.of("type", "MARKETING"))
+                .build();
+    }
+
     @Test
     @DisplayName("사장 커스텀 메시지도 inbox와 afterCommit 푸시 경로를 함께 사용한다")
     void customMessage_commitSendsPushAndCreatesInbox() {
@@ -153,6 +179,29 @@ class NotificationAfterCommitTest {
         TransactionTemplate tt = new TransactionTemplate(txManager);
         tt.execute(status -> {
             notificationService.push(target.getId(), testMessage());
+            return null;
+        });
+
+        assertThat(notificationInboxRepo.findByUser_IdOrderByCreatedAtDesc(target.getId(), Pageable.unpaged())
+                .getTotalElements()).isEqualTo(1);
+        if (mockPushNotifier != null) {
+            assertThat(mockPushNotifier.getSentCount()).isEqualTo(before);
+        }
+    }
+
+    @Test
+    @DisplayName("22시 마케팅 알림은 inbox만 적재하고 afterCommit 외부 푸시는 0건이다")
+    void marketingAt22_blocksExternalPushButKeepsInbox() {
+        User target = fixtureUser("marketing_night_target");
+        deviceTokenRepo.save(DeviceToken.of(target, "token-marketing-" + target.getId(), DeviceToken.Platform.ANDROID));
+        NotificationPreference preference = NotificationPreference.defaultsFor(target.getId());
+        preference.update(new NotificationPreferenceUpdateRequest(
+                true, true, true, true, true, false, "22:00", "07:00"));
+        notificationPreferenceRepo.save(preference);
+        int before = mockPushNotifier != null ? mockPushNotifier.getSentCount() : 0;
+
+        new TransactionTemplate(txManager).execute(status -> {
+            notificationService.push(target.getId(), marketingMessage());
             return null;
         });
 

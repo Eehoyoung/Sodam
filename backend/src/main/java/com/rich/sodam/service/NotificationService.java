@@ -22,8 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.Clock;
 import java.time.LocalTime;
-import java.time.ZoneId;
 
 /**
  * 도메인 이벤트 → 푸시 알림 매핑.
@@ -43,6 +43,7 @@ public class NotificationService {
     private final DeviceTokenRepository deviceTokenRepository;
     private final NotificationInboxRepository inboxRepository;
     private final NotificationPreferenceRepository notificationPreferenceRepository;
+    private final Clock clock;
     private final UserRepository userRepository;
     private final AfterCommitExecutor afterCommitExecutor;
 
@@ -325,7 +326,7 @@ public class NotificationService {
     /** 인앱 알림함은 보존하고 FCM 같은 외부 전달만 사용자 수신 설정을 따른다. */
     private boolean isExternalPushAllowed(Long userId, PushMessage message) {
         return notificationPreferenceRepository.findById(userId)
-                .map(preference -> preference.allows(resolveCategory(message), LocalTime.now(ZoneId.of("Asia/Seoul"))))
+                .map(preference -> preference.allows(resolveCategory(message), LocalTime.now(clock)))
                 .orElse(true);
     }
 
