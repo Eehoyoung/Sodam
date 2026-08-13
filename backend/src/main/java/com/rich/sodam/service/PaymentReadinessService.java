@@ -25,11 +25,10 @@ public class PaymentReadinessService {
     }
 
     private TaxPaymentReadinessResponse liveReadiness(PaymentProduct product) {
-        // 콜백이 배선되지 않은 상품은 LIVE 에서 URL 을 지어내지 않는다 — 지어내면 FE 의
-        // hasLiveCallbacks 검사가 통과해버려, 게이트만 열리고 결제는 404 로 깨진다.
-        if (!product.supportsLiveCallback()) {
-            return unavailable();
-        }
+        // CLIENT_INTERCEPT 상품(출근권)은 서버 콜백을 타지 않으므로 여기서 만든 URL 이
+        // FE 에서 소비되지 않는다 — LIVE 신호로만 쓰인다. 그래도 형태는 동일하게 채워
+        // 응답 계약(mode/successUrl/failUrl)을 상품별로 갈라놓지 않는다.
+        // ⚠️ "컨트롤러가 없으니 LIVE 를 막자" 는 판단은 틀렸다(PaymentProduct 주석 참고).
         URI baseUrl = validHttpsBaseUrl(integrationProperties.getToss().getPublicCallbackBaseUrl());
         if (baseUrl == null) {
             return unavailable();

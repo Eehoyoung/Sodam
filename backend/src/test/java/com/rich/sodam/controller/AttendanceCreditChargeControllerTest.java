@@ -65,20 +65,25 @@ class AttendanceCreditChargeControllerTest {
     }
 
     @Test
-    @DisplayName("LIVE 콜백이 배선되지 않은 출근권은 baseUrl 이 멀쩡해도 UNAVAILABLE 이다")
-    void readiness_liveWithoutCallbackWiring_isUnavailable() throws Exception {
+    @DisplayName("출근권은 서버 콜백을 타지 않지만 LIVE 에서 LIVE 를 반환한다")
+    void readiness_liveReturnsLiveForClientInterceptProduct() throws Exception {
         User master = master();
         integrationProperties.getToss().setMode("live");
         integrationProperties.getToss().setPublicCallbackBaseUrl("https://pay.sodam.test/");
 
-        // 세무서비스와 달리 출근권에는 LIVE 콜백 컨트롤러가 없다. 여기서 URL 을 지어내면
-        // FE 의 hasLiveCallbacks 검사가 통과해 결제 화면까지 갔다가 404 로 깨진다 —
-        // 게이트만 열리고 기능은 없는 상태가 가장 나쁘다. 사실대로 UNAVAILABLE 을 준다.
+        // 출근권 결제 화면은 WebView 가 sodam.local 센티넬을 가로채는 방식이라
+        // 서버 콜백 컨트롤러가 없고 필요하지도 않다. 여기서 내려주는 URL 은 FE 가
+        // 소비하지 않는다 — "서버가 LIVE 로 구성됐다" 는 신호로만 쓰인다.
+        // 컨트롤러가 없다는 이유로 UNAVAILABLE 을 주면 멀쩡한 LIVE 경로가 막힌다.
         mockMvc.perform(get("/api/attendance-credits/charge/readiness").with(asPrincipal(master)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.mode").value("UNAVAILABLE"))
-                .andExpect(jsonPath("$.successUrl").doesNotExist())
-                .andExpect(jsonPath("$.failUrl").doesNotExist());
+                .andExpect(jsonPath("$.mode").value("LIVE"));
+
+        // baseUrl 이 https 가 아니면(또는 비어 있으면) 그때는 UNAVAILABLE 이 맞다.
+        integrationProperties.getToss().setPublicCallbackBaseUrl("http://pay.sodam.test");
+        mockMvc.perform(get("/api/attendance-credits/charge/readiness").with(asPrincipal(master)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mode").value("UNAVAILABLE"));
     }
 
     private User master() {
