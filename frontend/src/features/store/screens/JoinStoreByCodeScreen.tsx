@@ -8,6 +8,7 @@ import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import storeService from '../services/storeService';
+import {getErrorMessage, toApiError} from '../../../common/errors';
 
 /**
  * 27 JoinStoreByCode — 확정 시안.
@@ -27,6 +28,7 @@ const JoinStoreByCodeScreen: React.FC<JoinStoreByCodeScreenProps> = ({visualFixt
     const c = useThemeColors();
     const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [joinedStore, setJoinedStore] = useState<string | null>(visualFixture?.joinedStore ?? null);
 
     const submit = async () => {
@@ -36,15 +38,20 @@ const JoinStoreByCodeScreen: React.FC<JoinStoreByCodeScreenProps> = ({visualFixt
             return;
         }
         setLoading(true);
+        setErrorMessage(null);
         try {
             const result = await storeService.joinByCode(normalized);
             setJoinedStore(result?.storeName ?? '매장');
-        } catch (e: any) {
-            const msg =
-                e?.response?.data?.message ??
-                (e?.response?.status === 404
+        } catch (e: unknown) {
+            // getErrorMessage 는 fallback 을 넘겨야 화면 문구가 산다 — 인자 없이 부르면 서버가
+            // message 를 안 준 404 에서 axios 의 영문 문자열이 그대로 사용자에게 노출된다.
+            const msg = getErrorMessage(
+                e,
+                toApiError(e).status === 404
                     ? '매장 코드와 일치하는 매장을 찾을 수 없어요.'
-                    : '잠시 후 다시 시도해 주세요.');
+                    : '잠시 후 다시 시도해 주세요.',
+            );
+            setErrorMessage(msg);
             AppToast.error(msg);
         } finally {
             setLoading(false);
@@ -92,6 +99,11 @@ const JoinStoreByCodeScreen: React.FC<JoinStoreByCodeScreenProps> = ({visualFixt
                 style={styles.codeInput}
                 containerStyle={styles.codeWrap}
             />
+            {errorMessage ? (
+                <AppText variant="bodyMd" tone="error" weight="700" style={styles.errorMessage}>
+                    {errorMessage}
+                </AppText>
+            ) : null}
 
             <View style={[styles.qrPlaceholder, {borderColor: c.border, backgroundColor: c.background}]}>
                 <Ionicons name="qr-code-outline" size={48} color={c.textTertiary} />
@@ -116,6 +128,7 @@ const styles = StyleSheet.create({
     heroSub: {marginTop: spacing.xs, opacity: 0.82},
     codeWrap: {marginTop: spacing.lg},
     codeInput: {fontSize: 22, letterSpacing: 4, fontWeight: '900', textAlign: 'center'},
+    errorMessage: {marginTop: spacing.sm},
     qrPlaceholder: {
         alignItems: 'center',
         justifyContent: 'center',

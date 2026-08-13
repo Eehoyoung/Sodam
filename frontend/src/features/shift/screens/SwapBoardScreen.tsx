@@ -67,6 +67,7 @@ const SwapBoardScreen: React.FC<{visualFixture?: SwapBoardVisualFixture}> = ({vi
     const [selectedStoreId, setSelectedStoreId] = useState<number | null>(() => visualFixture?.selectedStoreId ?? null);
     const [swaps, setSwaps] = useState<SwapRequest[]>(() => visualFixture?.swaps ?? []);
     const [applyingId, setApplyingId] = useState<number | null>(null);
+    const [applicationError, setApplicationError] = useState<string | null>(null);
     // useFocusEffect 재실행 없이 현재 선택 매장을 읽기 위한 ref (chip 선택 시 이중 로드 방지)
     const selectedStoreIdRef = useRef<number | null>(null);
 
@@ -154,6 +155,7 @@ const SwapBoardScreen: React.FC<{visualFixture?: SwapBoardVisualFixture}> = ({vi
             }
             try {
                 setApplyingId(swap.id);
+                setApplicationError(null);
                 await applySwap(swap.id);
                 AppToast.success('지원했어요. 사장님 확정을 기다려 주세요');
                 if (selectedStore) {
@@ -163,14 +165,20 @@ const SwapBoardScreen: React.FC<{visualFixture?: SwapBoardVisualFixture}> = ({vi
                 const status = toApiError(error).status;
                 const serverMessage = getErrorMessage(error);
                 if (status === 409) {
-                    AppToast.error(serverMessage ?? '이미 지원했거나 마감된 모집이에요.');
+                    const message = serverMessage ?? '이미 지원했거나 마감된 모집이에요.';
+                    setApplicationError(message);
+                    AppToast.error(message);
                     if (selectedStore) {
                         await loadSwaps(selectedStore.id).catch(() => {});
                     }
                 } else if (status === 400) {
-                    AppToast.error(serverMessage ?? '본인 근무에는 지원할 수 없어요.');
+                    const message = serverMessage ?? '본인 근무에는 지원할 수 없어요.';
+                    setApplicationError(message);
+                    AppToast.error(message);
                 } else {
-                    AppToast.error('지원에 실패했어요. 잠시 후 다시 시도해 주세요.');
+                    const message = '지원에 실패했어요. 잠시 후 다시 시도해 주세요.';
+                    setApplicationError(message);
+                    AppToast.error(message);
                 }
             } finally {
                 setApplyingId(null);
@@ -227,6 +235,11 @@ const SwapBoardScreen: React.FC<{visualFixture?: SwapBoardVisualFixture}> = ({vi
     return (
         <ScreenContainer header={header} padded={false}>
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                {applicationError ? (
+                    <AppCard variant="danger" style={styles.errorCard}>
+                        <AppText variant="bodyMd" tone="error" weight="700">{applicationError}</AppText>
+                    </AppCard>
+                ) : null}
                 {/* v3 시안(S4): 멀티매장 전환을 공용 StorePassRow(매장 패스 칩)로 통일 */}
                 <StorePassRow
                     items={stores.map(store => ({id: store.id, name: store.storeName}))}
@@ -287,6 +300,7 @@ const styles = StyleSheet.create({
         paddingBottom: spacing.xl,
         flexGrow: 1,
     },
+    errorCard: {marginBottom: spacing.md},
     passRow: {marginBottom: spacing.md},
     emptyWrap: {flex: 1},
     card: {marginBottom: spacing.md},

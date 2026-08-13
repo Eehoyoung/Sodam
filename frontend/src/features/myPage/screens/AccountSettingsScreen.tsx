@@ -33,6 +33,7 @@ const AccountSettingsScreen: React.FC<Props> = ({visualWithdrawOpen, captureMark
     const [loggingOut, setLoggingOut] = useState(false);
     const [withdrawSheetVisible, setWithdrawSheetVisible] = useState(!!visualWithdrawOpen);
     const [withdrawConfirmText, setWithdrawConfirmText] = useState('');
+    const [withdrawError, setWithdrawError] = useState<string | null>(null);
     const [withdrawing, setWithdrawing] = useState(false);
 
     const handleLogout = () => {
@@ -80,12 +81,14 @@ const AccountSettingsScreen: React.FC<Props> = ({visualWithdrawOpen, captureMark
             return;
         }
         setWithdrawConfirmText('');
+        setWithdrawError(null);
         setWithdrawSheetVisible(true);
     };
 
     const closeWithdrawSheet = () => {
         setWithdrawSheetVisible(false);
         setWithdrawConfirmText('');
+        setWithdrawError(null);
     };
 
     const withdraw = async () => {
@@ -93,6 +96,7 @@ const AccountSettingsScreen: React.FC<Props> = ({visualWithdrawOpen, captureMark
             return;
         }
         setWithdrawing(true);
+        setWithdrawError(null);
         try {
             await accountService.withdraw(user.id);
             setWithdrawSheetVisible(false);
@@ -105,7 +109,11 @@ const AccountSettingsScreen: React.FC<Props> = ({visualWithdrawOpen, captureMark
             const fallback = toApiError(e).status === 400
                 ? '활성 구독을 먼저 해지해 주세요.'
                 : '탈퇴 처리에 실패했어요.';
-            AppToast.error(getErrorMessage(e, fallback));
+            const message = getErrorMessage(e, fallback);
+            // BottomSheet는 native Modal이라 루트 AppToastHost보다 위에 그려진다. 토스트만
+            // 호출하면 오류가 시트 뒤에 가려지므로, 사용자가 읽고 조치할 수 있게 시트 안에도 남긴다.
+            setWithdrawError(message);
+            AppToast.error(message);
         } finally {
             setWithdrawing(false);
         }
@@ -203,6 +211,11 @@ const AccountSettingsScreen: React.FC<Props> = ({visualWithdrawOpen, captureMark
                     autoCapitalize="none"
                     autoCorrect={false}
                 />
+                {withdrawError ? (
+                    <AppText variant="bodyMd" tone="error" weight="700">
+                        {withdrawError}
+                    </AppText>
+                ) : null}
             </BottomSheet>
         </ScreenContainer>
     );
