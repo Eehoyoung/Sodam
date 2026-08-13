@@ -43,11 +43,13 @@ jest.mock('../../../src/common/config/env', () => ({
 const mockGetSummary = jest.fn();
 const mockGetChargeCatalog = jest.fn();
 const mockCreateChargeOrder = jest.fn();
+const mockConfirmCharge = jest.fn();
+let mockReadiness = {mode: 'LIVE', successUrl: 'https://pay/success', failUrl: 'https://pay/fail'};
 jest.mock('../../../src/features/attendanceCredit/services/attendanceCreditApi', () => {
     const api = {
         getChargeCatalog: (...args: any[]) => mockGetChargeCatalog(...args),
         createChargeOrder: (...args: any[]) => mockCreateChargeOrder(...args),
-        confirmCharge: jest.fn(),
+        confirmCharge: (...args: any[]) => mockConfirmCharge(...args),
         myChargeOrders: jest.fn(),
     };
     return {__esModule: true, default: api};
@@ -60,6 +62,10 @@ jest.mock('../../../src/features/recruitment/services/attendanceCreditService', 
         getMySummary: (...args: any[]) => mockGetSummary(...args),
         checkIn: jest.fn(),
     },
+}));
+
+jest.mock('../../../src/features/attendanceCredit/hooks/useAttendanceCreditPaymentReadiness', () => ({
+    useAttendanceCreditPaymentReadiness: () => ({data: mockReadiness, isLoading: false}),
 }));
 
 jest.mock('../../../src/theme/tokens', () => jest.requireActual('../../../src/theme/tokens'));
@@ -94,6 +100,7 @@ describe('AttendanceCreditChargeScreen', () => {
         mockGetSummary.mockResolvedValue(SUMMARY);
         mockGetChargeCatalog.mockResolvedValue(CATALOG);
         (isTossLive as jest.Mock).mockReturnValue(true);
+        mockReadiness = {mode: 'LIVE', successUrl: 'https://pay/success', failUrl: 'https://pay/fail'};
     });
 
     test('마운트 시 잔액 요약 + 충전 카탈로그를 함께 조회한다', async () => {
@@ -158,7 +165,7 @@ describe('AttendanceCreditChargeScreen', () => {
         });
     });
 
-    test('토스 라이브 키가 아니면(테스트 키) 결제창 대신 안내만 하고 navigate 하지 않는다', async () => {
+    test('서버 LIVE인데 토스 라이브 키가 아니면 주문 생성·승인·navigate 하지 않는다', async () => {
         (isTossLive as jest.Mock).mockReturnValue(false);
 
         let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
@@ -177,6 +184,32 @@ describe('AttendanceCreditChargeScreen', () => {
         });
 
         expect(mockCreateChargeOrder).not.toHaveBeenCalled();
+        expect(mockConfirmCharge).not.toHaveBeenCalled();
+        expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    test('서버 MOCK이고 토스 라이브 키가 아니면 모의 주문을 서버에서 승인한다', async () => {
+        (isTossLive as jest.Mock).mockReturnValue(false);
+        mockReadiness = {mode: 'MOCK', successUrl: 'sodam://success', failUrl: 'sodam://fail'};
+        mockCreateChargeOrder.mockResolvedValue({
+            orderId: 'ACC_1_mock', amountKrw: 1900, orderName: '스몰 팩', status: 'PENDING',
+        });
+        mockConfirmCharge.mockResolvedValue({orderId: 'ACC_1_mock', status: 'PAID'});
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<AttendanceCreditChargeScreen />);
+            await flush();
+        });
+        const buyButton = renderer!.root.findAllByType('Pressable')
+            .find(p => p.props.accessibilityLabel === '구매하기')!;
+        await act(async () => {
+            buyButton.props.onPress();
+            await flush();
+        });
+
+        expect(mockCreateChargeOrder).toHaveBeenCalledWith('SMALL');
+        expect(mockConfirmCharge).toHaveBeenCalledWith('ACC_1_mock', 'mock_ACC_1_mock', 1900);
         expect(mockNavigate).not.toHaveBeenCalled();
     });
 });

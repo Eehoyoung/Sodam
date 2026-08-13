@@ -6,6 +6,7 @@ import com.rich.sodam.domain.EmployeeProfile;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.domain.type.AttendanceCreditChargePackCode;
 import com.rich.sodam.domain.type.UserGrade;
+import com.rich.sodam.config.integration.IntegrationProperties;
 import com.rich.sodam.repository.EmployeeProfileRepository;
 import com.rich.sodam.repository.UserRepository;
 import com.rich.sodam.security.UserPrincipal;
@@ -42,8 +43,26 @@ class AttendanceCreditChargeControllerTest {
     @Autowired private UserRepository userRepo;
     @Autowired private EmployeeProfileRepository employeeProfileRepo;
     @Autowired private AttendanceCreditChargeService chargeService;
+    @Autowired private IntegrationProperties integrationProperties;
 
     private int emailSeq = 0;
+
+    @Test
+    @DisplayName("readiness는 Toss 모드와 출근권 상품 URL을 따르고 OFF는 UNAVAILABLE")
+    void readiness_followsServerMode() throws Exception {
+        User master = master();
+        integrationProperties.getToss().setMode("mock");
+        mockMvc.perform(get("/api/attendance-credits/charge/readiness").with(asPrincipal(master)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mode").value("MOCK"))
+                .andExpect(jsonPath("$.successUrl").value("sodam://payment/attendance-credit/success"));
+
+        integrationProperties.getToss().setMode("off");
+        mockMvc.perform(get("/api/attendance-credits/charge/readiness").with(asPrincipal(master)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mode").value("UNAVAILABLE"))
+                .andExpect(jsonPath("$.successUrl").doesNotExist());
+    }
 
     private User master() {
         User u = new User("attendance_credit_charge_ctrl_master" + (emailSeq++) + "@x.com", "사장");

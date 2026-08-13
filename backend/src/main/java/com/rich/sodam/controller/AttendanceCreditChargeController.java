@@ -7,10 +7,13 @@ import com.rich.sodam.dto.request.AttendanceCreditChargeConfirmRequest;
 import com.rich.sodam.dto.response.AttendanceCreditChargeCatalogResponse;
 import com.rich.sodam.dto.response.AttendanceCreditChargeOrderResponse;
 import com.rich.sodam.dto.response.AttendanceCreditChargePackResponse;
+import com.rich.sodam.dto.response.TaxPaymentReadinessResponse;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.service.AttendanceCreditChargeService;
 import com.rich.sodam.service.AttendanceCreditService;
+import com.rich.sodam.service.PaymentProduct;
+import com.rich.sodam.service.PaymentReadinessService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -40,6 +43,13 @@ public class AttendanceCreditChargeController {
     private final AttendanceCreditChargeService chargeService;
     private final AttendanceCreditService attendanceCreditService;
     private final AttendanceCreditProperties properties;
+    private final PaymentReadinessService paymentReadinessService;
+
+    @Operation(summary = "출근권 결제 준비 상태", description = "서버의 Toss 모드와 상품별 성공/실패 URL을 반환합니다.")
+    @GetMapping("/readiness")
+    public ResponseEntity<TaxPaymentReadinessResponse> readiness() {
+        return ResponseEntity.ok(paymentReadinessService.readiness(PaymentProduct.ATTENDANCE_CREDIT));
+    }
 
     @Operation(summary = "충전 상품 카탈로그",
             description = "스몰/미디엄/라지 팩 + 스트릭 복구권 목록과 가격(설정값, 운영 중 조정 가능)을 반환합니다. "

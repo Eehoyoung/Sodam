@@ -23,6 +23,7 @@ import attendanceCreditApi, {AttendanceCreditChargeCatalog, AttendanceCreditChar
 import attendanceCreditService from '../../recruitment/services/attendanceCreditService';
 import type {AttendanceCreditSummary} from '../../recruitment/types';
 import PurchaseLegalNotice from '../components/PurchaseLegalNotice';
+import {useAttendanceCreditPaymentReadiness} from '../hooks/useAttendanceCreditPaymentReadiness';
 
 /**
  * 출근권 충전소 — 사장 전용 IAP 화면(recruitment-monetization-gamification-plan.md §2.4).
@@ -63,6 +64,7 @@ const AttendanceCreditChargeScreen: React.FC<Props> = ({visualFixture}) => {
     const [catalog, setCatalog] = useState<AttendanceCreditChargeCatalog | null>(visualFixture?.catalog ?? null);
     const [loading, setLoading] = useState(!visualFixture);
     const [purchasingCode, setPurchasingCode] = useState<string | null>(null);
+    const readinessQuery = useAttendanceCreditPaymentReadiness(!visualFixture);
 
     const load = useCallback(async () => {
         if (visualFixture) {
@@ -91,18 +93,33 @@ const AttendanceCreditChargeScreen: React.FC<Props> = ({visualFixture}) => {
     );
 
     const handlePurchase = async (pack: AttendanceCreditChargePack) => {
-        if (!isTossLive()) {
+        const readiness = readinessQuery.data;
+        const livePaymentEnabled = isTossLive();
+        const hasLiveCallbacks = !!readiness?.successUrl && !!readiness?.failUrl;
+        if (!readiness || readiness.mode === 'UNAVAILABLE') {
+            AppToast.show('유료 결제는 준비 중이에요. 곧 만나요!');
+            return;
+        }
+        const mockAgreed = readiness.mode === 'MOCK' && !livePaymentEnabled;
+        const liveAgreed = readiness.mode === 'LIVE' && livePaymentEnabled && hasLiveCallbacks;
+        if (!mockAgreed && !liveAgreed) {
             AppToast.show('유료 결제는 준비 중이에요. 곧 만나요!');
             return;
         }
         setPurchasingCode(pack.code);
         try {
             const order = await attendanceCreditApi.createChargeOrder(pack.code);
-            navigation.navigate('AttendanceCreditChargePayment', {
-                orderId: order.orderId,
-                amountKrw: order.amountKrw,
-                orderName: order.orderName,
-            });
+            if (mockAgreed) {
+                await attendanceCreditApi.confirmCharge(order.orderId, `mock_${order.orderId}`, order.amountKrw);
+                AppToast.success('출근권이 충전됐어요!');
+                await load();
+            } else {
+                navigation.navigate('AttendanceCreditChargePayment', {
+                    orderId: order.orderId,
+                    amountKrw: order.amountKrw,
+                    orderName: order.orderName,
+                });
+            }
         } catch (e: unknown) {
             const message =
                 (e as {response?: {data?: {message?: string}}})?.response?.data?.message ??
@@ -149,7 +166,8 @@ const AttendanceCreditChargeScreen: React.FC<Props> = ({visualFixture}) => {
                         label="구매하기"
                         size="sm"
                         loading={purchasingCode === pack.code}
-                        disabled={purchasingCode !== null && purchasingCode !== pack.code}
+                        disabled={readinessQuery.isLoading || !readinessQuery.data ||
+                            (purchasingCode !== null && purchasingCode !== pack.code)}
                         onPress={() => handlePurchase(pack)}
                     />
                 </View>

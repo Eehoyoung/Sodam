@@ -18,6 +18,13 @@ import api from '../../../common/api/client';
 
 export type AttendanceCreditChargePackCode = 'SMALL' | 'MEDIUM' | 'LARGE' | 'STREAK_RECOVERY';
 export type AttendanceCreditChargeOrderStatus = 'PENDING' | 'PAID' | 'CANCELLED' | 'REFUNDED';
+export type PaymentReadinessMode = 'MOCK' | 'LIVE' | 'UNAVAILABLE';
+
+export interface PaymentReadiness {
+    mode: PaymentReadinessMode;
+    successUrl: string | null;
+    failUrl: string | null;
+}
 
 export interface AttendanceCreditChargePack {
     code: AttendanceCreditChargePackCode;
@@ -50,6 +57,11 @@ export interface AttendanceCreditChargeOrder {
 }
 
 export const attendanceCreditApi = {
+    async getPaymentReadiness(): Promise<PaymentReadiness> {
+        const res = await api.get<PaymentReadiness>('/api/attendance-credits/charge/readiness');
+        return res.data;
+    },
+
     async getChargeCatalog(): Promise<AttendanceCreditChargeCatalog> {
         const res = await api.get<AttendanceCreditChargeCatalog>('/api/attendance-credits/charge/packs');
         return res.data;
