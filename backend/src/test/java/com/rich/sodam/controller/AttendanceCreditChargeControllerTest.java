@@ -11,6 +11,7 @@ import com.rich.sodam.repository.EmployeeProfileRepository;
 import com.rich.sodam.repository.UserRepository;
 import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.service.AttendanceCreditChargeService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +47,19 @@ class AttendanceCreditChargeControllerTest {
     @Autowired private IntegrationProperties integrationProperties;
 
     private int emailSeq = 0;
+
+    /**
+     * {@link IntegrationProperties}는 <b>컨텍스트 캐시를 공유하는 싱글턴 빈</b>이라, 여기서 바꾼
+     * 모드가 같은 컨텍스트를 쓰는 다른 테스트 클래스까지 따라간다. 실제로 이 복원이 없어
+     * {@code RecruitmentBoostPassControllerTest}의 MOCK 기대가 UNAVAILABLE 로 깨졌다
+     * (2026-08-14, 호스트 환경변수와 무관 — {@code application-test.yml}은 {@code mode: mock} 고정).
+     * {@code TaxServiceOrderControllerTest}가 이미 같은 방식으로 복원하고 있다.
+     */
+    @AfterEach
+    void resetTossReadiness() {
+        integrationProperties.getToss().setMode("mock");
+        integrationProperties.getToss().setPublicCallbackBaseUrl("");
+    }
 
     @Test
     @DisplayName("readiness는 Toss 모드와 출근권 상품 URL을 따르고 OFF는 UNAVAILABLE")

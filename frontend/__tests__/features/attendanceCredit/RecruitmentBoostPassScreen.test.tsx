@@ -42,15 +42,21 @@ jest.mock('../../../src/common/config/env', () => ({
 
 const mockGetMe = jest.fn();
 const mockCreateOrder = jest.fn();
+const mockConfirmOrder = jest.fn();
+let mockReadiness = {mode: 'LIVE', successUrl: 'https://pay/success', failUrl: 'https://pay/fail'};
 jest.mock('../../../src/features/attendanceCredit/services/recruitmentBoostPassApi', () => {
     const api = {
         getMe: (...args: any[]) => mockGetMe(...args),
         createOrder: (...args: any[]) => mockCreateOrder(...args),
-        confirmOrder: jest.fn(),
+        confirmOrder: (...args: any[]) => mockConfirmOrder(...args),
         myOrders: jest.fn(),
     };
     return {__esModule: true, default: api};
 });
+
+jest.mock('../../../src/features/attendanceCredit/hooks/useRecruitmentBoostPassPaymentReadiness', () => ({
+    useRecruitmentBoostPassPaymentReadiness: () => ({data: mockReadiness, isLoading: false}),
+}));
 
 jest.mock('../../../src/theme/tokens', () => jest.requireActual('../../../src/theme/tokens'));
 
@@ -87,6 +93,7 @@ describe('RecruitmentBoostPassScreen', () => {
         jest.clearAllMocks();
         mockGetMe.mockResolvedValue(INACTIVE_SUMMARY);
         (isTossLive as jest.Mock).mockReturnValue(true);
+        mockReadiness = {mode: 'LIVE', successUrl: 'https://pay/success', failUrl: 'https://pay/fail'};
     });
 
     test('마운트 시 GET /me 를 조회한다', async () => {
@@ -152,7 +159,7 @@ describe('RecruitmentBoostPassScreen', () => {
         });
     });
 
-    test('토스 라이브 키가 아니면(테스트 키) 결제창 대신 안내만 하고 navigate 하지 않는다', async () => {
+    test('서버 LIVE인데 토스 라이브 키가 아니면 주문 생성·승인·navigate 하지 않는다', async () => {
         (isTossLive as jest.Mock).mockReturnValue(false);
 
         let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
@@ -171,6 +178,54 @@ describe('RecruitmentBoostPassScreen', () => {
         });
 
         expect(mockCreateOrder).not.toHaveBeenCalled();
+        expect(mockConfirmOrder).not.toHaveBeenCalled();
+        expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    test('서버 MOCK이고 토스 라이브 키가 아니면 모의 주문을 서버에서 승인한다', async () => {
+        (isTossLive as jest.Mock).mockReturnValue(false);
+        mockReadiness = {mode: 'MOCK', successUrl: 'sodam://success', failUrl: 'sodam://fail'};
+        mockCreateOrder.mockResolvedValue({orderId: 'RBP_1_mock', amountKrw: 9900, orderName: '채용 부스트 3일권'});
+        mockConfirmOrder.mockResolvedValue({orderId: 'RBP_1_mock', status: 'PAID'});
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<RecruitmentBoostPassScreen />);
+            await flush();
+        });
+        const buyButton = renderer!.root.findAllByType('Pressable')
+            .find(p => p.props.accessibilityLabel === '구독하기')!;
+        await act(async () => {
+            buyButton.props.onPress();
+            await flush();
+        });
+
+        expect(mockCreateOrder).toHaveBeenCalledWith('THREE_DAY');
+        expect(mockConfirmOrder).toHaveBeenCalledWith('RBP_1_mock', 'mock_RBP_1_mock', 9900);
+        expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    test.each([
+        ['서버 MOCK인데 클라이언트가 실키면', true, {mode: 'MOCK', successUrl: 'sodam://success', failUrl: 'sodam://fail'}],
+        ['서버 LIVE인데 콜백 URL이 없으면', true, {mode: 'LIVE', successUrl: null, failUrl: null}],
+    ])('%s 주문 생성·승인·navigate 하지 않는다', async (_label, liveKey, readiness) => {
+        (isTossLive as jest.Mock).mockReturnValue(liveKey);
+        mockReadiness = readiness as typeof mockReadiness;
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<RecruitmentBoostPassScreen />);
+            await flush();
+        });
+        const buyButton = renderer!.root.findAllByType('Pressable')
+            .find(p => p.props.accessibilityLabel === '구독하기')!;
+        await act(async () => {
+            buyButton.props.onPress();
+            await flush();
+        });
+
+        expect(mockCreateOrder).not.toHaveBeenCalled();
+        expect(mockConfirmOrder).not.toHaveBeenCalled();
         expect(mockNavigate).not.toHaveBeenCalled();
     });
 

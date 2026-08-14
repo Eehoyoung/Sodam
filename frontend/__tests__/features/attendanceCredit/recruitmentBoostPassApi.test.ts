@@ -23,6 +23,16 @@ describe('recruitmentBoostPassApi', () => {
         jest.clearAllMocks();
     });
 
+    describe('getPaymentReadiness', () => {
+        it('부스트패스 결제 준비 상태를 조회한다', async () => {
+            const payload = {mode: 'MOCK', successUrl: 'sodam://success', failUrl: 'sodam://fail'};
+            (api.get as jest.Mock).mockResolvedValue({data: payload});
+
+            await expect(recruitmentBoostPassApi.getPaymentReadiness()).resolves.toEqual(payload);
+            expect(api.get).toHaveBeenCalledWith('/api/recruitment-boost-passes/payment-readiness');
+        });
+    });
+
     describe('getMe', () => {
         it('활성 상태·상품 목록을 그대로 반환한다', async () => {
             const payload = {
