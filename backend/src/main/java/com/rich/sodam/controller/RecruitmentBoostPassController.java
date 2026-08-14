@@ -41,6 +41,9 @@ public class RecruitmentBoostPassController {
     private final RecruitmentBoostPassService passService;
     private final PaymentReadinessService paymentReadinessService;
 
+    @Operation(summary = "부스트패스 결제 준비 상태",
+            description = "서버의 Toss 모드(MOCK/LIVE/UNAVAILABLE)를 반환합니다. FE는 이 값과 자신의 키 종류가 "
+                    + "합의할 때만 구매를 진행합니다(한쪽 권위만 보고 결제하지 말 것).")
     @GetMapping("/payment-readiness")
     public ResponseEntity<TaxPaymentReadinessResponse> paymentReadiness() {
         return ResponseEntity.ok(paymentReadinessService.readiness(PaymentProduct.RECRUITMENT_BOOST_PASS));
