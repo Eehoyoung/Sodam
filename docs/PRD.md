@@ -170,11 +170,83 @@ FE 도메인 폴더(`frontend/src/features/`)와 1:1 대응. 구현 상태: ✅ 
 - 권한을 받은 매니저는 급여 조회·확정 업무를 수행할 수 있다. 급여 확정·지급·발급은 비밀번호 재인증(step-up), 현재 위임 권한 재검증, 행위자 감사 기록을 필수로 한다
 - 🔶 급여 계산 ↔ 정산주기 연동은 미완 (주기 설정은 저장되나 계산에 완전 반영 전)
 
-### 4.7 노무 안전장치 (`minorguard`, `risk`, `evidence`) 🔶
+### 4.7 노무 안전장치 (`minorguard`, `risk`, `evidence`) ✅ (법적 표현 확정 대기 — G-16~G-19)
 
-- 노동법 경고: 최저임금 미달, 주 52시간 초과, 휴게 미부여 등 감지 시 사장에게 경고 (STARTER 기본 / PRO 풀)
-- 근로감독 대비 증거 패키지(`evidence`): 출퇴근·계약·명세서 이력 묶음 내보내기 (PREMIUM)
-- 법적 판단이 필요한 문구·기준은 노무사 검토 후 확정 (⛔ 인간)
+> 2026-08-15 포지셔닝 전환(계획서 `docs/260815/260815_소담_포지셔닝전환_계획서.md`)에서 "사후 감지"
+> 중심이던 이 섹션을 "사전 예측 + 상시근로자 참고 산정"까지 확장했다. 판정은 전부 **참고용**이며
+> 최종 판단은 근로감독관·법원의 권한이다(HC-3). 판정이 다른 기능을 자동으로 켜거나 끄지 않는다(HC-4),
+> 경고가 확정·등록 같은 행위 자체를 막지 않는다(HC-5).
+
+**노무 리스크 대시보드**(`LaborRiskService`, `RiskType` 11종) — 기존 데이터(확정 시프트·출퇴근·
+근로계약서·시급·입사일)만 재사용해 신규 테이블 없이 산출한다.
+
+| 구분 | RiskType | 트리거 | 심각도 |
+|---|---|---|---|
+| 사후 감지 | `WEEKLY_15H_BOUNDARY` | 이번 주 확정 근무 13~17h(주휴수당 경계) | WARN |
+| 사후 감지 | `WEEKLY_52H_NEAR` | 이번 주 실근무+확정 시프트 48h 이상 | WARN |
+| 사후 감지 | `CONTRACT_UNSIGNED` | 근로계약서 없음/미서명(§17) | DANGER |
+| 사후 감지 | `MIN_WAGE_RISK` | 적용 시급이 최저임금 미만(현행)/미만 예정(차기 고시) | DANGER/WARN |
+| 사후 감지 | `SEVERANCE_UPCOMING` | 입사 11개월 이상(퇴직금 채권 임박) | WARN |
+| 사후 감지 | `CONTRACT_OVER_52H` | 월급제 계약 스케줄의 주 연장이 12h 초과(§53) | WARN |
+| 참고 산정 | `HEADCOUNT_THRESHOLD` | 상시근로자 참고 산정이 5인 경계 근접(매장 단위, 직원 귀속 아님) | WARN |
+| **사전 예측** | `SCHEDULE_52H_FORECAST` | 다음 주 확정 시프트 합계 52h 이상(실근무 불요) | DANGER |
+| **사전 예측** | `SCHEDULE_15H_SHORTFALL` | 다음 주 확정 시프트 합계 15h 미만(주휴 미발생 예상) | WARN |
+| **사전 예측** | `BREAK_MISSING_FORECAST` | 다음 주 시프트 중 4h→30분/8h→1h 휴게 필요 구간 | WARN |
+| **사전 예측** | `MINOR_NIGHT_FORECAST` | 연소근로자 다음 주 시프트가 22~06시에 걸침(§70) | DANGER |
+| **사전 예측** | `MINOR_HOURS_FORECAST` | 연소근로자 다음 주 1일 7h/1주 35h 초과 예상(§69) | DANGER |
+
+52h 계열(`CONTRACT_OVER_52H`·`SCHEDULE_52H_FORECAST`·`WEEKLY_52H_NEAR`)이 같은 직원에게 동시에
+뜨면 우선순위(계약 약정 > 다음 주 예측 > 이번 주 임박) 1건만 노출해 중복을 억제한다.
+
+스케줄 확정(`WorkShiftService.notifyConfirmed`) 직후 DANGER 예측이 있으면 기존 STOMP/FCM 채널
+(`LiveSyncPublisher`/`NotificationService`)로 사장에게 즉시 알리되, 경고가 확정 자체를 막지 않는다.
+
+**상시근로자 수(근로기준법) 참고 산정 + 시뮬레이터** (`StatutoryHeadcountService`) —
+근로기준법 시행령 §7의2 방식(산정기간 연인원 ÷ 가동일수)으로 별도 산정한다. **§4.8의
+통합고용세액공제 상시근로자 집계(`EmploymentCreditService`, "그 달 출근 기록이 있는 직원의
+distinct 수")와 산식이 다르므로 절대 섞지 않는다** — 같은 입력에도 값이 다르고, 오판이 사장의
+채용 의사결정을 바꿀 수 있다.
+
+- `GET /api/stores/{storeId}/labor-risk/statutory-headcount` — 현재 참고 산정 + 정부 확대적용
+  로드맵(`sodam.labor-law-roadmap.*`, 코드 배포 없이 갱신 가능. 전부 "정부가 추진 중"이라는
+  표현이며 확정 시행일이 아니다 — G-19)
+- `GET /api/stores/{storeId}/labor-risk/statutory-headcount/simulate?additionalEmployees=N` —
+  직원을 N명 더 채용했을 때 5인 경계를 넘는지, 새로 적용될 조항 목록, 인건비 영향(단일 금액이
+  아니라 범위)을 반환
+
+**노무 건강도 요약**(`LaborHealthScoreService`) — 위 리스크를 0~100 참고 점수(DANGER -15/WARN
+-5, 0 하한)와 건수로 집계한다. UI는 점수·등급이 아니라 "확인이 필요한 항목 N건" 건수 중심으로
+노출(등급·안전 표현 금지). 사장 홈 상단 카드에서 진입한다.
+
+- `GET /api/stores/{storeId}/labor-health` — `LABOR_LAW_BASIC`(STARTER 이상). 건수·유형만
+- `GET /api/stores/{storeId}/labor-health/detail` — `LABOR_LAW_FULL`(PRO 이상). 설명·해소 가이드까지
+- 미충족 시 402 + `errorCode=PLAN_REQUIRED`(FE 페이월 분기)
+
+**자연어 설명 계층**(`LaborRiskNarrator`) — `ReceiptOcrClient` 패턴 복제. 기본 빈
+`TemplateLaborRiskNarrator`가 규칙 엔진 문구를 그대로 반환(외부 호출 0). `sodam.ai.provider=anthropic`
+설정 시에만 `LlmLaborRiskNarrator`가 대체해 말투를 다듬는다 — 직원 실명은 익명 라벨로 치환해 전송,
+숫자·판정은 규칙 엔진 값 그대로 강제(HC-8), 금지어·수치 누락 검증 실패 시 원본 문구로 폴백. 유료
+실키 활성화는 인간 승인(H-6).
+
+**연소근로자(만 18세 미만) 가드**(`MinorLaborGuardService`) — 1일 7h/1주 35h 한도, 22~06시 야간·
+휴일근로 제한(§69·§70) 안내 + 친권자 동의서·가족관계증명서·취직인허증 보유 체크리스트(기존
+`document` 도메인 참조 레코드 존재 확인, 원본 미확인 — 신규 스토리지 없음). 만 14세 미만 +
+동의서 미확인이면 개인정보보호법 §22의2에 따른 처리 자제 경고. 취직인허증(§64) 요건 충족
+여부는 앱이 판정하지 않는다(G-17).
+
+**근로감독 대비 증거 패키지**(`evidence`): 출퇴근·계약·명세서 이력 묶음 내보내기 (PREMIUM).
+
+**Non-Goal** (§4.13·§4.14와 동일 형식 — 확장 제안에도 포함하지 않는다):
+
+| 제외 항목 | 이유 |
+|---|---|
+| 위반 여부·상시근로자 수의 **확정 판단** | 판단 권한은 근로감독관·법원. 앱이 단정하면 오판 책임이 소담에 온다 |
+| 법률 자문·의견서 발급, 진정·신고·시정 대행 | 공인노무사법·변호사법 저촉 |
+| 감지 결과의 **자동 계약·급여 변경** | 노무사 게이트 미해소(§4.11 L-1). 사장의 확정 행위를 대신하지 않는다 |
+| 직원 계정에 사장의 리스크·상시근로자 지표 노출 | 전부 `@MasterOnly`. 분쟁 유발 방지 |
+| 5인 이상 중견 사업장용 기능 확장 | 시프티 영역. 인당 과금 구조에서 경쟁력이 없다 |
+
+법적 판단이 필요한 문구·기준은 노무사·법무 검토 후 확정(게이트 G-16~G-19, ⛔ 인간).
 
 ### 4.8 수익화 (`subscription`, `purchase`, `referral`) ✅ (결제 live 키만 ⛔)
 
@@ -191,6 +263,32 @@ FE 도메인 폴더(`frontend/src/features/`)와 1:1 대응. 구현 상태: ✅ 
 - 결제: 토스페이먼츠 — 웹훅 **멱등 처리** 필수(중복 지급 방지). 현재 mock, 실키 전환은 인간 승인 (⛔)
 - 게이팅은 **서버에서 검증** (`PlanFeature`) — 클라이언트 값 신뢰 금지. 상한 초과 시 402 + `errorCode`로 FE 페이월 분기 (이력: 커밋 76176c0)
 - 추천인 제도(`referral`)
+
+**가격 설정 분리 + Grandfathering** (WP-8, 260815) — 위 표의 가격은 여전히 `PlanType` enum이 사양
+원본이지만(⛔ 선언 순서·중간 삽입 금지), 실제 청구 로직은 `PlanPricingService`를 거친다.
+
+- `PlanPricingProperties`(`sodam.pricing.*` — `SODAM_PRICING_STARTER_MONTHLY_KRW` 등)로 티어별
+  월정액을 override할 수 있는 자리만 마련했다. **미설정이 기본이며, 이번 작업으로 실제 가격 숫자는
+  바뀌지 않았다**(게이트 H-7 — override 값을 채워 배포하는 것 자체가 인간 승인 절차)
+- **Grandfathering**: 가입 시점 카탈로그 가격을 `Subscription.priceAtSignupKrw`에 잠근다
+  (`SubscriptionService.subscribe()`에서 1회). 이후 `PlanPricingProperties`로 가격이 올라가도
+  이미 가입한 사장님은 가입 당시 가격 그대로 청구된다 — 약관법상 불이익 변경 사전고지 없이
+  소급 인상하지 않기 위함
+- `Subscription.priceVariant`(A/B 가격 실험 그룹 배정) 컬럼도 함께 마련했다 — 베타 실측용 자리이며
+  현재 어디서도 자동 배정하지 않는다(수동/향후 실험 설계 필요)
+- 시장조사 기반 검토안(STARTER 9,900→14,900 / PRO 19,900→29,900 / PREMIUM 폐지 검토)은
+  **배선만 됐고 실행되지 않았다** — 실제 인상은 H-7 해소 후
+
+**상시근로자 집계 2계열 (기존 미반영 기능 역반영, 260815)** — 코드에는 있었으나 이 문서에 사양이
+없던 두 기능. §4.7의 근로기준법 상시근로자 참고 산정(`StatutoryHeadcountService`)과 **산식이
+다르므로 절대 혼용하지 않는다**.
+
+- **통합고용세액공제 신호**(`EmploymentCreditService`, PRO, `/api/stores/{storeId}/tax/headcount-trend`)
+  — 월별 상시근로자 수를 "그 달 출근 기록이 있는 직원의 distinct 수"로 집계해 전년 대비 증가(공제
+  가능) 신호를 낸다. 추정치이며 실제 공제는 세무사 검토가 필요하다는 면책 동반
+- **두루누리 사회보험료 지원 자격판정**(`SubsidyEligibilityService`, `/api/stores/{storeId}/subsidy/eligibility`)
+  — 근로자 10인 미만(`SubsidyStandards.HEADCOUNT_LIMIT`) + 직원 월보수 기준(`MONTHLY_WAGE_CAP`)
+  미만이면 지원 대상 후보로 안내. 실제 자격·신청은 근로복지공단·정부24 위임(면책)
 
 ### 4.9 알림·실시간 (`notification`, `notice`) ✅
 
