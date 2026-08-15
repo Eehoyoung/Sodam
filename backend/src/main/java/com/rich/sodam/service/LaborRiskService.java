@@ -89,6 +89,7 @@ public class LaborRiskService {
     private final LaborInfoRepository laborInfoRepository;
     private final StatutoryHeadcountService statutoryHeadcountService;
     private final MinorLaborGuardService minorLaborGuardService;
+    private final LaborRiskNarrator laborRiskNarrator;
 
     @Transactional(readOnly = true)
     public LaborRiskResponse analyze(Long storeId) {
@@ -172,7 +173,19 @@ public class LaborRiskService {
         }
         collectHeadcountThresholdRisk(items, storeId, today);
         dedupe52hFamily(items);
-        return new LaborRiskResponse(items);
+        return new LaborRiskResponse(narrate(items));
+    }
+
+    /**
+     * (WP-4) 표현 계층 위임 — 판정(RiskType·Severity·value)은 이미 확정된 뒤이며 메시지 문구만
+     * {@link LaborRiskNarrator}를 거친다. 기본 빈({@link TemplateLaborRiskNarrator})은 문구를
+     * 그대로 반환해(외부 호출 0) 이 매핑이 기존 동작을 바꾸지 않는다.
+     */
+    private List<Item> narrate(List<Item> items) {
+        return items.stream()
+                .map(i -> new Item(i.type(), i.severity(), i.employeeId(), i.employeeName(),
+                        laborRiskNarrator.narrate(i), i.value()))
+                .toList();
     }
 
     /**
