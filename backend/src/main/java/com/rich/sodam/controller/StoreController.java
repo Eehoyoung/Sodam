@@ -234,9 +234,11 @@ public class StoreController {
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/employee/{userId}")
     public ResponseEntity<List<StoreResponseDto>> getStoresByEmployee(
-            @Parameter(description = "사용자 ID (직원)", required = true) @PathVariable Long userId) {
+            @Parameter(description = "사용자 ID (직원)", required = true) @PathVariable Long userId,
+            @Parameter(description = "true면 퇴사 등 비활성 관계의 매장도 포함(WP-6 경력증명서 전용)")
+            @RequestParam(defaultValue = "false") boolean includeInactive) {
         storeAccessGuard.assertSelf(getCurrentUserId(), userId); // BOLA 차단: 본인 소속 매장만
-        List<Store> stores = storeManagementService.getStoresByEmployee(userId);
+        List<Store> stores = storeManagementService.getStoresByEmployee(userId, includeInactive);
         return ResponseEntity.ok(stores.stream().map(StoreResponseDto::from).toList());
     }
 

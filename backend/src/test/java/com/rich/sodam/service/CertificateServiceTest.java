@@ -84,4 +84,16 @@ class CertificateServiceTest {
         assertThatThrownBy(() -> service.generate(5L, 1L, null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    @DisplayName("WP-6: 개인 모드 자기신고 기록(매장 EmployeeStoreRelation 없음)은 증명서 발급 대상이 아니다")
+    void personalModeSelfReportedRecordsAreNotCertifiable() {
+        // 이 서비스는 EmployeeStoreRelation(매장이 확인한 기록)만 조회한다 — 개인 모드 자기신고
+        // 기록은 애초에 이 리포지토리에 존재하지 않으므로 구조적으로 발급 대상이 될 수 없다(PRD §4.14).
+        when(relationRepository.findByEmployeeProfile_IdAndStore_Id(5L, 1L))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.generate(5L, 1L, CertificateType.CAREER))
+                .isInstanceOf(AccessDeniedException.class);
+    }
 }

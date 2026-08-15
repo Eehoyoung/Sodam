@@ -72,6 +72,21 @@ const MinorGuardScreen: React.FC = () => {
                 />
             ) : data?.minor ? (
                 <View>
+                    {data.personalDataProcessingBlocked ? (
+                        <AppCard variant="flat" style={[styles.warnCard, {backgroundColor: c.errorBg}]}>
+                            <View style={styles.warnRow}>
+                                <Ionicons name="alert-circle" size={22} color={c.error} />
+                                <AppText variant="titleMd" style={styles.flex}>
+                                    만 14세 미만 — 법정대리인 동의 확인이 먼저예요
+                                </AppText>
+                            </View>
+                            <AppText variant="bodyMd" tone="secondary" style={styles.warnBody}>
+                                친권자(법정대리인) 동의서를 서류함에 먼저 등록해 주세요. 동의 확인 전에는
+                                이 직원의 개인정보 처리(등록·근무기록 등)를 진행하지 않는 걸 권장해요.
+                            </AppText>
+                        </AppCard>
+                    ) : null}
+
                     <AppCard variant="flat" style={[styles.warnCard, {backgroundColor: c.brandPrimarySoft}]}>
                         <View style={styles.warnRow}>
                             <Ionicons name="warning" size={22} color={c.warning} />
@@ -117,17 +132,33 @@ const MinorGuardScreen: React.FC = () => {
                     </AppCard>
 
                     {data.consentRequired ? (
-                        <AppCard variant="flat" style={[styles.consentCard, {backgroundColor: c.surfaceWarm}]}>
-                            <View style={styles.warnRow}>
-                                <Ionicons name="shield-checkmark-outline" size={20} color={c.brandPrimary} />
-                                <AppText variant="titleMd" style={styles.flex}>
-                                    친권자 동의 안내
+                        <>
+                            <AppCard variant="flat" style={[styles.consentCard, {backgroundColor: c.surfaceWarm}]}>
+                                <View style={styles.warnRow}>
+                                    <Ionicons name="shield-checkmark-outline" size={20} color={c.brandPrimary} />
+                                    <AppText variant="titleMd" style={styles.flex}>
+                                        친권자 동의 안내
+                                    </AppText>
+                                </View>
+                                <AppText variant="bodyMd" tone="secondary" style={styles.warnBody}>
+                                    {GUARDIAN_CONSENT_NOTICE}
                                 </AppText>
-                            </View>
-                            <AppText variant="bodyMd" tone="secondary" style={styles.warnBody}>
-                                {GUARDIAN_CONSENT_NOTICE}
+                            </AppCard>
+
+                            <AppText variant="caption" tone="secondary" style={styles.sectionLabel}>
+                                서류함 등록 체크리스트
                             </AppText>
-                        </AppCard>
+                            <AppCard variant="flat">
+                                <ChecklistRow label="친권자(후견인) 동의서" onFile={data.guardianConsentOnFile} />
+                                <ChecklistRow label="가족관계증명서" onFile={data.familyRelationCertOnFile} />
+                                <ChecklistRow
+                                    label="취직인허증(해당 시)"
+                                    onFile={data.workPermitOnFile}
+                                    hint="만 15세 미만만 해당 — 필요 여부는 직접 확인해 주세요"
+                                    last
+                                />
+                            </AppCard>
+                        </>
                     ) : null}
 
                     <AppText variant="caption" tone="tertiary" style={styles.disclaimer}>
@@ -147,6 +178,33 @@ const MinorGuardScreen: React.FC = () => {
                 />
             ) : null}
         </ScreenContainer>
+    );
+};
+
+/** WP-5 — 서류함(document 도메인) 등록 여부만 보여준다. 원본 내용은 확인하지 않는다는 점을
+ * 화면에서 별도 설명하지 않아도 이미 위 안내 카드가 다루고 있어 중복하지 않는다. */
+const ChecklistRow: React.FC<{
+    label: string;
+    onFile: boolean;
+    hint?: string;
+    last?: boolean;
+}> = ({label, onFile, hint, last}) => {
+    const c = useThemeColors();
+    return (
+        <View style={[styles.ruleRow, !last && styles.ruleDivider, !last && {borderBottomColor: c.divider}]}>
+            <Ionicons
+                name={onFile ? 'checkmark-circle' : 'ellipse-outline'}
+                size={18}
+                color={onFile ? c.success : c.textTertiary}
+                style={styles.ruleIcon}
+            />
+            <View style={styles.flex}>
+                <AppText variant="bodyMd">{label}</AppText>
+                <AppText variant="caption" tone="secondary" style={styles.ruleValue}>
+                    {onFile ? '서류함에 등록됨' : '미등록'}{hint ? ` · ${hint}` : ''}
+                </AppText>
+            </View>
+        </View>
     );
 };
 

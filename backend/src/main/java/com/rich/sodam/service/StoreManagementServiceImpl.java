@@ -640,14 +640,23 @@ public class StoreManagementServiceImpl implements StoreManagementService {
     @Override
     @Transactional(readOnly = true)
     public List<Store> getStoresByEmployee(Long userId) {
+        return getStoresByEmployee(userId, false);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Store> getStoresByEmployee(Long userId, boolean includeInactive) {
         EmployeeProfile employeeProfile = employeeProfileRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사원 프로필을 찾을 수 없습니다."));
 
-        // v3 "링 & 패스"(docs/260720 계획서 G-2, 2026-07-20 자율 결정) — 이 메서드의 유일한 호출부인
-        // GET /api/stores/employee/{userId} 는 매장 패스 전환 UI에 쓰인다. 퇴사·비활성 매장까지
-        // 섞여 나오면 전환 칩에 잘못된 매장이 노출되므로 활성 관계만 반환한다.
-        return employeeStoreRelationRepository.findByEmployeeProfileAndIsActiveTrue(employeeProfile)
-                .stream()
+        // v3 "링 & 패스"(docs/260720 계획서 G-2, 2026-07-20 자율 결정) — 기본(includeInactive=false)은
+        // 매장 패스 전환 UI용. 퇴사·비활성 매장까지 섞여 나오면 전환 칩에 잘못된 매장이 노출되므로
+        // 활성 관계만 반환한다. includeInactive=true는 WP-6(경력증명서) 전용 — 퇴사 후에도 본인
+        // 스코프로 경력증명서를 조회·발급할 수 있어야 하므로 비활성 관계도 포함한다.
+        List<EmployeeStoreRelation> relations = includeInactive
+                ? employeeStoreRelationRepository.findByEmployeeProfile(employeeProfile)
+                : employeeStoreRelationRepository.findByEmployeeProfileAndIsActiveTrue(employeeProfile);
+        return relations.stream()
                 .map(EmployeeStoreRelation::getStore)
                 .collect(Collectors.toList());
     }

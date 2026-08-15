@@ -150,6 +150,28 @@ describe('storeService', () => {
         });
     });
 
+    describe('getEmployeeStores (WP-6: includeInactive 분기)', () => {
+        it('기본 호출 — includeInactive 쿼리 없이 요청', async () => {
+            (api.get as jest.Mock).mockResolvedValue({data: [{id: 1, storeName: '현재매장'}]});
+
+            const list = await storeService.getEmployeeStores(7);
+
+            expect(api.get).toHaveBeenCalledWith('/api/stores/employee/7');
+            expect(list).toHaveLength(1);
+        });
+
+        it('includeInactive=true — 퇴사 매장 포함 조회 쿼리로 요청(경력증명서 화면 전용)', async () => {
+            (api.get as jest.Mock).mockResolvedValue({
+                data: [{id: 1, storeName: '현재매장'}, {id: 2, storeName: '퇴사매장'}],
+            });
+
+            const list = await storeService.getEmployeeStores(7, true);
+
+            expect(api.get).toHaveBeenCalledWith('/api/stores/employee/7?includeInactive=true');
+            expect(list).toHaveLength(2);
+        });
+    });
+
     describe('putLocation', () => {
         it('coordinates body 와 함께 PUT', async () => {
             (api.put as jest.Mock).mockResolvedValue({data: {success: true}});

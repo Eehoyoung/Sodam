@@ -70,7 +70,8 @@ const MyCertificateScreen: React.FC<Props> = ({route}) => {
         setLoading(true);
         setLoadError(false);
         try {
-            const list = await storeService.getEmployeeStores(user.id);
+            // 퇴사한 매장도 경력증명서 대상이므로 비활성 관계까지 포함해 조회한다(WP-6).
+            const list = await storeService.getEmployeeStores(user.id, true);
             setStores(list);
             // 1개면 자동 선택, route param 이 목록에 있으면 우선 선택.
             if (initialStoreId && list.some(s => s.id === initialStoreId)) {

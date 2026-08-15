@@ -19,6 +19,9 @@ public interface StoreManagementService {
 
     List<Store> getStoresByEmployee(Long userId);
 
+    /** includeInactive=true면 퇴사 등으로 비활성화된 관계의 매장도 포함(WP-6 경력증명서 전용). */
+    List<Store> getStoresByEmployee(Long userId, boolean includeInactive);
+
     List<StoreEmployeeResponseDto> getEmployeesByStore(Long storeId);
 
     Store updateStoreLocation(Long storeId, LocationUpdateDto locationDto);

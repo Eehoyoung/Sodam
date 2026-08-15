@@ -127,8 +127,12 @@ export interface StoreEmployeeDto {
 }
 
 // [API Mapping] GET /api/stores/employee/{userId} — 직원이 소속된 매장 목록 (BOLA: 본인만)
-const getEmployeeStores = async (userId: number): Promise<StoreSummaryDto[]> => {
-  const res = await api.get<StoreSummaryDto[]>(`/api/stores/employee/${userId}`);
+// includeInactive=true면 퇴사 등 비활성 관계의 매장도 포함(WP-6 경력증명서 전용 — 퇴사 후에도
+// 본인 스코프로 조회 가능해야 한다). 기본 false는 기존 호출부(매장 패스 전환 등) 그대로 유지.
+const getEmployeeStores = async (userId: number, includeInactive = false): Promise<StoreSummaryDto[]> => {
+  const res = await api.get<StoreSummaryDto[]>(
+    `/api/stores/employee/${userId}${includeInactive ? '?includeInactive=true' : ''}`,
+  );
   const data: any = res.data as any;
   if (Array.isArray(data)) {return data as StoreSummaryDto[];}
   if (Array.isArray(data?.data)) {return data.data as StoreSummaryDto[];}
