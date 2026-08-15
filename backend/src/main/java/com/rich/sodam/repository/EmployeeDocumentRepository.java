@@ -18,6 +18,9 @@ public interface EmployeeDocumentRepository extends JpaRepository<EmployeeDocume
     Optional<EmployeeDocument> findByEmployeeIdAndStoreIdAndTypeAndFileRef(
             Long employeeId, Long storeId, DocumentType type, String fileRef);
 
+    /** 연소근로자 체크리스트(WP-5) — 친권자 동의서·가족관계증명서·취직인허증 보유 여부만 확인(원본 내용은 안 봄). */
+    boolean existsByEmployeeIdAndStoreIdAndType(Long employeeId, Long storeId, DocumentType type);
+
     /** 매장 만료 임박/도래(만료일 <= 기준일) — 임박 배너·목록용. */
     List<EmployeeDocument> findByStoreIdAndExpiresAtLessThanEqualOrderByExpiresAtAsc(Long storeId, LocalDate to);
 

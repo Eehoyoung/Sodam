@@ -13,6 +13,12 @@ public enum DocumentType {
     LABOR_CONTRACT("근로계약서", false),
     BANKBOOK("통장사본", false),
     ID_CARD("신분증", false),
+    /** 연소근로자(만 18세 미만) §66 — 친권자(후견인) 동의서 보유 여부 체크리스트용(WP-5). */
+    GUARDIAN_CONSENT("친권자 동의서", false),
+    /** 연소근로자 §66 — 가족관계증명서 보유 여부 체크리스트용(WP-5). */
+    FAMILY_RELATION_CERTIFICATE("가족관계증명서", false),
+    /** 만 15세 미만 취직인허증(§64) — 요건 충족 여부를 앱이 자동 판정하지 않고 체크리스트로만 노출(G-17). */
+    WORK_PERMIT("취직인허증", false),
     ETC("기타", false);
 
     private final String label;

@@ -16,6 +16,12 @@ package com.rich.sodam.dto.response;
  * @param weeklyHourLimit     연소자 1주 근로시간 한도(§69)
  * @param nightWorkRestricted 야간(22:00~06:00)·휴일근로 제한 여부(미성년이면 true)
  * @param consentRequired     친권자 동의서·가족관계증명서 비치 필요 여부(§66, 미성년이면 true)
+ * @param guardianConsentOnFile        친권자 동의서 보유 체크리스트(기존 document 도메인 조회, 원본 미확인)
+ * @param familyRelationCertOnFile     가족관계증명서 보유 체크리스트(위와 동일)
+ * @param workPermitOnFile             취직인허증(§64) 보유 체크리스트 — 요건 충족 여부는 앱이 판단하지
+ *                                     않는다(G-17). 체크리스트 항목으로만 노출
+ * @param personalDataProcessingBlocked 만 14세 미만 + 친권자 동의서 미확인 — 법정대리인 동의 없이
+ *                                      개인정보 처리를 진행하지 말라는 경고(개인정보보호법 §22의2)
  * @param guidance            사장 대상 안내 문구
  * @param disclaimer          면책
  */
@@ -29,6 +35,10 @@ public record MinorGuardResponse(
         boolean consentRequired,
         boolean electronicConsentAvailable,
         String evidenceStoragePolicy,
+        boolean guardianConsentOnFile,
+        boolean familyRelationCertOnFile,
+        boolean workPermitOnFile,
+        boolean personalDataProcessingBlocked,
         String guidance,
         String disclaimer
 ) {
