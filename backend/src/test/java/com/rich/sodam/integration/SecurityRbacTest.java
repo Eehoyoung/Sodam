@@ -272,4 +272,42 @@ class SecurityRbacTest {
                         .header("Authorization", "Bearer invalid.jwt.token"))
                 .andExpect(status().isUnauthorized());
     }
+
+    // ─── 260815 WP-1: 상시근로자(근기법) 참고 산정 HTTP 계층 역할·BOLA 검증(HC-10) ──
+
+    @Test
+    @DisplayName("EMPLOYEE: 상시근로자 참고 산정 조회 → 403 (MasterOnly)")
+    void employee_statutoryHeadcount_forbidden() throws Exception {
+        mockMvc.perform(get("/api/stores/1/labor-risk/statutory-headcount")
+                        .with(user("emp@x").authorities(
+                                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_EMPLOYEE"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("EMPLOYEE: 상시근로자 전환 시뮬레이션 → 403 (MasterOnly)")
+    void employee_statutoryHeadcountSimulate_forbidden() throws Exception {
+        mockMvc.perform(get("/api/stores/1/labor-risk/statutory-headcount/simulate")
+                        .with(user("emp@x").authorities(
+                                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_EMPLOYEE"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("BOLA: DevSeedRunner 시드 매장(id=1)은 owner userId=1 소유 — 무관한 MASTER가 상시근로자 산정에 접근하면 403")
+    void otherMaster_statutoryHeadcount_forbidden() throws Exception {
+        UserPrincipal unrelatedMaster = new UserPrincipal(999999L, "other-master-headcount@x", java.util.List.of(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_MASTER")));
+        mockMvc.perform(get("/api/stores/1/labor-risk/statutory-headcount")
+                        .with(user(unrelatedMaster)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("무효 토큰(서명 손상) — 상시근로자 참고 산정 endpoint → 401")
+    void invalidToken_statutoryHeadcountEndpoint_unauthorized() throws Exception {
+        mockMvc.perform(get("/api/stores/1/labor-risk/statutory-headcount")
+                        .header("Authorization", "Bearer invalid.jwt.token"))
+                .andExpect(status().isUnauthorized());
+    }
 }

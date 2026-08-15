@@ -6,9 +6,13 @@ import com.rich.sodam.domain.WorkShift;
 import com.rich.sodam.dto.request.WorkShiftCreateRequest;
 import com.rich.sodam.dto.request.WorkShiftNotifyRequest;
 import com.rich.sodam.dto.request.WorkShiftUpdateRequest;
+import com.rich.sodam.dto.response.LaborRiskResponse.Item;
+import com.rich.sodam.dto.response.LaborRiskResponse.RiskType;
+import com.rich.sodam.dto.response.LaborRiskResponse.Severity;
 import com.rich.sodam.dto.response.WorkShiftNotifyResponse;
 import com.rich.sodam.dto.response.WorkShiftResponse;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
+import com.rich.sodam.repository.MasterStoreRelationRepository;
 import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.repository.WorkShiftRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +25,7 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -35,10 +40,17 @@ public class WorkShiftService {
 
     private final WorkShiftRepository repository;
     private final EmployeeStoreRelationRepository relationRepository;
+    private final MasterStoreRelationRepository masterStoreRelationRepository;
     private final StoreRepository storeRepository;
     private final NotificationService notificationService;
     private final FixedScheduleService fixedScheduleService;
     private final LiveSyncPublisher liveSyncPublisher;
+    private final LaborRiskService laborRiskService;
+
+    /** (WP-2) 확정 직후 사장에게 즉시 알릴 사전 예측 리스크 유형(DANGER만 — WARN은 대시보드에서 확인). */
+    private static final Set<RiskType> FORECAST_ALERT_RISK_TYPES = Set.of(
+            RiskType.SCHEDULE_52H_FORECAST, RiskType.BREAK_MISSING_FORECAST,
+            RiskType.MINOR_NIGHT_FORECAST, RiskType.MINOR_HOURS_FORECAST);
 
     @Transactional
     public WorkShiftResponse create(Long storeId, WorkShiftCreateRequest req) {
@@ -123,6 +135,9 @@ public class WorkShiftService {
                 .findByStoreIdAndShiftDateBetweenAndConfirmedAtIsNullOrderByShiftDateAsc(
                         storeId, req.getFrom(), req.getTo());
         unconfirmed.forEach(WorkShift::confirm);
+        if (!unconfirmed.isEmpty()) {
+            notifyForecastRisks(storeId); // HC-5: 경고 발송은 확정 성공 이후 — 확정 자체를 막지 않는다
+        }
 
         List<WorkShift> notificationTargets = repository
                 .findByStoreIdAndShiftDateBetweenAndConfirmedAtIsNotNullAndConfirmationNotificationSentAtIsNullOrderByShiftDateAsc(
@@ -210,6 +225,41 @@ public class WorkShiftService {
         return relationRepository.findByEmployeeProfile_IdAndStore_IdAndIsActiveTrue(employeeId, storeId)
                 .map(EmployeeStoreRelation::getEmployeeProfile)
                 .flatMap(this::employeeUserId);
+    }
+
+    /**
+     * (WP-2) 스케줄 확정 직후 사전 예측 진단 실행 — 실패해도 확정 트랜잭션에 영향 없음(best-effort).
+     * 신규 알림 채널을 만들지 않고 기존 {@link NotificationService}(내부에서 afterCommit 처리)를 재사용한다.
+     * 현재 구현은 "오늘 기준 다음 주" 예측만 다룬다({@link LaborRiskService#analyze(Long)}) — 이번 확정이
+     * 그보다 먼 미래 주라면 이 알림에는 잡히지 않고 대시보드 재조회 시점에 반영된다.
+     */
+    private void notifyForecastRisks(Long storeId) {
+        try {
+            List<Item> dangerForecasts = laborRiskService.analyze(storeId).items().stream()
+                    .filter(i -> i.severity() == Severity.DANGER)
+                    .filter(i -> FORECAST_ALERT_RISK_TYPES.contains(i.type()))
+                    .toList();
+            if (dangerForecasts.isEmpty()) {
+                return;
+            }
+            List<Long> masterUserIds = masterStoreRelationRepository.findByStore_Id(storeId).stream()
+                    .filter(r -> r.getMasterProfile() != null && r.getMasterProfile().getUser() != null)
+                    .map(r -> r.getMasterProfile().getUser().getId())
+                    .toList();
+            if (masterUserIds.isEmpty()) {
+                return;
+            }
+            String storeName = storeRepository.findById(storeId)
+                    .map(store -> store.getStoreName() != null ? store.getStoreName() : "매장")
+                    .orElse("매장");
+            for (Item item : dangerForecasts) {
+                for (Long masterUserId : masterUserIds) {
+                    notificationService.notifyLaborRiskDetected(masterUserId, storeName, item.employeeName(), item.message());
+                }
+            }
+        } catch (Exception e) {
+            // best-effort — 사전 경고 발송 실패가 스케줄 확정 자체를 막으면 안 된다(HC-5 정신).
+        }
     }
 
     private Optional<Long> employeeUserId(EmployeeProfile profile) {

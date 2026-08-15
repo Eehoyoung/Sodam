@@ -21,7 +21,19 @@ public record LaborRiskResponse(List<Item> items) {
         /** 입사 11개월 이상 경과 — 1년 근속(퇴직금 채권 발생) 임박. */
         SEVERANCE_UPCOMING,
         /** 월급제 계약의 스케줄 약정이 주 52시간 한도(연장 12h, §53) 초과. */
-        CONTRACT_OVER_52H
+        CONTRACT_OVER_52H,
+        /** 근로기준법 시행령 §7의2 상시근로자 참고 산정값이 5인 경계에 근접/도달(매장 단위 — employeeId 없음). */
+        HEADCOUNT_THRESHOLD,
+        /** 다음 주 확정 시프트 합계만으로 주 52시간 초과가 예상됨(사전 예측, 실근무 불요). */
+        SCHEDULE_52H_FORECAST,
+        /** 다음 주 확정 시프트 합계가 주휴수당 발생 기준(15h) 미만으로 예상됨(사전 예측). */
+        SCHEDULE_15H_SHORTFALL,
+        /** 다음 주 확정 시프트 중 4h→30분/8h→1h 휴게 배치 필요 구간이 있으나 스케줄에 휴게 기록이 없음. */
+        BREAK_MISSING_FORECAST,
+        /** 연소근로자(만 18세 미만)의 다음 주 확정 시프트가 22~06시 야간 시간대에 걸침(§70). */
+        MINOR_NIGHT_FORECAST,
+        /** 연소근로자의 다음 주 확정 시프트가 1일 7h 또는 1주 35h 한도 초과가 예상됨(§69). */
+        MINOR_HOURS_FORECAST
     }
 
     /** 심각도 — DANGER: 즉시 위법 가능(최저임금 미만·계약서 미서명), WARN: 사전 경고. */

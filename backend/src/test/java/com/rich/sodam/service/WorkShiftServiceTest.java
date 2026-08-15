@@ -2,6 +2,8 @@ package com.rich.sodam.service;
 
 import com.rich.sodam.domain.EmployeeProfile;
 import com.rich.sodam.domain.EmployeeStoreRelation;
+import com.rich.sodam.domain.MasterProfile;
+import com.rich.sodam.domain.MasterStoreRelation;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.domain.WorkShift;
@@ -13,6 +15,8 @@ import com.rich.sodam.dto.response.WorkShiftNotifyResponse;
 import com.rich.sodam.dto.response.WorkShiftResponse;
 import com.rich.sodam.repository.EmployeeProfileRepository;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
+import com.rich.sodam.repository.MasterProfileRepository;
+import com.rich.sodam.repository.MasterStoreRelationRepository;
 import com.rich.sodam.repository.StoreRepository;
 import com.rich.sodam.repository.UserRepository;
 import com.rich.sodam.repository.WorkShiftRepository;
@@ -25,13 +29,17 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
@@ -51,6 +59,8 @@ class WorkShiftServiceTest {
     @Autowired private StoreRepository storeRepository;
     @Autowired private EmployeeProfileRepository employeeProfileRepository;
     @Autowired private EmployeeStoreRelationRepository relationRepository;
+    @Autowired private MasterProfileRepository masterProfileRepository;
+    @Autowired private MasterStoreRelationRepository masterStoreRelationRepository;
     @MockBean private NotificationService notificationService;
 
     private int bizSeq = 0;
@@ -69,6 +79,14 @@ class WorkShiftServiceTest {
 
     private void assign(EmployeeProfile employee, Store store) {
         relationRepository.save(new EmployeeStoreRelation(employee, store, 12_000));
+    }
+
+    private User owner(Store store) {
+        User u = new User("owner-store" + store.getId() + "@x.com", "사장" + store.getId());
+        u = userRepository.save(u);
+        MasterProfile master = masterProfileRepository.save(new MasterProfile(u));
+        masterStoreRelationRepository.save(new MasterStoreRelation(master, store));
+        return u;
     }
 
     private void assignInactive(EmployeeProfile employee, Store store) {
@@ -410,5 +428,37 @@ class WorkShiftServiceTest {
         assertThat(secondResponse.confirmedCount()).isZero();
         assertThat(secondResponse.notifiedCount()).isZero();
         verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    @DisplayName("HC-5: 다음 주 확정 근무가 52시간을 넘는 DANGER 예측이 있어도 스케줄 확정 자체는 성공한다(차단 아님)")
+    void confirmSucceedsEvenWithDangerForecast() {
+        Store store = store();
+        owner(store);
+        EmployeeProfile emp = employee("danger-confirm@x.com", "과로예정직원");
+        assign(emp, store);
+
+        LocalDate nextMonday = LocalDate.now().with(DayOfWeek.MONDAY).plusWeeks(1);
+        for (int d = 0; d < 4; d++) { // 13h × 4일 = 52h → SCHEDULE_52H_FORECAST DANGER
+            WorkShiftCreateRequest r = req(emp.getId(), nextMonday.plusDays(d), "과로주");
+            r.setStartTime(LocalTime.of(8, 0));
+            r.setEndTime(LocalTime.of(21, 0));
+            workShiftService.create(store.getId(), r);
+        }
+
+        WorkShiftNotifyRequest notifyReq = new WorkShiftNotifyRequest();
+        notifyReq.setFrom(nextMonday);
+        notifyReq.setTo(nextMonday.plusDays(6));
+
+        WorkShiftNotifyResponse response = workShiftService.notifyConfirmed(store.getId(), notifyReq);
+
+        // 경고가 있어도 확정 자체는 그대로 성공(HC-5) — DB에도 confirmedAt이 실제로 찍힌다.
+        assertThat(response.confirmedCount()).isEqualTo(4);
+        assertThat(workShiftRepository.findByStoreIdAndShiftDateBetweenOrderByShiftDateAsc(
+                        store.getId(), nextMonday, nextMonday.plusDays(6)))
+                .allMatch(WorkShift::isConfirmed);
+        // 확정 성공과 별개로, 사장에게 사전 경고 알림도 나갔다(경고가 확정을 막지 않으면서도 알려는 준다).
+        verify(notificationService, atLeastOnce())
+                .notifyLaborRiskDetected(anyLong(), anyString(), anyString(), anyString());
     }
 }

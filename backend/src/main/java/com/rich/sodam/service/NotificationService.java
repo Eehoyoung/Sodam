@@ -109,6 +109,20 @@ public class NotificationService {
                 .build());
     }
 
+    /**
+     * (WP-2) 스케줄 확정 직후 사전 예측 리스크(DANGER) 발견 — 사장 전용.
+     * 판정은 참고용이며(HC-3), 이 알림은 스케줄 확정 자체를 막지 않는다(HC-5).
+     */
+    @Async
+    public void notifyLaborRiskDetected(Long ownerUserId, String storeName, String employeeName, String message) {
+        push(ownerUserId, PushMessage.builder()
+                .title("노무 리스크 사전 경고")
+                .body(String.format("%s · %s — %s", storeName, employeeName, message))
+                .deepLink("sodam://labor-risk")
+                .data(Map.of("type", "LABOR_RISK_FORECAST"))
+                .build());
+    }
+
     @Async
     public void notifyBillingSucceeded(Long ownerUserId, String planName, int amount) {
         push(ownerUserId, PushMessage.builder()

@@ -259,6 +259,22 @@ sodam:
     weekend-grant: ${SODAM_ATTENDANCE_CREDIT_WEEKEND_GRANT:5}
     streak-bonus-quantity: ${SODAM_ATTENDANCE_CREDIT_STREAK_BONUS_QUANTITY:10}
     streak-bonus-interval-days: ${SODAM_ATTENDANCE_CREDIT_STREAK_BONUS_INTERVAL_DAYS:7}
+  # G-19: 5인 미만 사업장 근로기준법 확대적용 — 정부가 "추진 중인" 로드맵이며 법령 확정이 아니다.
+  # 법령이 바뀌면 이 목록만 갱신한다(코드 변경 없음). description은 반드시 "추진 중/검토 중" 표현 유지.
+  labor-law-roadmap:
+    items:
+      - stage: 1
+        expected-year: 2025
+        title: 근로기준법 확대 적용 로드맵 발표
+        description: 정부가 5인 미만 사업장에도 근로기준법을 단계적으로 확대 적용하는 방안을 추진 중이에요. 아직 확정된 시행일이 아니에요.
+      - stage: 2
+        expected-year: 2027
+        title: 연차유급휴가 확대 적용 검토
+        description: 정부 추진 로드맵에 따르면 2027년경 연차유급휴가 확대 적용이 검토되고 있어요. 확정된 시행일이 아니에요.
+      - stage: 3
+        expected-year: 2028
+        title: 가산수당·해고 제한 등 전면 적용 검토
+        description: 정부 추진 로드맵에 따르면 2028년까지 단계적으로 근로기준법 전면 적용이 검토되고 있어요. 확정된 시행일이 아니에요.
     free-grant-expiry-days: ${SODAM_ATTENDANCE_CREDIT_FREE_GRANT_EXPIRY_DAYS:30}
     offer-send-cost: ${SODAM_ATTENDANCE_CREDIT_OFFER_SEND_COST:1}
     application-view-cost: ${SODAM_ATTENDANCE_CREDIT_APPLICATION_VIEW_COST:2}
