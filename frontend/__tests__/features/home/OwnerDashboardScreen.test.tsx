@@ -7,6 +7,8 @@ jest.mock('react-native', () => ({
     Text: 'Text',
     ScrollView: 'ScrollView',
     Pressable: 'Pressable',
+    // WP-7: 노무 확인 필요 카드가 TouchableOpacity 사용 — 누락 시 undefined 컴포넌트 크래시.
+    TouchableOpacity: 'TouchableOpacity',
     ActivityIndicator: 'ActivityIndicator',
     RefreshControl: 'RefreshControl',
     // DS v2: ScreenContainer 가 KeyboardAvoidingView/StatusBar 를 사용 → 누락 시 undefined 컴포넌트 크래시

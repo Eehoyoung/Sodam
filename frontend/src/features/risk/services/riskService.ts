@@ -10,15 +10,24 @@ export type LaborRiskType =
     | 'CONTRACT_UNSIGNED'
     | 'MIN_WAGE_RISK'
     | 'SEVERANCE_UPCOMING'
-    | 'CONTRACT_OVER_52H';
+    | 'CONTRACT_OVER_52H'
+    // 260815 WP-1: 상시근로자(근기법) 참고 산정 — 매장 단위 항목(employeeId 없음).
+    | 'HEADCOUNT_THRESHOLD'
+    // 260815 WP-2: 사후 감지 → 사전 예측(확정 시프트 기반, 실근무 불요).
+    | 'SCHEDULE_52H_FORECAST'
+    | 'SCHEDULE_15H_SHORTFALL'
+    | 'BREAK_MISSING_FORECAST'
+    | 'MINOR_NIGHT_FORECAST'
+    | 'MINOR_HOURS_FORECAST';
 
 export type LaborRiskSeverity = 'WARN' | 'DANGER';
 
 export interface LaborRiskItem {
     type: LaborRiskType;
     severity: LaborRiskSeverity;
-    employeeId: number;
-    employeeName: string;
+    /** HEADCOUNT_THRESHOLD처럼 매장 단위 항목은 null(특정 직원 귀속 아님). */
+    employeeId: number | null;
+    employeeName: string | null;
     message: string;
     value?: string;
 }

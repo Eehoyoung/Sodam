@@ -310,4 +310,45 @@ class SecurityRbacTest {
                         .header("Authorization", "Bearer invalid.jwt.token"))
                 .andExpect(status().isUnauthorized());
     }
+
+    // ─── 260815 WP-7: 노무 건강도 대시보드 HTTP 계층 역할·BOLA 검증(HC-10) ──
+
+    @Test
+    @DisplayName("EMPLOYEE: 노무 건강도 요약 조회 → 403 (MasterOnly)")
+    void employee_laborHealthSummary_forbidden() throws Exception {
+        mockMvc.perform(get("/api/stores/1/labor-health")
+                        .with(user("emp@x").authorities(
+                                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_EMPLOYEE"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("EMPLOYEE: 노무 건강도 상세 조회 → 403 (MasterOnly)")
+    void employee_laborHealthDetail_forbidden() throws Exception {
+        mockMvc.perform(get("/api/stores/1/labor-health/detail")
+                        .with(user("emp@x").authorities(
+                                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_EMPLOYEE"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("무관한 MASTER가 노무 건강도에 접근하면 차단된다 — 플랜 게이트(402)가 BOLA 체크보다 먼저 실행되므로 "
+            + "구독 없는 계정은 402, 구독이 있어도 소유 매장이 아니면(BOLA) 403 중 하나로 막힌다")
+    void otherMaster_laborHealthSummary_denied() throws Exception {
+        UserPrincipal unrelatedMaster = new UserPrincipal(999999L, "other-master-health@x", java.util.List.of(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_MASTER")));
+        mockMvc.perform(get("/api/stores/1/labor-health")
+                        .with(user(unrelatedMaster)))
+                .andExpect(status().is(org.hamcrest.Matchers.anyOf(
+                        org.hamcrest.Matchers.is(402),
+                        org.hamcrest.Matchers.is(403))));
+    }
+
+    @Test
+    @DisplayName("무효 토큰(서명 손상) — 노무 건강도 요약 endpoint → 401")
+    void invalidToken_laborHealthEndpoint_unauthorized() throws Exception {
+        mockMvc.perform(get("/api/stores/1/labor-health")
+                        .header("Authorization", "Bearer invalid.jwt.token"))
+                .andExpect(status().isUnauthorized());
+    }
 }

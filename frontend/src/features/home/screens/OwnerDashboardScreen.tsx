@@ -1,5 +1,5 @@
 import React, {useCallback, useState} from 'react';
-import {RefreshControl, ScrollView, StyleSheet, View} from 'react-native';
+import {RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View} from 'react-native';
 import {useNavigation, useFocusEffect, useRoute, type RouteProp} from '@react-navigation/native';
 import {useStoreLiveSync} from '../../../common/realtime/useStoreLiveSync';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -25,6 +25,7 @@ import StoreSwitcherSheet from '../../../common/components/store/StoreSwitcherSh
 import {StoreSetupCard} from '../../store/components/StoreSetupCard';
 import storeService from '../../store/services/storeService';
 import {fetchDashboardStats, fetchTodayStats, MonthPayrollStats, TodayStats} from '../../store/services/insightsService';
+import {fetchLaborRisks, LaborRiskItem} from '../../risk/services/riskService';
 import {useSubscription} from '../../subscription/hooks/useSubscription';
 import {PastDueBanner} from '../../subscription/components/PastDueBanner';
 import {useManagedStores} from '../../manager/hooks/useManagedStores';
@@ -72,6 +73,9 @@ export const OwnerDashboardContent: React.FC<OwnerDashboardContentProps> = ({vis
     const [loaded, setLoaded] = useState(!!visualFixture);
     const [error, setError] = useState(false);
     const [setupRefreshKey, setSetupRefreshKey] = useState(0);
+    // 260815 WP-3/WP-7 — 노무 확인 필요 건수(참고 산정). 조회 실패는 카드 자체를 숨겨 대시보드
+    // 본체를 막지 않는다(best-effort, HC-5: 경고 표시가 화면 자체를 깨면 안 된다).
+    const [laborRiskItems, setLaborRiskItems] = useState<LaborRiskItem[] | null>(visualFixture ? [] : null);
 
     const load = useCallback(async () => {
         try {
@@ -114,6 +118,13 @@ export const OwnerDashboardContent: React.FC<OwnerDashboardContentProps> = ({vis
                     daysRemainingInMonth: daysLeftInMonth(),
                 },
             );
+            try {
+                setLaborRiskItems(await fetchLaborRisks(firstStore.id));
+            } catch (riskError) {
+                // 카드 하나 실패로 대시보드 전체를 막지 않는다 — 조용히 숨김(카드 미노출).
+                logger.debug('[OwnerDashboard] labor risk load failed', riskError);
+                setLaborRiskItems(null);
+            }
         } catch (e) {
             // 핵심 매장 조회 실패 — 조용히 삼키지 않고 에러/재시도 UI 로 노출
             logger.warn('[OwnerDashboard] load failed', e);
@@ -261,6 +272,31 @@ export const OwnerDashboardContent: React.FC<OwnerDashboardContentProps> = ({vis
                         style={styles.taskCta}
                     />
                 </AppCard>
+
+                {/* 260815 WP-3/WP-7 — 노무 확인 필요 건수(참고 산정, HC-1: 등급·안전 표현 금지). */}
+                {laborRiskItems !== null && selectedStoreId !== null ? (
+                    <TouchableOpacity
+                        activeOpacity={0.75}
+                        onPress={() => navigation.navigate('LaborRisk', {storeId: selectedStoreId})}>
+                        <AppCard variant="flat" style={styles.laborRiskCard}>
+                            <View style={styles.taskTop}>
+                                <Ionicons
+                                    name={laborRiskItems.length > 0 ? 'shield-half-outline' : 'checkmark-circle-outline'}
+                                    size={22}
+                                    color={laborRiskItems.length > 0 ? c.warning : c.success}
+                                />
+                                <AppText variant="headingSm" tone="primary" style={styles.taskTitle}>
+                                    {laborRiskItems.length > 0
+                                        ? `노무 확인 필요 ${laborRiskItems.length}건`
+                                        : '지금 확인이 필요한 노무 항목이 없어요'}
+                                </AppText>
+                            </View>
+                            <AppText variant="caption" tone="secondary" style={styles.taskSub}>
+                                확정된 근무·계약 정보 기준 참고 점검이에요. 최종 판단은 근로감독관·법원의 권한이에요.
+                            </AppText>
+                        </AppCard>
+                    </TouchableOpacity>
+                ) : null}
 
                 {/* stat-grid — 출근/예상급여/남은일 3분할 (시안 08) */}
                 <View style={styles.statGrid}>
@@ -469,6 +505,7 @@ function daysLeftInMonth(): number {
 const styles = StyleSheet.create({
     content: {paddingHorizontal: spacing.xxl, paddingTop: spacing.lg, paddingBottom: spacing.xxxl, gap: spacing.xxl},
     taskCard: {gap: spacing.xs},
+    laborRiskCard: {gap: spacing.xs},
     taskTop: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
     taskTitle: {flexShrink: 1},
     taskSub: {marginTop: spacing.xs, opacity: 0.85},

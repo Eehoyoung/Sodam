@@ -25,6 +25,14 @@ const TYPE_META: Record<LaborRiskType, {icon: string; title: string}> = {
     MIN_WAGE_RISK: {icon: 'cash-outline', title: '최저임금 리스크'},
     SEVERANCE_UPCOMING: {icon: 'wallet-outline', title: '퇴직금 발생 임박'},
     CONTRACT_OVER_52H: {icon: 'warning-outline', title: '계약 주 52시간 초과'},
+    // 260815 WP-1
+    HEADCOUNT_THRESHOLD: {icon: 'people-outline', title: '상시근로자 5인 경계'},
+    // 260815 WP-2 — 사전 예측(다음 주 확정 시프트 기반)
+    SCHEDULE_52H_FORECAST: {icon: 'calendar-outline', title: '다음 주 52시간 초과 예상'},
+    SCHEDULE_15H_SHORTFALL: {icon: 'time-outline', title: '다음 주 주휴 기준 미달 예상'},
+    BREAK_MISSING_FORECAST: {icon: 'cafe-outline', title: '휴게시간 배치 필요'},
+    MINOR_NIGHT_FORECAST: {icon: 'moon-outline', title: '연소자 야간근로 예상'},
+    MINOR_HOURS_FORECAST: {icon: 'hourglass-outline', title: '연소자 근로시간 초과 예상'},
 };
 
 /**
@@ -70,11 +78,15 @@ const LaborRiskDashboardScreen: React.FC = () => {
     const warnCount = items.filter(i => i.severity === 'WARN').length;
 
     const openItem = (item: LaborRiskItem) => {
+        // HEADCOUNT_THRESHOLD 등 매장 단위 항목(employeeId 없음)은 특정 직원 화면으로 이동할 수 없다.
+        if (item.employeeId === null) {
+            return;
+        }
         if (item.type === 'CONTRACT_UNSIGNED') {
             navigation.navigate('SendContract', {
                 storeId,
                 employeeId: item.employeeId,
-                employeeName: item.employeeName,
+                employeeName: item.employeeName ?? '직원',
             });
             return;
         }
@@ -84,15 +96,17 @@ const LaborRiskDashboardScreen: React.FC = () => {
     const renderItem = (item: LaborRiskItem, index: number) => {
         const meta = TYPE_META[item.type] ?? {icon: 'alert-circle-outline', title: '노무 리스크'};
         const danger = item.severity === 'DANGER';
+        const navigable = item.employeeId !== null;
         return (
             <TouchableOpacity
-                key={`${item.type}-${item.employeeId}-${index}`}
-                activeOpacity={0.75}
+                key={`${item.type}-${item.employeeId ?? 'store'}-${index}`}
+                activeOpacity={navigable ? 0.75 : 1}
+                disabled={!navigable}
                 onPress={() => openItem(item)}>
                 <AppCard variant="flat">
                     <View style={styles.titleRow}>
                         <AppText variant="titleMd" weight="700" numberOfLines={1} style={styles.title}>
-                            {meta.title} · {item.employeeName}
+                            {item.employeeName ? `${meta.title} · ${item.employeeName}` : meta.title}
                         </AppText>
                         <AppBadge label={danger ? '위험' : '주의'} tone={danger ? 'error' : 'warning'} />
                     </View>
@@ -118,8 +132,8 @@ const LaborRiskDashboardScreen: React.FC = () => {
                 />
             ) : items.length === 0 ? (
                 <SuccessState
-                    title="발견된 리스크가 없어요 👍"
-                    description="직원들의 근무·계약 상태가 모두 안전 범위에 있어요."
+                    title="지금 확인이 필요한 항목이 없어요"
+                    description="확정된 근무·계약 정보를 기준으로 한 참고 점검이에요. 상황이 바뀌면 다시 확인해 주세요."
                 />
             ) : (
                 <>
