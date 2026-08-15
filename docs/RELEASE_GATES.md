@@ -88,13 +88,13 @@
 | **G-18** 🆕 | 상시근로자 수 산정 기준(산정기간·가동일수·단시간 환산) — `StatutoryHeadcountStandards` 참고값 | 노무사 |
 | **G-19** 🆕 | 5인 미만 확대적용 로드맵 표시 범위(미확정 정책의 앱 내 고지 수위) | 법무 |
 
-### 사람이 눌러야 하는 것 (H·C·D·P) — 23건
+### 사람이 눌러야 하는 것 (H·C·D·P) — 22건
 
 | 분류 | 항목 |
 |---|---|
 | **H** 돈이 나감 | H-1 CLOVA OCR 유료화 · H-3 추천 보상 빌링 반영 · H-4 A/B 과금값 주입 · **H-5 Toss 실키 전환** · **H-6 🆕 LLM 서술 계층 유료 실키 활성화** · **H-7 🆕 구독료 인상 실행** |
 | **C** 문구·자료 | C-1 개인모드 동의 문구 · **C-2 GitHub Pages 활성화(1클릭)** · C-3 약관 부칙 실값 · C-4 위치기반 신고 · C-5 판촉 문구 전수 점검 |
-| **D** 판단 대기 | D-1 iOS IAP 대응 · D-2 QR 카메라 의존성 · D-4 매출 기능 노출 범위 · D-5 PRO 매장 상한 · D-6 매입장부 부가세 필드 · **D-7 🆕 labor-health API 활용 방향** |
+| **D** 판단 대기 | D-1 iOS IAP 대응 · D-2 QR 카메라 의존성 · D-4 매출 기능 노출 범위 · D-5 PRO 매장 상한 · D-6 매입장부 부가세 필드 |
 | **P** 외부 작업 | P-1 Apple Developer · P-2 GoogleService-Info·APNs · P-3 Xcode Capabilities · P-4 Kakao 콘솔 · P-5 운영 env 값 · **P-6 Toss Web SDK 라이선스 범위 확인** |
 
 ### 우리가 출시 전에 하기로 한 것 (V) — 6건
@@ -434,7 +434,7 @@ DSN을 켜기 전에 실값으로 교체할 것. 예외 메시지·스택의 PII
 | **D-4** | 매출 기능 노출 범위(floor) 재설정 | PRD §7 |
 | **D-5** | PRO 매장 상한 해석 | 현재 **2곳**(첫 매장 1 + 고지된 "멀티매장 1개")으로 구현. 다르면 `PlanAccessService.PRO_DEFAULT_STORE_QUOTA` 상수와 요금제 화면 문구만 변경 |
 | **D-6** | 매입장부 부가세 필드(`supplyAmount`/`vatAmount`) 활용 | 배선만 된 상태, 소비처 없음. **필드 자체는 제거하지 말 것.** 착수 시 세무 자문 선행 |
-| **D-7** 🆕 | `LaborHealthController`(`/labor-health`·`/labor-health/detail`) 활용 방향 | 260815 WP-7에서 플랜 게이팅 인프라 증명용으로 신설했으나 FE 소비처가 없다(사장 홈 카드는 게이팅 없는 `/labor-risk`를 그대로 씀). 안 A(홈 카드를 이걸로 전환, FREE/STARTER 건수만 노출) / 안 B(별도 상세 분석 화면으로 분리) / 안 C(당장 미사용 유지, T로 재분류) 중 택1. 상세: `docs/260816/260816_포지셔닝전환_후속작업_계획서.md` WP-B |
+| ~~**D-7**~~ | ~~`LaborHealthController`(`/labor-health`·`/labor-health/detail`) 활용 방향~~ | ✅ **결정 완료(2026-08-16, 사용자)** — **안 B 채택**: 사장 홈 카드는 게이팅 없는 `/labor-risk`(WP-1)를 그대로 유지하고, `/labor-health`·`/labor-health/detail`은 **별도 "노무 리스크 상세 분석" 화면**에서만 써서 PRO 업셀 지점으로 삼는다. 판단은 끝났고 **구현은 코드 작업으로 남음** — `docs/260816/260816_포지셔닝전환_후속작업_계획서.md` WP-B(갱신됨) |
 
 ---
 
