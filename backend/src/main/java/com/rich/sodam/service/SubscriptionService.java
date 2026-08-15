@@ -45,6 +45,7 @@ public class SubscriptionService {
     private final DomainEventService domainEventService;
     private final SentryReporter sentryReporter;
     private final PaymentReceiptService paymentReceiptService;
+    private final PlanPricingService planPricingService;
 
     /**
      * 무료 플랜 가입 — 카드 없이 즉시 ACTIVE.
@@ -84,6 +85,9 @@ public class SubscriptionService {
 
         String customerKey = buildCustomerKey(userId);
         Subscription pending = Subscription.pending(user, plan, cycle, customerKey);
+        // WP-8 grandfathering: 가입 시점 카탈로그 가격을 잠근다. override 미설정이면 현행 enum
+        // 가격 그대로라 이 줄을 추가해도 청구 금액은 바뀌지 않는다(HC-13).
+        pending.lockPrice(planPricingService.currentCatalogPriceKrw(plan));
 
         TossBillingClient.BillingKeyResult bk = tossClient.issueBillingKey(tossAuthKey, customerKey);
         pending.attachBillingKey(bk.getBillingKey(), bk.getCardLabel());
@@ -227,7 +231,10 @@ public class SubscriptionService {
 
         long attempt = paymentHistoryRepository.countBySubscription_IdAndBillingPeriod(s.getId(), period) + 1;
         String orderId = "ORD_" + s.getId() + "_" + period.replace("-", "") + "_" + attempt;
-        int amount = cycle.amountFor(s.getPlan());
+        // WP-8: 가입 시점에 잠근 가격(grandfathering)이 있으면 그 값을, 없으면 현재 카탈로그
+        // 가격을 쓴다. override 미설정 상태에서는 planPricingService가 항상 enum 기본값을
+        // 반환하므로 이 변경은 실제 청구 금액을 바꾸지 않는다(HC-13).
+        int amount = cycle.amountFor(planPricingService.effectivePriceKrw(s));
 
         PaymentHistory ph = paymentHistoryRepository.save(
                 PaymentHistory.pending(s, orderId, amount, period));

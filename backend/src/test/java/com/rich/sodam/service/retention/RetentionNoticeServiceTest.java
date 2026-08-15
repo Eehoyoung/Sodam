@@ -23,6 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,10 +47,18 @@ import static org.mockito.Mockito.when;
  * <p>가장 중요한 두 가지: <b>한 사람의 여러 로우가 메일 1통으로 묶이는가</b>(출퇴근은 1인당 수백 건이라
  * 로우당 1통이면 사고), 그리고 <b>고지가 완결되지 않은 건은 파기되지 않는가</b>(임금채권 시효가
  * 보존기간과 같은 3년이라 통지 없이 증거가 사라지면 안 된다).</p>
+ *
+ * <p>{@code sendDueNotices()}가 {@code retention_purge_schedule} 테이블을 storeId 등으로 스코프
+ * 없이 전체 스캔한다(경보 성격상 매장 무관 전역 배치라 원래 그렇다). 그래서 같은 컨텍스트를 공유하는
+ * 다른 테스트 클래스가(트랜잭션 롤백 없이) 남긴 잔여 스케줄 로우가 있으면 이 클래스의 "정확히 1통"
+ * 어서션이 오염된다 — 260815 세션에서 전체 스위트 실행 시에만(단독/패키지 실행은 항상 성공) 실제로
+ * 재현 확인. {@code TransactionBoundaryTest}·{@code StoreManagerConcurrencyTest} 등 기존 5개
+ * 클래스와 동일한 처방으로 이 클래스 전용 H2 컨텍스트를 격리한다.</p>
  */
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_CLASS)
 class RetentionNoticeServiceTest {
 
     private static final AtomicInteger SEQ = new AtomicInteger(0);

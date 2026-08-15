@@ -74,4 +74,14 @@ class SubscriptionBillingIntegrationTest {
         assertThat(payments.get(0).getAmount()).isEqualTo(19_900);
         assertThat(payments.get(0).getBillingPeriod()).isNotNull();
     }
+
+    @Test
+    @DisplayName("WP-8: 가입 시 priceAtSignupKrw가 현재 카탈로그 가격(19,900)으로 잠긴다")
+    void subscribeLocksSignupPrice() {
+        User user = owner();
+        Subscription sub = subscriptionService.subscribe(user.getId(), PlanType.PRO, "MOCK_AUTH");
+
+        Subscription reloaded = subscriptionRepository.findById(sub.getId()).orElseThrow();
+        assertThat(reloaded.getPriceAtSignupKrw()).isEqualTo(19_900);
+    }
 }

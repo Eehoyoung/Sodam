@@ -31,9 +31,18 @@ public enum BillingCycle {
         return months - freeMonths;
     }
 
-    /** 이 주기 1회 청구 금액(원). */
+    /** 이 주기 1회 청구 금액(원) — 플랜 카탈로그 기본가 기준. */
     public int amountFor(PlanType plan) {
         return plan.getMonthlyPriceKrw() * chargedMonths();
+    }
+
+    /**
+     * 이 주기 1회 청구 금액(원) — 월정액을 직접 지정(WP-8). 가입 시점에 잠근 가격
+     * (grandfathering)이나 A/B override가 적용된 실제 청구 금액을 계산할 때 쓴다.
+     * {@link com.rich.sodam.service.PlanPricingService#effectivePriceKrw}가 이 월정액을 구한다.
+     */
+    public int amountFor(int monthlyPriceKrw) {
+        return monthlyPriceKrw * chargedMonths();
     }
 
     /** 청구 시점 기준 다음 기간 종료일. */

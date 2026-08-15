@@ -71,6 +71,20 @@ public class Subscription {
     @Column(name = "customer_key", length = 60, nullable = false)
     private String customerKey;
 
+    /**
+     * 가입 시점에 잠근 월정액(원, WP-8 grandfathering). null이면 현재 카탈로그 가격을 따른다
+     * ({@link com.rich.sodam.service.PlanPricingService#effectivePriceKrw}가 이 폴백을 처리).
+     * 이후 {@link PlanType}·{@link com.rich.sodam.config.PlanPricingProperties} 가격이 올라가도
+     * 이 값이 채워진 구독은 청구 금액이 바뀌지 않는다 — 약관법상 불이익 변경(가격 인상) 사전고지
+     * 없이 소급 적용하지 않기 위함.
+     */
+    @Column(name = "price_at_signup_krw")
+    private Integer priceAtSignupKrw;
+
+    /** A/B 가격 실험 그룹 배정(WP-8, 베타 실측용). null = 실험 미대상. 실제 가격 숫자는 안 바뀐다. */
+    @Column(name = "price_variant", length = 20)
+    private String priceVariant;
+
     private LocalDateTime startedAt;
     private LocalDateTime currentPeriodStartAt;
     private LocalDateTime currentPeriodEndAt;
@@ -110,6 +124,24 @@ public class Subscription {
         s.paymentFailureCount = 0;
         s.createdAt = LocalDateTime.now();
         return s;
+    }
+
+    /**
+     * 가입 시점 가격을 잠근다(WP-8 grandfathering). {@code SubscriptionService.subscribe()}에서
+     * 구독 생성 직후 1회만 호출 — 이후 재호출로 가입가를 바꾸지 않는다(가입 후 임의 변경 방지).
+     */
+    public void lockPrice(int monthlyPriceKrw) {
+        if (this.priceAtSignupKrw != null) {
+            return;
+        }
+        this.priceAtSignupKrw = monthlyPriceKrw;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /** A/B 가격 실험 그룹 배정(WP-8, 베타 실측용). */
+    public void assignPriceVariant(String variant) {
+        this.priceVariant = variant;
+        this.updatedAt = LocalDateTime.now();
     }
 
     public void attachBillingKey(String billingKey, String cardLabel) {

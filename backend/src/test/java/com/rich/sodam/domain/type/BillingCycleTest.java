@@ -34,6 +34,17 @@ class BillingCycleTest {
     }
 
     @Test
+    @DisplayName("WP-8: amountFor(월정액) — 직접 지정한 가격으로 계산(gradfathering/override 적용값)")
+    void amountForExplicitPrice() {
+        assertThat(BillingCycle.MONTHLY.amountFor(14_900)).isEqualTo(14_900);
+        assertThat(BillingCycle.HALF_YEARLY.amountFor(14_900)).isEqualTo(14_900 * 5);
+        assertThat(BillingCycle.YEARLY.amountFor(14_900)).isEqualTo(14_900 * 10);
+        // 카탈로그 가격 오버로드와 결과가 같아야 한다(override 없을 때 동일 경로를 검증)
+        assertThat(BillingCycle.MONTHLY.amountFor(PlanType.PRO.getMonthlyPriceKrw()))
+                .isEqualTo(BillingCycle.MONTHLY.amountFor(PlanType.PRO));
+    }
+
+    @Test
     @DisplayName("기간 종료일은 주기 개월 후")
     void periodEnd() {
         LocalDateTime from = LocalDateTime.of(2026, 6, 1, 0, 0);
