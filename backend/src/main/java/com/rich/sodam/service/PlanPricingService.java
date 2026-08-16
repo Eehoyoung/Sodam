@@ -41,4 +41,24 @@ public class PlanPricingService {
         Integer locked = subscription.getPriceAtSignupKrw();
         return locked != null ? locked : currentCatalogPriceKrw(subscription.getPlan());
     }
+
+    /** 홀수/짝수 사용자 ID가 그대로 그룹과 상관되지 않도록 섞는 승수(Knuth 곱셈 해시). */
+    private static final long VARIANT_HASH_MULTIPLIER = 2_654_435_761L;
+
+    /**
+     * 260816 WP-D — A/B 가격 실험 그룹 배정("A"/"B", 50:50). 같은 userId는 항상 같은 그룹으로
+     * 결정적으로 배정된다(재계산해도 결과가 바뀌지 않음 — 실험 도중 그룹이 흔들리면 안 되므로).
+     *
+     * <p>⚠️ 이 메서드는 <b>그룹만 나눈다</b> — 그룹별로 다른 금액을 청구하는 로직은 없다.
+     * {@link #currentCatalogPriceKrw}·{@link #effectivePriceKrw}는 이 배정과 무관하게 항상
+     * 같은 카탈로그 가격을 반환한다. 그룹별 차등 가격은 실제 실험 설계 + 가격 인상(H-7 승인)이
+     * 선행돼야 한다 — 지금은 표시조차 하지 않는다.
+     */
+    public String assignVariant(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        long mixed = userId * VARIANT_HASH_MULTIPLIER;
+        return (mixed & 1) == 0 ? "A" : "B";
+    }
 }

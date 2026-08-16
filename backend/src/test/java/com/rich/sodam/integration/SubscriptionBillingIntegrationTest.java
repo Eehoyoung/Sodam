@@ -84,4 +84,24 @@ class SubscriptionBillingIntegrationTest {
         Subscription reloaded = subscriptionRepository.findById(sub.getId()).orElseThrow();
         assertThat(reloaded.getPriceAtSignupKrw()).isEqualTo(19_900);
     }
+
+    @Test
+    @DisplayName("WP-D: 유료 가입 시 A/B 가격 실험 그룹(priceVariant)이 배정된다")
+    void subscribeAssignsPriceVariant() {
+        User user = owner();
+        Subscription sub = subscriptionService.subscribe(user.getId(), PlanType.PRO, "MOCK_AUTH");
+
+        Subscription reloaded = subscriptionRepository.findById(sub.getId()).orElseThrow();
+        assertThat(reloaded.getPriceVariant()).isIn("A", "B");
+    }
+
+    @Test
+    @DisplayName("WP-D: 무료 가입 시에도 priceVariant가 배정된다")
+    void subscribeFreeAssignsPriceVariant() {
+        User user = owner();
+        Subscription sub = subscriptionService.subscribeFree(user.getId());
+
+        Subscription reloaded = subscriptionRepository.findById(sub.getId()).orElseThrow();
+        assertThat(reloaded.getPriceVariant()).isIn("A", "B");
+    }
 }

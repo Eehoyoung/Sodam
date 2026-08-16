@@ -84,4 +84,32 @@ class PlanPricingServiceTest {
 
         assertThat(sub.getPriceAtSignupKrw()).isEqualTo(19_900);
     }
+
+    @Test
+    @DisplayName("WP-D: assignVariant — 같은 userId는 항상 같은 그룹으로 결정적으로 배정된다")
+    void assignVariantIsDeterministic() {
+        String first = service.assignVariant(42L);
+        String second = service.assignVariant(42L);
+
+        assertThat(first).isIn("A", "B");
+        assertThat(second).isEqualTo(first);
+    }
+
+    @Test
+    @DisplayName("WP-D: assignVariant — userId가 null이면 null(실험 미대상)")
+    void assignVariantNullSafe() {
+        assertThat(service.assignVariant(null)).isNull();
+    }
+
+    @Test
+    @DisplayName("WP-D: assignVariant — 여러 userId에 걸쳐 A/B 양쪽 모두 나온다(한쪽으로 쏠리지 않음)")
+    void assignVariantProducesBothGroups() {
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (long userId = 1; userId <= 50; userId++) {
+            seen.add(service.assignVariant(userId));
+        }
+
+        assertThat(seen).containsExactlyInAnyOrder("A", "B");
+    }
+
 }

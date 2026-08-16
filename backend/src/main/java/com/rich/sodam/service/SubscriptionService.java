@@ -57,6 +57,7 @@ public class SubscriptionService {
         cancelExistingActive(userId);
         String customerKey = buildCustomerKey(userId);
         Subscription s = Subscription.pending(user, PlanType.FREE, customerKey);
+        s.assignPriceVariant(planPricingService.assignVariant(userId)); // WP-D: 그룹 배정만, 가격 차등 없음
         LocalDateTime now = LocalDateTime.now();
         s.activate(now, now.plusYears(99)); // 무료는 사실상 만료 없음
         return subscriptionRepository.save(s);
@@ -88,6 +89,8 @@ public class SubscriptionService {
         // WP-8 grandfathering: 가입 시점 카탈로그 가격을 잠근다. override 미설정이면 현행 enum
         // 가격 그대로라 이 줄을 추가해도 청구 금액은 바뀌지 않는다(HC-13).
         pending.lockPrice(planPricingService.currentCatalogPriceKrw(plan));
+        // WP-D: A/B 가격 실험 그룹 배정만 — 그룹별로 다른 금액을 청구하지 않는다.
+        pending.assignPriceVariant(planPricingService.assignVariant(userId));
 
         TossBillingClient.BillingKeyResult bk = tossClient.issueBillingKey(tossAuthKey, customerKey);
         pending.attachBillingKey(bk.getBillingKey(), bk.getCardLabel());
