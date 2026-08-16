@@ -67,6 +67,11 @@ const WeeklyInsightsScreen: React.FC = () => {
                         value={`${total}건`}
                         sub="매장에서 일어난 주요 활동 수예요"
                     />
+                    {data?.summary ? (
+                        <AppCard variant="spot" style={styles.summaryCard} testID="weekly-insights-summary">
+                            <AppText variant="bodyMd">{data.summary}</AppText>
+                        </AppCard>
+                    ) : null}
                     <AppCard variant="plain" style={styles.list}>
                         {data?.items.map((it, i, arr) => (
                             <View
@@ -95,6 +100,7 @@ const WeeklyInsightsScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+    summaryCard: {marginTop: spacing.lg},
     list: {marginTop: spacing.lg},
     row: {
         flexDirection: 'row',

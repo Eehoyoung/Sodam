@@ -7,6 +7,7 @@ import com.rich.sodam.security.annotation.MasterOnly;
 import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.service.DomainEventService;
+import com.rich.sodam.service.WeeklyInsightsNarrator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -29,15 +30,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class StoreInsightsController {
 
     private final DomainEventService domainEventService;
+    private final WeeklyInsightsNarrator weeklyInsightsNarrator;
     private final StoreAuthorizationPolicy storeAccessGuard;
 
-    @Operation(summary = "주간 인사이트", description = "최근 N일(기본 7) 이벤트 종류별 카운트.")
+    @Operation(summary = "주간 인사이트", description = "최근 N일(기본 7) 이벤트 종류별 카운트. "
+            + "LLM 활성 시 summary(한두 문장 요약) 포함, 미활성/실패 시 summary=null(FE가 숫자 나열형으로 표시).")
     @GetMapping("/weekly")
     public ResponseEntity<WeeklyInsightsResponse> weekly(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long storeId,
             @RequestParam(defaultValue = "7") int days) {
         storeAccessGuard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.DASHBOARD_VIEW);
-        return ResponseEntity.ok(domainEventService.weeklyInsights(storeId, days));
+        WeeklyInsightsResponse base = domainEventService.weeklyInsights(storeId, days);
+        String summary = weeklyInsightsNarrator.summarize(base);
+        return ResponseEntity.ok(new WeeklyInsightsResponse(
+                base.storeId(), base.fromDate(), base.days(), base.items(), summary));
     }
 }

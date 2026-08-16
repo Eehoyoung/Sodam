@@ -12,6 +12,8 @@ export interface WeeklyInsights {
   fromDate: string;
   days: number;
   items: InsightItem[];
+  /** LLM 요약 문장(WP-2). provider 미설정/실패 시 null — 화면은 이 경우 기존 숫자 나열형으로 표시. */
+  summary?: string | null;
 }
 
 export async function fetchWeeklyInsights(storeId: number, days = 7): Promise<WeeklyInsights> {
