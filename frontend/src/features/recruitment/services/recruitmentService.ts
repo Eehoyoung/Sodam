@@ -202,6 +202,17 @@ const applyToJobPosting = async (
     throw new Error('Invalid job application response');
 };
 
+export interface MessageRefineResult {
+    refined: string;
+    changed: boolean;
+}
+
+// [API Mapping] POST /api/job-postings/{postingId}/applications/message-refine — 지원 메시지 다듬기(WP-3, 제출 전 초안, LLM 미활성 시 원본 그대로 반환)
+const refineApplicationMessage = async (postingId: number, message: string): Promise<MessageRefineResult> => {
+    const res = await api.post<MessageRefineResult>(`/api/job-postings/${postingId}/applications/message-refine`, {message});
+    return res.data;
+};
+
 // [API Mapping] GET /api/job-applications/me — 내 지원 현황 조회
 const getMyJobApplications = async (): Promise<JobApplication[]> => {
     const res = await api.get<JobApplication[]>('/api/job-applications/me');
@@ -255,6 +266,7 @@ const recruitmentService = {
     getMyJobPosting,
     getNearbyJobPostings,
     applyToJobPosting,
+    refineApplicationMessage,
     getMyJobApplications,
     getStoreJobApplications,
     respondToJobApplication,
@@ -272,6 +284,7 @@ export {
     getMyJobPosting,
     getNearbyJobPostings,
     applyToJobPosting,
+    refineApplicationMessage,
     getMyJobApplications,
     getStoreJobApplications,
     respondToJobApplication,

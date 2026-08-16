@@ -9,6 +9,7 @@ import ReactTestRenderer, {act} from 'react-test-renderer';
 
 const mockGoBack = jest.fn();
 const mockApplyMutateAsync = jest.fn();
+const mockRefineMutateAsync = jest.fn();
 
 jest.mock('react-native', () => ({
     StyleSheet: {create: (s: any) => s},
@@ -56,6 +57,7 @@ jest.mock('../../../src/theme/tokens', () => jest.requireActual('../../../src/th
 
 jest.mock('../../../src/features/recruitment/hooks/useRecruitmentQueries', () => ({
     useApplyToJobPosting: () => ({mutateAsync: mockApplyMutateAsync, isPending: false}),
+    useRefineApplicationMessage: () => ({mutateAsync: mockRefineMutateAsync, isPending: false}),
 }));
 
 import JobPostingDetailScreen from '../../../src/features/recruitment/screens/JobPostingDetailScreen';
@@ -138,6 +140,38 @@ describe('JobPostingDetailScreen', () => {
         expect(applyButton.props.disabled).toBe(true);
 
         successSpy.mockRestore();
+    });
+
+    test('"AI로 메시지 다듬기" 탭 → 제안 카드 표시 → "이 문구로 적용" 시 메시지가 교체된다(WP-3)', async () => {
+        mockRefineMutateAsync.mockResolvedValue({refined: '안녕하세요, 평일 저녁 근무 가능합니다. 잘 부탁드립니다.', changed: true});
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<JobPostingDetailScreen />);
+            await flush();
+        });
+
+        await act(async () => {
+            findHostByTestId(renderer!, 'job-posting-message-input').props.onChangeText('평일 저녁 가능해요');
+            await flush();
+        });
+
+        await act(async () => {
+            findHostByTestId(renderer!, 'job-posting-message-refine-button').props.onPress();
+            await flush();
+        });
+
+        expect(mockRefineMutateAsync).toHaveBeenCalledWith({postingId: 3, message: '평일 저녁 가능해요'});
+        expect(renderer!.root.findAllByProps({testID: 'job-posting-message-suggestion'}).length).toBeGreaterThan(0);
+
+        await act(async () => {
+            findHostByTestId(renderer!, 'job-posting-message-suggestion-apply').props.onPress();
+            await flush();
+        });
+
+        expect(findHostByTestId(renderer!, 'job-posting-message-input').props.value)
+            .toBe('안녕하세요, 평일 저녁 근무 가능합니다. 잘 부탁드립니다.');
+        expect(renderer!.root.findAllByProps({testID: 'job-posting-message-suggestion'}).length).toBe(0);
     });
 
     test('errorCode(POSTING_CLOSED) 응답 → 매핑된 메시지로 토스트', async () => {

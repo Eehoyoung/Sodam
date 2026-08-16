@@ -18,11 +18,11 @@ import React, {useState} from 'react';
 import {Platform, Pressable, StyleSheet, View} from 'react-native';
 import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {AppHeader, AppInput, AppText, AppToast, GradientHeroCard, ScreenContainer} from '../../../common/components/ds';
+import {AppButton, AppCard, AppHeader, AppInput, AppText, AppToast, GradientHeroCard, ScreenContainer} from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
-import {useApplyToJobPosting} from '../hooks/useRecruitmentQueries';
+import {useApplyToJobPosting, useRefineApplicationMessage} from '../hooks/useRecruitmentQueries';
 import {
     JOB_APPLICATION_ERROR_MESSAGES,
     JOB_CATEGORY_LABELS,
@@ -56,7 +56,40 @@ const JobPostingDetailScreen: React.FC<Props> = ({visualFixture}) => {
     const urgencyLabel = postingUrgencyLabel(posting.workType, posting.workDate);
     const [message, setMessage] = useState('');
     const [applied, setApplied] = useState(false);
+    const [suggestion, setSuggestion] = useState<string | null>(null);
     const applyMutation = useApplyToJobPosting();
+    const refineMutation = useRefineApplicationMessage();
+
+    const handleRefine = async () => {
+        const trimmed = message.trim();
+        if (!trimmed) {
+            AppToast.warn('다듬을 지원 메시지를 먼저 입력해 주세요.');
+            return;
+        }
+        setSuggestion(null);
+        try {
+            const result = await refineMutation.mutateAsync({postingId: posting.postingId, message: trimmed});
+            if (result.changed && result.refined) {
+                setSuggestion(result.refined);
+            } else {
+                AppToast.show('지금 메시지 그대로도 충분히 명확해요.');
+            }
+        } catch (err: unknown) {
+            const errorCode = extractErrorCode(err);
+            const msg =
+                (errorCode ? JOB_APPLICATION_ERROR_MESSAGES[errorCode] : undefined) ??
+                extractErrorMessage(err) ??
+                '메시지 다듬기에 실패했어요. 잠시 후 다시 시도해 주세요.';
+            AppToast.error(msg);
+        }
+    };
+
+    const applySuggestion = () => {
+        if (suggestion) {
+            setMessage(suggestion);
+        }
+        setSuggestion(null);
+    };
 
     const handleApply = async () => {
         try {
@@ -146,11 +179,42 @@ const JobPostingDetailScreen: React.FC<Props> = ({visualFixture}) => {
                 <AppInput
                     testID="job-posting-message-input"
                     value={message}
-                    onChangeText={v => setMessage(v.slice(0, 200))}
+                    onChangeText={v => {
+                        setMessage(v.slice(0, 200));
+                        setSuggestion(null);
+                    }}
                     placeholder="예: 평일 저녁 근무 가능합니다."
                     multiline
                     editable={!applied}
                 />
+                <AppButton
+                    label="AI로 메시지 다듬기"
+                    variant="outline"
+                    size="sm"
+                    fullWidth={false}
+                    loading={refineMutation.isPending}
+                    disabled={applied}
+                    onPress={handleRefine}
+                    testID="job-posting-message-refine-button"
+                    style={styles.refineButton}
+                />
+                {suggestion ? (
+                    <AppCard variant="plain" style={styles.suggestionCard} testID="job-posting-message-suggestion">
+                        <AppText variant="caption" tone="secondary">다듬은 제안이에요 — 검토 후 적용해 주세요</AppText>
+                        <AppText variant="bodyMd" style={styles.suggestionText}>{suggestion}</AppText>
+                        <View style={styles.suggestionActions}>
+                            <AppButton label="닫기" variant="ghost" size="sm" fullWidth={false} onPress={() => setSuggestion(null)} />
+                            <AppButton
+                                label="이 문구로 적용"
+                                variant="secondary"
+                                size="sm"
+                                fullWidth={false}
+                                onPress={applySuggestion}
+                                testID="job-posting-message-suggestion-apply"
+                            />
+                        </View>
+                    </AppCard>
+                ) : null}
             </Section>
 
             <View style={[styles.privacyBox, {backgroundColor: c.surfaceMuted}]}>
@@ -212,6 +276,10 @@ const styles = StyleSheet.create({
         fontFamily: Platform.select({ios: 'Menlo', android: 'monospace', default: 'monospace'}),
     },
     section: {marginBottom: spacing.lg, gap: spacing.xs},
+    refineButton: {marginTop: spacing.sm},
+    suggestionCard: {marginTop: spacing.sm, gap: spacing.sm},
+    suggestionText: {lineHeight: 20},
+    suggestionActions: {flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm},
     sectionTitle: {marginBottom: spacing.xs},
     infoRow: {
         flexDirection: 'row',

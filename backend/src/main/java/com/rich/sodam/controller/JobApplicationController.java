@@ -12,13 +12,20 @@ import com.rich.sodam.service.JobApplicationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 구인 공고 지원(JobApplication) API — 직원 지원/조회 + 사장 지원자 리스트/응답
@@ -45,6 +52,29 @@ public class JobApplicationController {
             @RequestBody(required = false) @Valid JobApplicationCreateRequest request) {
         JobApplicationResponse response = jobApplicationService.apply(postingId, principal.getId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor
+    public static class MessageRefineRequest {
+        @Size(max = 200)
+        private String message;
+    }
+
+    @EmployeeOrMaster
+    @Operation(summary = "지원 메시지 다듬기 (LLM, 제출 전 초안)",
+            description = "아직 지원서를 제출하기 전 단계 — apply()와 동일한 지원 자격(출퇴근 이력) 게이트를 통과해야 한다. "
+                    + "LLM 미활성(provider 미설정) 시 원본 메시지를 그대로 반환한다.")
+    @PostMapping("/api/job-postings/{postingId}/applications/message-refine")
+    public ResponseEntity<Map<String, Object>> refineMessage(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long postingId,
+            @Valid @RequestBody MessageRefineRequest body) {
+        JobApplicationService.MessageRefineResult result =
+                jobApplicationService.refineMessage(postingId, principal.getId(), body.getMessage());
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("refined", result.refined());
+        res.put("changed", result.changed());
+        return ResponseEntity.ok(res);
     }
 
     @EmployeeOrMaster

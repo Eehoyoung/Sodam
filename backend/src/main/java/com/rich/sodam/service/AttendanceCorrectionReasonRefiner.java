@@ -2,11 +2,11 @@ package com.rich.sodam.service;
 
 import com.rich.sodam.service.ai.AnthropicTextClient;
 import com.rich.sodam.service.ai.ForbiddenPhrases;
+import com.rich.sodam.service.ai.PiiPatterns;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
-import java.util.regex.Pattern;
 
 /**
  * 출퇴근 정정 요청 사유 다듬기(WP-1, {@code docs/260817} goal).
@@ -22,7 +22,6 @@ import java.util.regex.Pattern;
 @Service
 public class AttendanceCorrectionReasonRefiner {
 
-    private static final Pattern PHONE_LIKE = Pattern.compile("01\\d[-\\s]?\\d{3,4}[-\\s]?\\d{4}");
     private static final int MAX_LENGTH = 200;
 
     private final Optional<AnthropicTextClient> client;
@@ -67,7 +66,7 @@ public class AttendanceCorrectionReasonRefiner {
         if (ForbiddenPhrases.containsAny(rephrased)) {
             return false;
         }
-        boolean phoneAppeared = PHONE_LIKE.matcher(rephrased).find() && !PHONE_LIKE.matcher(original).find();
+        boolean phoneAppeared = PiiPatterns.containsPhoneLike(rephrased) && !PiiPatterns.containsPhoneLike(original);
         return !phoneAppeared;
     }
 }

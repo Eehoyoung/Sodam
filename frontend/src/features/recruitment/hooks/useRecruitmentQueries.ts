@@ -235,6 +235,20 @@ export const useApplyToJobPosting = () => {
     });
 };
 
+// [직원] 지원 메시지 다듬기(WP-3) — POST /api/job-postings/{postingId}/applications/message-refine (제출 전 초안)
+export const useRefineApplicationMessage = () =>
+    useMutation({
+        mutationFn: async (vars: {postingId: number; message: string}) => {
+            try {
+                return await recruitmentService.refineApplicationMessage(vars.postingId, vars.message);
+            } catch (error) {
+                handleQueryError(error, 'refineApplicationMessage');
+                throw error;
+            }
+        },
+        meta: {errorMessage: '메시지 다듬기에 실패했어요.'},
+    });
+
 // [직원] 내 지원 현황 — GET /api/job-applications/me (§19)
 export const useMyJobApplications = (enabled: boolean = true) =>
     useQuery({

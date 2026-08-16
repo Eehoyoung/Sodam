@@ -62,6 +62,11 @@ public class JobApplicationService {
     private final AttendanceCreditService attendanceCreditService;
     private final RecruitmentBoostPassService recruitmentBoostPassService;
     private final ChatRoomService chatRoomService;
+    private final JobApplicationMessageRefiner messageRefiner;
+
+    /** 지원 메시지 다듬기(WP-3) 결과. */
+    public record MessageRefineResult(String refined, boolean changed) {
+    }
 
     // ─────────────────────────────────────────────────────────────────
     // POST /api/job-postings/{postingId}/applications
@@ -98,6 +103,27 @@ public class JobApplicationService {
         }
 
         return toResponse(application);
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // POST /api/job-postings/{postingId}/applications/message-refine
+    // ─────────────────────────────────────────────────────────────────
+
+    /**
+     * 지원 메시지 다듬기(WP-3, 제출 전 초안 단계). 아직 JobApplication 레코드가 없어(지원 전) 소유권
+     * 검증 대상이 없다 — 대신 {@link #apply}와 동일한 지원 자격(출퇴근 이력) 게이트를 재사용해
+     * "이 공고에 지원할 자격이 없는 사용자"의 다듬기 시도를 막는다(BusinessException 400,
+     * errorCode=JOB_APPLICATION_NOT_ELIGIBLE — apply()가 던지는 것과 동일한 예외/코드).
+     */
+    @Transactional(readOnly = true)
+    public MessageRefineResult refineMessage(Long postingId, Long applicantUserId, String message) {
+        jobPostingRepository.findById(postingId)
+                .orElseThrow(() -> new EntityNotFoundException("JobPosting", postingId));
+        if (!attendanceRepository.existsByEmployeeProfile_Id(applicantUserId)) {
+            throw new BusinessException("소담으로 출퇴근한 이력이 있어야 지원할 수 있어요.", "JOB_APPLICATION_NOT_ELIGIBLE");
+        }
+        String refined = messageRefiner.refine(message);
+        return new MessageRefineResult(refined, !refined.equals(message));
     }
 
     // ─────────────────────────────────────────────────────────────────
