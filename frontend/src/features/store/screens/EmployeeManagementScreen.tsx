@@ -9,6 +9,7 @@ import {
     AppToast,
     AppBadge,
     AppButton,
+    AppCard,
     AppHeader,
     AppListItem,
     AppText,
@@ -22,6 +23,11 @@ import {radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {InviteShareSheet} from '../components/StoreSheets';
 import storeService, {StoreEmployeeDto} from '../services/storeService';
+import {
+    HeadcountSimulationResponse,
+    simulateStatutoryHeadcount,
+} from '../../risk/services/riskService';
+import {logger} from '../../../utils/logger';
 
 type EmployeeManagementRouteProp = RouteProp<HomeStackParamList, 'EmployeeManagement'>;
 
@@ -62,6 +68,9 @@ export default function EmployeeManagementScreen({route, navigation, visualFixtu
     const [loading, setLoading] = useState(!visualFixture);
     const [error, setError] = useState<string | null>(null);
     const [inviteVisible, setInviteVisible] = useState(false);
+    // 260816 WP-A — "직원 1명 더 등록하면 상시근로자 5인 경계를 넘을 가능성"을 참고로 보여준다.
+    // 조회 실패는 카드만 숨기고(best-effort) 초대 흐름 자체는 절대 막지 않는다(HC-5).
+    const [headcountSimulation, setHeadcountSimulation] = useState<HeadcountSimulationResponse | null>(null);
 
     const load = useCallback(async () => {
         if (visualFixture) {
@@ -80,6 +89,14 @@ export default function EmployeeManagementScreen({route, navigation, visualFixtu
             setError(err?.message ?? '직원 정보를 불러오지 못했어요.');
         } finally {
             setLoading(false);
+        }
+        if (!managerMode) {
+            try {
+                setHeadcountSimulation(await simulateStatutoryHeadcount(storeId, 1));
+            } catch (hcError) {
+                logger.debug('[EmployeeManagement] headcount simulation load failed', hcError);
+                setHeadcountSimulation(null);
+            }
         }
     }, [storeId, managerMode, visualFixture]);
 
@@ -141,6 +158,25 @@ export default function EmployeeManagementScreen({route, navigation, visualFixtu
                     <AppButton label="직원 초대하기" onPress={() => setInviteVisible(true)} />
                 </CtaStack>
             ) : undefined}>
+            {headcountSimulation?.crossesThreshold ? (
+                <AppCard variant="flat" style={[styles.headcountWarn, {backgroundColor: c.warningBg}]}>
+                    <View style={styles.headcountWarnRow}>
+                        <Ionicons name="alert-circle-outline" size={20} color={c.warning} />
+                        <AppText variant="titleMd" weight="700" style={styles.headcountWarnFlex}>
+                            1명 더 채용하면 상시근로자 5인 이상에 해당할 가능성이 있어요
+                        </AppText>
+                    </View>
+                    <AppText variant="bodyMd" tone="secondary" style={styles.headcountWarnSub}>
+                        가산수당·연차·부당해고 제한이 새로 적용될 수 있어요. 월 인건비 영향 약{' '}
+                        {Math.round(headcountSimulation.estimatedMonthlyCostMin / 10_000)}~
+                        {Math.round(headcountSimulation.estimatedMonthlyCostMax / 10_000)}만원(참고).
+                    </AppText>
+                    <AppText variant="caption" tone="tertiary" style={styles.headcountWarnDisclaimer}>
+                        {headcountSimulation.disclaimer}
+                    </AppText>
+                </AppCard>
+            ) : null}
+
             {employees.length === 0 ? (
                 <EmptyState
                     glyph={<Ionicons name="people-outline" size={40} color={c.textInverse} />}
@@ -208,4 +244,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    headcountWarn: {marginBottom: spacing.lg, gap: spacing.xs},
+    headcountWarnRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
+    headcountWarnFlex: {flex: 1, minWidth: 0},
+    headcountWarnSub: {marginTop: spacing.xs},
+    headcountWarnDisclaimer: {marginTop: spacing.sm},
 });

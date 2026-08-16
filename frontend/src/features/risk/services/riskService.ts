@@ -38,6 +38,93 @@ export async function fetchLaborRisks(storeId: number): Promise<LaborRiskItem[]>
     return data?.items ?? [];
 }
 
+// ─── 260815 WP-1 / 260816 WP-A: 상시근로자(근기법) 참고 산정 + 전환 시뮬레이션 ──────────
+
+export interface StatutoryHeadcountRoadmapItem {
+    stage: number;
+    expectedYear: number;
+    title: string;
+    description: string;
+}
+
+export interface StatutoryHeadcountResponse {
+    storeId: number;
+    periodStart: string;
+    periodEnd: string;
+    operatingDays: number;
+    manDays: number;
+    statutoryHeadcount: number;
+    meetsThreshold: boolean;
+    roadmap: StatutoryHeadcountRoadmapItem[];
+    disclaimer: string;
+}
+
+export interface HeadcountSimulationResponse {
+    storeId: number;
+    currentStatutoryHeadcount: number;
+    additionalEmployees: number;
+    projectedStatutoryHeadcount: number;
+    crossesThreshold: boolean;
+    newlyApplicableProvisions: string[];
+    estimatedMonthlyCostMin: number;
+    estimatedMonthlyCostMax: number;
+    disclaimer: string;
+}
+
+/** 상시근로자(근기법 §7의2) 참고 산정 + 정부 확대적용 로드맵. */
+export async function fetchStatutoryHeadcount(storeId: number): Promise<StatutoryHeadcountResponse> {
+    const {data} = await api.get<StatutoryHeadcountResponse>(
+        `/api/stores/${storeId}/labor-risk/statutory-headcount`,
+    );
+    return data;
+}
+
+/** 직원을 additionalEmployees명 더 채용했을 때 5인 경계를 넘는지 전환 시뮬레이션. */
+export async function simulateStatutoryHeadcount(
+    storeId: number,
+    additionalEmployees: number = 1,
+): Promise<HeadcountSimulationResponse> {
+    const {data} = await api.get<HeadcountSimulationResponse>(
+        `/api/stores/${storeId}/labor-risk/statutory-headcount/simulate`,
+        {additionalEmployees},
+    );
+    return data;
+}
+
+// ─── 260816 WP-B: 노무 건강도 상세 분석(플랜 게이팅 — LABOR_LAW_BASIC/FULL) ──────────
+
+export interface LaborHealthSummaryItem {
+    type: LaborRiskType;
+    severity: LaborRiskSeverity;
+    /** 매장 단위 항목(HEADCOUNT_THRESHOLD)은 null. */
+    employeeId: number | null;
+    employeeName: string | null;
+    /** BASIC 플랜 응답에서는 null — FULL(PRO 이상)에서만 채워진다. */
+    message: string | null;
+}
+
+export interface LaborHealthResponse {
+    storeId: number;
+    score: number;
+    dangerCount: number;
+    warnCount: number;
+    needsAttentionCount: number;
+    items: LaborHealthSummaryItem[];
+    disclaimer: string;
+}
+
+/** 노무 건강도 요약(건수·유형만) — LABOR_LAW_BASIC(STARTER 이상) 필요. 미충족 시 402. */
+export async function fetchLaborHealth(storeId: number): Promise<LaborHealthResponse> {
+    const {data} = await api.get<LaborHealthResponse>(`/api/stores/${storeId}/labor-health`);
+    return data;
+}
+
+/** 노무 건강도 상세(설명·해소 가이드 포함) — LABOR_LAW_FULL(PRO 이상) 필요. 미충족 시 402. */
+export async function fetchLaborHealthDetail(storeId: number): Promise<LaborHealthResponse> {
+    const {data} = await api.get<LaborHealthResponse>(`/api/stores/${storeId}/labor-health/detail`);
+    return data;
+}
+
 // ─── 채용 비용 시뮬레이션 ───────────────────────────────────────────
 export interface EmployerInsurance {
     nationalPension: number;

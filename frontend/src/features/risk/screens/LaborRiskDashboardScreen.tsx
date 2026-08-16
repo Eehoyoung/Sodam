@@ -2,6 +2,8 @@ import React, {useCallback, useState} from 'react';
 import {StyleSheet, TouchableOpacity, View} from 'react-native';
 import {RouteProp, useFocusEffect, useNavigation, useRoute} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {
     AppBadge,
     AppCard,
@@ -14,7 +16,14 @@ import {
 } from '../../../common/components/ds';
 import type {HomeStackParamList} from '../../../navigation/HomeNavigator';
 import {spacing} from '../../../theme/tokens';
-import {fetchLaborRisks, LaborRiskItem, LaborRiskType} from '../services/riskService';
+import {
+    fetchLaborRisks,
+    fetchStatutoryHeadcount,
+    LaborRiskItem,
+    LaborRiskType,
+    StatutoryHeadcountResponse,
+} from '../services/riskService';
+import {logger} from '../../../utils/logger';
 
 type Route = RouteProp<HomeStackParamList, 'LaborRisk'>;
 
@@ -46,10 +55,13 @@ const LaborRiskDashboardScreen: React.FC = () => {
     const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
     const route = useRoute<Route>();
     const {storeId} = route.params;
+    const c = useThemeColors();
 
     const [items, setItems] = useState<LaborRiskItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    // 260816 WP-A — 상시근로자 참고 산정 + 로드맵. 조회 실패는 카드만 숨기고 나머지 화면은 그대로 둔다.
+    const [headcount, setHeadcount] = useState<StatutoryHeadcountResponse | null>(null);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -65,6 +77,13 @@ const LaborRiskDashboardScreen: React.FC = () => {
             setError(true);
         } finally {
             setLoading(false);
+        }
+        try {
+            const hc = await fetchStatutoryHeadcount(storeId);
+            setHeadcount(hc.operatingDays > 0 ? hc : null);
+        } catch (hcError) {
+            logger.debug('[LaborRiskDashboard] statutory headcount load failed', hcError);
+            setHeadcount(null);
         }
     }, [storeId]);
 
@@ -121,7 +140,53 @@ const LaborRiskDashboardScreen: React.FC = () => {
     return (
         <ScreenContainer
             scroll
-            header={<AppHeader title="노무 리스크" onBack={() => navigation.goBack()} />}>
+            header={
+                <AppHeader
+                    title="노무 리스크"
+                    onBack={() => navigation.goBack()}
+                    actions={[{
+                        label: '상세 분석',
+                        icon: <Ionicons name="bar-chart-outline" size={20} color={c.brandPrimary} />,
+                        accessibilityLabel: '노무 리스크 상세 분석',
+                        onPress: () => navigation.navigate('LaborHealthDetail', {storeId}),
+                    }]}
+                />
+            }>
+            {headcount ? (
+                <AppCard variant="flat" style={styles.headcountCard}>
+                    <AppText variant="caption" tone="secondary">상시근로자 참고 산정(근로기준법 §7의2)</AppText>
+                    <AppText variant="titleMd" weight="800" style={styles.headcountValue}>
+                        이번 달 참고 산정 {headcount.statutoryHeadcount}명
+                    </AppText>
+                    <AppText variant="bodyMd" tone="secondary" style={styles.headcountSub}>
+                        {headcount.meetsThreshold
+                            ? '5인 이상에 해당할 가능성이 있어요.'
+                            : '5인 미만에 해당할 가능성이 있어요.'}
+                    </AppText>
+                    {headcount.roadmap.length > 0 ? (
+                        <View style={styles.roadmap}>
+                            <AppText variant="caption" tone="tertiary" style={styles.roadmapLabel}>
+                                정부 추진 확대적용 로드맵(미확정)
+                            </AppText>
+                            {headcount.roadmap.map(step => (
+                                <View key={step.stage} style={styles.roadmapRow}>
+                                    <AppText variant="caption" tone="brand" weight="700">
+                                        {step.expectedYear}년경
+                                    </AppText>
+                                    <View style={styles.roadmapText}>
+                                        <AppText variant="bodyMd" weight="600">{step.title}</AppText>
+                                        <AppText variant="caption" tone="secondary">{step.description}</AppText>
+                                    </View>
+                                </View>
+                            ))}
+                        </View>
+                    ) : null}
+                    <AppText variant="caption" tone="tertiary" style={styles.headcountDisclaimer}>
+                        {headcount.disclaimer}
+                    </AppText>
+                </AppCard>
+            ) : null}
+
             {loading ? (
                 <LoadingState title="리스크 점검 중" description="직원별 노무 리스크를 확인하고 있어요" />
             ) : error ? (
@@ -155,6 +220,14 @@ const styles = StyleSheet.create({
     titleRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm},
     title: {flex: 1, minWidth: 0},
     message: {marginTop: spacing.xs},
+    headcountCard: {marginBottom: spacing.lg, gap: spacing.xs},
+    headcountValue: {marginTop: spacing.xs},
+    headcountSub: {marginTop: spacing.xs},
+    roadmap: {marginTop: spacing.md, gap: spacing.sm},
+    roadmapLabel: {marginBottom: spacing.xs},
+    roadmapRow: {flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start'},
+    roadmapText: {flex: 1, minWidth: 0},
+    headcountDisclaimer: {marginTop: spacing.md},
 });
 
 export default LaborRiskDashboardScreen;
