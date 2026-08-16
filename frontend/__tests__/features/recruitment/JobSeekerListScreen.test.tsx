@@ -64,6 +64,7 @@ jest.mock('../../../src/features/recruitment/hooks/useRecruitmentQueries', () =>
     // OurPostingScreen('우리 공고·지원자' 탭)은 조건부 마운트되지만 훅 계약은 여기서도 필요하다.
     useMyJobPosting: () => ({data: null, isLoading: false, refetch: mockMyJobPostingRefetch}),
     useUpsertJobPosting: () => ({mutateAsync: jest.fn(), isPending: false}),
+    useGeneratePostingMessage: () => ({mutateAsync: jest.fn(), isPending: false}),
     useStoreJobApplications: () => ({
         data: [],
         isLoading: false,
