@@ -1,5 +1,6 @@
 package com.rich.sodam.controller;
 
+import com.rich.sodam.dto.request.JobPostingMessageGenerateRequest;
 import com.rich.sodam.dto.request.JobPostingUpsertRequest;
 import com.rich.sodam.dto.response.JobPostingNearbyItemResponse;
 import com.rich.sodam.dto.response.JobPostingResponse;
@@ -16,7 +17,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 구인 공고(JobPosting) API — 사장 매장당 1건 upsert + 직원용 주변 구인 리스트
@@ -42,6 +45,22 @@ public class JobPostingController {
             @Valid @RequestBody JobPostingUpsertRequest request) {
         storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
         return ResponseEntity.ok(jobPostingService.upsertPosting(storeId, request));
+    }
+
+    @MasterOnly
+    @Operation(summary = "채용공고 소개문 생성 (LLM)",
+            description = "구조화 입력(근무형태·업종·시급·근무시간)만으로 200자 이내 소개문 초안을 생성한다. "
+                    + "LLM 미활성/차별 표현 검출 등으로 생성이 안 되면 draft=null(직접 입력).")
+    @PostMapping("/api/stores/{storeId}/job-posting/message-generate")
+    public ResponseEntity<Map<String, Object>> generateMessage(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long storeId,
+            @Valid @RequestBody JobPostingMessageGenerateRequest request) {
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        String draft = jobPostingService.generateMessage(request);
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("draft", draft);
+        return ResponseEntity.ok(res);
     }
 
     @MasterOnly

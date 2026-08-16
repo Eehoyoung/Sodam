@@ -9,6 +9,7 @@ import ReactTestRenderer, {act} from 'react-test-renderer';
 
 const mockUpsertMutateAsync = jest.fn();
 const mockRespondMutateAsync = jest.fn();
+const mockGenerateMessageMutateAsync = jest.fn();
 const mockPostingRefetch = jest.fn();
 const mockApplicationsRefetch = jest.fn();
 
@@ -64,6 +65,7 @@ jest.mock('../../../src/features/recruitment/hooks/useRecruitmentQueries', () =>
         refetch: mockApplicationsRefetch,
     }),
     useRespondToJobApplication: () => ({mutateAsync: mockRespondMutateAsync, isPending: false}),
+    useGeneratePostingMessage: () => ({mutateAsync: mockGenerateMessageMutateAsync, isPending: false}),
 }));
 
 import OurPostingScreen from '../../../src/features/recruitment/screens/OurPostingScreen';
@@ -94,6 +96,7 @@ describe('OurPostingScreen', () => {
         mockApplicationsState.isError = false;
         mockUpsertMutateAsync.mockResolvedValue({});
         mockRespondMutateAsync.mockResolvedValue({});
+        mockGenerateMessageMutateAsync.mockResolvedValue({draft: null});
     });
 
     // FE-DUP 회귀 테스트(findings_report.md §4.1): 예전에는 `useMyJobPosting`/`useStoreJobApplications`
@@ -179,6 +182,74 @@ describe('OurPostingScreen', () => {
             message: undefined,
             open: true,
         });
+    });
+
+    test('"AI로 소개문 생성" 탭 → useGeneratePostingMessage 호출 → 제안 카드 → 적용 시 메시지 필드가 교체된다(WP-4)', async () => {
+        mockGenerateMessageMutateAsync.mockResolvedValue({
+            draft: '카페에서 함께 일할 정직원을 모집합니다. 성실하신 분이면 누구나 환영해요.',
+        });
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<OurPostingScreen storeId={7} />);
+            await flush();
+        });
+
+        await act(async () => {
+            findHostByTestId(renderer!, 'our-posting-category-chip-CAFE').props.onPress();
+            findHostByTestId(renderer!, 'our-posting-wage-input').props.onChangeText('9860');
+            await flush();
+        });
+
+        await act(async () => {
+            findHostByTestId(renderer!, 'our-posting-message-generate-button').props.onPress();
+            await flush();
+        });
+
+        expect(mockGenerateMessageMutateAsync).toHaveBeenCalledWith({
+            workType: 'SUBSTITUTE',
+            jobCategory: 'CAFE',
+            hourlyWage: 9860,
+            startTime: '09:00:00',
+            endTime: '18:00:00',
+        });
+        expect(renderer!.root.findAllByProps({testID: 'our-posting-message-suggestion'}).length).toBeGreaterThan(0);
+
+        await act(async () => {
+            findHostByTestId(renderer!, 'our-posting-message-suggestion-apply').props.onPress();
+            await flush();
+        });
+
+        expect(findHostByTestId(renderer!, 'our-posting-message-input').props.value)
+            .toBe('카페에서 함께 일할 정직원을 모집합니다. 성실하신 분이면 누구나 환영해요.');
+        expect(renderer!.root.findAllByProps({testID: 'our-posting-message-suggestion'}).length).toBe(0);
+    });
+
+    test('draft=null(LLM 미활성/검증 실패) 응답이면 제안 카드 없이 안내 토스트만 띄운다', async () => {
+        mockGenerateMessageMutateAsync.mockResolvedValue({draft: null});
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<OurPostingScreen storeId={7} />);
+            await flush();
+        });
+
+        await act(async () => {
+            findHostByTestId(renderer!, 'our-posting-category-chip-CAFE').props.onPress();
+            findHostByTestId(renderer!, 'our-posting-wage-input').props.onChangeText('9860');
+            await flush();
+        });
+
+        const showSpy = jest.spyOn(AppToast, 'show').mockImplementation(() => {});
+
+        await act(async () => {
+            findHostByTestId(renderer!, 'our-posting-message-generate-button').props.onPress();
+            await flush();
+        });
+
+        expect(renderer!.root.findAllByProps({testID: 'our-posting-message-suggestion'}).length).toBe(0);
+        expect(showSpy).toHaveBeenCalledWith('지금은 초안을 만들지 못했어요. 직접 입력해 주세요.');
+        showSpy.mockRestore();
     });
 
     test('지원자 리스트가 카드로 렌더되고, 수락 탭 → respond 뮤테이션이 호출된다', async () => {

@@ -286,6 +286,20 @@ export interface JobPostingUpsertPayload {
     open: boolean;
 }
 
+/** `POST /api/stores/{storeId}/job-posting/message-generate` 요청(WP-4) — 구조화 입력만 전달, message 없음. */
+export interface JobPostingMessageGenerateParams {
+    workType: JobSeekingType;
+    jobCategory: JobCategoryCode;
+    hourlyWage: number;
+    startTime: string;
+    endTime: string;
+}
+
+/** `POST /api/stores/{storeId}/job-posting/message-generate` 응답 — LLM 미활성/검증 실패 시 draft=null. */
+export interface JobPostingMessageGenerateResult {
+    draft: string | null;
+}
+
 /** `PUT/GET /api/stores/{storeId}/job-posting` 응답 — `JobPostingResponse` 1:1. */
 export interface JobPosting {
     id: number;

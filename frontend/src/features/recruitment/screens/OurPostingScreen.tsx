@@ -20,6 +20,7 @@ import {Pressable, StyleSheet, Switch, View} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {
     AppBadge,
+    AppButton,
     AppCard,
     AppInput,
     AppText,
@@ -31,6 +32,7 @@ import {
 import {gradient, radius, spacing} from '../../../theme/tokens';
 import {useThemeColors} from '../../../common/hooks/useThemeColors';
 import {
+    useGeneratePostingMessage,
     useMyJobPosting,
     useRespondToJobApplication,
     useStoreJobApplications,
@@ -85,6 +87,7 @@ const OurPostingScreen: React.FC<OurPostingScreenProps> = ({storeId, visualAppli
     const upsertMutation = useUpsertJobPosting(storeId);
     const applicationsQuery = useStoreJobApplications(storeId, !visualApplicantsFixture);
     const respondMutation = useRespondToJobApplication(storeId);
+    const generateMessageMutation = useGeneratePostingMessage(storeId);
 
     const [workType, setWorkType] = useState<JobSeekingType>('SUBSTITUTE');
     const [jobCategory, setJobCategory] = useState<JobCategoryCode | null>(null);
@@ -95,6 +98,7 @@ const OurPostingScreen: React.FC<OurPostingScreenProps> = ({storeId, visualAppli
     const [message, setMessage] = useState('');
     const [open, setOpen] = useState(true);
     const [dirty, setDirty] = useState(false);
+    const [messageSuggestion, setMessageSuggestion] = useState<string | null>(null);
 
     // 기존 공고 → 폼 프리필(사용자가 편집 중이면 덮어쓰지 않음).
     useEffect(() => {
@@ -160,6 +164,48 @@ const OurPostingScreen: React.FC<OurPostingScreenProps> = ({storeId, visualAppli
                 '공고를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.';
             AppToast.error(msg);
         }
+    };
+
+    const handleGenerateMessage = async () => {
+        if (!jobCategory) {
+            AppToast.warn('업종을 먼저 선택해 주세요.');
+            return;
+        }
+        if (!isValidTimeDigits(startDigits) || !isValidTimeDigits(endDigits)) {
+            AppToast.warn('시간을 먼저 입력해 주세요.');
+            return;
+        }
+        const wage = Number(wageDigits);
+        if (!wageDigits || !Number.isFinite(wage) || wage <= 0) {
+            AppToast.warn('시급을 먼저 입력해 주세요.');
+            return;
+        }
+        setMessageSuggestion(null);
+        try {
+            const result = await generateMessageMutation.mutateAsync({
+                workType,
+                jobCategory,
+                hourlyWage: wage,
+                startTime: timeDigitsToHHmmss(startDigits),
+                endTime: timeDigitsToHHmmss(endDigits),
+            });
+            if (result.draft) {
+                setMessageSuggestion(result.draft);
+            } else {
+                AppToast.show('지금은 초안을 만들지 못했어요. 직접 입력해 주세요.');
+            }
+        } catch (err: unknown) {
+            const msg = extractErrorMessage(err) ?? '소개문 생성에 실패했어요. 잠시 후 다시 시도해 주세요.';
+            AppToast.error(msg);
+        }
+    };
+
+    const applyMessageSuggestion = () => {
+        if (messageSuggestion) {
+            setDirty(true);
+            setMessage(messageSuggestion);
+        }
+        setMessageSuggestion(null);
     };
 
     const handleRespond = async (applicationId: number, accept: boolean) => {
@@ -334,11 +380,39 @@ const OurPostingScreen: React.FC<OurPostingScreenProps> = ({storeId, visualAppli
                     onChangeText={v => {
                         setDirty(true);
                         setMessage(v.slice(0, 200));
+                        setMessageSuggestion(null);
                     }}
                     placeholder="예: 주말 오후 근무 가능하신 분 환영해요"
                     multiline
                     containerStyle={styles.fieldGap}
                 />
+                <AppButton
+                    label="AI로 소개문 생성"
+                    variant="outline"
+                    size="sm"
+                    fullWidth={false}
+                    loading={generateMessageMutation.isPending}
+                    onPress={handleGenerateMessage}
+                    testID="our-posting-message-generate-button"
+                    style={styles.fieldGap}
+                />
+                {messageSuggestion ? (
+                    <AppCard variant="plain" style={styles.suggestionCard} testID="our-posting-message-suggestion">
+                        <AppText variant="caption" tone="secondary">생성된 초안이에요 — 검토 후 적용해 주세요</AppText>
+                        <AppText variant="bodyMd" style={styles.suggestionText}>{messageSuggestion}</AppText>
+                        <View style={styles.suggestionActions}>
+                            <AppButton label="닫기" variant="ghost" size="sm" fullWidth={false} onPress={() => setMessageSuggestion(null)} />
+                            <AppButton
+                                label="이 문구로 적용"
+                                variant="secondary"
+                                size="sm"
+                                fullWidth={false}
+                                onPress={applyMessageSuggestion}
+                                testID="our-posting-message-suggestion-apply"
+                            />
+                        </View>
+                    </AppCard>
+                ) : null}
 
                 <Pressable
                     testID="our-posting-save-button"
@@ -479,6 +553,9 @@ const styles = StyleSheet.create({
     timeRow: {flexDirection: 'row', gap: spacing.md},
     timeInput: {flex: 1},
     fieldGap: {marginTop: spacing.md},
+    suggestionCard: {marginTop: spacing.md, gap: spacing.sm},
+    suggestionText: {lineHeight: 20},
+    suggestionActions: {flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm},
     saveBtn: {
         marginTop: spacing.lg,
         minHeight: 52,

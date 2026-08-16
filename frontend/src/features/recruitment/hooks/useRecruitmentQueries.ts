@@ -8,6 +8,7 @@ import type {
     JobOffer,
     JobOfferCreatePayload,
     JobPosting,
+    JobPostingMessageGenerateParams,
     JobPostingNearbyFilters,
     JobPostingNearbyItem,
     JobPostingUpsertPayload,
@@ -180,6 +181,20 @@ export const useUpsertJobPosting = (storeId: number) => {
         meta: {errorMessage: '구인 공고를 저장하지 못했어요.'},
     });
 };
+
+// [사장] 채용공고 소개문 생성(WP-4) — POST /api/stores/{storeId}/job-posting/message-generate
+export const useGeneratePostingMessage = (storeId: number) =>
+    useMutation({
+        mutationFn: async (params: JobPostingMessageGenerateParams) => {
+            try {
+                return await recruitmentService.generatePostingMessage(storeId, params);
+            } catch (error) {
+                handleQueryError(error, 'generatePostingMessage');
+                throw error;
+            }
+        },
+        meta: {errorMessage: '소개문 생성에 실패했어요.'},
+    });
 
 // [사장] 내 매장 구인 공고 조회 — GET /api/stores/{storeId}/job-posting (§19, 없으면 null)
 export const useMyJobPosting = (storeId: number, enabled: boolean = true) =>
