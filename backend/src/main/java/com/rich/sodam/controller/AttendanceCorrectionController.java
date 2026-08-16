@@ -46,6 +46,12 @@ public class AttendanceCorrectionController {
         private String reason;
     }
 
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor
+    public static class ReasonRefineRequest {
+        @NotBlank @Size(min = 5, max = 200)
+        private String reason;
+    }
+
     @Operation(summary = "출퇴근 정정 요청 (직원)")
     @PostMapping("/{attendanceId}/correction-request")
     public ResponseEntity<Map<String, Object>> requestCorrection(
@@ -62,6 +68,26 @@ public class AttendanceCorrectionController {
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("id", result.id());
         res.put("status", result.status());
+        return ResponseEntity.ok(res);
+    }
+
+    @Operation(summary = "출퇴근 정정 사유 다듬기 (LLM, 직원 본인)",
+            description = "제출 전 초안 단계 — 본인 출퇴근 기록에 대해서만 다듬을 수 있다. "
+                    + "LLM 미활성(provider 미설정) 시 원본 사유를 그대로 반환한다.")
+    @PostMapping("/{attendanceId}/correction-request/reason-refine")
+    public ResponseEntity<Map<String, Object>> refineReason(
+            @PathVariable Long attendanceId,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody ReasonRefineRequest body) {
+        AttendanceCorrectionService.ReasonRefineResult result =
+                correctionService.refineReason(attendanceId, principal.getId(), body.getReason());
+        if (result.forbidden()) {
+            return ResponseEntity.status(403).body(Map.of("message", "본인 기록만 다듬을 수 있어요."));
+        }
+
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("refined", result.refined());
+        res.put("changed", result.changed());
         return ResponseEntity.ok(res);
     }
 
