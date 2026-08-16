@@ -100,6 +100,7 @@ import DailySalesEntryScreen from '../features/sales/screens/DailySalesEntryScre
 import LaborCostRatioScreen from '../features/sales/screens/LaborCostRatioScreen';
 import MyCertificateScreen from '../features/certificate/screens/MyCertificateScreen';
 import LaborRiskDashboardScreen from '../features/risk/screens/LaborRiskDashboardScreen';
+import LaborHealthDetailScreen from '../features/risk/screens/LaborHealthDetailScreen';
 import AttendanceIrregularitiesScreen from '../features/attendance/screens/AttendanceIrregularitiesScreen';
 import AttendanceNoticeScreen from '../features/attendance/screens/AttendanceNoticeScreen';
 import HiringCostSimulatorScreen from '../features/risk/screens/HiringCostSimulatorScreen';
@@ -226,6 +227,7 @@ export type HomeStackParamList = {
     LaborCostRatio: {storeId: number};
     MyCertificate: {storeId?: number} | undefined;
     LaborRisk: {storeId: number};
+    LaborHealthDetail: {storeId: number};
     AttendanceIrregularities: {storeId: number};
     AttendanceNotice: {storeId: number};
     SwapRequests: {storeId: number};
@@ -486,6 +488,7 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen name="LaborCostRatio" component={LaborCostRatioScreen} options={{headerShown: false}} />
             <Stack.Screen name="MyCertificate" component={MyCertificateScreen} options={{headerShown: false}} />
             <Stack.Screen name="LaborRisk" component={LaborRiskDashboardScreen} options={{headerShown: false}} />
+            <Stack.Screen name="LaborHealthDetail" component={LaborHealthDetailScreen} options={{headerShown: false}} />
             <Stack.Screen name="AttendanceIrregularities" component={AttendanceIrregularitiesScreen} options={{headerShown: false}} />
             <Stack.Screen name="AttendanceNotice" component={AttendanceNoticeScreen} options={{headerShown: false}} />
             <Stack.Screen name="SwapRequests" component={SwapRequestsScreen} options={{headerShown: false}} />
