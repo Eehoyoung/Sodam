@@ -84,6 +84,14 @@ async function monthlySummary(storeId: number, months = 6): Promise<MonthlySumma
     return unwrapList<MonthlySummary>(api.get(`${base(storeId)}/monthly-summary`, {months}));
 }
 
+/** 매입 인사이트 코멘트(WP-5, LLM). 미활성/검증 실패 시 comment=null(기존 숫자·그래프 표시 유지). */
+async function insightComment(
+    storeId: number,
+    query?: PurchaseListQuery & {months?: number},
+): Promise<{comment: string | null}> {
+    return unwrap<{comment: string | null}>(api.get(`${base(storeId)}/insight-comment`, query));
+}
+
 /** 품목명 자동완성(이 매장에서 과거에 쓴 품목명, 최근순 최대 8개). */
 async function itemSuggestions(storeId: number, q: string): Promise<string[]> {
     return unwrapList<string>(api.get(`${base(storeId)}/item-suggestions`, {q}));
@@ -116,6 +124,7 @@ const purchaseService = {
     reorder,
     vendorSummary,
     monthlySummary,
+    insightComment,
     itemSuggestions,
     receiptImageSource,
 };

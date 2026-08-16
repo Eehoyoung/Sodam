@@ -3,6 +3,7 @@ import {render, waitFor} from '@testing-library/react-native';
 
 const mockVendorSummary = jest.fn();
 const mockMonthlySummary = jest.fn();
+const mockInsightComment = jest.fn();
 jest.mock('../../../src/features/purchase/services/purchaseService', () => ({
     __esModule: true,
     default: {
@@ -16,6 +17,7 @@ jest.mock('../../../src/features/purchase/services/purchaseService', () => ({
         reorder: jest.fn(),
         vendorSummary: (...args: unknown[]) => mockVendorSummary(...args),
         monthlySummary: (...args: unknown[]) => mockMonthlySummary(...args),
+        insightComment: (...args: unknown[]) => mockInsightComment(...args),
         itemSuggestions: jest.fn(),
         receiptImageSource: jest.fn(),
     },
@@ -38,6 +40,7 @@ describe('PurchaseInsightScreen', () => {
         jest.clearAllMocks();
         mockVendorSummary.mockResolvedValue([]);
         mockMonthlySummary.mockResolvedValue([]);
+        mockInsightComment.mockResolvedValue({comment: null});
     });
 
     test('거래처별 비중과 월별 추이를 함께 렌더한다', async () => {
@@ -64,5 +67,36 @@ describe('PurchaseInsightScreen', () => {
 
         await waitFor(() => expect(mockVendorSummary).toHaveBeenCalled());
         expect(await findByText('이번 달 매입이 없어요')).toBeTruthy();
+    });
+
+    test('comment가 있으면 인사이트 코멘트 카드를 표시한다(WP-5)', async () => {
+        mockInsightComment.mockResolvedValue({
+            comment: '이번 달은 한빛주류 비중이 가장 높았고, 최근 매입 합계는 늘어나는 추세예요.',
+        });
+
+        const {findByText} = render(<PurchaseInsightScreen route={route} navigation={navigation} />);
+
+        expect(await findByText('이번 달은 한빛주류 비중이 가장 높았고, 최근 매입 합계는 늘어나는 추세예요.')).toBeTruthy();
+    });
+
+    test('comment=null(LLM 미활성/검증 실패)이면 코멘트 카드 없이 기존 화면만 표시된다', async () => {
+        mockInsightComment.mockResolvedValue({comment: null});
+
+        const {queryByTestId} = render(<PurchaseInsightScreen route={route} navigation={navigation} />);
+
+        await waitFor(() => expect(mockVendorSummary).toHaveBeenCalled());
+        expect(queryByTestId('purchase-insight-comment')).toBeNull();
+    });
+
+    test('insightComment 호출이 실패해도 핵심 데이터(거래처·월별) 화면은 그대로 렌더된다(HC-7 best-effort)', async () => {
+        mockInsightComment.mockRejectedValue(new Error('network error'));
+        mockVendorSummary.mockResolvedValue([
+            {vendorName: '한빛주류', totalAmount: 30000, purchaseCount: 1, sharePercent: 60.0},
+        ]);
+
+        const {findByText, queryByTestId} = render(<PurchaseInsightScreen route={route} navigation={navigation} />);
+
+        expect(await findByText('한빛주류')).toBeTruthy();
+        expect(queryByTestId('purchase-insight-comment')).toBeNull();
     });
 });

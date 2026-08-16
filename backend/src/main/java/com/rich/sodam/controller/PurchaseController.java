@@ -27,7 +27,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 영수증 경량 매입장부 API (F-BUY-01). 사장 전용(@MasterOnly + 자기 매장 가드).
@@ -169,6 +171,23 @@ public class PurchaseController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
         return ResponseEntity.ok(purchaseService.vendorSummary(storeId, from, to));
+    }
+
+    @Operation(summary = "매입 인사이트 코멘트 (LLM)",
+            description = "거래처별 비중(from~to)·월별 추이(최근 months개월)를 한두 문장 코멘트로 변환한다. "
+                    + "LLM 미활성/검증 실패 시 comment=null(FE는 기존 숫자·그래프 표시만 유지).")
+    @GetMapping("/insight-comment")
+    public ResponseEntity<Map<String, Object>> insightComment(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long storeId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "6") int months) {
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        String comment = purchaseService.insightComment(storeId, from, to, months);
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("comment", comment);
+        return ResponseEntity.ok(res);
     }
 
     @Operation(summary = "월별 매입 추이", description = "최근 N개월(당월 포함) 매입 합계. 매입 없는 달도 0원으로 채운다.")
