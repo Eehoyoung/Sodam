@@ -52,13 +52,20 @@ import static org.mockito.Mockito.when;
  * 없이 전체 스캔한다(경보 성격상 매장 무관 전역 배치라 원래 그렇다). 그래서 같은 컨텍스트를 공유하는
  * 다른 테스트 클래스가(트랜잭션 롤백 없이) 남긴 잔여 스케줄 로우가 있으면 이 클래스의 "정확히 1통"
  * 어서션이 오염된다 — 260815 세션에서 전체 스위트 실행 시에만(단독/패키지 실행은 항상 성공) 실제로
- * 재현 확인. {@code TransactionBoundaryTest}·{@code StoreManagerConcurrencyTest} 등 기존 5개
- * 클래스와 동일한 처방으로 이 클래스 전용 H2 컨텍스트를 격리한다.</p>
+ * 재현 확인.</p>
+ *
+ * <p>⚠️ {@code classMode = BEFORE_CLASS}(클래스당 1회 컨텍스트 격리)로 1차 조치했으나 260816
+ * 전체 스위트 재실행에서 <b>여전히 간헐적으로 재현</b>됐다(단독/패키지 실행은 계속 100% 통과) —
+ * 클래스 단위 격리로는 막지 못하는 오염 경로가 남아있다는 뜻이다(원인 미확정: 다른 워커의 커밋,
+ * 또는 클래스 내부 순서와 무관한 다른 매개). 원인을 확정하지 못한 채 이 테스트가 지키는
+ * 어서션(사람당 메일 1통 정확히 묶임)을 느슨하게 바꾸는 것은 검증의 파괴이므로 하지 않는다
+ * (`.claude/rules/testing.md`). 대신 격리 강도를 <b>메서드당 1회</b>로 올려 이 클래스 안에서
+ * 발생 가능한 모든 순서·경로의 오염을 원천 차단한다 — 테스트 6개뿐이라 비용은 작다.</p>
  */
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_CLASS)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 class RetentionNoticeServiceTest {
 
     private static final AtomicInteger SEQ = new AtomicInteger(0);
