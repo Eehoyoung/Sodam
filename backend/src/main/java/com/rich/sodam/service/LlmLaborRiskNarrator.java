@@ -1,23 +1,15 @@
 package com.rich.sodam.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rich.sodam.dto.response.LaborRiskResponse.Item;
+import com.rich.sodam.service.ai.AnthropicTextClient;
+import com.rich.sodam.service.ai.ForbiddenPhrases;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 
 /**
  * LLM 기반 노무 리스크 서술 내레이터 (Anthropic Messages API).
@@ -47,16 +39,10 @@ public class LlmLaborRiskNarrator implements LaborRiskNarrator {
 
     static final String ANONYMOUS_LABEL = "직원A";
 
-    /** HC-1: 코드·문구·테스트 픽스처 어디에도 쓰지 않는 확언 표현. LLM 응답에 있으면 폴백. */
-    static final List<String> FORBIDDEN_PHRASES = List.of(
-            "위반입니다", "막아드립니다", "막아줍니다", "정확하게 계산", "법적 자문", "안전합니다",
-            "위반이다", "확정적으로", "무조건", "100% ");
+    /** HC-1: 코드·문구·테스트 픽스처 어디에도 쓰지 않는 확언 표현. LLM 응답에 있으면 폴백. 실체는 {@link ForbiddenPhrases}(WP-0 공용). */
+    static final List<String> FORBIDDEN_PHRASES = ForbiddenPhrases.LIST;
 
-    private final String apiUrl;
-    private final String apiKey;
-    private final String model;
-    private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final AnthropicTextClient client;
 
     public LlmLaborRiskNarrator(
             @Value("${sodam.ai.api-url:https://api.anthropic.com/v1/messages}") String apiUrl,
@@ -64,27 +50,13 @@ public class LlmLaborRiskNarrator implements LaborRiskNarrator {
             @Value("${sodam.ai.model:claude-haiku-4-5-20251001}") String model,
             @Value("${sodam.ai.connect-timeout-ms:3000}") int connectTimeoutMs,
             @Value("${sodam.ai.read-timeout-ms:8000}") int readTimeoutMs) {
-        this.apiUrl = apiUrl;
-        this.apiKey = apiKey == null ? "" : apiKey.trim();
-        this.model = model;
-
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(connectTimeoutMs);
-        factory.setReadTimeout(readTimeoutMs);
-        this.restTemplate = new RestTemplate(factory);
-
-        if (this.apiKey.isBlank()) {
-            log.warn("[LaborRiskNarrator] provider=anthropic 활성 but api-key 미설정 — 항상 템플릿 문구로 폴백. "
-                    + "SODAM_AI_API_KEY 를 설정하세요.");
-        } else {
-            log.info("[LaborRiskNarrator] LLM 내레이터 준비 완료 — model={}", model);
-        }
+        this.client = new AnthropicTextClient(apiUrl, apiKey, model, connectTimeoutMs, readTimeoutMs);
     }
 
     @Override
     public String narrate(Item item) {
         String original = item.message();
-        if (apiKey.isBlank() || original == null || original.isBlank()) {
+        if (!client.isReady() || original == null || original.isBlank()) {
             return original;
         }
         try {
@@ -92,7 +64,7 @@ public class LlmLaborRiskNarrator implements LaborRiskNarrator {
             boolean hasName = employeeName != null && !employeeName.isBlank();
             String anonymized = hasName ? original.replace(employeeName, ANONYMOUS_LABEL) : original;
 
-            String response = callAnthropic(buildPrompt(item, anonymized));
+            String response = client.complete(buildPrompt(item, anonymized));
             if (response == null) {
                 return original;
             }
@@ -115,38 +87,13 @@ public class LlmLaborRiskNarrator implements LaborRiskNarrator {
                 + "원문: " + anonymizedMessage;
     }
 
-    private String callAnthropic(String prompt) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("x-api-key", apiKey);
-        headers.set("anthropic-version", "2023-06-01");
-
-        Map<String, Object> body = Map.of(
-                "model", model,
-                "max_tokens", 300,
-                "messages", List.of(Map.of("role", "user", "content", prompt)));
-        try {
-            String json = objectMapper.writeValueAsString(body);
-            ResponseEntity<String> res = restTemplate.exchange(
-                    apiUrl, HttpMethod.POST, new HttpEntity<>(json, headers), String.class);
-            JsonNode root = objectMapper.readTree(res.getBody());
-            JsonNode text = root.path("content").path(0).path("text");
-            return text.isTextual() ? text.asText() : null;
-        } catch (Exception e) {
-            log.debug("[LaborRiskNarrator] Anthropic 호출 실패: {}", e.toString());
-            return null;
-        }
-    }
-
     /** HC-1·HC-2 금지어 + 원래 수치 보존 여부 검증. 하나라도 실패하면 폴백 대상. */
     static boolean passesValidation(String rephrased, Item item) {
         if (rephrased == null || rephrased.isBlank()) {
             return false;
         }
-        for (String banned : FORBIDDEN_PHRASES) {
-            if (rephrased.contains(banned)) {
-                return false;
-            }
+        if (ForbiddenPhrases.containsAny(rephrased)) {
+            return false;
         }
         if (item.value() != null) {
             BigDecimal v = item.value();
