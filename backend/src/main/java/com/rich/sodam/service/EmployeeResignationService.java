@@ -1,14 +1,19 @@
 package com.rich.sodam.service;
 
 import com.rich.sodam.config.integration.PushNotifier;
+import com.rich.sodam.domain.EmployeeResignationDateProposal;
+import com.rich.sodam.domain.EmployeeResignationDateProposal.ProposerRole;
 import com.rich.sodam.domain.EmployeeResignationRequest;
 import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.exception.BusinessException;
+import com.rich.sodam.repository.EmployeeResignationDateProposalRepository;
 import com.rich.sodam.repository.EmployeeResignationRequestRepository;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
+import com.rich.sodam.repository.MasterStoreRelationRepository;
 import com.rich.sodam.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,7 +36,9 @@ import java.util.Map;
 public class EmployeeResignationService {
 
     private final EmployeeResignationRequestRepository resignationRepo;
+    private final EmployeeResignationDateProposalRepository proposalRepo;
     private final EmployeeStoreRelationRepository relationRepo;
+    private final MasterStoreRelationRepository masterStoreRelationRepo;
     private final UserRepository userRepo;
     private final NotificationService notificationService;
     private final StorePermissionRecipientService permissionRecipients;
@@ -63,6 +70,9 @@ public class EmployeeResignationService {
         User requester = userRepo.findById(requesterUserId).orElseThrow();
         EmployeeResignationRequest request = resignationRepo.save(
                 EmployeeResignationRequest.create(relation, requester, desiredResignationDate, reason));
+        // 최초 희망일도 협의 이력의 첫 제안으로 남긴다(WP-3) — agree()/counterPropose()가
+        // "마지막 제안"을 균일하게 다룰 수 있도록.
+        proposalRepo.save(EmployeeResignationDateProposal.create(request, ProposerRole.EMPLOYEE, desiredResignationDate));
 
         notifyOwners(relation, requester.getName(), "사직 신청이 도착했어요",
                 (requester.getName() == null || requester.getName().isBlank() ? "직원" : requester.getName())
@@ -80,6 +90,89 @@ public class EmployeeResignationService {
             throw new BusinessException("대기 중인 신청만 철회할 수 있어요.", "RESIGNATION_NOT_PENDING");
         }
         request.withdraw();
+    }
+
+    /**
+     * WP-3 — 상대의 마지막 제안에 동의해 협의를 확정한다. 신청자 본인 또는 그 매장 사장만
+     * 호출할 수 있다(BOLA는 {@link #resolveActorRole}이 판정).
+     */
+    @Transactional
+    public void agree(Long requestId, Long actorUserId) {
+        EmployeeResignationRequest request = resignationRepo.findByIdForUpdate(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("신청을 찾을 수 없어요."));
+        if (!request.isPending()) {
+            throw new BusinessException("대기 중인 신청만 협의할 수 있어요.", "RESIGNATION_NOT_PENDING");
+        }
+        ProposerRole actorRole = resolveActorRole(request, actorUserId);
+        EmployeeResignationDateProposal last = proposalRepo.findTopByRequest_IdOrderByProposedAtDesc(requestId)
+                .orElseThrow(() -> new IllegalStateException("제안 이력이 없어요."));
+        if (last.getProposerRole() == actorRole) {
+            throw new BusinessException("본인이 마지막으로 제안한 날짜에는 동의할 수 없어요.",
+                    "RESIGNATION_CANNOT_AGREE_OWN_PROPOSAL");
+        }
+        last.markAccepted();
+        request.agreeOn(last.getProposedDate());
+        notifyCounterparty(request, actorRole, "퇴사일에 합의했어요",
+                "합의된 퇴사일: " + last.getProposedDate(), "RESIGNATION_DATE_AGREED");
+    }
+
+    /** WP-3 — 대안 날짜를 새로 제안한다(기존 이력은 그대로 보존 — append-only). */
+    @Transactional
+    public void counterPropose(Long requestId, Long actorUserId, LocalDate newDate) {
+        EmployeeResignationRequest request = resignationRepo.findByIdForUpdate(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("신청을 찾을 수 없어요."));
+        if (!request.isPending()) {
+            throw new BusinessException("대기 중인 신청만 협의할 수 있어요.", "RESIGNATION_NOT_PENDING");
+        }
+        ProposerRole actorRole = resolveActorRole(request, actorUserId);
+        proposalRepo.save(EmployeeResignationDateProposal.create(request, actorRole, newDate));
+        notifyCounterparty(request, actorRole, "새 퇴사일이 제안됐어요",
+                "제안된 날짜: " + newDate, "RESIGNATION_DATE_COUNTER_PROPOSED");
+    }
+
+    @Transactional(readOnly = true)
+    public List<EmployeeResignationDateProposal> proposals(Long requestId, Long actorUserId) {
+        EmployeeResignationRequest request = resignationRepo.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("신청을 찾을 수 없어요."));
+        resolveActorRole(request, actorUserId); // 당사자 검증(BOLA), 결과값은 쓰지 않는다
+        return proposalRepo.findByRequest_IdOrderByProposedAtAsc(requestId);
+    }
+
+    /** 호출자가 신청자 본인이면 EMPLOYEE, 그 매장 사장이면 MASTER — 둘 다 아니면 403. */
+    private ProposerRole resolveActorRole(EmployeeResignationRequest request, Long actorUserId) {
+        if (request.getRequester() != null && request.getRequester().getId().equals(actorUserId)) {
+            return ProposerRole.EMPLOYEE;
+        }
+        if (request.getRelation() != null && request.getRelation().getStore() != null) {
+            Long storeId = request.getRelation().getStore().getId();
+            if (masterStoreRelationRepo.existsByMasterProfile_IdAndStore_Id(actorUserId, storeId)) {
+                return ProposerRole.MASTER;
+            }
+        }
+        throw new AccessDeniedException("본인 신청 또는 소유 매장의 신청만 처리할 수 있어요.");
+    }
+
+    private void notifyCounterparty(EmployeeResignationRequest request, ProposerRole actorRole, String title, String body, String type) {
+        Long recipientUserId = actorRole == ProposerRole.EMPLOYEE
+                ? firstOwnerId(request)
+                : (request.getRequester() != null ? request.getRequester().getId() : null);
+        if (recipientUserId == null) {
+            return;
+        }
+        notificationService.push(recipientUserId, PushNotifier.PushMessage.builder()
+                .title(title)
+                .body(body)
+                .deepLink("sodam://resignation")
+                .data(Map.of("type", type))
+                .build());
+    }
+
+    private Long firstOwnerId(EmployeeResignationRequest request) {
+        if (request.getRelation() == null || request.getRelation().getStore() == null) {
+            return null;
+        }
+        return permissionRecipients.owners(request.getRelation().getStore().getId())
+                .stream().findFirst().orElse(null);
     }
 
     /**

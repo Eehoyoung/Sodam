@@ -48,6 +48,12 @@ public class EmployeeResignationController {
         private String reason;
     }
 
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor
+    public static class CounterProposeBody {
+        @NotNull
+        private LocalDate proposedDate;
+    }
+
     @Operation(summary = "사직서 제출 (직원 본인)",
             description = "본인 소속(EmployeeStoreRelation)에 대해서만 신청할 수 있다. 희망 퇴사일은 데이터 캡처 전용 — 급여 계산에 반영되지 않는다.")
     @PostMapping("/api/stores/{storeId}/resignation-requests")
@@ -97,6 +103,47 @@ public class EmployeeResignationController {
         storeAccessGuard.assertMasterOwnsStore(principal.getId(), resolvedStoreId);
         resignationService.acknowledge(id, principal.getId());
         return ResponseEntity.ok(Map.of("message", "확인했어요."));
+    }
+
+    @Operation(summary = "퇴사일 협의 — 동의 (신청자 본인 또는 사장)",
+            description = "상대가 마지막으로 제시한 날짜에 동의해 협의를 확정한다(WP-3). 본인이 마지막으로 낸 제안에는 동의할 수 없다.")
+    @PutMapping("/api/stores/{storeId}/resignation-requests/{id}/agree")
+    public ResponseEntity<Map<String, String>> agree(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long storeId,
+            @PathVariable Long id) {
+        resignationService.agree(id, principal.getId());
+        return ResponseEntity.ok(Map.of("message", "퇴사일에 합의했어요."));
+    }
+
+    @Operation(summary = "퇴사일 협의 — 역제안 (신청자 본인 또는 사장)",
+            description = "대안 날짜를 새로 제안한다(WP-3). 기존 제안 이력은 그대로 보존된다(append-only).")
+    @PutMapping("/api/stores/{storeId}/resignation-requests/{id}/counter-propose")
+    public ResponseEntity<Map<String, String>> counterPropose(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long storeId,
+            @PathVariable Long id,
+            @Valid @RequestBody CounterProposeBody body) {
+        resignationService.counterPropose(id, principal.getId(), body.getProposedDate());
+        return ResponseEntity.ok(Map.of("message", "새 날짜를 제안했어요."));
+    }
+
+    @Operation(summary = "퇴사일 협의 이력 조회 (당사자만)")
+    @GetMapping("/api/stores/{storeId}/resignation-requests/{id}/proposals")
+    public ResponseEntity<List<Map<String, Object>>> proposals(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long storeId,
+            @PathVariable Long id) {
+        List<Map<String, Object>> result = resignationService.proposals(id, principal.getId()).stream()
+                .map(p -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("proposerRole", p.getProposerRole().name());
+                    m.put("proposedDate", p.getProposedDate());
+                    m.put("proposedAt", p.getProposedAt());
+                    m.put("accepted", p.isAccepted());
+                    return m;
+                }).toList();
+        return ResponseEntity.ok(result);
     }
 
     @Operation(summary = "내 사직서 이력 (직원 본인)")
