@@ -177,6 +177,10 @@ public class EmployeeResignationController {
     private Map<String, Object> toMap(EmployeeResignationRequest r) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", r.getId());
+        if (r.getRelation() != null && r.getRelation().getStore() != null) {
+            m.put("storeId", r.getRelation().getStore().getId());
+            m.put("storeName", r.getRelation().getStore().getStoreName());
+        }
         m.put("desiredResignationDate", r.getDesiredResignationDate());
         m.put("agreedResignationDate", r.getAgreedResignationDate());
         m.put("reason", r.getReason());

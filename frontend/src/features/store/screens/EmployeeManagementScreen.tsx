@@ -27,6 +27,7 @@ import {
     HeadcountSimulationResponse,
     simulateStatutoryHeadcount,
 } from '../../risk/services/riskService';
+import resignationService from '../../resignation/services/resignationService';
 import {logger} from '../../../utils/logger';
 
 type EmployeeManagementRouteProp = RouteProp<HomeStackParamList, 'EmployeeManagement'>;
@@ -71,6 +72,8 @@ export default function EmployeeManagementScreen({route, navigation, visualFixtu
     // 260816 WP-A — "직원 1명 더 등록하면 상시근로자 5인 경계를 넘을 가능성"을 참고로 보여준다.
     // 조회 실패는 카드만 숨기고(best-effort) 초대 흐름 자체는 절대 막지 않는다(HC-5).
     const [headcountSimulation, setHeadcountSimulation] = useState<HeadcountSimulationResponse | null>(null);
+    // 260817 퇴사 처리 기능 계획서 WP-5 — 조회 실패는 배지만 숨기고(best-effort) 직원 명부는 그대로 보여준다.
+    const [pendingResignationCount, setPendingResignationCount] = useState(0);
 
     const load = useCallback(async () => {
         if (visualFixture) {
@@ -96,6 +99,13 @@ export default function EmployeeManagementScreen({route, navigation, visualFixtu
             } catch (hcError) {
                 logger.debug('[EmployeeManagement] headcount simulation load failed', hcError);
                 setHeadcountSimulation(null);
+            }
+            try {
+                const resignations = await resignationService.listForStore(storeId);
+                setPendingResignationCount(resignations.filter(r => r.status === 'PENDING').length);
+            } catch (resignationError) {
+                logger.debug('[EmployeeManagement] resignation count load failed', resignationError);
+                setPendingResignationCount(0);
             }
         }
     }, [storeId, managerMode, visualFixture]);
@@ -177,6 +187,22 @@ export default function EmployeeManagementScreen({route, navigation, visualFixtu
                 </AppCard>
             ) : null}
 
+            {!managerMode && pendingResignationCount > 0 ? (
+                <AppCard
+                    variant="flat"
+                    style={styles.resignationCard}
+                    onPress={() => navigation.navigate('StoreResignationRequests', {storeId})}
+                    testID="resignation-pending-summary-card">
+                    <View style={styles.resignationRow}>
+                        <Ionicons name="log-out-outline" size={20} color={c.warning} />
+                        <AppText variant="bodyMd" weight="700" style={styles.resignationFlex}>
+                            퇴사 신청 대기 {pendingResignationCount}건
+                        </AppText>
+                        <AppBadge label="확인하기" tone="warning" />
+                    </View>
+                </AppCard>
+            ) : null}
+
             {employees.length === 0 ? (
                 <EmptyState
                     glyph={<Ionicons name="people-outline" size={40} color={c.textInverse} />}
@@ -233,6 +259,9 @@ export default function EmployeeManagementScreen({route, navigation, visualFixtu
 }
 
 const styles = StyleSheet.create({
+    resignationCard: {marginTop: spacing.md},
+    resignationRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
+    resignationFlex: {flex: 1},
     section: {marginTop: spacing.md},
     sectionTitle: {marginBottom: spacing.md},
     list: {gap: spacing.sm},

@@ -40,6 +40,8 @@ import NfcTagManagementScreen from '../features/store/screens/NfcTagManagementSc
 import PayrollRunScreen from '../features/salary/screens/PayrollRunScreen';
 import JoinStoreByCodeScreen from '../features/store/screens/JoinStoreByCodeScreen';
 import AttendanceCorrectionRequestScreen from '../features/attendance/screens/AttendanceCorrectionRequestScreen';
+import EmployeeResignationScreen from '../features/resignation/screens/EmployeeResignationScreen';
+import StoreResignationRequestsScreen from '../features/resignation/screens/StoreResignationRequestsScreen';
 import NotificationSettingsScreen from '../features/settings/screens/NotificationSettingsScreen';
 import AttendanceCalendarScreen from '../features/attendance/screens/AttendanceCalendarScreen';
 import EmployeeWorkLogScreen from '../features/attendance/screens/EmployeeWorkLogScreen';
@@ -165,6 +167,8 @@ export type HomeStackParamList = {
         currentCheckIn?: string;
         currentCheckOut?: string;
     } | undefined;
+    Resignation: {storeId: number};
+    StoreResignationRequests: {storeId: number};
     NotificationSettings: undefined;
     NotificationCenter: undefined;
     AttendanceCalendar: undefined;
@@ -414,6 +418,16 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen
                 name="AttendanceCorrectionRequest"
                 component={AttendanceCorrectionRequestScreen}
+                options={{headerShown: false}}
+            />
+            <Stack.Screen
+                name="Resignation"
+                component={EmployeeResignationScreen}
+                options={{headerShown: false}}
+            />
+            <Stack.Screen
+                name="StoreResignationRequests"
+                component={StoreResignationRequestsScreen}
                 options={{headerShown: false}}
             />
             <Stack.Screen

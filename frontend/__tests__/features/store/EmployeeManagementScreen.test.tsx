@@ -140,6 +140,46 @@ describe('EmployeeManagementScreen — 260816 WP-A 상시근로자 시뮬레이�
         expect(JSON.stringify(renderer.toJSON())).not.toContain('상시근로자 5인 이상에 해당할 가능성이 있어요');
     });
 
+    test('260817 WP-5: 대기 중인 퇴사 신청이 있으면 배지가 뜨고 탭하면 관리 화면으로 이동한다', async () => {
+        apiMock.get.mockImplementation((url: string) => {
+            if (url === '/api/stores/7/employees') {
+                return Promise.resolve({data: [{id: 1, name: '김직원', phone: '010-0000-0000'}]}) as any;
+            }
+            if (url === '/api/stores/7') {
+                return Promise.resolve({data: {id: 7, storeName: '테스트매장', businessType: '카페', storeCode: 'ABCD', fullAddress: '서울'}}) as any;
+            }
+            if (url === '/api/stores/7/labor-risk/statutory-headcount/simulate') {
+                return Promise.reject(new Error('unrelated'));
+            }
+            if (url === '/api/stores/7/resignation-requests') {
+                return Promise.resolve({data: [
+                    {id: 1, status: 'PENDING', desiredResignationDate: '2026-09-01', agreedResignationDate: null, reason: null, requestedAt: new Date().toISOString(), decidedAt: null, signatureEnvelopeId: null},
+                ]}) as any;
+            }
+            return Promise.reject(new Error('unexpected url ' + url));
+        });
+
+        const renderer = await act(async () => {
+            const r = ReactTestRenderer.create(
+                <EmployeeManagementScreen route={route} navigation={navigation} />,
+            );
+            await flush();
+            return r;
+        });
+
+        const badge = renderer.root.findAllByProps({testID: 'resignation-pending-summary-card'});
+        expect(badge.length).toBeGreaterThan(0);
+        const json = JSON.stringify(renderer.toJSON());
+        expect(json).toContain('퇴사 신청 대기');
+        expect(json).toContain('"1"');
+
+        await act(async () => {
+            badge[0].props.onPress();
+            await flush();
+        });
+        expect(navigation.navigate).toHaveBeenCalledWith('StoreResignationRequests', {storeId: 7});
+    });
+
     test('시뮬레이션 조회 실패는 카드만 숨기고 화면 나머지는 정상 렌더(best-effort)', async () => {
         apiMock.get.mockImplementation((url: string) => {
             if (url === '/api/stores/7/employees') {
