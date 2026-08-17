@@ -48,6 +48,45 @@ public class ElectronicSignatureApplicationService {
         }
     }
 
+    /**
+     * 퇴사 확인서 서명 봉투 생성(260817 퇴사 처리 기능 계획서 WP-4). {@link #createLaborContract}와
+     * 달리 {@code DelegatedActionAuthorityService.Authority}(CONTRACT_MANAGE 대리 권한 조회)를
+     * 쓰지 않는다 — 매니저 위임을 열지 않고 사장 본인만 트리거하도록 의도적으로 좁혔다(HC-9).
+     * L-1이 풀리면 {@code createLaborContract}처럼 authority 파라미터를 받는 형태로 확장할 수
+     * 있도록 구조는 맞춰뒀지만, 지금은 호출하지 않는다.
+     */
+    public ElectronicSignatureEnvelope createResignationAcknowledgment(Long masterId, Long requestId, Long storeId,
+                                                                          Long employeeUserId, int documentVersion,
+                                                                          byte[] finalizedPdf) {
+        requireIssuanceEnabled();
+        guard.assertMasterOwnsStore(masterId, storeId);
+        DocumentDigest digest = DocumentDigest.sha256(finalizedPdf);
+        String rawRef = storage.put(PrivateSignatureObjectStorage.ObjectKind.UNSIGNED_PDF, requestId,
+                new ByteArrayInputStream(finalizedPdf), finalizedPdf.length, "application/pdf");
+        try {
+            return transactions.execute(status -> {
+                ElectronicSignatureEnvelope envelope = envelopeRepository.save(ElectronicSignatureEnvelope.create(
+                        SignatureSubjectType.RESIGNATION_ACKNOWLEDGMENT, requestId, storeId, documentVersion,
+                        digest.hex(), crypto.encrypt(rawRef), masterId));
+                ElectronicSignatureProvider provider = ElectronicSignatureProvider.parse(
+                        integrationProperties.getElectronicSignature().getProvider());
+                ElectronicSignatureParty owner = partyRepository.save(ElectronicSignatureParty.waiting(
+                        envelope, SignatureSignerRole.OWNER, masterId, 1, provider));
+                partyRepository.save(ElectronicSignatureParty.waiting(
+                        envelope, SignatureSignerRole.EMPLOYEE, employeeUserId, 2, provider));
+                owner.queueRequest();
+                envelope.markInProgress();
+                outboxRepository.save(ElectronicSignatureOutbox.queue(
+                        envelope.getId(), owner.getId(), SignatureOperation.REQUEST,
+                        "request:" + owner.getId(), LocalDateTime.now()));
+                return envelope;
+            });
+        } catch (RuntimeException e) {
+            storage.delete(rawRef);
+            throw e;
+        }
+    }
+
     public ElectronicSignatureEnvelope createLaborContract(DelegatedActionAuthorityService.Authority authority,
                                                              Long contractId, Long storeId,
                                                              Long employeeUserId, int documentVersion,

@@ -5,6 +5,7 @@ import com.rich.sodam.security.UserPrincipal;
 import com.rich.sodam.security.authorization.StoreAuthorizationPolicy;
 import com.rich.sodam.security.annotation.EmployeeOrMaster;
 import com.rich.sodam.service.EmployeeResignationService;
+import com.rich.sodam.service.EmployeeResignationSignatureService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -38,6 +39,7 @@ import java.util.Map;
 public class EmployeeResignationController {
 
     private final EmployeeResignationService resignationService;
+    private final EmployeeResignationSignatureService signatureService;
     private final StoreAuthorizationPolicy storeAccessGuard;
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor
@@ -105,6 +107,24 @@ public class EmployeeResignationController {
         return ResponseEntity.ok(Map.of("message", "확인했어요."));
     }
 
+    @Operation(summary = "퇴사 확인서 전자서명 요청 (사장 전용)",
+            description = "협의된 퇴사일(agreedResignationDate) 확정 후에만 가능하다(WP-3 선행). "
+                    + "전자서명 통합이 비활성(mode=off)이면 available=false로 응답한다 — 서명 없이도 확인(acknowledge)은 그대로 동작한다.")
+    @PostMapping("/api/stores/{storeId}/resignation-requests/{id}/request-signature")
+    public ResponseEntity<Map<String, Object>> requestSignature(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long storeId,
+            @PathVariable Long id) {
+        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        EmployeeResignationSignatureService.SignatureRequestResult result =
+                signatureService.requestSignature(id, principal.getId());
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("available", result.available());
+        res.put("envelopeId", result.envelopeId());
+        res.put("message", result.message());
+        return ResponseEntity.ok(res);
+    }
+
     @Operation(summary = "퇴사일 협의 — 동의 (신청자 본인 또는 사장)",
             description = "상대가 마지막으로 제시한 날짜에 동의해 협의를 확정한다(WP-3). 본인이 마지막으로 낸 제안에는 동의할 수 없다.")
     @PutMapping("/api/stores/{storeId}/resignation-requests/{id}/agree")
@@ -163,6 +183,7 @@ public class EmployeeResignationController {
         m.put("status", r.getStatus().name());
         m.put("requestedAt", r.getRequestedAt());
         m.put("decidedAt", r.getDecidedAt());
+        m.put("signatureEnvelopeId", r.getSignatureEnvelopeId());
         return m;
     }
 }

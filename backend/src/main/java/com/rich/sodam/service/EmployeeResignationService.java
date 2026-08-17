@@ -201,6 +201,16 @@ public class EmployeeResignationService {
         }
     }
 
+    /**
+     * WP-4 — 서명 완료(VERIFIED) 후 {@link ElectronicSignatureWorker}가 호출한다. 봉투 연결만
+     * 하고 status는 건드리지 않는다(HC-2) — 서명 완료가 확인(acknowledge)의 전제조건이 아니라
+     * 병행 증적일 뿐이라는 설계(HC-13)를 그대로 반영한다.
+     */
+    @Transactional
+    public void linkVerifiedSignatureEnvelope(Long requestId, Long envelopeId) {
+        resignationRepo.findById(requestId).ifPresent(r -> r.linkSignatureEnvelope(envelopeId));
+    }
+
     @Transactional(readOnly = true)
     public List<EmployeeResignationRequest> myRequests(Long requesterUserId) {
         return resignationRepo.findByRequester_IdOrderByRequestedAtDesc(requesterUserId);

@@ -59,3 +59,19 @@ class EmploymentAmendmentSignatureRetentionPolicy extends AbstractElectronicSign
         super(repository, purgeService, SignatureSubjectType.LABOR_CONTRACT_AMENDMENT, Period.ofYears(3));
     }
 }
+
+/**
+ * 퇴사 확인서 보존정책(260817 퇴사 처리 기능 계획서 WP-4, HC-14).
+ *
+ * <p>보존연한 3년은 {@code LaborContract}류와 같은 값을 잠정 채택한 것이다 — G-6(근로기록
+ * 보존기간 기산일)이 다루는 "기산일 로직"과는 결이 다른 문제(이건 "기존 정책 패턴을 새 문서
+ * 유형에 반복 적용")지만, 정확한 보존연한 자체는 노무 자문이 필요할 수 있다. 노무사 회신 후
+ * 이 값만 교체하면 된다.</p>
+ */
+@Component
+class ResignationAcknowledgmentSignatureRetentionPolicy extends AbstractElectronicSignatureRetentionPolicy {
+    ResignationAcknowledgmentSignatureRetentionPolicy(ElectronicSignatureEnvelopeRepository repository,
+                                                        ElectronicSignatureEvidencePurgeService purgeService) {
+        super(repository, purgeService, SignatureSubjectType.RESIGNATION_ACKNOWLEDGMENT, Period.ofYears(3));
+    }
+}
