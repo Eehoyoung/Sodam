@@ -166,8 +166,20 @@ async function calculate(payload: PayrollCalculatePayload): Promise<PayrollCalcu
 }
 
 // [API Mapping] PUT /api/payroll/{payrollId}/issue — 확정→지급완료 원자 처리(스텝업 비밀번호 필요)
-async function issue(payrollId: number, stepUpPassword: string): Promise<void> {
-  await api.put(`/api/payroll/${payrollId}/issue`, {stepUpPassword});
+// 가감조정(adjustment)은 세후 가산이며 반드시 함께 전송해야 한다 — 안 보내면 화면에 표시한
+// 총액과 서버가 확정하는 실수령액이 갈린다(C-3).
+async function issue(
+  payrollId: number,
+  stepUpPassword: string,
+  adjustment?: number,
+  adjustmentReason?: string,
+): Promise<void> {
+  const body: Record<string, unknown> = {stepUpPassword};
+  if (adjustment) {
+    body.adjustment = adjustment;
+    body.adjustmentReason = adjustmentReason;
+  }
+  await api.put(`/api/payroll/${payrollId}/issue`, body);
 }
 
 async function getMonthly(employeeId: number, storeId: number, year: number, month: number): Promise<PayrollSummary[]> {

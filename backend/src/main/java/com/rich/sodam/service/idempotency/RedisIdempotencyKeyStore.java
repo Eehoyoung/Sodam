@@ -26,13 +26,15 @@ public class RedisIdempotencyKeyStore implements IdempotencyKeyStore {
     }
 
     @Override
-    public boolean isProcessed(String idempotencyKey, String scope) {
-        return Boolean.TRUE.equals(redis.hasKey(redisKey(idempotencyKey, scope)));
+    public boolean tryClaim(String idempotencyKey, String scope, Duration ttl) {
+        // SET NX EX — 존재 확인과 기록이 한 명령이라 인스턴스가 여러 대여도 경쟁이 없다.
+        return Boolean.TRUE.equals(
+                redis.opsForValue().setIfAbsent(redisKey(idempotencyKey, scope), Boolean.TRUE, ttl));
     }
 
     @Override
-    public void markProcessed(String idempotencyKey, String scope, Duration ttl) {
-        redis.opsForValue().set(redisKey(idempotencyKey, scope), Boolean.TRUE, ttl);
+    public void release(String idempotencyKey, String scope) {
+        redis.delete(redisKey(idempotencyKey, scope));
     }
 
     private String redisKey(String idempotencyKey, String scope) {

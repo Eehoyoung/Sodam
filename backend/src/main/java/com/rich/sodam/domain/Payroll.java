@@ -81,6 +81,15 @@ public class Payroll {
     private Integer longTermCareDeduction;     // 장기요양
     private Integer employmentInsuranceDeduction; // 고용보험
 
+    /**
+     * 가감조정액(원). 사장이 정산 마법사에서 직접 넣는 ±금액으로, 세후 가산이다(C-3, 2026-08-18 확정) —
+     * grossWage·taxAmount·4대보험·주휴수당 계산에는 영향을 주지 않는다.
+     */
+    private Integer adjustment;
+    /** 가감조정 사유. 조정액이 0이 아니면 필수(§48② 항목별 지급/공제내역에 표기된다). */
+    @Column(length = 200)
+    private String adjustmentReason;
+
     // 최종 급여
     private Integer netWage;              // 실수령액 (세후)
 
@@ -115,7 +124,23 @@ public class Payroll {
      * 순 급여 계산
      */
     public void calculateNetWage() {
-        this.netWage = this.grossWage - (this.taxAmount + (this.deductions != null ? this.deductions : 0));
+        this.netWage = this.grossWage - (this.taxAmount + (this.deductions != null ? this.deductions : 0))
+                + (this.adjustment != null ? this.adjustment : 0);
+    }
+
+    /**
+     * 가감조정을 적용하고 실수령액을 다시 계산한다(세후 가산).
+     *
+     * @throws IllegalArgumentException 조정 후 실수령액이 음수가 되는 경우 — 급여보다 큰 차감은
+     *                                  임금 상계 한도(근로기준법 §43 전액지급 원칙) 문제라 막는다.
+     */
+    public void applyAdjustment(Integer amount, String reason) {
+        this.adjustment = (amount == null || amount == 0) ? null : amount;
+        this.adjustmentReason = this.adjustment == null ? null : reason;
+        calculateNetWage();
+        if (this.netWage < 0) {
+            throw new IllegalArgumentException("가감조정 후 실수령액이 음수가 될 수 없습니다.");
+        }
     }
 
     /**

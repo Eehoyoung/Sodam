@@ -230,10 +230,13 @@ const authService = {
 
     kakaoLogin: async ({code, state, codeVerifier}: KakaoLoginRequest): Promise<AuthResponse> => {
         try {
-            const res = await api.get<RawAuthResponse>('/kakao/auth/proc', {
-                params: {code, state},
-                headers: {'X-Kakao-OAuth-Code-Verifier': codeVerifier},
-            });
+            // api.get(url, params, config) — 쿼리는 2번째, 커스텀 헤더는 3번째 인자.
+            // 하나로 합치면 params 가 다시 params 로 감싸져 code/state 도, 헤더도 전송되지 않는다.
+            const res = await api.get<RawAuthResponse>(
+                '/kakao/auth/proc',
+                {code, state},
+                {headers: {'X-Kakao-OAuth-Code-Verifier': codeVerifier}},
+            );
             return await mapAuthResponse(res.data);
         } catch (error) {
             logger.error('[AUTH_SERVICE] kakaoLogin failed', error);

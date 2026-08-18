@@ -49,17 +49,32 @@ public class PayrollHighRiskActionService {
 
     @Transactional
     public Payroll issue(Long actorUserId, Long payrollId, String stepUpPassword) {
-        return issue(actorUserId, payrollId, stepUpPassword, StoreDelegationAudit.AccessChannel.MOBILE);
+        return issue(actorUserId, payrollId, stepUpPassword, null, null,
+                StoreDelegationAudit.AccessChannel.MOBILE);
     }
 
+    public Payroll issue(Long actorUserId, Long payrollId, String stepUpPassword,
+                         StoreDelegationAudit.AccessChannel channel) {
+        return issue(actorUserId, payrollId, stepUpPassword, null, null, channel);
+    }
+
+    /**
+     * 급여 발급. 가감조정(C-3)이 함께 오면 확정 전에 적용해, 사장이 화면에서 본 총액과
+     * 서버가 확정하는 실수령액이 갈리지 않게 한다.
+     */
     @Transactional
     public Payroll issue(Long actorUserId, Long payrollId, String stepUpPassword,
+                         Integer adjustment, String adjustmentReason,
                          StoreDelegationAudit.AccessChannel channel) {
         Payroll payroll = lock(payrollId);
         Long storeId = payroll.getStore().getId();
         DelegatedActionAuthorityService.Authority authority =
                 authorityService.require(actorUserId, storeId, ManagerPermission.PAYROLL_CONFIRM);
         stepUpAuthenticationService.verifyPassword(actorUserId, stepUpPassword);
+        // 이미 지급 완료(PAID)된 급여는 금액을 다시 건드리지 않는다 — 재요청은 멱등해야 한다.
+        if (adjustment != null && adjustment != 0 && payroll.getStatus() != PayrollStatus.PAID) {
+            payroll.applyAdjustment(adjustment, adjustmentReason);
+        }
         Payroll saved = payrollService.issuePayroll(payrollId);
         record(saved, authority, "ISSUED", channel);
         return saved;

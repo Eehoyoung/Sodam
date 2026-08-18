@@ -305,7 +305,8 @@ describe('EmployeeAttendanceHome', () => {
         );
 
         // WP-05(v3 매장관리+출퇴근): 15 WorkplaceList 진입점 '근무지 관리' 타일 신규 추가로 14→15.
-        expect(quickTiles).toHaveLength(15);
+        // H-8: '퇴사 신청' 진입점 추가로 15→16(Resignation 라우트가 도달 불가였던 문제 해소).
+        expect(quickTiles).toHaveLength(16);
 
         const labels = quickTiles.map(tile => {
             const texts = tile.findAllByType('Text').map(t => t.props.children);
@@ -328,6 +329,7 @@ describe('EmployeeAttendanceHome', () => {
             '증명서 발급',
             '근무일지',
             '우리 매장 대타',
+            '퇴사 신청',
         ]);
 
         expect(labels).not.toContain('내 요청');
@@ -369,4 +371,42 @@ describe('EmployeeAttendanceHome', () => {
         expect(mockToastShow).toHaveBeenCalledWith('먼저 소속 매장을 선택해 주세요.');
         expect(mockNavigate).not.toHaveBeenCalledWith('TimeOffRequest', expect.anything());
     });
+
+    // H-8 — Resignation 라우트는 HomeNavigator 에 등록돼 있었지만 앱 어디에서도 navigate 하지 않아
+    // 직원이 사직서 화면에 도달할 방법이 아예 없었다(WP-1~5 기능 전체가 사용 불가 상태).
+    test('퇴사 신청 타일 → Resignation 라우트로 선택 매장 id 와 함께 이동', async () => {
+        apiMock.get.mockImplementation((url: string) => {
+            if (url.startsWith('/api/stores/employee/')) {
+                return Promise.resolve({
+                    data: [{id: 42, storeName: '소담카페', storeStandardHourWage: 10000}],
+                }) as any;
+            }
+            if (url.endsWith('/today')) {
+                return Promise.resolve({data: null}) as any;
+            }
+            return Promise.resolve({data: []}) as any;
+        });
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<EmployeeAttendanceHome />);
+            await flush();
+        });
+
+        const tile = renderer!.root.findAll(
+            n => typeof n.props.testID === 'string' && n.props.testID.startsWith('qm-tile-'),
+        ).find(t => {
+            const texts = t.findAllByType('Text').map(x => x.props.children);
+            return texts[texts.length - 1] === '퇴사 신청';
+        });
+        expect(tile).toBeTruthy();
+
+        await act(async () => {
+            tile!.props.onPress();
+            await flush();
+        });
+
+        expect(mockNavigate).toHaveBeenCalledWith('Resignation', {storeId: 42});
+    });
+
 });

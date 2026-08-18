@@ -10,7 +10,7 @@ package com.rich.sodam.domain.type;
  * - ACTIVE         : 결제 성공, 활성
  * - PAST_DUE       : 결제 실패, 재시도 중 (최대 3회 / 7일)
  * - PAUSED         : 사용자 일시정지(비수기). 청구 보류, 남은 기간 보존. resume 시 ACTIVE 복귀
- * - CANCELLED      : 사용자 자발 해지 (다음 결제일 전까지는 ACTIVE 유지 후 EXPIRED)
+ * - CANCELLED      : (미사용) 해지는 ACTIVE + cancelledAt 로 예약되고, 기간 종료 시 EXPIRED 로 간다
  * - EXPIRED        : 만료 (재시도 실패 또는 해지 후 기간 종료)
  */
 public enum SubscriptionStatus {

@@ -1,97 +1,23 @@
 /**
- * 팁 정보 관련 서비스
- * 유용한 팁과 가이드 정보 조회 및 관리 기능을 제공합니다.
+ * 팁 정보 서비스 — 공용 팩토리(createInfoService) 위에 고정값만 얹는다(P3-8).
  */
+import {TipsInfo} from '../types';
+import {createInfoService, mapInfoDto} from './createInfoService';
 
-import api from '../../../common/api/client';
-import {TipsInfo, InfoCategory, InfoDto} from '../types';
-import {logger} from '../../../utils/logger';
-
-// 공통 DTO -> UI 타입 매퍼
-const mapToTipInfo = (dto: InfoDto): TipsInfo => ({
-    id: String(dto.id),
-    categoryId: 'TIPS',
-    title: dto.title ?? '',
-    summary: dto.content ? String(dto.content).slice(0, 100) : '',
-    content: dto.content ?? '',
-    publishDate: dto.createdAt ?? new Date().toISOString(),
-    author: '소담 정보팀',
-    tags: [],
-    imageUrl: dto.imagePath ? dto.imagePath : undefined,
-    difficulty: 'BEGINNER',
-    estimatedTime: undefined,
+const base = createInfoService<TipsInfo>({
+    basePath: '/api/tip-info',
+    label: '팁 정보',
+    map: dto => ({
+        ...mapInfoDto(dto, 'TIPS', '소담 정보팀'),
+        difficulty: 'BEGINNER' as const,
+        estimatedTime: undefined,
+    }),
 });
 
-// 팁 정보 서비스 객체
 const tipsService = {
-    /** 카테고리(임시) */
-    getCategories: async (): Promise<InfoCategory[]> => {
-        return [ { id: 'ALL', name: '전체', description: '전체 보기' } ];
-    },
-
-    /** 카테고리별(임시) 목록 */
-    getTipsByCategory: async (_categoryId: string): Promise<TipsInfo[]> => {
-        try {
-            const res = await api.get<InfoDto[]>(`/api/tip-info`);
-            return (res.data || []).map(mapToTipInfo);
-        } catch (error) {
-            logger.error('카테고리별 팁 정보를 가져오는 중 오류가 발생했습니다:', error);
-            throw error;
-        }
-    },
-
-    /** 상세 */
-    getTipById: async (tipId: string): Promise<TipsInfo> => {
-        try {
-            const res = await api.get<InfoDto>(`/api/tip-info/${tipId}`);
-            return mapToTipInfo(res.data);
-        } catch (error) {
-            logger.error('팁 정보 상세를 가져오는 중 오류가 발생했습니다:', error);
-            throw error;
-        }
-    },
-
-    /** 검색 (api.json에 title/content 검색 존재) */
-    searchTips: async (searchTerm: string): Promise<TipsInfo[]> => {
-        try {
-            const res = await api.get<InfoDto[]>(`/api/tip-info/search/title`, { keyword: searchTerm });
-            return (res.data || []).map(mapToTipInfo);
-        } catch (error) {
-            logger.error('팁 정보 검색 중 오류가 발생했습니다:', error);
-            throw error;
-        }
-    },
-
-    /** 최근 (api.json 존재) */
-    getRecentTips: async (limit: number = 5): Promise<TipsInfo[]> => {
-        try {
-            const res = await api.get<InfoDto[]>(`/api/tip-info/recent`, { limit });
-            return (res.data || []).map(mapToTipInfo);
-        } catch (error) {
-            logger.error('최근 팁 정보를 가져오는 중 오류가 발생했습니다:', error);
-            throw error;
-        }
-    },
-
-    /** 인기/난이도 (임의 경로) */
-    getPopularTips: async (limit: number = 5): Promise<TipsInfo[]> => {
-        try {
-            const res = await api.get<InfoDto[]>(`/api/tip-info/popular`, { limit });
-            return (res.data || []).map(mapToTipInfo);
-        } catch (error) {
-            logger.error('인기 팁 정보를 가져오는 중 오류가 발생했습니다:', error);
-            throw error;
-        }
-    },
-    getTipsByDifficulty: async (difficulty: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'): Promise<TipsInfo[]> => {
-        try {
-            const res = await api.get<InfoDto[]>(`/api/tip-info/difficulty`, { difficulty });
-            return (res.data || []).map(mapToTipInfo);
-        } catch (error) {
-            logger.error('난이도별 팁 정보를 가져오는 중 오류가 발생했습니다:', error);
-            throw error;
-        }
-    },
+    getCategories: base.getCategories,
+    getTipsByCategory: base.getByCategory,
+    getTipById: base.getById,
 };
 
 export default tipsService;

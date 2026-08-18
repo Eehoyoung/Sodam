@@ -26,6 +26,10 @@ ext {
     hermesEnabled = true
     kotlinVersion = "2.2.10"
     buildToolsVersion = "35.0.0"
+    // react-native-vision-camera(WP-C QR 출퇴근) — 내장 코드 스캐너(useCodeScanner, ML Kit 기반)를
+    // 쓰려면 명시적으로 켜야 한다(라이브러리 기본값 false). Frame Processors는 react-native-worklets-core를
+    // 설치하지 않아 자동으로 비활성화된다(별도 설정 불필요).
+    VisionCamera_enableCodeScanner = true
 }
 
 allprojects {

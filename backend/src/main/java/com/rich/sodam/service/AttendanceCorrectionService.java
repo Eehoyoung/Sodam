@@ -34,9 +34,14 @@ public class AttendanceCorrectionService {
     private final NotificationService notificationService;
     private final ManagerSupervisionNotificationService supervision;
     private final StorePermissionRecipientService permissionRecipients;
+    private final AttendanceCorrectionReasonRefiner reasonRefiner;
 
     /** 정정 요청 생성 결과 — 컨트롤러가 그대로 응답을 조립할 수 있도록 필요한 값만 담는다. */
     public record CorrectionRequestResult(Long id, String status, boolean forbidden) {
+    }
+
+    /** 사유 다듬기(WP-1) 결과 — refined는 forbidden=true일 때 null. */
+    public record ReasonRefineResult(String refined, boolean changed, boolean forbidden) {
     }
 
     @Transactional
@@ -157,6 +162,23 @@ public class AttendanceCorrectionService {
         }
         supervision.notifyIfManager(rejecterUserId, req.getAttendance().getStore().getId(), "출퇴근 정정 거절");
         return req;
+    }
+
+    /**
+     * 정정 요청 사유 다듬기(WP-1). 아직 제출 전 초안 단계라 attendanceId 기준으로 본인 소유
+     * 여부만 확인한다(requestCorrection과 동일한 검증) — 타인 출퇴근 기록에 대한 다듬기는 차단.
+     */
+    @Transactional(readOnly = true)
+    public ReasonRefineResult refineReason(Long attendanceId, Long requesterUserId, String reason) {
+        Attendance attendance = attendanceRepo.findById(attendanceId)
+                .orElseThrow(() -> new IllegalArgumentException("출퇴근 기록을 찾을 수 없어요."));
+        if (attendance.getEmployeeProfile() == null
+                || attendance.getEmployeeProfile().getUser() == null
+                || !attendance.getEmployeeProfile().getUser().getId().equals(requesterUserId)) {
+            return new ReasonRefineResult(null, false, true);
+        }
+        String refined = reasonRefiner.refine(reason);
+        return new ReasonRefineResult(refined, !refined.equals(reason), false);
     }
 
     /** 컨트롤러가 attendance/store 접근에 필요한 매장 id 를 가드 이전에 조회할 수 있도록 제공. */

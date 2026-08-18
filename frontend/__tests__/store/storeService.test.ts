@@ -29,13 +29,4 @@ describe('storeService', () => {
     expect(api.put).toHaveBeenCalledWith('/api/stores/123/location', { latitude: 37.5, longitude: 127.0, radius: 50 });
     expect(result).toEqual({ success: true });
   });
-
-  test('changeOwner posts correct body and returns success', async () => {
-    (api.post as jest.Mock).mockResolvedValue({ data: { success: true } });
-
-    const result = await storeService.changeOwner(77, 999);
-
-    expect(api.post).toHaveBeenCalledWith('/api/stores/change/master', { storeId: 77, newOwnerUserId: 999 });
-    expect(result).toEqual({ success: true });
-  });
 });

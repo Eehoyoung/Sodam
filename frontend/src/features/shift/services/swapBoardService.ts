@@ -1,4 +1,5 @@
 import api from '../../../common/api/client';
+import type {SwapRequest} from '../types/swap';
 
 /**
  * 대타 지원 보드(직원용) 서비스.
@@ -9,24 +10,7 @@ import api from '../../../common/api/client';
  *   POST /api/swap-requests/{id}/apply  (400: 본인 시프트, 409: 중복지원/마감)
  */
 
-export interface SwapApplicant {
-  employeeId: number;
-  employeeName: string;
-  appliedAt: string;
-}
-
-export type SwapRequestStatus = 'OPEN' | 'CLOSED' | 'CONFIRMED' | string;
-
-export interface SwapRequest {
-  id: number;
-  shiftId: number;
-  shiftDate: string; // YYYY-MM-DD
-  startTime: string; // HH:MM[:SS]
-  endTime: string; // HH:MM[:SS]
-  status: SwapRequestStatus;
-  originalEmployeeName?: string;
-  applicants: SwapApplicant[];
-}
+export type {SwapApplicant, SwapRequest, SwapRequestStatus} from '../types/swap';
 
 /** 매장의 OPEN 상태 대타 모집 목록. */
 export async function fetchOpenSwaps(storeId: number): Promise<SwapRequest[]> {

@@ -4,7 +4,7 @@ import Header from './Header'; // 같은 디렉토리에 있으므로 경로 수
 import Footer from './Footer'; // 같은 디렉토리에 있으므로 경로 수정
 import {useResponsiveStyles} from '../../../utils/responsive';
 import {colors} from '../../../theme/tokens';
-import {ENABLE_ANIMATIONS, stageAtLeast, ANIMATION_RECOVERY_STAGE} from '../../../navigation/config';
+import {ANIMATIONS_ENABLED} from '../../../navigation/config';
 import {logger} from '../../../utils/logger';
 
 // Conditionally import Animated components only when needed
@@ -16,7 +16,7 @@ let interpolate: any;
 let Extrapolate: any;
 
 try {
-  if (ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE)) {
+  if (ANIMATIONS_ENABLED) {
     // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional native module, guarded require (loaded only when animations are enabled)
     const reanimated = require('react-native-reanimated');
     Animated = reanimated.default;
@@ -37,7 +37,7 @@ interface MainLayoutProps {
 
 const MainLayout: React.FC<MainLayoutProps> = ({children, title}) => {
     const {responsiveStyles} = useResponsiveStyles();
-    const shouldUseAnimations = ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE);
+    const shouldUseAnimations = ANIMATIONS_ENABLED;
 
     // Only use animated values when animations are enabled
     // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: reanimated hook gated on native module availability

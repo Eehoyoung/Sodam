@@ -167,6 +167,13 @@ export default function StoreDetailScreen({route, navigation, visualFixture}: St
                     />
                     <ManageItem
                         c={c}
+                        icon="qr-code-outline"
+                        title="매장 QR"
+                        subtitle="QR 출퇴근용 매장 코드 보기·재발급"
+                        onPress={() => navigation.navigate('StoreQrCode', {storeId})}
+                    />
+                    <ManageItem
+                        c={c}
                         icon="receipt-outline"
                         title="매입장부"
                         subtitle="영수증으로 매입 기록·가격 비교"

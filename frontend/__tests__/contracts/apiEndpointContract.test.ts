@@ -64,7 +64,6 @@ const ATTENDANCE: ContractEntry[] = [
   E('GET', '/api/attendance/statistics/store/{storeId}', 'attendance/services/attendanceService.ts', 'FE_ONLY'),
   E('PUT', '/api/attendance/batch-status', 'attendance/services/attendanceService.ts', 'FE_ONLY'),
   E('POST', '/api/attendance/verify/location', 'attendance/services/attendanceService.ts'),
-  E('POST', '/api/attendance/verify/location', 'attendance/services/locationAttendanceService.ts'),
   E('POST', '/api/attendance/verify/nfc', 'attendance/services/nfcAttendanceService.ts'),
   E('GET', '/api/stores/{storeId}/nfc-tag', 'attendance/services/nfcAttendanceService.ts', 'FE_ONLY'),
   E('GET', '/api/stores/{storeId}/nfc-settings', 'attendance/services/nfcAttendanceService.ts', 'FE_ONLY'),
@@ -103,27 +102,12 @@ const HOME_INFO: ContractEntry[] = [
   E('GET', '/api/labor-info/{id}', 'services/laborInfoService.ts'),
   E('GET', '/api/labor-info', 'info/services/laborInfoService.ts'),
   E('GET', '/api/labor-info/{infoId}', 'info/services/laborInfoService.ts'),
-  E('GET', '/api/labor-info/search/title', 'info/services/laborInfoService.ts', 'FE_ONLY'),
-  E('GET', '/api/labor-info/recent', 'info/services/laborInfoService.ts'),
-  E('GET', '/api/labor-info/popular', 'info/services/laborInfoService.ts', 'FE_ONLY'),
   E('GET', '/api/policy-info', 'info/services/policyService.ts'),
   E('GET', '/api/policy-info/{policyId}', 'info/services/policyService.ts'),
-  E('GET', '/api/policy-info/search/title', 'info/services/policyService.ts', 'FE_ONLY'),
-  E('GET', '/api/policy-info/recent', 'info/services/policyService.ts'),
-  E('GET', '/api/policy-info/deadline', 'info/services/policyService.ts', 'FE_ONLY'),
-  E('GET', '/api/policy-info/region', 'info/services/policyService.ts', 'FE_ONLY'),
   E('GET', '/api/tax-info', 'info/services/taxInfoService.ts'),
   E('GET', '/api/tax-info/{infoId}', 'info/services/taxInfoService.ts'),
-  E('GET', '/api/tax-info/search/title', 'info/services/taxInfoService.ts', 'FE_ONLY'),
-  E('GET', '/api/tax-info/recent', 'info/services/taxInfoService.ts'),
-  E('GET', '/api/tax-info/year', 'info/services/taxInfoService.ts', 'FE_ONLY'),
-  E('GET', '/api/tax-info/group', 'info/services/taxInfoService.ts', 'FE_ONLY'),
   E('GET', '/api/tip-info', 'info/services/tipsService.ts'),
   E('GET', '/api/tip-info/{tipId}', 'info/services/tipsService.ts'),
-  E('GET', '/api/tip-info/search/title', 'info/services/tipsService.ts'),
-  E('GET', '/api/tip-info/recent', 'info/services/tipsService.ts'),
-  E('GET', '/api/tip-info/popular', 'info/services/tipsService.ts', 'FE_ONLY'),
-  E('GET', '/api/tip-info/difficulty', 'info/services/tipsService.ts', 'FE_ONLY'),
   E('GET', '/api/qna-info', 'qna/services/qnaService.ts'),
   E('GET', '/api/qna-info/{id}', 'qna/services/qnaService.ts'),
   E('POST', '/api/qna-info', 'qna/services/qnaService.ts'),
@@ -343,9 +327,12 @@ describe('WP-00 계약 기준선 — FE→BE 엔드포인트 인벤토리', () =
     expect(ALL_ENTRIES.length).toBeGreaterThanOrEqual(200);
   });
 
-  it('FE_ONLY(BE 대응 없음) 항목이 정확히 알려진 29건으로 고정되어 있다 — 늘거나 줄면 계약이 바뀐 것이므로 인지 필요', () => {
+  // 29 → 19: P3-8 에서 info 4도메인(labor/policy/tax/tip)의 호출자 0건 필터 계열
+  // (search/title·recent·popular·deadline·region·year·group·difficulty) FE 호출을 제거하면서
+  // 그중 FE_ONLY 였던 10건이 인벤토리에서 빠졌다. 의도된 계약 축소다.
+  it('FE_ONLY(BE 대응 없음) 항목이 정확히 알려진 19건으로 고정되어 있다 — 늘거나 줄면 계약이 바뀐 것이므로 인지 필요', () => {
     const feOnly = ALL_ENTRIES.filter(e => e.status === 'FE_ONLY');
-    expect(feOnly).toHaveLength(29);
+    expect(feOnly).toHaveLength(19);
   });
 
   it('homeService.ts 의 raw axios /api/v1/* 7건은 전부 FE_ONLY다 (wrapper 우회 + BE prefix 불일치, F-01)', () => {
@@ -380,12 +367,13 @@ describe('WP-00 계약 기준선 — FE→BE 엔드포인트 인벤토리', () =
     expect(entry?.status).toBe('FE_ONLY');
   });
 
-  it('info 콘텐츠 4도메인(labor/policy/tax/tip-info) 의 필터 서브 경로 중 tip-info/search/title 만 BE에 구현돼 있다', () => {
-    const searchTitle = ALL_ENTRIES.filter(e => e.path.endsWith('/search/title'));
-    expect(searchTitle).toHaveLength(4);
-    const matched = searchTitle.filter(e => e.status === 'MATCH');
-    expect(matched).toHaveLength(1);
-    expect(matched[0].file).toContain('tipsService.ts');
+  // P3-8: info 4도메인은 이제 목록·상세 2개 경로만 호출한다. 검색/최근/인기/마감/지역/연도/난이도
+  // 계열은 호출자가 0건이었고 대부분 BE 에 존재하지도 않아 FE 에서 제거했다.
+  it('info 콘텐츠 4도메인(labor/policy/tax/tip-info) 은 목록·상세 외 필터 서브 경로를 더 이상 호출하지 않는다', () => {
+    const infoEntries = ALL_ENTRIES.filter(e => e.file.includes('info/services/'));
+    expect(infoEntries).toHaveLength(8); // 4도메인 × (목록, 상세)
+    expect(infoEntries.every(e => e.status === 'MATCH')).toBe(true);
+    expect(ALL_ENTRIES.filter(e => e.path.endsWith('/search/title'))).toHaveLength(0);
   });
 
   it('personal-users 세무 요약은 controller 패키지 밖(personal 서브패키지)에 실존해 MATCH 다 — 1차 BE 조사 스코프 누락을 직접 검증으로 정정', () => {

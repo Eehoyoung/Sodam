@@ -1082,6 +1082,13 @@ public class PayrollService {
                     String.format("%,d원", nz(payroll.getGrossWage())), fontH, fontN);
             // 공제 항목 (§48② 항목별 공제내역)
             addDeductionRows(table, payroll, fontH, fontN);
+            // 가감조정(C-3) — 실수령액이 항목 합계로 검증 가능해야 한다(§48② 항목별 지급/공제내역).
+            if (payroll.getAdjustment() != null && payroll.getAdjustment() != 0) {
+                int adj = payroll.getAdjustment();
+                String reason = payroll.getAdjustmentReason() == null ? "" : " (" + payroll.getAdjustmentReason() + ")";
+                addKv(table, (adj > 0 ? "[지급] 가감조정" : "[공제] 가감조정") + reason,
+                        String.format("%,d원", adj), fontH, fontN);
+            }
             addKv(table, "실수령액",
                     String.format("%,d원", nz(payroll.getNetWage())), fontH, fontN);
             addKv(table, "상태", payroll.getStatus() != null ? payroll.getStatus().name() : "-", fontH, fontN);
@@ -1170,6 +1177,11 @@ public class PayrollService {
         pdfContent.append("[공제 항목]\n");
         appendDeductionBreakdown(pdfContent, payroll);
 
+        if (payroll.getAdjustment() != null && payroll.getAdjustment() != 0) {
+            pdfContent.append("가감조정: ").append(String.format("%,d", payroll.getAdjustment())).append(" 원")
+                    .append(payroll.getAdjustmentReason() == null ? "" : " (" + payroll.getAdjustmentReason() + ")")
+                    .append(System.lineSeparator());
+        }
         pdfContent.append("실수령액: ").append(String.format("%,d", nz(payroll.getNetWage()))).append(" 원\n");
         pdfContent.append("-------------------------------------------\n");
         pdfContent.append("상태: ").append(payroll.getStatus()).append("\n");

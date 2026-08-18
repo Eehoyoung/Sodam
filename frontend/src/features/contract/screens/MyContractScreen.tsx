@@ -98,14 +98,20 @@ const MyContractScreen: React.FC<Props> = ({visualAutoSelectFirst}) => {
             }
             setDownloadingPdf(true);
             try {
-                await contractService.downloadMyPdf(selected.id);
-                AppToast.success('근로계약서 PDF가 발급됐어요.');
                 const issuedAt = new Date().toISOString().slice(0, 10);
+                const filePath = await contractService.downloadMyPdf(
+                    selected.id, `근로계약서_${issuedAt}.pdf`,
+                );
+                AppToast.success('근로계약서 PDF가 발급됐어요.');
                 navigation.navigate('PdfPreview', {
                     title: `근로계약서_${issuedAt}.pdf`,
                     sub: `발급일 ${issuedAt}`,
+                    filePath,
                     onShare: () => {
-                        Share.share({message: `[소담] 근로계약서\n발급일 ${issuedAt}`}).catch(() => undefined);
+                        Share.share({
+                            url: `file://${filePath}`,
+                            message: `[소담] 근로계약서\n발급일 ${issuedAt}`,
+                        }).catch(() => undefined);
                     },
                 });
             } catch {

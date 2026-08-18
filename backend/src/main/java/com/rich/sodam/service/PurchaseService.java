@@ -53,6 +53,7 @@ public class PurchaseService {
     private final ReceiptOcrClient receiptOcrClient;
     private final DomainEventService domainEventService;
     private final ObjectStorage objectStorage;
+    private final PurchaseInsightNarrator insightNarrator;
 
     /**
      * 영수증 OCR 자동인식 초안(미저장) + 원본 이미지 보관.
@@ -263,6 +264,17 @@ public class PurchaseService {
         }
         summary.sort(Comparator.comparingInt(VendorSummaryResponse::totalAmount).reversed());
         return summary;
+    }
+
+    /**
+     * 매입장부 인사이트 코멘트(WP-5) — vendorSummary/monthlySummary를 그대로 재사용해 코멘트로
+     * 변환한다. LLM 미활성/검증 실패 시 null(FE는 기존 숫자·그래프 표시만 유지).
+     */
+    @Transactional(readOnly = true)
+    public String insightComment(Long storeId, LocalDate from, LocalDate to, int months) {
+        List<VendorSummaryResponse> vendors = vendorSummary(storeId, from, to);
+        List<MonthlySummaryResponse> monthly = monthlySummary(storeId, months);
+        return insightNarrator.summarize(vendors, monthly);
     }
 
     /**

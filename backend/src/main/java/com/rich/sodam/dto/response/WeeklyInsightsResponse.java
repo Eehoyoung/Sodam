@@ -10,12 +10,15 @@ import java.util.List;
  * @param fromDate 집계 시작일
  * @param days     집계 일수
  * @param items    이벤트 종류별 카운트
+ * @param summary  LLM 요약 문장(WP-2, {@code docs/260817} goal) — provider 미설정/실패 시 null.
+ *                 FE는 null이면 기존 숫자 나열형으로 표시한다.
  */
 public record WeeklyInsightsResponse(
         Long storeId,
         LocalDate fromDate,
         int days,
-        List<InsightItem> items
+        List<InsightItem> items,
+        String summary
 ) {
     public record InsightItem(String eventType, String label, long count) {
     }

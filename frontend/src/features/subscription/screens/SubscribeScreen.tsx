@@ -12,6 +12,7 @@ import PlanDetailSheet from '../components/PlanDetailSheet';
 import BillingMethodSheet from '../components/BillingMethodSheet';
 import {isTossLive} from '../../../common/config/env';
 import subscriptionApi, {
+    PaymentReadiness,
     BillingCycle,
     PlanCatalogItem,
     PlanType,
@@ -19,6 +20,7 @@ import subscriptionApi, {
     PaymentReceipt,
 } from '../services/subscriptionApi';
 import PaymentRefundSheet from '../components/PaymentRefundSheet';
+import {CancelSubscriptionSheet} from '../components/SubscriptionSheets';
 import {getErrorMessage} from '../../../common/errors';
 
 // 결제 주기 세그먼트: 인덱스 ↔ BillingCycle 매핑 (월/반년/연)
@@ -88,6 +90,7 @@ export interface SubscribeVisualFixture {
     plans: PlanCatalogItem[];
     current: SubscriptionResponse | null;
     selectedPlan: PlanType | null;
+    readiness?: PaymentReadiness | null;
 }
 
 interface Props {
@@ -112,12 +115,17 @@ const SubscribeScreen: React.FC<Props> = ({visualFixture}) => {
     const [detailView, setDetailView] = useState<PlanCardView | null>(null);
     const [billingSheetVisible, setBillingSheetVisible] = useState(false);
     const [refundSheetVisible, setRefundSheetVisible] = useState(false);
+    const [cancelSheetVisible, setCancelSheetVisible] = useState(false);
+    // 서버 권위(결제 모드). 클라이언트 권위는 isTossLive() — 둘이 합의할 때만 결제로 넘어간다(H-9).
+    const [readiness, setReadiness] = useState<PaymentReadiness | null>(visualFixture?.readiness ?? null);
     const [receipts, setReceipts] = useState<PaymentReceipt[]>([]);
 
     const billingCycle: BillingCycle = CYCLE_BY_INDEX[cycleIndex] ?? 'MONTHLY';
     const isPaidSelected = selectedPlan !== null && selectedPlan !== 'FREE';
     const isActive = current?.status === 'ACTIVE';
     const isPaused = current?.status === 'PAUSED';
+    // 해지 예약 상태 — 결제주기 말까지는 유료 기능이 그대로 유지된다(약관 제20조 3항).
+    const isCancelScheduled = isActive && !!current?.cancelledAt;
 
     useEffect(() => {
         if (visualFixture) {
@@ -126,15 +134,20 @@ const SubscribeScreen: React.FC<Props> = ({visualFixture}) => {
         let mounted = true;
         (async () => {
             try {
-                const [planList, mine] = await Promise.all([
+                const [planList, mine, mode] = await Promise.all([
                     subscriptionApi.getPlans().catch(() => buildFallbackPlans()),
                     subscriptionApi.getMyCurrent().catch(() => null),
+                    // 조회 실패 = 서버 권위를 확인할 수 없음 → UNAVAILABLE 로 취급해 결제를 막는다.
+                    subscriptionApi.getPaymentReadiness().catch(
+                        () => ({mode: 'UNAVAILABLE'}) as PaymentReadiness,
+                    ),
                 ]);
                 if (!mounted) {
                     return;
                 }
                 setPlans(planList.length > 0 ? planList : buildFallbackPlans());
                 setCurrent(mine);
+                setReadiness(mode);
                 if (mine?.plan) {
                     setSelectedPlan(mine.plan);
                 }
@@ -161,12 +174,13 @@ const SubscribeScreen: React.FC<Props> = ({visualFixture}) => {
                 await subscriptionApi.subscribeFree();
                 AppToast.success('무료 플랜으로 시작해요.');
                 navigation.navigate('Home');
-            } else if (isTossLive()) {
-                // 운영 클라이언트 키가 주입된 경우에만 빌링 인증 창으로 이동.
+            } else if (readiness?.mode === 'LIVE' && isTossLive()) {
+                // 서버(readiness.mode)와 클라이언트(isTossLive)가 둘 다 LIVE 라고 할 때만 결제창으로.
+                // 한쪽 권위만 보면 실키 미설정 상태에서 유료 재화가 무상 지급될 수 있다(H-9, CLAUDE.md 결제 ②).
                 // 인증 성공 → subscribePaid(plan, authKey, billingCycle) 는 TossBillingAuth 화면이 호출한다.
                 navigation.navigate('TossBillingAuth', {plan: selectedPlan, billingCycle});
             } else {
-                // 샌드박스/빈 키 → 결제 창을 띄우지 않고 안내만 (키 주입 전 안전망).
+                // 샌드박스/빈 키/서버 미준비 → 결제 창을 띄우지 않고 안내만 (키 주입 전 안전망).
                 AppToast.show('유료 결제는 준비 중이에요. 곧 만나요!');
             }
         } catch (e: unknown) {
@@ -203,6 +217,21 @@ const SubscribeScreen: React.FC<Props> = ({visualFixture}) => {
             AppToast.success('구독을 다시 시작했어요.');
         } catch (e: unknown) {
             AppToast.error(getErrorMessage(e, '재개에 실패했어요. 잠시 후 다시 시도해 주세요.'));
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleCancel = async () => {
+        setCancelSheetVisible(false);
+        setProcessing(true);
+        try {
+            await subscriptionApi.cancel();
+            // 해지는 즉시 중단이 아니라 기간 말 예약이다 — 서버 상태를 다시 읽어 화면에 반영한다.
+            setCurrent(await subscriptionApi.getMyCurrent().catch(() => current));
+            AppToast.success('구독을 해지했어요. 이번 결제주기까지는 그대로 이용할 수 있어요.');
+        } catch (e: unknown) {
+            AppToast.error(getErrorMessage(e, '해지에 실패했어요. 잠시 후 다시 시도해 주세요.'));
         } finally {
             setProcessing(false);
         }
@@ -293,6 +322,7 @@ const SubscribeScreen: React.FC<Props> = ({visualFixture}) => {
                     <AppText variant="caption" tone="secondary">
                         {[
                             isPaused ? '일시정지 중' : null,
+                            isCancelScheduled ? '해지 예약됨 · 기간 말 종료' : null,
                             current.nextBillingAt ? `다음 결제일 ${current.nextBillingAt.slice(0, 10)}` : null,
                             describeCurrentPlan(current, plans).priceLabel,
                         ].filter(Boolean).join(' · ')}
@@ -339,6 +369,14 @@ const SubscribeScreen: React.FC<Props> = ({visualFixture}) => {
                         onPress={openBillingMethodSheet}
                     />
                     <AppButton label="결제 내역 · 환불 신청" variant="outline" loading={processing} onPress={openRefundSheet} />
+                    {!isCancelScheduled ? (
+                        <AppButton
+                            label="구독 해지"
+                            variant="ghost"
+                            loading={processing}
+                            onPress={() => setCancelSheetVisible(true)}
+                        />
+                    ) : null}
                 </View>
             ) : null}
             {!loading && !isActive && !isPaused ? (
@@ -366,6 +404,12 @@ const SubscribeScreen: React.FC<Props> = ({visualFixture}) => {
                 nextBillingDate={current?.nextBillingAt ? current.nextBillingAt.slice(0, 10) : undefined}
                 onManageViaToss={handleManageViaToss}
             />
+            <CancelSubscriptionSheet
+                visible={cancelSheetVisible}
+                onClose={() => setCancelSheetVisible(false)}
+                onConfirmCancel={handleCancel}
+            />
+
             <PaymentRefundSheet visible={refundSheetVisible} receipts={receipts} submitting={processing}
                 onClose={() => setRefundSheetVisible(false)} onRequest={requestRefund} />
         </ScreenContainer>

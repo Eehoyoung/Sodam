@@ -42,6 +42,16 @@ import {
     timeDigitsToHHmmss,
 } from '../../../common/utils/dateTimeInput';
 import contractService, {contractErrorMessage} from '../services/contractService';
+import {
+    WEEKLY_ALLOWANCE_THRESHOLD,
+    ageOn,
+    isFixedTermAtLeastOneMonth,
+    isFixedTermAtLeastOneYear,
+    numberOrZero,
+    sanitizeDecimalInput,
+    sanitizeIntegerInput,
+    weeklyAllowanceHours,
+} from '../utils/contractFormMath';
 import storeService from '../../store/services/storeService';
 import {ContractTermsCard} from '../components/ContractTermsCard';
 import type {
@@ -85,7 +95,6 @@ const WEEKDAYS: Array<{code: WorkScheduleDayCode; label: string; field: 'monHour
     {code: 'SUNDAY', label: '일', field: 'sunHours'},
 ];
 
-const WEEKLY_ALLOWANCE_THRESHOLD = 15;
 const PROBATION_REDUCTION_MAX_MONTHS = 3;
 const PROBATION_REDUCTION_RATE = 0.9;
 const WEEKS_PER_MONTH = 52 / 12;
@@ -289,69 +298,12 @@ const HelpSectionTitle: React.FC<{children: string; topic: HelpTopic}> = ({child
     </View>
 );
 
-function isFixedTermAtLeastOneYear(startDigits: string, endDigits: string): boolean {
-    if (!isValidDateDigits(startDigits) || !isValidDateDigits(endDigits)) {
-        return false;
-    }
-    const startIso = dateDigitsToIso(startDigits);
-    const endIso = dateDigitsToIso(endDigits);
-    const [sy, sm, sd] = startIso.split('-').map(Number);
-    const [ey, em, ed] = endIso.split('-').map(Number);
-    const start = new Date(sy, sm - 1, sd);
-    const end = new Date(ey, em - 1, ed);
-    const oneYearInclusiveEnd = new Date(start);
-    oneYearInclusiveEnd.setFullYear(oneYearInclusiveEnd.getFullYear() + 1);
-    oneYearInclusiveEnd.setDate(oneYearInclusiveEnd.getDate() - 1);
-    return end >= oneYearInclusiveEnd;
-}
 
-function isFixedTermAtLeastOneMonth(startDigits: string, endDigits: string): boolean {
-    if (!isValidDateDigits(startDigits) || !isValidDateDigits(endDigits)) {
-        return false;
-    }
-    const startIso = dateDigitsToIso(startDigits);
-    const endIso = dateDigitsToIso(endDigits);
-    const [sy, sm, sd] = startIso.split('-').map(Number);
-    const [ey, em, ed] = endIso.split('-').map(Number);
-    const start = new Date(sy, sm - 1, sd);
-    const end = new Date(ey, em - 1, ed);
-    const oneMonthInclusiveEnd = new Date(start);
-    oneMonthInclusiveEnd.setMonth(oneMonthInclusiveEnd.getMonth() + 1);
-    oneMonthInclusiveEnd.setDate(oneMonthInclusiveEnd.getDate() - 1);
-    return end >= oneMonthInclusiveEnd;
-}
 
-function ageOn(dateIso: string | null | undefined, referenceIso: string): number | null {
-    if (!dateIso) {return null;}
-    const [by, bm, bd] = dateIso.split('-').map(Number);
-    const [ry, rm, rd] = referenceIso.split('-').map(Number);
-    if ([by, bm, bd, ry, rm, rd].some(Number.isNaN)) {return null;}
-    let age = ry - by;
-    if (rm < bm || (rm === bm && rd < bd)) {
-        age -= 1;
-    }
-    return age;
-}
 
-function weeklyAllowanceHours(weeklyHours: number): number {
-    if (weeklyHours < WEEKLY_ALLOWANCE_THRESHOLD) {
-        return 0;
-    }
-    return Math.min(8, (weeklyHours / 40) * 8);
-}
 
-function sanitizeDecimalInput(v: string): string {
-    return v.replace(/[^0-9.]/g, '');
-}
 
-function sanitizeIntegerInput(v: string): string {
-    return v.replace(/[^0-9]/g, '');
-}
 
-function numberOrZero(raw: string): number {
-    const n = Number(raw);
-    return raw.trim() === '' || Number.isNaN(n) ? 0 : n;
-}
 
 const SendContractScreen: React.FC = () => {
     const navigation = useNavigation<NavigationProp<HomeStackParamList>>();
@@ -1014,14 +966,19 @@ const SendContractScreen: React.FC = () => {
         }
         setDownloadingPdf(true);
         try {
-            await contractService.downloadPdfForMaster(storeId, sentContractId);
+            const issuedAt = new Date().toISOString().slice(0, 10);
+            const filePath = await contractService.downloadPdfForMaster(
+                storeId, sentContractId, `근로계약서_${selectedName}_${issuedAt}.pdf`,
+            );
             AppToast.success('근로계약서 PDF가 발급됐어요.');
             navigation.navigate('PdfPreview', {
                 title: `근로계약서_${selectedName}.pdf`,
-                sub: `발급일 ${new Date().toISOString().slice(0, 10)}`,
+                sub: `발급일 ${issuedAt}`,
+                filePath,
                 onShare: () => {
                     Share.share({
-                        message: `[소담] 근로계약서\n${selectedName}님\n발급일 ${new Date().toISOString().slice(0, 10)}`,
+                        url: `file://${filePath}`,
+                        message: `[소담] 근로계약서\n${selectedName}님\n발급일 ${issuedAt}`,
                     }).catch(() => undefined);
                 },
             });

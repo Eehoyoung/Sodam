@@ -41,7 +41,8 @@ declare class PerformanceObserver {
 export interface PerformanceMetrics {
     renderTime: number;
     animationFrameRate: number;
-    memoryUsage: number;
+    /** 실측 메모리(MB). RN 에는 표준 메모리 API 가 없어 대부분의 환경에서 null(측정 불가)이다 — 추정값을 넣지 않는다. */
+    memoryUsage: number | null;
     bundleSize: number;
     sectionLoadTime: Record<string, number>;
     interactionLatency: number;
@@ -83,7 +84,7 @@ class PerformanceMonitor {
         this.metrics = {
             renderTime: 0,
             animationFrameRate: 60,
-            memoryUsage: 0,
+            memoryUsage: null,
             bundleSize: 0,
             sectionLoadTime: {},
             interactionLatency: 0,
@@ -277,7 +278,7 @@ class PerformanceMonitor {
         const suggestions: OptimizationSuggestion[] = [];
 
         // Memory optimization suggestions
-        if (this.metrics.memoryUsage > 100) {
+        if (this.metrics.memoryUsage !== null && this.metrics.memoryUsage > 100) {
             suggestions.push({
                 category: 'memory',
                 priority: this.metrics.memoryUsage > 200 ? 'high' : 'medium',
@@ -340,7 +341,7 @@ class PerformanceMonitor {
         // Deduct points for performance issues
         score -= this.metrics.renderTime > 16.67 ? 10 : 0;
         score -= this.metrics.animationFrameRate < 50 ? 15 : 0;
-        score -= this.metrics.memoryUsage > 100 ? 10 : 0;
+        score -= this.metrics.memoryUsage !== null && this.metrics.memoryUsage > 100 ? 10 : 0;
         score -= this.metrics.interactionLatency > 100 ? 10 : 0;
         score -= this.metrics.scrollPerformance.averageFPS < 50 ? 15 : 0;
 
@@ -368,7 +369,7 @@ class PerformanceMonitor {
         this.metrics = {
             renderTime: 0,
             animationFrameRate: 60,
-            memoryUsage: 0,
+            memoryUsage: null,
             bundleSize: 0,
             sectionLoadTime: {},
             interactionLatency: 0,
@@ -457,8 +458,9 @@ class PerformanceMonitor {
                         });
                     }
                 } else {
-                    // Fallback estimation for React Native
-                    this.metrics.memoryUsage = Math.random() * 50 + 30; // Simulated value
+                    // RN 에는 표준 메모리 API 가 없다. 추정치를 실측처럼 다루면 헬스 경고·Alert 가
+                    // 근거 없이 뜬다 — 측정 불가는 null 로 두고 아무 판정도 하지 않는다.
+                    this.metrics.memoryUsage = null;
                 }
             } catch (error) {
                 logger.warn('Failed to monitor memory usage:', error);

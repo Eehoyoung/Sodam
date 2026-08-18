@@ -188,7 +188,7 @@ class PayrollControllerTest {
                 .when(payrollHighRiskActionService).authorizeIssueRequest(1L, 100L);
 
         assertThatThrownBy(() -> controller.issuePayroll(
-                principal, 100L, "known-idempotency-key", new PayrollIssueRequest("step-up")))
+                principal, 100L, "known-idempotency-key", new PayrollIssueRequest("step-up", null, null)))
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(payrollHighRiskActionService).authorizeIssueRequest(1L, 100L);

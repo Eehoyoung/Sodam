@@ -6,12 +6,11 @@
 
 import React from 'react';
 import { StyleSheet, View, ViewProps } from 'react-native';
-import { ENABLE_ANIMATIONS, ANIMATION_RECOVERY_STAGE, stageAtLeast } from '../../../navigation/config';
+import {ANIMATIONS_ENABLED} from '../../../navigation/config';
 
 interface SafeAnimatedWrapperProps extends ViewProps {
   children: React.ReactNode;
   fallback?: React.ReactNode;
-  requireStage?: number;
 }
 
 /**
@@ -21,10 +20,9 @@ interface SafeAnimatedWrapperProps extends ViewProps {
 export const SafeAnimatedWrapper: React.FC<SafeAnimatedWrapperProps> = ({
   children,
   fallback,
-  requireStage = ANIMATION_RECOVERY_STAGE,
   ...viewProps
 }) => {
-  const shouldEnableAnimations = ENABLE_ANIMATIONS && stageAtLeast(requireStage);
+  const shouldEnableAnimations = ANIMATIONS_ENABLED;
 
   if (!shouldEnableAnimations) {
     // Render fallback or plain View when animations are disabled
@@ -49,7 +47,7 @@ export const withSafeAnimations = <P extends object>(
   FallbackComponent?: React.ComponentType<P>
 ) => {
   return (props: P) => {
-    const shouldEnableAnimations = ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE);
+    const shouldEnableAnimations = ANIMATIONS_ENABLED;
 
     if (!shouldEnableAnimations && FallbackComponent) {
       return <FallbackComponent {...props} />;

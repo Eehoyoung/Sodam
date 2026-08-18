@@ -51,6 +51,7 @@ public class ElectronicSignatureWorker {
     private final FixedScheduleService fixedScheduleService;
     private final EmploymentAmendmentService employmentAmendmentService;
     private final DelegatedActionAuthorityService delegatedActionAuthorityService;
+    private final EmployeeResignationService employeeResignationService;
     private final NotificationService notificationService;
     private final IntegrationProperties properties;
     private final TransactionTemplate transactions;
@@ -69,6 +70,7 @@ public class ElectronicSignatureWorker {
                                       FixedScheduleService fixedScheduleService,
                                       EmploymentAmendmentService employmentAmendmentService,
                                       DelegatedActionAuthorityService delegatedActionAuthorityService,
+                                      EmployeeResignationService employeeResignationService,
                                       NotificationService notificationService,
                                       IntegrationProperties properties,
                                       TransactionTemplate transactions,
@@ -86,6 +88,7 @@ public class ElectronicSignatureWorker {
         this.fixedScheduleService = fixedScheduleService;
         this.employmentAmendmentService = employmentAmendmentService;
         this.delegatedActionAuthorityService = delegatedActionAuthorityService;
+        this.employeeResignationService = employeeResignationService;
         this.notificationService = notificationService;
         this.properties = properties;
         // 항목별 독립 롤백을 보장하기 위해 항상 새 물리 트랜잭션을 시작한다(클래스 Javadoc 참고).
@@ -338,6 +341,10 @@ public class ElectronicSignatureWorker {
                 } else if (envelope.getSubjectType() == SignatureSubjectType.LABOR_CONTRACT_AMENDMENT) {
                     employmentAmendmentService.markVerified(
                             envelope.getSubjectId(), envelope.getId(), envelope.getDocumentVersion(), LocalDateTime.now());
+                } else if (envelope.getSubjectType() == SignatureSubjectType.RESIGNATION_ACKNOWLEDGMENT) {
+                    // 봉투 연결만 한다 — 사직 확인(acknowledge)의 상태 전이는 여기서 건드리지 않는다(HC-2).
+                    // 서명 완료가 확인의 전제조건이 아니라 병행 증적일 뿐이라는 설계(HC-13)를 그대로 반영.
+                    employeeResignationService.linkVerifiedSignatureEnvelope(envelope.getSubjectId(), envelope.getId());
                 }
                 partyRepository.findByEnvelope_IdOrderBySigningOrderAsc(envelopeId).stream()
                         .map(ElectronicSignatureParty::getUserId)

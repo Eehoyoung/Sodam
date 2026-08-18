@@ -9,7 +9,8 @@ import {logger} from '../utils/logger';
 
 export interface JSIMetrics {
     frameRate: number;
-    memoryUsage: number;
+    /** 실측 불가(RN 표준 API 없음)면 null. 추정값을 넣지 않는다. */
+    memoryUsage: number | null;
     animationCount: number;
     crashCount: number;
     timestamp: number;
@@ -152,7 +153,10 @@ class JSIPerformanceMonitorService {
         }
 
         const avgFrameRate = recentMetrics.reduce((sum, m) => sum + m.frameRate, 0) / recentMetrics.length;
-        const avgMemoryUsage = recentMetrics.reduce((sum, m) => sum + m.memoryUsage, 0) / recentMetrics.length;
+        const memorySamples = recentMetrics.map(m => m.memoryUsage).filter((v): v is number => v !== null);
+        const avgMemoryUsage = memorySamples.length > 0
+            ? memorySamples.reduce((sum, v) => sum + v, 0) / memorySamples.length
+            : null;
         const recentCrashes = this.crashReports.filter(c => Date.now() - c.timestamp < 300000); // Last 5 minutes
 
         let score = 100;
@@ -171,11 +175,11 @@ class JSIPerformanceMonitorService {
         }
 
         // Memory usage analysis
-        if (avgMemoryUsage > 80) {
+        if (avgMemoryUsage !== null && avgMemoryUsage > 80) {
             score -= 25;
             issues.push(`High memory usage: ${avgMemoryUsage.toFixed(1)}%`);
             recommendations.push('Check for memory leaks in animations');
-        } else if (avgMemoryUsage > 60) {
+        } else if (avgMemoryUsage !== null && avgMemoryUsage > 60) {
             score -= 10;
             issues.push(`Moderate memory usage: ${avgMemoryUsage.toFixed(1)}%`);
             recommendations.push('Monitor memory usage trends');
@@ -308,20 +312,15 @@ class JSIPerformanceMonitorService {
         return this.currentFrameRate;
     }
 
-    private getMemoryUsage(): number {
-        // Placeholder implementation - in real app, use native modules
-        // to get actual memory usage
+    private getMemoryUsage(): number | null {
         if (Platform.OS === 'web' && (performance as any).memory) {
             const memory = (performance as any).memory;
             return (memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100;
         }
 
-        // Fallback estimation based on animation count and metrics
-        const baseUsage = 20;
-        const animationOverhead = this.animationRegistry.size * 2;
-        const metricsOverhead = this.metrics.length * 0.01;
-
-        return Math.min(100, baseUsage + animationOverhead + metricsOverhead);
+        // RN 에는 표준 메모리 API 가 없다. 애니메이션 개수로 지어낸 값은 실측이 아니므로
+        // 측정 불가(null)로 보고한다 — 헬스 판정은 이 값을 건너뛴다.
+        return null;
     }
 
     private sendCrashToAnalytics(crashReport: JSICrashReport): void {

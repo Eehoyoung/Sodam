@@ -6,6 +6,8 @@ import type {
     JobOffer,
     JobOfferCreatePayload,
     JobPosting,
+    JobPostingMessageGenerateParams,
+    JobPostingMessageGenerateResult,
     JobPostingNearbyFilters,
     JobPostingNearbyItem,
     JobPostingUpsertPayload,
@@ -138,6 +140,18 @@ const upsertJobPosting = async (storeId: number, payload: JobPostingUpsertPayloa
     throw new Error('Invalid job posting response');
 };
 
+// [API Mapping] POST /api/stores/{storeId}/job-posting/message-generate — 소개문 생성(WP-4, LLM 미활성 시 draft=null)
+const generatePostingMessage = async (
+    storeId: number,
+    params: JobPostingMessageGenerateParams,
+): Promise<JobPostingMessageGenerateResult> => {
+    const res = await api.post<JobPostingMessageGenerateResult>(
+        `/api/stores/${storeId}/job-posting/message-generate`,
+        params,
+    );
+    return res.data;
+};
+
 // [API Mapping] GET /api/stores/{storeId}/job-posting — 내 매장 구인 공고 조회.
 // 아직 공고를 만든 적이 없으면 BE 가 404(ENTITY_NOT_FOUND) 를 반환한다 — 이 경우 예외 대신 null 로
 // 정규화해 "공고 없음(최초 작성 폼)" 과 "네트워크 오류"를 화면에서 구분할 수 있게 한다.
@@ -202,6 +216,17 @@ const applyToJobPosting = async (
     throw new Error('Invalid job application response');
 };
 
+export interface MessageRefineResult {
+    refined: string;
+    changed: boolean;
+}
+
+// [API Mapping] POST /api/job-postings/{postingId}/applications/message-refine — 지원 메시지 다듬기(WP-3, 제출 전 초안, LLM 미활성 시 원본 그대로 반환)
+const refineApplicationMessage = async (postingId: number, message: string): Promise<MessageRefineResult> => {
+    const res = await api.post<MessageRefineResult>(`/api/job-postings/${postingId}/applications/message-refine`, {message});
+    return res.data;
+};
+
 // [API Mapping] GET /api/job-applications/me — 내 지원 현황 조회
 const getMyJobApplications = async (): Promise<JobApplication[]> => {
     const res = await api.get<JobApplication[]>('/api/job-applications/me');
@@ -252,9 +277,11 @@ const recruitmentService = {
     getMyJobOffers,
     respondToJobOffer,
     upsertJobPosting,
+    generatePostingMessage,
     getMyJobPosting,
     getNearbyJobPostings,
     applyToJobPosting,
+    refineApplicationMessage,
     getMyJobApplications,
     getStoreJobApplications,
     respondToJobApplication,
@@ -269,9 +296,11 @@ export {
     getMyJobOffers,
     respondToJobOffer,
     upsertJobPosting,
+    generatePostingMessage,
     getMyJobPosting,
     getNearbyJobPostings,
     applyToJobPosting,
+    refineApplicationMessage,
     getMyJobApplications,
     getStoreJobApplications,
     respondToJobApplication,

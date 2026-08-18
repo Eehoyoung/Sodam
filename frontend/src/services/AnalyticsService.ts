@@ -36,7 +36,8 @@ export interface ConversionFunnelStep {
 export interface PerformanceMetrics {
     renderTime: number;
     animationFrameRate: number;
-    memoryUsage: number;
+    /** 실측 불가 환경(RN)에서는 null — 추정값을 채우지 않는다. */
+    memoryUsage: number | null;
     bundleSize: number;
     sectionLoadTime: Record<string, number>;
 }

@@ -47,6 +47,41 @@ const AttendanceCorrectionRequestScreen: React.FC<AttendanceCorrectionRequestScr
     const [reason, setReason] = useState('');
     const [loading, setLoading] = useState(false);
     const [submitted, setSubmitted] = useState(visualFixture?.submitted ?? false);
+    const [refining, setRefining] = useState(false);
+    const [suggestion, setSuggestion] = useState<string | null>(null);
+
+    const refineReason = async () => {
+        const trimmed = reason.trim();
+        if (!trimmed || trimmed.length < 5) {
+            AppToast.warn('정정 사유를 5자 이상 적어주세요.\n다듬을 내용이 있어야 제안해 드릴 수 있어요.');
+            return;
+        }
+        if (!params.attendanceId) {
+            AppToast.warn('정정할 근무 기록을 먼저 선택해 주세요.');
+            return;
+        }
+        setRefining(true);
+        setSuggestion(null);
+        try {
+            const result = await attendanceCorrectionService.refineReason(params.attendanceId, trimmed);
+            if (result.changed && result.refined) {
+                setSuggestion(result.refined);
+            } else {
+                AppToast.show('지금 사유 그대로도 충분히 명확해요.');
+            }
+        } catch (e: unknown) {
+            AppToast.error(getErrorMessage(e, '사유 다듬기에 실패했어요. 잠시 후 다시 시도해 주세요.'));
+        } finally {
+            setRefining(false);
+        }
+    };
+
+    const applySuggestion = () => {
+        if (suggestion) {
+            setReason(suggestion);
+        }
+        setSuggestion(null);
+    };
 
     const submit = async () => {
         if (!reason.trim() || reason.trim().length < 5) {
@@ -138,15 +173,52 @@ const AttendanceCorrectionRequestScreen: React.FC<AttendanceCorrectionRequestScr
                     editable={!loading}
                 />
                 <AppInput
+                    testID="correction-reason-input"
                     label="정정 사유"
                     value={reason}
-                    onChangeText={setReason}
+                    onChangeText={text => {
+                        setReason(text);
+                        setSuggestion(null);
+                    }}
                     placeholder="예: NFC 인식이 안 돼서 사장님께 말씀드리고 일했어요."
                     multiline
                     editable={!loading}
                     maxLength={200}
                     helper={`${reason.length} / 200자`}
                 />
+                <AppButton
+                    label="AI로 사유 다듬기"
+                    variant="outline"
+                    size="sm"
+                    fullWidth={false}
+                    loading={refining}
+                    disabled={loading}
+                    onPress={refineReason}
+                    testID="reason-refine-button"
+                />
+                {suggestion ? (
+                    <AppCard variant="plain" style={styles.suggestionCard} testID="reason-refine-suggestion">
+                        <AppText variant="caption" tone="secondary">다듬은 제안이에요 — 검토 후 적용해 주세요</AppText>
+                        <AppText variant="bodyMd" style={styles.suggestionText}>{suggestion}</AppText>
+                        <View style={styles.suggestionActions}>
+                            <AppButton
+                                label="닫기"
+                                variant="ghost"
+                                size="sm"
+                                fullWidth={false}
+                                onPress={() => setSuggestion(null)}
+                            />
+                            <AppButton
+                                label="이 문구로 적용"
+                                variant="secondary"
+                                size="sm"
+                                fullWidth={false}
+                                onPress={applySuggestion}
+                                testID="reason-refine-suggestion-apply"
+                            />
+                        </View>
+                    </AppCard>
+                ) : null}
             </View>
 
             <View style={styles.disclaimer}>
@@ -167,6 +239,9 @@ const styles = StyleSheet.create({
     question: {marginBottom: spacing.xl},
     sub: {marginTop: 4},
     form: {marginTop: spacing.xl, gap: spacing.lg},
+    suggestionCard: {gap: spacing.sm},
+    suggestionText: {lineHeight: 20},
+    suggestionActions: {flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm},
     disclaimer: {marginTop: spacing.xl, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs},
     stateGlyph: {fontSize: 22, fontWeight: '900'},
 });

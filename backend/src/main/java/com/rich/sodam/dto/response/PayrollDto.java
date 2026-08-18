@@ -59,6 +59,11 @@ public class PayrollDto {
     private Integer taxAmount;
     private Integer deductions;
 
+    /** 가감조정액(원, 세후 가산. 음수=차감) — C-3. */
+    private Integer adjustment;
+    /** 가감조정 사유. */
+    private String adjustmentReason;
+
     // 최종 급여
     private Integer netWage;
 
@@ -109,6 +114,8 @@ public class PayrollDto {
                 .taxRate(payroll.getTaxRate())
                 .taxAmount(payroll.getTaxAmount())
                 .deductions(payroll.getDeductions())
+                .adjustment(payroll.getAdjustment())
+                .adjustmentReason(payroll.getAdjustmentReason())
                 .netWage(payroll.getNetWage())
                 .status(payroll.getStatus())
                 .paymentDate(payroll.getPaymentDate())

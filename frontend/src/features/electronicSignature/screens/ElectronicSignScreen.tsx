@@ -38,12 +38,13 @@ const ElectronicSignScreen: React.FC = () => {
         }
         setDownloading(true);
         try {
+            // 저장 + 기본 뷰어 열기까지 서비스가 처리한다(H-4) — 예전에는 바이트를 받아 버렸다.
             if (certificate) {
                 await electronicSignatureService.downloadCompletionCertificate(envelopeId);
             } else {
                 await electronicSignatureService.downloadDocument(envelopeId);
             }
-            AppToast.success(certificate ? '완료증명서를 불러왔어요.' : '서명 대상 문서를 불러왔어요.');
+            AppToast.success(certificate ? '완료증명서를 열었어요.' : '서명 대상 문서를 열었어요.');
         } catch {
             AppToast.error('문서를 불러오지 못했어요.');
         } finally {

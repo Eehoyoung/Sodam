@@ -1545,7 +1545,7 @@ const NativeReferenceEmployeeHome: React.FC = () => (
 
 const ATTENDANCE_OVERVIEW_FIXTURE: AttendanceOverviewFixture = {
     storeId: 101,
-    pendingEmployees: ['민지'],
+    pendingEmployees: [{employeeId: 101, name: '민지'}],
     checkedInCount: 1,
     totalActiveEmployees: 3,
     pendingCorrectionCount: 2,
@@ -1585,7 +1585,7 @@ const OWNER_HOME_FIXTURE: OwnerDashboardVisualFixture = {
     selectedStoreId: 101,
     today: {
         storeId: 101, storeName: '카페 소담', checkedInCount: 4, totalActiveEmployees: 5,
-        pendingEmployees: ['민지'], pendingCorrectionCount: 2,
+        pendingEmployees: [{employeeId: 101, name: '민지'}], pendingCorrectionCount: 2,
     },
     monthly: {totalGross: 4_200_000, totalNet: 3_800_000, totalWorkingHours: 320, daysRemainingInMonth: 9},
 };
@@ -1599,7 +1599,7 @@ const MANAGER_HOME_FIXTURE: ManagerDashboardVisualFixture = {
     },
     today: {
         storeId: 101, storeName: '카페 소담', checkedInCount: 4, totalActiveEmployees: 5,
-        pendingEmployees: ['민지'], pendingCorrectionCount: 2,
+        pendingEmployees: [{employeeId: 101, name: '민지'}], pendingCorrectionCount: 2,
     },
 };
 

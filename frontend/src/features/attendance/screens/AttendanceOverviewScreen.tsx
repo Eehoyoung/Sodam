@@ -33,7 +33,7 @@ export interface AttendanceOverviewFixtureRow {
 /** 개발 시각 검증용 결정형 데이터. 실서비스 API 응답을 대체하지 않는다. */
 export interface AttendanceOverviewFixture {
     storeId: number;
-    pendingEmployees: string[];
+    pendingEmployees: {employeeId: number; name: string}[];
     checkedInCount: number;
     totalActiveEmployees: number;
     pendingCorrectionCount: number;
@@ -62,7 +62,7 @@ const AttendanceOverviewScreen: React.FC<AttendanceOverviewScreenProps> = ({fixt
     const storeId = fixture?.storeId ?? route.params?.storeId ?? 0;
 
     const [range, setRange] = useState(0);
-    const [pendingEmployees, setPendingEmployees] = useState<string[]>(fixture?.pendingEmployees ?? []);
+    const [pendingEmployees, setPendingEmployees] = useState<{employeeId: number; name: string}[]>(fixture?.pendingEmployees ?? []);
     const [checkedInCount, setCheckedInCount] = useState(fixture?.checkedInCount ?? 0);
     const [totalActiveEmployees, setTotalActiveEmployees] = useState(fixture?.totalActiveEmployees ?? 0);
     const [pendingCorrectionCount, setPendingCorrectionCount] = useState(fixture?.pendingCorrectionCount ?? 0);
@@ -181,9 +181,9 @@ const AttendanceOverviewScreen: React.FC<AttendanceOverviewScreenProps> = ({fixt
 
                 {range === 0 ? (
                     <View style={styles.list}>
-                        {pendingEmployees.map(name => (
+                        {pendingEmployees.map(({employeeId, name}) => (
                             <AppListItem
-                                key={name}
+                                key={employeeId}
                                 title={name}
                                 subtitle="미출근"
                                 left={<Ionicons name="person-circle-outline" size={26} color={c.warning} />}

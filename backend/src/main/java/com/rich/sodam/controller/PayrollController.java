@@ -212,7 +212,9 @@ public class PayrollController {
                 idempotencyKey, "payroll-issue:" + storeId,
                 () -> {
                     Payroll payroll = payrollHighRiskActionService.issue(
-                            principal.getId(), payrollId, request.stepUpPassword());
+                            principal.getId(), payrollId, request.stepUpPassword(),
+                            request.adjustment(), request.adjustmentReason(),
+                            com.rich.sodam.domain.StoreDelegationAudit.AccessChannel.MOBILE);
                     return PayrollDto.from(payroll);
                 },
                 // 재요청(동일 Idempotency-Key): step-up 재검증·audit 재기록 없이 현재 상태만 재조회.

@@ -201,6 +201,11 @@ public class SubscriptionService {
             chargeOnce(s);
             processed++;
         }
+        // 해지 예약분: 결제한 기간이 끝난 시점에 만료시킨다(그 전까지는 유료 기능 유지).
+        for (Subscription s : subscriptionRepository.findCancelledPastPeriodEnd(now)) {
+            s.expire();
+            processed++;
+        }
         if (processed > 0) {
             log.info("정기결제 배치 완료: {}건 (정상 {}, 재시도 {})", processed, due.size(), retry.size());
         }

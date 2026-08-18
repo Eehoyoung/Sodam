@@ -17,13 +17,21 @@ import java.time.Duration;
 public interface IdempotencyKeyStore {
 
     /**
-     * 이미 처리된 요청인지 확인한다.
+     * 이 요청의 실행 권한을 원자적으로 선점한다.
+     *
+     * <p>"확인 후 기록" 두 단계로 나누면 같은 키의 동시 요청이 둘 다 미처리로 판정돼 본 작업을
+     * 두 번 실행한다(H-3). 선점은 반드시 단일 원자 연산이어야 한다.</p>
      *
      * @param idempotencyKey 클라이언트가 생성한 멱등성 키
      * @param scope          충돌 방지용 네임스페이스(예: {@code "payroll-issue:" + storeId})
+     * @param ttl            선점 유지 시간. 경과 후 자동 만료(같은 키 재사용 허용)
+     * @return 이번 호출이 선점에 성공했으면 true, 이미 선점된 키면 false
      */
-    boolean isProcessed(String idempotencyKey, String scope);
+    boolean tryClaim(String idempotencyKey, String scope, Duration ttl);
 
-    /** 처리 완료를 기록한다. {@code ttl} 경과 후 자동 만료(같은 키 재사용 허용). */
-    void markProcessed(String idempotencyKey, String scope, Duration ttl);
+    /**
+     * 선점을 해제한다. 본 작업이 예외로 끝났을 때만 호출된다 —
+     * 실패한 요청 때문에 정상 재시도가 TTL 동안 막히면 안 되기 때문이다.
+     */
+    void release(String idempotencyKey, String scope);
 }

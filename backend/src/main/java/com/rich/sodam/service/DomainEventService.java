@@ -56,6 +56,6 @@ public class DomainEventService {
                         t.name(), t.getLabel(), counts.getOrDefault(t, 0L)))
                 .toList();
 
-        return new WeeklyInsightsResponse(storeId, fromDate, days, items);
+        return new WeeklyInsightsResponse(storeId, fromDate, days, items, null);
     }
 }

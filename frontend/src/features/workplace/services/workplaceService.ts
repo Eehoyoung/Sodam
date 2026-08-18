@@ -7,24 +7,9 @@ import {logger} from '../../../utils/logger';
  * 실제 백엔드 API와 연동하여 매장 정보를 관리합니다.
  */
 
-// Mock data for fallback (API 실패 시 사용)
-const mockWorkplaces: Workplace[] = [
-    {
-        id: '1',
-        name: '카페 소담',
-        address: '서울시 강남구 역삼동 123-45',
-    },
-    {
-        id: '2',
-        name: '레스토랑 소담',
-        address: '서울시 서초구 서초동 456-78',
-    },
-    {
-        id: '3',
-        name: '베이커리 소담',
-        address: '서울시 마포구 합정동 789-10',
-    },
-];
+// ⛔ mock 폴백을 다시 넣지 말 것(H-10). API 실패 시 좌표 없는 가짜 매장을 돌려주면
+// GPS 출퇴근 컴포넌트가 그것을 실제 근무지로 취급해, 존재하지 않는 매장에 출근 기록이 남는다.
+// 실패는 실패로 전파한다.
 
 /**
  * 사업주의 모든 매장 목록 조회
@@ -42,13 +27,6 @@ export const getWorkplaces = async (userId?: string): Promise<Workplace[]> => {
         return response.data;
     } catch (error) {
         logger.error('[DEBUG_LOG] 매장 목록 조회 실패:', error);
-
-        // API 실패 시 Mock 데이터 반환 (개발 환경에서만)
-        if (__DEV__) {
-            logger.warn('[DEBUG_LOG] 개발 환경에서 Mock 데이터 사용');
-            return mockWorkplaces;
-        }
-
         throw new Error('매장 목록을 불러오는데 실패했습니다. 네트워크 연결을 확인해주세요.');
     }
 };
@@ -69,14 +47,6 @@ export const getWorkplaceById = async (id: string): Promise<Workplace | undefine
         return response.data;
     } catch (error) {
         logger.error('[DEBUG_LOG] 매장 상세 정보 조회 실패:', error);
-
-        // API 실패 시 Mock 데이터에서 검색 (개발 환경에서만)
-        if (__DEV__) {
-            logger.warn('[DEBUG_LOG] 개발 환경에서 Mock 데이터 사용');
-            const workplace = mockWorkplaces.find(wp => wp.id === id);
-            return workplace;
-        }
-
         throw new Error('매장 정보를 불러오는데 실패했습니다. 네트워크 연결을 확인해주세요.');
     }
 };

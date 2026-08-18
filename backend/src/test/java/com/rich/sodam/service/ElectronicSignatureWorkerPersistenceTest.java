@@ -87,6 +87,7 @@ class ElectronicSignatureWorkerPersistenceTest {
                 mock(StoreManagerService.class), laborContractService, fixedScheduleService,
                 mock(EmploymentAmendmentService.class),
                 authorityService,
+                mock(EmployeeResignationService.class),
                 mock(NotificationService.class), properties,
                 new TransactionTemplate(transactionManager), new ObjectMapper().findAndRegisterModules());
 
@@ -157,6 +158,7 @@ class ElectronicSignatureWorkerPersistenceTest {
                 outboxRepository, attemptRepository, userRepository, storage, crypto,
                 mock(StoreManagerService.class), laborContractService, mock(FixedScheduleService.class),
                 mock(EmploymentAmendmentService.class), authorityService,
+                mock(EmployeeResignationService.class),
                 mock(NotificationService.class), properties,
                 new TransactionTemplate(transactionManager), new ObjectMapper().findAndRegisterModules());
 

@@ -50,6 +50,8 @@ jest.mock('../../../src/features/subscription/services/subscriptionApi', () => {
     const api = {
         getPlans: jest.fn().mockResolvedValue(planList),
         getMyCurrent: jest.fn().mockResolvedValue(null),
+        // H-9 이중가드: 기본은 서버도 LIVE 라고 답하는 상태(기존 테스트의 결제 진행 기대를 보존).
+        getPaymentReadiness: jest.fn().mockResolvedValue({mode: 'LIVE'}),
         subscribeFree: jest.fn().mockResolvedValue({id: 1, plan: 'FREE', status: 'ACTIVE'}),
         subscribePaid: jest.fn(),
         pause: jest.fn().mockResolvedValue({id: 1, plan: 'STARTER', status: 'PAUSED'}),
@@ -60,6 +62,14 @@ jest.mock('../../../src/features/subscription/services/subscriptionApi', () => {
     };
     return {__esModule: true, default: api, subscriptionApi: api};
 });
+
+// H-9 — 클라이언트 권위(isTossLive)를 테스트에서 제어한다. 기본 false 는 기존 동작 유지.
+const mockIsTossLive = jest.fn(() => false);
+jest.mock('../../../src/common/config/env', () => ({
+    __esModule: true,
+    ...jest.requireActual('../../../src/common/config/env'),
+    isTossLive: () => mockIsTossLive(),
+}));
 
 // 토큰 단순 모킹 — 깊이 있는 색상 객체 의존성 단순화
 // 실제 토큰 사용 — DS named export 전체 제공 (부분 모킹 시 import 크래시)
@@ -79,6 +89,7 @@ const flush = async () => {
 describe('SubscribeScreen', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        mockIsTossLive.mockReturnValue(false);
     });
 
     test('마운트 시 getPlans() + getMyCurrent() 호출', async () => {
@@ -266,4 +277,161 @@ describe('SubscribeScreen', () => {
         });
         expect((subscriptionApi as any).resume).toHaveBeenCalledTimes(1);
     });
+
+    // C-4 — CancelSubscriptionSheet 는 만들어져 있었지만 화면 어디에도 연결돼 있지 않아
+    // 사용자가 앱 안에서 구독을 해지할 방법이 없었다(전자상거래법상 해지권 미보장).
+    test('구독 해지 버튼 → 해지 시트 확인 → subscriptionApi.cancel() 호출', async () => {
+        (subscriptionApi as any).getMyCurrent.mockResolvedValue({
+            id: 1, plan: 'STARTER', status: 'ACTIVE', billingCycle: 'MONTHLY',
+            nextBillingAt: '2026-09-18T00:00:00', cancelledAt: null,
+        });
+        (subscriptionApi as any).cancel.mockResolvedValue(undefined);
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<SubscribeScreen />);
+            await flush();
+        });
+
+        const cancelBtn = renderer!.root
+            .findAllByType('Pressable')
+            .find(p => p.props.accessibilityLabel === '구독 해지');
+        expect(cancelBtn).toBeTruthy();
+
+        await act(async () => {
+            cancelBtn!.props.onPress();
+            await flush();
+        });
+
+        // 시트의 "해지하기" 확인 버튼을 눌러야 실제 호출된다(오탭 방지 확인 단계 유지)
+        const confirmBtn = renderer!.root
+            .findAllByType('Pressable')
+            .find(p => p.props.accessibilityLabel === '해지하기');
+        expect(confirmBtn).toBeTruthy();
+        expect((subscriptionApi as any).cancel).not.toHaveBeenCalled();
+
+        await act(async () => {
+            confirmBtn!.props.onPress();
+            await flush();
+        });
+
+        expect((subscriptionApi as any).cancel).toHaveBeenCalledTimes(1);
+    });
+
+    // 해지는 즉시 중단이 아니라 기간 말 예약이다(약관 제20조 3항) — 예약 상태에서는 해지 버튼을 다시 보이지 않는다.
+    test('해지 예약(cancelledAt) 상태면 해지 버튼이 사라진다', async () => {
+        (subscriptionApi as any).getMyCurrent.mockResolvedValue({
+            id: 1, plan: 'STARTER', status: 'ACTIVE', billingCycle: 'MONTHLY',
+            nextBillingAt: null, cancelledAt: '2026-08-18T10:00:00',
+        });
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<SubscribeScreen />);
+            await flush();
+        });
+
+        const cancelBtn = renderer!.root
+            .findAllByType('Pressable')
+            .find(p => p.props.accessibilityLabel === '구독 해지');
+        expect(cancelBtn).toBeFalsy();
+    });
+
+
+    // H-9 — 서버 readiness.mode 와 클라이언트 isTossLive() 두 권위가 합의할 때만 결제로 넘어간다.
+    // 한쪽만 보는 가드로 되돌리면 실키 미설정 상태에서 유료 재화가 무상 지급된다(CLAUDE.md 결제 ②).
+    test('서버 readiness 가 LIVE 가 아니면 결제창으로 넘어가지 않는다', async () => {
+        // 클라이언트 권위는 LIVE — 서버 권위만 아니어도 막혀야 한다.
+        mockIsTossLive.mockReturnValue(true);
+        (subscriptionApi as any).getPaymentReadiness.mockResolvedValue({mode: 'MOCK'});
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<SubscribeScreen />);
+            await flush();
+        });
+
+        const planCards = renderer!.root
+            .findAllByType('Pressable')
+            .filter(p => p.props.accessibilityState && 'selected' in p.props.accessibilityState);
+        await act(async () => {
+            planCards[1].props.onPress(); // STARTER
+            await flush();
+        });
+
+        const subscribeBtn = renderer!.root
+            .findAllByType('Pressable')
+            .find(p => p.props.accessibilityLabel === '결제 진행하기');
+        expect(subscribeBtn).toBeTruthy();
+
+        await act(async () => {
+            subscribeBtn!.props.onPress();
+            await flush();
+        });
+
+        expect(mockNavigate).not.toHaveBeenCalledWith('TossBillingAuth', expect.anything());
+    });
+
+    test('readiness 조회 자체가 실패하면(서버 권위 확인 불가) 결제를 막는다', async () => {
+        mockIsTossLive.mockReturnValue(true);
+        (subscriptionApi as any).getPaymentReadiness.mockRejectedValue(new Error('network'));
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<SubscribeScreen />);
+            await flush();
+        });
+
+        const planCards = renderer!.root
+            .findAllByType('Pressable')
+            .filter(p => p.props.accessibilityState && 'selected' in p.props.accessibilityState);
+        await act(async () => {
+            planCards[1].props.onPress();
+            await flush();
+        });
+
+        const subscribeBtn = renderer!.root
+            .findAllByType('Pressable')
+            .find(p => p.props.accessibilityLabel === '결제 진행하기');
+        expect(subscribeBtn).toBeTruthy();
+
+        await act(async () => {
+            subscribeBtn!.props.onPress();
+            await flush();
+        });
+
+        expect(mockNavigate).not.toHaveBeenCalledWith('TossBillingAuth', expect.anything());
+    });
+
+
+    test('서버·클라이언트가 둘 다 LIVE 면 결제창으로 넘어간다(가드가 정상 경로를 막지 않는다)', async () => {
+        mockIsTossLive.mockReturnValue(true);
+        (subscriptionApi as any).getPaymentReadiness.mockResolvedValue({mode: 'LIVE'});
+
+        let renderer: ReactTestRenderer.ReactTestRenderer | null = null;
+        await act(async () => {
+            renderer = ReactTestRenderer.create(<SubscribeScreen />);
+            await flush();
+        });
+
+        const planCards = renderer!.root
+            .findAllByType('Pressable')
+            .filter(p => p.props.accessibilityState && 'selected' in p.props.accessibilityState);
+        await act(async () => {
+            planCards[1].props.onPress();
+            await flush();
+        });
+
+        const subscribeBtn = renderer!.root
+            .findAllByType('Pressable')
+            .find(p => p.props.accessibilityLabel === '결제 진행하기');
+
+        await act(async () => {
+            subscribeBtn!.props.onPress();
+            await flush();
+        });
+
+        expect(mockNavigate).toHaveBeenCalledWith('TossBillingAuth', expect.objectContaining({plan: 'STARTER'}));
+    });
+
 });

@@ -11,7 +11,7 @@ import {
     View,
     ViewStyle,
 } from 'react-native';
-import {ENABLE_ANIMATIONS, stageAtLeast, ANIMATION_RECOVERY_STAGE} from '../../../navigation/config';
+import {ANIMATIONS_ENABLED} from '../../../navigation/config';
 import {ThemeColors, useThemeColors} from '../../hooks/useThemeColors';
 import {logger} from '../../../utils/logger';
 
@@ -22,7 +22,7 @@ let useSharedValue: any;
 let withTiming: any;
 
 try {
-  if (ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE)) {
+  if (ANIMATIONS_ENABLED) {
     // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional native module, guarded require (loaded only when animations are enabled)
     const reanimated = require('react-native-reanimated');
     Animated = reanimated.default;
@@ -75,7 +75,7 @@ const Modal: React.FC<ModalProps> = ({
                                      }) => {
     const c = useThemeColors();
     const styles = useMemo(() => makeStyles(c), [c]);
-    const shouldUseAnimations = ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE);
+    const shouldUseAnimations = ANIMATIONS_ENABLED;
 
     // Only use animated values when animations are enabled
     // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: reanimated hook gated on native module availability

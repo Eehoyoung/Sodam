@@ -38,12 +38,7 @@ export const getSalaryPrediction = async (
     try {
         const response = await api.get<SalaryPredictionResponse>(
             '/api/salary/prediction',
-            {
-                params: {
-                    employeeId,
-                    storeId
-                }
-            }
+            {employeeId, storeId}
         );
         return response.data;
     } catch (error) {

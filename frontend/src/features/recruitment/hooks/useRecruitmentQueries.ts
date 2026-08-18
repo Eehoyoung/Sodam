@@ -8,6 +8,7 @@ import type {
     JobOffer,
     JobOfferCreatePayload,
     JobPosting,
+    JobPostingMessageGenerateParams,
     JobPostingNearbyFilters,
     JobPostingNearbyItem,
     JobPostingUpsertPayload,
@@ -181,6 +182,20 @@ export const useUpsertJobPosting = (storeId: number) => {
     });
 };
 
+// [사장] 채용공고 소개문 생성(WP-4) — POST /api/stores/{storeId}/job-posting/message-generate
+export const useGeneratePostingMessage = (storeId: number) =>
+    useMutation({
+        mutationFn: async (params: JobPostingMessageGenerateParams) => {
+            try {
+                return await recruitmentService.generatePostingMessage(storeId, params);
+            } catch (error) {
+                handleQueryError(error, 'generatePostingMessage');
+                throw error;
+            }
+        },
+        meta: {errorMessage: '소개문 생성에 실패했어요.'},
+    });
+
 // [사장] 내 매장 구인 공고 조회 — GET /api/stores/{storeId}/job-posting (§19, 없으면 null)
 export const useMyJobPosting = (storeId: number, enabled: boolean = true) =>
     useQuery({
@@ -234,6 +249,20 @@ export const useApplyToJobPosting = () => {
         meta: {errorMessage: '지원을 완료하지 못했어요.'},
     });
 };
+
+// [직원] 지원 메시지 다듬기(WP-3) — POST /api/job-postings/{postingId}/applications/message-refine (제출 전 초안)
+export const useRefineApplicationMessage = () =>
+    useMutation({
+        mutationFn: async (vars: {postingId: number; message: string}) => {
+            try {
+                return await recruitmentService.refineApplicationMessage(vars.postingId, vars.message);
+            } catch (error) {
+                handleQueryError(error, 'refineApplicationMessage');
+                throw error;
+            }
+        },
+        meta: {errorMessage: '메시지 다듬기에 실패했어요.'},
+    });
 
 // [직원] 내 지원 현황 — GET /api/job-applications/me (§19)
 export const useMyJobApplications = (enabled: boolean = true) =>

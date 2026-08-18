@@ -50,38 +50,26 @@ public class UsersPurposeController {
             @Valid @RequestBody PurposeRequest request,
             HttpServletRequest httpRequest
     ) {
-        try {
-            // 인증 토큰에서 사용자 ID 추출 및 본인 확인
-            String token = jwtTokenProvider.resolveToken(httpRequest);
-            if (token == null || !jwtTokenProvider.validateToken(token)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(ApiResponse.error("UNAUTHORIZED", "유효하지 않은 토큰입니다."));
-            }
-            Long authUserId = jwtTokenProvider.getUserId(token);
-            if (authUserId == null || !authUserId.equals(userId)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(ApiResponse.error("UNAUTHORIZED", "본인만 목적을 설정할 수 있습니다."));
-            }
-
-            User updated = userService.updatePurpose(userId, request.getPurpose());
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("userId", updated.getId());
-            result.put("userGrade", updated.getUserGrade().getValue());
-
-            return ResponseEntity.ok(ApiResponse.success("purpose updated", result));
-        } catch (IllegalArgumentException e) {
-            log.warn("목적 설정 실패(잘못된 요청) userId={}, reason={}", userId, e.getMessage());
-            return ResponseEntity.badRequest().body(ApiResponse.error("BAD_REQUEST", e.getMessage()));
-        } catch (IllegalStateException e) {
-            // 정책 충돌(다운그레이드 시도 등)
-            log.warn("목적 설정 충돌 userId={}, reason={}", userId, e.getMessage());
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(ApiResponse.error("CONFLICT", e.getMessage()));
-        } catch (Exception e) {
-            log.error("목적 설정 처리 중 내부 오류 userId={}, error={}", userId, e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("INTERNAL_ERROR", "목적 설정 처리 중 오류가 발생했습니다."));
+        // 인증 토큰에서 사용자 ID 추출 및 본인 확인
+        String token = jwtTokenProvider.resolveToken(httpRequest);
+        if (token == null || !jwtTokenProvider.validateToken(token)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("UNAUTHORIZED", "유효하지 않은 토큰입니다."));
         }
+        Long authUserId = jwtTokenProvider.getUserId(token);
+        if (authUserId == null || !authUserId.equals(userId)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("UNAUTHORIZED", "본인만 목적을 설정할 수 있습니다."));
+        }
+
+        // 검증 실패·정책 충돌·내부 오류는 GlobalExceptionHandler 가 errorCode 와 함께 변환한다(H-1).
+        // 등급 다운그레이드 같은 정책 충돌은 서비스가 ConflictException 을 던져 409 로 나간다.
+        User updated = userService.updatePurpose(userId, request.getPurpose());
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("userId", updated.getId());
+        result.put("userGrade", updated.getUserGrade().getValue());
+
+        return ResponseEntity.ok(ApiResponse.success("purpose updated", result));
     }
 }

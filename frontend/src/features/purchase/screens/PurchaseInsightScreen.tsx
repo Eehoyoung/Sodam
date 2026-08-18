@@ -43,6 +43,7 @@ export default function PurchaseInsightScreen({route, navigation}: Props) {
     const c = useThemeColors();
     const [vendors, setVendors] = useState<VendorSummary[]>([]);
     const [months, setMonths] = useState<MonthlySummary[]>([]);
+    const [comment, setComment] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -57,6 +58,13 @@ export default function PurchaseInsightScreen({route, navigation}: Props) {
             ]);
             setVendors(vendorData);
             setMonths(monthlyData);
+            // 코멘트는 최선노력(best-effort) — 실패해도 핵심 데이터(거래처·월별) 화면은 그대로 유지한다(HC-7).
+            try {
+                const insight = await purchaseService.insightComment(storeId, {from, to, months: 6});
+                setComment(insight.comment);
+            } catch {
+                setComment(null);
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : '매입 분석을 불러오지 못했어요.');
         } finally {
@@ -95,6 +103,12 @@ export default function PurchaseInsightScreen({route, navigation}: Props) {
 
     return (
         <ScreenContainer scroll header={header}>
+            {comment ? (
+                <AppCard variant="spot" style={styles.commentCard} testID="purchase-insight-comment">
+                    <AppText variant="bodyMd">{comment}</AppText>
+                </AppCard>
+            ) : null}
+
             <AppText variant="titleMd" tone="secondary" style={styles.sectionLabel}>
                 월별 매입 추이
             </AppText>
@@ -173,6 +187,7 @@ export default function PurchaseInsightScreen({route, navigation}: Props) {
 }
 
 const styles = StyleSheet.create({
+    commentCard: {marginTop: spacing.md},
     sectionLabel: {marginTop: spacing.xxl, marginBottom: spacing.md},
     bars: {gap: spacing.md},
     barRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},

@@ -209,4 +209,29 @@ describe('payrollService (Phase 1 API mapping)', () => {
       expect(resp[0].period).toEqual({ startDate: '2026-04-01', endDate: '2026-04-30' });
     });
   });
+
+  // C-3 — 화면에서 넣은 가감조정이 실제로 /issue 요청바디에 실려야 한다.
+  // 안 실리면 사장이 본 총액과 서버 확정 급여가 갈린다(임금체불/과다지급 분쟁).
+  test('issue 는 가감조정(adjustment/adjustmentReason)을 요청바디에 함께 보낸다', async () => {
+    const putMock = getPutMock();
+    putMock.mockResolvedValueOnce({data: {}});
+
+    await payrollService.issue(42, 'pw-1', -50000, '지각 공제');
+
+    expect(putMock).toHaveBeenCalledWith('/api/payroll/42/issue', {
+      stepUpPassword: 'pw-1',
+      adjustment: -50000,
+      adjustmentReason: '지각 공제',
+    });
+  });
+
+  test('issue 는 조정이 없으면 stepUpPassword 만 보낸다', async () => {
+    const putMock = getPutMock();
+    putMock.mockResolvedValueOnce({data: {}});
+
+    await payrollService.issue(42, 'pw-1');
+
+    expect(putMock).toHaveBeenCalledWith('/api/payroll/42/issue', {stepUpPassword: 'pw-1'});
+  });
+
 });

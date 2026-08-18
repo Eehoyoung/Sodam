@@ -213,7 +213,7 @@ const PayrollRunScreen: React.FC<Props> = ({visualFixture}) => {
         const failed: string[] = [];
         for (const p of issuable) {
             try {
-                await payrollService.issue(p.payrollId!, stepUpPassword);
+                await payrollService.issue(p.payrollId!, stepUpPassword, p.adjustment, p.adjustmentReason);
                 success += 1;
             } catch (_) {
                 failed.push(p.employeeName ?? `#${p.payrollId}`);

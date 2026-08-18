@@ -1,7 +1,7 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {demoPalette} from './demoPalette';
-import {ENABLE_ANIMATIONS, stageAtLeast, ANIMATION_RECOVERY_STAGE} from '../../../../navigation/config';
+import {ANIMATIONS_ENABLED} from '../../../../navigation/config';
 
 // Conditionally import Reanimated components only when needed
 let Animated: any;
@@ -14,7 +14,7 @@ let withSpring: any;
 let withTiming: any;
 
 try {
-  if (ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE)) {
+  if (ANIMATIONS_ENABLED) {
     // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional native module, guarded require (loaded only when animations are enabled)
     const reanimated = require('react-native-reanimated');
     Animated = reanimated.default;

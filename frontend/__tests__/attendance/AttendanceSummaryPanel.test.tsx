@@ -79,4 +79,39 @@ describe('AttendanceSummaryPanel', () => {
 
     (Platform as any).OS = originalOS;
   });
+
+  // WP-C(QR 출퇴근) — iOS·Android 두 플랫폼 모두 노출돼야 한다(NFC와 달리 숨기지 않음).
+  test.each(['ios', 'android'])('%s에서도 QR 출퇴근 방식 칩을 노출한다', async (os) => {
+    const originalOS = Platform.OS;
+    (Platform as any).OS = os;
+
+    let renderer: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = renderWithQueryClient(<AttendanceSummaryPanel onPressViewDetails={jest.fn()} />);
+    });
+
+    const qrChips = renderer!.root.findAllByProps({ children: 'QR' });
+    expect(qrChips).toHaveLength(1);
+
+    (Platform as any).OS = originalOS;
+  });
+
+  test('QR 방식을 선택하면 출근 버튼 문구가 QR 스캔 안내로 바뀐다', async () => {
+    let renderer: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = renderWithQueryClient(<AttendanceSummaryPanel onPressViewDetails={jest.fn()} />);
+    });
+
+    const qrChip = renderer!.root.findAllByProps({ children: 'QR' })[0].parent as any;
+    await act(async () => {
+      qrChip.props.onPress();
+    });
+
+    // 버튼 텍스트는 여러 조건부 JSX 표현식이 한 <Text> 안에 배열로 들어가므로(false 포함), 평탄화 후 검사한다.
+    const allText = renderer!.root
+      .findAllByType('Text')
+      .flatMap((t) => (Array.isArray(t.props.children) ? t.props.children : [t.props.children]))
+      .filter((child) => typeof child === 'string');
+    expect(allText).toContain('QR로 출근하기 (상세에서 스캔)');
+  });
 });

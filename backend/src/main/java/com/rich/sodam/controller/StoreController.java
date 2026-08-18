@@ -159,8 +159,9 @@ public class StoreController {
                 "직원 등록은 초대 수락 또는 매장 코드 본인 가입으로만 가능합니다.");
     }
 
-    @Operation(summary = "직원 활성/비활성 토글 (사장만)",
-            description = "직원을 매장에서 비활성(퇴사) 또는 활성(복직) 처리합니다. 본인 소유 매장만.")
+    @Operation(summary = "직원 활성/비활성 토글 (사장 또는 STAFF_DEACTIVATE 매니저)",
+            description = "직원을 매장에서 비활성(퇴사) 또는 활성(복직) 처리합니다. 본인 소유 매장 또는 위임받은 매니저만.")
+    @EmployeeOrMaster // 클래스 @MasterOnly 오버라이드 — STAFF_DEACTIVATE 매니저 위임(260817 퇴사 처리 기능 계획서 WP-2)
     @PutMapping("/{storeId}/employees/{employeeId}/active")
     public ResponseEntity<java.util.Map<String, Object>> setEmployeeActive(
             @org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -168,7 +169,7 @@ public class StoreController {
             @PathVariable Long storeId,
             @PathVariable Long employeeId,
             @RequestParam boolean active) {
-        storeAccessGuard.assertMasterOwnsStore(principal.getId(), storeId);
+        storeAccessGuard.assertMasterOrManagerPermission(principal.getId(), storeId, ManagerPermission.STAFF_DEACTIVATE);
         storeManagementService.setEmployeeActive(storeId, employeeId, active);
         return ResponseEntity.ok(java.util.Map.of("employeeId", employeeId, "active", active));
     }

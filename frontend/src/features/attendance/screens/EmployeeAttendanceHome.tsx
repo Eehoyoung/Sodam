@@ -550,6 +550,19 @@ const EmployeeAttendanceHome: React.FC<EmployeeAttendanceHomeProps> = ({visualFi
             onPress: () => navigation.navigate('SwapBoard' as never),
             color: {bg: c.brandPrimarySoft, icon: c.brandPrimary},
         },
+        {
+            // 사직서 제출·협의 진입점(H-8) — Resignation 라우트는 등록돼 있었지만 앱 어디에서도
+            // navigate 하지 않아 직원이 도달할 방법이 없었다. '휴가 신청'과 같은 매장 선택 가드를 쓴다.
+            key: 'resignation', label: '퇴사 신청', icon: 'exit-outline',
+            onPress: () => {
+                if (!selectedStore) {
+                    AppToast.show('먼저 소속 매장을 선택해 주세요.');
+                    return;
+                }
+                navigation.navigate('Resignation', {storeId: selectedStore.id});
+            },
+            color: {bg: c.surfaceMuted, icon: c.textSecondary},
+        },
     ];
 
     if (state === 'LOADING' && stores.length === 0) {

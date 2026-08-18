@@ -5,6 +5,7 @@ import com.rich.sodam.domain.JobSeekingProfile;
 import com.rich.sodam.domain.Store;
 import com.rich.sodam.domain.type.JobCategory;
 import com.rich.sodam.domain.type.JobWorkType;
+import com.rich.sodam.dto.request.JobPostingMessageGenerateRequest;
 import com.rich.sodam.dto.request.JobPostingUpsertRequest;
 import com.rich.sodam.dto.response.JobPostingNearbyItemResponse;
 import com.rich.sodam.dto.response.JobPostingResponse;
@@ -47,6 +48,7 @@ public class JobPostingService {
     private final JobPostingRepository jobPostingRepository;
     private final StoreRepository storeRepository;
     private final JobSeekingProfileRepository jobSeekingProfileRepository;
+    private final JobPostingMessageGenerator messageGenerator;
 
     // ─────────────────────────────────────────────────────────────────
     // PUT /api/stores/{storeId}/job-posting
@@ -84,6 +86,19 @@ public class JobPostingService {
         }
 
         return toResponse(posting);
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // POST /api/stores/{storeId}/job-posting/message-generate
+    // ─────────────────────────────────────────────────────────────────
+
+    /** 소개문 초안 생성(WP-4). storeId는 컨트롤러가 이미 소유 검증을 마친 뒤 전달한다. */
+    @Transactional(readOnly = true)
+    public String generateMessage(JobPostingMessageGenerateRequest request) {
+        JobWorkType workType = parseWorkType(request.workType());
+        JobCategory category = parseCategory(request.jobCategory());
+        return messageGenerator.generate(workType, category, request.hourlyWage(),
+                request.startTime(), request.endTime());
     }
 
     private void applyUpdate(JobPosting posting, JobWorkType workType, JobCategory category,

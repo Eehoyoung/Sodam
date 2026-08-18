@@ -143,7 +143,7 @@ export {
 } from './animationHooks';
 
 // Conditionally re-export Reanimated functions based on feature flags
-import {ENABLE_ANIMATIONS, stageAtLeast, ANIMATION_RECOVERY_STAGE} from '../../../src/navigation/config';
+import {ANIMATIONS_ENABLED} from '../../../src/navigation/config';
 import {logger} from '../logger';
 
 // Placeholder exports when animations are disabled
@@ -176,7 +176,7 @@ const createPlaceholderExports = () => ({
 let reanimatedExports: any;
 
 try {
-    if (ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE)) {
+    if (ANIMATIONS_ENABLED) {
         // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional native module, guarded require (loaded only when animations are enabled)
         const reanimated = require('react-native-reanimated');
         reanimatedExports = {

@@ -42,7 +42,7 @@ module.exports = {
         '^\\./src/contexts/AuthContext$': '<rootDir>/src/tests/mocks/AuthContext.mock.ts'
     },
     transformIgnorePatterns: [
-        'node_modules/(?!(react-native|@react-native|@react-native-community|react-native-vector-icons|react-native-chart-kit|react-native-reanimated|react-native-nfc-manager|react-native-linear-gradient|react-native-svg|react-native-geolocation-service|react-native-permissions|react-native-gesture-handler|@react-navigation)/)'
+        'node_modules/(?!(react-native|@react-native|@react-native-community|react-native-vector-icons|react-native-reanimated|react-native-nfc-manager|react-native-linear-gradient|react-native-svg|react-native-geolocation-service|react-native-permissions|react-native-gesture-handler|@react-navigation)/)'
     ],
     testEnvironment: 'node',
     verbose: false, // 개발 중에는 간소화

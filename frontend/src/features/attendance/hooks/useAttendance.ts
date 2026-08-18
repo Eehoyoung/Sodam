@@ -221,9 +221,11 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
         AppToast.show('NFC 스캔은 상세 화면에서 진행돼요.');
         return;
       } else if (method === 'qr') {
-        // NFC와 같은 구조 — 실제 스캔은 카메라 화면이 담당한다.
-        // 카메라 스캐너는 신규 네이티브 의존성이 필요해 별도 작업으로 분리했다(WP-C 잔여).
-        AppToast.show('QR 스캔은 상세 화면에서 진행돼요.');
+        // NFC와 같은 구조 — 실제 스캔은 AttendanceScreen(카메라 모달 QRScannerModal)이 담당한다.
+        // WP-C 완료 후에도 이 요약 패널(EmployeeMyPageRNScreen 카드)에서는 의도적으로 스텁 유지:
+        // 카메라 프리뷰는 풀스크린이 필요해 좁은 카드 안에 넣기 부적합하다 — onPressViewDetails가
+        // 'Attendance' 라우트(AttendanceScreen)로 보내면 거기서 실제 QR 스캔이 진행된다.
+        AppToast.show('QR 스캔은 출퇴근 관리 화면(자세히 보기)에서 진행돼요.');
         return;
       }
 
@@ -271,7 +273,8 @@ export const useAttendance = (options: UseAttendanceOptions = {}) => {
         AppToast.show('NFC 스캔은 상세 화면에서 진행돼요.');
         return;
       } else if (method === 'qr') {
-        AppToast.show('QR 스캔은 상세 화면에서 진행돼요.');
+        // checkIn과 동일 이유(풀스크린 카메라는 이 카드에 부적합) — 상세 화면(AttendanceScreen)으로 안내.
+        AppToast.show('QR 스캔은 출퇴근 관리 화면(자세히 보기)에서 진행돼요.');
         return;
       }
 

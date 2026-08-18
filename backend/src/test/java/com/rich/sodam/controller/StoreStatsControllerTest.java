@@ -1,6 +1,9 @@
 package com.rich.sodam.controller;
 
+import com.rich.sodam.domain.EmployeeProfile;
+import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.Store;
+import com.rich.sodam.domain.User;
 import com.rich.sodam.repository.AttendanceCorrectionRequestRepository;
 import com.rich.sodam.repository.AttendanceRepository;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
@@ -91,5 +94,31 @@ class StoreStatsControllerTest {
         assertThat(monthToDateResponse.getStatusCode().value()).isEqualTo(200);
         assertThat(dashboardResponse.getStatusCode().value()).isEqualTo(200);
         assertThat(body).containsOnlyKeys("today", "payroll");
+    }
+
+    @Test
+    @DisplayName("today() 의 pendingEmployees 는 이름과 함께 실제 employeeId(User id)를 내려준다")
+    void pendingEmployeesCarryEmployeeId() {
+        Store store = new Store("검증매장", "1234567890", "010-0000-0000", "카페", 12_000, 100);
+        ReflectionTestUtils.setField(store, "id", 7L);
+
+        User user = new User("staff@sodam.dev", "박직원");
+        ReflectionTestUtils.setField(user, "id", 502L);
+        EmployeeProfile profile = new EmployeeProfile(user);
+        ReflectionTestUtils.setField(profile, "id", 502L);
+        EmployeeStoreRelation relation = new EmployeeStoreRelation(profile, store);
+
+        when(storeRepository.findById(7L)).thenReturn(java.util.Optional.of(store));
+        when(employeeStoreRelationRepository.findByStoreAndIsActiveTrue(store)).thenReturn(List.of(relation));
+        when(attendanceRepository.findByStoreAndDate(any(), any(), any())).thenReturn(Collections.emptyList());
+
+        Map<String, Object> body = controller.today(principal, 7L).getBody();
+
+        assertThat(body).isNotNull();
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> pending = (List<Map<String, Object>>) body.get("pendingEmployees");
+        // 이름만 내려주면 FE 가 알림 수신자를 특정할 수 없어 엉뚱한 직원에게 발송된다(C-2).
+        assertThat(pending).hasSize(1);
+        assertThat(pending.get(0)).containsEntry("employeeId", 502L).containsEntry("name", "박직원");
     }
 }

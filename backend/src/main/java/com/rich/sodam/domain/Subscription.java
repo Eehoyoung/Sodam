@@ -203,6 +203,10 @@ public class Subscription {
         if (status != SubscriptionStatus.ACTIVE) {
             throw new IllegalStateException("활성 구독만 일시정지할 수 있습니다. 현재 상태: " + status);
         }
+        // 해지 예약분을 일시정지하면 resume 시 기간이 뒤로 밀려 무상 연장이 된다.
+        if (this.cancelledAt != null) {
+            throw new IllegalStateException("해지 예약된 구독은 일시정지할 수 없습니다.");
+        }
         this.status = SubscriptionStatus.PAUSED;
         this.pausedAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
@@ -227,13 +231,29 @@ public class Subscription {
         this.updatedAt = LocalDateTime.now();
     }
 
+    /**
+     * 해지 = "기간 말 해지 예약". 이미 결제한 기간의 이용권은 그대로 두고 자동갱신만 끊는다.
+     *
+     * <p>약관 제20조 3항·해지 시트 문구("결제는 이번 주기까지 유지돼요")·이 enum 문서가 모두
+     * 같은 약속을 한다. 즉시 CANCELLED 로 바꾸면 {@code PlanAccessService}가 곧바로 무료 플랜으로
+     * 취급해, 이미 받은 돈에 대한 이용권을 그 자리에서 빼앗게 된다(C-3/C-4 감사).</p>
+     *
+     * <p>기간이 끝나면 정기결제 배치가 {@link #expire()} 로 종결한다. {@code nextBillingAt} 을
+     * 비워 다음 청구 대상에서 빠진다.</p>
+     */
     public void cancel() {
-        if (this.status == SubscriptionStatus.CANCELLED || this.status == SubscriptionStatus.EXPIRED) {
+        if (this.cancelledAt != null || this.status == SubscriptionStatus.CANCELLED
+                || this.status == SubscriptionStatus.EXPIRED) {
             return;
         }
-        this.status = SubscriptionStatus.CANCELLED;
         this.cancelledAt = LocalDateTime.now();
+        this.nextBillingAt = null;
         this.updatedAt = LocalDateTime.now();
+    }
+
+    /** 해지 예약 여부(기간은 아직 남아 있음). */
+    public boolean isCancelScheduled() {
+        return this.cancelledAt != null && this.status == SubscriptionStatus.ACTIVE;
     }
 
     public void expire() {

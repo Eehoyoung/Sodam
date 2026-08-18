@@ -22,6 +22,7 @@ import attendanceService from '../services/attendanceService';
 import storeService from '../../store/services/storeService';
 import {wageService} from '../../wage/services/wageService';
 import {CheckoutConfirmSheet, NfcUnsupportedScreen, PunchFailedScreen, PunchSuccessScreen} from '../components/AttendanceSheets';
+import QRScannerModal from '../components/QRScannerModal';
 import {AttendanceRecord, AttendanceStatus, CheckInRequest, CheckOutRequest} from '../types';
 import {format} from 'date-fns';
 import {ko} from 'date-fns/locale';
@@ -74,6 +75,8 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
     const employeeIdNum = visualFixture ? 1 : Number(user?.id);
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(visualFixture?.attendanceRecords ?? []);
     const [loading, setLoading] = useState(!visualFixture);
+    /** 출근/퇴근 요청 진행 중 — CTA 중복 탭 차단(H-6). */
+    const [punching, setPunching] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [currentAttendance, setCurrentAttendance] = useState<AttendanceRecord | null>(visualFixture?.currentAttendance ?? null);
     const [selectedWorkplaceId, setSelectedWorkplaceId] = useState<string>(visualFixture?.selectedWorkplaceId ?? '');
@@ -81,6 +84,7 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
     const [locationPermissionGranted, setLocationPermissionGranted] = useState(visualFixture?.locationPermissionGranted ?? false);
     const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(visualFixture?.currentLocation ?? null);
     const [showNFCReader, setShowNFCReader] = useState(visualFixture?.forceShowNfcReader ?? false);
+    const [showQRScanner, setShowQRScanner] = useState(false);
     const [, setNfcTagId] = useState<string>('');
     const [checkInMethod, setCheckInMethod] = useState<CheckInMethod>(visualFixture?.checkInMethod ?? 'standard');
     // 근무 중 경과 시간 표시를 매초 갱신하기 위한 더미 tick (실제 값은 항상 Date.now() 재계산 — drift 누적 방지)
@@ -531,6 +535,75 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
         }
     };
 
+    // QR 스캐너 열기 — NFC의 openNFCReader와 대칭. 카메라 권한/기기 확인은 QRScannerModal 내부가 담당.
+    const openQRScanner = () => {
+        if (!selectedWorkplaceId) {
+            AppToast.show('근무지를 선택해주세요.');
+            return;
+        }
+        if (!Number.isFinite(employeeIdNum)) {
+            AppToast.show('로그인이 필요합니다.');
+            return;
+        }
+        setShowQRScanner(true);
+    };
+
+    const cancelQRScan = () => {
+        setShowQRScanner(false);
+    };
+
+    // QR 토큰 기반 출근 처리 — 매장 QR 토큰 검증(서버 시각창+매장 일치)만으로 위치 없이 기록(BE /check-in/qr).
+    const handleCheckInWithQr = async (qrToken: string) => {
+        if (!selectedWorkplaceId || !Number.isFinite(employeeIdNum)) {
+            return;
+        }
+        try {
+            const response = await attendanceService.checkInWithQr({
+                employeeId: employeeIdNum,
+                workplaceId: selectedWorkplaceId,
+                qrToken,
+            });
+            showPunchSuccess();
+            setCurrentAttendance(response);
+            fetchAttendanceRecords();
+        } catch (error) {
+            logger.error('QR 기반 출근 처리 중 오류가 생겼어요:', error);
+            const message = (error as any)?.response?.data?.message;
+            AppToast.error(message ?? 'QR 기반 출근 처리에 실패했어요. 다시 스캔해 주세요.');
+        }
+    };
+
+    // QR 토큰 기반 퇴근 처리 — 출근과 대칭(BE /check-out/qr).
+    const handleCheckOutWithQr = async (qrToken: string) => {
+        if (!Number.isFinite(employeeIdNum)) {
+            return;
+        }
+        try {
+            await attendanceService.checkOutWithQr({
+                employeeId: employeeIdNum,
+                workplaceId: selectedWorkplaceId,
+                qrToken,
+            });
+            AppToast.success('QR 기반 퇴근 처리됐어요.');
+            setCurrentAttendance(null);
+            fetchAttendanceRecords();
+        } catch (error) {
+            logger.error('QR 기반 퇴근 처리 중 오류가 생겼어요:', error);
+            const message = (error as any)?.response?.data?.message;
+            AppToast.error(message ?? 'QR 기반 퇴근 처리에 실패했어요. 다시 스캔해 주세요.');
+        }
+    };
+
+    // QR 스캔 결과 처리 — NFC의 handleNFCTagScanned와 대칭.
+    const handleQRTokenScanned = async (qrToken: string) => {
+        setShowQRScanner(false);
+        if (currentAttendance) {
+            await handleCheckOutWithQr(qrToken);
+        } else {
+            await handleCheckInWithQr(qrToken);
+        }
+    };
+
     // 기본 퇴근 처리
     const handleCheckOut = async () => {
         if (!currentAttendance) {
@@ -699,33 +772,62 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
     }, [currentAttendance, tick]);
     const elapsedSeconds = visualFixture?.elapsedSeconds ?? calculatedElapsedSeconds;
 
+    // 빠른 두 번 탭이 출근/퇴근 요청을 두 번 보내지 않게 한다(H-6).
+    // state 만으로는 같은 tick 안의 두 번째 탭이 갱신 전 값을 보므로 ref 로 먼저 잠근다.
+    const punchingRef = useRef(false);
+    const runPunch = async (fn: () => Promise<void>) => {
+        if (punchingRef.current) {
+            return;
+        }
+        punchingRef.current = true;
+        setPunching(true);
+        try {
+            await fn();
+        } finally {
+            punchingRef.current = false;
+            setPunching(false);
+        }
+    };
+
     // 선택된 방식에 따른 출근 핸들러
+    // ⚠️ 과거 버그: qr 을 명시 분기하지 않아 else 로 떨어져 NFC 리더가 열렸다(WP-C 잔여 수정) — qr 도 명시 분기.
     const onCheckInPress = () => {
-        if (checkInMethod === 'standard') {handleCheckIn();}
-        else if (checkInMethod === 'location') {handleCheckInWithLocation();}
+        if (checkInMethod === 'standard') {runPunch(handleCheckIn);}
+        else if (checkInMethod === 'location') {runPunch(handleCheckInWithLocation);}
+        else if (checkInMethod === 'qr') {openQRScanner();}
         else {openNFCReader();}
     };
     // 선택된 방식에 따른 퇴근 핸들러 — standard/location 은 61 CheckoutConfirmSheet 확인 후
-    // 기존 핸들러를 그대로 호출한다(NFC 는 태그를 대는 동작 자체가 확인 절차라 시트를 끼우지 않음).
+    // 기존 핸들러를 그대로 호출한다(NFC/QR 은 태그·QR 을 대는/찍는 동작 자체가 확인 절차라 시트를 끼우지 않음).
     const onCheckOutPress = () => {
         if (checkInMethod === 'nfc') {
             openNFCReader();
+            return;
+        }
+        if (checkInMethod === 'qr') {
+            openQRScanner();
             return;
         }
         setCheckoutConfirmVisible(true);
     };
     const confirmCheckOut = () => {
         setCheckoutConfirmVisible(false);
-        if (checkInMethod === 'location') {handleCheckOutWithLocation();}
-        else {handleCheckOut();}
+        if (checkInMethod === 'location') {runPunch(handleCheckOutWithLocation);}
+        else {runPunch(handleCheckOut);}
     };
 
     // 근무 중 = 오늘 출근 기록이 있고 아직 퇴근 안 함. checkOutTime 을 봐야 한다.
     // (today 엔드포인트는 퇴근 후에도 그 기록을 돌려주므로, 존재만 보면 퇴근 후에도 '근무중' 으로 남았다.)
     const isWorking = !!currentAttendance && !currentAttendance.checkOutTime;
     const ctaLabel = isWorking
-        ? checkInMethod === 'location' ? '위치 기반 퇴근하기' : checkInMethod === 'nfc' ? 'NFC 태그로 퇴근하기' : '퇴근하기'
-        : checkInMethod === 'location' ? '위치 기반 출근하기' : checkInMethod === 'nfc' ? 'NFC 태그로 출근하기' : '출근하기';
+        ? checkInMethod === 'location' ? '위치 기반 퇴근하기'
+            : checkInMethod === 'nfc' ? 'NFC 태그로 퇴근하기'
+            : checkInMethod === 'qr' ? 'QR 스캔으로 퇴근하기'
+            : '퇴근하기'
+        : checkInMethod === 'location' ? '위치 기반 출근하기'
+            : checkInMethod === 'nfc' ? 'NFC 태그로 출근하기'
+            : checkInMethod === 'qr' ? 'QR 스캔으로 출근하기'
+            : '출근하기';
 
     // 출퇴근 기록 항목 렌더링
     const renderAttendanceItem = ({item}: { item: AttendanceRecord }) => {
@@ -840,11 +942,22 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
                     <AppButton
                         label={ctaLabel}
                         variant={isWorking ? 'secondary' : 'primary'}
+                        loading={punching}
+                        disabled={punching}
                         onPress={isWorking ? onCheckOutPress : onCheckInPress}
                     />
                 </CtaStack>
             }>
             {renderNFCReader()}
+
+            {/* QR 스캐너(WP-C, D-2 해소) — NFC 리더와 대칭되는 자리. 판정 로직은 QRScannerModal 내부(카메라)와
+                handleCheckInWithQr/handleCheckOutWithQr(서버 토큰 검증 호출)에만 있다. */}
+            <QRScannerModal
+                visible={showQRScanner}
+                onScanned={handleQRTokenScanned}
+                onClose={cancelQRScan}
+                captureMarker={visualFixture?.captureMarker}
+            />
 
             {/* 60 NFCUnsupported — checkNFCSupport() 가 미지원 판정했을 때만 노출 */}
             <Modal visible={nfcUnsupportedVisible} animationType="slide" onRequestClose={() => setNfcUnsupportedVisible(false)}>
@@ -988,6 +1101,14 @@ const AttendanceScreen: React.FC<AttendanceScreenProps> = ({visualFixture}) => {
                                 <AppText variant="titleMd">NFC 태그</AppText>
                                 <AppText variant="bodyMd" tone="secondary" style={styles.methodInfoBody}>
                                     태그를 휴대폰 뒷면에 가까이 대면 자동 처리됩니다. (Android 전용)
+                                </AppText>
+                            </AppCard>
+                        ) : null}
+                        {checkInMethod === 'qr' ? (
+                            <AppCard variant="outlined" style={styles.methodInfoCard}>
+                                <AppText variant="titleMd">매장 QR</AppText>
+                                <AppText variant="bodyMd" tone="secondary" style={styles.methodInfoBody}>
+                                    매장에 게시된 QR을 카메라로 스캔하면 자동 처리됩니다. (iOS·Android 모두 지원)
                                 </AppText>
                             </AppCard>
                         ) : null}

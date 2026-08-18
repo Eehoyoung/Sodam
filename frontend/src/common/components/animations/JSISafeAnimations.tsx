@@ -6,7 +6,7 @@
 
 import React, {useEffect} from 'react';
 import {View, ViewStyle, Text} from 'react-native';
-import {ENABLE_ANIMATIONS, stageAtLeast, ANIMATION_RECOVERY_STAGE} from '../../../navigation/config';
+import {ANIMATIONS_ENABLED} from '../../../navigation/config';
 
 // Conditionally import Reanimated components only when needed
 // Using specific types for better type safety while maintaining dynamic loading
@@ -22,7 +22,7 @@ let withSpring: typeof import('react-native-reanimated').withSpring | undefined;
 let withTiming: typeof import('react-native-reanimated').withTiming | undefined;
 
 try {
-  if (ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE)) {
+  if (ANIMATIONS_ENABLED) {
     // Dynamic import for Reanimated components
     const reanimated = require('react-native-reanimated'); // eslint-disable-line @typescript-eslint/no-var-requires
     Animated = reanimated.default;
@@ -115,7 +115,7 @@ export const FadeAnimation: React.FC<FadeAnimationProps> = ({
                                                                 style,
                                                                 onAnimationComplete,
                                                             }) => {
-    const shouldUseAnimations = ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE);
+    const shouldUseAnimations = ANIMATIONS_ENABLED;
 
     // Always call hooks in the same order - use real hook or mock
     const fadeAnim = (useSharedValue ?? mockUseSharedValue)(isVisible ? 1 : 0);
@@ -190,7 +190,7 @@ export const ScaleAnimation: React.FC<ScaleAnimationProps> = ({
                                                                   toScale = 1,
                                                                   onAnimationComplete,
                                                               }) => {
-    const shouldUseAnimations = ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE);
+    const shouldUseAnimations = ANIMATIONS_ENABLED;
 
     // Always call hooks in the same order
     const scaleAnim = (useSharedValue ?? mockUseSharedValue)(isVisible ? toScale : fromScale);
@@ -267,7 +267,7 @@ export const ProgressAnimation: React.FC<ProgressAnimationProps> = ({
     logger.debug('[DEBUG_LOG] ProgressAnimation: Component initialization started');
     logger.debug('[DEBUG_LOG] ProgressAnimation: Props received:', {progress});
 
-    const shouldUseAnimations = ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE);
+    const shouldUseAnimations = ANIMATIONS_ENABLED;
 
     // Use JSI-safe dimensions hook
     logger.debug('[DEBUG_LOG] ProgressAnimation: About to call useJSISafeDimensions hook');
@@ -364,7 +364,7 @@ export const PulseAnimation: React.FC<PulseAnimationProps> = ({
                                                                   config = {},
                                                                   style,
                                                               }) => {
-    const shouldUseAnimations = ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE);
+    const shouldUseAnimations = ANIMATIONS_ENABLED;
 
     // Always call hooks in the same order
     const pulseAnim = (useSharedValue ?? mockUseSharedValue)(1);
@@ -440,7 +440,7 @@ export const NumberCountAnimation: React.FC<NumberCountAnimationProps> = ({
                                                                               formatter = (value) => Math.round(value).toString(),
                                                                               onCountComplete,
                                                                           }) => {
-    const shouldUseAnimations = ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE);
+    const shouldUseAnimations = ANIMATIONS_ENABLED;
 
     // Always call hooks in the same order
     const countAnim = (useSharedValue ?? mockUseSharedValue)(startValue);

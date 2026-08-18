@@ -95,6 +95,13 @@ services:
       SODAM_OCR_PROVIDER: ${SODAM_OCR_PROVIDER:-}
       SODAM_OCR_API_URL: ${SODAM_OCR_API_URL:-}
       SODAM_OCR_SECRET_KEY: ${SODAM_OCR_SECRET_KEY:-}
+      # 매입장부 LLM — 기본 off. anthropic 실키 활성화는 H-6 승인 후에만.
+      SODAM_AI_PROVIDER: ${SODAM_AI_PROVIDER:-off}
+      SODAM_AI_API_KEY: ${SODAM_AI_API_KEY:-}
+      SODAM_AI_API_URL: ${SODAM_AI_API_URL:-https://api.anthropic.com/v1/messages}
+      SODAM_AI_MODEL: ${SODAM_AI_MODEL:-claude-haiku-4-5-20251001}
+      SODAM_AI_LOCAL_BASE_URL: ${SODAM_AI_LOCAL_BASE_URL:-}
+      SODAM_AI_LOCAL_API_KEY: ${SODAM_AI_LOCAL_API_KEY:-}
       # 타임존
       TZ: Asia/Seoul
       JAVA_OPTS: "-XX:+UseG1GC -XX:MaxRAMPercentage=75"
