@@ -188,6 +188,28 @@ jest.mock('react-native-linear-gradient', () => ({__esModule: true, default: 'Li
 // @react-native-community/datetimepicker uses ESM exports
 jest.mock('@react-native-community/datetimepicker', () => ({__esModule: true, default: 'DateTimePicker'}));
 
+// WebSocket 스텁 — 화면 테스트가 STOMP 실시간 동기화(storeSyncClient)를 마운트하면
+// new WebSocket(...) 이 호출된다. Node 22 에는 전역 WebSocket 이 있어 "진짜 소켓"을 열려다
+// 조용히 실패하고, Node 20(CI)에는 아예 없어 ReferenceError 로 스위트가 죽었다.
+// RN 런타임이 제공하는 전역이므로 테스트에서는 아무것도 하지 않는 스텁으로 고정한다 —
+// Node 버전과 무관하게 결정적이고, 단위 테스트가 네트워크를 건드리지 않는다.
+class MockWebSocket {
+    constructor(url, protocols) {
+        this.url = url;
+        this.protocols = protocols;
+        this.readyState = 0; // CONNECTING 상태로 머문다(연결/실패 콜백 없음)
+    }
+    send() {}
+    close() {}
+    addEventListener() {}
+    removeEventListener() {}
+}
+MockWebSocket.CONNECTING = 0;
+MockWebSocket.OPEN = 1;
+MockWebSocket.CLOSING = 2;
+MockWebSocket.CLOSED = 3;
+globalThis.WebSocket = MockWebSocket;
+
 // react-native-blob-util — 법적 문서 PDF 저장/열기(H-4). 실제 파일 IO 없이 호출만 검증한다.
 jest.mock('react-native-blob-util', () => {
     const fetchMock = jest.fn(() => Promise.resolve({

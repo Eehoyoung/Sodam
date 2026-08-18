@@ -114,6 +114,10 @@ tasks.named('test') {
     // 인증채용 고도화(출근권·채팅·충전소) 도메인 추가로 컨텍스트 로딩 대상이 늘면서
     // 기본 힙(미지정 시 Gradle 워커 기본값)으로는 풀스위트 실행 중 OOM이 발생했다.
     maxHeapSize = '2g'
+    // 이 서비스의 업무 시간대는 Asia/Seoul 이고 운영 코드도 LocalDateTime.now(SEOUL) 로 명시한다.
+    // 테스트 JVM 존을 실행 머신(개발자 Windows=KST, GitHub Actions=UTC)에 맡기면 같은 코드가
+    // 로컬에서만 통과한다 — 실제로 출근권 패스 테스트 3건이 CI 에서만 9시간 어긋나 실패했다.
+    systemProperty 'user.timezone', 'Asia/Seoul'
 }
 
 jacocoTestReport {
