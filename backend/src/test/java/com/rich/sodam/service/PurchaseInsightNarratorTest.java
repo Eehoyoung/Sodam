@@ -2,6 +2,7 @@ package com.rich.sodam.service;
 
 import com.rich.sodam.dto.response.MonthlySummaryResponse;
 import com.rich.sodam.dto.response.VendorSummaryResponse;
+import com.rich.sodam.service.ai.TextGenerationClient;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -9,6 +10,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * WP-5 — 매입장부 인사이트 코멘트 단위 테스트. 실제 네트워크 없이 순수 로직만 검증한다.
@@ -73,7 +76,7 @@ class PurchaseInsightNarratorTest {
     }
 
     @Test
-    @DisplayName("프롬프트는 Non-Goal 경계·법적 확언 금지를 명시하고 거래처·월별 데이터를 포함한다")
+    @DisplayName("프롬프트는 Non-Goal 경계·법적 확언 금지를 명시하고 거래처명을 익명화한다")
     void promptStatesInvariantsAndInputs() {
         String prompt = PurchaseInsightNarrator.buildPrompt(vendors(), months());
 
@@ -82,7 +85,37 @@ class PurchaseInsightNarratorTest {
         assertThat(prompt).contains("메뉴 마진");
         assertThat(prompt).contains("POS 연동");
         assertThat(prompt).contains("법적 확언");
-        assertThat(prompt).contains("행복마트=500000원");
+        assertThat(prompt).contains("거래처A=500000원");
+        assertThat(prompt).doesNotContain("행복마트", "신선유통");
         assertThat(prompt).contains("2026-07=700000원");
+    }
+
+    @Test
+    @DisplayName("LLM 응답의 익명 거래처명은 검증 후 실제 표시명으로 복원한다")
+    void restoresVendorNameAfterValidation() {
+        TextGenerationClient client = readyClient("거래처A의 매입 비중은 62.5%예요.");
+        PurchaseInsightNarrator narrator = new PurchaseInsightNarrator(Optional.of(client));
+
+        assertThat(narrator.summarize(vendors(), months()))
+                .isEqualTo("행복마트의 매입 비중은 62.5%예요.");
+    }
+
+    @Test
+    @DisplayName("입력에 없는 숫자나 거래처 라벨을 만든 응답은 폐기한다")
+    void rejectsInventedFacts() {
+        PurchaseInsightNarrator numberNarrator = new PurchaseInsightNarrator(
+                Optional.of(readyClient("거래처A 비중은 99%예요.")));
+        PurchaseInsightNarrator vendorNarrator = new PurchaseInsightNarrator(
+                Optional.of(readyClient("거래처C 비중이 높아요.")));
+
+        assertThat(numberNarrator.summarize(vendors(), months())).isNull();
+        assertThat(vendorNarrator.summarize(vendors(), months())).isNull();
+    }
+
+    private static TextGenerationClient readyClient(String response) {
+        TextGenerationClient client = mock(TextGenerationClient.class);
+        when(client.isReady()).thenReturn(true);
+        when(client.complete(org.mockito.ArgumentMatchers.anyString())).thenReturn(response);
+        return client;
     }
 }

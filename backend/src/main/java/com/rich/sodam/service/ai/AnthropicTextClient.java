@@ -34,7 +34,7 @@ import java.util.Map;
 @Slf4j
 @Component
 @ConditionalOnProperty(name = "sodam.ai.provider", havingValue = "anthropic")
-public class AnthropicTextClient {
+public class AnthropicTextClient implements TextGenerationClient {
 
     private final String apiUrl;
     private final String apiKey;
@@ -74,6 +74,7 @@ public class AnthropicTextClient {
         return new RestTemplate(factory);
     }
 
+    @Override
     public boolean isReady() {
         return !apiKey.isBlank();
     }
@@ -83,6 +84,7 @@ public class AnthropicTextClient {
      * api-key 미설정·네트워크 실패·파싱 실패는 전부 흡수하고 {@code null}을 반환한다(fail-safe) —
      * 원본 문구로 되돌리는 폴백은 호출부(도메인 서비스)가 담당한다.
      */
+    @Override
     public String complete(String prompt) {
         if (!isReady() || prompt == null || prompt.isBlank()) {
             return null;

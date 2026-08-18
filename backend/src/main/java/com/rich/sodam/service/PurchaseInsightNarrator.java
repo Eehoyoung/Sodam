@@ -2,13 +2,18 @@ package com.rich.sodam.service;
 
 import com.rich.sodam.dto.response.MonthlySummaryResponse;
 import com.rich.sodam.dto.response.VendorSummaryResponse;
-import com.rich.sodam.service.ai.AnthropicTextClient;
 import com.rich.sodam.service.ai.ForbiddenPhrases;
+import com.rich.sodam.service.ai.TextGenerationClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * 매입장부 인사이트 코멘트(WP-5, {@code docs/260817} goal) — 거래처별 비중·월별 매입 추이를
@@ -24,15 +29,17 @@ import java.util.Optional;
 public class PurchaseInsightNarrator {
 
     private static final int MAX_LENGTH = 200;
+    private static final Pattern NUMBER = Pattern.compile("\\d+(?:[.,]\\d+)*");
+    private static final Pattern VENDOR_LABEL = Pattern.compile("거래처([A-Z])");
 
     /** HC-9: 매입장부 스코프 경계(재고차감·원가율·메뉴마진·POS연동·재주문추천) 차단 어휘. */
     static final List<String> NON_GOAL_TERMS = List.of(
             "재주문 추천", "재주문추천", "원가율", "메뉴마진", "메뉴 마진",
             "POS 연동", "POS연동", "재고 자동", "재고차감", "재고 차감");
 
-    private final Optional<AnthropicTextClient> client;
+    private final Optional<TextGenerationClient> client;
 
-    public PurchaseInsightNarrator(Optional<AnthropicTextClient> client) {
+    public PurchaseInsightNarrator(Optional<TextGenerationClient> client) {
         this.client = client;
     }
 
@@ -47,7 +54,11 @@ public class PurchaseInsightNarrator {
                 return null;
             }
             String comment = response.trim();
-            return passesValidation(comment) ? comment : null;
+            if (!passesValidation(comment) || !containsOnlyInputNumbers(comment, vendors, months)
+                    || !containsOnlyKnownVendorLabels(comment, Math.min(vendors.size(), 26))) {
+                return null;
+            }
+            return restoreVendorNames(comment, vendors);
         } catch (Exception e) {
             log.debug("[PurchaseInsightNarrator] 코멘트 생성 실패. cause={}", e.toString());
             return null;
@@ -56,8 +67,10 @@ public class PurchaseInsightNarrator {
 
     static String buildPrompt(List<VendorSummaryResponse> vendors, List<MonthlySummaryResponse> months) {
         StringBuilder vendorPart = new StringBuilder();
-        for (VendorSummaryResponse v : vendors) {
-            vendorPart.append(v.vendorName()).append("=").append(v.totalAmount()).append("원(")
+        int vendorLimit = Math.min(vendors.size(), 26);
+        for (int i = 0; i < vendorLimit; i++) {
+            VendorSummaryResponse v = vendors.get(i);
+            vendorPart.append("거래처").append((char) ('A' + i)).append("=").append(v.totalAmount()).append("원(")
                     .append(String.format("%.1f", v.sharePercent())).append("%), ");
         }
         StringBuilder monthPart = new StringBuilder();
@@ -88,5 +101,46 @@ public class PurchaseInsightNarrator {
             }
         }
         return true;
+    }
+
+    static boolean containsOnlyInputNumbers(
+            String comment, List<VendorSummaryResponse> vendors, List<MonthlySummaryResponse> months) {
+        Set<String> allowed = java.util.stream.Stream.concat(
+                        vendors.stream().flatMap(v -> java.util.stream.Stream.of(
+                                Integer.toString(v.totalAmount()), Integer.toString(v.purchaseCount()),
+                                String.format("%.1f", v.sharePercent()))),
+                        months.stream().flatMap(m -> java.util.stream.Stream.of(
+                                m.yearMonth(), Integer.toString(m.totalAmount()))))
+                .flatMap(value -> extractNumbers(value).stream())
+                .collect(Collectors.toSet());
+        return allowed.containsAll(extractNumbers(comment));
+    }
+
+    private static Set<String> extractNumbers(String value) {
+        Matcher matcher = NUMBER.matcher(value == null ? "" : value);
+        java.util.HashSet<String> numbers = new java.util.HashSet<>();
+        while (matcher.find()) {
+            numbers.add(new BigDecimal(matcher.group().replace(",", "")).stripTrailingZeros().toPlainString());
+        }
+        return numbers;
+    }
+
+    private static boolean containsOnlyKnownVendorLabels(String comment, int vendorCount) {
+        Matcher matcher = VENDOR_LABEL.matcher(comment);
+        while (matcher.find()) {
+            if (matcher.group(1).charAt(0) - 'A' >= vendorCount) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static String restoreVendorNames(String comment, List<VendorSummaryResponse> vendors) {
+        String restored = comment;
+        int vendorLimit = Math.min(vendors.size(), 26);
+        for (int i = 0; i < vendorLimit; i++) {
+            restored = restored.replace("거래처" + (char) ('A' + i), vendors.get(i).vendorName());
+        }
+        return restored;
     }
 }
