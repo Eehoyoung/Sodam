@@ -62,3 +62,8 @@ e2e_*/
 
 # 서명 완료 근로계약서 등 실 PII 원본 (.graphifyignore와 동일 대상 — git 추적도 금지)
 backend/private-esign-objects/
+
+# 로컬 스크래치 (Metro/에뮬레이터 조작 스크립트·임시 메모) — 루트에 흩어지는 일회성 파일
+/kill*
+/setpref*.sh
+/*.md.txt
