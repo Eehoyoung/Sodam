@@ -2,6 +2,7 @@
  * S1 전자 근로계약서 — API 클라이언트.
  * BE LaborContractController 엔드포인트와 1:1 매핑.
  */
+import {downloadAndOpenPdf} from '../../../common/utils/pdfDocument';
 import api from '../../../common/api/client';
 import type {
     LaborContract,
@@ -85,23 +86,20 @@ export const contractService = {
      * 사장: 근로계약서 PDF 다운로드 (증명서·급여명세서와 동일하게 arraybuffer 수신).
      * ⚠️ api.get 은 (url, params, config) 시그니처 — params 이중 래핑 금지.
      */
-    async downloadPdfForMaster(storeId: number, contractId: number): Promise<ArrayBuffer> {
-        const res = await api.get<ArrayBuffer>(
-            `/api/stores/${storeId}/labor-contracts/${contractId}/pdf`,
-            undefined,
-            {responseType: 'arraybuffer'},
-        );
-        return res.data;
+    /** 사장/매니저: 근로계약서 PDF 를 기기에 저장하고 기본 뷰어로 연다. 저장 경로를 반환. */
+    async downloadPdfForMaster(storeId: number, contractId: number, fileName: string): Promise<string> {
+        return downloadAndOpenPdf({
+            path: `/api/stores/${storeId}/labor-contracts/${contractId}/pdf`,
+            fileName,
+        });
     },
 
-    /** 직원 본인: 근로계약서 PDF 다운로드. */
-    async downloadMyPdf(contractId: number): Promise<ArrayBuffer> {
-        const res = await api.get<ArrayBuffer>(
-            `/api/labor-contracts/${contractId}/pdf`,
-            undefined,
-            {responseType: 'arraybuffer'},
-        );
-        return res.data;
+    /** 직원 본인: 근로계약서 PDF 를 기기에 저장하고 기본 뷰어로 연다. 저장 경로를 반환. */
+    async downloadMyPdf(contractId: number, fileName: string): Promise<string> {
+        return downloadAndOpenPdf({
+            path: `/api/labor-contracts/${contractId}/pdf`,
+            fileName,
+        });
     },
 };
 

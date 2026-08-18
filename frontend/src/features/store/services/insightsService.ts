@@ -30,7 +30,8 @@ export interface TodayStats {
   storeName: string;
   checkedInCount: number;
   totalActiveEmployees: number;
-  pendingEmployees: string[];
+  /** 미출근 직원 — employeeId 는 알림 발송이 요구하는 User id. 이름만으로는 발송할 수 없다. */
+  pendingEmployees: {employeeId: number; name: string}[];
   /** 정정 요청 대기 건수 (매니저 홈 v3 46 ManagerHome 표시용, G-6) */
   pendingCorrectionCount: number;
 }

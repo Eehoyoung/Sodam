@@ -188,6 +188,43 @@ jest.mock('react-native-linear-gradient', () => ({__esModule: true, default: 'Li
 // @react-native-community/datetimepicker uses ESM exports
 jest.mock('@react-native-community/datetimepicker', () => ({__esModule: true, default: 'DateTimePicker'}));
 
+// react-native-blob-util — 법적 문서 PDF 저장/열기(H-4). 실제 파일 IO 없이 호출만 검증한다.
+jest.mock('react-native-blob-util', () => {
+    const fetchMock = jest.fn(() => Promise.resolve({
+        info: () => ({status: 200}),
+        path: () => '/mock/documents/file.pdf',
+    }));
+    const api = {
+        config: jest.fn(() => ({fetch: fetchMock})),
+        fs: {dirs: {DocumentDir: '/mock/documents', CacheDir: '/mock/cache'}},
+        android: {actionViewIntent: jest.fn(() => Promise.resolve())},
+        ios: {openDocument: jest.fn(() => Promise.resolve())},
+    };
+    globalThis.__blobUtilFetch = fetchMock;
+    return {__esModule: true, default: api, ...api};
+});
+
+// @react-native-community/netinfo — 테스트에서 네트워크 상태를 직접 밀어 넣을 수 있게 리스너를 보관한다.
+// (globalThis.__netInfoListeners 로 노출: 오프라인 전환 시나리오 테스트가 이 배열을 호출한다)
+jest.mock('@react-native-community/netinfo', () => {
+    const listeners = [];
+    globalThis.__netInfoListeners = listeners;
+    return {
+        __esModule: true,
+        default: {
+            addEventListener: jest.fn((cb) => {
+                listeners.push(cb);
+                cb({isConnected: true, type: 'wifi', isInternetReachable: true});
+                return () => {
+                    const i = listeners.indexOf(cb);
+                    if (i >= 0) { listeners.splice(i, 1); }
+                };
+            }),
+            fetch: jest.fn(() => Promise.resolve({isConnected: true, type: 'wifi', isInternetReachable: true})),
+        },
+    };
+});
+
 // Native modules typically not parseable as ESM in test env
 jest.mock('react-native-geolocation-service', () => ({
     __esModule: true,
@@ -224,6 +261,25 @@ jest.mock('react-native-nfc-manager', () => ({
     NfcTech: {Ndef: 'Ndef', NfcA: 'NfcA'},
     NfcEvents: {DiscoverTag: 'DiscoverTag'},
 }));
+// react-native-vision-camera (WP-C QR 스캐너) — 실기 카메라 없이 permission granted + mock device로
+// QRScannerModal이 정상 렌더되게 한다. useCodeScanner는 라이브러리 실구현처럼 옵션 객체를 그대로 반환.
+jest.mock('react-native-vision-camera', () => ({
+    __esModule: true,
+    Camera: 'Camera',
+    useCameraDevice: jest.fn(() => ({id: 'mock-back-camera', position: 'back'})),
+    useCameraPermission: jest.fn(() => ({
+        hasPermission: true,
+        requestPermission: jest.fn(() => Promise.resolve(true)),
+    })),
+    useCodeScanner: jest.fn((options) => options),
+}));
+
+// react-native-qrcode-svg (WP-C 사장용 QR 표시) — react-native-svg 위에 그려지는 순수 JS 컴포넌트.
+jest.mock('react-native-qrcode-svg', () => ({
+    __esModule: true,
+    default: 'QRCode',
+}));
+
 jest.mock('@invertase/react-native-apple-authentication', () => ({
     appleAuth: {
         performRequest: jest.fn(() => Promise.resolve({identityToken: 'mock-identity-token'})),
@@ -323,16 +379,6 @@ jest.mock('react-native-svg', () => ({
     FeComposite: 'FeComposite',
     ForeignObject: 'ForeignObject',
     default: 'Svg',
-}));
-
-// Mock react-native-chart-kit
-jest.mock('react-native-chart-kit', () => ({
-    LineChart: 'LineChart',
-    BarChart: 'BarChart',
-    PieChart: 'PieChart',
-    ProgressChart: 'ProgressChart',
-    ContributionGraph: 'ContributionGraph',
-    StackedBarChart: 'StackedBarChart',
 }));
 
 // Mock react-native-reanimated with official mock to avoid native crashes in Jest.

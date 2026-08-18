@@ -96,6 +96,7 @@ export const AttendanceSummaryPanel: React.FC<Props> = ({ workplaceId, onPressVi
               {method === 'standard' && '출근하기'}
               {method === 'location' && '위치 기반 출근하기'}
               {method === 'nfc' && 'NFC로 출근하기 (상세에서 스캔)'}
+              {method === 'qr' && 'QR로 출근하기 (상세에서 스캔)'}
             </Text>}
           </TouchableOpacity>
         ) : (
@@ -107,6 +108,7 @@ export const AttendanceSummaryPanel: React.FC<Props> = ({ workplaceId, onPressVi
               {method === 'standard' && '퇴근하기'}
               {method === 'location' && '위치 기반 퇴근하기'}
               {method === 'nfc' && 'NFC로 퇴근하기 (상세에서 스캔)'}
+              {method === 'qr' && 'QR로 퇴근하기 (상세에서 스캔)'}
             </Text>}
           </TouchableOpacity>
         )}

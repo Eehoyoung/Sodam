@@ -310,9 +310,9 @@ export const OwnerDashboardContent: React.FC<OwnerDashboardContentProps> = ({vis
                     <AppText variant="headingSm">오늘 출근 현황</AppText>
                     {pending.length > 0 ? (
                         <View style={styles.list}>
-                            {pending.map(name => (
+                            {pending.map(({employeeId, name}) => (
                                 <AppListItem
-                                    key={name}
+                                    key={employeeId}
                                     title={name}
                                     subtitle="아직 출근 기록 없음"
                                     left={<Ionicons name="person-circle-outline" size={26} color={c.warning} />}
@@ -451,8 +451,8 @@ export const ManagerDashboardContent: React.FC<ManagerDashboardContentProps> = (
 
                 <View style={styles.section}>
                     <AppText variant="headingSm">오늘 출근 현황</AppText>
-                    {pending.length > 0 ? pending.map(name => (
-                        <AppListItem key={name} title={name} subtitle="아직 출근 기록 없음"
+                    {pending.length > 0 ? pending.map(({employeeId, name}) => (
+                        <AppListItem key={employeeId} title={name} subtitle="아직 출근 기록 없음"
                             left={<Ionicons name="person-circle-outline" size={26} color={c.warning} />}
                             right={<AppBadge label="확인" tone="warning" />} />
                     )) : <AppCard variant="plain"><AppText variant="bodyLg" tone="success">모든 직원이 출근했어요.</AppText></AppCard>}

@@ -93,9 +93,7 @@ export const generateStoreNFCTag = async (
     try {
         const response = await api.get<{ nfcTagData: string }>(
             `/api/stores/${storeId}/nfc-tag`,
-            {
-                params: {tagType}
-            }
+            {tagType}
         );
         return response.data.nfcTagData;
     } catch (error) {

@@ -6,7 +6,7 @@
 
 import React, {ReactNode} from 'react';
 import {ViewStyle, View, StyleSheet, NativeSyntheticEvent, NativeScrollEvent} from 'react-native';
-import {ENABLE_ANIMATIONS, stageAtLeast, ANIMATION_RECOVERY_STAGE} from '../../navigation/config';
+import {ANIMATIONS_ENABLED} from '../../navigation/config';
 
 // Conditionally import Reanimated components only when needed
 let Animated: any;
@@ -22,7 +22,7 @@ let withSpring: any;
 let withTiming: any;
 
 try {
-  if (ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE)) {
+  if (ANIMATIONS_ENABLED) {
     // eslint-disable-next-line @typescript-eslint/no-var-requires -- optional native module, guarded require (loaded only when animations are enabled)
     const reanimated = require('react-native-reanimated');
     Animated = reanimated.default;
@@ -114,7 +114,7 @@ export const JSISafeFadeAnimation: React.FC<FadeAnimationProps> = ({
                                                                        style,
                                                                        onAnimationComplete,
                                                                    }) => {
-    const shouldUseAnimations = ENABLE_ANIMATIONS && stageAtLeast(ANIMATION_RECOVERY_STAGE);
+    const shouldUseAnimations = ANIMATIONS_ENABLED;
 
     // Only use animated values when animations are enabled
     // eslint-disable-next-line react-hooks/rules-of-hooks -- intentional JSI-safe guard: reanimated hook gated on native module availability

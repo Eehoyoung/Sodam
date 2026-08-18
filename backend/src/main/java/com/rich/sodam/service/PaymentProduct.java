@@ -50,6 +50,16 @@ public enum PaymentProduct {
             "sodam://payment/attendance-credit/success",
             "sodam://payment/attendance-credit/fail"),
 
+    /**
+     * 구독 정기결제 빌링키 발급 — 결제 WebView 가 {@code https://sodam.local/billing/*} 센티넬을
+     * 직접 가로챈다({@code TossBillingAuthScreen}). 서버 콜백 컨트롤러는 없고 필요하지도 않다.
+     */
+    SUBSCRIPTION_BILLING(
+            CallbackStrategy.CLIENT_INTERCEPT,
+            "/billing",
+            "sodam://payment/subscription/success",
+            "sodam://payment/subscription/fail"),
+
     /** 채용 부스트패스 — 결제 WebView가 sodam.local 센티넬 URL을 직접 가로챈다. */
     RECRUITMENT_BOOST_PASS(
             CallbackStrategy.CLIENT_INTERCEPT,

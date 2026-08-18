@@ -5,6 +5,7 @@ import com.rich.sodam.domain.AttendanceCorrectionRequest;
 import com.rich.sodam.domain.EmployeeStoreRelation;
 import com.rich.sodam.domain.Payroll;
 import com.rich.sodam.domain.Store;
+import com.rich.sodam.domain.User;
 import com.rich.sodam.repository.AttendanceCorrectionRequestRepository;
 import com.rich.sodam.repository.AttendanceRepository;
 import com.rich.sodam.repository.EmployeeStoreRelationRepository;
@@ -82,12 +83,18 @@ public class StoreStatsService {
                 .filter(a -> a.getCheckInTime() != null)
                 .count();
 
-        List<String> pending = active.stream()
+        // employeeId 는 알림 발송(POST /api/notifications/push-to-employee)이 요구하는 User id 다 —
+        // 이름만 내려주면 FE 가 상대를 특정할 수 없어 엉뚱한 직원에게 알림이 나간다.
+        List<Map<String, Object>> pending = active.stream()
                 .filter(r -> todayAttendances.stream().noneMatch(
                         a -> a.getEmployeeProfile().getId().equals(r.getEmployeeProfile().getId())))
-                .map(r -> r.getEmployeeProfile().getUser() != null
-                        ? r.getEmployeeProfile().getUser().getName()
-                        : "(이름 없음)")
+                .map(r -> {
+                    User u = r.getEmployeeProfile().getUser();
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("employeeId", u == null ? null : u.getId());
+                    item.put("name", u == null ? "(이름 없음)" : u.getName());
+                    return item;
+                })
                 .toList();
 
         long pendingCorrections = attendanceCorrectionRequestRepository

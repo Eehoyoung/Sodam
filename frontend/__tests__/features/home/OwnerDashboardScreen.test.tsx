@@ -125,7 +125,7 @@ describe('OwnerDashboardScreen', () => {
                 storeName: '소담 광교점',
                 checkedInCount: 2,
                 totalActiveEmployees: 4,
-                pendingEmployees: ['김직원'],
+                pendingEmployees: [{employeeId: 101, name: '김직원'}],
             },
         } as any);
 
@@ -156,7 +156,7 @@ describe('OwnerDashboardScreen', () => {
                             storeName: '소담 광교점',
                             checkedInCount: 3,
                             totalActiveEmployees: 5,
-                            pendingEmployees: ['김직원'],
+                            pendingEmployees: [{employeeId: 101, name: '김직원'}],
                         },
                         payroll: {
                             totalGross: 1000000,
@@ -238,7 +238,7 @@ describe('OwnerDashboardScreen', () => {
                             storeName: '소담 광교점',
                             checkedInCount: 3,
                             totalActiveEmployees: 5,
-                            pendingEmployees: ['김직원', '박직원'],
+                            pendingEmployees: [{employeeId: 101, name: '김직원'}, {employeeId: 102, name: '박직원'}],
                         },
                         payroll: {
                             totalGross: 0,

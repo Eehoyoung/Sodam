@@ -82,14 +82,44 @@ class SubscriptionDomainTest {
         assertEquals(0, s.getPaymentFailureCount());
     }
 
+    /**
+     * 해지는 "기간 말 해지 예약"이다(2026-08-18 확정, C-4).
+     * 즉시 CANCELLED 로 떨어뜨리면 PlanAccessService 가 곧바로 무료로 취급해,
+     * 이미 결제한 기간의 유료 기능을 그 자리에서 빼앗는다 — 약관 제20조 3항 위반.
+     */
     @Test
-    void cancel_상태전환_타임스탬프기록() {
+    void cancel_기간말해지예약_이용권은유지된다() {
         Subscription s = pendingBusiness();
         s.activate(LocalDateTime.now(), LocalDateTime.now().plusMonths(1));
         s.cancel();
 
-        assertEquals(SubscriptionStatus.CANCELLED, s.getStatus());
+        assertEquals(SubscriptionStatus.ACTIVE, s.getStatus());
+        assertTrue(s.isActive());
+        assertTrue(s.isCancelScheduled());
         assertNotNull(s.getCancelledAt());
+        // 자동갱신 중단: 다음 청구 대상에서 빠진다
+        assertNull(s.getNextBillingAt());
+    }
+
+    @Test
+    void cancel_후_기간종료시점에_EXPIRED로_종결된다() {
+        Subscription s = pendingBusiness();
+        s.activate(LocalDateTime.now(), LocalDateTime.now().plusMonths(1));
+        s.cancel();
+        s.expire(); // 정기결제 배치의 findCancelledPastPeriodEnd 스윕이 하는 일
+
+        assertEquals(SubscriptionStatus.EXPIRED, s.getStatus());
+        assertFalse(s.isActive());
+    }
+
+    /** 해지 예약분을 일시정지하면 resume 시 기간이 밀려 무상 연장이 된다. */
+    @Test
+    void cancel_예약된구독은_일시정지할수없다() {
+        Subscription s = pendingBusiness();
+        s.activate(LocalDateTime.now(), LocalDateTime.now().plusMonths(1));
+        s.cancel();
+
+        assertThrows(IllegalStateException.class, s::pause);
     }
 
     @Test
@@ -118,7 +148,7 @@ class SubscriptionDomainTest {
         assertFalse(s.isActive());
         s.activate(LocalDateTime.now(), LocalDateTime.now().plusMonths(1));
         assertTrue(s.isActive());
-        s.cancel();
+        s.expire();
         assertFalse(s.isActive());
     }
 

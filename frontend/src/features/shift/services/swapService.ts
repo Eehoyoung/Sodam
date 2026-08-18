@@ -1,27 +1,11 @@
 import api from '../../../common/api/client';
+import type {SwapRequest, SwapRequestStatus} from '../types/swap';
 
 /**
  * 대타(시프트 교대) 모집 — 사장이 시프트에 대해 모집을 열고, 지원자 중 1명을 확정한다.
  * BE 계약 기반 FE 선행 구현. 조회용 시프트 목록은 shiftService.fetchStoreShifts 재사용.
  */
-export type SwapRequestStatus = 'OPEN' | 'FILLED' | 'CANCELLED';
-
-export interface SwapApplicant {
-    employeeId: number;
-    employeeName: string;
-    appliedAt: string;
-}
-
-export interface SwapRequest {
-    id: number;
-    shiftId: number;
-    shiftDate: string; // YYYY-MM-DD
-    startTime: string; // HH:MM[:SS]
-    endTime: string; // HH:MM[:SS]
-    status: SwapRequestStatus;
-    originalEmployeeName?: string;
-    applicants: SwapApplicant[];
-}
+export type {SwapApplicant, SwapRequest, SwapRequestStatus} from '../types/swap';
 
 /** 매장 대타 모집 목록(상태 필터). */
 export async function fetchSwapRequests(

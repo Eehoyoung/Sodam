@@ -48,9 +48,9 @@ const MissingAttendanceCenterScreen: React.FC<Props> = ({visualFixture}) => {
             const collected: PendingItem[] = [];
             for (const s of stores) {
                 const data = await fetchTodayStats(s.id);
-                (data?.pendingEmployees ?? []).forEach((name: string, idx: number) => {
+                (data?.pendingEmployees ?? []).forEach(({employeeId, name}) => {
                     collected.push({
-                        employeeId: idx,
+                        employeeId,
                         employeeName: name,
                         type: 'NO_CHECK_IN',
                         storeName: data.storeName ?? s.storeName,

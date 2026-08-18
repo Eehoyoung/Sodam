@@ -86,16 +86,20 @@ const EmployeeDocumentsScreen: React.FC = () => {
             return;
         }
         try {
-            await contractService.downloadPdfForMaster(storeId, it.contractId);
-            AppToast.success('근로계약서 PDF가 발급됐어요.');
             const fileName = contractFileName(it);
+            const filePath = await contractService.downloadPdfForMaster(storeId, it.contractId, fileName);
+            AppToast.success('근로계약서 PDF가 발급됐어요.');
             navigation.navigate('PdfPreview', {
                 title: fileName,
+                filePath,
                 sub: it.contractSigned && it.contractSignedAt
                     ? `서명일 ${it.contractSignedAt.slice(0, 10)}`
                     : '서명 대기 중',
                 onShare: () => {
-                    Share.share({message: `[소담] 근로계약서\n${fileName}`}).catch(() => undefined);
+                    Share.share({
+                        url: `file://${filePath}`,
+                        message: `[소담] 근로계약서\n${fileName}`,
+                    }).catch(() => undefined);
                 },
             });
         } catch {

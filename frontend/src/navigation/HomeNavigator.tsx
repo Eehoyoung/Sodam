@@ -37,6 +37,7 @@ import AttendanceOverviewScreen from '../features/attendance/screens/AttendanceO
 import EmployeeDetailScreen from '../features/store/screens/EmployeeDetailScreen';
 import EmployeeManagementScreen from '../features/store/screens/EmployeeManagementScreen';
 import NfcTagManagementScreen from '../features/store/screens/NfcTagManagementScreen';
+import StoreQrCodeScreen from '../features/store/screens/StoreQrCodeScreen';
 import PayrollRunScreen from '../features/salary/screens/PayrollRunScreen';
 import JoinStoreByCodeScreen from '../features/store/screens/JoinStoreByCodeScreen';
 import AttendanceCorrectionRequestScreen from '../features/attendance/screens/AttendanceCorrectionRequestScreen';
@@ -158,6 +159,8 @@ export type HomeStackParamList = {
     EmployeeDetail: { employeeId: number; storeId: number };
     EmployeeManagement: {storeId: number; managerMode?: true};
     NfcTagManagement: { storeId: number };
+    /** 매장 QR 표시·재발급(사장 전용, WP-C) */
+    StoreQrCode: { storeId: number };
     PayrollRun: { storeId?: number } | undefined;
     JoinStoreByCode: undefined;
     AttendanceCorrectionRequest: {
@@ -226,7 +229,7 @@ export type HomeStackParamList = {
     MyNotice: undefined;
     Onboarding: {storeId?: number; employeeId?: number; employeeName?: string} | undefined;
     EvidencePackage: {storeId: number; employeeId: number; employeeName?: string};
-    PdfPreview: {title?: string; sub?: string; onDownload?: () => void; onShare?: () => void} | undefined;
+    PdfPreview: {title?: string; sub?: string; filePath?: string; onDownload?: () => void; onShare?: () => void} | undefined;
     DailySales: {storeId: number};
     LaborCostRatio: {storeId: number};
     MyCertificate: {storeId?: number} | undefined;
@@ -403,6 +406,11 @@ const HomeNavigator: React.FC<HomeNavigatorProps> = ({ initialScreen }) => {
             <Stack.Screen
                 name="NfcTagManagement"
                 component={NfcTagManagementScreen}
+                options={{headerShown: false}}
+            />
+            <Stack.Screen
+                name="StoreQrCode"
+                component={StoreQrCodeScreen}
                 options={{headerShown: false}}
             />
             <Stack.Screen

@@ -32,21 +32,23 @@ public class InMemoryIdempotencyKeyStore implements IdempotencyKeyStore {
     }
 
     @Override
-    public boolean isProcessed(String idempotencyKey, String scope) {
-        Long expiresAt = store.get(key(idempotencyKey, scope));
-        if (expiresAt == null) {
-            return false;
-        }
-        if (expiresAt < System.currentTimeMillis()) {
-            store.remove(key(idempotencyKey, scope), expiresAt);
-            return false;
-        }
-        return true;
+    public boolean tryClaim(String idempotencyKey, String scope, Duration ttl) {
+        long now = System.currentTimeMillis();
+        // compute 는 같은 키에 대해 원자적으로 실행된다 — 만료된 항목의 재선점까지 한 연산으로 처리한다.
+        Long[] claimed = new Long[1];
+        store.compute(key(idempotencyKey, scope), (k, expiresAt) -> {
+            if (expiresAt != null && expiresAt > now) {
+                return expiresAt; // 이미 유효한 선점이 있다
+            }
+            claimed[0] = now + ttl.toMillis();
+            return claimed[0];
+        });
+        return claimed[0] != null;
     }
 
     @Override
-    public void markProcessed(String idempotencyKey, String scope, Duration ttl) {
-        store.put(key(idempotencyKey, scope), System.currentTimeMillis() + ttl.toMillis());
+    public void release(String idempotencyKey, String scope) {
+        store.remove(key(idempotencyKey, scope));
     }
 
     private void sweepExpired() {

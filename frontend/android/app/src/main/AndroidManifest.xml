@@ -12,6 +12,9 @@ package="com.sodam_front_end">
     <!-- NFC 권한 - 소담 핵심 기능 -->
     <uses-permission android:name="android.permission.NFC" />
 
+    <!-- 카메라 권한 - QR 출퇴근(WP-C, react-native-vision-camera) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
     <!-- 저장소 권한 - Android 13+ 호환 -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
                      android:maxSdkVersion="32" />
@@ -37,6 +40,9 @@ package="com.sodam_front_end">
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
     <!-- NFC 미장착 단말(보급형 다수)도 GPS-only 모드로 폴백 가능해야 하므로 required=false (FEATURES C-1) -->
     <uses-feature android:name="android.hardware.nfc" android:required="false" />
+    <!-- 카메라 미장착 단말도 기본/위치/NFC/사장승인 방식으로 폴백 가능해야 하므로 required=false -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
     <application android:name=".MainApplication"
                  android:label="@string/app_name"

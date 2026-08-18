@@ -104,13 +104,17 @@ const MyCertificateScreen: React.FC<Props> = ({route}) => {
         }
         setIssuing(true);
         try {
-            await certificateService.downloadMyCertificate(selectedStoreId, type);
-            AppToast.success(`${typeLabel}가 발급됐어요.`);
-
             const storeName = selectedStore.storeName;
             const issuedAt = todayIso();
+            // PDF 를 실제로 저장하고 기기 기본 뷰어로 연다(H-4).
+            const filePath = await certificateService.downloadMyCertificate(
+                selectedStoreId, type, `${typeLabel}_${storeName}_${issuedAt}.pdf`,
+            );
+            AppToast.success(`${typeLabel}가 발급됐어요.`);
             const shareCertificate = () => {
                 Share.share({
+                    // 저장된 파일 자체를 공유한다 — 텍스트만 보내면 상대가 문서를 받지 못한다.
+                    url: `file://${filePath}`,
                     message: `[소담] ${typeLabel}\n매장 ${storeName}\n발급일 ${issuedAt}`,
                 }).catch(() => undefined);
             };
@@ -118,6 +122,7 @@ const MyCertificateScreen: React.FC<Props> = ({route}) => {
             navigation.navigate('PdfPreview', {
                 title: `${typeLabel}_${storeName}.pdf`,
                 sub: `발급일 ${issuedAt}`,
+                filePath,
                 onShare: shareCertificate,
             });
         } catch {

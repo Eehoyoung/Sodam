@@ -4,7 +4,10 @@ import com.rich.sodam.domain.Subscription;
 import com.rich.sodam.domain.type.PlanType;
 import com.rich.sodam.dto.request.BillingKeyIssueRequest;
 import com.rich.sodam.dto.response.SubscriptionResponse;
+import com.rich.sodam.dto.response.TaxPaymentReadinessResponse;
 import com.rich.sodam.security.UserPrincipal;
+import com.rich.sodam.service.PaymentProduct;
+import com.rich.sodam.service.PaymentReadinessService;
 import com.rich.sodam.service.SubscriptionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,6 +34,7 @@ import com.rich.sodam.security.annotation.MasterOnly;
 public class SubscriptionController {
 
     private final SubscriptionService subscriptionService;
+    private final PaymentReadinessService paymentReadinessService;
 
     @Operation(summary = "구독 가입(유료)", description = "토스에서 받은 authKey 로 빌링키 발급 후 첫 결제까지 진행합니다.")
     @PostMapping("/subscribe")
@@ -79,6 +83,14 @@ public class SubscriptionController {
             list.add(m);
         }
         return ResponseEntity.ok(list);
+    }
+
+    @Operation(summary = "구독 결제 준비 상태",
+            description = "서버의 Toss 모드(MOCK/LIVE/UNAVAILABLE)를 반환합니다. FE는 이 값과 자신의 키 종류가 "
+                    + "합의할 때만 결제를 진행합니다(한쪽 권위만 보고 결제하지 말 것).")
+    @GetMapping("/payment-readiness")
+    public ResponseEntity<TaxPaymentReadinessResponse> paymentReadiness() {
+        return ResponseEntity.ok(paymentReadinessService.readiness(PaymentProduct.SUBSCRIPTION_BILLING));
     }
 
     @Operation(summary = "구독 해지", description = "다음 결제일 전까지 ACTIVE, 이후 EXPIRED.")

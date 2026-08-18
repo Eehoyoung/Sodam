@@ -1,13 +1,17 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
 import {AppState, AppStateStatus} from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 import {authQueryKeys} from '../auth/queryKeys';
-import {adjustCacheForNetwork} from '../utils/cacheStrategy';
 import {logger} from '../../utils/logger';
 
 // attendance는 features/attendance가 소유한 쿼리 키다 — common 계층(이 훅)이 feature query key를
 // import하지 않는다는 WP-05 2단계 원칙에 따라, attendanceQueryKeys.all과 동일한 리터럴을 직접 쓴다.
 const ATTENDANCE_QUERY_KEY_ALL = ['attendance'] as const;
+
+// NetInfo 는 ethernet/vpn/bluetooth 등도 반환한다 — 이 훅이 구분하는 4종 밖의 값은 'unknown' 으로 접는다.
+const normalizeNetworkType = (type: string): NetworkState['type'] =>
+    type === 'wifi' || type === 'cellular' || type === 'none' ? type : 'unknown';
 
 /**
  * 네트워크 상태 타입 정의
@@ -271,22 +275,13 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
     const enableOfflineMode = useCallback(() => {
         logger.debug('[OfflineSync] 오프라인 모드 활성화');
 
-        // 모든 쿼리의 캐시 시간을 연장
+        // ⚠️ 캐시 시간을 실제로 바꾸지는 못한다 — TanStack Query 는 생성된 쿼리의 staleTime/gcTime 을
+        // 사후 변경하는 API 를 제공하지 않는다. 예전 코드는 계산 결과를 버리면서 "연장했다"고 로그만
+        // 찍어 동작하는 것처럼 보였다(P3-4). 지금은 어떤 쿼리가 오프라인 모드에 들어갔는지만 남긴다.
         const queries = queryClient.getQueryCache().getAll();
         queries.forEach(query => {
-            const currentOptions = query.options;
-            if (currentOptions) {
-                adjustCacheForNetwork(
-                    {
-                        staleTime: (currentOptions as any).staleTime || 5 * 60 * 1000,
-                        gcTime: (currentOptions as any).gcTime || 10 * 60 * 1000,
-                        retry: typeof (currentOptions as any).retry === 'number' ? (currentOptions as any).retry : 2,
-                    },
-                    'offline'
-                );
-
-                // 쿼리 옵션 업데이트 (실제로는 새로운 쿼리 생성 시 적용됨)
-                logger.debug(`[OfflineSync] ${query.queryKey.join('-')} 캐시 시간 연장`);
+            if (query.options) {
+                logger.debug(`[OfflineSync] ${query.queryKey.join('-')} 오프라인 모드`);
             }
         });
 
@@ -384,33 +379,19 @@ export const useOfflineSync = (config: Partial<OfflineSyncConfig> = {}) => {
     }, [queryClient]);
 
     /**
-     * 초기 네트워크 상태 확인 (React Native NetInfo 사용 시뮬레이션)
+     * 실제 네트워크 상태 구독 (@react-native-community/netinfo).
+     *
+     * addEventListener 는 구독 즉시 현재 상태로 1회 콜백하므로 초기 fetch 를 따로 하지 않는다.
      */
     useEffect(() => {
-        // 실제 구현에서는 @react-native-community/netinfo 사용
-        // 여기서는 기본값으로 온라인 상태로 설정
-        const checkInitialNetworkState = async () => {
-            try {
-                // 실제 네트워크 상태 확인 로직
-                // const netInfo = await NetInfo.fetch();
-                // updateNetworkState({
-                //   isConnected: netInfo.isConnected ?? false,
-                //   type: netInfo.type as any,
-                //   isInternetReachable: netInfo.isInternetReachable,
-                // });
-
-                // 임시로 온라인 상태로 설정
-                updateNetworkState({
-                    isConnected: true,
-                    type: 'wifi',
-                    isInternetReachable: true,
-                });
-            } catch (error) {
-                logger.error('[OfflineSync] 초기 네트워크 상태 확인 실패:', error);
-            }
-        };
-
-        checkInitialNetworkState();
+        const unsubscribe = NetInfo.addEventListener(state => {
+            updateNetworkState({
+                isConnected: state.isConnected ?? false,
+                type: normalizeNetworkType(state.type),
+                isInternetReachable: state.isInternetReachable,
+            });
+        });
+        return unsubscribe;
     }, [updateNetworkState]);
 
     return {

@@ -12,6 +12,8 @@ import nfcTagService, {StoreNfcTag} from '../services/nfcTagService';
 export const storeQueryKeys = {
     all: ['store'] as const,
     nfcTags: (storeId: number) => [...storeQueryKeys.all, 'nfcTags', storeId] as const,
+    /** 매장 QR(WP-C) — useStoreQrCodeQueries.ts 가 사용. */
+    qrCode: (storeId: number) => [...storeQueryKeys.all, 'qrCode', storeId] as const,
 };
 
 /** 매장 NFC 태그 목록(활성+비활성) — GET /api/stores/{storeId}/nfc-tags */

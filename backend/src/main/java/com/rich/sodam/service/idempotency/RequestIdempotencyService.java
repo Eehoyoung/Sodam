@@ -40,13 +40,19 @@ public class RequestIdempotencyService {
 
     /** {@code idempotencyKey}가 필수인 진입점(신규 웹 콘솔 엔드포인트)에서 사용. */
     public <T> T execute(String idempotencyKey, String scope, Supplier<T> onFirstCall, Supplier<T> onReplay) {
-        if (store.isProcessed(idempotencyKey, scope)) {
+        // 선점(claim)을 먼저 원자적으로 따낸 쪽만 본 작업을 실행한다 — 확인과 기록을 나누면
+        // 동시 요청이 둘 다 통과해 급여 확정 같은 금전 작업이 두 번 실행된다(H-3).
+        if (!store.tryClaim(idempotencyKey, scope, DEFAULT_TTL)) {
             log.info("멱등 키 재요청 감지 — 재실행 없이 현재 상태를 재조회해 반환 scope={} key={}", scope, mask(idempotencyKey));
             return onReplay.get();
         }
-        T result = onFirstCall.get();
-        store.markProcessed(idempotencyKey, scope, DEFAULT_TTL);
-        return result;
+        try {
+            return onFirstCall.get();
+        } catch (RuntimeException | Error e) {
+            // 실패한 요청이 TTL 동안 정상 재시도를 막지 않도록 선점을 놓아준다.
+            store.release(idempotencyKey, scope);
+            throw e;
+        }
     }
 
     private String mask(String key) {

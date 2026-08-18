@@ -19,6 +19,8 @@ public class SubscriptionResponse {
     private String cardLabel;
     private LocalDateTime currentPeriodEndAt;
     private LocalDateTime nextBillingAt;
+    /** 해지 예약 시각. null 이 아니면 기간 말에 만료된다(자동갱신 중단). */
+    private LocalDateTime cancelledAt;
 
     public static SubscriptionResponse from(Subscription s) {
         return new SubscriptionResponse(
@@ -28,7 +30,8 @@ public class SubscriptionResponse {
                 s.getBillingCycle(),
                 s.getCardLabel(),
                 s.getCurrentPeriodEndAt(),
-                s.getNextBillingAt()
+                s.getNextBillingAt(),
+                s.getCancelledAt()
         );
     }
 }

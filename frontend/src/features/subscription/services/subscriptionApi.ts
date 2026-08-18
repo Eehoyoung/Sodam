@@ -20,6 +20,15 @@ export interface SubscriptionResponse {
     cardLabel?: string | null;
     currentPeriodEndAt?: string | null;
     nextBillingAt?: string | null;
+    /** 해지 예약 시각. null 이 아니면 자동갱신이 끊긴 상태이며 기간 말에 만료된다. */
+    cancelledAt?: string | null;
+}
+
+/** 서버가 보는 결제 환경. FE 의 isTossLive() 와 합의할 때만 결제를 진행한다(두 권위 이중가드). */
+export interface PaymentReadiness {
+    mode: 'MOCK' | 'LIVE' | 'UNAVAILABLE';
+    successUrl?: string | null;
+    failUrl?: string | null;
 }
 
 export interface PlanCatalogItem {
@@ -69,6 +78,12 @@ interface RawPlan {
  *  3. 이후 getMyCurrent / pause / resume / cancel 로 관리
  */
 export const subscriptionApi = {
+    // [API Mapping] GET /api/billing/payment-readiness — 서버 Toss 모드(H-9)
+    async getPaymentReadiness(): Promise<PaymentReadiness> {
+        const res = await api.get<PaymentReadiness>('/api/billing/payment-readiness');
+        return res.data;
+    },
+
     async getPlans(): Promise<PlanCatalogItem[]> {
         const res = await api.get<RawPlan[]>('/api/billing/plans');
         const data: RawPlan[] = Array.isArray(res.data) ? res.data : [];

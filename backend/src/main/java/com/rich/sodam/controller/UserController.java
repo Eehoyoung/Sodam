@@ -4,6 +4,7 @@ import com.rich.sodam.domain.User;
 import com.rich.sodam.dto.request.EmployeeUpdateDto;
 import com.rich.sodam.dto.request.ProfileBasicsUpdateDto;
 import com.rich.sodam.dto.response.ApiResponse;
+import com.rich.sodam.exception.EntityNotFoundException;
 import com.rich.sodam.dto.response.UserResponseDto;
 import com.rich.sodam.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -66,20 +67,11 @@ public class UserController {
                     .body(ApiResponse.error("FORBIDDEN", "본인만 사업주로 전환할 수 있어요."));
         }
 
-        try {
-            User convertedUser = userService.convertToOwner(userId);
-
-            ApiResponse<UserResponseDto> response =
-                    ApiResponse.success("사업주 전환이 완료되었습니다.", userResponse(convertedUser));
-
-            return ResponseEntity.ok(response);
-
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("INVALID_REQUEST", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("INTERNAL_ERROR", "사업주 전환 중 오류가 발생했습니다."));
-        }
+        // 예외는 GlobalExceptionHandler 가 errorCode 와 함께 변환한다 — 여기서 삼키면
+        // 스택트레이스가 사라져 운영 장애의 원인을 추적할 수 없다(H-1).
+        User convertedUser = userService.convertToOwner(userId);
+        return ResponseEntity.ok(
+                ApiResponse.success("사업주 전환이 완료되었습니다.", userResponse(convertedUser)));
     }
 
     /**
@@ -111,21 +103,10 @@ public class UserController {
             storeAccessGuard.assertCanViewEmployee(principal.getId(), userId, hasManagerRole(principal));
         }
 
-        try {
-            User user = userService.findById(userId)
-                    .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. ID: " + userId));
-
-            ApiResponse<UserResponseDto> response =
-                    ApiResponse.success("사용자 정보 조회가 완료되었습니다.", userResponse(user));
-
-            return ResponseEntity.ok(response);
-
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("USER_NOT_FOUND", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("INTERNAL_ERROR", "사용자 정보 조회 중 오류가 발생했습니다."));
-        }
+        User user = userService.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다. ID: " + userId));
+        return ResponseEntity.ok(
+                ApiResponse.success("사용자 정보 조회가 완료되었습니다.", userResponse(user)));
     }
 
     /** 사업주/관리자 권한(직원 관리 가능) 보유 여부. */
@@ -165,20 +146,9 @@ public class UserController {
         // try 밖에 둬 AccessDeniedException 이 Security 핸들러로 전파되어 403 이 되게 한다.
         storeAccessGuard.assertCanViewEmployee(principal.getId(), employeeId, true);
 
-        try {
-            User updatedEmployee = userService.updateEmployeeInfo(employeeId, updateDto);
-
-            ApiResponse<UserResponseDto> response =
-                    ApiResponse.success("직원 정보 수정이 완료되었습니다.", userResponse(updatedEmployee));
-
-            return ResponseEntity.ok(response);
-
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("INVALID_REQUEST", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("INTERNAL_ERROR", "직원 정보 수정 중 오류가 발생했습니다."));
-        }
+        User updatedEmployee = userService.updateEmployeeInfo(employeeId, updateDto);
+        return ResponseEntity.ok(
+                ApiResponse.success("직원 정보 수정이 완료되었습니다.", userResponse(updatedEmployee)));
     }
 
     /**
@@ -293,15 +263,7 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error("FORBIDDEN", "본인만 탈퇴할 수 있어요."));
         }
-        try {
-            userService.withdrawUser(userId);
-            return ResponseEntity.ok(ApiResponse.success("회원 탈퇴가 완료되었어요.", null));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("ACTIVE_SUBSCRIPTION", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("INTERNAL_ERROR", "탈퇴 처리 중 오류가 발생했어요."));
-        }
+        userService.withdrawUser(userId);
+        return ResponseEntity.ok(ApiResponse.success("회원 탈퇴가 완료되었어요.", null));
     }
 }

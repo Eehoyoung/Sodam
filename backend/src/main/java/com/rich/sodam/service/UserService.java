@@ -1,5 +1,6 @@
 package com.rich.sodam.service;
 
+import com.rich.sodam.exception.ConflictException;
 import com.rich.sodam.config.integration.ObjectStorage;
 import com.rich.sodam.domain.User;
 import com.rich.sodam.domain.type.SubscriptionStatus;
@@ -102,7 +103,7 @@ public class UserService {
         // NORMAL에서만 승격 허용, 다운그레이드는 금지
         if (target == UserGrade.EMPLOYEE || target == UserGrade.MASTER) {
             if (user.getUserGrade() != UserGrade.Personal) {
-                throw new IllegalStateException("권한 승격은 Personal 등급에서만 가능합니다. 현재 등급: " + user.getUserGrade());
+                throw new ConflictException("권한 승격은 Personal 등급에서만 가능합니다. 현재 등급: " + user.getUserGrade());
             }
             if (target == UserGrade.EMPLOYEE) {
                 user.changeToEmployee();
@@ -111,7 +112,7 @@ public class UserService {
             }
         } else { // target == Personal
             if (user.getUserGrade() != UserGrade.Personal) {
-                throw new IllegalStateException("권한을 낮출 수 없습니다. 현재 등급: " + user.getUserGrade());
+                throw new ConflictException("권한을 낮출 수 없습니다. 현재 등급: " + user.getUserGrade());
             }
             // 이미 NORMAL이 아니면 위에서 예외, 여기 도달 시 Personal 유지
         }
@@ -149,27 +150,8 @@ public class UserService {
             throw new IllegalArgumentException("가입 요청이 비어 있어요.");
         }
 
-        // 필수 동의 검증
-        if (joinDto.getAgeConfirmed() == null || !joinDto.getAgeConfirmed()
-                || joinDto.getTermsAgreed() == null || !joinDto.getTermsAgreed()
-                || joinDto.getPrivacyAgreed() == null || !joinDto.getPrivacyAgreed()) {
-            throw new IllegalArgumentException(
-                    "이용약관·개인정보 처리방침·만 14세 이상 동의는 필수입니다.");
-        }
-
-        // 필수 필드 검증 (DB nullable=false 컬럼에 대한 가드 — DataIntegrityViolation 500 방지)
-        if (joinDto.getEmail() == null || joinDto.getEmail().isBlank()) {
-            throw new IllegalArgumentException("이메일은 필수입니다.");
-        }
-        if (joinDto.getName() == null || joinDto.getName().isBlank()) {
-            throw new IllegalArgumentException("이름은 필수입니다.");
-        }
-
-        // 비밀번호 정책: PasswordResetService 와 동일 규칙
-        if (!com.rich.sodam.service.PasswordResetService.isValidPassword(joinDto.getPassword())) {
-            throw new IllegalArgumentException(
-                    "비밀번호는 8자 이상, 대문자·소문자·숫자·특수문자 중 3가지 이상을 포함해야 해요.");
-        }
+        // 형식·필수값·동의·비밀번호 정책은 JoinDto 의 Bean Validation 이 담당한다(H-2, api-design.md:
+        // "서비스 안에서 수동 검증 중복 금지"). 여기에는 DB 조회가 필요한 검증만 남긴다.
 
         // 이메일 중복
         if (userRepository.findByEmail(joinDto.getEmail()).isPresent()) {

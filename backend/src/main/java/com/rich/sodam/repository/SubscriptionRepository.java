@@ -30,6 +30,14 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
             "  and s.nextBillingAt <= :now")
     List<Subscription> findPastDueForRetry(LocalDateTime now);
 
+    /** 해지 예약(cancelledAt) 후 이용기간이 끝난 구독 — 여기서 비로소 EXPIRED 로 종결한다. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from Subscription s " +
+            "where s.status = com.rich.sodam.domain.type.SubscriptionStatus.ACTIVE " +
+            "  and s.cancelledAt is not null " +
+            "  and s.currentPeriodEndAt <= :now")
+    List<Subscription> findCancelledPastPeriodEnd(LocalDateTime now);
+
     /** 90일 슬립 후보: 비활성(updatedAt 오래됨) 무료·활성·미휴면 구독. */
     @Query("select s from Subscription s " +
             "where s.plan = com.rich.sodam.domain.type.PlanType.FREE " +

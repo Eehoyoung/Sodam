@@ -217,16 +217,6 @@ async function putLocation(
   return res.data?.data || res.data || { success: true };
 }
 
-// [API Mapping] POST /api/stores/change/master — 매장 소유자 변경(사장 권한 이양)
-// ⚠️ WP-00 계약 기준선에서 확인됨: BE StoreController.java에 이 엔드포인트가 블록 주석으로
-// 비활성화되어 있어 항상 404다(docs/260718/WP-00_완료_보고.md §2-3). 호출부 없음 — 제품 판단 대기.
-async function changeOwner(storeId: number, newOwnerUserId: number): Promise<{ success: boolean }>{
-  const res = await api.post<{
-      data: { success: boolean; }; success: boolean
-  }>(`/api/stores/change/master`, { storeId, newOwnerUserId });
-  return res.data?.data || res.data || { success: true };
-}
-
 // [API Mapping] PUT /api/stores/{storeId} — 매장 기본정보 수정(이름/주소/전화 등)
 async function updateStore(storeId: number, payload: Record<string, unknown>): Promise<StoreDetailDto> {
   const res = await api.put<StoreDetailDto>(`/api/stores/${storeId}`, payload);
@@ -264,7 +254,6 @@ const storeService = {
   // 등록/설정류
   createStore,
   putLocation,
-  changeOwner,
   updateStore,
   updateStoreOperatingHours,
   joinByCode,
