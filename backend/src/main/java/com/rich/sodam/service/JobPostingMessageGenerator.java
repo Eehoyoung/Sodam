@@ -2,9 +2,9 @@ package com.rich.sodam.service;
 
 import com.rich.sodam.domain.type.JobCategory;
 import com.rich.sodam.domain.type.JobWorkType;
-import com.rich.sodam.service.ai.AnthropicTextClient;
 import com.rich.sodam.service.ai.ForbiddenPhrases;
-import lombok.extern.slf4j.Slf4j;
+import com.rich.sodam.service.ai.LlmText;
+import com.rich.sodam.service.ai.TextGenerationClient;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalTime;
@@ -21,7 +21,6 @@ import java.util.regex.Pattern;
  * 연령차별금지법)을 차단한다. 이 어휘 리스트는 법무 확인 전까지 보수적으로(의심스러우면 차단)
  * 설계했다 — {@link com.rich.sodam.service.ai.ForbiddenPhrases}(HC-1)와는 별도로 관리한다.</p>
  */
-@Slf4j
 @Service
 public class JobPostingMessageGenerator {
 
@@ -37,29 +36,19 @@ public class JobPostingMessageGenerator {
             Pattern.compile("군필\\s*우대|군필자?\\s*환영")
     );
 
-    private final Optional<AnthropicTextClient> client;
+    private final Optional<TextGenerationClient> client;
 
-    public JobPostingMessageGenerator(Optional<AnthropicTextClient> client) {
+    public JobPostingMessageGenerator(Optional<TextGenerationClient> client) {
         this.client = client;
     }
 
     /** LLM 미활성/실패/검증 실패는 전부 {@code null} — FE는 이 경우 빈 입력을 유지한다. */
     public String generate(JobWorkType workType, JobCategory category, Integer hourlyWage,
                             LocalTime startTime, LocalTime endTime) {
-        if (client.isEmpty() || !client.get().isReady()) {
-            return null;
-        }
-        try {
-            String response = client.get().complete(buildPrompt(workType, category, hourlyWage, startTime, endTime));
-            if (response == null) {
-                return null;
-            }
-            String draft = response.trim();
-            return passesValidation(draft) ? draft : null;
-        } catch (Exception e) {
-            log.debug("[JobPostingMessageGenerator] 생성 실패 — 빈 입력 유지. cause={}", e.toString());
-            return null;
-        }
+        return LlmText.tryGenerate(client,
+                () -> buildPrompt(workType, category, hourlyWage, startTime, endTime),
+                JobPostingMessageGenerator::passesValidation,
+                null, "JobPostingMessageGenerator");
     }
 
     static String buildPrompt(JobWorkType workType, JobCategory category, Integer hourlyWage,

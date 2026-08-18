@@ -2,9 +2,9 @@ package com.rich.sodam.service;
 
 import com.rich.sodam.dto.response.WeeklyInsightsResponse;
 import com.rich.sodam.dto.response.WeeklyInsightsResponse.InsightItem;
-import com.rich.sodam.service.ai.AnthropicTextClient;
 import com.rich.sodam.service.ai.ForbiddenPhrases;
-import lombok.extern.slf4j.Slf4j;
+import com.rich.sodam.service.ai.LlmText;
+import com.rich.sodam.service.ai.TextGenerationClient;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,32 +20,22 @@ import java.util.Optional;
  * <p>실패 안전: provider 미설정·네트워크 실패·검증 실패는 전부 {@code null}로 흡수한다. 호출부(FE)는
  * {@code null}이면 기존 숫자 나열형 표시로 폴백한다(HC-7).</p>
  */
-@Slf4j
 @Service
 public class WeeklyInsightsNarrator {
 
-    private final Optional<AnthropicTextClient> client;
+    private final Optional<TextGenerationClient> client;
 
-    public WeeklyInsightsNarrator(Optional<AnthropicTextClient> client) {
+    public WeeklyInsightsNarrator(Optional<TextGenerationClient> client) {
         this.client = client;
     }
 
     public String summarize(WeeklyInsightsResponse response) {
-        if (client.isEmpty() || !client.get().isReady()
-                || response.items() == null || response.items().isEmpty()) {
+        if (response.items() == null || response.items().isEmpty()) {
             return null;
         }
-        try {
-            String result = client.get().complete(buildPrompt(response));
-            if (result == null) {
-                return null;
-            }
-            String summary = result.trim();
-            return passesValidation(summary, response.items()) ? summary : null;
-        } catch (Exception e) {
-            log.debug("[WeeklyInsightsNarrator] 요약 실패 — 숫자 나열형으로 폴백. cause={}", e.toString());
-            return null;
-        }
+        return LlmText.tryGenerate(client, () -> buildPrompt(response),
+                summary -> passesValidation(summary, response.items()),
+                null, "WeeklyInsightsNarrator");
     }
 
     static String buildPrompt(WeeklyInsightsResponse response) {

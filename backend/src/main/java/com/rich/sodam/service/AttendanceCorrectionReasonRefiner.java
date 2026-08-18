@@ -1,9 +1,9 @@
 package com.rich.sodam.service;
 
-import com.rich.sodam.service.ai.AnthropicTextClient;
 import com.rich.sodam.service.ai.ForbiddenPhrases;
+import com.rich.sodam.service.ai.LlmText;
 import com.rich.sodam.service.ai.PiiPatterns;
-import lombok.extern.slf4j.Slf4j;
+import com.rich.sodam.service.ai.TextGenerationClient;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -18,34 +18,25 @@ import java.util.Optional;
  * <p>사유 텍스트는 "사장님과 직원 본인만 볼 수 있어요"로 이미 스코프가 좁혀져 있어 PII 위험이
  * 낮지만, 전화번호처럼 보이는 숫자열이 응답에 새로 생기면 방어적으로 폴백한다(HC-8).</p>
  */
-@Slf4j
 @Service
 public class AttendanceCorrectionReasonRefiner {
 
     private static final int MAX_LENGTH = 200;
 
-    private final Optional<AnthropicTextClient> client;
+    private final Optional<TextGenerationClient> client;
 
-    public AttendanceCorrectionReasonRefiner(Optional<AnthropicTextClient> client) {
+    public AttendanceCorrectionReasonRefiner(Optional<TextGenerationClient> client) {
         this.client = client;
     }
 
     /** 실패 안전: 어떤 이유로든 다듬기를 신뢰할 수 없으면 원본 사유를 그대로 반환한다. */
     public String refine(String reason) {
-        if (client.isEmpty() || !client.get().isReady() || reason == null || reason.isBlank()) {
+        if (reason == null || reason.isBlank()) {
             return reason;
         }
-        try {
-            String response = client.get().complete(buildPrompt(reason));
-            if (response == null) {
-                return reason;
-            }
-            String rephrased = response.trim();
-            return passesValidation(rephrased, reason) ? rephrased : reason;
-        } catch (Exception e) {
-            log.debug("[AttendanceCorrectionReasonRefiner] 다듬기 실패 — 원본 유지. cause={}", e.toString());
-            return reason;
-        }
+        return LlmText.tryGenerate(client, () -> buildPrompt(reason),
+                rephrased -> passesValidation(rephrased, reason),
+                reason, "AttendanceCorrectionReasonRefiner");
     }
 
     static String buildPrompt(String reason) {

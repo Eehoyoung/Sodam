@@ -91,7 +91,7 @@ class EmployeeResignationNegotiationTest {
         RequestResult result = service.requestResignation(store.getId(), employee.getId(),
                 LocalDate.now().plusDays(14), "사유");
 
-        List<EmployeeResignationDateProposal> proposals = proposalRepo.findByRequest_IdOrderByProposedAtAsc(result.id());
+        List<EmployeeResignationDateProposal> proposals = proposalRepo.findByRequest_IdOrderByProposedAtAscIdAsc(result.id());
         assertThat(proposals).hasSize(1);
         assertThat(proposals.get(0).getProposerRole()).isEqualTo(EmployeeResignationDateProposal.ProposerRole.EMPLOYEE);
     }
@@ -108,7 +108,7 @@ class EmployeeResignationNegotiationTest {
 
         service.counterPropose(result.id(), owner.getId(), LocalDate.now().plusDays(21));
 
-        List<EmployeeResignationDateProposal> proposals = proposalRepo.findByRequest_IdOrderByProposedAtAsc(result.id());
+        List<EmployeeResignationDateProposal> proposals = proposalRepo.findByRequest_IdOrderByProposedAtAscIdAsc(result.id());
         assertThat(proposals).hasSize(2);
         assertThat(proposals.get(0).getProposerRole()).isEqualTo(EmployeeResignationDateProposal.ProposerRole.EMPLOYEE);
         assertThat(proposals.get(1).getProposerRole()).isEqualTo(EmployeeResignationDateProposal.ProposerRole.MASTER);

@@ -54,7 +54,6 @@ import {
 } from '../utils/contractFormMath';
 import storeService from '../../store/services/storeService';
 import {ContractTermsCard} from '../components/ContractTermsCard';
-import EmployeeSelectStep from '../components/SendContract/EmployeeSelectStep';
 import type {
     ContractPeriodType,
     LaborContract,
@@ -1003,16 +1002,41 @@ const SendContractScreen: React.FC = () => {
         );
     }
 
-    // ① 대상 직원 선택 — 표시/선택은 EmployeeSelectStep 이 담당(H-7 분리), 검증은 goStep2 그대로.
+    // ① 대상 직원 선택
     if (step === 0) {
         return (
-            <EmployeeSelectStep
-                employees={employees}
-                selectedId={employeeId}
-                onSelect={setEmployeeId}
-                onNext={goStep2}
+            <StepScaffold
+                progress={1 / 4}
+                title="누구에게 보낼까요?"
+                subtitle="근로계약서를 보낼 직원을 선택해 주세요."
                 onBack={() => navigation.goBack()}
-            />
+                footer={
+                    <CtaStack>
+                        <AppButton label="다음" onPress={goStep2} disabled={!employeeId} />
+                    </CtaStack>
+                }>
+                <View style={styles.list}>
+                    {employees.length === 0 ? (
+                        <AppText variant="bodyMd" tone="secondary">
+                            매장에 등록된 직원이 없어요.
+                        </AppText>
+                    ) : (
+                        employees.map(emp => (
+                            <AppCard
+                                key={String(emp.id)}
+                                variant="outlined"
+                                selected={emp.id === employeeId}
+                                onPress={() => setEmployeeId(emp.id)}
+                                accessibilityLabel={`${emp.name} 선택`}>
+                                <AppText variant="titleMd">{emp.name}</AppText>
+                                <AppText variant="caption" tone="secondary" style={styles.email}>
+                                    {emp.email.trim().length > 0 ? emp.email : '이메일 미등록'}
+                                </AppText>
+                            </AppCard>
+                        ))
+                    )}
+                </View>
+            </StepScaffold>
         );
     }
 
@@ -1696,6 +1720,8 @@ const SendContractScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+    list: {gap: spacing.sm},
+    email: {marginTop: 2},
     form: {gap: spacing.md},
     fieldLabel: {marginBottom: spacing.xs},
     sectionTitle: {marginTop: spacing.sm, letterSpacing: 0.4},

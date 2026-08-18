@@ -104,7 +104,7 @@ public class EmployeeResignationService {
             throw new BusinessException("대기 중인 신청만 협의할 수 있어요.", "RESIGNATION_NOT_PENDING");
         }
         ProposerRole actorRole = resolveActorRole(request, actorUserId);
-        EmployeeResignationDateProposal last = proposalRepo.findTopByRequest_IdOrderByProposedAtDesc(requestId)
+        EmployeeResignationDateProposal last = proposalRepo.findTopByRequest_IdOrderByProposedAtDescIdDesc(requestId)
                 .orElseThrow(() -> new IllegalStateException("제안 이력이 없어요."));
         if (last.getProposerRole() == actorRole) {
             throw new BusinessException("본인이 마지막으로 제안한 날짜에는 동의할 수 없어요.",
@@ -135,7 +135,7 @@ public class EmployeeResignationService {
         EmployeeResignationRequest request = resignationRepo.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("신청을 찾을 수 없어요."));
         resolveActorRole(request, actorUserId); // 당사자 검증(BOLA), 결과값은 쓰지 않는다
-        return proposalRepo.findByRequest_IdOrderByProposedAtAsc(requestId);
+        return proposalRepo.findByRequest_IdOrderByProposedAtAscIdAsc(requestId);
     }
 
     /** 호출자가 신청자 본인이면 EMPLOYEE, 그 매장 사장이면 MASTER — 둘 다 아니면 403. */

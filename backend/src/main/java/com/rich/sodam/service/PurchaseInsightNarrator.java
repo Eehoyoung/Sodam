@@ -3,17 +3,19 @@ package com.rich.sodam.service;
 import com.rich.sodam.dto.response.MonthlySummaryResponse;
 import com.rich.sodam.dto.response.VendorSummaryResponse;
 import com.rich.sodam.service.ai.ForbiddenPhrases;
+import com.rich.sodam.service.ai.LlmText;
 import com.rich.sodam.service.ai.TextGenerationClient;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 매입장부 인사이트 코멘트(WP-5, {@code docs/260817} goal) — 거래처별 비중·월별 매입 추이를
@@ -24,7 +26,6 @@ import java.util.stream.Collectors;
  * 섞이면 반드시 차단한다 — {@link ForbiddenPhrases}(HC-1)와는 별도로 이 도메인 전용 차단 어휘를
  * 관리한다.</p>
  */
-@Slf4j
 @Service
 public class PurchaseInsightNarrator {
 
@@ -44,25 +45,15 @@ public class PurchaseInsightNarrator {
     }
 
     public String summarize(List<VendorSummaryResponse> vendors, List<MonthlySummaryResponse> months) {
-        if (client.isEmpty() || !client.get().isReady()
-                || (vendors == null || vendors.isEmpty()) && (months == null || months.isEmpty())) {
+        if ((vendors == null || vendors.isEmpty()) && (months == null || months.isEmpty())) {
             return null;
         }
-        try {
-            String response = client.get().complete(buildPrompt(vendors, months));
-            if (response == null) {
-                return null;
-            }
-            String comment = response.trim();
-            if (!passesValidation(comment) || !containsOnlyInputNumbers(comment, vendors, months)
-                    || !containsOnlyKnownVendorLabels(comment, Math.min(vendors.size(), 26))) {
-                return null;
-            }
-            return restoreVendorNames(comment, vendors);
-        } catch (Exception e) {
-            log.debug("[PurchaseInsightNarrator] 코멘트 생성 실패. cause={}", e.toString());
-            return null;
-        }
+        // 검증 3종(금지어·Non-Goal·입력 숫자/거래처 라벨 대조)은 LLM 출력이 신뢰 경계라 그대로 둔다.
+        String comment = LlmText.tryGenerate(client, () -> buildPrompt(vendors, months),
+                c -> passesValidation(c) && containsOnlyInputNumbers(c, vendors, months)
+                        && containsOnlyKnownVendorLabels(c, Math.min(vendors.size(), 26)),
+                null, "PurchaseInsightNarrator");
+        return comment == null ? null : restoreVendorNames(comment, vendors);
     }
 
     static String buildPrompt(List<VendorSummaryResponse> vendors, List<MonthlySummaryResponse> months) {
@@ -105,11 +96,11 @@ public class PurchaseInsightNarrator {
 
     static boolean containsOnlyInputNumbers(
             String comment, List<VendorSummaryResponse> vendors, List<MonthlySummaryResponse> months) {
-        Set<String> allowed = java.util.stream.Stream.concat(
-                        vendors.stream().flatMap(v -> java.util.stream.Stream.of(
+        Set<String> allowed = Stream.concat(
+                        vendors.stream().flatMap(v -> Stream.of(
                                 Integer.toString(v.totalAmount()), Integer.toString(v.purchaseCount()),
                                 String.format("%.1f", v.sharePercent()))),
-                        months.stream().flatMap(m -> java.util.stream.Stream.of(
+                        months.stream().flatMap(m -> Stream.of(
                                 m.yearMonth(), Integer.toString(m.totalAmount()))))
                 .flatMap(value -> extractNumbers(value).stream())
                 .collect(Collectors.toSet());
@@ -118,7 +109,7 @@ public class PurchaseInsightNarrator {
 
     private static Set<String> extractNumbers(String value) {
         Matcher matcher = NUMBER.matcher(value == null ? "" : value);
-        java.util.HashSet<String> numbers = new java.util.HashSet<>();
+        HashSet<String> numbers = new HashSet<>();
         while (matcher.find()) {
             numbers.add(new BigDecimal(matcher.group().replace(",", "")).stripTrailingZeros().toPlainString());
         }

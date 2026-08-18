@@ -1,9 +1,9 @@
 package com.rich.sodam.service;
 
-import com.rich.sodam.service.ai.AnthropicTextClient;
 import com.rich.sodam.service.ai.ForbiddenPhrases;
+import com.rich.sodam.service.ai.LlmText;
 import com.rich.sodam.service.ai.PiiPatterns;
-import lombok.extern.slf4j.Slf4j;
+import com.rich.sodam.service.ai.TextGenerationClient;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -18,41 +18,33 @@ import java.util.Optional;
  *
  * <p>실패 안전: provider 미설정(기본값)·네트워크 실패·검증 실패는 전부 원본 메시지로 흡수한다.</p>
  */
-@Slf4j
 @Service
 public class JobApplicationMessageRefiner {
 
-    private static final String PHONE_MASK = "[연락처]";
+    static final String PHONE_MASK = "[연락처]";
     private static final int MAX_LENGTH = 200;
 
-    private final Optional<AnthropicTextClient> client;
+    private final Optional<TextGenerationClient> client;
 
-    public JobApplicationMessageRefiner(Optional<AnthropicTextClient> client) {
+    public JobApplicationMessageRefiner(Optional<TextGenerationClient> client) {
         this.client = client;
     }
 
     public String refine(String message) {
-        if (client.isEmpty() || !client.get().isReady() || message == null || message.isBlank()) {
+        if (message == null || message.isBlank()) {
             return message;
         }
-        try {
-            String masked = PiiPatterns.maskPhoneLike(message, PHONE_MASK);
-            String response = client.get().complete(buildPrompt(masked));
-            if (response == null) {
-                return message;
-            }
-            String rephrased = response.trim();
-            return passesValidation(rephrased, message) ? rephrased : message;
-        } catch (Exception e) {
-            log.debug("[JobApplicationMessageRefiner] 다듬기 실패 — 원본 유지. cause={}", e.toString());
-            return message;
-        }
+        // 마스킹은 프롬프트 안에서 한다 — 클라이언트가 없으면 아예 평가되지 않는다.
+        return LlmText.tryGenerate(client,
+                () -> buildPrompt(PiiPatterns.maskPhoneLike(message, PHONE_MASK)),
+                rephrased -> passesValidation(rephrased, message),
+                message, "JobApplicationMessageRefiner");
     }
 
     static String buildPrompt(String maskedMessage) {
         return "다음은 구직자가 사장님에게 보내는 채용 지원 메시지다. 말투만 자연스럽고 정중하게 다듬어라. "
                 + "원문에 없는 경력·이력·연락처를 새로 지어내거나 추가하지 마라. "
-                + "\"" + "[연락처]" + "\" 같은 마스킹 표기는 그대로 유지하고 실제 번호로 채우지 마라. "
+                + "\"" + PHONE_MASK + "\" 같은 마스킹 표기는 그대로 유지하고 실제 번호로 채우지 마라. "
                 + "법적 확언(위반이다/막아준다/안전합니다/정확하다 등)을 추가하지 마라.\n\n"
                 + "원문: " + maskedMessage;
     }
