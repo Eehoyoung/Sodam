@@ -273,9 +273,11 @@ jest.mock('react-native-nfc-manager', () => ({
     default: {
         start: jest.fn(() => Promise.resolve()),
         stop: jest.fn(() => Promise.resolve()),
-        requestTechnology: jest.fn(),
-        cancelTechnologyRequest: jest.fn(),
-        getTag: jest.fn(),
+        // 실제 API 는 Promise 를 반환한다. undefined 를 돌려주면 화면 정리(cleanup) 이펙트의
+        // .catch() 가 TypeError 로 터진다 — 언마운트하는 테스트에서만 드러나던 목 누락.
+        requestTechnology: jest.fn(() => Promise.resolve()),
+        cancelTechnologyRequest: jest.fn(() => Promise.resolve()),
+        getTag: jest.fn(() => Promise.resolve(null)),
         isSupported: jest.fn(() => Promise.resolve(true)),
         isEnabled: jest.fn(() => Promise.resolve(true)),
         setEventListener: jest.fn(),

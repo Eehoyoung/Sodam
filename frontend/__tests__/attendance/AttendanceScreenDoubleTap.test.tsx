@@ -19,6 +19,7 @@ jest.mock('../../src/features/attendance/services/attendanceService', () => ({
         checkOut: (...a: unknown[]) => mockCheckOut(...a),
         getAttendanceRecords: jest.fn().mockResolvedValue([]),
         getCurrentAttendance: jest.fn().mockResolvedValue(null),
+        getTodayAttendance: jest.fn().mockResolvedValue(null),
     },
 }));
 
@@ -51,10 +52,12 @@ const flush = async () => {
 describe('AttendanceScreen 출퇴근 CTA 중복 탭', () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        // 응답을 지연시켜 "요청이 아직 진행 중인" 창을 만든다.
-        mockCheckIn.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve({
+        // 잠금(punchingRef)은 await 이전에 동기적으로 걸리므로 지연 없이도 두 번째 탭이 막힌다.
+        // 타이머로 지연시키면 그 타이머가 테스트 종료 뒤에 발화해 언마운트된 화면의 setState 를
+        // 부르고, 그 잔여 작업이 --runInBand 실행의 종료 코드를 1 로 만든다.
+        mockCheckIn.mockResolvedValue({
             id: 1, checkInTime: '2026-08-18T09:00:00', checkOutTime: null,
-        }), 50)));
+        });
     });
 
     it('빠르게 두 번 탭해도 checkIn 은 1번만 호출된다', async () => {
@@ -76,5 +79,12 @@ describe('AttendanceScreen 출퇴근 CTA 중복 탭', () => {
         });
 
         expect(mockCheckIn).toHaveBeenCalledTimes(1);
+
+        // 마운트한 채로 끝내면 화면의 조회 비동기가 테스트 종료 뒤에 setState 를 호출하고,
+        // 그 잔여 작업이 --runInBand 실행에서 jest 종료 코드를 1 로 만든다(테스트는 전부 통과인데).
+        await act(async () => {
+            renderer.unmount();
+            await flush();
+        });
     });
 });
