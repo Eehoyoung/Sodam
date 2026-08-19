@@ -14,6 +14,15 @@ import App from '../App';
  * 네비게이션·reanimated mock 이 맞지 않아 스킵돼 있었다. 지금은 프로젝트 표준 mock 이
  * jest.setup.js 에 갖춰져 있어 RTL 실렌더링으로 마운트된다.</p>
  */
+/**
+ * render(<App />) 는 네비게이션 트리 전체(150여 화면)를 그 자리에서 최초로 require·트랜스폼한다.
+ * jest 변환 캐시가 따뜻한 로컬 재실행에서는 순식간이지만, 캐시가 비어 있는 환경(CI 의 매 실행,
+ * 로컬 `--no-cache`)에서는 그 변환 시간이 테스트 본문 시간에 포함돼 기본 타임아웃 5초를 넘긴다.
+ * CI frontend 잡이 이 자리에서 반복 실패했고, `--no-cache` 로 로컬 재현까지 확인했다.
+ * 검증 내용(트리가 크래시 없이 마운트되는가)은 그대로 두고 시간만 넉넉히 준다.
+ */
+const BOOTSTRAP_TIMEOUT_MS = 60_000;
+
 describe('App bootstrap', () => {
     it('전체 프로바이더 트리가 크래시 없이 마운트된다', async () => {
         const {toJSON} = render(<App />);
@@ -23,7 +32,7 @@ describe('App bootstrap', () => {
         await waitFor(() => {
             expect(toJSON()).toBeTruthy();
         });
-    });
+    }, BOOTSTRAP_TIMEOUT_MS);
 
     it('마운트 중 콘솔 에러를 남기지 않는다', async () => {
         const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -34,5 +43,5 @@ describe('App bootstrap', () => {
         });
 
         errorSpy.mockRestore();
-    });
+    }, BOOTSTRAP_TIMEOUT_MS);
 });
